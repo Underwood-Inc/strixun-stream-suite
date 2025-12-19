@@ -143,7 +143,16 @@
             transition: all 0.15s;
         }
         button:hover { background: var(--border); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+        .requires-connection { transition: opacity 0.2s; }
+        .disconnected .requires-connection { opacity: 0.4; pointer-events: none; }
+        .disconnected .requires-connection::after {
+            content: '🔌';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
         
         .btn-primary { background: var(--accent); border-color: var(--accent); color: #000; }
         .btn-primary:hover { background: #79b8ff; }
@@ -468,6 +477,13 @@
                     </div>
                     <label>Password</label>
                     <input type="password" id="password" placeholder="Leave empty if not set">
+                    <div style="margin:8px 0">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="rememberCreds" style="width:auto;margin:0">
+                            <span>Remember credentials</span>
+                        </label>
+                        <p style="font-size:0.75em;color:var(--warning);margin-top:4px" id="securityWarning"></p>
+                    </div>
                     <button class="btn-primary btn-block" id="connectBtn" onclick="toggleConnection()">Connect</button>
                 </div>
                 
@@ -517,6 +533,8 @@ let currentScene = '';
 let sources = [];
 let textSources = [];
 let aspectMode = 0;
+let reconnectAttempts = 0;
+const MAX_RECONNECT = 3;
 
 // Text cycler state
 let cycleInterval = null;
@@ -528,14 +546,103 @@ let transitionFrame = null;
 const CHARS_ENCHANT = 'ᔑᒷᓵ↸ᒷ⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴||⨅αβγδεζηθ';
 const CHARS_GLITCH = '█▓▒░╔╗╚╝║═┌┐└┘│─';
 
+// ============ Credential Storage (with basic obfuscation) ============
+function saveCredentials() {
+    const remember = document.getElementById('rememberCreds').checked;
+    const host = document.getElementById('host').value;
+    const port = document.getElementById('port').value;
+    const password = document.getElementById('password').value;
+    
+    if (remember) {
+        localStorage.setItem('obs_host', host);
+        localStorage.setItem('obs_port', port);
+        // Basic obfuscation (NOT encryption - just prevents casual reading)
+        if (password) {
+            localStorage.setItem('obs_pw', btoa(password));
+        } else {
+            localStorage.removeItem('obs_pw');
+        }
+        localStorage.setItem('obs_remember', 'true');
+    } else {
+        localStorage.removeItem('obs_host');
+        localStorage.removeItem('obs_port');
+        localStorage.removeItem('obs_pw');
+        localStorage.removeItem('obs_remember');
+    }
+}
+
+function loadCredentials() {
+    const remembered = localStorage.getItem('obs_remember') === 'true';
+    document.getElementById('rememberCreds').checked = remembered;
+    
+    if (remembered) {
+        const host = localStorage.getItem('obs_host');
+        const port = localStorage.getItem('obs_port');
+        const pw = localStorage.getItem('obs_pw');
+        
+        if (host) document.getElementById('host').value = host;
+        if (port) document.getElementById('port').value = port;
+        if (pw) {
+            try {
+                document.getElementById('password').value = atob(pw);
+            } catch(e) {}
+        }
+        
+        updateSecurityWarning();
+        return true; // Has saved credentials
+    }
+    return false;
+}
+
+function updateSecurityWarning() {
+    const pw = document.getElementById('password').value;
+    const remember = document.getElementById('rememberCreds').checked;
+    const warn = document.getElementById('securityWarning');
+    
+    if (remember && pw) {
+        warn.textContent = '⚠️ Password stored locally (not encrypted)';
+    } else {
+        warn.textContent = '';
+    }
+}
+
+// ============ Connection State UI ============
+function updateConnectionState() {
+    const app = document.querySelector('.app');
+    if (connected) {
+        app.classList.remove('disconnected');
+    } else {
+        app.classList.add('disconnected');
+    }
+    
+    // Disable action buttons when disconnected
+    document.querySelectorAll('.source-btn, #startCycleBtn').forEach(btn => {
+        btn.disabled = !connected;
+    });
+}
+
 // ============ Initialization ============
 document.addEventListener('DOMContentLoaded', () => {
     // Set dock URL
     const url = window.location.href;
     document.getElementById('dockUrl').value = url;
     
+    // Load saved credentials and swap configs
     renderSavedSwaps();
-    log('Ready. Connect to OBS to begin.', 'info');
+    updateConnectionState();
+    
+    // Setup credential UI listeners
+    document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
+    document.getElementById('password').addEventListener('input', updateSecurityWarning);
+    
+    // Load saved credentials and auto-connect
+    const hasCreds = loadCredentials();
+    if (hasCreds) {
+        log('Saved credentials loaded. Auto-connecting...', 'info');
+        setTimeout(connect, 500);
+    } else {
+        log('Ready. Connect to OBS to begin.', 'info');
+    }
 });
 
 // ============ UI ============
@@ -609,19 +716,42 @@ function connect() {
     
     try {
         ws = new WebSocket(`ws://${host}:${port}`);
-        ws.onopen = () => log('Socket open, authenticating...');
+        ws.onopen = () => {
+            log('Socket open, authenticating...');
+            reconnectAttempts = 0;
+        };
         ws.onmessage = e => handleMessage(JSON.parse(e.data), password);
-        ws.onerror = () => { log('Connection error', 'error'); disconnect(); };
-        ws.onclose = () => { connected = false; updateConnectionUI(); log('Disconnected'); };
+        ws.onerror = () => { 
+            log('Connection error', 'error');
+        };
+        ws.onclose = () => { 
+            const wasConnected = connected;
+            connected = false;
+            updateConnectionUI();
+            updateConnectionState();
+            log('Disconnected');
+            
+            // Auto-reconnect if was connected and have saved creds
+            if (wasConnected && localStorage.getItem('obs_remember') === 'true') {
+                if (reconnectAttempts < MAX_RECONNECT) {
+                    reconnectAttempts++;
+                    log(`Reconnecting (${reconnectAttempts}/${MAX_RECONNECT})...`, 'info');
+                    setTimeout(connect, 2000);
+                }
+            }
+        };
     } catch (e) {
         log('Failed: ' + e.message, 'error');
+        updateConnectionState();
     }
 }
 
 function disconnect() {
+    reconnectAttempts = MAX_RECONNECT; // Prevent auto-reconnect
     if (ws) ws.close();
     connected = false;
     updateConnectionUI();
+    updateConnectionState();
 }
 
 async function handleMessage(data, password) {
@@ -640,6 +770,8 @@ async function handleMessage(data, password) {
     } else if (data.op === 2) { // Identified
         connected = true;
         updateConnectionUI();
+        updateConnectionState();
+        saveCredentials(); // Save on successful connection
         log('Connected to OBS!', 'success');
         refreshScenes();
     } else if (data.op === 7) { // Response
@@ -797,7 +929,11 @@ function easeFunc(t, type) {
 function lerp(a, b, t) { return a + (b - a) * t; }
 
 async function executeSwap() {
-    if (!connected) { log('Not connected', 'error'); return; }
+    if (!connected) { 
+        log('Connect to OBS first', 'error'); 
+        showPage('setup');
+        return; 
+    }
     if (isSwapping) { log('Swap in progress', 'error'); return; }
     
     const nameA = document.getElementById('swapSourceA').value;
@@ -1024,6 +1160,11 @@ function getTextLines() {
 }
 
 function startTextCycle() {
+    if (!connected) {
+        log('Connect to OBS first', 'error');
+        showPage('setup');
+        return;
+    }
     const lines = getTextLines();
     if (lines.length === 0) {
         log('Enter at least one text line', 'error');
