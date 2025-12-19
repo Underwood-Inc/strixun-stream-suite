@@ -231,8 +231,9 @@
         
         .empty-state {
             text-align: center;
-            padding: 40px;
+            padding: 12px 8px;
             color: var(--muted);
+            font-size: 0.9em;
         }
         
         /* Text cycler specific */
@@ -443,7 +444,11 @@
                 <div class="card">
                     <h3>Saved Configs</h3>
                     <div id="savedSwaps"></div>
-                    <button onclick="saveCurrentSwap()" style="margin-top:8px">💾 Save Current</button>
+                    <div class="row" style="margin-top:8px">
+                        <button onclick="saveCurrentSwap()">💾 Save</button>
+                        <button onclick="exportConfigs()">📤 Export</button>
+                        <button onclick="importConfigs()">📥 Import</button>
+                    </div>
                 </div>
             </div>
             
@@ -916,6 +921,51 @@ function deleteSwapConfig(index) {
     swapConfigs.splice(index, 1);
     localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
     renderSavedSwaps();
+}
+
+function exportConfigs() {
+    if (swapConfigs.length === 0) {
+        log('No configs to export', 'error');
+        return;
+    }
+    const json = JSON.stringify(swapConfigs, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+        log('Configs copied to clipboard!', 'success');
+    }).catch(() => {
+        // Fallback: show in prompt
+        prompt('Copy this JSON:', json);
+    });
+}
+
+function importConfigs() {
+    const json = prompt('Paste config JSON:');
+    if (!json) return;
+    
+    try {
+        const imported = JSON.parse(json);
+        if (!Array.isArray(imported)) throw new Error('Must be array');
+        
+        // Validate structure
+        for (const c of imported) {
+            if (!c.name || !c.sourceA || !c.sourceB) {
+                throw new Error('Invalid config structure');
+            }
+        }
+        
+        // Merge or replace?
+        const merge = swapConfigs.length > 0 && confirm('Merge with existing? (Cancel to replace)');
+        if (merge) {
+            swapConfigs = [...swapConfigs, ...imported];
+        } else {
+            swapConfigs = imported;
+        }
+        
+        localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
+        renderSavedSwaps();
+        log(`Imported ${imported.length} configs`, 'success');
+    } catch (e) {
+        log('Invalid JSON: ' + e.message, 'error');
+    }
 }
 
 // ============ Text Cycler ============
