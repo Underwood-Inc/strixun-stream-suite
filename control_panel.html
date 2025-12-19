@@ -799,6 +799,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load saved configs and UI state
     renderSavedSwaps();
     loadUIState();
+    restoreActiveTab();
     updateConnectionState();
     setupUIStatePersistence();
     
@@ -823,11 +824,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============ UI ============
-function showPage(id) {
+function showPage(id, save = true) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.getElementById('page-' + id).classList.add('active');
-    event.target.classList.add('active');
+    
+    // Find and activate the corresponding tab
+    const tabs = document.querySelectorAll('.tab');
+    const tabIds = ['dashboard', 'sources', 'text', 'swaps', 'setup'];
+    const tabIndex = tabIds.indexOf(id);
+    if (tabIndex >= 0 && tabs[tabIndex]) {
+        tabs[tabIndex].classList.add('active');
+    }
+    
+    // Save active tab
+    if (save) {
+        localStorage.setItem('active_tab', id);
+    }
+}
+
+function restoreActiveTab() {
+    const savedTab = localStorage.getItem('active_tab');
+    if (savedTab) {
+        showPage(savedTab, false);
+    }
 }
 
 function log(msg, type = '') {
