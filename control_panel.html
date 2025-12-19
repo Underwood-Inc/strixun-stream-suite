@@ -1498,6 +1498,8 @@ function updateTextSourceDropdown() {
     
     if (current && textSources.find(s => s.sourceName === current)) {
         select.value = current;
+        // Update preview with restored selection
+        loadTextSource();
     }
 }
 
