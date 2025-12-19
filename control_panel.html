@@ -897,22 +897,27 @@ function connect() {
             reconnectAttempts = 0;
         };
         ws.onmessage = e => handleMessage(JSON.parse(e.data), password);
-        ws.onerror = () => { 
+        ws.onerror = (e) => { 
             log('Connection error', 'error');
+            console.log('WebSocket error:', e);
         };
-        ws.onclose = () => { 
+        ws.onclose = (e) => { 
             const wasConnected = connected;
             connected = false;
             updateConnectionUI();
             updateConnectionState();
-            log('Disconnected');
             
-            // Auto-reconnect if was connected and have saved creds
-            if (wasConnected && localStorage.getItem('obs_remember') === 'true') {
+            // Log close reason for debugging
+            const reason = e.code === 1000 ? 'normal' : e.code === 1006 ? 'abnormal' : `code ${e.code}`;
+            log(`Disconnected (${reason})`, wasConnected ? 'error' : 'info');
+            console.log('WebSocket closed:', e.code, e.reason);
+            
+            // Only auto-reconnect on abnormal close, not if user disconnected
+            if (wasConnected && e.code !== 1000 && localStorage.getItem('obs_remember') === 'true') {
                 if (reconnectAttempts < MAX_RECONNECT) {
                     reconnectAttempts++;
                     log(`Reconnecting (${reconnectAttempts}/${MAX_RECONNECT})...`, 'info');
-                    setTimeout(connect, 2000);
+                    setTimeout(connect, 3000); // Longer delay
                 }
             }
         };
@@ -1648,10 +1653,22 @@ function showTextWithTransition(targetText) {
     }
 }
 
-// Fire-and-forget text update (no await, no error handling that could block)
+// Rate-limited text update
+let lastTextSend = 0;
+const MIN_TEXT_INTERVAL = 80; // Max ~12 sends/second
+
 function setTextFast(text) {
     const name = document.getElementById('textSource').value;
     if (!name || !connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    // Rate limit
+    const now = Date.now();
+    if (now - lastTextSend < MIN_TEXT_INTERVAL) {
+        // Skip this update, too fast
+        document.getElementById('textPreview').textContent = text; // Still update preview
+        return;
+    }
+    lastTextSend = now;
     
     const id = 'txt_' + (msgId++);
     ws.send(JSON.stringify({
