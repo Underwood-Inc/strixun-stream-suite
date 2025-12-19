@@ -386,15 +386,21 @@
                 
                 <div class="card">
                     <h3>Settings</h3>
+                    <label>Transition</label>
+                    <select id="textTransition" onchange="updateTransitionMode()">
+                        <option value="none">None (instant)</option>
+                        <option value="lua_glitch">Glitch → Reveal (Lua)</option>
+                        <option value="lua_typewriter">Typewriter (Lua)</option>
+                        <option value="lua_obfuscate">Obfuscate (Lua)</option>
+                        <option value="lua_wave">Wave (Lua)</option>
+                    </select>
+                    <p id="transitionInfo" style="font-size:0.75em;color:var(--muted);margin:4px 0 12px"></p>
                     <div class="row">
                         <div>
                             <label>Cycle (ms)</label>
                             <input type="number" id="textDuration" value="3000" min="500" step="100">
                         </div>
                     </div>
-                    <p style="font-size:0.75em;color:var(--muted);margin-top:8px">
-                        💡 For animated transitions, use <strong>text_cycler.lua</strong> in OBS Scripts
-                    </p>
                 </div>
                 
                 <div class="row">
@@ -715,7 +721,7 @@ function updateConnectionState() {
 // ============ UI State Persistence ============
 const UI_FIELDS = [
     'swapStyle', 'swapDuration', 'swapEasing',
-    'textSource', 'textLines', 'textDuration',
+    'textSource', 'textLines', 'textDuration', 'textTransition',
     'swapSourceA', 'swapSourceB'
 ];
 
@@ -769,6 +775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     restoreActiveTab();
     updateConnectionState();
     setupUIStatePersistence();
+    updateTransitionMode();
     
     // Setup credential UI listeners
     document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
@@ -1472,6 +1479,17 @@ function importConfigs() {
 let cycleInterval = null;
 let cycleIndex = 0;
 
+function updateTransitionMode() {
+    const val = document.getElementById('textTransition').value;
+    const info = document.getElementById('transitionInfo');
+    
+    if (val === 'none') {
+        info.innerHTML = 'Text changes instantly via this panel';
+    } else {
+        info.innerHTML = '⚡ Uses <strong>text_cycler.lua</strong> — configure text lines there, then use Start below to trigger';
+    }
+}
+
 function updateTextSourceDropdown() {
     const select = document.getElementById('textSource');
     
@@ -1530,13 +1548,29 @@ function getTextLines() {
         .filter(l => l.length > 0);
 }
 
-function startSimpleCycle() {
+async function startSimpleCycle() {
     if (!connected) {
         log('Connect to OBS first', 'error');
         showPage('setup');
         return;
     }
     
+    const transition = document.getElementById('textTransition').value;
+    
+    // If using Lua transition, trigger the Lua script instead
+    if (transition.startsWith('lua_')) {
+        try {
+            await request('TriggerHotkeyByName', { hotkeyName: 'text_cycler_start' });
+            log('Lua Text Cycler started', 'success');
+            document.getElementById('startCycleBtn').disabled = true;
+            document.getElementById('stopCycleBtn').disabled = false;
+        } catch (e) {
+            log('Set hotkey in OBS: Settings → Hotkeys → "Text Cycler: Start"', 'error');
+        }
+        return;
+    }
+    
+    // Simple instant cycling via web panel
     const lines = getTextLines();
     if (lines.length === 0) {
         log('Enter at least one text line', 'error');
@@ -1563,10 +1597,18 @@ function startSimpleCycle() {
     log('Text cycling started (' + lines.length + ' lines)', 'success');
 }
 
-function stopSimpleCycle() {
+async function stopSimpleCycle() {
+    // Stop local cycling
     if (cycleInterval) {
         clearInterval(cycleInterval);
         cycleInterval = null;
+    }
+    
+    // Also try to stop Lua script
+    try {
+        await request('TriggerHotkeyByName', { hotkeyName: 'text_cycler_stop' });
+    } catch (e) {
+        // Hotkey not set, that's fine
     }
     
     document.getElementById('startCycleBtn').disabled = false;
