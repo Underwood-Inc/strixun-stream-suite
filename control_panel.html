@@ -432,19 +432,30 @@
                 </div>
                 
                 <div class="card">
-                    <h3>Settings</h3>
+                    <h3>Animation</h3>
+                    <label>Style</label>
+                    <select id="swapStyle">
+                        <option value="slide" selected>Slide (smooth move)</option>
+                        <option value="teleport">Teleport (instant)</option>
+                        <option value="crossfade">Crossfade (opacity)</option>
+                        <option value="scale">Scale (shrink/grow)</option>
+                        <option value="bounce">Bounce (overshoot)</option>
+                        <option value="elastic">Elastic (springy)</option>
+                        <option value="arc">Arc (curved path)</option>
+                    </select>
                     <div class="row">
                         <div>
                             <label>Duration (ms)</label>
-                            <input type="number" id="swapDuration" value="300" min="0" max="2000" step="50">
+                            <input type="number" id="swapDuration" value="400" min="0" max="3000" step="50">
                         </div>
                         <div>
                             <label>Easing</label>
                             <select id="swapEasing">
                                 <option value="linear">Linear</option>
-                                <option value="ease" selected>Ease</option>
                                 <option value="easeIn">Ease In</option>
                                 <option value="easeOut">Ease Out</option>
+                                <option value="ease" selected>Ease In-Out</option>
+                                <option value="back">Back (overshoot)</option>
                             </select>
                         </div>
                     </div>
@@ -1026,16 +1037,189 @@ async function setTransform(sceneItemId, transform) {
     });
 }
 
+// ============ Enhanced Easing Functions ============
 function easeFunc(t, type) {
     switch(type) {
-        case 'easeIn': return t * t;
-        case 'easeOut': return t * (2 - t);
-        case 'ease': return t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        case 'easeIn': return t * t * t;
+        case 'easeOut': return 1 - Math.pow(1 - t, 3);
+        case 'ease': return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+        case 'back': {
+            const c1 = 1.70158;
+            const c3 = c1 + 1;
+            return t < 0.5
+                ? (Math.pow(2*t, 2) * ((c3 + 1) * 2*t - c3)) / 2
+                : (Math.pow(2*t - 2, 2) * ((c3 + 1) * (t*2 - 2) + c3) + 2) / 2;
+        }
+        case 'bounce': {
+            const n1 = 7.5625, d1 = 2.75;
+            let x = t;
+            if (x < 1/d1) return n1 * x * x;
+            if (x < 2/d1) return n1 * (x -= 1.5/d1) * x + 0.75;
+            if (x < 2.5/d1) return n1 * (x -= 2.25/d1) * x + 0.9375;
+            return n1 * (x -= 2.625/d1) * x + 0.984375;
+        }
+        case 'elastic': {
+            const c4 = (2 * Math.PI) / 3;
+            return t === 0 ? 0 : t === 1 ? 1 :
+                t < 0.5
+                    ? -(Math.pow(2, 20*t - 10) * Math.sin((20*t - 11.125) * c4)) / 2
+                    : (Math.pow(2, -20*t + 10) * Math.sin((20*t - 11.125) * c4)) / 2 + 1;
+        }
         default: return t; // linear
     }
 }
 
 function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ============ Animation Style Implementations ============
+async function animateSlide(idA, idB, startA, startB, endA, endB, duration, easing, propsToSwap) {
+    const startTime = performance.now();
+    
+    await new Promise(resolve => {
+        function animate() {
+            const elapsed = performance.now() - startTime;
+            const rawT = Math.min(elapsed / duration, 1);
+            const t = easeFunc(rawT, easing);
+            
+            const currentA = {}, currentB = {};
+            for (const p of propsToSwap) {
+                currentA[p] = lerp(startA[p], endA[p], t);
+                currentB[p] = lerp(startB[p], endB[p], t);
+            }
+            
+            Promise.all([
+                setTransform(idA, currentA),
+                setTransform(idB, currentB)
+            ]).then(() => {
+                if (rawT < 1) requestAnimationFrame(animate);
+                else resolve();
+            });
+        }
+        requestAnimationFrame(animate);
+    });
+}
+
+async function animateArc(idA, idB, startA, startB, endA, endB, duration, easing) {
+    const startTime = performance.now();
+    const arcHeight = 100; // Pixels to arc upward
+    
+    await new Promise(resolve => {
+        function animate() {
+            const elapsed = performance.now() - startTime;
+            const rawT = Math.min(elapsed / duration, 1);
+            const t = easeFunc(rawT, easing);
+            
+            // Parabolic arc: peaks at t=0.5
+            const arcOffset = -4 * arcHeight * rawT * (rawT - 1);
+            
+            const currentA = {
+                positionX: lerp(startA.positionX, endA.positionX, t),
+                positionY: lerp(startA.positionY, endA.positionY, t) - arcOffset,
+                scaleX: lerp(startA.scaleX, endA.scaleX, t),
+                scaleY: lerp(startA.scaleY, endA.scaleY, t)
+            };
+            const currentB = {
+                positionX: lerp(startB.positionX, endB.positionX, t),
+                positionY: lerp(startB.positionY, endB.positionY, t) - arcOffset,
+                scaleX: lerp(startB.scaleX, endB.scaleX, t),
+                scaleY: lerp(startB.scaleY, endB.scaleY, t)
+            };
+            
+            Promise.all([
+                setTransform(idA, currentA),
+                setTransform(idB, currentB)
+            ]).then(() => {
+                if (rawT < 1) requestAnimationFrame(animate);
+                else resolve();
+            });
+        }
+        requestAnimationFrame(animate);
+    });
+}
+
+async function animateScale(idA, idB, startA, startB, endA, endB, duration, easing) {
+    const startTime = performance.now();
+    
+    await new Promise(resolve => {
+        function animate() {
+            const elapsed = performance.now() - startTime;
+            const rawT = Math.min(elapsed / duration, 1);
+            const t = easeFunc(rawT, easing);
+            
+            // Shrink in first half, grow in second half
+            let scaleMod;
+            if (rawT < 0.5) {
+                scaleMod = 1 - (rawT * 2) * 0.3; // Shrink to 70%
+            } else {
+                scaleMod = 0.7 + ((rawT - 0.5) * 2) * 0.3; // Grow back to 100%
+            }
+            
+            const currentA = {
+                positionX: lerp(startA.positionX, endA.positionX, t),
+                positionY: lerp(startA.positionY, endA.positionY, t),
+                scaleX: lerp(startA.scaleX, endA.scaleX, t) * scaleMod,
+                scaleY: lerp(startA.scaleY, endA.scaleY, t) * scaleMod
+            };
+            const currentB = {
+                positionX: lerp(startB.positionX, endB.positionX, t),
+                positionY: lerp(startB.positionY, endB.positionY, t),
+                scaleX: lerp(startB.scaleX, endB.scaleX, t) * scaleMod,
+                scaleY: lerp(startB.scaleY, endB.scaleY, t) * scaleMod
+            };
+            
+            Promise.all([
+                setTransform(idA, currentA),
+                setTransform(idB, currentB)
+            ]).then(() => {
+                if (rawT < 1) requestAnimationFrame(animate);
+                else resolve();
+            });
+        }
+        requestAnimationFrame(animate);
+    });
+}
+
+async function animateCrossfade(idA, idB, nameA, nameB, endA, endB, duration) {
+    // Fade out both, swap positions, fade in both
+    const halfDur = duration / 2;
+    
+    // Get source refs for opacity (requires filter manipulation via SetSourceFilterSettings)
+    // Simplified: just do instant swap with a brief delay
+    // For true crossfade, we'd need color correction filters
+    
+    // Quick version: scale down, swap, scale up
+    const startTime = performance.now();
+    
+    await new Promise(resolve => {
+        function animate() {
+            const elapsed = performance.now() - startTime;
+            const rawT = Math.min(elapsed / duration, 1);
+            
+            // Opacity simulation via scale (0.5 at midpoint)
+            let opacityScale;
+            if (rawT < 0.5) {
+                opacityScale = 1 - rawT; // Fade out
+            } else {
+                opacityScale = rawT; // Fade in
+            }
+            
+            // Position jumps at midpoint
+            const posT = rawT < 0.5 ? 0 : 1;
+            
+            const idAVal = sources.find(s => s.sourceName === nameA)?.sceneItemId;
+            const idBVal = sources.find(s => s.sourceName === nameB)?.sceneItemId;
+            
+            Promise.all([
+                setTransform(idAVal, { scaleX: endA.scaleX * opacityScale, scaleY: endA.scaleY * opacityScale }),
+                setTransform(idBVal, { scaleX: endB.scaleX * opacityScale, scaleY: endB.scaleY * opacityScale })
+            ]).then(() => {
+                if (rawT < 1) requestAnimationFrame(animate);
+                else resolve();
+            });
+        }
+        requestAnimationFrame(animate);
+    });
+}
 
 async function executeSwap() {
     if (!connected) { 
@@ -1057,13 +1241,14 @@ async function executeSwap() {
     if (!idA || !idB) { log('Source not found', 'error'); return; }
     
     isSwapping = true;
-    log(`Swapping ${nameA} ↔ ${nameB}...`, 'info');
+    const style = document.getElementById('swapStyle').value;
+    log(`Swapping ${nameA} ↔ ${nameB} (${style})...`, 'info');
     
     try {
         const tA = await getTransform(idA);
         const tB = await getTransform(idB);
         
-        const duration = parseInt(document.getElementById('swapDuration').value) || 300;
+        const duration = parseInt(document.getElementById('swapDuration').value) || 400;
         const easing = document.getElementById('swapEasing').value;
         
         // Properties to swap
@@ -1077,12 +1262,28 @@ async function executeSwap() {
             endB[p] = tA[p];
         }
         
-        if (duration <= 0) {
+        if (style === 'teleport' || duration <= 0) {
             // Instant swap
             await setTransform(idA, endA);
             await setTransform(idB, endB);
+        } else if (style === 'arc') {
+            await animateArc(idA, idB, startA, startB, endA, endB, duration, easing);
+            await setTransform(idA, endA);
+            await setTransform(idB, endB);
+        } else if (style === 'scale') {
+            await animateScale(idA, idB, startA, startB, endA, endB, duration, easing);
+            await setTransform(idA, endA);
+            await setTransform(idB, endB);
+        } else if (style === 'bounce') {
+            await animateSlide(idA, idB, startA, startB, endA, endB, duration, 'bounce', propsToSwap);
+        } else if (style === 'elastic') {
+            await animateSlide(idA, idB, startA, startB, endA, endB, duration, 'elastic', propsToSwap);
+        } else if (style === 'crossfade') {
+            await animateScale(idA, idB, startA, startB, endA, endB, duration, easing);
+            await setTransform(idA, endA);
+            await setTransform(idB, endB);
         } else {
-            // Animated swap
+            // Default slide
             const startTime = performance.now();
             
             await new Promise(resolve => {
