@@ -735,15 +735,56 @@ function updateConnectionState() {
     });
 }
 
+// ============ UI State Persistence ============
+const UI_FIELDS = [
+    'swapStyle', 'swapDuration', 'swapEasing',
+    'textSource', 'textLines', 'textDuration', 'textTransition', 'transDuration',
+    'swapSourceA', 'swapSourceB'
+];
+
+function saveUIState() {
+    const state = {};
+    for (const id of UI_FIELDS) {
+        const el = document.getElementById(id);
+        if (el) state[id] = el.value;
+    }
+    localStorage.setItem('ui_state', JSON.stringify(state));
+}
+
+function loadUIState() {
+    try {
+        const state = JSON.parse(localStorage.getItem('ui_state') || '{}');
+        for (const id of UI_FIELDS) {
+            const el = document.getElementById(id);
+            if (el && state[id] !== undefined) {
+                el.value = state[id];
+            }
+        }
+    } catch (e) {}
+}
+
+function setupUIStatePersistence() {
+    // Save on any input change
+    for (const id of UI_FIELDS) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', saveUIState);
+            el.addEventListener('input', saveUIState);
+        }
+    }
+}
+
 // ============ Initialization ============
 document.addEventListener('DOMContentLoaded', async () => {
     // Set dock URL
     const url = window.location.href;
     document.getElementById('dockUrl').value = url;
     
-    // Load saved credentials and swap configs
+    // Load saved configs and UI state
     renderSavedSwaps();
+    loadUIState();
     updateConnectionState();
+    setupUIStatePersistence();
     
     // Setup credential UI listeners
     document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
@@ -1010,10 +1051,20 @@ let isSwapping = false;
 function updateSwapDropdowns() {
     const selA = document.getElementById('swapSourceA');
     const selB = document.getElementById('swapSourceB');
+    
+    // Preserve current selections or load from saved state
+    const savedState = JSON.parse(localStorage.getItem('ui_state') || '{}');
+    const currentA = selA.value || savedState.swapSourceA || '';
+    const currentB = selB.value || savedState.swapSourceB || '';
+    
     const opts = '<option value="">-- Select --</option>' + 
         sources.map(s => `<option value="${s.sourceName}">${s.sourceName}</option>`).join('');
     selA.innerHTML = opts;
     selB.innerHTML = opts;
+    
+    // Restore selections if sources still exist
+    if (currentA && sources.find(s => s.sourceName === currentA)) selA.value = currentA;
+    if (currentB && sources.find(s => s.sourceName === currentB)) selB.value = currentB;
 }
 
 async function getSceneItemId(sourceName) {
@@ -1417,7 +1468,10 @@ function importConfigs() {
 // ============ Text Cycler ============
 function updateTextSourceDropdown() {
     const select = document.getElementById('textSource');
-    const current = select.value;
+    
+    // Preserve current or load from saved state
+    const savedState = JSON.parse(localStorage.getItem('ui_state') || '{}');
+    const current = select.value || savedState.textSource || '';
     
     textSources = sources.filter(s => 
         s.inputKind && (s.inputKind.includes('text') || s.inputKind === 'text_gdiplus_v2' || s.inputKind === 'text_ft2_source_v2')
