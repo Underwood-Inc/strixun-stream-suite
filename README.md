@@ -1,4 +1,4 @@
-# OBS Animation Suite
+# strixun's script suite ~ an OBS Animation Suite for for source-level animation(s)  
 
 A collection of Lua scripts for OBS Studio that add smooth animations to sources.
 
