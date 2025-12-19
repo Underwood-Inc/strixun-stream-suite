@@ -1590,7 +1590,7 @@ async function startSimpleCycle() {
 // Animation state
 let transitionInterval = null;
 
-async function showTextWithTransition(targetText) {
+function showTextWithTransition(targetText) {
     const transition = document.getElementById('textTransition').value;
     const transDuration = parseInt(document.getElementById('transDuration').value) || 500;
     
@@ -1601,26 +1601,24 @@ async function showTextWithTransition(targetText) {
     }
     
     if (transition === 'none') {
-        setText(targetText);
+        setTextFast(targetText);
         return;
     }
     
     const STEP_MS = 100; // Update every 100ms = max 10 calls/second
-    const steps = Math.floor(transDuration / STEP_MS);
-    let step = 0;
+    const totalSteps = Math.max(Math.floor(transDuration / STEP_MS), 1);
+    let currentStep = 0;
     
-    transitionInterval = setInterval(async () => {
-        step++;
-        const progress = step / steps;
+    function doStep() {
+        currentStep++;
+        const progress = currentStep / totalSteps;
         
-        let displayText;
+        let displayText = targetText;
         
         if (transition === 'typewriter') {
-            // Type out character by character
-            const chars = Math.floor(progress * targetText.length);
+            const chars = Math.ceil(progress * targetText.length);
             displayText = targetText.substring(0, chars);
         } else if (transition === 'glitch') {
-            // First 60% scrambled, last 40% reveal left-to-right
             if (progress < 0.6) {
                 displayText = scrambleText(targetText);
             } else {
@@ -1628,7 +1626,6 @@ async function showTextWithTransition(targetText) {
                 displayText = revealText(targetText, revealProgress);
             }
         } else if (transition === 'scramble') {
-            // Random chars until 90%, then snap
             if (progress < 0.9) {
                 displayText = scrambleText(targetText);
             } else {
@@ -1636,20 +1633,44 @@ async function showTextWithTransition(targetText) {
             }
         }
         
-        await setText(displayText);
+        setTextFast(displayText);
         
-        // Done?
-        if (step >= steps) {
+        if (currentStep >= totalSteps) {
             clearInterval(transitionInterval);
             transitionInterval = null;
-            await setText(targetText); // Ensure final text is exact
+            setTextFast(targetText); // Ensure final
         }
-    }, STEP_MS);
+    }
+    
+    doStep(); // First step immediately
+    if (totalSteps > 1) {
+        transitionInterval = setInterval(doStep, STEP_MS);
+    }
 }
 
-// Simple scramble - random chars
+// Fire-and-forget text update (no await, no error handling that could block)
+function setTextFast(text) {
+    const name = document.getElementById('textSource').value;
+    if (!name || !connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    const id = 'txt_' + (msgId++);
+    ws.send(JSON.stringify({
+        op: 6,
+        d: {
+            requestType: 'SetInputSettings',
+            requestId: id,
+            requestData: {
+                inputName: name,
+                inputSettings: { text: text }
+            }
+        }
+    }));
+    document.getElementById('textPreview').textContent = text;
+}
+
+// Simple scramble - ASCII only to avoid encoding issues
 function scrambleText(text) {
-    const chars = 'ᔑᒷᓵ↸⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴αβγδεζ';
+    const chars = '#$%&*@!?+=~<>[]{}';
     let result = '';
     for (let i = 0; i < text.length; i++) {
         if (text[i] === ' ') {
@@ -1663,8 +1684,8 @@ function scrambleText(text) {
 
 // Reveal left to right
 function revealText(target, progress) {
-    const chars = 'ᔑᒷᓵ↸⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴αβγδεζ';
-    const revealed = Math.floor(progress * target.length);
+    const chars = '#$%&*@!?+=~<>[]{}';
+    const revealed = Math.ceil(progress * target.length);
     let result = '';
     for (let i = 0; i < target.length; i++) {
         if (i < revealed) {
