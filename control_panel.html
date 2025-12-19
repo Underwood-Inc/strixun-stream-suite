@@ -226,7 +226,10 @@
     <div class="app">
         <header class="header">
             <h1><span class="status-dot" id="statusDot"></span> OBS Animation Suite</h1>
-            <button onclick="showPage('setup')" id="connectHeaderBtn">Connect</button>
+            <div style="display:flex;gap:8px">
+                <button onclick="location.reload()" title="Reload Panel">🔄</button>
+                <button onclick="showPage('setup')" id="connectHeaderBtn">Connect</button>
+            </div>
         </header>
         
         <nav class="tabs">
