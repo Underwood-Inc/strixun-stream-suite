@@ -749,29 +749,45 @@ function saveUIState() {
         if (el) state[id] = el.value;
     }
     localStorage.setItem('ui_state', JSON.stringify(state));
+    console.log('UI state saved:', state);
 }
 
 function loadUIState() {
     try {
         const state = JSON.parse(localStorage.getItem('ui_state') || '{}');
+        console.log('Loading UI state:', state);
         for (const id of UI_FIELDS) {
             const el = document.getElementById(id);
-            if (el && state[id] !== undefined) {
+            if (el && state[id] !== undefined && state[id] !== '') {
                 el.value = state[id];
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('Error loading UI state:', e);
+    }
 }
 
 function setupUIStatePersistence() {
-    // Save on any input change
+    // Save on any input change - multiple events for robustness
     for (const id of UI_FIELDS) {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('change', saveUIState);
             el.addEventListener('input', saveUIState);
+            el.addEventListener('blur', saveUIState); // Also save when leaving field
         }
     }
+    
+    // Also save periodically for textareas (some don't fire input events properly)
+    setInterval(() => {
+        const textLines = document.getElementById('textLines');
+        if (textLines) {
+            const saved = JSON.parse(localStorage.getItem('ui_state') || '{}');
+            if (saved.textLines !== textLines.value) {
+                saveUIState();
+            }
+        }
+    }, 2000);
 }
 
 // ============ Initialization ============
