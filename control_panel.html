@@ -390,23 +390,21 @@
                 
                 <div class="card">
                     <h3>Settings</h3>
+                    <label>Transition</label>
+                    <select id="textTransition" onchange="updateTransitionDesc()">
+                        <option value="none">None (instant)</option>
+                        <option value="glitch" selected>Glitch → Reveal</option>
+                        <option value="typewriter">Typewriter</option>
+                        <option value="obfuscate">Obfuscate (stay hidden)</option>
+                    </select>
+                    <p id="transitionDesc" style="font-size:0.75em;color:var(--muted);margin:4px 0 12px"></p>
                     <div class="row">
                         <div>
-                            <label>Duration (ms)</label>
+                            <label>Cycle (ms)</label>
                             <input type="number" id="textDuration" value="3000" min="500" step="100">
                         </div>
                         <div>
-                            <label>Transition</label>
-                            <select id="textTransition" onchange="updateTransitionDesc()">
-                                <option value="none">None (instant)</option>
-                                <option value="glitch" selected>Glitch → Reveal</option>
-                                <option value="typewriter">Typewriter</option>
-                                <option value="obfuscate">Obfuscate (stay hidden)</option>
-                            </select>
-                            <p id="transitionDesc" style="font-size:0.75em;color:var(--muted);margin-top:4px"></p>
-                        </div>
-                        <div>
-                            <label>Trans. Duration</label>
+                            <label>Trans (ms)</label>
                             <input type="number" id="transDuration" value="500" min="100" step="50">
                         </div>
                     </div>
