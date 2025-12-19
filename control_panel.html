@@ -38,7 +38,8 @@
             top: 0;
             z-index: 100;
         }
-        .header h1 { font-size: 1.2em; display: flex; align-items: center; gap: 8px; }
+        .header h1 { font-size: 1.1em; display: flex; align-items: center; gap: 6px; }
+        .title-text { white-space: nowrap; }
         .status-dot {
             width: 10px; height: 10px;
             border-radius: 50%;
@@ -55,13 +56,16 @@
             overflow-x: auto;
         }
         .tab {
-            padding: 12px 20px;
+            padding: 10px 16px;
             background: none;
             border: none;
             color: var(--muted);
             cursor: pointer;
             border-bottom: 2px solid transparent;
             white-space: nowrap;
+            font-size: 1.1em;
+            flex: 1;
+            text-align: center;
         }
         .tab:hover { color: var(--text); }
         .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -220,24 +224,79 @@
             align-items: center;
             justify-content: center;
         }
+        
+        /* Responsive - Tiny dock (<250px) */
+        @media (max-width: 250px) {
+            .header { padding: 6px 8px; }
+            .header h1 { font-size: 0.85em; }
+            .title-text { display: none; }
+            .tab { padding: 8px 4px; font-size: 1em; }
+            .content { padding: 8px; }
+            .card { padding: 8px; margin-bottom: 8px; }
+            .card h3 { font-size: 0.7em; margin-bottom: 6px; }
+            .grid { grid-template-columns: 1fr; gap: 4px; }
+            .source-btn { padding: 8px 4px; font-size: 0.75em; }
+            .row { flex-direction: column; gap: 4px; }
+            .empty-state { padding: 15px 8px; font-size: 0.85em; }
+            button { padding: 5px 8px; font-size: 0.8em; }
+            .btn-lg { padding: 8px 12px; font-size: 0.85em; }
+            input, select, textarea { padding: 5px 8px; font-size: 0.85em; }
+            .log { padding: 6px; font-size: 0.65em; max-height: 100px; }
+            .text-preview { padding: 10px; font-size: 1em; min-height: 50px; }
+            .source-item { padding: 6px; }
+            .source-item .name { font-size: 0.8em; }
+            .toggle { width: 32px; height: 18px; flex-shrink: 0; }
+            .toggle::after { width: 12px; height: 12px; top: 3px; }
+            .toggle.on::after { transform: translateX(14px); }
+            .url-box { flex-direction: column; }
+        }
+        
+        /* Responsive - Narrow dock (250-350px) */
+        @media (max-width: 350px) and (min-width: 251px) {
+            .header { padding: 8px 10px; }
+            .header h1 { font-size: 0.9em; }
+            .tab { padding: 8px 6px; font-size: 1em; }
+            .content { padding: 10px; }
+            .card { padding: 10px; margin-bottom: 10px; }
+            .card h3 { font-size: 0.75em; margin-bottom: 8px; }
+            .grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .source-btn { padding: 10px 6px; font-size: 0.8em; }
+            .row { flex-direction: column; }
+            .empty-state { padding: 20px 10px; font-size: 0.9em; }
+            button { padding: 6px 10px; font-size: 0.85em; }
+            input, select, textarea { padding: 6px 10px; font-size: 0.9em; }
+            .log { padding: 8px; font-size: 0.7em; max-height: 120px; }
+            .text-preview { padding: 12px; font-size: 1.1em; min-height: 60px; }
+        }
+        
+        /* Responsive - Medium dock (350-500px) */
+        @media (max-width: 500px) and (min-width: 351px) {
+            .header { padding: 10px 12px; }
+            .header h1 { font-size: 1em; }
+            .tab { padding: 10px 8px; }
+            .content { padding: 12px; }
+            .card { padding: 12px; }
+            .grid { grid-template-columns: 1fr 1fr; }
+            .source-btn { padding: 12px 8px; font-size: 0.85em; }
+        }
     </style>
 </head>
 <body>
     <div class="app">
         <header class="header">
-            <h1><span class="status-dot" id="statusDot"></span> OBS Animation Suite</h1>
-            <div style="display:flex;gap:8px">
+            <h1><span class="status-dot" id="statusDot"></span><span class="title-text">Animation Suite</span></h1>
+            <div style="display:flex;gap:4px">
                 <button onclick="location.reload()" title="Reload Panel">🔄</button>
                 <button onclick="showPage('setup')" id="connectHeaderBtn">Connect</button>
             </div>
         </header>
         
         <nav class="tabs">
-            <button class="tab active" onclick="showPage('dashboard')">Dashboard</button>
-            <button class="tab" onclick="showPage('sources')">Sources</button>
-            <button class="tab" onclick="showPage('text')">Text Cycler</button>
-            <button class="tab" onclick="showPage('swaps')">Swaps</button>
-            <button class="tab" onclick="showPage('setup')">Setup</button>
+            <button class="tab active" onclick="showPage('dashboard')" title="Dashboard">🏠</button>
+            <button class="tab" onclick="showPage('sources')" title="Sources">📦</button>
+            <button class="tab" onclick="showPage('text')" title="Text Cycler">📝</button>
+            <button class="tab" onclick="showPage('swaps')" title="Swaps">🔄</button>
+            <button class="tab" onclick="showPage('setup')" title="Setup">⚙️</button>
         </nav>
         
         <main class="content">
