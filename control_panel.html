@@ -25,6 +25,30 @@
             line-height: 1.5;
         }
         
+        /* Minimal scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--muted);
+        }
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+        /* Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        
         /* Layout */
         .app { display: flex; flex-direction: column; min-height: 100vh; }
         .header {
