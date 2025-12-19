@@ -1589,14 +1589,32 @@ function animateTransition(target, type, duration) {
     isTransitioning = true;
     
     const startTime = performance.now();
+    const SCRAMBLE_INTERVAL = 50; // How often to change scrambled chars (ms)
+    let lastScrambleTime = 0;
+    let scrambledDisplay = '';
     
-    function frame() {
+    function frame(timestamp) {
         const elapsed = performance.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
         let display = target;
+        
         if (type === 'obfuscate') {
-            display = obfuscateText(target, progress);
+            // Minecraft-style: scramble rapidly, then reveal at the end
+            // 0-80%: fully scrambled, rapidly changing
+            // 80-100%: reveal characters left to right
+            if (progress < 0.8) {
+                // Only update scramble every SCRAMBLE_INTERVAL for that flickering effect
+                if (elapsed - lastScrambleTime > SCRAMBLE_INTERVAL) {
+                    scrambledDisplay = generateScramble(target);
+                    lastScrambleTime = elapsed;
+                }
+                display = scrambledDisplay || generateScramble(target);
+            } else {
+                // Reveal phase: 80-100% maps to 0-100% reveal
+                const revealProgress = (progress - 0.8) / 0.2;
+                display = revealText(target, revealProgress);
+            }
         } else if (type === 'typewriter') {
             display = target.substring(0, Math.floor(progress * target.length));
         } else if (type === 'glitch') {
@@ -1608,7 +1626,7 @@ function animateTransition(target, type, duration) {
         if (progress < 1) {
             transitionFrame = requestAnimationFrame(frame);
         } else {
-            setText(target);
+            setText(target); // Ensure final text is exact
             isTransitioning = false;
         }
     }
@@ -1616,7 +1634,21 @@ function animateTransition(target, type, duration) {
     transitionFrame = requestAnimationFrame(frame);
 }
 
-function obfuscateText(target, progress) {
+// Generate fully scrambled text
+function generateScramble(target) {
+    let result = '';
+    for (let i = 0; i < target.length; i++) {
+        if (target[i] === ' ') {
+            result += ' ';
+        } else {
+            result += CHARS_ENCHANT[Math.floor(Math.random() * CHARS_ENCHANT.length)];
+        }
+    }
+    return result;
+}
+
+// Reveal text left-to-right
+function revealText(target, progress) {
     const revealed = Math.floor(progress * target.length);
     let result = '';
     for (let i = 0; i < target.length; i++) {
@@ -1631,13 +1663,19 @@ function obfuscateText(target, progress) {
     return result;
 }
 
+// Legacy function name for compatibility
+function obfuscateText(target, progress) {
+    if (progress >= 1) return target;
+    return generateScramble(target);
+}
+
 function glitchText(target, progress) {
     const glitchChance = 1 - progress;
     let result = '';
     for (let i = 0; i < target.length; i++) {
         if (target[i] === ' ') {
             result += ' ';
-        } else if (Math.random() < glitchChance * 0.5) {
+        } else if (Math.random() < glitchChance * 0.7) {
             result += CHARS_GLITCH[Math.floor(Math.random() * CHARS_GLITCH.length)];
         } else {
             result += target[i];
