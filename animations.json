@@ -1,0 +1,34 @@
+{
+  "_comment": "OBS Source Animation Configuration",
+  "_instructions": "Add your source names under 'animations' with their settings",
+
+  "default_animation": {
+    "type": "fade",
+    "duration": 300,
+    "easing": "ease_out"
+  },
+
+  "animations": {
+    "ExampleWebcam": {
+      "type": "slide",
+      "direction": "left",
+      "duration": 400,
+      "easing": "ease_out",
+      "offset": 150
+    },
+
+    "ExampleGameCapture": {
+      "type": "zoom",
+      "duration": 500,
+      "easing": "ease_in_out",
+      "scale_start": 0.0,
+      "scale_end": 1.0
+    },
+
+    "ExampleAlert": {
+      "type": "pop",
+      "duration": 400,
+      "easing": "back"
+    }
+  }
+}

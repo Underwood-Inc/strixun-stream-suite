@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Animation Suite - Control Panel</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --accent: #667eea;
+            --accent2: #764ba2;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --text: #fff;
+            --text-muted: rgba(255,255,255,0.6);
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .app {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-card);
+            padding: 20px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .logo {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .nav-item {
+            display: block;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            width: 100%;
+            text-align: left;
+            font-size: 1em;
+        }
+        
+        .nav-item:hover { background: rgba(255,255,255,0.1); }
+        .nav-item.active { background: var(--accent); }
+        
+        .connection-status {
+            margin-top: auto;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .connection-status.connected { background: var(--success); color: #000; }
+        .connection-status.disconnected { background: var(--danger); }
+        .connection-status.connecting { background: var(--warning); color: #000; }
+        
+        /* Main Content */
+        .main {
+            padding: 30px;
+            overflow-y: auto;
+        }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        h1 { margin-bottom: 20px; }
+        h2 { margin: 30px 0 15px; font-size: 1.3em; }
+        
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        input, select {
+            padding: 10px 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            font-size: 1em;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover { transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-success { background: var(--success); color: #000; }
+        .btn-warning { background: var(--warning); color: #000; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-secondary { background: rgba(255,255,255,0.2); color: #fff; }
+        
+        .btn-large {
+            padding: 16px 24px;
+            font-size: 1.1em;
+            width: 100%;
+        }
+        
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        
+        .swap-btn {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            padding: 20px;
+            font-size: 1em;
+        }
+        
+        .log-container {
+            background: #000;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+        }
+        
+        .log-entry { margin-bottom: 4px; opacity: 0.9; }
+        .log-entry.error { color: var(--danger); }
+        .log-entry.success { color: var(--success); }
+        .log-entry.info { color: var(--accent); }
+        
+        .script-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .script-info h4 { margin-bottom: 5px; }
+        .script-info p { color: var(--text-muted); font-size: 0.9em; }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .badge-version { background: var(--accent); }
+        
+        .aspect-toggle {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .aspect-toggle button {
+            flex: 1;
+            border-radius: 0;
+            padding: 15px;
+        }
+        
+        .aspect-toggle button.active {
+            box-shadow: inset 0 0 0 2px #fff;
+        }
+        
+        @media (max-width: 800px) {
+            .app { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">🎬 Animation Suite</div>
+            
+            <button class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</button>
+            <button class="nav-item" onclick="showPage('swaps')">🔄 Source Swaps</button>
+            <button class="nav-item" onclick="showPage('animations')">✨ Animations</button>
+            <button class="nav-item" onclick="showPage('settings')">⚙️ Settings</button>
+            <button class="nav-item" onclick="showPage('logs')">📋 Logs</button>
+            
+            <div style="flex:1"></div>
+            
+            <div id="connStatus" class="connection-status disconnected">
+                Disconnected
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Dashboard Page -->
+            <div id="page-dashboard" class="page active">
+                <h1>Dashboard</h1>
+                
+                <div class="card">
+                    <h3>🔌 OBS Connection</h3>
+                    <div class="form-row">
+                        <input type="text" id="host" placeholder="Host" value="localhost" style="flex:1">
+                        <input type="text" id="port" placeholder="Port" value="4455" style="width:100px">
+                        <input type="password" id="password" placeholder="Password">
+                        <button id="connectBtn" class="btn-primary" onclick="toggleConnection()">Connect</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📦 Installed Scripts</h3>
+                    <div class="script-card">
+                        <div class="script-info">
+                            <h4>Source Animations</h4>
+                            <p>Fade, slide, zoom, pop animations on visibility toggle</p>
+                        </div>
+                        <span class="badge badge-version">v2.7</span>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-info">
+                            <h4>Source Swap</h4>
+                            <p>Swap position and size of two sources with animation</p>
+                        </div>
+                        <span class="badge badge-version">v3.1</span>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-info">
+                            <h4>Quick Controls</h4>
+                            <p>Hotkey to cycle aspect override mode</p>
+                        </div>
+                        <span class="badge badge-version">v1.0</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>⚡ Quick Actions</h3>
+                    <div class="grid-2">
+                        <button class="btn-large btn-success" onclick="triggerHotkey('quick_cycle_aspect')">
+                            🔄 Cycle Aspect Override
+                        </button>
+                        <button class="btn-large btn-primary" onclick="showPage('swaps')">
+                            🔄 Go to Swaps
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Swaps Page -->
+            <div id="page-swaps" class="page">
+                <h1>Source Swaps</h1>
+                
+                <div class="card">
+                    <h3>⚡ Aspect Override</h3>
+                    <p style="color:var(--text-muted);margin-bottom:15px">
+                        Temporarily override aspect ratio behavior for all swaps
+                    </p>
+                    <div class="aspect-toggle">
+                        <button class="btn-secondary active" onclick="setAspect(0, this)">Off (Default)</button>
+                        <button class="btn-success" onclick="setAspect(1, this)">Preserve</button>
+                        <button class="btn-warning" onclick="setAspect(2, this)">Stretch</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>🎯 Trigger Swaps</h3>
+                    <p style="color:var(--text-muted);margin-bottom:15px">
+                        Click to trigger swap configs (must have hotkeys assigned in OBS)
+                    </p>
+                    <div class="grid-3" id="swapButtons">
+                        <!-- Populated dynamically or static -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Animations Page -->
+            <div id="page-animations" class="page">
+                <h1>Source Animations</h1>
+                
+                <div class="card">
+                    <h3>ℹ️ About</h3>
+                    <p>Source animations are configured directly in OBS via the script settings.</p>
+                    <p style="margin-top:10px;color:var(--text-muted)">
+                        Go to: <strong>Tools → Scripts → source_animations.lua</strong>
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <h3>🎭 Animation Types</h3>
+                    <div class="grid-2">
+                        <div class="script-card">
+                            <div class="script-info">
+                                <h4>Fade</h4>
+                                <p>Smooth opacity transition</p>
+                            </div>
+                        </div>
+                        <div class="script-card">
+                            <div class="script-info">
+                                <h4>Slide</h4>
+                                <p>Move in from direction</p>
+                            </div>
+                        </div>
+                        <div class="script-card">
+                            <div class="script-info">
+                                <h4>Zoom</h4>
+                                <p>Scale in/out</p>
+                            </div>
+                        </div>
+                        <div class="script-card">
+                            <div class="script-info">
+                                <h4>Pop</h4>
+                                <p>Bouncy scale effect</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Page -->
+            <div id="page-settings" class="page">
+                <h1>Settings</h1>
+                
+                <div class="card">
+                    <h3>🔌 WebSocket Connection</h3>
+                    <p style="color:var(--text-muted);margin-bottom:15px">
+                        This panel connects to OBS via WebSocket (built-in since OBS 28)
+                    </p>
+                    <ol style="color:var(--text-muted);line-height:2;padding-left:20px">
+                        <li>In OBS: <strong>Tools → WebSocket Server Settings</strong></li>
+                        <li>Enable WebSocket Server</li>
+                        <li>Note the port (default: 4455)</li>
+                        <li>Set password if desired</li>
+                        <li>Connect from this panel</li>
+                    </ol>
+                </div>
+                
+                <div class="card">
+                    <h3>⌨️ Hotkeys</h3>
+                    <p style="color:var(--text-muted);margin-bottom:15px">
+                        Assign these in OBS: <strong>Settings → Hotkeys</strong>
+                    </p>
+                    <div class="script-card">
+                        <div class="script-info">
+                            <h4>Quick: Cycle Aspect Override</h4>
+                            <p>Cycles through Off → Preserve → Stretch</p>
+                        </div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-info">
+                            <h4>Swap: [Config Name]</h4>
+                            <p>One hotkey per swap configuration</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Logs Page -->
+            <div id="page-logs" class="page">
+                <h1>Logs</h1>
+                
+                <div class="card">
+                    <h3>📋 Activity Log</h3>
+                    <button class="btn-secondary" onclick="clearLog()" style="margin-bottom:15px">Clear Log</button>
+                    <div id="log" class="log-container">
+                        <div class="log-entry info">Ready to connect...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        let ws = null;
+        let connected = false;
+        let messageId = 1;
+        let swapConfigs = ['Swap 1', 'Swap 2', 'Swap 3']; // Placeholder names
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSwapButtons();
+        });
+        
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        function renderSwapButtons() {
+            const container = document.getElementById('swapButtons');
+            container.innerHTML = '';
+            for (let i = 1; i <= 6; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'swap-btn';
+                btn.textContent = `Swap Config ${i}`;
+                btn.onclick = () => triggerHotkey(`swap_${i}`);
+                container.appendChild(btn);
+            }
+        }
+        
+        function setAspect(mode, btn) {
+            document.querySelectorAll('.aspect-toggle button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // This would need to communicate with OBS to actually set the mode
+            const modes = ['Off', 'Preserve', 'Stretch'];
+            log(`Aspect override set to: ${modes[mode]}`, 'info');
+            triggerHotkey('quick_cycle_aspect'); // Cycle to change
+        }
+        
+        function log(msg, type = '') {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="log-entry info">Log cleared</div>';
+        }
+        
+        function updateStatus(status, text) {
+            const el = document.getElementById('connStatus');
+            el.className = 'connection-status ' + status;
+            el.textContent = text;
+        }
+        
+        function toggleConnection() {
+            connected ? disconnect() : connect();
+        }
+        
+        function connect() {
+            const host = document.getElementById('host').value || 'localhost';
+            const port = document.getElementById('port').value || '4455';
+            const password = document.getElementById('password').value;
+            
+            updateStatus('connecting', 'Connecting...');
+            log('Connecting to ws://' + host + ':' + port, 'info');
+            
+            try {
+                ws = new WebSocket(`ws://${host}:${port}`);
+                
+                ws.onopen = () => log('WebSocket open, identifying...', 'success');
+                ws.onmessage = (e) => handleMessage(JSON.parse(e.data), password);
+                ws.onerror = () => { log('Connection error', 'error'); updateStatus('disconnected', 'Error'); };
+                ws.onclose = () => {
+                    connected = false;
+                    updateStatus('disconnected', 'Disconnected');
+                    document.getElementById('connectBtn').textContent = 'Connect';
+                    log('Disconnected');
+                };
+            } catch (e) {
+                log('Failed: ' + e.message, 'error');
+                updateStatus('disconnected', 'Failed');
+            }
+        }
+        
+        function disconnect() { if (ws) ws.close(); }
+        
+        async function handleMessage(data, password) {
+            if (data.op === 0) {
+                const auth = data.d.authentication;
+                if (auth && password) {
+                    const secret = await sha256(password + auth.salt);
+                    const authStr = await sha256(secret + auth.challenge);
+                    send({ op: 1, d: { rpcVersion: 1, authentication: authStr } });
+                } else if (!auth) {
+                    send({ op: 1, d: { rpcVersion: 1 } });
+                } else {
+                    log('Password required', 'error');
+                    ws.close();
+                }
+            } else if (data.op === 2) {
+                connected = true;
+                updateStatus('connected', 'Connected');
+                document.getElementById('connectBtn').textContent = 'Disconnect';
+                log('Connected to OBS!', 'success');
+            } else if (data.op === 7) {
+                if (data.d.requestStatus.result) {
+                    log('Command OK', 'success');
+                } else {
+                    log('Command failed: ' + (data.d.requestStatus.comment || 'Unknown'), 'error');
+                }
+            }
+        }
+        
+        function send(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
+        }
+        
+        function triggerHotkey(name) {
+            if (!connected) { log('Not connected', 'error'); return; }
+            send({
+                op: 6,
+                d: {
+                    requestType: 'TriggerHotkeyByName',
+                    requestId: 'hk_' + (messageId++),
+                    requestData: { hotkeyName: 'OBSBasicHotkeys.' + name }
+                }
+            });
+            log('Triggered: ' + name, 'info');
+        }
+        
+        async function sha256(msg) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+            return btoa(String.fromCharCode(...new Uint8Array(buf)));
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!connected || e.target.tagName === 'INPUT') return;
+            if (e.key >= '1' && e.key <= '9') triggerHotkey('swap_' + e.key);
+            if (e.key === 'a') triggerHotkey('quick_cycle_aspect');
+        });
+    </script>
+</body>
+</html>
