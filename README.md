@@ -8,6 +8,7 @@ A collection of Lua scripts for OBS Studio that add smooth animations to sources
 |--------|-------------|
 | **Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
 | **Source Swap** | Swap position and size of two sources with animation |
+| **Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch) |
 | **Quick Controls** | Hotkey to cycle aspect override mode |
 | **Control Panel** | Web-based UI to control everything |
 
@@ -59,6 +60,24 @@ Swap position and size between two sources with smooth animation.
 - Off: Uses default setting
 - Preserve: Maintains aspect ratio (SCALE_INNER)
 - Stretch: Fills exactly (may distort)
+
+### Text Cycler (v1.0)
+
+Cycle through text strings on a text source with animated transitions.
+
+**Transitions:**
+- None - instant switch
+- Obfuscate - Minecraft enchantment table scramble effect
+- Typewriter - types out character by character
+- Glitch - random glitch characters that settle
+- Scramble - full scramble then snap
+- Wave - characters appear in a wave pattern
+
+**Configuration:**
+1. Select a text source
+2. Enter text lines (one per line)
+3. Set duration per text and transition type
+4. Click "Start Cycling"
 
 ### Quick Controls (v1.0)
 
@@ -128,6 +147,9 @@ source-fade-script-plugin/
 - v3.1 - Temporary aspect override in settings
 - v3.0 - Simplified to local coordinates
 - v2.8 - Fixed grouped source sizing
+
+### Text Cycler
+- v1.0 - Initial release with 6 transition types
 
 ## License
 

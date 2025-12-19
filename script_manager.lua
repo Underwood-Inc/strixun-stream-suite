@@ -49,6 +49,13 @@ local scripts = {
         file = "quick_controls.lua",
         description = "Hotkey to cycle aspect override mode",
         enabled = true
+    },
+    {
+        id = "text_cycler",
+        name = "Text Cycler",
+        file = "text_cycler.lua",
+        description = "Cycle text with animated transitions (obfuscate, typewriter, glitch)",
+        enabled = true
     }
 }
 
@@ -200,6 +207,22 @@ function script_properties()
             return false
         end)
     
+    -- Text Cycler Info
+    obs.obs_properties_add_text(props, "info_text_cycler", 
+        "📦 TEXT CYCLER (text_cycler.lua)", obs.OBS_TEXT_INFO)
+    obs.obs_properties_add_text(props, "info_text_cycler_desc", 
+        "   Cycle text with transitions: obfuscate, typewriter, glitch, wave.", 
+        obs.OBS_TEXT_INFO)
+    
+    obs.obs_properties_add_button(props, "test_text_cycler_btn", "   ↳ Test Text Cycler Log",
+        function(properties, property)
+            log_info("[Text Cycler] If loaded, check that:")
+            log_info("  1. A TEXT source is selected (not image/media)")
+            log_info("  2. At least one text line is entered")
+            log_info("  3. Click 'Start Cycling' to begin")
+            return false
+        end)
+    
     -- ==========================================================================
     -- Troubleshooting
     -- ==========================================================================
@@ -244,7 +267,7 @@ function script_properties()
         "═══════════ VERSION INFO ═══════════", obs.OBS_TEXT_INFO)
     
     obs.obs_properties_add_text(props, "version_info", 
-        "Manager v1.1 | Animations v2.7 | Swap v3.1 | QuickCtrl v1.0", 
+        "Manager v1.2 | Animations v2.7 | Swap v3.1 | TextCycler v1.0", 
         obs.OBS_TEXT_INFO)
     
     return props
