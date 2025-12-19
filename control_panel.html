@@ -1175,7 +1175,7 @@ async function animateVisibility(itemId, show, animType, duration, easing) {
     // If showing, enable first then animate
     if (show) {
         // Set to start state
-        await setTransformFast(itemId, startTransform);
+        await setTransformAwait(itemId, startTransform);
         // Enable visibility
         await request('SetSceneItemEnabled', {
             sceneName: currentScene,
@@ -1185,7 +1185,7 @@ async function animateVisibility(itemId, show, animType, duration, easing) {
         // Animate to end state
         await animateTransform(itemId, startTransform, endTransform, duration, easing);
         // Restore original
-        await setTransformFast(itemId, original);
+        await setTransformAwait(itemId, original);
     } else {
         // If hiding, animate first then disable
         await animateTransform(itemId, startTransform, endTransform, duration, easing);
@@ -1196,18 +1196,35 @@ async function animateVisibility(itemId, show, animType, duration, easing) {
             sceneItemEnabled: false
         });
         // Restore original transform (for next show)
-        await setTransformFast(itemId, original);
+        await setTransformAwait(itemId, original);
     }
 }
 
-function setTransformFast(itemId, transform) {
+// Critical transform - waits for confirmation
+async function setTransformAwait(itemId, transform) {
+    if (!connected) return;
+    
+    await request('SetSceneItemTransform', {
+        sceneName: currentScene,
+        sceneItemId: itemId,
+        sceneItemTransform: {
+            positionX: transform.positionX,
+            positionY: transform.positionY,
+            scaleX: transform.scaleX,
+            scaleY: transform.scaleY
+        }
+    });
+}
+
+// Fast transform for animation loop - fire and forget
+function setTransformFireForget(itemId, transform) {
     if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
     
     ws.send(JSON.stringify({
         op: 6,
         d: {
             requestType: 'SetSceneItemTransform',
-            requestId: 'vis_' + (msgId++),
+            requestId: 'anim_' + (msgId++),
             requestData: {
                 sceneName: currentScene,
                 sceneItemId: itemId,
@@ -1239,7 +1256,7 @@ async function animateTransform(itemId, start, end, duration, easingType) {
                 scaleY: lerp(start.scaleY, end.scaleY, t)
             };
             
-            setTransformFast(itemId, current);
+            setTransformFireForget(itemId, current);
             
             if (progress < 1) {
                 setTimeout(step, STEP_MS);
