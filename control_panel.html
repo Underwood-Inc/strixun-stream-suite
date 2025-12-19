@@ -372,35 +372,34 @@
             <!-- Text Cycler -->
             <div id="page-text" class="page">
                 <div class="card">
-                    <h3>📝 Text Cycler</h3>
-                    <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px">
-                        Configure text cycling in <strong>OBS → Tools → Scripts → text_cycler.lua</strong>
-                    </p>
-                    <p style="color:var(--muted);font-size:0.85em;line-height:1.6">
-                        • Select your text source<br>
-                        • Enter text lines to cycle<br>
-                        • Choose transition effect<br>
-                        • Assign hotkeys in OBS Settings → Hotkeys
-                    </p>
-                </div>
-                
-                <div class="card">
-                    <h3>Remote Control</h3>
-                    <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">Trigger the Lua script via hotkeys</p>
-                    <div class="row">
-                        <button class="btn-success btn-lg" id="startCycleBtn" onclick="triggerTextCycler('start')">▶ Start</button>
-                        <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="triggerTextCycler('stop')">■ Stop</button>
-                    </div>
-                    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="triggerTextCycler('toggle')">⏯ Toggle</button>
-                </div>
-                
-                <div class="card">
-                    <h3>Text Preview</h3>
-                    <select id="textSource" onchange="loadTextSource()" style="margin-bottom:8px">
+                    <h3>Text Source</h3>
+                    <select id="textSource" onchange="loadTextSource()">
                         <option value="">-- Select Text Source --</option>
                     </select>
-                    <div class="text-preview" id="textPreview">Select a source to preview</div>
-                    <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="loadTextSource()">🔄 Refresh</button>
+                    <div class="text-preview" id="textPreview" style="margin-top:8px">Select a source</div>
+                </div>
+                
+                <div class="card">
+                    <h3>Text Lines</h3>
+                    <textarea id="textLines" placeholder="Enter text lines (one per line)&#10;Line 1&#10;Line 2&#10;Line 3" rows="5"></textarea>
+                </div>
+                
+                <div class="card">
+                    <h3>Settings</h3>
+                    <div class="row">
+                        <div>
+                            <label>Cycle (ms)</label>
+                            <input type="number" id="textDuration" value="3000" min="500" step="100">
+                        </div>
+                    </div>
+                    <p style="font-size:0.75em;color:var(--muted);margin-top:8px">
+                        💡 For animated transitions, use <strong>text_cycler.lua</strong> in OBS Scripts
+                    </p>
+                </div>
+                
+                <div class="row">
+                    <button class="btn-success btn-lg" id="startCycleBtn" onclick="startSimpleCycle()">▶ Start</button>
+                    <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="stopSimpleCycle()" disabled>■ Stop</button>
                 </div>
             </div>
             
@@ -716,7 +715,8 @@ function updateConnectionState() {
 // ============ UI State Persistence ============
 const UI_FIELDS = [
     'swapStyle', 'swapDuration', 'swapEasing',
-    'textSource', 'swapSourceA', 'swapSourceB'
+    'textSource', 'textLines', 'textDuration',
+    'swapSourceA', 'swapSourceB'
 ];
 
 function saveUIState() {
@@ -1469,6 +1469,9 @@ function importConfigs() {
 }
 
 // ============ Text Cycler ============
+let cycleInterval = null;
+let cycleIndex = 0;
+
 function updateTextSourceDropdown() {
     const select = document.getElementById('textSource');
     
@@ -1492,7 +1495,7 @@ function updateTextSourceDropdown() {
 async function loadTextSource() {
     const name = document.getElementById('textSource').value;
     if (!name) {
-        document.getElementById('textPreview').textContent = 'Select a source to preview';
+        document.getElementById('textPreview').textContent = 'Select a source';
         return;
     }
     
@@ -1505,30 +1508,71 @@ async function loadTextSource() {
     }
 }
 
-async function triggerTextCycler(action) {
+async function setText(text) {
+    const name = document.getElementById('textSource').value;
+    if (!name || !connected) return;
+    
+    try {
+        await request('SetInputSettings', {
+            inputName: name,
+            inputSettings: { text: text }
+        });
+        document.getElementById('textPreview').textContent = text;
+    } catch (e) {
+        log('Error setting text: ' + e, 'error');
+    }
+}
+
+function getTextLines() {
+    return document.getElementById('textLines').value
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+}
+
+function startSimpleCycle() {
     if (!connected) {
         log('Connect to OBS first', 'error');
         showPage('setup');
         return;
     }
     
-    const hotkeyNames = {
-        'start': 'text_cycler_start',
-        'stop': 'text_cycler_stop', 
-        'toggle': 'text_cycler_toggle'
-    };
-    
-    const hotkeyName = hotkeyNames[action];
-    if (!hotkeyName) return;
-    
-    try {
-        await request('TriggerHotkeyByName', { hotkeyName: hotkeyName });
-        log(`Text Cycler: ${action}`, 'success');
-        // Refresh preview after a moment
-        setTimeout(loadTextSource, 500);
-    } catch (e) {
-        log('Hotkey not assigned. Set in OBS Settings → Hotkeys → "Text Cycler"', 'error');
+    const lines = getTextLines();
+    if (lines.length === 0) {
+        log('Enter at least one text line', 'error');
+        return;
     }
+    if (!document.getElementById('textSource').value) {
+        log('Select a text source first', 'error');
+        return;
+    }
+    
+    const duration = parseInt(document.getElementById('textDuration').value) || 3000;
+    
+    document.getElementById('startCycleBtn').disabled = true;
+    document.getElementById('stopCycleBtn').disabled = false;
+    
+    cycleIndex = 0;
+    setText(lines[0]); // Set first text immediately
+    
+    cycleInterval = setInterval(() => {
+        cycleIndex = (cycleIndex + 1) % lines.length;
+        setText(lines[cycleIndex]);
+    }, duration);
+    
+    log('Text cycling started (' + lines.length + ' lines)', 'success');
+}
+
+function stopSimpleCycle() {
+    if (cycleInterval) {
+        clearInterval(cycleInterval);
+        cycleInterval = null;
+    }
+    
+    document.getElementById('startCycleBtn').disabled = false;
+    document.getElementById('stopCycleBtn').disabled = true;
+    
+    log('Text cycling stopped');
 }
 
 
