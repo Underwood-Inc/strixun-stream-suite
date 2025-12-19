@@ -1639,49 +1639,73 @@ function animateTransition(target, type, duration) {
     isTransitioning = true;
     
     const startTime = performance.now();
-    const SCRAMBLE_INTERVAL = 50; // How often to change scrambled chars (ms)
-    let lastScrambleTime = 0;
+    const UPDATE_INTERVAL = 50; // Throttle WebSocket updates (ms)
+    let lastUpdateTime = 0;
+    let lastDisplay = '';
     let scrambledDisplay = '';
     
     function frame(timestamp) {
         const elapsed = performance.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
+        const shouldUpdate = (elapsed - lastUpdateTime >= UPDATE_INTERVAL);
         
         let display = target;
         
         if (type === 'obfuscate') {
-            // Minecraft-style: scramble rapidly, then reveal at the end
-            // 0-80%: fully scrambled, rapidly changing
-            // 80-100%: reveal characters left to right
-            if (progress < 0.8) {
-                // Only update scramble every SCRAMBLE_INTERVAL for that flickering effect
-                if (elapsed - lastScrambleTime > SCRAMBLE_INTERVAL) {
-                    scrambledDisplay = generateScramble(target);
-                    lastScrambleTime = elapsed;
-                }
-                display = scrambledDisplay || generateScramble(target);
-            } else {
-                // Reveal phase: 80-100% maps to 0-100% reveal
-                const revealProgress = (progress - 0.8) / 0.2;
-                display = revealText(target, revealProgress);
+            // Minecraft-style: scramble rapidly, then stay hidden
+            if (shouldUpdate) {
+                scrambledDisplay = generateScramble(target);
             }
+            display = scrambledDisplay || generateScramble(target);
         } else if (type === 'typewriter') {
             display = target.substring(0, Math.floor(progress * target.length));
         } else if (type === 'glitch') {
-            display = glitchText(target, progress);
+            // Glitch -> Reveal: scramble then reveal
+            if (progress < 0.7) {
+                if (shouldUpdate) {
+                    scrambledDisplay = glitchText(target, progress);
+                }
+                display = scrambledDisplay || glitchText(target, progress);
+            } else {
+                const revealProgress = (progress - 0.7) / 0.3;
+                display = revealText(target, revealProgress);
+            }
         }
         
-        setText(display);
+        // Only send to OBS if throttle time passed and text changed
+        if (shouldUpdate && display !== lastDisplay) {
+            setTextThrottled(display);
+            lastDisplay = display;
+            lastUpdateTime = elapsed;
+        }
+        // Always update local preview
+        document.getElementById('textPreview').textContent = display;
         
         if (progress < 1) {
             transitionFrame = requestAnimationFrame(frame);
         } else {
-            setText(target); // Ensure final text is exact
+            setTextThrottled(target); // Ensure final text is exact
+            document.getElementById('textPreview').textContent = target;
             isTransitioning = false;
         }
     }
     
     transitionFrame = requestAnimationFrame(frame);
+}
+
+// Throttled setText - only sends to OBS, no local preview update
+async function setTextThrottled(text) {
+    const name = document.getElementById('textSource').value;
+    if (!name || !connected) return;
+    
+    try {
+        await request('SetInputSettings', {
+            inputName: name,
+            inputSettings: { text: text }
+        });
+    } catch (e) {
+        // Silently ignore during animation to prevent spam
+    }
 }
 
 // Generate fully scrambled text
