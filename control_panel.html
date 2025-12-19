@@ -397,12 +397,13 @@
                         </div>
                         <div>
                             <label>Transition</label>
-                            <select id="textTransition">
-                                <option value="none">None</option>
-                                <option value="obfuscate" selected>Obfuscate</option>
+                            <select id="textTransition" onchange="updateTransitionDesc()">
+                                <option value="none">None (instant)</option>
+                                <option value="glitch" selected>Glitch → Reveal</option>
                                 <option value="typewriter">Typewriter</option>
-                                <option value="glitch">Glitch</option>
+                                <option value="obfuscate">Obfuscate (stay hidden)</option>
                             </select>
+                            <p id="transitionDesc" style="font-size:0.75em;color:var(--muted);margin-top:4px"></p>
                         </div>
                         <div>
                             <label>Trans. Duration</label>
@@ -802,6 +803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     restoreActiveTab();
     updateConnectionState();
     setupUIStatePersistence();
+    updateTransitionDesc(); // Show description for current selection
     
     // Setup credential UI listeners
     document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
@@ -1521,6 +1523,18 @@ function updateTextSourceDropdown() {
         // Update preview with restored selection
         loadTextSource();
     }
+}
+
+function updateTransitionDesc() {
+    const val = document.getElementById('textTransition').value;
+    const desc = document.getElementById('transitionDesc');
+    const descriptions = {
+        'none': 'Text changes instantly with no animation',
+        'glitch': '⚡ Scrambles with glitch chars, then reveals the new text',
+        'typewriter': '⌨️ Types out characters one by one',
+        'obfuscate': '🔮 Scrambles and STAYS hidden (Minecraft enchant style)'
+    };
+    desc.textContent = descriptions[val] || '';
 }
 
 async function loadTextSource() {
