@@ -389,12 +389,17 @@
                     <label>Transition</label>
                     <select id="textTransition" onchange="updateTransitionMode()">
                         <option value="none">None (instant)</option>
-                        <option value="lua_glitch">Glitch → Reveal (Lua)</option>
-                        <option value="lua_typewriter">Typewriter (Lua)</option>
-                        <option value="lua_obfuscate">Obfuscate (Lua)</option>
-                        <option value="lua_wave">Wave (Lua)</option>
+                        <option value="glitch">Glitch → Reveal</option>
+                        <option value="typewriter">Typewriter</option>
+                        <option value="scramble">Scramble → Snap</option>
                     </select>
                     <p id="transitionInfo" style="font-size:0.75em;color:var(--muted);margin:4px 0 12px"></p>
+                    <div class="row">
+                        <div>
+                            <label>Trans (ms)</label>
+                            <input type="number" id="transDuration" value="500" min="100" max="2000" step="50">
+                        </div>
+                    </div>
                     <div class="row">
                         <div>
                             <label>Cycle (ms)</label>
@@ -721,7 +726,7 @@ function updateConnectionState() {
 // ============ UI State Persistence ============
 const UI_FIELDS = [
     'swapStyle', 'swapDuration', 'swapEasing',
-    'textSource', 'textLines', 'textDuration', 'textTransition',
+    'textSource', 'textLines', 'textDuration', 'textTransition', 'transDuration',
     'swapSourceA', 'swapSourceB'
 ];
 
@@ -1482,12 +1487,13 @@ let cycleIndex = 0;
 function updateTransitionMode() {
     const val = document.getElementById('textTransition').value;
     const info = document.getElementById('transitionInfo');
-    
-    if (val === 'none') {
-        info.innerHTML = 'Text changes instantly via this panel';
-    } else {
-        info.innerHTML = '⚡ Uses <strong>text_cycler.lua</strong> — configure text lines there, then use Start below to trigger';
-    }
+    const descriptions = {
+        'none': 'Instant text change',
+        'glitch': 'Scramble briefly, then reveal left-to-right',
+        'typewriter': 'Type out one character at a time',
+        'scramble': 'Random chars, then snap to final text'
+    };
+    info.textContent = descriptions[val] || '';
 }
 
 function updateTextSourceDropdown() {
@@ -1555,22 +1561,6 @@ async function startSimpleCycle() {
         return;
     }
     
-    const transition = document.getElementById('textTransition').value;
-    
-    // If using Lua transition, trigger the Lua script instead
-    if (transition.startsWith('lua_')) {
-        try {
-            await request('TriggerHotkeyByName', { hotkeyName: 'text_cycler_start' });
-            log('Lua Text Cycler started', 'success');
-            document.getElementById('startCycleBtn').disabled = true;
-            document.getElementById('stopCycleBtn').disabled = false;
-        } catch (e) {
-            log('Set hotkey in OBS: Settings → Hotkeys → "Text Cycler: Start"', 'error');
-        }
-        return;
-    }
-    
-    // Simple instant cycling via web panel
     const lines = getTextLines();
     if (lines.length === 0) {
         log('Enter at least one text line', 'error');
@@ -1587,28 +1577,115 @@ async function startSimpleCycle() {
     document.getElementById('stopCycleBtn').disabled = false;
     
     cycleIndex = 0;
-    setText(lines[0]); // Set first text immediately
+    showTextWithTransition(lines[0]); // Show first text with transition
     
     cycleInterval = setInterval(() => {
         cycleIndex = (cycleIndex + 1) % lines.length;
-        setText(lines[cycleIndex]);
+        showTextWithTransition(lines[cycleIndex]);
     }, duration);
     
     log('Text cycling started (' + lines.length + ' lines)', 'success');
 }
 
-async function stopSimpleCycle() {
-    // Stop local cycling
+// Animation state
+let transitionInterval = null;
+
+async function showTextWithTransition(targetText) {
+    const transition = document.getElementById('textTransition').value;
+    const transDuration = parseInt(document.getElementById('transDuration').value) || 500;
+    
+    // Clear any existing transition
+    if (transitionInterval) {
+        clearInterval(transitionInterval);
+        transitionInterval = null;
+    }
+    
+    if (transition === 'none') {
+        setText(targetText);
+        return;
+    }
+    
+    const STEP_MS = 100; // Update every 100ms = max 10 calls/second
+    const steps = Math.floor(transDuration / STEP_MS);
+    let step = 0;
+    
+    transitionInterval = setInterval(async () => {
+        step++;
+        const progress = step / steps;
+        
+        let displayText;
+        
+        if (transition === 'typewriter') {
+            // Type out character by character
+            const chars = Math.floor(progress * targetText.length);
+            displayText = targetText.substring(0, chars);
+        } else if (transition === 'glitch') {
+            // First 60% scrambled, last 40% reveal left-to-right
+            if (progress < 0.6) {
+                displayText = scrambleText(targetText);
+            } else {
+                const revealProgress = (progress - 0.6) / 0.4;
+                displayText = revealText(targetText, revealProgress);
+            }
+        } else if (transition === 'scramble') {
+            // Random chars until 90%, then snap
+            if (progress < 0.9) {
+                displayText = scrambleText(targetText);
+            } else {
+                displayText = targetText;
+            }
+        }
+        
+        await setText(displayText);
+        
+        // Done?
+        if (step >= steps) {
+            clearInterval(transitionInterval);
+            transitionInterval = null;
+            await setText(targetText); // Ensure final text is exact
+        }
+    }, STEP_MS);
+}
+
+// Simple scramble - random chars
+function scrambleText(text) {
+    const chars = 'ᔑᒷᓵ↸⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴αβγδεζ';
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === ' ') {
+            result += ' ';
+        } else {
+            result += chars[Math.floor(Math.random() * chars.length)];
+        }
+    }
+    return result;
+}
+
+// Reveal left to right
+function revealText(target, progress) {
+    const chars = 'ᔑᒷᓵ↸⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴αβγδεζ';
+    const revealed = Math.floor(progress * target.length);
+    let result = '';
+    for (let i = 0; i < target.length; i++) {
+        if (i < revealed) {
+            result += target[i];
+        } else if (target[i] === ' ') {
+            result += ' ';
+        } else {
+            result += chars[Math.floor(Math.random() * chars.length)];
+        }
+    }
+    return result;
+}
+
+function stopSimpleCycle() {
     if (cycleInterval) {
         clearInterval(cycleInterval);
         cycleInterval = null;
     }
-    
-    // Also try to stop Lua script
-    try {
-        await request('TriggerHotkeyByName', { hotkeyName: 'text_cycler_stop' });
-    } catch (e) {
-        // Hotkey not set, that's fine
+    if (transitionInterval) {
+        clearInterval(transitionInterval);
+        transitionInterval = null;
     }
     
     document.getElementById('startCycleBtn').disabled = false;
