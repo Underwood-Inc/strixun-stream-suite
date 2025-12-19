@@ -31,6 +31,11 @@ local cycle_timer_active = false
 local transition_timer_active = false
 local debug_mode = false
 
+-- Hotkeys
+local hotkey_start_id = obs.OBS_INVALID_HOTKEY_ID
+local hotkey_stop_id = obs.OBS_INVALID_HOTKEY_ID
+local hotkey_toggle_id = obs.OBS_INVALID_HOTKEY_ID
+
 -- Character sets for effects
 local CHARS_STANDARD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 local CHARS_ENCHANT = "ᔑᒷᓵ↸ᒷ⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹!¡ᑑ∷ᓭℸ⚍⍊∴̇/||⨅" -- Minecraft Standard Galactic Alphabet-ish
@@ -480,9 +485,65 @@ function script_update(settings)
     end
 end
 
+-- Hotkey callbacks
+local function on_start_hotkey(pressed)
+    if pressed then start_cycling() end
+end
+
+local function on_stop_hotkey(pressed)
+    if pressed then stop_cycling() end
+end
+
+local function on_toggle_hotkey(pressed)
+    if pressed then
+        if is_running then
+            stop_cycling()
+        else
+            start_cycling()
+        end
+    end
+end
+
 function script_load(settings)
     math.randomseed(os.time())
-    log_info("Text Cycler loaded")
+    
+    -- Register hotkeys
+    hotkey_start_id = obs.obs_hotkey_register_frontend(
+        "text_cycler_start", "Text Cycler: Start", on_start_hotkey)
+    hotkey_stop_id = obs.obs_hotkey_register_frontend(
+        "text_cycler_stop", "Text Cycler: Stop", on_stop_hotkey)
+    hotkey_toggle_id = obs.obs_hotkey_register_frontend(
+        "text_cycler_toggle", "Text Cycler: Toggle", on_toggle_hotkey)
+    
+    -- Load hotkey bindings
+    local start_arr = obs.obs_data_get_array(settings, "hotkey_start")
+    obs.obs_hotkey_load(hotkey_start_id, start_arr)
+    obs.obs_data_array_release(start_arr)
+    
+    local stop_arr = obs.obs_data_get_array(settings, "hotkey_stop")
+    obs.obs_hotkey_load(hotkey_stop_id, stop_arr)
+    obs.obs_data_array_release(stop_arr)
+    
+    local toggle_arr = obs.obs_data_get_array(settings, "hotkey_toggle")
+    obs.obs_hotkey_load(hotkey_toggle_id, toggle_arr)
+    obs.obs_data_array_release(toggle_arr)
+    
+    log_info("Text Cycler loaded (hotkeys registered)")
+end
+
+function script_save(settings)
+    -- Save hotkey bindings
+    local start_arr = obs.obs_hotkey_save(hotkey_start_id)
+    obs.obs_data_set_array(settings, "hotkey_start", start_arr)
+    obs.obs_data_array_release(start_arr)
+    
+    local stop_arr = obs.obs_hotkey_save(hotkey_stop_id)
+    obs.obs_data_set_array(settings, "hotkey_stop", stop_arr)
+    obs.obs_data_array_release(stop_arr)
+    
+    local toggle_arr = obs.obs_hotkey_save(hotkey_toggle_id)
+    obs.obs_data_set_array(settings, "hotkey_toggle", toggle_arr)
+    obs.obs_data_array_release(toggle_arr)
 end
 
 function script_unload()

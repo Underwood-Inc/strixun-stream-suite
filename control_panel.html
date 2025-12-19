@@ -372,47 +372,35 @@
             <!-- Text Cycler -->
             <div id="page-text" class="page">
                 <div class="card">
-                    <h3>Text Source</h3>
-                    <select id="textSource" onchange="loadTextSource()">
+                    <h3>📝 Text Cycler</h3>
+                    <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px">
+                        Configure text cycling in <strong>OBS → Tools → Scripts → text_cycler.lua</strong>
+                    </p>
+                    <p style="color:var(--muted);font-size:0.85em;line-height:1.6">
+                        • Select your text source<br>
+                        • Enter text lines to cycle<br>
+                        • Choose transition effect<br>
+                        • Assign hotkeys in OBS Settings → Hotkeys
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <h3>Remote Control</h3>
+                    <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">Trigger the Lua script via hotkeys</p>
+                    <div class="row">
+                        <button class="btn-success btn-lg" id="startCycleBtn" onclick="triggerTextCycler('start')">▶ Start</button>
+                        <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="triggerTextCycler('stop')">■ Stop</button>
+                    </div>
+                    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="triggerTextCycler('toggle')">⏯ Toggle</button>
+                </div>
+                
+                <div class="card">
+                    <h3>Text Preview</h3>
+                    <select id="textSource" onchange="loadTextSource()" style="margin-bottom:8px">
                         <option value="">-- Select Text Source --</option>
                     </select>
-                </div>
-                
-                <div class="card">
-                    <h3>Preview</h3>
-                    <div class="text-preview" id="textPreview">Select a source</div>
-                </div>
-                
-                <div class="card">
-                    <h3>Text Lines</h3>
-                    <textarea id="textLines" placeholder="Enter text lines (one per line)&#10;Line 1&#10;Line 2&#10;Line 3"></textarea>
-                </div>
-                
-                <div class="card">
-                    <h3>Settings</h3>
-                    <label>Transition</label>
-                    <select id="textTransition" onchange="updateTransitionDesc()">
-                        <option value="none">None (instant)</option>
-                        <option value="glitch" selected>Glitch → Reveal</option>
-                        <option value="typewriter">Typewriter</option>
-                        <option value="obfuscate">Obfuscate (stay hidden)</option>
-                    </select>
-                    <p id="transitionDesc" style="font-size:0.75em;color:var(--muted);margin:4px 0 12px"></p>
-                    <div class="row">
-                        <div>
-                            <label>Cycle (ms)</label>
-                            <input type="number" id="textDuration" value="3000" min="500" step="100">
-                        </div>
-                        <div>
-                            <label>Trans (ms)</label>
-                            <input type="number" id="transDuration" value="500" min="100" step="50">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <button class="btn-success btn-lg" id="startCycleBtn" onclick="startTextCycle()">▶ Start</button>
-                    <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="stopTextCycle()" disabled>■ Stop</button>
+                    <div class="text-preview" id="textPreview">Select a source to preview</div>
+                    <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="loadTextSource()">🔄 Refresh</button>
                 </div>
             </div>
             
@@ -546,15 +534,6 @@ let aspectMode = 0;
 let reconnectAttempts = 0;
 const MAX_RECONNECT = 3;
 
-// Text cycler state
-let cycleInterval = null;
-let cycleIndex = 0;
-let isTransitioning = false;
-let transitionFrame = null;
-
-// Character sets
-const CHARS_ENCHANT = 'ᔑᒷᓵ↸ᒷ⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴||⨅αβγδεζηθ';
-const CHARS_GLITCH = '█▓▒░╔╗╚╝║═┌┐└┘│─';
 
 // ============ Secure Credential Storage (AES-GCM) ============
 let encryptionKey = null; // Derived from PIN, kept in memory only
@@ -737,8 +716,7 @@ function updateConnectionState() {
 // ============ UI State Persistence ============
 const UI_FIELDS = [
     'swapStyle', 'swapDuration', 'swapEasing',
-    'textSource', 'textLines', 'textDuration', 'textTransition', 'transDuration',
-    'swapSourceA', 'swapSourceB'
+    'textSource', 'swapSourceA', 'swapSourceB'
 ];
 
 function saveUIState() {
@@ -777,16 +755,6 @@ function setupUIStatePersistence() {
         }
     }
     
-    // Also save periodically for textareas (some don't fire input events properly)
-    setInterval(() => {
-        const textLines = document.getElementById('textLines');
-        if (textLines) {
-            const saved = JSON.parse(localStorage.getItem('ui_state') || '{}');
-            if (saved.textLines !== textLines.value) {
-                saveUIState();
-            }
-        }
-    }, 2000);
 }
 
 // ============ Initialization ============
@@ -801,7 +769,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     restoreActiveTab();
     updateConnectionState();
     setupUIStatePersistence();
-    updateTransitionDesc(); // Show description for current selection
     
     // Setup credential UI listeners
     document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
@@ -1518,27 +1485,14 @@ function updateTextSourceDropdown() {
     
     if (current && textSources.find(s => s.sourceName === current)) {
         select.value = current;
-        // Update preview with restored selection
         loadTextSource();
     }
-}
-
-function updateTransitionDesc() {
-    const val = document.getElementById('textTransition').value;
-    const desc = document.getElementById('transitionDesc');
-    const descriptions = {
-        'none': 'Text changes instantly with no animation',
-        'glitch': '⚡ Scrambles with glitch chars, then reveals the new text',
-        'typewriter': '⌨️ Types out characters one by one',
-        'obfuscate': '🔮 Scrambles and STAYS hidden (Minecraft enchant style)'
-    };
-    desc.textContent = descriptions[val] || '';
 }
 
 async function loadTextSource() {
     const name = document.getElementById('textSource').value;
     if (!name) {
-        document.getElementById('textPreview').textContent = 'Select a source';
+        document.getElementById('textPreview').textContent = 'Select a source to preview';
         return;
     }
     
@@ -1551,212 +1505,32 @@ async function loadTextSource() {
     }
 }
 
-async function setText(text) {
-    const name = document.getElementById('textSource').value;
-    if (!name) return;
-    
-    try {
-        await request('SetInputSettings', {
-            inputName: name,
-            inputSettings: { text: text }
-        });
-        document.getElementById('textPreview').textContent = text;
-    } catch (e) {
-        log('Error setting text: ' + e, 'error');
-    }
-}
-
-function getTextLines() {
-    return document.getElementById('textLines').value
-        .split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
-}
-
-function startTextCycle() {
+async function triggerTextCycler(action) {
     if (!connected) {
         log('Connect to OBS first', 'error');
         showPage('setup');
         return;
     }
-    const lines = getTextLines();
-    if (lines.length === 0) {
-        log('Enter at least one text line', 'error');
-        return;
-    }
-    if (!document.getElementById('textSource').value) {
-        log('Select a text source first', 'error');
-        return;
-    }
     
-    const duration = parseInt(document.getElementById('textDuration').value) || 3000;
+    const hotkeyNames = {
+        'start': 'text_cycler_start',
+        'stop': 'text_cycler_stop', 
+        'toggle': 'text_cycler_toggle'
+    };
     
-    document.getElementById('startCycleBtn').disabled = true;
-    document.getElementById('stopCycleBtn').disabled = false;
-    
-    cycleIndex = 0;
-    showNextText(lines);
-    
-    cycleInterval = setInterval(() => {
-        cycleIndex = (cycleIndex + 1) % lines.length;
-        showNextText(lines);
-    }, duration);
-    
-    log('Text cycling started', 'success');
-}
-
-function stopTextCycle() {
-    if (cycleInterval) {
-        clearInterval(cycleInterval);
-        cycleInterval = null;
-    }
-    if (transitionFrame) {
-        cancelAnimationFrame(transitionFrame);
-        transitionFrame = null;
-    }
-    isTransitioning = false;
-    
-    document.getElementById('startCycleBtn').disabled = false;
-    document.getElementById('stopCycleBtn').disabled = true;
-    
-    log('Text cycling stopped');
-}
-
-function showNextText(lines) {
-    const target = lines[cycleIndex];
-    const transition = document.getElementById('textTransition').value;
-    const transDur = parseInt(document.getElementById('transDuration').value) || 500;
-    
-    if (transition === 'none') {
-        setText(target);
-    } else {
-        animateTransition(target, transition, transDur);
-    }
-}
-
-function animateTransition(target, type, duration) {
-    if (isTransitioning) return;
-    isTransitioning = true;
-    
-    const startTime = performance.now();
-    const UPDATE_INTERVAL = 50; // Throttle WebSocket updates (ms)
-    let lastUpdateTime = 0;
-    let lastDisplay = '';
-    let scrambledDisplay = '';
-    
-    function frame(timestamp) {
-        const elapsed = performance.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const shouldUpdate = (elapsed - lastUpdateTime >= UPDATE_INTERVAL);
-        
-        let display = target;
-        
-        if (type === 'obfuscate') {
-            // Minecraft-style: scramble rapidly, then stay hidden
-            if (shouldUpdate) {
-                scrambledDisplay = generateScramble(target);
-            }
-            display = scrambledDisplay || generateScramble(target);
-        } else if (type === 'typewriter') {
-            display = target.substring(0, Math.floor(progress * target.length));
-        } else if (type === 'glitch') {
-            // Glitch -> Reveal: scramble then reveal
-            if (progress < 0.7) {
-                if (shouldUpdate) {
-                    scrambledDisplay = glitchText(target, progress);
-                }
-                display = scrambledDisplay || glitchText(target, progress);
-            } else {
-                const revealProgress = (progress - 0.7) / 0.3;
-                display = revealText(target, revealProgress);
-            }
-        }
-        
-        // Only send to OBS if throttle time passed and text changed
-        if (shouldUpdate && display !== lastDisplay) {
-            setTextThrottled(display);
-            lastDisplay = display;
-            lastUpdateTime = elapsed;
-        }
-        // Always update local preview
-        document.getElementById('textPreview').textContent = display;
-        
-        if (progress < 1) {
-            transitionFrame = requestAnimationFrame(frame);
-        } else {
-            setTextThrottled(target); // Ensure final text is exact
-            document.getElementById('textPreview').textContent = target;
-            isTransitioning = false;
-        }
-    }
-    
-    transitionFrame = requestAnimationFrame(frame);
-}
-
-// Throttled setText - only sends to OBS, no local preview update
-async function setTextThrottled(text) {
-    const name = document.getElementById('textSource').value;
-    if (!name || !connected) return;
+    const hotkeyName = hotkeyNames[action];
+    if (!hotkeyName) return;
     
     try {
-        await request('SetInputSettings', {
-            inputName: name,
-            inputSettings: { text: text }
-        });
+        await request('TriggerHotkeyByName', { hotkeyName: hotkeyName });
+        log(`Text Cycler: ${action}`, 'success');
+        // Refresh preview after a moment
+        setTimeout(loadTextSource, 500);
     } catch (e) {
-        // Silently ignore during animation to prevent spam
+        log('Hotkey not assigned. Set in OBS Settings → Hotkeys → "Text Cycler"', 'error');
     }
 }
 
-// Generate fully scrambled text
-function generateScramble(target) {
-    let result = '';
-    for (let i = 0; i < target.length; i++) {
-        if (target[i] === ' ') {
-            result += ' ';
-        } else {
-            result += CHARS_ENCHANT[Math.floor(Math.random() * CHARS_ENCHANT.length)];
-        }
-    }
-    return result;
-}
-
-// Reveal text left-to-right
-function revealText(target, progress) {
-    const revealed = Math.floor(progress * target.length);
-    let result = '';
-    for (let i = 0; i < target.length; i++) {
-        if (i < revealed) {
-            result += target[i];
-        } else if (target[i] === ' ') {
-            result += ' ';
-        } else {
-            result += CHARS_ENCHANT[Math.floor(Math.random() * CHARS_ENCHANT.length)];
-        }
-    }
-    return result;
-}
-
-// Legacy function name for compatibility
-function obfuscateText(target, progress) {
-    if (progress >= 1) return target;
-    return generateScramble(target);
-}
-
-function glitchText(target, progress) {
-    const glitchChance = 1 - progress;
-    let result = '';
-    for (let i = 0; i < target.length; i++) {
-        if (target[i] === ' ') {
-            result += ' ';
-        } else if (Math.random() < glitchChance * 0.7) {
-            result += CHARS_GLITCH[Math.floor(Math.random() * CHARS_GLITCH.length)];
-        } else {
-            result += target[i];
-        }
-    }
-    return result;
-}
 
 // ============ Keyboard Shortcuts ============
 document.addEventListener('keydown', e => {
