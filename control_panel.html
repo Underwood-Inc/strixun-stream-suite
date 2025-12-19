@@ -316,12 +316,8 @@
                 </div>
                 
                 <div class="card">
-                    <h3>Swap Configs</h3>
-                    <div class="grid" id="swapGrid">
-                        <button class="source-btn" onclick="triggerSwap(1)">Swap 1</button>
-                        <button class="source-btn" onclick="triggerSwap(2)">Swap 2</button>
-                        <button class="source-btn" onclick="triggerSwap(3)">Swap 3</button>
-                    </div>
+                    <h3>Quick Swaps</h3>
+                    <div class="grid" id="dashSwapGrid"></div>
                 </div>
                 
                 <div class="card">
@@ -390,19 +386,40 @@
             <!-- Swaps -->
             <div id="page-swaps" class="page">
                 <div class="card">
-                    <h3>Aspect Override</h3>
-                    <p style="color:var(--muted);margin-bottom:12px;font-size:0.9em">Temporarily override aspect ratio for swaps</p>
-                    <div class="row">
-                        <button id="aspectOff" class="btn-primary" onclick="setAspect(0)">Off</button>
-                        <button id="aspectPreserve" onclick="setAspect(1)">Preserve</button>
-                        <button id="aspectStretch" onclick="setAspect(2)">Stretch</button>
+                    <h3>Quick Swap</h3>
+                    <p style="color:var(--muted);margin-bottom:12px;font-size:0.85em">Select two sources and swap their position/size</p>
+                    <label>Source A</label>
+                    <select id="swapSourceA"></select>
+                    <label>Source B</label>
+                    <select id="swapSourceB"></select>
+                    <div class="row" style="margin-top:8px">
+                        <button class="btn-primary btn-lg" onclick="executeSwap()">🔄 Swap Now</button>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h3>Trigger Swaps</h3>
-                    <p style="color:var(--muted);margin-bottom:12px;font-size:0.9em">Assign hotkeys in OBS: Settings → Hotkeys → "Swap: ..."</p>
-                    <div class="grid" id="swapButtons"></div>
+                    <h3>Settings</h3>
+                    <div class="row">
+                        <div>
+                            <label>Duration (ms)</label>
+                            <input type="number" id="swapDuration" value="300" min="0" max="2000" step="50">
+                        </div>
+                        <div>
+                            <label>Easing</label>
+                            <select id="swapEasing">
+                                <option value="linear">Linear</option>
+                                <option value="ease" selected>Ease</option>
+                                <option value="easeIn">Ease In</option>
+                                <option value="easeOut">Ease Out</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Saved Configs</h3>
+                    <div id="savedSwaps"></div>
+                    <button onclick="saveCurrentSwap()" style="margin-top:8px">💾 Save Current</button>
                 </div>
             </div>
             
@@ -453,8 +470,7 @@
                     <h3>Keyboard Shortcuts</h3>
                     <p style="color:var(--muted);font-size:0.9em">When this panel is focused:</p>
                     <ul style="color:var(--muted);padding-left:20px;font-size:0.9em;line-height:2">
-                        <li><strong>1-9</strong> - Trigger swap configs</li>
-                        <li><strong>A</strong> - Cycle aspect override</li>
+                        <li><strong>1-9</strong> - Trigger saved swap configs</li>
                         <li><strong>Space</strong> - Start/stop text cycler</li>
                     </ul>
                 </div>
@@ -489,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const url = window.location.href;
     document.getElementById('dockUrl').value = url;
     
-    renderSwapButtons();
+    renderSavedSwaps();
     log('Ready. Connect to OBS to begin.', 'info');
 });
 
@@ -518,16 +534,15 @@ function copyUrl() {
     setTimeout(() => document.getElementById('copyStatus').textContent = '', 2000);
 }
 
-function renderSwapButtons() {
-    const grid = document.getElementById('swapButtons');
-    grid.innerHTML = '';
-    for (let i = 1; i <= 9; i++) {
-        const btn = document.createElement('button');
-        btn.className = 'source-btn';
-        btn.textContent = `Swap ${i}`;
-        btn.onclick = () => triggerSwap(i);
-        grid.appendChild(btn);
+function renderDashSwaps() {
+    const grid = document.getElementById('dashSwapGrid');
+    if (swapConfigs.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to 🔄 tab to create one.</div>';
+        return;
     }
+    grid.innerHTML = swapConfigs.map((c, i) => 
+        `<button class="source-btn" onclick="loadSwapConfig(${i})">${c.name}</button>`
+    ).join('');
 }
 
 function updateConnectionUI() {
@@ -667,6 +682,7 @@ async function refreshSources() {
         sources = data.sceneItems || [];
         renderSources();
         updateTextSourceDropdown();
+        updateSwapDropdowns();
         log(`Found ${sources.length} sources`);
     } catch (e) {
         log('Error getting sources: ' + e, 'error');
@@ -706,28 +722,176 @@ async function toggleSource(name, id, enabled) {
     }
 }
 
-function triggerSwap(n) {
-    if (!connected) { log('Not connected', 'error'); return; }
-    request('TriggerHotkeyByName', { hotkeyName: `OBSBasicHotkeys.swap_${n}` })
-        .then(() => log(`Triggered Swap ${n}`, 'success'))
-        .catch(e => log('Swap failed: ' + e, 'error'));
+// ============ Source Swap (Direct via WebSocket) ============
+let swapConfigs = JSON.parse(localStorage.getItem('swapConfigs') || '[]');
+let isSwapping = false;
+
+function updateSwapDropdowns() {
+    const selA = document.getElementById('swapSourceA');
+    const selB = document.getElementById('swapSourceB');
+    const opts = '<option value="">-- Select --</option>' + 
+        sources.map(s => `<option value="${s.sourceName}">${s.sourceName}</option>`).join('');
+    selA.innerHTML = opts;
+    selB.innerHTML = opts;
 }
 
-function cycleAspect() {
-    if (!connected) { log('Not connected', 'error'); return; }
-    request('TriggerHotkeyByName', { hotkeyName: 'OBSBasicHotkeys.quick_cycle_aspect' })
-        .then(() => log('Cycled aspect override', 'success'))
-        .catch(e => log('Failed: ' + e, 'error'));
+async function getSceneItemId(sourceName) {
+    const item = sources.find(s => s.sourceName === sourceName);
+    return item ? item.sceneItemId : null;
 }
 
-function setAspect(mode) {
-    aspectMode = mode;
-    document.getElementById('aspectOff').className = mode === 0 ? 'btn-primary' : '';
-    document.getElementById('aspectPreserve').className = mode === 1 ? 'btn-primary' : '';
-    document.getElementById('aspectStretch').className = mode === 2 ? 'btn-primary' : '';
-    // Cycle until we reach desired mode (hacky but works)
-    cycleAspect();
-    log(`Aspect mode: ${['Off', 'Preserve', 'Stretch'][mode]}`, 'info');
+async function getTransform(sceneItemId) {
+    const data = await request('GetSceneItemTransform', {
+        sceneName: currentScene,
+        sceneItemId: sceneItemId
+    });
+    return data.sceneItemTransform;
+}
+
+async function setTransform(sceneItemId, transform) {
+    await request('SetSceneItemTransform', {
+        sceneName: currentScene,
+        sceneItemId: sceneItemId,
+        sceneItemTransform: transform
+    });
+}
+
+function easeFunc(t, type) {
+    switch(type) {
+        case 'easeIn': return t * t;
+        case 'easeOut': return t * (2 - t);
+        case 'ease': return t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        default: return t; // linear
+    }
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+async function executeSwap() {
+    if (!connected) { log('Not connected', 'error'); return; }
+    if (isSwapping) { log('Swap in progress', 'error'); return; }
+    
+    const nameA = document.getElementById('swapSourceA').value;
+    const nameB = document.getElementById('swapSourceB').value;
+    
+    if (!nameA || !nameB) { log('Select both sources', 'error'); return; }
+    if (nameA === nameB) { log('Select different sources', 'error'); return; }
+    
+    const idA = await getSceneItemId(nameA);
+    const idB = await getSceneItemId(nameB);
+    
+    if (!idA || !idB) { log('Source not found', 'error'); return; }
+    
+    isSwapping = true;
+    log(`Swapping ${nameA} ↔ ${nameB}...`, 'info');
+    
+    try {
+        const tA = await getTransform(idA);
+        const tB = await getTransform(idB);
+        
+        const duration = parseInt(document.getElementById('swapDuration').value) || 300;
+        const easing = document.getElementById('swapEasing').value;
+        
+        // Properties to swap
+        const propsToSwap = ['positionX', 'positionY', 'boundsWidth', 'boundsHeight', 'scaleX', 'scaleY'];
+        
+        const startA = {}, startB = {}, endA = {}, endB = {};
+        for (const p of propsToSwap) {
+            startA[p] = tA[p];
+            startB[p] = tB[p];
+            endA[p] = tB[p];
+            endB[p] = tA[p];
+        }
+        
+        if (duration <= 0) {
+            // Instant swap
+            await setTransform(idA, endA);
+            await setTransform(idB, endB);
+        } else {
+            // Animated swap
+            const startTime = performance.now();
+            
+            await new Promise(resolve => {
+                function animate() {
+                    const elapsed = performance.now() - startTime;
+                    const rawT = Math.min(elapsed / duration, 1);
+                    const t = easeFunc(rawT, easing);
+                    
+                    const currentA = {}, currentB = {};
+                    for (const p of propsToSwap) {
+                        currentA[p] = lerp(startA[p], endA[p], t);
+                        currentB[p] = lerp(startB[p], endB[p], t);
+                    }
+                    
+                    Promise.all([
+                        setTransform(idA, currentA),
+                        setTransform(idB, currentB)
+                    ]).then(() => {
+                        if (rawT < 1) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            resolve();
+                        }
+                    });
+                }
+                requestAnimationFrame(animate);
+            });
+        }
+        
+        log(`Swapped ${nameA} ↔ ${nameB}`, 'success');
+    } catch (e) {
+        log('Swap error: ' + e, 'error');
+    }
+    
+    isSwapping = false;
+}
+
+function saveCurrentSwap() {
+    const nameA = document.getElementById('swapSourceA').value;
+    const nameB = document.getElementById('swapSourceB').value;
+    if (!nameA || !nameB) { log('Select both sources first', 'error'); return; }
+    
+    const name = prompt('Config name:', `${nameA} ↔ ${nameB}`);
+    if (!name) return;
+    
+    swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
+    localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
+    renderSavedSwaps();
+    log(`Saved config: ${name}`, 'success');
+}
+
+function renderSavedSwaps() {
+    const container = document.getElementById('savedSwaps');
+    if (swapConfigs.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding:15px">No saved configs</div>';
+    } else {
+        container.innerHTML = swapConfigs.map((c, i) => `
+            <div class="source-item">
+                <div>
+                    <div class="name">${c.name}</div>
+                    <div class="type">${c.sourceA} ↔ ${c.sourceB}</div>
+                </div>
+                <div style="display:flex;gap:4px">
+                    <button onclick="loadSwapConfig(${i})">▶</button>
+                    <button onclick="deleteSwapConfig(${i})">✕</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    renderDashSwaps();
+}
+
+function loadSwapConfig(index) {
+    const c = swapConfigs[index];
+    document.getElementById('swapSourceA').value = c.sourceA;
+    document.getElementById('swapSourceB').value = c.sourceB;
+    executeSwap();
+}
+
+function deleteSwapConfig(index) {
+    swapConfigs.splice(index, 1);
+    localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
+    renderSavedSwaps();
 }
 
 // ============ Text Cycler ============
@@ -907,8 +1071,12 @@ function glitchText(target, progress) {
 document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     
-    if (e.key >= '1' && e.key <= '9') triggerSwap(parseInt(e.key));
-    if (e.key.toLowerCase() === 'a') cycleAspect();
+    // 1-9 triggers saved swap configs
+    if (e.key >= '1' && e.key <= '9') {
+        const idx = parseInt(e.key) - 1;
+        if (idx < swapConfigs.length) loadSwapConfig(idx);
+    }
+    // Space toggles text cycler
     if (e.key === ' ') {
         e.preventDefault();
         cycleInterval ? stopTextCycle() : startTextCycle();
