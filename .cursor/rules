@@ -1,0 +1,83 @@
+# Strixun Stream Suite - Cursor AI Rules
+
+## Project Overview
+This is an OBS Studio plugin suite consisting of Lua scripts and HTML/CSS/JS control panels for stream automation. It runs in OBS's embedded browser (CEF) and Lua scripting environment.
+
+## Technology Stack
+- **Lua 5.1**: OBS script runtime (obslua bindings)
+- **HTML5/CSS3/Vanilla JS**: Control panels loaded as OBS browser docks
+- **IndexedDB + localStorage**: Dual-storage persistence for OBS browser docks
+- **OBS WebSocket**: Communication between control panel and OBS
+
+## Critical Constraints
+
+### OBS Browser Environment
+- Control panels run in OBS's CEF browser which has localStorage volatility issues
+- Always use the dual-storage system (IndexedDB primary, localStorage backup)
+- External CSS/JS files work via relative paths (file:// protocol)
+- No ES modules - use traditional script loading
+
+### Lua Scripting
+- Use OBS Lua API (obslua) - NOT standard Lua libraries
+- Scripts persist settings via `script_save()` / `script_load()` callbacks
+- Timer callbacks: use `obs.timer_add()` and `obs.timer_remove()`
+- Always check if sources/scenes exist before manipulating them
+
+## Coding Standards
+
+### General
+- NEVER use `!important` in CSS - use proper specificity
+- NEVER write inline JS/CSS/HTML in other file types
+- NEVER create fallback code unless explicitly requested
+- Keep files under 300 lines - split into composable modules if exceeded
+- Use conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, etc.
+
+### JavaScript
+- Use vanilla JS - no frameworks
+- Async/await for promises
+- Use the `storage` object for all persistence (never raw localStorage/IndexedDB)
+- Prefix storage keys with `sss_` (Strixun Stream Suite)
+- Handle OBS WebSocket connection states gracefully
+
+### Lua
+- Use `local` for all variables unless intentionally global
+- Check for nil before accessing properties
+- Use `pcall` for operations that might fail
+- Log errors with `obs.blog(obs.LOG_ERROR, message)`
+
+### CSS
+- Use CSS custom properties (variables) defined in `:root`
+- Follow the existing color palette (--bg, --card, --accent, etc.)
+- Mobile-first responsive design for OBS dock flexibility
+- BEM-ish naming for component classes
+
+## File Structure
+```
+├── *.lua                    # OBS Lua scripts
+├── *.html                   # Browser source/dock pages
+├── assets/
+│   ├── css/                 # Extracted stylesheets
+│   └── js/                  # Extracted JavaScript modules
+├── twitch_clips_player/     # Clips player sub-feature
+├── .changeset/              # Version management
+└── .github/workflows/       # CI/CD
+```
+
+## Storage Architecture
+The control panel uses a robust dual-storage system:
+1. **IndexedDB** (primary): Persistent across OBS sessions
+2. **localStorage** (backup): Fallback for quick reads
+3. **In-memory cache**: Synchronous access for performance
+4. **Auto-recovery snapshots**: Periodic backups to `sss_recovery_snapshot`
+
+## Testing Considerations
+- Always test in OBS browser dock, not just regular browser
+- Test with OBS restart to verify persistence
+- Check both tiny dock (<250px) and normal dock widths
+
+## Do NOT
+- Run build/dev commands without explicit permission
+- Add features or refactor beyond what's requested
+- Create documentation files unless asked
+- Use npm - this project uses pnpm
+
