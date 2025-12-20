@@ -1,0 +1,155 @@
+# Automated Release Workflow
+# Uses Changesets for semantic versioning and creates GitHub releases
+# 
+# Download latest release: https://github.com/{owner}/{repo}/releases/latest/download/strixun-stream-suite.zip
+
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Version & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile --prefer-offline
+          else
+            pnpm install
+          fi
+
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm run version
+          publish: echo "skip-publish"
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Version from package.json
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        id: pkg
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Check if Release Exists
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        id: check_release
+        run: |
+          TAG="v${{ steps.pkg.outputs.version }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release $TAG already exists, skipping..."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release $TAG does not exist, will create..."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release Archive
+        if: steps.changesets.outputs.hasChangesets == 'false' && steps.check_release.outputs.exists == 'false'
+        run: |
+          # Create a clean archive excluding dev/CI files
+          zip -r strixun-stream-suite.zip . \
+            -x "*.git*" \
+            -x "node_modules/*" \
+            -x ".changeset/*" \
+            -x ".github/*" \
+            -x "package.json" \
+            -x "package-lock.json" \
+            -x "pnpm-lock.yaml" \
+            -x "*.log"
+          
+          echo "Archive created:"
+          ls -lh strixun-stream-suite.zip
+
+      - name: Generate Release Notes
+        if: steps.changesets.outputs.hasChangesets == 'false' && steps.check_release.outputs.exists == 'false'
+        id: notes
+        run: |
+          VERSION="v${{ steps.pkg.outputs.version }}"
+          
+          # Check if CHANGELOG.md exists and extract notes for this version
+          if [ -f CHANGELOG.md ]; then
+            # Extract the section for this version (between ## headers)
+            NOTES=$(awk "/^## ${{ steps.pkg.outputs.version }}|^## \[${{ steps.pkg.outputs.version }}\]/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md)
+          fi
+          
+          # If no notes found in changelog, use a default message
+          if [ -z "$NOTES" ]; then
+            NOTES="Release $VERSION of Strixun Stream Suite"
+          fi
+          
+          # Write notes to file for the release
+          echo "$NOTES" > release_notes.md
+          
+          # Append installation instructions
+          cat >> release_notes.md << 'EOF'
+          
+          ---
+          
+          ## 📦 Installation
+          
+          1. Download `strixun-stream-suite.zip` below
+          2. Extract to a folder of your choice
+          3. In OBS Studio: **Tools → Scripts → Add Script**
+          4. Add the Lua scripts you want to use
+          5. Add `control_panel.html` as a **Custom Browser Dock** (View → Docks → Custom Browser Docks)
+          
+          ## 🔗 Direct Download Link
+          
+          ```
+          https://github.com/${{ github.repository }}/releases/latest/download/strixun-stream-suite.zip
+          ```
+          
+          This link always points to the latest release.
+          EOF
+
+      - name: Create GitHub Release
+        if: steps.changesets.outputs.hasChangesets == 'false' && steps.check_release.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}
+          name: v${{ steps.pkg.outputs.version }}
+          body_path: release_notes.md
+          files: strixun-stream-suite.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -1,0 +1,15 @@
+{
+  "name": "strixun-stream-suite",
+  "version": "1.0.0",
+  "description": "OBS Animation Suite - Professional streaming tools for OBS Studio",
+  "private": true,
+  "packageManager": "pnpm@9.15.1",
+  "scripts": {
+    "version": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1"
+  }
+}
+
