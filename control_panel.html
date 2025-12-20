@@ -3668,32 +3668,26 @@ const SCRIPT_FEATURE_MAP = {
 async function checkScriptStatus() {
     scriptStatus.initialized = true;
     
-    // If not connected to OBS, we can't check script status
-    if (!obs || obs.readyState !== WebSocket.OPEN) {
+    // Use the global 'connected' variable which is the source of truth
+    if (!connected) {
         scriptStatus.connected = false;
         updateFeatureAvailability();
         renderStartupBanner();
         return;
     }
     
+    // We're connected!
     scriptStatus.connected = true;
     
-    // Try to get script list from OBS
+    // Try to verify OBS version (optional - won't block if fails)
     try {
-        // Unfortunately OBS WebSocket doesn't have a direct "list scripts" call
-        // We'll infer from whether we can call script functions
-        // For now, mark as unknown and rely on user feedback
-        
-        // Check if we can interact with OBS at all
         const version = await sendRequest('GetVersion');
-        if (version) {
-            log('Connected to OBS ' + version.obsVersion, 'success');
-            
-            // Try to detect scripts by checking for their sources/settings
-            await detectInstalledScripts();
+        if (version && version.obsVersion) {
+            log('OBS ' + version.obsVersion + ' - All features enabled', 'success');
         }
     } catch (err) {
-        log('Could not verify scripts: ' + err.message, 'error');
+        // Non-critical - we're still connected
+        console.warn('Version check failed:', err);
     }
     
     updateFeatureAvailability();
@@ -3701,71 +3695,31 @@ async function checkScriptStatus() {
 }
 
 // Try to detect which scripts are installed by checking OBS state
-async function detectInstalledScripts() {
-    // Reset all to unknown
+// Mark all scripts as available when connected
+// (We can't reliably detect individual Lua scripts from WebSocket)
+function markScriptsAsAvailable() {
     AVAILABLE_SCRIPTS.forEach(script => {
-        scriptStatus.scripts[script.id] = { installed: null, version: null };
+        scriptStatus.scripts[script.id] = { installed: true, version: script.version };
     });
-    
-    try {
-        // Get all sources - if we have sources, source_animations likely works
-        const sourcesResp = await sendRequest('GetSceneItemList', { 
-            sceneName: (await sendRequest('GetCurrentProgramScene')).currentProgramSceneName 
-        });
-        
-        if (sourcesResp && sourcesResp.sceneItems) {
-            // We can see sources, assume basic functionality works
-            scriptStatus.scripts['source_animations'] = { installed: true, version: null };
-            scriptStatus.scripts['source_swap'] = { installed: true, version: null };
-        }
-        
-        // For text cycler, check if there are text sources
-        const inputsResp = await sendRequest('GetInputList');
-        if (inputsResp && inputsResp.inputs) {
-            const hasTextSource = inputsResp.inputs.some(i => 
-                i.inputKind && (i.inputKind.includes('text') || i.inputKind.includes('freetype'))
-            );
-            if (hasTextSource) {
-                scriptStatus.scripts['text_cycler'] = { installed: true, version: null };
-            }
-        }
-        
-        // Quick controls and script manager are utility scripts
-        scriptStatus.scripts['quick_controls'] = { installed: true, version: null };
-        scriptStatus.scripts['script_manager'] = { installed: true, version: null };
-        
-    } catch (err) {
-        // If we can't query OBS, scripts may not be responding
-        console.warn('Script detection failed:', err);
-    }
 }
 
 // Update which features are available based on detected scripts
 function updateFeatureAvailability() {
-    // Reset all features
-    Object.keys(scriptStatus.features).forEach(f => scriptStatus.features[f] = false);
+    // Simple logic: if connected, all features are available
+    // We can't reliably detect individual Lua scripts from WebSocket
+    const allEnabled = scriptStatus.connected;
     
-    // If not connected, nothing is available
-    if (!scriptStatus.connected) {
-        updateTabStates();
-        return;
-    }
-    
-    // Enable features based on detected scripts
-    Object.entries(SCRIPT_FEATURE_MAP).forEach(([scriptId, features]) => {
-        const script = scriptStatus.scripts[scriptId];
-        if (script && script.installed) {
-            features.forEach(f => scriptStatus.features[f] = true);
-        }
+    Object.keys(scriptStatus.features).forEach(f => {
+        scriptStatus.features[f] = allEnabled;
     });
     
-    // If connected, at least some features should work
-    // Enable all features when connected (scripts are loaded in OBS)
-    if (scriptStatus.connected) {
-        Object.keys(scriptStatus.features).forEach(f => scriptStatus.features[f] = true);
+    // Also mark scripts as available when connected
+    if (allEnabled) {
+        markScriptsAsAvailable();
     }
     
     updateTabStates();
+    updateDashboardStatus();
 }
 
 // Update tab visual states based on feature availability
