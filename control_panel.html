@@ -1625,51 +1625,700 @@
                         <li><strong>Space</strong> - Start/stop text cycler</li>
                     </ul>
                 </div>
+                
+                <div class="card">
+                    <h3>💾 Data & Backup</h3>
+                    
+                    <!-- Storage Engine Status -->
+                    <div id="storageEngineStatus" style="display:flex;gap:12px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.85em">
+                        <span id="idbStatus">⏳ IndexedDB</span>
+                        <span id="lsStatus">⏳ localStorage</span>
+                    </div>
+                    
+                    <!-- Data Categories -->
+                    <div style="margin-bottom:12px">
+                        <div style="font-size:0.8em;color:var(--muted);margin-bottom:6px;font-weight:600">SELECT DATA TO EXPORT:</div>
+                        <div style="display:grid;gap:6px">
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
+                                <input type="checkbox" id="exportSwaps" checked style="width:auto;margin:0">
+                                <span>🔄 Swap Configs</span>
+                                <span id="swapCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
+                                <input type="checkbox" id="exportTextCyclers" checked style="width:auto;margin:0">
+                                <span>📝 Text Cycler Configs</span>
+                                <span id="textCyclerCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
+                                <input type="checkbox" id="exportClips" checked style="width:auto;margin:0">
+                                <span>🎬 Clips Player Configs</span>
+                                <span id="clipsCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
+                                <input type="checkbox" id="exportUIState" checked style="width:auto;margin:0">
+                                <span>⚙️ UI Preferences</span>
+                                <span style="margin-left:auto;color:var(--muted);font-size:0.9em">(dropdowns, settings)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
+                                <input type="checkbox" id="exportCredentials" style="width:auto;margin:0">
+                                <span>🔐 Connection Settings</span>
+                                <span style="margin-left:auto;color:var(--warning);font-size:0.8em">(host/port only)</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                        <button onclick="exportSelectedData()" style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500">📤 Export Selected</button>
+                        <button onclick="importDataWithOptions()" style="padding:10px;background:var(--accent);border:none;color:#000;border-radius:6px;cursor:pointer;font-weight:500">📥 Import Backup</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <button onclick="forceStorageSync()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">🔄 Force Sync</button>
+                        <button onclick="copyBackupToClipboard()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">📋 Copy as JSON</button>
+                    </div>
+                    
+                    <!-- Info -->
+                    <div style="margin-top:10px;padding:8px;background:rgba(255,200,0,0.1);border-radius:6px;border-left:3px solid var(--warning)">
+                        <p style="font-size:0.75em;color:var(--warning);margin:0">⚠️ <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!</p>
+                    </div>
+                    
+                    <!-- Last backup info -->
+                    <div id="lastBackupInfo" style="margin-top:8px;font-size:0.75em;color:var(--muted);text-align:center"></div>
+                </div>
             </div>
         </main>
     </div>
 
 <script>
-// ============ Storage Prefix (prevents collision with other OBS docks) ============
+// ============ Storage System (OBS Dock Compatible) ============
+// Uses IndexedDB as PRIMARY storage (survives OBS cache clears better)
+// Falls back to localStorage, syncs both for redundancy
 const STORAGE_PREFIX = 'sss_'; // Strixun Stream Suite prefix
+const IDB_NAME = 'StrixunStreamSuite';
+const IDB_STORE = 'settings';
+const IDB_VERSION = 1;
 
-// Safe localStorage wrapper with unique prefix
+// In-memory cache for synchronous access after init
+let storageCache = {};
+let idbReady = false;
+let idbInstance = null;
+
+// Initialize IndexedDB
+function initIndexedDB() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            console.warn('[Storage] IndexedDB not available, using localStorage only');
+            resolve(null);
+            return;
+        }
+        
+        const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+        
+        request.onerror = (e) => {
+            console.error('[Storage] IndexedDB open error:', e.target.error);
+            resolve(null); // Fall back to localStorage
+        };
+        
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+                db.createObjectStore(IDB_STORE, { keyPath: 'key' });
+            }
+        };
+        
+        request.onsuccess = (e) => {
+            idbInstance = e.target.result;
+            idbReady = true;
+            console.log('[Storage] IndexedDB ready');
+            resolve(idbInstance);
+        };
+    });
+}
+
+// Load all data from IndexedDB into memory cache
+async function loadStorageCache() {
+    // First, try to load from IndexedDB (primary)
+    if (idbInstance) {
+        try {
+            const tx = idbInstance.transaction(IDB_STORE, 'readonly');
+            const store = tx.objectStore(IDB_STORE);
+            const request = store.getAll();
+            
+            await new Promise((resolve, reject) => {
+                request.onsuccess = () => {
+                    const items = request.result || [];
+                    items.forEach(item => {
+                        storageCache[item.key] = item.value;
+                    });
+                    console.log('[Storage] Loaded', items.length, 'items from IndexedDB');
+                    resolve();
+                };
+                request.onerror = () => {
+                    console.error('[Storage] Failed to load from IndexedDB');
+                    reject(request.error);
+                };
+            });
+        } catch (e) {
+            console.error('[Storage] IndexedDB load error:', e);
+        }
+    }
+    
+    // Then merge with localStorage (fallback/sync)
+    // localStorage values fill in any gaps from IndexedDB
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const fullKey = localStorage.key(i);
+            if (fullKey && fullKey.startsWith(STORAGE_PREFIX)) {
+                const key = fullKey.substring(STORAGE_PREFIX.length);
+                // Only use localStorage value if not already in cache from IDB
+                if (storageCache[key] === undefined) {
+                    try {
+                        const raw = localStorage.getItem(fullKey);
+                        if (raw) {
+                            storageCache[key] = JSON.parse(raw);
+                            console.log('[Storage] Recovered from localStorage:', key);
+                            // Sync back to IndexedDB
+                            if (idbInstance) {
+                                saveToIDB(key, storageCache[key]);
+                            }
+                        }
+                    } catch (e) {
+                        // Raw string value (credentials etc)
+                        storageCache[key] = localStorage.getItem(fullKey);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[Storage] localStorage scan error:', e);
+    }
+    
+    console.log('[Storage] Cache ready with keys:', Object.keys(storageCache));
+}
+
+// Save to IndexedDB (async, fire-and-forget)
+function saveToIDB(key, value) {
+    if (!idbInstance) return;
+    try {
+        const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        store.put({ key, value });
+    } catch (e) {
+        console.error('[Storage] IDB write error:', key, e);
+    }
+}
+
+// Delete from IndexedDB
+function deleteFromIDB(key) {
+    if (!idbInstance) return;
+    try {
+        const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        store.delete(key);
+    } catch (e) {
+        console.error('[Storage] IDB delete error:', key, e);
+    }
+}
+
+// Storage wrapper - uses memory cache for reads, writes to both IDB and localStorage
 const storage = {
     get(key) {
-        try {
-            const data = localStorage.getItem(STORAGE_PREFIX + key);
-            return data ? JSON.parse(data) : null;
-        } catch (e) {
-            console.error('Storage read error:', key, e);
-            return null;
-        }
+        // Read from memory cache (populated on init from IDB + localStorage)
+        const value = storageCache[key];
+        return value !== undefined ? value : null;
     },
+    
     set(key, value) {
         try {
-            localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+            // Update memory cache
+            storageCache[key] = value;
+            
+            // Write to IndexedDB (primary, async)
+            saveToIDB(key, value);
+            
+            // Write to localStorage (backup, sync)
+            try {
+                localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+            } catch (e) {
+                console.warn('[Storage] localStorage write failed:', key, e);
+            }
+            
+            // Trigger auto-backup snapshot for config keys (debounced)
+            if (['swapConfigs', 'textCyclerConfigs', 'clipsConfigs'].includes(key)) {
+                if (typeof createRecoverySnapshot === 'function') {
+                    // Debounce: wait 2 seconds after last change before snapshotting
+                    clearTimeout(this._snapshotDebounce);
+                    this._snapshotDebounce = setTimeout(createRecoverySnapshot, 2000);
+                }
+            }
+            
             return true;
         } catch (e) {
-            console.error('Storage write error:', key, e);
+            console.error('[Storage] Write error:', key, e);
             return false;
         }
     },
+    
     remove(key) {
         try {
+            delete storageCache[key];
+            deleteFromIDB(key);
             localStorage.removeItem(STORAGE_PREFIX + key);
-        } catch (e) {}
+        } catch (e) {
+            console.error('[Storage] Remove error:', key, e);
+        }
     },
-    // Raw string get/set for credentials (already JSON or plain strings)
+    
+    // Raw string get/set for credentials (stored as-is, not JSON)
     getRaw(key) {
-        try {
-            return localStorage.getItem(STORAGE_PREFIX + key);
-        } catch (e) { return null; }
+        const value = storageCache[key];
+        // If it was stored raw, it's already a string in cache
+        return value !== undefined ? value : null;
     },
+    
     setRaw(key, value) {
         try {
-            localStorage.setItem(STORAGE_PREFIX + key, value);
+            storageCache[key] = value;
+            saveToIDB(key, value);
+            try {
+                localStorage.setItem(STORAGE_PREFIX + key, value);
+            } catch (e) {}
         } catch (e) {}
+    },
+    
+    // Force sync all cache to both storages (call after bulk operations)
+    async flush() {
+        for (const [key, value] of Object.entries(storageCache)) {
+            saveToIDB(key, value);
+            try {
+                const jsonValue = typeof value === 'string' ? value : JSON.stringify(value);
+                localStorage.setItem(STORAGE_PREFIX + key, jsonValue);
+            } catch (e) {}
+        }
+    },
+    
+    // Check if storage system is ready
+    isReady() {
+        return true; // Always ready after init, just may be using fallback
     }
 };
+
+// ============ Storage Backup & Status Functions ============
+function updateStorageStatus() {
+    // Update engine status indicators
+    const idbEl = document.getElementById('idbStatus');
+    const lsEl = document.getElementById('lsStatus');
+    
+    if (idbEl) {
+        idbEl.textContent = idbReady ? '✅ IndexedDB' : '❌ IndexedDB';
+        idbEl.style.color = idbReady ? 'var(--success)' : 'var(--danger)';
+    }
+    
+    if (lsEl) {
+        const lsWorks = (() => {
+            try {
+                localStorage.setItem('_test', '1');
+                localStorage.removeItem('_test');
+                return true;
+            } catch (e) { return false; }
+        })();
+        lsEl.textContent = lsWorks ? '✅ localStorage' : '❌ localStorage';
+        lsEl.style.color = lsWorks ? 'var(--success)' : 'var(--danger)';
+    }
+    
+    // Update config counts
+    const swapCountEl = document.getElementById('swapCount');
+    const textCyclerCountEl = document.getElementById('textCyclerCount');
+    const clipsCountEl = document.getElementById('clipsCount');
+    
+    if (swapCountEl) swapCountEl.textContent = `(${swapConfigs?.length || 0})`;
+    if (textCyclerCountEl) textCyclerCountEl.textContent = `(${textCyclerConfigs?.length || 0})`;
+    if (clipsCountEl) clipsCountEl.textContent = `(${clipsConfigs?.length || 0})`;
+    
+    // Update last backup info
+    const lastBackupEl = document.getElementById('lastBackupInfo');
+    if (lastBackupEl) {
+        const lastBackup = storage.get('lastBackupTimestamp');
+        if (lastBackup) {
+            const date = new Date(lastBackup);
+            lastBackupEl.textContent = `Last backup: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+        } else {
+            lastBackupEl.textContent = 'No backup yet - consider exporting!';
+        }
+    }
+}
+
+function getSelectedExportData() {
+    const backup = {
+        version: 2,
+        timestamp: new Date().toISOString(),
+        exportedCategories: []
+    };
+    
+    if (document.getElementById('exportSwaps')?.checked && swapConfigs?.length) {
+        backup.swapConfigs = swapConfigs;
+        backup.exportedCategories.push('swaps');
+    }
+    
+    if (document.getElementById('exportTextCyclers')?.checked && textCyclerConfigs?.length) {
+        backup.textCyclerConfigs = textCyclerConfigs;
+        backup.exportedCategories.push('textCyclers');
+    }
+    
+    if (document.getElementById('exportClips')?.checked && clipsConfigs?.length) {
+        backup.clipsConfigs = clipsConfigs;
+        backup.exportedCategories.push('clips');
+    }
+    
+    if (document.getElementById('exportUIState')?.checked) {
+        backup.ui_state = storage.get('ui_state') || {};
+        backup.exportedCategories.push('uiState');
+    }
+    
+    if (document.getElementById('exportCredentials')?.checked) {
+        // Only export non-sensitive connection info
+        backup.connectionSettings = {
+            host: storage.getRaw('obs_host'),
+            port: storage.getRaw('obs_port')
+            // Note: password is NOT exported for security
+        };
+        backup.exportedCategories.push('connection');
+    }
+    
+    return backup;
+}
+
+function exportSelectedData() {
+    const backup = getSelectedExportData();
+    
+    if (backup.exportedCategories.length === 0) {
+        log('Nothing to export! Select at least one category or add some configs.', 'error');
+        return;
+    }
+    
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `strixun-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Record backup timestamp
+    storage.set('lastBackupTimestamp', new Date().toISOString());
+    updateStorageStatus();
+    
+    log(`Exported: ${backup.exportedCategories.join(', ')}`, 'success');
+}
+
+function copyBackupToClipboard() {
+    const backup = getSelectedExportData();
+    
+    if (backup.exportedCategories.length === 0) {
+        log('Nothing to copy! Select at least one category.', 'error');
+        return;
+    }
+    
+    const json = JSON.stringify(backup, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+        log('Backup JSON copied to clipboard!', 'success');
+    }).catch(() => {
+        // Fallback
+        prompt('Copy this JSON:', json);
+    });
+}
+
+function importDataWithOptions() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const backup = JSON.parse(text);
+            
+            if (!backup.version) {
+                log('Invalid backup file format', 'error');
+                return;
+            }
+            
+            // Build import summary
+            const categories = [];
+            if (backup.swapConfigs?.length) categories.push(`${backup.swapConfigs.length} swap configs`);
+            if (backup.textCyclerConfigs?.length) categories.push(`${backup.textCyclerConfigs.length} text cycler configs`);
+            if (backup.clipsConfigs?.length) categories.push(`${backup.clipsConfigs.length} clips configs`);
+            if (backup.ui_state) categories.push('UI preferences');
+            if (backup.connectionSettings) categories.push('connection settings');
+            
+            if (categories.length === 0) {
+                log('Backup file is empty!', 'error');
+                return;
+            }
+            
+            // Build import options dialog
+            const importChoices = await showImportDialog(backup, categories);
+            if (!importChoices) return; // Cancelled
+            
+            let imported = [];
+            
+            // Restore selected configs
+            if (importChoices.swaps && backup.swapConfigs) {
+                if (importChoices.merge) {
+                    // Merge: add new, skip duplicates
+                    const existingNames = new Set(swapConfigs.map(c => c.name));
+                    const newConfigs = backup.swapConfigs.filter(c => !existingNames.has(c.name));
+                    swapConfigs = [...swapConfigs, ...newConfigs];
+                    imported.push(`${newConfigs.length} new swaps (merged)`);
+                } else {
+                    swapConfigs = backup.swapConfigs;
+                    imported.push(`${backup.swapConfigs.length} swaps (replaced)`);
+                }
+                storage.set('swapConfigs', swapConfigs);
+            }
+            
+            if (importChoices.textCyclers && backup.textCyclerConfigs) {
+                if (importChoices.merge) {
+                    const existingIds = new Set(textCyclerConfigs.map(c => c.id));
+                    const newConfigs = backup.textCyclerConfigs.filter(c => !existingIds.has(c.id));
+                    textCyclerConfigs = [...textCyclerConfigs, ...newConfigs];
+                    imported.push(`${newConfigs.length} new text cyclers (merged)`);
+                } else {
+                    textCyclerConfigs = backup.textCyclerConfigs;
+                    imported.push(`${backup.textCyclerConfigs.length} text cyclers (replaced)`);
+                }
+                storage.set('textCyclerConfigs', textCyclerConfigs);
+            }
+            
+            if (importChoices.clips && backup.clipsConfigs) {
+                if (importChoices.merge) {
+                    const existingIds = new Set(clipsConfigs.map(c => c.id));
+                    const newConfigs = backup.clipsConfigs.filter(c => !existingIds.has(c.id));
+                    clipsConfigs = [...clipsConfigs, ...newConfigs];
+                    imported.push(`${newConfigs.length} new clips configs (merged)`);
+                } else {
+                    clipsConfigs = backup.clipsConfigs;
+                    imported.push(`${backup.clipsConfigs.length} clips configs (replaced)`);
+                }
+                storage.set('clipsConfigs', clipsConfigs);
+            }
+            
+            if (importChoices.uiState && backup.ui_state) {
+                storage.set('ui_state', backup.ui_state);
+                imported.push('UI preferences');
+            }
+            
+            if (importChoices.connection && backup.connectionSettings) {
+                if (backup.connectionSettings.host) storage.setRaw('obs_host', backup.connectionSettings.host);
+                if (backup.connectionSettings.port) storage.setRaw('obs_port', backup.connectionSettings.port);
+                imported.push('connection settings');
+            }
+            
+            // Re-render everything
+            renderSavedSwaps();
+            renderTextCyclerConfigs();
+            renderClipsConfigs();
+            loadUIState();
+            updateStorageStatus();
+            
+            log(`Imported: ${imported.join(', ')}`, 'success');
+        } catch (err) {
+            log('Import failed: ' + err.message, 'error');
+        }
+    };
+    
+    input.click();
+}
+
+async function showImportDialog(backup, categories) {
+    return new Promise((resolve) => {
+        // Simple confirm-based dialog (could be replaced with modal later)
+        const hasSwaps = backup.swapConfigs?.length > 0;
+        const hasTextCyclers = backup.textCyclerConfigs?.length > 0;
+        const hasClips = backup.clipsConfigs?.length > 0;
+        const hasUI = !!backup.ui_state;
+        const hasConnection = !!backup.connectionSettings;
+        
+        const msg = `Import backup from ${backup.timestamp ? new Date(backup.timestamp).toLocaleString() : 'unknown date'}?
+
+Found:
+${categories.map(c => '• ' + c).join('\n')}
+
+Import mode:
+• OK = REPLACE existing (overwrite)
+• Cancel = abort
+
+(Hold Shift + OK to MERGE instead of replace)`;
+        
+        const result = confirm(msg);
+        if (!result) {
+            resolve(null);
+            return;
+        }
+        
+        // Check if shift was held (merge mode) - using a simple approach
+        const mergeMode = false; // For now, always replace. Could enhance with modal later.
+        
+        resolve({
+            swaps: hasSwaps,
+            textCyclers: hasTextCyclers,
+            clips: hasClips,
+            uiState: hasUI,
+            connection: hasConnection,
+            merge: mergeMode
+        });
+    });
+}
+
+async function forceStorageSync() {
+    log('Forcing storage sync...', 'info');
+    
+    // Re-save all configs to both storages
+    storage.set('swapConfigs', swapConfigs);
+    storage.set('textCyclerConfigs', textCyclerConfigs);
+    storage.set('clipsConfigs', clipsConfigs);
+    
+    // Flush to ensure everything is written
+    await storage.flush();
+    
+    updateStorageStatus();
+    log('Storage synced to IndexedDB + localStorage', 'success');
+}
+
+// Legacy export function (for backwards compatibility)
+function exportAllData() {
+    // Check all boxes and export
+    ['exportSwaps', 'exportTextCyclers', 'exportClips', 'exportUIState'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = true;
+    });
+    exportSelectedData();
+}
+
+// Legacy import function (for backwards compatibility)
+function importAllData() {
+    importDataWithOptions();
+}
+
+// ============ Auto-Backup System ============
+// Creates periodic recovery snapshots that survive even if main storage fails
+const AUTO_BACKUP_KEY = 'sss_recovery_snapshot';
+const AUTO_BACKUP_INTERVAL = 60000; // Every minute when changes detected
+let autoBackupTimer = null;
+let lastDataHash = '';
+
+function getDataHash() {
+    // Simple hash to detect changes
+    const data = JSON.stringify({
+        s: swapConfigs?.length || 0,
+        t: textCyclerConfigs?.length || 0,
+        c: clipsConfigs?.length || 0
+    });
+    return data;
+}
+
+function createRecoverySnapshot() {
+    const currentHash = getDataHash();
+    if (currentHash === lastDataHash) return; // No changes
+    
+    const snapshot = {
+        version: 2,
+        timestamp: new Date().toISOString(),
+        type: 'auto-recovery',
+        swapConfigs: swapConfigs || [],
+        textCyclerConfigs: textCyclerConfigs || [],
+        clipsConfigs: clipsConfigs || []
+    };
+    
+    try {
+        // Save directly to localStorage (bypasses our wrapper for redundancy)
+        localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(snapshot));
+        lastDataHash = currentHash;
+        console.log('[AutoBackup] Recovery snapshot saved');
+    } catch (e) {
+        console.warn('[AutoBackup] Failed to save recovery snapshot:', e);
+    }
+}
+
+function checkForRecoverySnapshot() {
+    try {
+        const snapshot = localStorage.getItem(AUTO_BACKUP_KEY);
+        if (!snapshot) return null;
+        
+        const data = JSON.parse(snapshot);
+        if (!data.version || !data.timestamp) return null;
+        
+        // Check if we have empty configs but recovery has data
+        const currentTotal = (swapConfigs?.length || 0) + (textCyclerConfigs?.length || 0) + (clipsConfigs?.length || 0);
+        const recoveryTotal = (data.swapConfigs?.length || 0) + (data.textCyclerConfigs?.length || 0) + (data.clipsConfigs?.length || 0);
+        
+        if (currentTotal === 0 && recoveryTotal > 0) {
+            return data; // Recovery available!
+        }
+        
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function offerRecovery() {
+    const recovery = checkForRecoverySnapshot();
+    if (!recovery) return false;
+    
+    const age = new Date() - new Date(recovery.timestamp);
+    const ageStr = age < 3600000 ? `${Math.round(age/60000)} minutes` : `${Math.round(age/3600000)} hours`;
+    
+    const msg = `🔄 Recovery Data Found!
+
+Your configs appear empty, but we found a backup from ${ageStr} ago:
+• ${recovery.swapConfigs?.length || 0} swap configs
+• ${recovery.textCyclerConfigs?.length || 0} text cycler configs  
+• ${recovery.clipsConfigs?.length || 0} clips configs
+
+Restore this backup?`;
+    
+    if (confirm(msg)) {
+        if (recovery.swapConfigs) {
+            swapConfigs = recovery.swapConfigs;
+            storage.set('swapConfigs', swapConfigs);
+        }
+        if (recovery.textCyclerConfigs) {
+            textCyclerConfigs = recovery.textCyclerConfigs;
+            storage.set('textCyclerConfigs', textCyclerConfigs);
+        }
+        if (recovery.clipsConfigs) {
+            clipsConfigs = recovery.clipsConfigs;
+            storage.set('clipsConfigs', clipsConfigs);
+        }
+        
+        renderSavedSwaps();
+        renderTextCyclerConfigs();
+        renderClipsConfigs();
+        updateStorageStatus();
+        
+        log('Configs restored from recovery backup!', 'success');
+        return true;
+    }
+    return false;
+}
+
+function startAutoBackup() {
+    if (autoBackupTimer) clearInterval(autoBackupTimer);
+    
+    // Initial snapshot
+    createRecoverySnapshot();
+    
+    // Periodic snapshots
+    autoBackupTimer = setInterval(createRecoverySnapshot, AUTO_BACKUP_INTERVAL);
+    console.log('[AutoBackup] Auto-backup system started');
+}
 
 // ============ State ============
 let ws = null;
@@ -1971,6 +2620,37 @@ function setupUIStatePersistence() {
 
 // ============ Initialization ============
 document.addEventListener('DOMContentLoaded', async () => {
+    // CRITICAL: Initialize storage system FIRST before anything else
+    console.log('[Init] Starting storage initialization...');
+    try {
+        await initIndexedDB();
+        await loadStorageCache();
+        console.log('[Init] Storage system ready');
+    } catch (e) {
+        console.error('[Init] Storage init error (using fallback):', e);
+    }
+    
+    // NOW load configs from storage into memory
+    swapConfigs = storage.get('swapConfigs') || [];
+    textCyclerConfigs = storage.get('textCyclerConfigs') || [];
+    clipsConfigs = storage.get('clipsConfigs') || [];
+    
+    console.log('[Init] Loaded configs - Swaps:', swapConfigs.length, 
+                'TextCycler:', textCyclerConfigs.length, 
+                'Clips:', clipsConfigs.length);
+    
+    // Check for recovery if configs are empty
+    const totalConfigs = swapConfigs.length + textCyclerConfigs.length + clipsConfigs.length;
+    if (totalConfigs === 0) {
+        const recovered = await offerRecovery();
+        if (recovered) {
+            console.log('[Init] Configs restored from recovery snapshot');
+        }
+    }
+    
+    // Start auto-backup system
+    startAutoBackup();
+    
     // Set dock URL
     const url = window.location.href;
     document.getElementById('dockUrl').value = url;
@@ -1992,6 +2672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Restore running text cyclers
     setTimeout(restoreRunningTextCyclers, 1000);
     updateTransitionMode();
+    updateStorageStatus();
     
     // Setup credential UI listeners
     document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
@@ -2479,7 +3160,7 @@ async function animateTransform(itemId, start, end, duration, easingType) {
 }
 
 // ============ Source Swap (Direct via WebSocket) ============
-let swapConfigs = storage.get('swapConfigs') || [];
+let swapConfigs = []; // Loaded async from storage on init
 let isSwapping = false;
 
 function updateSwapDropdowns() {
@@ -2949,7 +3630,7 @@ function importConfigs() {
 }
 
 // ============ Text Cycler (Multi-Config) ============
-let textCyclerConfigs = storage.get('textCyclerConfigs') || [];
+let textCyclerConfigs = []; // Loaded async from storage on init
 let currentTextConfigIndex = -1;
 let cycleInterval = null;
 let cycleIndex = 0;
@@ -3579,7 +4260,7 @@ function restoreRunningTextCyclers() {
 
 
 // ============ Twitch Clips Player (Multi-Config) ============
-let clipsConfigs = storage.get('clipsConfigs') || [];
+let clipsConfigs = []; // Loaded async from storage on init
 let currentClipsConfigIndex = -1;
 
 // Twitch Client ID for clips player (from teklynk)

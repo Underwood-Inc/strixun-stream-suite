@@ -1,0 +1,301 @@
+/**
+ * Strixun Stream Suite - Control Panel Styles
+ * 
+ * This CSS file can be used if you want to customize the control panel styling.
+ * The main control_panel.html uses inline styles for OBS compatibility,
+ * but this extracted version is provided for reference and customization.
+ * 
+ * To use: Replace <style>...</style> in control_panel.html with:
+ * <link rel="stylesheet" href="assets/css/control-panel.css">
+ */
+
+/* ============ CSS Variables ============ */
+:root {
+    /* idling.app UI Color Palette */
+    --bg: #1a1611;
+    --bg-dark: #0f0e0b;
+    --card: #252017;
+    --border: #3d3627;
+    --border-light: #4a4336;
+    
+    /* Brand Colors */
+    --accent: #edae49;
+    --accent-light: #f9df74;
+    --accent-dark: #c68214;
+    --accent2: #6495ed;
+    
+    /* Status Colors */
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #ea2b1f;
+    --info: #6495ed;
+    
+    /* Text Colors */
+    --text: #f9f9f9;
+    --text-secondary: #b8b8b8;
+    --muted: #888;
+    
+    /* Glass Effects */
+    --glass-bg: rgba(37, 32, 23, 0.95);
+    --glass-bg-dark: rgba(26, 22, 17, 0.98);
+    --glass-border: rgba(61, 54, 39, 0.8);
+}
+
+/* ============ Reset & Base ============ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+/* ============ Scrollbar ============ */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+}
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+/* ============ Layout ============ */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.header h1 { font-size: 1.1em; display: flex; align-items: center; gap: 6px; }
+.title-text { white-space: nowrap; }
+
+.status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--danger);
+}
+.status-dot.connected { background: var(--success); }
+.status-dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
+
+@keyframes pulse { 50% { opacity: 0.5; } }
+
+/* ============ Tabs ============ */
+.tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+}
+.tab {
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    font-size: 1.1em;
+    flex: 1;
+    text-align: center;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ============ Content ============ */
+.content { flex: 1; padding: 20px; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ============ Components ============ */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.card h3 {
+    font-size: 0.9em;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+/* ============ Forms ============ */
+input, select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+label { display: block; font-size: 0.85em; color: var(--muted); margin-bottom: 4px; }
+
+/* ============ Buttons ============ */
+button {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+}
+button:hover { background: var(--border); }
+button:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #1a1611; font-weight: 600; }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-success { background: var(--success); border-color: var(--success); color: #fff; font-weight: 600; }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+.btn-lg { padding: 12px 24px; font-size: 16px; }
+.btn-block { width: 100%; }
+.btn-link { 
+    background: transparent; 
+    border: none; 
+    color: var(--accent); 
+    padding: 0; 
+    text-decoration: underline; 
+    cursor: pointer;
+    font-size: inherit;
+}
+.btn-link:hover { color: var(--accent-light); text-decoration: none; }
+
+/* ============ Grid & Layout ============ */
+.row { display: flex; gap: 8px; margin-bottom: 8px; }
+.row > * { flex: 1; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+
+/* ============ Source Components ============ */
+.source-btn {
+    padding: 16px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border: none;
+    color: #1a1611;
+    font-weight: 600;
+}
+.source-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4); }
+
+.source-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+.source-item .name { font-weight: 500; }
+.source-item .type { font-size: 0.8em; color: var(--muted); }
+
+/* ============ Log ============ */
+.log {
+    background: #000;
+    border-radius: 6px;
+    padding: 12px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.log-entry { margin-bottom: 2px; }
+.log-entry.error { color: var(--danger); }
+.log-entry.success { color: var(--success); }
+.log-entry.info { color: var(--accent); }
+
+/* ============ Badges ============ */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    background: var(--border);
+}
+.badge-success { background: var(--success); color: #000; }
+
+/* ============ Empty State ============ */
+.empty-state {
+    text-align: center;
+    padding: 12px 8px;
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+/* ============ Config List ============ */
+.config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.config-list .source-item {
+    transition: all 0.15s;
+}
+.config-list .source-item:hover {
+    background: var(--border);
+    border-left: 3px solid var(--accent);
+}
+
+/* ============ URL Box ============ */
+.url-box {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.url-box input { flex: 1; margin: 0; }
+.url-box button { flex-shrink: 0; }
+
+/* ============ Misc ============ */
+code {
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    word-break: break-all;
+}
+
+.hint {
+    font-size: 0.75em;
+    color: var(--muted);
+    margin: 4px 0 8px;
+}
+
+/* NOTE: This is a partial extraction. The full CSS is in control_panel.html */
+/* For the complete styles, refer to the inline <style> block in control_panel.html */
+

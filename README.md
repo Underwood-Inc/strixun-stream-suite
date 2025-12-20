@@ -4,6 +4,24 @@ An OBS Animation Suite for source-level animation(s)
 
 A comprehensive suite of Lua scripts and browser sources for OBS Studio that provides smooth, professional animations for sources, text cycling with effects, and integrated Twitch clip playback.
 
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Scripts](#scripts)
+- [Control Panel (Dock)](#control-panel-dock)
+- [Data Persistence](#data-persistence)
+- [Twitch Clips Player](#twitch-clips-player)
+- [Troubleshooting](#troubleshooting)
+- [Version History](#version-history)
+- [References](#references)
+
+---
+
 ## Features
 
 | Script | Description |
@@ -16,10 +34,186 @@ A comprehensive suite of Lua scripts and browser sources for OBS Studio that pro
 | **Control Panel** | Web-based dock UI to control everything |
 | **Twitch Clips Player** | Auto-play Twitch clips with chat command support |
 
+---
+
+## Architecture
+
+### System Overview
+
+```mermaid
+flowchart TB
+    subgraph OBS["OBS Studio"]
+        subgraph Scripts["Lua Scripts"]
+            SA[source_animations.lua]
+            SS[source_swap.lua]
+            TC[text_cycler.lua]
+            QC[quick_controls.lua]
+            SM[script_manager.lua]
+        end
+        
+        subgraph Sources["Browser Sources"]
+            TCD[text_cycler_display.html]
+            TCP[twitch_clips_player/]
+        end
+        
+        subgraph Docks["Custom Browser Docks"]
+            CP[control_panel.html]
+        end
+        
+        WS[WebSocket Server<br/>Port 4455]
+    end
+    
+    CP <-->|WebSocket| WS
+    WS <--> Scripts
+    CP -.->|BroadcastChannel| TCD
+    
+    style OBS fill:#1a1a2e,stroke:#e94560,stroke-width:2px
+    style CP fill:#0f3460,stroke:#e94560
+    style Scripts fill:#16213e,stroke:#0f3460
+```
+
+### Component Communication
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CP as Control Panel
+    participant WS as OBS WebSocket
+    participant Scripts as Lua Scripts
+    participant Scene as OBS Scene
+    
+    User->>CP: Click "Swap Sources"
+    CP->>WS: WebSocket Request
+    WS->>Scripts: Execute Swap
+    Scripts->>Scene: Animate Sources
+    Scene-->>Scripts: Animation Complete
+    Scripts-->>WS: Success Response
+    WS-->>CP: Update UI
+    CP-->>User: Show Confirmation
+```
+
+### Data Flow & Storage
+
+```mermaid
+flowchart LR
+    subgraph Browser["Control Panel (Browser)"]
+        UI[User Interface]
+        Cache[Memory Cache]
+    end
+    
+    subgraph Storage["Persistent Storage"]
+        IDB[(IndexedDB<br/>PRIMARY)]
+        LS[(localStorage<br/>BACKUP)]
+        RS[(Recovery<br/>Snapshot)]
+    end
+    
+    subgraph Backup["External Backup"]
+        JSON[JSON Export File]
+    end
+    
+    UI --> Cache
+    Cache --> IDB
+    Cache --> LS
+    Cache -.->|Every 60s| RS
+    Cache <-->|Import/Export| JSON
+    
+    IDB -.->|Recovery| Cache
+    LS -.->|Fallback| Cache
+    RS -.->|Auto-Recovery| Cache
+    
+    style IDB fill:#2ecc71,stroke:#27ae60
+    style LS fill:#f39c12,stroke:#e67e22
+    style RS fill:#3498db,stroke:#2980b9
+```
+
+### File Structure
+
+```mermaid
+flowchart TD
+    Root[OBS-Animation-Suite/]
+    
+    Root --> Lua[📜 Lua Scripts]
+    Root --> Browser[🌐 Browser Sources]
+    Root --> Clips[🎬 Twitch Clips Player]
+    Root --> Config[⚙️ Config]
+    Root --> Docs[📖 README.md]
+    
+    Lua --> SA[source_animations.lua<br/>v2.8.0]
+    Lua --> SS[source_swap.lua<br/>v3.1.0]
+    Lua --> TC_L[text_cycler.lua<br/>v1.0.0]
+    Lua --> QC[quick_controls.lua<br/>v1.0.0]
+    Lua --> SM[script_manager.lua<br/>v1.0.0]
+    
+    Browser --> CP[control_panel.html]
+    Browser --> TCD[text_cycler_display.html]
+    
+    Clips --> Assets[assets/]
+    Assets --> CSS[css/]
+    Assets --> JS[js/]
+    Assets --> Img[images/]
+    
+    style Root fill:#1a1a2e,stroke:#e94560
+    style Lua fill:#9b59b6,stroke:#8e44ad
+    style Browser fill:#3498db,stroke:#2980b9
+    style Clips fill:#e74c3c,stroke:#c0392b
+```
+
+### Animation State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: Source Created
+    
+    Idle --> ShowAnimation: Visibility ON
+    Idle --> Idle: Already Visible
+    
+    ShowAnimation --> Animating: Start Animation
+    Animating --> Visible: Animation Complete
+    
+    Visible --> HideAnimation: Visibility OFF
+    HideAnimation --> Animating2: Start Animation
+    Animating2 --> Hidden: Animation Complete
+    
+    Hidden --> ShowAnimation: Visibility ON
+    
+    note right of Animating
+        Opacity filter applied
+        Position/Scale interpolated
+        Easing function used
+    end note
+```
+
+### Text Cycler Modes
+
+```mermaid
+flowchart TB
+    subgraph Legacy["Legacy Mode (Direct)"]
+        TC[Text Cycler Script]
+        OBS_TXT[OBS Text Source]
+        TC -->|obs_source_update| OBS_TXT
+    end
+    
+    subgraph Modern["Browser Mode (Recommended)"]
+        CP2[Control Panel]
+        BC[BroadcastChannel]
+        TCD2[text_cycler_display.html]
+        CP2 -->|postMessage| BC
+        BC -->|Receive| TCD2
+        TCD2 -->|CSS Animations| Display[Animated Text]
+    end
+    
+    style Modern fill:#2ecc71,stroke:#27ae60
+    style Legacy fill:#f39c12,stroke:#e67e22
+```
+
+---
+
 ## Requirements
 
 - OBS Studio 28+ (includes WebSocket support)
 - No additional plugins needed
+
+---
 
 ## File Inventory
 
@@ -49,6 +243,8 @@ OBS-Animation-Suite/
 └── 📖 README.md
 ```
 
+---
+
 ## Installation
 
 ### Quick Start
@@ -60,69 +256,18 @@ OBS-Animation-Suite/
 
 ### Installation Flow
 
-```
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  Download Suite  │───▶│  Add Dock to OBS │───▶│  Open Installer  │
-│  (zip/git clone) │    │  (Custom Dock)   │    │  (📥 Tab)        │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
-                                                         │
-                                                         ▼
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  Configure in    │◀───│  Add Scripts to  │◀───│  Run Install     │
-│  Tools → Scripts │    │  OBS (Tools →    │    │  Script          │
-└──────────────────┘    │  Scripts)        │    └──────────────────┘
-         │              └──────────────────┘
-         ▼
-┌──────────────────┐
-│  Use Control     │
-│  Panel Dock!     │
-│  🎉 Done!        │
-└──────────────────┘
-```
-
-### Using the Installer Wizard
-
-The control panel includes a built-in installer wizard (📥 tab):
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  📥 Installation Wizard                                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Step 1: Configure Paths                                        │
-│  ───────────────────────                                        │
-│  Source Files: [Auto-detected from dock URL]                    │
-│  OBS Scripts:  [C:\Users\You\AppData\...\obs-studio\scripts]    │
-│                                                                 │
-│  ✓ Supports custom install locations                            │
-│  ✓ Auto-detects common OBS paths                                │
-│  ✓ Click suggestions or type your own path                      │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Step 2: Select Scripts                                         │
-│  ───────────────────────                                        │
-│  ☑ Source Animations (v2.8.0)                        [New]      │
-│  ☑ Source Swap (v3.1.0)                              [New]      │
-│  ☑ Text Cycler (v1.0.0)                              [New]      │
-│  ☑ Quick Controls (v1.0.0)                           [New]      │
-│  ☑ Script Manager (v1.0.0)                           [New]      │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Step 3: Review & Generate                                      │
-│  ─────────────────────────                                      │
-│  Installation Method: [PowerShell ▼] [Batch] [Bash] [Manual]    │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Step 4: Run Installation                                       │
-│  ────────────────────────                                       │
-│  1. Download the generated script                               │
-│  2. Right-click → Run as Administrator                          │
-│  3. Restart OBS Studio                                          │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A[Download Suite] --> B[Add Dock to OBS]
+    B --> C[Open Installer Tab]
+    C --> D[Generate Install Script]
+    D --> E[Run Script]
+    E --> F[Restart OBS]
+    F --> G[Configure Scripts]
+    G --> H[🎉 Done!]
+    
+    style A fill:#e74c3c
+    style H fill:#2ecc71
 ```
 
 ### Manual Installation
@@ -138,14 +283,6 @@ If you prefer to skip the wizard:
 
 3. Add the control panel as a Custom Browser Dock
 
-### Existing Installation Detection
-
-The installer wizard can detect if you already have scripts installed:
-
-- **Skip** - Don't overwrite existing files
-- **Backup** - Create `.backup` copies before replacing
-- **Replace** - Overwrite with new versions
-
 ---
 
 ## Scripts
@@ -159,11 +296,6 @@ Animates sources when their visibility is toggled.
 - Slide - move from direction
 - Zoom - scale in/out
 - Pop - bouncy scale
-
-**Configuration:**
-- Open script settings in OBS
-- Set default animation type, duration, easing
-- Add per-source overrides if needed
 
 **New in v2.8.0:**
 - Fixed position drift bug with canonical transforms
@@ -180,53 +312,12 @@ Swap position and size between two sources with smooth animation.
 - Temporary aspect override
 - Works with grouped sources
 
-**Configuration:**
-1. Open script settings
-2. Add swap configs (name + two sources)
-3. Assign hotkeys in Settings → Hotkeys
-
-**Aspect Override:**
-- Off: Uses default setting
-- Preserve: Maintains aspect ratio (SCALE_INNER)
-- Stretch: Fills exactly (may distort)
-
 ### Text Cycler (v1.0.0)
 
 Cycle through text strings with animated transitions.
 
 **Transitions:**
-- None - instant switch
-- Obfuscate - Minecraft enchantment table scramble effect
-- Typewriter - types out character by character
-- Glitch - random glitch characters that settle
-- Scramble - full scramble then snap
-- Wave - characters appear in a wave pattern
-- Fade - smooth opacity transition
-- Slide - text slides in/out
-- Pop - bouncy appearance
-
-**Two Modes:**
-
-1. **Legacy Mode** - Updates OBS text sources directly (limited effects)
-2. **Browser Mode** - Uses `text_cycler_display.html` for smooth CSS animations
-
-**Browser Source Setup:**
-```
-URL: file:///C:/path/to/suite/text_cycler_display.html
-Width: 1920 (or your stream width)
-Height: 200 (adjust as needed)
-```
-
-### Quick Controls (v1.0.0)
-
-Provides hotkeys for quick actions.
-
-**Hotkeys (assign in Settings → Hotkeys):**
-- `Quick: Cycle Aspect Override` - cycles Off → Preserve → Stretch
-
-### Script Manager (v1.0.0)
-
-Dashboard showing status of all animation scripts in OBS.
+- None, Obfuscate, Typewriter, Glitch, Scramble, Wave, Fade, Slide, Pop
 
 ---
 
@@ -234,44 +325,87 @@ Dashboard showing status of all animation scripts in OBS.
 
 The main interface for controlling the entire suite.
 
-### Setup
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  OBS Studio                                                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. Go to:  View  →  Docks  →  Custom Browser Docks             │
-│                                                                 │
-│  2. Add a new dock:                                             │
-│     ┌─────────────────────────────────────────────────────────┐ │
-│     │  Dock Name: Animation Suite                             │ │
-│     │  URL: file:///C:/Users/You/OBS Animation Suite/         │ │
-│     │       control_panel.html                                │ │
-│     └─────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│  3. Click Apply - the dock appears!                             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ### Tabs
 
 | Tab | Description |
 |-----|-------------|
-| 🔌 Connection | WebSocket connection to OBS |
-| 🔄 Swap | Trigger source swap configs |
+| 🏠 Dashboard | Quick access to common actions |
+| 🎬 Sources | Source visibility animations |
 | 📝 Text | Text cycler with multiple configs |
-| 🎬 Clips | Twitch clips player management |
-| 📋 Scripts | Script overview and quick reference |
-| 📥 Installer | Installation wizard |
+| 🎥 Clips | Twitch clips player management |
+| 🔄 Swaps | Source swap configurations |
+| 📜 Scripts | Script status and management |
+| 📥 Install | Installation wizard |
+| ⚙️ Setup | Connection and storage settings |
 
-### OBS Dock Limitations
+---
 
-OBS docks use an embedded browser that cannot open external URLs. The control panel handles this by:
-- Copying URLs to clipboard when clicked
-- Showing helpful messages about pasting in your browser
-- Providing manual copy buttons for all URLs
+## Data Persistence
+
+### The Storage Challenge
+
+> ⚠️ **OBS browser docks use an embedded Chromium browser that can lose localStorage data during:**
+> - OBS cache clears
+> - OBS updates
+> - Browser source setting changes
+> - Debugging operations
+
+### Our Solution: Multi-Layer Storage
+
+We implement a **triple-redundancy storage system** specifically designed for OBS dock reliability:
+
+```mermaid
+flowchart TB
+    subgraph Layer1["Layer 1: IndexedDB (Primary)"]
+        IDB[(IndexedDB)]
+        note1[More persistent than localStorage<br/>Survives most cache operations]
+    end
+    
+    subgraph Layer2["Layer 2: localStorage (Backup)"]
+        LS[(localStorage)]
+        note2[Synced on every write<br/>Fast synchronous access]
+    end
+    
+    subgraph Layer3["Layer 3: Recovery Snapshot"]
+        RS[(Recovery Key)]
+        note3[Separate storage key<br/>Auto-saves every 60 seconds<br/>Offers recovery on empty load]
+    end
+    
+    subgraph Layer4["Layer 4: Manual Export"]
+        JSON[JSON File]
+        note4[User-initiated backup<br/>Platform-independent<br/>Can restore anywhere]
+    end
+    
+    Write[Config Save] --> IDB
+    Write --> LS
+    IDB -.-> RS
+    
+    Load[Page Load] --> IDB
+    IDB -->|Empty?| LS
+    LS -->|Empty?| RS
+    RS -->|Offer Recovery| User
+    
+    style Layer1 fill:#2ecc71,stroke:#27ae60
+    style Layer2 fill:#f39c12,stroke:#e67e22  
+    style Layer3 fill:#3498db,stroke:#2980b9
+    style Layer4 fill:#9b59b6,stroke:#8e44ad
+```
+
+### Storage Implementation Details
+
+| Storage | Purpose | Persistence Level |
+|---------|---------|-------------------|
+| **IndexedDB** | Primary data store | High - survives most cache clears |
+| **localStorage** | Backup & sync | Medium - can be wiped by OBS |
+| **Recovery Snapshot** | Emergency fallback | Medium - separate key, auto-restored |
+| **JSON Export** | User backup | Highest - external file |
+
+### Backup Recommendations
+
+1. **Export backups regularly** - especially before OBS updates
+2. **Use the "Force Sync" button** after major config changes
+3. **Keep the exported JSON file** in a safe location
+4. The system will **automatically offer recovery** if it detects data loss
 
 ---
 
@@ -286,30 +420,6 @@ Auto-play Twitch clips during BRB/Starting screens.
 3. Configure options (limit, date range, theme)
 4. Copy the generated browser source URL
 5. Add as a Browser Source in OBS
-
-### Browser Source URL
-
-```
-file:///C:/path/to/suite/twitch_clips_player/clips.html
-    ?channel=YourChannel&limit=25&theme=theme1
-```
-
-### Features
-
-- Multiple configs for different scenes
-- Date range filtering (today, week, month, year, all)
-- Theme selection
-- Chat command support (requires Twitch auth)
-- Custom CSS support
-
-### Twitch Authentication
-
-For "Show Following" and chat commands, you need a Twitch access token:
-
-1. Click "Get Access Token from Twitch" in the Clips tab
-2. URL will be copied to clipboard (OBS dock limitation)
-3. Paste in your browser and authorize
-4. Copy the token back to the control panel
 
 ---
 
@@ -329,25 +439,10 @@ For "Show Following" and chat commands, you need a Twitch access token:
 - Click "🎯 Recapture Home Positions" in source_animations settings
 - This resets the canonical transform cache
 
-**Swap not working?**
-- Both sources must be in current scene
-- Source names are case-sensitive
-- Check script log for errors
-
-**Control panel not loading?**
-- Verify the `file:///` URL path is correct
-- Use forward slashes in the URL, not backslashes
-- Ensure the HTML file exists at that location
-
-**Control panel won't connect via WebSocket?**
-- Enable WebSocket in OBS (Tools → WebSocket Server Settings)
-- Check port and password match
-- Must use OBS 28 or newer
-
-**External links not opening?**
-- OBS docks cannot open external browsers
-- URLs are copied to clipboard automatically
-- Paste in your browser manually
+**Control panel lost all configs?**
+- Check Setup tab for Recovery options
+- Use "Import Backup" if you have an export
+- The system should auto-offer recovery on empty load
 
 ---
 
@@ -364,12 +459,57 @@ For "Show Following" and chat commands, you need a Twitch access token:
 - v3.0.0 - Simplified to local coordinates
 - v2.8.0 - Fixed grouped source sizing
 
-### Text Cycler
-- v1.0.0 - Initial release with browser mode and 9 transition types
-
 ### Control Panel
+- v3.0.0 - Multi-layer storage system (IndexedDB + localStorage + Recovery)
 - v2.0.0 - Added installer wizard, script manager, Twitch clips integration
 - v1.0.0 - Initial release with swap controls and text cycler
+
+---
+
+## References
+
+### OBS Documentation & Resources
+
+The storage system was designed based on research into OBS browser source behavior:
+
+1. **OBS Browser Source Cache Behavior**
+   - GitHub Issue: [obsproject/obs-browser#66](https://github.com/obsproject/obs-browser/issues/66) - Local files don't reload when updated
+   - Insight: OBS uses an embedded Chromium browser with its own cache
+
+2. **localStorage Volatility in OBS**
+   - OBS Forum: [Does localStorage get cleared during OBS updates?](https://obsproject.com/forum/threads/does-localstorage-get-cleared-during-obs-updates.159835/)
+   - Finding: localStorage is considered "bad practice" for critical data as debugging steps can clear cache
+
+3. **WebSocket Settings Persistence**
+   - GitHub Issue: [obsproject/obs-studio#11665](https://github.com/obsproject/obs-studio/issues/11665) - WebSocket settings resetting
+   - Related: Configuration persistence issues in OBS
+
+4. **Browser Source Sizing Issues**  
+   - GitHub Issue: [obsproject/obs-studio#5830](https://github.com/obsproject/obs-studio/issues/5830) - Cache refresh resets size
+
+### Why IndexedDB + localStorage + Recovery?
+
+Based on our research:
+
+| Storage Method | Survives Cache Clear | Survives OBS Update | Complexity |
+|---------------|---------------------|---------------------|------------|
+| localStorage only | ❌ Often cleared | ❌ Can be wiped | Low |
+| IndexedDB only | ✅ Usually survives | ⚠️ Sometimes wiped | Medium |
+| IndexedDB + localStorage | ✅ Redundant | ⚠️ One may survive | Medium |
+| Triple redundancy + Export | ✅ Multiple fallbacks | ✅ Manual recovery | Higher |
+
+We chose the **triple redundancy approach** because OBS streamers cannot afford to lose their configurations during a live stream.
+
+### Mermaid Diagram Types Used
+
+This documentation uses [Mermaid.js](https://mermaid.js.org/) diagrams:
+
+- **Flowchart** (`flowchart`) - System architecture and data flow
+- **Sequence Diagram** (`sequenceDiagram`) - Component communication
+- **State Diagram** (`stateDiagram-v2`) - Animation state machine
+- **Subgraphs** - Grouping related components
+
+For more diagram types, see: [Mermaid.js Documentation](https://mermaid.js.org/syntax/examples.html)
 
 ---
 
