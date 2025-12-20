@@ -1402,13 +1402,23 @@
                         
                         <div id="installOutput" class="install-output"></div>
                         
-                        <div class="row" style="margin-top:12px">
-                            <button onclick="goToInstallStep(3)">← Back</button>
-                            <button onclick="copyInstallScript()">📋 Copy Script</button>
-                            <button onclick="downloadInstallScript()" class="btn-primary">💾 Download Script</button>
+                        <!-- Dock Warning -->
+                        <div id="dockDownloadWarning" class="feature-notice" style="display:none;margin-bottom:12px">
+                            <div class="feature-notice__title">⚠️ OBS Dock Detected</div>
+                            <div class="feature-notice__text">
+                                File downloads don't work in OBS docks. Use <strong>Copy Script</strong> instead, 
+                                then paste into a text editor and save manually.
+                            </div>
                         </div>
                         
-                        <div class="info-box" style="margin-top:12px">
+                        <div class="row" style="margin-top:12px">
+                            <button onclick="goToInstallStep(3)">← Back</button>
+                            <button onclick="copyInstallScript()" class="btn-success">📋 Copy Script</button>
+                            <button onclick="downloadInstallScript()" id="downloadScriptBtn" class="btn-primary" title="Download install script">💾 Download</button>
+                        </div>
+                        
+                        <!-- Browser Instructions (shown when NOT in dock) -->
+                        <div id="browserInstructions" class="info-box" style="margin-top:12px">
                             <strong>After downloading:</strong>
                             <ol style="margin:4px 0 0 16px;font-size:0.85em">
                                 <li>Right-click the downloaded script</li>
@@ -1416,6 +1426,21 @@
                                 <li>Restart OBS Studio</li>
                                 <li>Go to Tools → Scripts to configure</li>
                             </ol>
+                        </div>
+                        
+                        <!-- Dock Instructions (shown when IN dock) -->
+                        <div id="dockInstructions" class="info-box" style="display:none;margin-top:12px">
+                            <strong>📋 After copying the script:</strong>
+                            <ol style="margin:4px 0 0 16px;font-size:0.85em">
+                                <li>Open Notepad, VS Code, or any text editor</li>
+                                <li>Paste the script (Ctrl+V)</li>
+                                <li>Save as <code>.ps1</code> (PowerShell), <code>.bat</code> (Batch), or <code>.sh</code> (Bash)</li>
+                                <li>Run the saved file as Administrator</li>
+                                <li>Restart OBS Studio</li>
+                            </ol>
+                            <p style="margin-top:8px;font-size:0.85em;color:var(--muted)">
+                                💡 <strong>Tip:</strong> Open this control panel in your regular browser for easier downloading!
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -3483,6 +3508,45 @@ function copyClipsUrl() {
     });
 }
 
+// Detect if running in OBS dock (embedded CEF browser)
+function isOBSDock() {
+    // OBS docks have limited capabilities:
+    // 1. window.open usually fails or returns null
+    // 2. File downloads don't work properly
+    // 3. Some APIs are restricted
+    // We detect by checking the URL protocol and user agent hints
+    const isFileProtocol = window.location.protocol === 'file:';
+    const isEmbedded = !window.opener && window.parent === window;
+    
+    // If loaded via file:// and appears embedded, likely OBS dock
+    return isFileProtocol && isEmbedded;
+}
+
+// Update UI based on dock context
+function updateDockContextUI() {
+    const isDock = isOBSDock();
+    const downloadBtn = document.getElementById('downloadScriptBtn');
+    const dockWarning = document.getElementById('dockDownloadWarning');
+    const browserInstructions = document.getElementById('browserInstructions');
+    const dockInstructions = document.getElementById('dockInstructions');
+    
+    if (downloadBtn) {
+        if (isDock) {
+            downloadBtn.classList.add('btn-warning');
+            downloadBtn.classList.remove('btn-primary');
+            downloadBtn.title = 'May not work in OBS dock - use Copy instead';
+        } else {
+            downloadBtn.classList.add('btn-primary');
+            downloadBtn.classList.remove('btn-warning');
+            downloadBtn.title = 'Download install script';
+        }
+    }
+    
+    if (dockWarning) dockWarning.style.display = isDock ? 'block' : 'none';
+    if (browserInstructions) browserInstructions.style.display = isDock ? 'none' : 'block';
+    if (dockInstructions) dockInstructions.style.display = isDock ? 'block' : 'none';
+}
+
 // Helper for opening URLs - handles OBS dock limitations
 function openUrlOrCopy(url, description = 'URL') {
     // Try to open in new window/tab
@@ -3934,6 +3998,9 @@ function initScriptsAndInstaller() {
     renderScriptsList();
     detectSourcePath();
     detectOBSPath();
+    
+    // Set initial dock context UI (for step 4 if user navigates there)
+    updateDockContextUI();
 }
 
 function renderScriptsList() {
@@ -4044,6 +4111,9 @@ function goToInstallStep(step) {
         renderInstallScriptsList();
     } else if (step === 3) {
         renderInstallReview();
+    } else if (step === 4) {
+        // Update UI based on dock vs browser context
+        updateDockContextUI();
     }
 }
 
@@ -4474,7 +4544,17 @@ function downloadInstallScript() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    log(`Downloaded ${filename}`, 'success');
+    // In OBS dock, download likely failed - offer clipboard fallback
+    if (isOBSDock()) {
+        // Give the download a moment to potentially work, then offer fallback
+        setTimeout(() => {
+            if (confirm(`Download may not work in OBS dock.\n\nCopy script to clipboard instead?\n\nSave as: ${filename}`)) {
+                copyInstallScript();
+            }
+        }, 500);
+    } else {
+        log(`Downloaded ${filename}`, 'success');
+    }
 }
 
 
