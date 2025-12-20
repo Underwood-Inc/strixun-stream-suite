@@ -1,4 +1,6 @@
-# OBS Animation Suite
+# strixun's script suite [SSS]
+
+An OBS Animation Suite for source-level animation(s)  
 
 A comprehensive suite of Lua scripts and browser sources for OBS Studio that provides smooth, professional animations for sources, text cycling with effects, and integrated Twitch clip playback.
 
