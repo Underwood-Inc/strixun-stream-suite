@@ -493,12 +493,45 @@ function sendResponse(data) {
 }
 
 function applyStyles(styles) {
-    if (styles.color) document.documentElement.style.setProperty('--text-color', styles.color);
-    if (styles.size) document.documentElement.style.setProperty('--font-size', styles.size);
-    if (styles.font) document.documentElement.style.setProperty('--font-family', styles.font);
-    if (styles.weight) document.documentElement.style.setProperty('--font-weight', styles.weight);
-    if (styles.shadow) document.documentElement.style.setProperty('--text-shadow', styles.shadow);
-    if (styles.align) document.querySelector('.container').style.textAlign = styles.align;
+    const root = document.documentElement;
+    const container = document.querySelector('.container');
+    const displayEl = document.getElementById('textDisplay');
+    
+    // Color
+    if (styles.color) root.style.setProperty('--text-color', styles.color);
+    
+    // Font
+    if (styles.fontFamily || styles.font) root.style.setProperty('--font-family', styles.fontFamily || styles.font);
+    if (styles.fontSize || styles.size) root.style.setProperty('--font-size', styles.fontSize || styles.size);
+    if (styles.fontWeight || styles.weight) root.style.setProperty('--font-weight', styles.fontWeight || styles.weight);
+    if (styles.fontStyle) displayEl.style.fontStyle = styles.fontStyle;
+    
+    // Text layout
+    if (styles.align) container.style.textAlign = styles.align;
+    if (styles.letterSpacing && styles.letterSpacing !== 'normal') {
+        displayEl.style.letterSpacing = styles.letterSpacing;
+    } else {
+        displayEl.style.letterSpacing = '';
+    }
+    if (styles.lineHeight) displayEl.style.lineHeight = styles.lineHeight;
+    if (styles.textTransform && styles.textTransform !== 'none') {
+        displayEl.style.textTransform = styles.textTransform;
+    } else {
+        displayEl.style.textTransform = '';
+    }
+    
+    // Effects
+    if (styles.shadow) root.style.setProperty('--text-shadow', styles.shadow);
+    
+    // Stroke/Outline
+    if (styles.strokeWidth && styles.strokeWidth !== '0' && styles.strokeWidth !== '0px') {
+        const strokeColor = styles.strokeColor || '#000000';
+        displayEl.style.webkitTextStroke = `${styles.strokeWidth} ${strokeColor}`;
+        displayEl.style.textStroke = `${styles.strokeWidth} ${strokeColor}`;
+    } else {
+        displayEl.style.webkitTextStroke = '';
+        displayEl.style.textStroke = '';
+    }
 }
 
 function updateStatus(msg) {

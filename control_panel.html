@@ -923,11 +923,11 @@
                     <div id="browserModeSettings">
                         <label>Config ID (for browser source URL)</label>
                         <div class="url-box">
-                            <input type="text" id="textConfigId" placeholder="config1" style="flex:1">
+                            <input type="text" id="textConfigId" placeholder="config1" style="flex:1" oninput="updateBrowserSourceUrlPreview()">
                             <button onclick="copyBrowserSourceUrl()">📋 Copy URL</button>
                         </div>
                         <p style="font-size:0.7em;color:var(--muted);margin-top:4px">
-                            Add as OBS Browser Source: <code>file:///path/to/text_cycler_display.html?id=<span id="configIdPreview">config1</span></code>
+                            Add as OBS Browser Source: <code id="browserSourceUrlPreview"></code>
                         </p>
                     </div>
                     
@@ -979,7 +979,23 @@
                 <!-- Style Settings (Browser Mode Only) -->
                 <div class="card" id="textStyleCard" style="display:none">
                     <h3>🎨 Style (Browser Mode)</h3>
-                    <div class="row">
+                    
+                    <label>Font Family</label>
+                    <select id="textFontFamily">
+                        <option value="'Segoe UI', system-ui, sans-serif">Segoe UI (Default)</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="'Times New Roman', serif">Times New Roman</option>
+                        <option value="'Courier New', monospace">Courier New</option>
+                        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Impact, sans-serif">Impact</option>
+                        <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                    </select>
+                    <input type="text" id="textFontFamilyCustom" placeholder="Or enter custom font: 'Font Name', fallback" style="margin-top:4px">
+                    
+                    <div class="row" style="margin-top:12px">
                         <div>
                             <label>Font Size</label>
                             <input type="text" id="textFontSize" value="48px" placeholder="48px">
@@ -987,17 +1003,25 @@
                         <div>
                             <label>Font Weight</label>
                             <select id="textFontWeight">
+                                <option value="100">Thin</option>
+                                <option value="300">Light</option>
                                 <option value="400">Normal</option>
+                                <option value="500">Medium</option>
                                 <option value="600">Semi-Bold</option>
                                 <option value="700" selected>Bold</option>
+                                <option value="800">Extra Bold</option>
                                 <option value="900">Black</option>
                             </select>
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div>
                             <label>Text Color</label>
-                            <input type="text" id="textColor" value="#ffffff" placeholder="#ffffff">
+                            <div style="display:flex;gap:4px">
+                                <input type="color" id="textColorPicker" value="#ffffff" style="width:40px;height:32px;padding:0;border:none;cursor:pointer">
+                                <input type="text" id="textColor" value="#ffffff" placeholder="#ffffff" style="flex:1">
+                            </div>
                         </div>
                         <div>
                             <label>Text Align</label>
@@ -1008,8 +1032,52 @@
                             </select>
                         </div>
                     </div>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Letter Spacing</label>
+                            <input type="text" id="textLetterSpacing" value="normal" placeholder="normal, 2px, 0.1em">
+                        </div>
+                        <div>
+                            <label>Line Height</label>
+                            <input type="text" id="textLineHeight" value="1.2" placeholder="1.2, 1.5, 2">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Text Transform</label>
+                            <select id="textTransform">
+                                <option value="none" selected>None</option>
+                                <option value="uppercase">UPPERCASE</option>
+                                <option value="lowercase">lowercase</option>
+                                <option value="capitalize">Capitalize</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Font Style</label>
+                            <select id="textFontStyle">
+                                <option value="normal" selected>Normal</option>
+                                <option value="italic">Italic</option>
+                            </select>
+                        </div>
+                    </div>
+                    
                     <label>Text Shadow</label>
                     <input type="text" id="textShadow" value="2px 2px 4px rgba(0,0,0,0.5)" placeholder="2px 2px 4px rgba(0,0,0,0.5)">
+                    
+                    <label style="margin-top:8px">Text Stroke (Outline)</label>
+                    <div class="row">
+                        <div>
+                            <input type="text" id="textStrokeWidth" value="0" placeholder="Width: 0, 1px, 2px">
+                        </div>
+                        <div>
+                            <div style="display:flex;gap:4px">
+                                <input type="color" id="textStrokeColorPicker" value="#000000" style="width:40px;height:32px;padding:0;border:none;cursor:pointer">
+                                <input type="text" id="textStrokeColor" value="#000000" placeholder="#000000" style="flex:1">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Preview -->
@@ -1222,7 +1290,6 @@
                     <select id="swapStyle">
                         <option value="slide" selected>Slide (smooth move)</option>
                         <option value="teleport">Teleport (instant)</option>
-                        <option value="crossfade">Crossfade (opacity)</option>
                         <option value="scale">Scale (shrink/grow)</option>
                         <option value="bounce">Bounce (overshoot)</option>
                         <option value="elastic">Elastic (springy)</option>
@@ -1244,13 +1311,54 @@
                             </select>
                         </div>
                     </div>
+                    
+                    <div style="margin-top:12px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="swapPreserveAspect" checked>
+                            <span>Preserve Aspect Ratio (default)</span>
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top:8px">
+                        <label>⚡ Temporary Override</label>
+                        <select id="swapTempOverride">
+                            <option value="off" selected>Off (use config/global)</option>
+                            <option value="preserve">Preserve</option>
+                            <option value="stretch">Stretch</option>
+                        </select>
+                        <p style="font-size:0.75em;color:var(--muted);margin:4px 0 0">Force Preserve or Stretch for ALL swaps until set back to Off</p>
+                    </div>
+                    
+                    <div style="margin-top:8px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="swapDebugLogging">
+                            <span>Debug Logging</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Add Swap Config</h3>
+                    <label>Config Name</label>
+                    <input type="text" id="swapConfigName" placeholder="e.g. Camera ↔ Gameplay">
+                    <div class="row" style="margin-top:8px">
+                        <div style="flex:1">
+                            <label>Source A</label>
+                            <select id="swapNewSourceA"></select>
+                        </div>
+                        <div style="flex:1">
+                            <label>Source B</label>
+                            <select id="swapNewSourceB"></select>
+                        </div>
+                    </div>
+                    <button class="btn-primary" style="margin-top:12px;width:100%" onclick="addSwapConfig()">➕ Add Config</button>
                 </div>
                 
                 <div class="card">
                     <h3>Saved Configs</h3>
                     <div id="savedSwaps"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="saveCurrentSwap()">💾 Save</button>
+                        <button onclick="refreshSwapSources()">🔄 Refresh Sources</button>
                         <button onclick="exportConfigs()">📤 Export</button>
                         <button onclick="importConfigs()">📥 Import</button>
                     </div>
@@ -1480,6 +1588,7 @@
                             <span>Remember credentials</span>
                         </label>
                         <p style="font-size:0.75em;color:var(--warning);margin-top:4px" id="securityWarning"></p>
+                        <button type="button" onclick="clearSavedCredentials()" style="font-size:0.75em;padding:4px 8px;margin-top:4px;background:var(--danger);border:none;color:#fff;border-radius:4px;cursor:pointer">Clear Saved Credentials</button>
                     </div>
                     <button class="btn-primary btn-block" id="connectBtn" onclick="toggleConnection()">Connect</button>
                 </div>
@@ -1521,6 +1630,47 @@
     </div>
 
 <script>
+// ============ Storage Prefix (prevents collision with other OBS docks) ============
+const STORAGE_PREFIX = 'sss_'; // Strixun Stream Suite prefix
+
+// Safe localStorage wrapper with unique prefix
+const storage = {
+    get(key) {
+        try {
+            const data = localStorage.getItem(STORAGE_PREFIX + key);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            console.error('Storage read error:', key, e);
+            return null;
+        }
+    },
+    set(key, value) {
+        try {
+            localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+            return true;
+        } catch (e) {
+            console.error('Storage write error:', key, e);
+            return false;
+        }
+    },
+    remove(key) {
+        try {
+            localStorage.removeItem(STORAGE_PREFIX + key);
+        } catch (e) {}
+    },
+    // Raw string get/set for credentials (already JSON or plain strings)
+    getRaw(key) {
+        try {
+            return localStorage.getItem(STORAGE_PREFIX + key);
+        } catch (e) { return null; }
+    },
+    setRaw(key, value) {
+        try {
+            localStorage.setItem(STORAGE_PREFIX + key, value);
+        } catch (e) {}
+    }
+};
+
 // ============ State ============
 let ws = null;
 let connected = false;
@@ -1599,54 +1749,74 @@ async function saveCredentials() {
     const password = document.getElementById('password').value;
     
     if (remember) {
-        localStorage.setItem('obs_host', host);
-        localStorage.setItem('obs_port', port);
+        storage.setRaw('obs_host', host);
+        storage.setRaw('obs_port', port);
         
         if (password) {
+            // Check if crypto is available
+            if (!crypto || !crypto.subtle) {
+                log('ERROR: Encryption not available (file:// mode). Use localhost or HTTPS.', 'error');
+                return;
+            }
+            
             // Get or create PIN for encryption
             let pin = sessionStorage.getItem('obs_pin');
             if (!pin) {
                 pin = prompt('Create a PIN to encrypt your password (4+ characters):');
                 if (!pin || pin.length < 4) {
                     log('PIN must be 4+ characters. Password not saved.', 'error');
-                    localStorage.removeItem('obs_pw');
+                    storage.remove('obs_pw');
                     return;
                 }
                 sessionStorage.setItem('obs_pin', pin); // Keep in session only
             }
             
-            const encrypted = await encryptPassword(password, pin);
-            localStorage.setItem('obs_pw', encrypted);
-            localStorage.setItem('obs_pw_encrypted', 'true');
+            try {
+                const encrypted = await encryptPassword(password, pin);
+                storage.setRaw('obs_pw', encrypted);
+                storage.setRaw('obs_pw_encrypted', 'true');
+                log('Credentials saved securely', 'success');
+            } catch (e) {
+                log('Encryption failed: ' + e.message, 'error');
+                storage.remove('obs_pw');
+                storage.remove('obs_pw_encrypted');
+            }
         } else {
-            localStorage.removeItem('obs_pw');
-            localStorage.removeItem('obs_pw_encrypted');
+            storage.remove('obs_pw');
+            storage.remove('obs_pw_encrypted');
         }
-        localStorage.setItem('obs_remember', 'true');
+        storage.setRaw('obs_remember', 'true');
     } else {
-        localStorage.removeItem('obs_host');
-        localStorage.removeItem('obs_port');
-        localStorage.removeItem('obs_pw');
-        localStorage.removeItem('obs_pw_encrypted');
-        localStorage.removeItem('obs_remember');
+        storage.remove('obs_host');
+        storage.remove('obs_port');
+        storage.remove('obs_pw');
+        storage.remove('obs_pw_encrypted');
+        storage.remove('obs_remember');
         sessionStorage.removeItem('obs_pin');
     }
 }
 
 async function loadCredentials() {
-    const remembered = localStorage.getItem('obs_remember') === 'true';
+    const remembered = storage.getRaw('obs_remember') === 'true';
     document.getElementById('rememberCreds').checked = remembered;
     
     if (remembered) {
-        const host = localStorage.getItem('obs_host');
-        const port = localStorage.getItem('obs_port');
-        const encryptedPw = localStorage.getItem('obs_pw');
-        const isEncrypted = localStorage.getItem('obs_pw_encrypted') === 'true';
+        const host = storage.getRaw('obs_host');
+        const port = storage.getRaw('obs_port');
+        const encryptedPw = storage.getRaw('obs_pw');
+        const isEncrypted = storage.getRaw('obs_pw_encrypted') === 'true';
         
         if (host) document.getElementById('host').value = host;
         if (port) document.getElementById('port').value = port;
         
         if (encryptedPw && isEncrypted) {
+            // Check if crypto is available
+            if (!crypto || !crypto.subtle) {
+                log('ERROR: Decryption not available (file:// mode). Clear credentials.', 'error');
+                updateSecurityWarning();
+                return false;
+            }
+            
             // Need PIN to decrypt
             let pin = sessionStorage.getItem('obs_pin');
             if (!pin) {
@@ -1658,14 +1828,21 @@ async function loadCredentials() {
                 }
             }
             
-            const password = await decryptPassword(encryptedPw, pin);
-            if (password) {
-                document.getElementById('password').value = password;
-                sessionStorage.setItem('obs_pin', pin); // Remember for session
-                updateSecurityWarning();
-                return true;
-            } else {
-                log('Wrong PIN or corrupted data', 'error');
+            try {
+                const password = await decryptPassword(encryptedPw, pin);
+                if (password) {
+                    document.getElementById('password').value = password;
+                    sessionStorage.setItem('obs_pin', pin); // Remember for session
+                    updateSecurityWarning();
+                    return true;
+                } else {
+                    log('Wrong PIN or corrupted data', 'error');
+                    sessionStorage.removeItem('obs_pin');
+                    updateSecurityWarning();
+                    return false;
+                }
+            } catch (e) {
+                log('Decryption failed: ' + e.message, 'error');
                 sessionStorage.removeItem('obs_pin');
                 updateSecurityWarning();
                 return false;
@@ -1678,10 +1855,25 @@ async function loadCredentials() {
     return false;
 }
 
+function clearSavedCredentials() {
+    storage.remove('obs_host');
+    storage.remove('obs_port');
+    storage.remove('obs_pw');
+    storage.remove('obs_pw_encrypted');
+    storage.remove('obs_remember');
+    sessionStorage.removeItem('obs_pin');
+    document.getElementById('host').value = 'localhost';
+    document.getElementById('port').value = '4455';
+    document.getElementById('password').value = '';
+    document.getElementById('rememberCreds').checked = false;
+    updateSecurityWarning();
+    log('Saved credentials cleared', 'info');
+}
+
 function updateSecurityWarning() {
     const pw = document.getElementById('password').value;
     const remember = document.getElementById('rememberCreds').checked;
-    const isEncrypted = localStorage.getItem('obs_pw_encrypted') === 'true';
+    const isEncrypted = storage.getRaw('obs_pw_encrypted') === 'true';
     const warn = document.getElementById('securityWarning');
     
     if (remember && pw) {
@@ -1714,11 +1906,14 @@ function updateConnectionState() {
 
 // ============ UI State Persistence ============
 const UI_FIELDS = [
-    'swapStyle', 'swapDuration', 'swapEasing',
+    'swapStyle', 'swapDuration', 'swapEasing', 'swapTempOverride',
     'textSource', 'textLines', 'textDuration', 'textTransition', 'transDuration',
-    'swapSourceA', 'swapSourceB',
+    'swapSourceA', 'swapSourceB', 'swapNewSourceA', 'swapNewSourceB',
     'visAnimType', 'visAnimDuration', 'visAnimEasing'
 ];
+
+// Checkbox fields need special handling
+const UI_CHECKBOXES = ['swapPreserveAspect', 'swapDebugLogging'];
 
 function saveUIState() {
     const state = {};
@@ -1726,18 +1921,28 @@ function saveUIState() {
         const el = document.getElementById(id);
         if (el) state[id] = el.value;
     }
-    localStorage.setItem('ui_state', JSON.stringify(state));
-    console.log('UI state saved:', state);
+    // Also save checkbox states
+    for (const id of UI_CHECKBOXES) {
+        const el = document.getElementById(id);
+        if (el) state[id] = el.checked;
+    }
+    storage.set('ui_state', state);
 }
 
 function loadUIState() {
     try {
-        const state = JSON.parse(localStorage.getItem('ui_state') || '{}');
-        console.log('Loading UI state:', state);
+        const state = storage.get('ui_state') || {};
         for (const id of UI_FIELDS) {
             const el = document.getElementById(id);
             if (el && state[id] !== undefined && state[id] !== '') {
                 el.value = state[id];
+            }
+        }
+        // Also load checkbox states
+        for (const id of UI_CHECKBOXES) {
+            const el = document.getElementById(id);
+            if (el && state[id] !== undefined) {
+                el.checked = state[id];
             }
         }
     } catch (e) {
@@ -1752,10 +1957,16 @@ function setupUIStatePersistence() {
         if (el) {
             el.addEventListener('change', saveUIState);
             el.addEventListener('input', saveUIState);
-            el.addEventListener('blur', saveUIState); // Also save when leaving field
+            el.addEventListener('blur', saveUIState);
         }
     }
-    
+    // Also listen to checkbox changes
+    for (const id of UI_CHECKBOXES) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', saveUIState);
+        }
+    }
 }
 
 // ============ Initialization ============
@@ -1764,7 +1975,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const url = window.location.href;
     document.getElementById('dockUrl').value = url;
     
-    // Load saved configs and UI state
+    // Render loaded configs
     renderSavedSwaps();
     renderTextCyclerConfigs();
     initClipsPlayer();
@@ -1798,6 +2009,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             log('Ready. Connect to OBS to begin.', 'info');
         }
     } catch (e) {
+        console.error('Credential load error:', e);
         log('Ready. Connect to OBS to begin.', 'info');
     }
 });
@@ -1839,12 +2051,12 @@ function showPage(id, save = true) {
     
     // Save active tab
     if (save) {
-        localStorage.setItem('active_tab', id);
+        storage.setRaw('active_tab', id);
     }
 }
 
 function restoreActiveTab() {
-    const savedTab = localStorage.getItem('active_tab');
+    const savedTab = storage.getRaw('active_tab');
     if (savedTab) {
         showPage(savedTab, false);
     }
@@ -1939,7 +2151,7 @@ function connect() {
             console.log('WebSocket closed:', e.code, e.reason);
             
             // Only auto-reconnect on abnormal close, not if user disconnected
-            if (wasConnected && e.code !== 1000 && localStorage.getItem('obs_remember') === 'true') {
+            if (wasConnected && e.code !== 1000 && storage.getRaw('obs_remember') === 'true') {
                 if (reconnectAttempts < MAX_RECONNECT) {
                     reconnectAttempts++;
                     log(`Reconnecting (${reconnectAttempts}/${MAX_RECONNECT})...`, 'info');
@@ -1978,7 +2190,7 @@ async function handleMessage(data, password) {
         connected = true;
         updateConnectionUI();
         updateConnectionState();
-        saveCredentials(); // Save on successful connection
+        await saveCredentials(); // Save on successful connection
         log('Connected to OBS!', 'success');
         refreshScenes();
         
@@ -2267,15 +2479,17 @@ async function animateTransform(itemId, start, end, duration, easingType) {
 }
 
 // ============ Source Swap (Direct via WebSocket) ============
-let swapConfigs = JSON.parse(localStorage.getItem('swapConfigs') || '[]');
+let swapConfigs = storage.get('swapConfigs') || [];
 let isSwapping = false;
 
 function updateSwapDropdowns() {
     const selA = document.getElementById('swapSourceA');
     const selB = document.getElementById('swapSourceB');
+    const newSelA = document.getElementById('swapNewSourceA');
+    const newSelB = document.getElementById('swapNewSourceB');
     
     // Preserve current selections or load from saved state
-    const savedState = JSON.parse(localStorage.getItem('ui_state') || '{}');
+    const savedState = storage.get('ui_state') || {};
     const currentA = selA.value || savedState.swapSourceA || '';
     const currentB = selB.value || savedState.swapSourceB || '';
     
@@ -2283,6 +2497,10 @@ function updateSwapDropdowns() {
         sources.map(s => `<option value="${s.sourceName}">${s.sourceName}</option>`).join('');
     selA.innerHTML = opts;
     selB.innerHTML = opts;
+    
+    // Also populate the "Add Config" dropdowns
+    if (newSelA) newSelA.innerHTML = opts;
+    if (newSelB) newSelB.innerHTML = opts;
     
     // Restore selections if sources still exist
     if (currentA && sources.find(s => s.sourceName === currentA)) selA.value = currentA;
@@ -2385,17 +2603,22 @@ async function animateArc(idA, idB, startA, startB, endA, endB, duration, easing
             // Parabolic arc: peaks at t=0.5
             const arcOffset = -4 * arcHeight * rawT * (rawT - 1);
             
+            // Animate ALL properties including bounds during animation
             const currentA = {
                 positionX: lerp(startA.positionX, endA.positionX, t),
                 positionY: lerp(startA.positionY, endA.positionY, t) - arcOffset,
                 scaleX: lerp(startA.scaleX, endA.scaleX, t),
-                scaleY: lerp(startA.scaleY, endA.scaleY, t)
+                scaleY: lerp(startA.scaleY, endA.scaleY, t),
+                boundsWidth: lerp(startA.boundsWidth, endA.boundsWidth, t),
+                boundsHeight: lerp(startA.boundsHeight, endA.boundsHeight, t)
             };
             const currentB = {
                 positionX: lerp(startB.positionX, endB.positionX, t),
                 positionY: lerp(startB.positionY, endB.positionY, t) - arcOffset,
                 scaleX: lerp(startB.scaleX, endB.scaleX, t),
-                scaleY: lerp(startB.scaleY, endB.scaleY, t)
+                scaleY: lerp(startB.scaleY, endB.scaleY, t),
+                boundsWidth: lerp(startB.boundsWidth, endB.boundsWidth, t),
+                boundsHeight: lerp(startB.boundsHeight, endB.boundsHeight, t)
             };
             
             Promise.all([
@@ -2417,27 +2640,35 @@ async function animateScale(idA, idB, startA, startB, endA, endB, duration, easi
         function animate() {
             const elapsed = performance.now() - startTime;
             const rawT = Math.min(elapsed / duration, 1);
-            const t = easeFunc(rawT, easing);
             
-            // Shrink in first half, grow in second half
+            // Shrink in first half, grow in second half (shrink to 30%)
             let scaleMod;
             if (rawT < 0.5) {
-                scaleMod = 1 - (rawT * 2) * 0.3; // Shrink to 70%
+                scaleMod = 1 - (rawT * 2) * 0.7; // Shrink from 1.0 to 0.3
             } else {
-                scaleMod = 0.7 + ((rawT - 0.5) * 2) * 0.3; // Grow back to 100%
+                scaleMod = 0.3 + ((rawT - 0.5) * 2) * 0.7; // Grow from 0.3 back to 1.0
             }
             
+            // Position JUMPS at midpoint (not smooth slide!)
+            // Before 0.5: stay at start position
+            // At/after 0.5: jump to end position
+            const posT = rawT < 0.5 ? 0 : 1;
+            
             const currentA = {
-                positionX: lerp(startA.positionX, endA.positionX, t),
-                positionY: lerp(startA.positionY, endA.positionY, t),
-                scaleX: lerp(startA.scaleX, endA.scaleX, t) * scaleMod,
-                scaleY: lerp(startA.scaleY, endA.scaleY, t) * scaleMod
+                positionX: lerp(startA.positionX, endA.positionX, posT),
+                positionY: lerp(startA.positionY, endA.positionY, posT),
+                scaleX: startA.scaleX * scaleMod,
+                scaleY: startA.scaleY * scaleMod,
+                boundsWidth: lerp(startA.boundsWidth, endA.boundsWidth, posT),
+                boundsHeight: lerp(startA.boundsHeight, endA.boundsHeight, posT)
             };
             const currentB = {
-                positionX: lerp(startB.positionX, endB.positionX, t),
-                positionY: lerp(startB.positionY, endB.positionY, t),
-                scaleX: lerp(startB.scaleX, endB.scaleX, t) * scaleMod,
-                scaleY: lerp(startB.scaleY, endB.scaleY, t) * scaleMod
+                positionX: lerp(startB.positionX, endB.positionX, posT),
+                positionY: lerp(startB.positionY, endB.positionY, posT),
+                scaleX: startB.scaleX * scaleMod,
+                scaleY: startB.scaleY * scaleMod,
+                boundsWidth: lerp(startB.boundsWidth, endB.boundsWidth, posT),
+                boundsHeight: lerp(startB.boundsHeight, endB.boundsHeight, posT)
             };
             
             Promise.all([
@@ -2551,10 +2782,6 @@ async function executeSwap() {
             await animateSlide(idA, idB, startA, startB, endA, endB, duration, 'bounce', propsToSwap);
         } else if (style === 'elastic') {
             await animateSlide(idA, idB, startA, startB, endA, endB, duration, 'elastic', propsToSwap);
-        } else if (style === 'crossfade') {
-            await animateScale(idA, idB, startA, startB, endA, endB, duration, easing);
-            await setTransform(idA, endA);
-            await setTransform(idB, endB);
         } else {
             // Default slide
             const startTime = performance.now();
@@ -2603,9 +2830,43 @@ function saveCurrentSwap() {
     if (!name) return;
     
     swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
-    localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
+    storage.set('swapConfigs', swapConfigs);
     renderSavedSwaps();
     log(`Saved config: ${name}`, 'success');
+}
+
+function addSwapConfig() {
+    const configName = document.getElementById('swapConfigName').value.trim();
+    const sourceA = document.getElementById('swapNewSourceA').value;
+    const sourceB = document.getElementById('swapNewSourceB').value;
+    
+    if (!configName) { log('Enter a config name', 'error'); return; }
+    if (!sourceA || !sourceB) { log('Select both sources', 'error'); return; }
+    if (sourceA === sourceB) { log('Select different sources', 'error'); return; }
+    
+    swapConfigs.push({ name: configName, sourceA, sourceB });
+    storage.set('swapConfigs', swapConfigs);
+    renderSavedSwaps();
+    
+    // Clear the form
+    document.getElementById('swapConfigName').value = '';
+    log(`Added config: ${configName}`, 'success');
+}
+
+function refreshSwapSources() {
+    // Populate the new source dropdowns for adding configs
+    const sourceASelect = document.getElementById('swapNewSourceA');
+    const sourceBSelect = document.getElementById('swapNewSourceB');
+    const quickSourceA = document.getElementById('swapSourceA');
+    const quickSourceB = document.getElementById('swapSourceB');
+    
+    if (quickSourceA && sourceASelect) {
+        sourceASelect.innerHTML = quickSourceA.innerHTML;
+    }
+    if (quickSourceB && sourceBSelect) {
+        sourceBSelect.innerHTML = quickSourceB.innerHTML;
+    }
+    log('Sources refreshed', 'info');
 }
 
 function renderSavedSwaps() {
@@ -2638,7 +2899,7 @@ function loadSwapConfig(index) {
 
 function deleteSwapConfig(index) {
     swapConfigs.splice(index, 1);
-    localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
+    storage.set('swapConfigs', swapConfigs);
     renderSavedSwaps();
 }
 
@@ -2679,7 +2940,7 @@ function importConfigs() {
             swapConfigs = imported;
         }
         
-        localStorage.setItem('swapConfigs', JSON.stringify(swapConfigs));
+        storage.set('swapConfigs', swapConfigs);
         renderSavedSwaps();
         log(`Imported ${imported.length} configs`, 'success');
     } catch (e) {
@@ -2688,7 +2949,7 @@ function importConfigs() {
 }
 
 // ============ Text Cycler (Multi-Config) ============
-let textCyclerConfigs = JSON.parse(localStorage.getItem('textCyclerConfigs') || '[]');
+let textCyclerConfigs = storage.get('textCyclerConfigs') || [];
 let currentTextConfigIndex = -1;
 let cycleInterval = null;
 let cycleIndex = 0;
@@ -2771,16 +3032,53 @@ function loadTextConfig(index) {
     
     // Style settings
     if (config.styles) {
+        // Font family - check if it's a preset or custom
+        const fontFamily = config.styles.fontFamily || "'Segoe UI', system-ui, sans-serif";
+        const fontSelect = document.getElementById('textFontFamily');
+        const fontCustom = document.getElementById('textFontFamilyCustom');
+        let isPreset = false;
+        for (let opt of fontSelect.options) {
+            if (opt.value === fontFamily) {
+                fontSelect.value = fontFamily;
+                fontCustom.value = '';
+                isPreset = true;
+                break;
+            }
+        }
+        if (!isPreset) {
+            fontSelect.selectedIndex = 0;
+            fontCustom.value = fontFamily;
+        }
+        
         document.getElementById('textFontSize').value = config.styles.fontSize || '48px';
         document.getElementById('textFontWeight').value = config.styles.fontWeight || '700';
+        document.getElementById('textFontStyle').value = config.styles.fontStyle || 'normal';
         document.getElementById('textColor').value = config.styles.color || '#ffffff';
+        document.getElementById('textColorPicker').value = config.styles.color || '#ffffff';
         document.getElementById('textAlign').value = config.styles.align || 'center';
+        document.getElementById('textLetterSpacing').value = config.styles.letterSpacing || 'normal';
+        document.getElementById('textLineHeight').value = config.styles.lineHeight || '1.2';
+        document.getElementById('textTransform').value = config.styles.textTransform || 'none';
         document.getElementById('textShadow').value = config.styles.shadow || '';
+        document.getElementById('textStrokeWidth').value = config.styles.strokeWidth || '0';
+        document.getElementById('textStrokeColor').value = config.styles.strokeColor || '#000000';
+        document.getElementById('textStrokeColorPicker').value = config.styles.strokeColor || '#000000';
     }
     
     updateTextCyclerMode();
     updateTransitionMode();
-    updateConfigIdPreview();
+    updateBrowserSourceUrlPreview();
+    
+    // Reset preview to show current config's first line or current cycling text
+    const preview = document.getElementById('textPreview');
+    if (config.isRunning && config.textLines && config.textLines.length > 0) {
+        const currentIndex = config.cycleIndex || 0;
+        preview.textContent = config.textLines[currentIndex] || config.textLines[0];
+    } else if (config.textLines && config.textLines.length > 0) {
+        preview.textContent = config.textLines[0];
+    } else {
+        preview.textContent = '(no text lines)';
+    }
     
     // Update button states
     document.getElementById('startCycleBtn').disabled = config.isRunning;
@@ -2802,11 +3100,18 @@ function saveCurrentTextConfig() {
     config.transDuration = parseInt(document.getElementById('transDuration').value) || 500;
     config.cycleDuration = parseInt(document.getElementById('textDuration').value) || 3000;
     config.styles = {
+        fontFamily: document.getElementById('textFontFamilyCustom').value || document.getElementById('textFontFamily').value,
         fontSize: document.getElementById('textFontSize').value,
         fontWeight: document.getElementById('textFontWeight').value,
+        fontStyle: document.getElementById('textFontStyle').value,
         color: document.getElementById('textColor').value,
         align: document.getElementById('textAlign').value,
-        shadow: document.getElementById('textShadow').value
+        letterSpacing: document.getElementById('textLetterSpacing').value,
+        lineHeight: document.getElementById('textLineHeight').value,
+        textTransform: document.getElementById('textTransform').value,
+        shadow: document.getElementById('textShadow').value,
+        strokeWidth: document.getElementById('textStrokeWidth').value,
+        strokeColor: document.getElementById('textStrokeColor').value
     };
     
     saveTextCyclerConfigs();
@@ -2838,7 +3143,7 @@ function deleteCurrentTextConfig() {
 }
 
 function saveTextCyclerConfigs() {
-    localStorage.setItem('textCyclerConfigs', JSON.stringify(textCyclerConfigs));
+    storage.set('textCyclerConfigs', textCyclerConfigs);
 }
 
 function exportTextConfigs() {
@@ -2897,12 +3202,45 @@ function updateConfigIdPreview() {
     document.getElementById('configIdPreview').textContent = configId;
 }
 
-document.getElementById('textConfigId')?.addEventListener('input', updateConfigIdPreview);
+// URL preview updated via oninput attribute on textConfigId field
+
+// Color picker sync
+document.getElementById('textColorPicker')?.addEventListener('input', (e) => {
+    document.getElementById('textColor').value = e.target.value;
+});
+document.getElementById('textColor')?.addEventListener('input', (e) => {
+    const picker = document.getElementById('textColorPicker');
+    if (picker && /^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+        picker.value = e.target.value;
+    }
+});
+document.getElementById('textStrokeColorPicker')?.addEventListener('input', (e) => {
+    document.getElementById('textStrokeColor').value = e.target.value;
+});
+document.getElementById('textStrokeColor')?.addEventListener('input', (e) => {
+    const picker = document.getElementById('textStrokeColorPicker');
+    if (picker && /^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+        picker.value = e.target.value;
+    }
+});
+
+function getBrowserSourceUrl(configId) {
+    const currentPath = window.location.pathname;
+    const displayPath = currentPath.replace('control_panel.html', 'text_cycler_display.html');
+    return `file://${displayPath}?id=${configId || 'config1'}`;
+}
+
+function updateBrowserSourceUrlPreview() {
+    const configId = document.getElementById('textConfigId').value || 'config1';
+    const preview = document.getElementById('browserSourceUrlPreview');
+    if (preview) {
+        preview.textContent = getBrowserSourceUrl(configId);
+    }
+}
 
 function copyBrowserSourceUrl() {
     const configId = document.getElementById('textConfigId').value || 'config1';
-    const path = window.location.pathname.replace('control_panel.html', 'text_cycler_display.html');
-    const url = `file://${window.location.pathname.replace('control_panel.html', 'text_cycler_display.html')}?id=${configId}`;
+    const url = getBrowserSourceUrl(configId);
     
     navigator.clipboard.writeText(url).then(() => {
         log('URL copied! Add as Browser Source in OBS', 'success');
@@ -2935,7 +3273,7 @@ function updateTextSourceDropdown() {
     const select = document.getElementById('textSource');
     if (!select) return;
     
-    const savedState = JSON.parse(localStorage.getItem('ui_state') || '{}');
+    const savedState = storage.get('ui_state') || {};
     const current = select.value || savedState.textSource || '';
     
     textSources = sources.filter(s => 
@@ -3027,6 +3365,14 @@ function startConfigCycling(index) {
     config.isRunning = true;
     config.cycleIndex = 0;
     
+    // Send styles first (browser mode only)
+    if (config.mode === 'browser' && config.styles) {
+        sendToDisplay(config.configId, {
+            type: 'style',
+            styles: config.styles
+        });
+    }
+    
     // Send initial text
     showConfigText(index, config.textLines[0]);
     
@@ -3061,15 +3407,17 @@ function showConfigText(index, text) {
             duration: config.transDuration
         });
         
-        // Update preview
-        document.getElementById('textPreview').textContent = text;
+        // Only update preview if this is the currently selected config
+        if (index === currentTextConfigIndex) {
+            document.getElementById('textPreview').textContent = text;
+        }
     } else {
         // Legacy: update OBS text source directly
-        showTextWithTransitionLegacy(text, config);
+        showTextWithTransitionLegacy(text, config, index);
     }
 }
 
-function showTextWithTransitionLegacy(targetText, config) {
+function showTextWithTransitionLegacy(targetText, config, configIndex) {
     const transition = config.transition;
     const transDuration = config.transDuration || 500;
     
@@ -3079,7 +3427,7 @@ function showTextWithTransitionLegacy(targetText, config) {
     }
     
     if (transition === 'none') {
-        setTextFast(targetText, config.textSource);
+        setTextFast(targetText, config.textSource, configIndex);
         return;
     }
     
@@ -3110,12 +3458,12 @@ function showTextWithTransitionLegacy(targetText, config) {
             displayText = waveTextLegacy(targetText, progress);
         }
         
-        setTextFast(displayText, config.textSource);
+        setTextFast(displayText, config.textSource, configIndex);
         
         if (currentStep >= totalSteps) {
             clearInterval(transitionInterval);
             transitionInterval = null;
-            setTextFast(targetText, config.textSource);
+            setTextFast(targetText, config.textSource, configIndex);
         }
     }
     
@@ -3128,12 +3476,15 @@ function showTextWithTransitionLegacy(targetText, config) {
 let lastTextSend = 0;
 const MIN_TEXT_INTERVAL = 80;
 
-function setTextFast(text, sourceName) {
+function setTextFast(text, sourceName, configIndex) {
     if (!sourceName || !connected || !ws || ws.readyState !== WebSocket.OPEN) return;
     
     const now = Date.now();
     if (now - lastTextSend < MIN_TEXT_INTERVAL) {
-        document.getElementById('textPreview').textContent = text;
+        // Only update preview if this is the currently selected config
+        if (configIndex === currentTextConfigIndex) {
+            document.getElementById('textPreview').textContent = text;
+        }
         return;
     }
     lastTextSend = now;
@@ -3149,7 +3500,11 @@ function setTextFast(text, sourceName) {
             }
         }
     }));
-    document.getElementById('textPreview').textContent = text;
+    
+    // Only update preview if this is the currently selected config
+    if (configIndex === currentTextConfigIndex) {
+        document.getElementById('textPreview').textContent = text;
+    }
 }
 
 function scrambleTextLegacy(text) {
@@ -3224,7 +3579,7 @@ function restoreRunningTextCyclers() {
 
 
 // ============ Twitch Clips Player (Multi-Config) ============
-let clipsConfigs = JSON.parse(localStorage.getItem('clipsConfigs') || '[]');
+let clipsConfigs = storage.get('clipsConfigs') || [];
 let currentClipsConfigIndex = -1;
 
 // Twitch Client ID for clips player (from teklynk)
@@ -3394,7 +3749,7 @@ function deleteCurrentClipsConfig() {
 }
 
 function saveClipsConfigs() {
-    localStorage.setItem('clipsConfigs', JSON.stringify(clipsConfigs));
+    storage.set('clipsConfigs', clipsConfigs);
 }
 
 function exportClipsConfigs() {
