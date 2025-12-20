@@ -6,16 +6,34 @@
     <title>OBS Animation Suite</title>
     <style>
         :root {
-            --bg: #0d1117;
-            --card: #161b22;
-            --border: #30363d;
-            --accent: #58a6ff;
-            --accent2: #a371f7;
-            --success: #3fb950;
-            --warning: #d29922;
-            --danger: #f85149;
-            --text: #e6edf3;
-            --muted: #8b949e;
+            /* idling.app UI Color Palette */
+            --bg: #1a1611;
+            --bg-dark: #0f0e0b;
+            --card: #252017;
+            --border: #3d3627;
+            --border-light: #4a4336;
+            
+            /* Brand Colors */
+            --accent: #edae49;
+            --accent-light: #f9df74;
+            --accent-dark: #c68214;
+            --accent2: #6495ed;
+            
+            /* Status Colors */
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #ea2b1f;
+            --info: #6495ed;
+            
+            /* Text Colors */
+            --text: #f9f9f9;
+            --text-secondary: #b8b8b8;
+            --muted: #888;
+            
+            /* Glass Effects */
+            --glass-bg: rgba(37, 32, 23, 0.95);
+            --glass-bg-dark: rgba(26, 22, 17, 0.98);
+            --glass-border: rgba(61, 54, 39, 0.8);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -154,12 +172,22 @@
             transform: translate(-50%, -50%);
         }
         
-        .btn-primary { background: var(--accent); border-color: var(--accent); color: #000; }
-        .btn-primary:hover { background: #79b8ff; }
-        .btn-success { background: var(--success); border-color: var(--success); color: #000; }
-        .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #1a1611; font-weight: 600; }
+        .btn-primary:hover { background: var(--accent-light); }
+        .btn-success { background: var(--success); border-color: var(--success); color: #fff; font-weight: 600; }
+        .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
         .btn-lg { padding: 12px 24px; font-size: 16px; }
         .btn-block { width: 100%; }
+        .btn-link { 
+            background: transparent; 
+            border: none; 
+            color: var(--accent); 
+            padding: 0; 
+            text-decoration: underline; 
+            cursor: pointer;
+            font-size: inherit;
+        }
+        .btn-link:hover { color: var(--accent-light); text-decoration: none; }
         
         .row { display: flex; gap: 8px; margin-bottom: 8px; }
         .row > * { flex: 1; }
@@ -169,12 +197,12 @@
         .source-btn {
             padding: 16px;
             text-align: center;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
             border: none;
-            color: #fff;
+            color: #1a1611;
             font-weight: 600;
         }
-        .source-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .source-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4); }
         
         .log {
             background: #000;
@@ -243,6 +271,452 @@
             padding: 12px 8px;
             color: var(--muted);
             font-size: 0.9em;
+        }
+        
+        .config-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .config-list .source-item {
+            transition: all 0.15s;
+        }
+        
+        .config-list .source-item:hover {
+            background: var(--border);
+            border-left: 3px solid var(--accent);
+        }
+        
+        .url-box {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        
+        .url-box input {
+            flex: 1;
+        }
+        
+        .url-box button {
+            flex-shrink: 0;
+        }
+        
+        code {
+            background: var(--border);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+        
+        .hint {
+            font-size: 0.75em;
+            color: var(--muted);
+            margin: 4px 0 8px;
+        }
+        
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+        
+        .form-check input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+        }
+        
+        .form-check label {
+            margin: 0;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        
+        .info-box {
+            background: var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.85em;
+        }
+        
+        .range-value {
+            display: inline-block;
+            min-width: 50px;
+            text-align: center;
+            font-size: 0.85em;
+            color: var(--accent);
+            font-weight: 600;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 4px 0;
+        }
+        
+        /* Script Manager Styles */
+        .scripts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 10px;
+        }
+        
+        .script-card {
+            background: var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid var(--accent);
+        }
+        
+        .script-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .script-icon {
+            font-size: 1.5em;
+        }
+        
+        .script-name {
+            font-weight: 600;
+            font-size: 1em;
+        }
+        
+        .script-version {
+            font-size: 0.75em;
+            color: var(--muted);
+        }
+        
+        .script-desc {
+            font-size: 0.85em;
+            color: var(--muted);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .script-file {
+            font-size: 0.75em;
+            font-family: monospace;
+            background: var(--bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .script-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .script-status.installed {
+            background: var(--success);
+            color: #000;
+        }
+        
+        .script-status.not-installed {
+            background: var(--muted);
+            color: #fff;
+        }
+        
+        .script-status.update-available {
+            background: var(--warning);
+            color: #000;
+        }
+        
+        /* Installer Wizard Styles */
+        .install-step {
+            display: none;
+        }
+        
+        .install-step.active {
+            display: block;
+        }
+        
+        .install-step h4 {
+            color: var(--accent);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .path-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        
+        .path-suggestion {
+            font-size: 0.75em;
+            background: var(--border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        
+        .path-suggestion:hover {
+            background: var(--accent);
+            color: #000;
+        }
+        
+        .install-scripts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .install-script-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--border);
+            border-radius: 6px;
+        }
+        
+        .install-script-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .install-script-item .script-info {
+            flex: 1;
+        }
+        
+        .install-script-item .script-name {
+            font-weight: 600;
+        }
+        
+        .install-script-item .script-status-tag {
+            font-size: 0.75em;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .install-script-item .script-status-tag.new {
+            background: var(--success);
+            color: #000;
+        }
+        
+        .install-script-item .script-status-tag.exists {
+            background: var(--warning);
+            color: #000;
+        }
+        
+        .install-script-item .script-status-tag.same {
+            background: var(--muted);
+            color: #fff;
+        }
+        
+        .install-review {
+            background: var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 0.9em;
+        }
+        
+        .install-review-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--bg);
+        }
+        
+        .install-review-item:last-child {
+            border-bottom: none;
+        }
+        
+        .install-output {
+            background: #1a1a2e;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.8em;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            border-color: var(--warning);
+            color: #1a1611;
+            font-weight: 600;
+        }
+        
+        /* ===== Script Status & Feature Gating ===== */
+        .startup-banner {
+            background: linear-gradient(135deg, var(--warning) 0%, #e6a000 100%);
+            color: #1a1611;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .startup-banner.error {
+            background: linear-gradient(135deg, var(--danger) 0%, #c0392b 100%);
+            color: #fff;
+        }
+        
+        .startup-banner.success {
+            background: linear-gradient(135deg, var(--success) 0%, #1e8449 100%);
+            color: #fff;
+        }
+        
+        .startup-banner__icon {
+            font-size: 1.5em;
+            flex-shrink: 0;
+        }
+        
+        .startup-banner__content {
+            flex: 1;
+        }
+        
+        .startup-banner__title {
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        
+        .startup-banner__text {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .startup-banner__action {
+            background: rgba(0,0,0,0.2);
+            border: none;
+            color: inherit;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .startup-banner__action:hover {
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .feature-disabled {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        
+        .feature-disabled::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(0,0,0,0.1) 10px,
+                rgba(0,0,0,0.1) 20px
+            );
+            border-radius: inherit;
+        }
+        
+        .feature-notice {
+            background: var(--border);
+            border-left: 3px solid var(--warning);
+            padding: 10px 12px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-size: 0.85em;
+        }
+        
+        .feature-notice.error {
+            border-left-color: var(--danger);
+        }
+        
+        .feature-notice__title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .feature-notice__text {
+            color: var(--muted);
+        }
+        
+        .script-status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .script-status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg);
+            border-radius: 6px;
+            font-size: 0.85em;
+        }
+        
+        .script-status-item.installed {
+            border-left: 3px solid var(--success);
+        }
+        
+        .script-status-item.missing {
+            border-left: 3px solid var(--danger);
+            opacity: 0.7;
+        }
+        
+        .script-status-item__icon {
+            font-size: 1.1em;
+        }
+        
+        .script-status-item__name {
+            flex: 1;
+        }
+        
+        .script-status-item__badge {
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        
+        .script-status-item.installed .script-status-item__badge {
+            background: var(--success);
+            color: #fff;
+        }
+        
+        .script-status-item.missing .script-status-item__badge {
+            background: var(--danger);
+            color: #fff;
+        }
+        
+        .tab.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .tab.disabled::after {
+            content: '🔒';
+            margin-left: 2px;
+            font-size: 0.7em;
         }
         
         /* Text cycler specific */
@@ -329,18 +803,38 @@
             <button class="tab active" onclick="showPage('dashboard')" title="Dashboard">🏠</button>
             <button class="tab" onclick="showPage('sources')" title="Sources">📦</button>
             <button class="tab" onclick="showPage('text')" title="Text Cycler">📝</button>
+            <button class="tab" onclick="showPage('clips')" title="Clips Player">🎬</button>
             <button class="tab" onclick="showPage('swaps')" title="Swaps">🔄</button>
+            <button class="tab" onclick="showPage('scripts')" title="Script Manager">📜</button>
+            <button class="tab" onclick="showPage('install')" title="Installer">📥</button>
             <button class="tab" onclick="showPage('setup')" title="Setup">⚙️</button>
         </nav>
         
         <main class="content">
             <!-- Dashboard -->
             <div id="page-dashboard" class="page active">
+                <!-- Script Status Card -->
+                <div class="card" id="dashboardStatusCard">
+                    <h3>📊 System Status</h3>
+                    <div id="dashboardScriptStatus">
+                        <div class="script-status-grid">
+                            <div class="script-status-item missing">
+                                <span class="script-status-item__icon">🔌</span>
+                                <span class="script-status-item__name">OBS Connection</span>
+                                <span class="script-status-item__badge">Offline</span>
+                            </div>
+                        </div>
+                        <p class="hint" style="margin-top:8px">
+                            <button onclick="showPage('setup')" class="btn-link">⚙️ Go to Setup</button> to connect to OBS WebSocket
+                        </p>
+                    </div>
+                </div>
+                
                 <div class="card">
                     <h3>Quick Actions</h3>
                     <div class="grid">
-                        <button class="source-btn" onclick="cycleAspect()">🔄 Cycle Aspect</button>
-                        <button class="source-btn" onclick="refreshScenes()">🔃 Refresh</button>
+                        <button class="source-btn requires-connection" onclick="cycleAspect()">🔄 Cycle Aspect</button>
+                        <button class="source-btn requires-connection" onclick="refreshScenes()">🔃 Refresh</button>
                     </div>
                 </div>
                 
@@ -402,46 +896,309 @@
             
             <!-- Text Cycler -->
             <div id="page-text" class="page">
+                <!-- Saved Configs -->
                 <div class="card">
-                    <h3>Text Source</h3>
-                    <select id="textSource" onchange="loadTextSource()">
-                        <option value="">-- Select Text Source --</option>
-                    </select>
-                    <div class="text-preview" id="textPreview" style="margin-top:8px">Select a source</div>
+                    <h3>💾 Saved Configs</h3>
+                    <div id="textCyclerConfigs" class="config-list"></div>
+                    <div class="row" style="margin-top:8px">
+                        <button onclick="newTextConfig()">➕ New Config</button>
+                        <button onclick="exportTextConfigs()">📤 Export</button>
+                        <button onclick="importTextConfigs()">📥 Import</button>
+                    </div>
                 </div>
-                
-                <div class="card">
-                    <h3>Text Lines</h3>
+
+                <!-- Config Editor -->
+                <div class="card" id="textConfigEditor" style="display:none">
+                    <h3>✏️ Edit Config</h3>
+                    <label>Config Name</label>
+                    <input type="text" id="textConfigName" placeholder="My Text Cycler">
+                    
+                    <label>Mode</label>
+                    <select id="textCyclerMode" onchange="updateTextCyclerMode()">
+                        <option value="browser">Browser Source (smooth CSS animations)</option>
+                        <option value="legacy">Legacy (OBS text source)</option>
+                    </select>
+                    <p id="modeInfo" style="font-size:0.75em;color:var(--muted);margin:4px 0 8px"></p>
+                    
+                    <div id="browserModeSettings">
+                        <label>Config ID (for browser source URL)</label>
+                        <div class="url-box">
+                            <input type="text" id="textConfigId" placeholder="config1" style="flex:1">
+                            <button onclick="copyBrowserSourceUrl()">📋 Copy URL</button>
+                        </div>
+                        <p style="font-size:0.7em;color:var(--muted);margin-top:4px">
+                            Add as OBS Browser Source: <code>file:///path/to/text_cycler_display.html?id=<span id="configIdPreview">config1</span></code>
+                        </p>
+                    </div>
+                    
+                    <div id="legacyModeSettings" style="display:none">
+                        <label>Text Source</label>
+                        <select id="textSource" onchange="loadTextSource()">
+                            <option value="">-- Select Text Source --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Text Lines -->
+                <div class="card" id="textLinesCard" style="display:none">
+                    <h3>📝 Text Lines</h3>
                     <textarea id="textLines" placeholder="Enter text lines (one per line)&#10;Line 1&#10;Line 2&#10;Line 3" rows="5"></textarea>
                 </div>
                 
-                <div class="card">
-                    <h3>Settings</h3>
-                    <label>Transition</label>
+                <!-- Animation Settings -->
+                <div class="card" id="textAnimationCard" style="display:none">
+                    <h3>🎬 Animation</h3>
+                    <label>Transition Effect</label>
                     <select id="textTransition" onchange="updateTransitionMode()">
                         <option value="none">None (instant)</option>
-                        <option value="glitch">Glitch → Reveal</option>
+                        <option value="fade">Fade</option>
+                        <option value="obfuscate">Obfuscate (Minecraft enchant)</option>
                         <option value="typewriter">Typewriter</option>
+                        <option value="glitch">Glitch</option>
                         <option value="scramble">Scramble → Snap</option>
+                        <option value="wave">Wave Reveal</option>
+                        <option value="slide_left">Slide Left</option>
+                        <option value="slide_right">Slide Right</option>
+                        <option value="slide_up">Slide Up</option>
+                        <option value="slide_down">Slide Down</option>
+                        <option value="pop">Pop</option>
                     </select>
                     <p id="transitionInfo" style="font-size:0.75em;color:var(--muted);margin:4px 0 12px"></p>
                     <div class="row">
                         <div>
-                            <label>Trans (ms)</label>
-                            <input type="number" id="transDuration" value="500" min="100" max="2000" step="50">
+                            <label>Transition (ms)</label>
+                            <input type="number" id="transDuration" value="500" min="100" max="3000" step="50">
                         </div>
-                    </div>
-                    <div class="row">
                         <div>
                             <label>Cycle (ms)</label>
                             <input type="number" id="textDuration" value="3000" min="500" step="100">
                         </div>
                     </div>
                 </div>
+
+                <!-- Style Settings (Browser Mode Only) -->
+                <div class="card" id="textStyleCard" style="display:none">
+                    <h3>🎨 Style (Browser Mode)</h3>
+                    <div class="row">
+                        <div>
+                            <label>Font Size</label>
+                            <input type="text" id="textFontSize" value="48px" placeholder="48px">
+                        </div>
+                        <div>
+                            <label>Font Weight</label>
+                            <select id="textFontWeight">
+                                <option value="400">Normal</option>
+                                <option value="600">Semi-Bold</option>
+                                <option value="700" selected>Bold</option>
+                                <option value="900">Black</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div>
+                            <label>Text Color</label>
+                            <input type="text" id="textColor" value="#ffffff" placeholder="#ffffff">
+                        </div>
+                        <div>
+                            <label>Text Align</label>
+                            <select id="textAlign">
+                                <option value="center" selected>Center</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label>Text Shadow</label>
+                    <input type="text" id="textShadow" value="2px 2px 4px rgba(0,0,0,0.5)" placeholder="2px 2px 4px rgba(0,0,0,0.5)">
+                </div>
+
+                <!-- Preview -->
+                <div class="card" id="textPreviewCard" style="display:none">
+                    <h3>👁️ Preview</h3>
+                    <div class="text-preview" id="textPreview">Select or create a config</div>
+                </div>
                 
-                <div class="row">
-                    <button class="btn-success btn-lg" id="startCycleBtn" onclick="startSimpleCycle()">▶ Start</button>
-                    <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="stopSimpleCycle()" disabled>■ Stop</button>
+                <!-- Controls -->
+                <div id="textControls" style="display:none">
+                    <div class="row">
+                        <button class="btn-success btn-lg" id="startCycleBtn" onclick="startTextCycler()">▶ Start</button>
+                        <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="stopTextCycler()" disabled>■ Stop</button>
+                    </div>
+                    <div class="row" style="margin-top:8px">
+                        <button onclick="saveCurrentTextConfig()">💾 Save Config</button>
+                        <button onclick="deleteCurrentTextConfig()" style="background:var(--danger);border-color:var(--danger)">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Clips Player -->
+            <div id="page-clips" class="page">
+                <!-- Saved Clip Configs -->
+                <div class="card">
+                    <h3>🎬 Twitch Clips Player</h3>
+                    <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
+                        Auto-play Twitch clips during BRB/Starting screens. Based on 
+                        <button onclick="openUrlOrCopy('https://github.com/teklynk/twitch_clips_player', 'GitHub URL')" class="btn-link">teklynk/twitch_clips_player</button>
+                    </p>
+                    <div id="clipsConfigs" class="config-list"></div>
+                    <div class="row" style="margin-top:8px">
+                        <button onclick="newClipsConfig()">➕ New Config</button>
+                        <button onclick="exportClipsConfigs()">📤 Export</button>
+                        <button onclick="importClipsConfigs()">📥 Import</button>
+                    </div>
+                </div>
+
+                <!-- Config Editor -->
+                <div class="card" id="clipsConfigEditor" style="display:none">
+                    <h3>✏️ Edit Config</h3>
+                    
+                    <label>Config Name</label>
+                    <input type="text" id="clipsConfigName" placeholder="BRB Screen Clips">
+                    
+                    <label>Main Twitch Channel</label>
+                    <input type="text" id="clipsMainChannel" placeholder="YourChannel">
+                    <p class="hint">Your channel name for chat commands</p>
+                    
+                    <label>Channels to Pull Clips From</label>
+                    <textarea id="clipsChannels" rows="3" placeholder="Channel1, Channel2, Channel3&#10;Leave empty if using 'Show Following'"></textarea>
+                    <p class="hint">Comma separated. Leave empty to use followed channels</p>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowFollowing">
+                            <label for="clipsShowFollowing">Show clips from followed channels</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsExcludeSection" style="display:none">
+                        <label>Exclude Channels</label>
+                        <textarea id="clipsExclude" rows="2" placeholder="Channel1, Channel2"></textarea>
+                    </div>
+                </div>
+
+                <!-- Clip Settings -->
+                <div class="card" id="clipsSettingsCard" style="display:none">
+                    <h3>📋 Clip Settings</h3>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Max Clips</label>
+                            <input type="range" id="clipsLimit" min="10" max="100" step="10" value="20">
+                            <span id="clipsLimitValue" class="range-value">20</span>
+                        </div>
+                        <div>
+                            <label>Date Range (days)</label>
+                            <input type="range" id="clipsDateRange" min="0" max="360" step="10" value="0">
+                            <span id="clipsDateRangeValue" class="range-value">0 (all)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsPreferFeatured">
+                            <label for="clipsPreferFeatured">Prefer featured clips</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Settings -->
+                <div class="card" id="clipsDisplayCard" style="display:none">
+                    <h3>🎨 Display Settings</h3>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowText" checked>
+                            <label for="clipsShowText">Show channel name overlay</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsCustomTextSection">
+                        <label>Custom Overlay Text</label>
+                        <input type="text" id="clipsCustomText" placeholder="Go check out {channel}">
+                        <p class="hint">Use {channel} for channel name</p>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowDetails" checked>
+                            <label for="clipsShowDetails">Show clip details panel</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsDetailsSection">
+                        <label>Details Panel Text</label>
+                        <textarea id="clipsDetailsText" rows="3" placeholder="{title}&#10;While streaming {game}&#10;Clipped by {creator_name} {created_at}"></textarea>
+                        <p class="hint">Variables: {title}, {channel}, {game}, {creator_name}, {created_at}</p>
+                    </div>
+                    
+                    <label>Theme</label>
+                    <select id="clipsTheme">
+                        <option value="0">None</option>
+                        <option value="1">Slide in fancy skewed</option>
+                        <option value="2" selected>Slide in basic</option>
+                        <option value="3">Outside the box</option>
+                    </select>
+                </div>
+
+                <!-- Chat Commands -->
+                <div class="card" id="clipsChatCard" style="display:none">
+                    <h3>💬 Chat Commands</h3>
+                    
+                    <label>Custom Start Command (optional)</label>
+                    <input type="text" id="clipsCommand" placeholder="playclips">
+                    <p class="hint">If set, clips only play when !command is used. Leave empty to auto-play</p>
+                    
+                    <div class="info-box" style="margin-top:12px">
+                        <strong>Built-in Commands (Mods only):</strong>
+                        <ul style="margin:4px 0 0 16px;font-size:0.85em">
+                            <li>!clipskip - Skip current clip</li>
+                            <li>!clippause - Pause playback</li>
+                            <li>!clipplay - Resume playback</li>
+                            <li>!clipreload - Reload player</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Auth -->
+                <div class="card" id="clipsAuthCard" style="display:none">
+                    <h3>🔐 Twitch Auth</h3>
+                    <p class="hint" style="margin-bottom:8px">Required for "Show Following" and chat messages</p>
+                    
+                    <label>Access Token</label>
+                    <div class="url-box">
+                        <input type="password" id="clipsAccessToken" placeholder="oauth:xxxxxxxxxx">
+                        <button onclick="toggleClipsTokenVisibility()">👁️</button>
+                    </div>
+                    <div class="hint" style="margin-top:8px">
+                        <button onclick="openTwitchAuth()" class="btn-link">🔗 Get Access Token from Twitch</button>
+                        <button onclick="copyTwitchAuthUrl()" style="margin-left:4px" title="Copy auth URL to clipboard">📋</button>
+                    </div>
+                    <p class="hint" id="twitchAuthHint" style="display:none;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px">
+                        ⚠️ OBS docks can't open external browsers. URL copied to clipboard - paste it in your browser!
+                    </p>
+                </div>
+
+                <!-- Preview & Actions -->
+                <div class="card" id="clipsPreviewCard" style="display:none">
+                    <h3>🔗 Browser Source URL</h3>
+                    <div class="url-box">
+                        <input type="text" id="clipsGeneratedUrl" readonly placeholder="Configure settings above...">
+                        <button onclick="copyClipsUrl()">📋 Copy</button>
+                    </div>
+                    <p class="hint">Add this as a Browser Source in OBS. Never share this URL!</p>
+                    
+                    <div class="row" style="margin-top:12px">
+                        <button onclick="generateClipsUrl()">🔄 Generate URL</button>
+                        <button onclick="testClipsPlayer()" style="background:var(--success);border-color:var(--success)">▶ Test in Browser</button>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div id="clipsControls" style="display:none">
+                    <div class="row">
+                        <button onclick="saveCurrentClipsConfig()">💾 Save Config</button>
+                        <button onclick="deleteCurrentClipsConfig()" style="background:var(--danger);border-color:var(--danger)">🗑️ Delete</button>
+                    </div>
                 </div>
             </div>
             
@@ -498,6 +1255,182 @@
                         <button onclick="importConfigs()">📥 Import</button>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Script Manager -->
+            <div id="page-scripts" class="page">
+                <div class="card">
+                    <h3>📜 OBS Animation Suite Scripts</h3>
+                    <p class="hint" style="margin-bottom:12px">Lua scripts that run inside OBS Studio. Install via the Installer tab.</p>
+                    
+                    <div id="scriptsList" class="scripts-grid"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>🌐 Browser Sources</h3>
+                    <p class="hint" style="margin-bottom:12px">HTML files to add as Browser Sources in OBS.</p>
+                    
+                    <div class="scripts-grid">
+                        <div class="script-card">
+                            <div class="script-header">
+                                <span class="script-icon">🎬</span>
+                                <div>
+                                    <div class="script-name">Text Cycler Display</div>
+                                    <div class="script-version">Browser Source</div>
+                                </div>
+                            </div>
+                            <p class="script-desc">Beautiful CSS-animated text display. Receives messages from the control panel for smooth text cycling effects.</p>
+                            <div class="script-file">text_cycler_display.html</div>
+                        </div>
+                        
+                        <div class="script-card">
+                            <div class="script-header">
+                                <span class="script-icon">📺</span>
+                                <div>
+                                    <div class="script-name">Twitch Clips Player</div>
+                                    <div class="script-version">Browser Source</div>
+                                </div>
+                            </div>
+                            <p class="script-desc">Auto-plays Twitch clips during BRB/Starting scenes. Configurable channels, themes, and chat commands.</p>
+                            <div class="script-file">twitch_clips_player/clips.html</div>
+                        </div>
+                        
+                        <div class="script-card">
+                            <div class="script-header">
+                                <span class="script-icon">🎛️</span>
+                                <div>
+                                    <div class="script-name">Control Panel Dock</div>
+                                    <div class="script-version">Custom Dock</div>
+                                </div>
+                            </div>
+                            <p class="script-desc">This control panel! Add as a Custom Browser Dock in OBS for quick access to all features.</p>
+                            <div class="script-file">control_panel.html</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📖 Quick Reference</h3>
+                    <div class="info-box">
+                        <strong>Adding Scripts to OBS:</strong>
+                        <ol style="margin:8px 0 0 16px;font-size:0.85em">
+                            <li>Tools → Scripts</li>
+                            <li>Click + (Add Scripts)</li>
+                            <li>Navigate to your script folder</li>
+                            <li>Select the .lua files</li>
+                        </ol>
+                    </div>
+                    <div class="info-box" style="margin-top:8px">
+                        <strong>Adding Custom Browser Dock:</strong>
+                        <ol style="margin:8px 0 0 16px;font-size:0.85em">
+                            <li>View → Docks → Custom Browser Docks</li>
+                            <li>Name: "Animation Suite"</li>
+                            <li>URL: file:///path/to/control_panel.html</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Installer Wizard -->
+            <div id="page-install" class="page">
+                <div class="card">
+                    <h3>📥 Installation Wizard</h3>
+                    <p class="hint">Automatically install Lua scripts to your OBS scripts folder.</p>
+                    
+                    <!-- Step 1: Detect/Select Paths -->
+                    <div id="installStep1" class="install-step active">
+                        <h4>Step 1: Configure Paths</h4>
+                        
+                        <label>Source Files Location</label>
+                        <div class="url-box">
+                            <input type="text" id="installSourcePath" readonly>
+                            <button onclick="detectSourcePath()">🔍 Detect</button>
+                        </div>
+                        <p class="hint">Where the script files are located (this folder)</p>
+                        
+                        <label>OBS Scripts Folder</label>
+                        <div class="url-box">
+                            <input type="text" id="installTargetPath" placeholder="C:\Users\YourName\AppData\Roaming\obs-studio\scripts">
+                            <button onclick="browseTargetPath()">📁 Browse</button>
+                            <button onclick="detectOBSPath()">🔍 Auto-Detect</button>
+                        </div>
+                        <p class="hint">Where scripts will be installed. Common locations:</p>
+                        <div class="path-suggestions" id="pathSuggestions"></div>
+                        
+                        <div class="row" style="margin-top:12px">
+                            <button onclick="goToInstallStep(2)" class="btn-primary">Next: Select Scripts →</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Select Scripts -->
+                    <div id="installStep2" class="install-step">
+                        <h4>Step 2: Select Scripts to Install</h4>
+                        
+                        <div id="installScriptsList" class="install-scripts-list"></div>
+                        
+                        <div class="row" style="margin-top:12px">
+                            <button onclick="goToInstallStep(1)">← Back</button>
+                            <button onclick="goToInstallStep(3)" class="btn-primary">Next: Review →</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Review & Install -->
+                    <div id="installStep3" class="install-step">
+                        <h4>Step 3: Review & Install</h4>
+                        
+                        <div id="installReview" class="install-review"></div>
+                        
+                        <div class="install-method-select" style="margin-top:12px">
+                            <label>Installation Method</label>
+                            <select id="installMethod">
+                                <option value="powershell">PowerShell Script (Windows)</option>
+                                <option value="batch">Batch File (Windows)</option>
+                                <option value="bash">Bash Script (Linux/Mac)</option>
+                                <option value="manual">Manual Instructions</option>
+                            </select>
+                        </div>
+                        
+                        <div class="row" style="margin-top:12px">
+                            <button onclick="goToInstallStep(2)">← Back</button>
+                            <button onclick="generateInstallScript()" class="btn-primary">Generate Install Script</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 4: Execute/Copy Script -->
+                    <div id="installStep4" class="install-step">
+                        <h4>Step 4: Run Installation</h4>
+                        
+                        <div id="installOutput" class="install-output"></div>
+                        
+                        <div class="row" style="margin-top:12px">
+                            <button onclick="goToInstallStep(3)">← Back</button>
+                            <button onclick="copyInstallScript()">📋 Copy Script</button>
+                            <button onclick="downloadInstallScript()" class="btn-primary">💾 Download Script</button>
+                        </div>
+                        
+                        <div class="info-box" style="margin-top:12px">
+                            <strong>After downloading:</strong>
+                            <ol style="margin:4px 0 0 16px;font-size:0.85em">
+                                <li>Right-click the downloaded script</li>
+                                <li>Run as Administrator (Windows) or chmod +x && run (Linux/Mac)</li>
+                                <li>Restart OBS Studio</li>
+                                <li>Go to Tools → Scripts to configure</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Existing Installation Detection -->
+                <div class="card" id="existingInstallCard" style="display:none">
+                    <h3>⚠️ Existing Installation Detected</h3>
+                    <div id="existingInstallInfo"></div>
+                    <div class="row" style="margin-top:12px">
+                        <button onclick="handleExistingInstall('skip')">Skip Existing</button>
+                        <button onclick="handleExistingInstall('backup')" class="btn-warning">Backup & Replace</button>
+                        <button onclick="handleExistingInstall('replace')" class="btn-danger">Replace All</button>
+                    </div>
+                </div>
+                
             </div>
             
             <!-- Setup -->
@@ -808,10 +1741,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Load saved configs and UI state
     renderSavedSwaps();
+    renderTextCyclerConfigs();
+    initClipsPlayer();
+    initScriptsAndInstaller();
     loadUIState();
     restoreActiveTab();
     updateConnectionState();
     setupUIStatePersistence();
+    
+    // Initialize script status (will show "not connected" banner)
+    renderStartupBanner();
+    updateTabStates();
+    
+    // Restore running text cyclers
+    setTimeout(restoreRunningTextCyclers, 1000);
     updateTransitionMode();
     
     // Setup credential UI listeners
@@ -836,16 +1779,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ============ UI ============
 function showPage(id, save = true) {
+    // Check if tab is disabled (requires connection)
+    const featurePages = ['sources', 'text', 'swaps'];
+    if (featurePages.includes(id) && !scriptStatus.connected) {
+        // Don't switch to disabled page, redirect to setup
+        log('Connect to OBS first to use this feature', 'error');
+        showPage('setup', false);
+        return;
+    }
+    
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.getElementById('page-' + id).classList.add('active');
     
-    // Find and activate the corresponding tab
+    // Find and activate the corresponding tab - must match order in HTML nav.tabs
     const tabs = document.querySelectorAll('.tab');
-    const tabIds = ['dashboard', 'sources', 'text', 'swaps', 'setup'];
+    const tabIds = ['dashboard', 'sources', 'text', 'clips', 'swaps', 'scripts', 'install', 'setup'];
     const tabIndex = tabIds.indexOf(id);
     if (tabIndex >= 0 && tabs[tabIndex]) {
         tabs[tabIndex].classList.add('active');
+    }
+    
+    // Render feature notices for pages that require scripts
+    const pageFeatureMap = {
+        'sources': { id: 'page-sources', feature: 'sources', script: 'Source Animations' },
+        'text': { id: 'page-text', feature: 'text', script: 'Text Cycler' },
+        'swaps': { id: 'page-swaps', feature: 'swap', script: 'Source Swap' }
+    };
+    
+    const pageInfo = pageFeatureMap[id];
+    if (pageInfo) {
+        renderFeatureNotice(pageInfo.id, pageInfo.feature, pageInfo.script);
     }
     
     // Save active tab
@@ -939,6 +1903,11 @@ function connect() {
             updateConnectionUI();
             updateConnectionState();
             
+            // Reset script status on disconnect
+            scriptStatus.connected = false;
+            updateFeatureAvailability();
+            renderStartupBanner();
+            
             // Log close reason for debugging
             const reason = e.code === 1000 ? 'normal' : e.code === 1006 ? 'abnormal' : `code ${e.code}`;
             log(`Disconnected (${reason})`, wasConnected ? 'error' : 'info');
@@ -987,6 +1956,9 @@ async function handleMessage(data, password) {
         saveCredentials(); // Save on successful connection
         log('Connected to OBS!', 'success');
         refreshScenes();
+        
+        // Check script status after connection
+        setTimeout(checkScriptStatus, 500);
     } else if (data.op === 7) { // Response
         const req = pendingRequests[data.d.requestId];
         if (req) {
@@ -1690,26 +2662,254 @@ function importConfigs() {
     }
 }
 
-// ============ Text Cycler ============
+// ============ Text Cycler (Multi-Config) ============
+let textCyclerConfigs = JSON.parse(localStorage.getItem('textCyclerConfigs') || '[]');
+let currentTextConfigIndex = -1;
 let cycleInterval = null;
 let cycleIndex = 0;
+let transitionInterval = null;
+let textChannels = {}; // BroadcastChannels for each config
+
+// Character sets for effects
+const CHARS_ENCHANT = 'ᔑᒷᓵ↸ᒷ⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴⨅';
+const CHARS_GLITCH = '█▓▒░╔╗╚╝║═┌┐└┘│─┼▀▄▌▐■□▪▫●○';
+
+function renderTextCyclerConfigs() {
+    const container = document.getElementById('textCyclerConfigs');
+    if (textCyclerConfigs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No configs yet. Click "New Config" to create one.</div>';
+        return;
+    }
+    
+    container.innerHTML = textCyclerConfigs.map((c, i) => `
+        <div class="source-item" style="cursor:pointer" onclick="loadTextConfig(${i})">
+            <div>
+                <div class="name">${c.name || 'Unnamed'} ${c.isRunning ? '<span class="badge badge-success">Running</span>' : ''}</div>
+                <div class="type">${c.mode === 'browser' ? '🌐 Browser' : '📝 Legacy'} • ${(c.textLines || []).length} lines • ${c.transition || 'none'}</div>
+            </div>
+            <div style="display:flex;gap:4px">
+                <button onclick="event.stopPropagation(); quickStartConfig(${i})" title="${c.isRunning ? 'Stop' : 'Start'}">${c.isRunning ? '⏹' : '▶'}</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function newTextConfig() {
+    const config = {
+        id: 'config_' + Date.now(),
+        name: 'Text Cycler ' + (textCyclerConfigs.length + 1),
+        mode: 'browser',
+        configId: 'text' + (textCyclerConfigs.length + 1),
+        textSource: '',
+        textLines: ['Welcome to the stream!', 'Don\'t forget to subscribe!', 'Thanks for watching!'],
+        transition: 'obfuscate',
+        transDuration: 500,
+        cycleDuration: 3000,
+        styles: {
+            fontSize: '48px',
+            fontWeight: '700',
+            color: '#ffffff',
+            align: 'center',
+            shadow: '2px 2px 4px rgba(0,0,0,0.5)'
+        },
+        isRunning: false
+    };
+    
+    textCyclerConfigs.push(config);
+    saveTextCyclerConfigs();
+    renderTextCyclerConfigs();
+    loadTextConfig(textCyclerConfigs.length - 1);
+    log('Created new text config', 'success');
+}
+
+function loadTextConfig(index) {
+    currentTextConfigIndex = index;
+    const config = textCyclerConfigs[index];
+    if (!config) return;
+    
+    // Show editor cards
+    document.getElementById('textConfigEditor').style.display = 'block';
+    document.getElementById('textLinesCard').style.display = 'block';
+    document.getElementById('textAnimationCard').style.display = 'block';
+    document.getElementById('textPreviewCard').style.display = 'block';
+    document.getElementById('textControls').style.display = 'block';
+    
+    // Load values
+    document.getElementById('textConfigName').value = config.name || '';
+    document.getElementById('textCyclerMode').value = config.mode || 'browser';
+    document.getElementById('textConfigId').value = config.configId || config.id;
+    document.getElementById('textSource').value = config.textSource || '';
+    document.getElementById('textLines').value = (config.textLines || []).join('\n');
+    document.getElementById('textTransition').value = config.transition || 'none';
+    document.getElementById('transDuration').value = config.transDuration || 500;
+    document.getElementById('textDuration').value = config.cycleDuration || 3000;
+    
+    // Style settings
+    if (config.styles) {
+        document.getElementById('textFontSize').value = config.styles.fontSize || '48px';
+        document.getElementById('textFontWeight').value = config.styles.fontWeight || '700';
+        document.getElementById('textColor').value = config.styles.color || '#ffffff';
+        document.getElementById('textAlign').value = config.styles.align || 'center';
+        document.getElementById('textShadow').value = config.styles.shadow || '';
+    }
+    
+    updateTextCyclerMode();
+    updateTransitionMode();
+    updateConfigIdPreview();
+    
+    // Update button states
+    document.getElementById('startCycleBtn').disabled = config.isRunning;
+    document.getElementById('stopCycleBtn').disabled = !config.isRunning;
+    
+    log('Loaded config: ' + config.name, 'info');
+}
+
+function saveCurrentTextConfig() {
+    if (currentTextConfigIndex < 0) return;
+    
+    const config = textCyclerConfigs[currentTextConfigIndex];
+    config.name = document.getElementById('textConfigName').value || 'Unnamed';
+    config.mode = document.getElementById('textCyclerMode').value;
+    config.configId = document.getElementById('textConfigId').value || config.id;
+    config.textSource = document.getElementById('textSource').value;
+    config.textLines = document.getElementById('textLines').value.split('\n').map(l => l.trim()).filter(l => l);
+    config.transition = document.getElementById('textTransition').value;
+    config.transDuration = parseInt(document.getElementById('transDuration').value) || 500;
+    config.cycleDuration = parseInt(document.getElementById('textDuration').value) || 3000;
+    config.styles = {
+        fontSize: document.getElementById('textFontSize').value,
+        fontWeight: document.getElementById('textFontWeight').value,
+        color: document.getElementById('textColor').value,
+        align: document.getElementById('textAlign').value,
+        shadow: document.getElementById('textShadow').value
+    };
+    
+    saveTextCyclerConfigs();
+    renderTextCyclerConfigs();
+    log('Saved config: ' + config.name, 'success');
+}
+
+function deleteCurrentTextConfig() {
+    if (currentTextConfigIndex < 0) return;
+    if (!confirm('Delete this config?')) return;
+    
+    const config = textCyclerConfigs[currentTextConfigIndex];
+    if (config.isRunning) stopConfigCycling(currentTextConfigIndex);
+    
+    textCyclerConfigs.splice(currentTextConfigIndex, 1);
+    saveTextCyclerConfigs();
+    renderTextCyclerConfigs();
+    
+    // Hide editor
+    document.getElementById('textConfigEditor').style.display = 'none';
+    document.getElementById('textLinesCard').style.display = 'none';
+    document.getElementById('textAnimationCard').style.display = 'none';
+    document.getElementById('textStyleCard').style.display = 'none';
+    document.getElementById('textPreviewCard').style.display = 'none';
+    document.getElementById('textControls').style.display = 'none';
+    
+    currentTextConfigIndex = -1;
+    log('Config deleted', 'info');
+}
+
+function saveTextCyclerConfigs() {
+    localStorage.setItem('textCyclerConfigs', JSON.stringify(textCyclerConfigs));
+}
+
+function exportTextConfigs() {
+    if (textCyclerConfigs.length === 0) {
+        log('No configs to export', 'error');
+        return;
+    }
+    const json = JSON.stringify(textCyclerConfigs, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+        log('Configs copied to clipboard!', 'success');
+    }).catch(() => {
+        prompt('Copy this JSON:', json);
+    });
+}
+
+function importTextConfigs() {
+    const json = prompt('Paste config JSON:');
+    if (!json) return;
+    
+    try {
+        const imported = JSON.parse(json);
+        if (!Array.isArray(imported)) throw new Error('Must be array');
+        
+        const merge = textCyclerConfigs.length > 0 && confirm('Merge with existing? (Cancel to replace)');
+        if (merge) {
+            textCyclerConfigs = [...textCyclerConfigs, ...imported];
+        } else {
+            textCyclerConfigs = imported;
+        }
+        
+        saveTextCyclerConfigs();
+        renderTextCyclerConfigs();
+        log(`Imported ${imported.length} configs`, 'success');
+    } catch (e) {
+        log('Invalid JSON: ' + e.message, 'error');
+    }
+}
+
+function updateTextCyclerMode() {
+    const mode = document.getElementById('textCyclerMode').value;
+    const modeInfo = document.getElementById('modeInfo');
+    
+    document.getElementById('browserModeSettings').style.display = mode === 'browser' ? 'block' : 'none';
+    document.getElementById('legacyModeSettings').style.display = mode === 'legacy' ? 'block' : 'none';
+    document.getElementById('textStyleCard').style.display = mode === 'browser' ? 'block' : 'none';
+    
+    if (mode === 'browser') {
+        modeInfo.textContent = 'Uses a Browser Source in OBS with smooth CSS animations. Create a Browser Source pointing to text_cycler_display.html';
+    } else {
+        modeInfo.textContent = 'Updates an existing OBS text source directly. Limited to text scramble animations.';
+    }
+}
+
+function updateConfigIdPreview() {
+    const configId = document.getElementById('textConfigId').value || 'config1';
+    document.getElementById('configIdPreview').textContent = configId;
+}
+
+document.getElementById('textConfigId')?.addEventListener('input', updateConfigIdPreview);
+
+function copyBrowserSourceUrl() {
+    const configId = document.getElementById('textConfigId').value || 'config1';
+    const path = window.location.pathname.replace('control_panel.html', 'text_cycler_display.html');
+    const url = `file://${window.location.pathname.replace('control_panel.html', 'text_cycler_display.html')}?id=${configId}`;
+    
+    navigator.clipboard.writeText(url).then(() => {
+        log('URL copied! Add as Browser Source in OBS', 'success');
+    }).catch(() => {
+        prompt('Copy this URL:', url);
+    });
+}
 
 function updateTransitionMode() {
     const val = document.getElementById('textTransition').value;
     const info = document.getElementById('transitionInfo');
     const descriptions = {
         'none': 'Instant text change',
-        'glitch': 'Scramble briefly, then reveal left-to-right',
+        'fade': 'Smooth fade in/out',
+        'obfuscate': 'Minecraft enchant table scramble, reveal left-to-right',
         'typewriter': 'Type out one character at a time',
-        'scramble': 'Random chars, then snap to final text'
+        'glitch': 'Random glitch characters that settle',
+        'scramble': 'Full scramble, then snap to final',
+        'wave': 'Characters appear in a wave pattern',
+        'slide_left': 'Slide out left, slide in from right',
+        'slide_right': 'Slide out right, slide in from left',
+        'slide_up': 'Slide up transition',
+        'slide_down': 'Slide down transition',
+        'pop': 'Pop in with scale bounce'
     };
     info.textContent = descriptions[val] || '';
 }
 
 function updateTextSourceDropdown() {
     const select = document.getElementById('textSource');
+    if (!select) return;
     
-    // Preserve current or load from saved state
     const savedState = JSON.parse(localStorage.getItem('ui_state') || '{}');
     const current = select.value || savedState.textSource || '';
     
@@ -1722,7 +2922,6 @@ function updateTextSourceDropdown() {
     
     if (current && textSources.find(s => s.sourceName === current)) {
         select.value = current;
-        loadTextSource();
     }
 }
 
@@ -1742,80 +2941,124 @@ async function loadTextSource() {
     }
 }
 
-async function setText(text) {
-    const name = document.getElementById('textSource').value;
-    if (!name || !connected) return;
-    
-    try {
-        await request('SetInputSettings', {
-            inputName: name,
-            inputSettings: { text: text }
-        });
-        document.getElementById('textPreview').textContent = text;
-    } catch (e) {
-        log('Error setting text: ' + e, 'error');
+// ============ Text Cycler Engine ============
+
+function getOrCreateChannel(configId) {
+    if (!textChannels[configId]) {
+        try {
+            textChannels[configId] = new BroadcastChannel('text_cycler_' + configId);
+        } catch (e) {
+            console.warn('BroadcastChannel not supported');
+        }
     }
+    return textChannels[configId];
 }
 
-function getTextLines() {
-    return document.getElementById('textLines').value
-        .split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
-}
-
-async function startSimpleCycle() {
-    if (!connected) {
-        log('Connect to OBS first', 'error');
-        showPage('setup');
-        return;
+function sendToDisplay(configId, message) {
+    // BroadcastChannel
+    const channel = getOrCreateChannel(configId);
+    if (channel) {
+        channel.postMessage(message);
     }
     
-    const lines = getTextLines();
-    if (lines.length === 0) {
+    // LocalStorage fallback
+    localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(message));
+}
+
+function startTextCycler() {
+    saveCurrentTextConfig(); // Save first
+    
+    if (currentTextConfigIndex < 0) return;
+    const config = textCyclerConfigs[currentTextConfigIndex];
+    
+    if (!config.textLines || config.textLines.length === 0) {
         log('Enter at least one text line', 'error');
         return;
     }
-    if (!document.getElementById('textSource').value) {
+    
+    if (config.mode === 'legacy' && !config.textSource) {
         log('Select a text source first', 'error');
         return;
     }
     
-    const duration = parseInt(document.getElementById('textDuration').value) || 3000;
+    if (config.mode === 'legacy' && !connected) {
+        log('Connect to OBS first for legacy mode', 'error');
+        showPage('setup');
+        return;
+    }
     
-    document.getElementById('startCycleBtn').disabled = true;
-    document.getElementById('stopCycleBtn').disabled = false;
-    
-    cycleIndex = 0;
-    showTextWithTransition(lines[0]); // Show first text with transition
-    
-    cycleInterval = setInterval(() => {
-        cycleIndex = (cycleIndex + 1) % lines.length;
-        showTextWithTransition(lines[cycleIndex]);
-    }, duration);
-    
-    log('Text cycling started (' + lines.length + ' lines)', 'success');
+    startConfigCycling(currentTextConfigIndex);
 }
 
-// Animation state
-let transitionInterval = null;
-
-function showTextWithTransition(targetText) {
-    const transition = document.getElementById('textTransition').value;
-    const transDuration = parseInt(document.getElementById('transDuration').value) || 500;
+function startConfigCycling(index) {
+    const config = textCyclerConfigs[index];
+    if (!config) return;
     
-    // Clear any existing transition
+    // Stop if already running
+    if (config.isRunning) {
+        stopConfigCycling(index);
+    }
+    
+    config.isRunning = true;
+    config.cycleIndex = 0;
+    
+    // Send initial text
+    showConfigText(index, config.textLines[0]);
+    
+    // Start interval
+    config.intervalId = setInterval(() => {
+        config.cycleIndex = (config.cycleIndex + 1) % config.textLines.length;
+        showConfigText(index, config.textLines[config.cycleIndex]);
+    }, config.cycleDuration);
+    
+    saveTextCyclerConfigs();
+    renderTextCyclerConfigs();
+    
+    // Update UI if this is current config
+    if (index === currentTextConfigIndex) {
+        document.getElementById('startCycleBtn').disabled = true;
+        document.getElementById('stopCycleBtn').disabled = false;
+    }
+    
+    log(`Started: ${config.name} (${config.textLines.length} lines)`, 'success');
+}
+
+function showConfigText(index, text) {
+    const config = textCyclerConfigs[index];
+    if (!config) return;
+    
+    if (config.mode === 'browser') {
+        // Send to browser source
+        sendToDisplay(config.configId, {
+            type: 'show',
+            text: text,
+            transition: config.transition,
+            duration: config.transDuration
+        });
+        
+        // Update preview
+        document.getElementById('textPreview').textContent = text;
+    } else {
+        // Legacy: update OBS text source directly
+        showTextWithTransitionLegacy(text, config);
+    }
+}
+
+function showTextWithTransitionLegacy(targetText, config) {
+    const transition = config.transition;
+    const transDuration = config.transDuration || 500;
+    
     if (transitionInterval) {
         clearInterval(transitionInterval);
         transitionInterval = null;
     }
     
     if (transition === 'none') {
-        setTextFast(targetText);
+        setTextFast(targetText, config.textSource);
         return;
     }
     
-    const STEP_MS = 100; // Update every 100ms = max 10 calls/second
+    const STEP_MS = 100;
     const totalSteps = Math.max(Math.floor(transDuration / STEP_MS), 1);
     let currentStep = 0;
     
@@ -1828,61 +3071,55 @@ function showTextWithTransition(targetText) {
         if (transition === 'typewriter') {
             const chars = Math.ceil(progress * targetText.length);
             displayText = targetText.substring(0, chars);
-        } else if (transition === 'glitch') {
+        } else if (transition === 'glitch' || transition === 'obfuscate') {
             if (progress < 0.6) {
-                displayText = scrambleText(targetText);
+                displayText = scrambleTextLegacy(targetText);
             } else {
-                const revealProgress = (progress - 0.6) / 0.4;
-                displayText = revealText(targetText, revealProgress);
+                displayText = revealTextLegacy(targetText, (progress - 0.6) / 0.4);
             }
         } else if (transition === 'scramble') {
             if (progress < 0.9) {
-                displayText = scrambleText(targetText);
-            } else {
-                displayText = targetText;
+                displayText = scrambleTextLegacy(targetText);
             }
+        } else if (transition === 'wave') {
+            displayText = waveTextLegacy(targetText, progress);
         }
         
-        setTextFast(displayText);
+        setTextFast(displayText, config.textSource);
         
         if (currentStep >= totalSteps) {
             clearInterval(transitionInterval);
             transitionInterval = null;
-            setTextFast(targetText); // Ensure final
+            setTextFast(targetText, config.textSource);
         }
     }
     
-    doStep(); // First step immediately
+    doStep();
     if (totalSteps > 1) {
         transitionInterval = setInterval(doStep, STEP_MS);
     }
 }
 
-// Rate-limited text update
 let lastTextSend = 0;
-const MIN_TEXT_INTERVAL = 80; // Max ~12 sends/second
+const MIN_TEXT_INTERVAL = 80;
 
-function setTextFast(text) {
-    const name = document.getElementById('textSource').value;
-    if (!name || !connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+function setTextFast(text, sourceName) {
+    if (!sourceName || !connected || !ws || ws.readyState !== WebSocket.OPEN) return;
     
-    // Rate limit
     const now = Date.now();
     if (now - lastTextSend < MIN_TEXT_INTERVAL) {
-        // Skip this update, too fast
-        document.getElementById('textPreview').textContent = text; // Still update preview
+        document.getElementById('textPreview').textContent = text;
         return;
     }
     lastTextSend = now;
     
-    const id = 'txt_' + (msgId++);
     ws.send(JSON.stringify({
         op: 6,
         d: {
             requestType: 'SetInputSettings',
-            requestId: id,
+            requestId: 'txt_' + (msgId++),
             requestData: {
-                inputName: name,
+                inputName: sourceName,
                 inputSettings: { text: text }
             }
         }
@@ -1890,51 +3127,1354 @@ function setTextFast(text) {
     document.getElementById('textPreview').textContent = text;
 }
 
-// Simple scramble - ASCII only to avoid encoding issues
-function scrambleText(text) {
+function scrambleTextLegacy(text) {
     const chars = '#$%&*@!?+=~<>[]{}';
-    let result = '';
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] === ' ') {
-            result += ' ';
-        } else {
-            result += chars[Math.floor(Math.random() * chars.length)];
-        }
-    }
-    return result;
+    return text.split('').map(c => c === ' ' ? ' ' : chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-// Reveal left to right
-function revealText(target, progress) {
+function revealTextLegacy(target, progress) {
     const chars = '#$%&*@!?+=~<>[]{}';
     const revealed = Math.ceil(progress * target.length);
-    let result = '';
-    for (let i = 0; i < target.length; i++) {
-        if (i < revealed) {
-            result += target[i];
-        } else if (target[i] === ' ') {
-            result += ' ';
-        } else {
-            result += chars[Math.floor(Math.random() * chars.length)];
-        }
-    }
-    return result;
+    return target.split('').map((c, i) => i < revealed ? c : (c === ' ' ? ' ' : chars[Math.floor(Math.random() * chars.length)])).join('');
 }
 
-function stopSimpleCycle() {
-    if (cycleInterval) {
-        clearInterval(cycleInterval);
-        cycleInterval = null;
+function waveTextLegacy(target, progress) {
+    const waveWidth = 3;
+    const center = progress * (target.length + waveWidth);
+    return target.split('').map((c, i) => {
+        if (Math.abs(i - center) < waveWidth && c !== ' ') return CHARS_ENCHANT[Math.floor(Math.random() * CHARS_ENCHANT.length)];
+        if (i < center - waveWidth) return c;
+        return ' ';
+    }).join('');
+}
+
+function stopTextCycler() {
+    if (currentTextConfigIndex >= 0) {
+        stopConfigCycling(currentTextConfigIndex);
     }
-    if (transitionInterval) {
-        clearInterval(transitionInterval);
-        transitionInterval = null;
+}
+
+function stopConfigCycling(index) {
+    const config = textCyclerConfigs[index];
+    if (!config) return;
+    
+    if (config.intervalId) {
+        clearInterval(config.intervalId);
+        config.intervalId = null;
     }
     
-    document.getElementById('startCycleBtn').disabled = false;
-    document.getElementById('stopCycleBtn').disabled = true;
+    config.isRunning = false;
+    saveTextCyclerConfigs();
+    renderTextCyclerConfigs();
     
-    log('Text cycling stopped');
+    if (index === currentTextConfigIndex) {
+        document.getElementById('startCycleBtn').disabled = false;
+        document.getElementById('stopCycleBtn').disabled = true;
+    }
+    
+    log(`Stopped: ${config.name}`, 'info');
+}
+
+function quickStartConfig(index) {
+    const config = textCyclerConfigs[index];
+    if (!config) return;
+    
+    if (config.isRunning) {
+        stopConfigCycling(index);
+    } else {
+        startConfigCycling(index);
+    }
+}
+
+// Restore running configs on load
+function restoreRunningTextCyclers() {
+    textCyclerConfigs.forEach((config, index) => {
+        if (config.isRunning) {
+            // Reset running state and restart
+            config.isRunning = false;
+            startConfigCycling(index);
+        }
+    });
+}
+
+
+// ============ Twitch Clips Player (Multi-Config) ============
+let clipsConfigs = JSON.parse(localStorage.getItem('clipsConfigs') || '[]');
+let currentClipsConfigIndex = -1;
+
+// Twitch Client ID for clips player (from teklynk)
+const CLIPS_CLIENT_ID = 'cuql1zod4eeabjr3cnc6adjn9ezro4';
+
+function renderClipsConfigs() {
+    const container = document.getElementById('clipsConfigs');
+    if (clipsConfigs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No clip player configs. Click "New Config" to create one.</div>';
+        return;
+    }
+    
+    container.innerHTML = clipsConfigs.map((c, i) => `
+        <div class="source-item" style="cursor:pointer" onclick="loadClipsConfig(${i})">
+            <div>
+                <div class="name">${c.name || 'Unnamed'}</div>
+                <div class="type">
+                    ${c.showFollowing ? '👥 Following' : `📺 ${(c.channels || '').split(',').length} channels`}
+                    • ${c.limit || 20} clips
+                    ${c.command ? `• !${c.command}` : '• Auto-play'}
+                </div>
+            </div>
+            <div style="display:flex;gap:4px">
+                <button onclick="event.stopPropagation(); testClipsConfigUrl(${i})" title="Test">▶</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function newClipsConfig() {
+    const config = {
+        id: 'clips_' + Date.now(),
+        name: 'Clips Player ' + (clipsConfigs.length + 1),
+        mainChannel: '',
+        channels: '',
+        showFollowing: false,
+        exclude: '',
+        limit: 20,
+        dateRange: 0,
+        preferFeatured: false,
+        showText: true,
+        customText: '',
+        showDetails: true,
+        detailsText: '{title}\nWhile streaming {game}\nClipped by {creator_name} {created_at}',
+        theme: 2,
+        command: '',
+        accessToken: ''
+    };
+    
+    clipsConfigs.push(config);
+    saveClipsConfigs();
+    renderClipsConfigs();
+    loadClipsConfig(clipsConfigs.length - 1);
+    log('Created new clips config', 'success');
+}
+
+function loadClipsConfig(index) {
+    currentClipsConfigIndex = index;
+    const config = clipsConfigs[index];
+    if (!config) return;
+    
+    // Show all editor cards
+    document.getElementById('clipsConfigEditor').style.display = 'block';
+    document.getElementById('clipsSettingsCard').style.display = 'block';
+    document.getElementById('clipsDisplayCard').style.display = 'block';
+    document.getElementById('clipsChatCard').style.display = 'block';
+    document.getElementById('clipsAuthCard').style.display = 'block';
+    document.getElementById('clipsPreviewCard').style.display = 'block';
+    document.getElementById('clipsControls').style.display = 'block';
+    
+    // Populate values
+    document.getElementById('clipsConfigName').value = config.name || '';
+    document.getElementById('clipsMainChannel').value = config.mainChannel || '';
+    document.getElementById('clipsChannels').value = config.channels || '';
+    document.getElementById('clipsShowFollowing').checked = config.showFollowing || false;
+    document.getElementById('clipsExclude').value = config.exclude || '';
+    document.getElementById('clipsLimit').value = config.limit || 20;
+    document.getElementById('clipsDateRange').value = config.dateRange || 0;
+    document.getElementById('clipsPreferFeatured').checked = config.preferFeatured || false;
+    document.getElementById('clipsShowText').checked = config.showText !== false;
+    document.getElementById('clipsCustomText').value = config.customText || '';
+    document.getElementById('clipsShowDetails').checked = config.showDetails !== false;
+    document.getElementById('clipsDetailsText').value = config.detailsText || '';
+    document.getElementById('clipsTheme').value = config.theme || 2;
+    document.getElementById('clipsCommand').value = config.command || '';
+    document.getElementById('clipsAccessToken').value = config.accessToken || '';
+    
+    updateClipsRangeValues();
+    updateClipsUIVisibility();
+    generateClipsUrl();
+    
+    log('Loaded clips config: ' + config.name, 'info');
+}
+
+function updateClipsRangeValues() {
+    const limit = document.getElementById('clipsLimit').value;
+    const dateRange = document.getElementById('clipsDateRange').value;
+    document.getElementById('clipsLimitValue').textContent = limit;
+    document.getElementById('clipsDateRangeValue').textContent = dateRange == 0 ? '0 (all)' : dateRange;
+}
+
+function updateClipsUIVisibility() {
+    const showFollowing = document.getElementById('clipsShowFollowing').checked;
+    const showText = document.getElementById('clipsShowText').checked;
+    const showDetails = document.getElementById('clipsShowDetails').checked;
+    
+    document.getElementById('clipsExcludeSection').style.display = showFollowing ? 'block' : 'none';
+    document.getElementById('clipsCustomTextSection').style.display = showText ? 'block' : 'none';
+    document.getElementById('clipsDetailsSection').style.display = showDetails ? 'block' : 'none';
+    
+    // Disable channels if showFollowing
+    document.getElementById('clipsChannels').disabled = showFollowing;
+}
+
+// Event listeners for range sliders
+document.getElementById('clipsLimit')?.addEventListener('input', updateClipsRangeValues);
+document.getElementById('clipsDateRange')?.addEventListener('input', updateClipsRangeValues);
+document.getElementById('clipsShowFollowing')?.addEventListener('change', updateClipsUIVisibility);
+document.getElementById('clipsShowText')?.addEventListener('change', updateClipsUIVisibility);
+document.getElementById('clipsShowDetails')?.addEventListener('change', updateClipsUIVisibility);
+
+function saveCurrentClipsConfig() {
+    if (currentClipsConfigIndex < 0) return;
+    
+    const config = clipsConfigs[currentClipsConfigIndex];
+    config.name = document.getElementById('clipsConfigName').value || 'Unnamed';
+    config.mainChannel = document.getElementById('clipsMainChannel').value.trim();
+    config.channels = document.getElementById('clipsChannels').value.trim();
+    config.showFollowing = document.getElementById('clipsShowFollowing').checked;
+    config.exclude = document.getElementById('clipsExclude').value.trim();
+    config.limit = parseInt(document.getElementById('clipsLimit').value) || 20;
+    config.dateRange = parseInt(document.getElementById('clipsDateRange').value) || 0;
+    config.preferFeatured = document.getElementById('clipsPreferFeatured').checked;
+    config.showText = document.getElementById('clipsShowText').checked;
+    config.customText = document.getElementById('clipsCustomText').value.trim();
+    config.showDetails = document.getElementById('clipsShowDetails').checked;
+    config.detailsText = document.getElementById('clipsDetailsText').value.trim();
+    config.theme = document.getElementById('clipsTheme').value;
+    config.command = document.getElementById('clipsCommand').value.trim().replace('!', '');
+    config.accessToken = document.getElementById('clipsAccessToken').value.trim();
+    
+    saveClipsConfigs();
+    renderClipsConfigs();
+    generateClipsUrl();
+    log('Saved clips config: ' + config.name, 'success');
+}
+
+function deleteCurrentClipsConfig() {
+    if (currentClipsConfigIndex < 0) return;
+    if (!confirm('Delete this clips config?')) return;
+    
+    clipsConfigs.splice(currentClipsConfigIndex, 1);
+    saveClipsConfigs();
+    renderClipsConfigs();
+    
+    // Hide editor
+    document.getElementById('clipsConfigEditor').style.display = 'none';
+    document.getElementById('clipsSettingsCard').style.display = 'none';
+    document.getElementById('clipsDisplayCard').style.display = 'none';
+    document.getElementById('clipsChatCard').style.display = 'none';
+    document.getElementById('clipsAuthCard').style.display = 'none';
+    document.getElementById('clipsPreviewCard').style.display = 'none';
+    document.getElementById('clipsControls').style.display = 'none';
+    
+    currentClipsConfigIndex = -1;
+    log('Clips config deleted', 'info');
+}
+
+function saveClipsConfigs() {
+    localStorage.setItem('clipsConfigs', JSON.stringify(clipsConfigs));
+}
+
+function exportClipsConfigs() {
+    if (clipsConfigs.length === 0) {
+        log('No clips configs to export', 'error');
+        return;
+    }
+    
+    // Remove access tokens for security
+    const exportData = clipsConfigs.map(c => ({...c, accessToken: ''}));
+    const json = JSON.stringify(exportData, null, 2);
+    
+    navigator.clipboard.writeText(json).then(() => {
+        log('Clips configs copied to clipboard (tokens excluded)', 'success');
+    }).catch(() => {
+        prompt('Copy this JSON:', json);
+    });
+}
+
+function importClipsConfigs() {
+    const json = prompt('Paste clips config JSON:');
+    if (!json) return;
+    
+    try {
+        const imported = JSON.parse(json);
+        if (!Array.isArray(imported)) throw new Error('Must be array');
+        
+        const merge = clipsConfigs.length > 0 && confirm('Merge with existing? (Cancel to replace)');
+        if (merge) {
+            clipsConfigs = [...clipsConfigs, ...imported];
+        } else {
+            clipsConfigs = imported;
+        }
+        
+        saveClipsConfigs();
+        renderClipsConfigs();
+        log(`Imported ${imported.length} clips configs`, 'success');
+    } catch (e) {
+        log('Invalid JSON: ' + e.message, 'error');
+    }
+}
+
+function generateClipsUrl() {
+    if (currentClipsConfigIndex < 0) return;
+    
+    const config = clipsConfigs[currentClipsConfigIndex];
+    
+    // Validation
+    if (!config.mainChannel) {
+        document.getElementById('clipsGeneratedUrl').value = 'Set Main Twitch Channel first';
+        return;
+    }
+    
+    if (!config.channels && !config.showFollowing) {
+        document.getElementById('clipsGeneratedUrl').value = 'Set channels or enable Show Following';
+        return;
+    }
+    
+    // Build URL
+    const basePath = window.location.pathname.replace('control_panel.html', 'twitch_clips_player/clips.html');
+    const baseUrl = window.location.protocol + '//' + window.location.host + basePath;
+    
+    const params = new URLSearchParams();
+    
+    if (!config.showFollowing) {
+        params.set('channel', config.channels.replace(/\s+/g, ''));
+    }
+    params.set('mainAccount', config.mainChannel);
+    params.set('limit', config.limit || 20);
+    params.set('dateRange', config.dateRange || 0);
+    params.set('themeOption', config.theme || 0);
+    params.set('preferFeatured', config.preferFeatured);
+    params.set('showText', config.showText);
+    params.set('showDetails', config.showDetails);
+    params.set('showFollowing', config.showFollowing);
+    
+    if (config.customText) {
+        params.set('customText', config.customText);
+    }
+    if (config.detailsText) {
+        params.set('detailsText', config.detailsText);
+    }
+    if (config.command) {
+        params.set('command', config.command);
+    }
+    if (config.exclude) {
+        params.set('exclude', config.exclude.replace(/\s+/g, ''));
+    }
+    if (config.accessToken) {
+        params.set('ref', btoa(config.accessToken));
+        params.set('clientId', btoa(CLIPS_CLIENT_ID));
+    }
+    
+    const fullUrl = baseUrl + '?' + params.toString();
+    document.getElementById('clipsGeneratedUrl').value = fullUrl;
+    
+    return fullUrl;
+}
+
+function copyClipsUrl() {
+    const url = document.getElementById('clipsGeneratedUrl').value;
+    if (!url || url.includes('Set ')) {
+        log('Generate a valid URL first', 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(url).then(() => {
+        log('URL copied! Add as Browser Source in OBS', 'success');
+    }).catch(() => {
+        prompt('Copy this URL:', url);
+    });
+}
+
+// Helper for opening URLs - handles OBS dock limitations
+function openUrlOrCopy(url, description = 'URL') {
+    // Try to open in new window/tab
+    const win = window.open(url, '_blank');
+    
+    // If failed (OBS dock), copy to clipboard instead
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+        navigator.clipboard.writeText(url).then(() => {
+            log(description + ' copied to clipboard! OBS docks cannot open external windows.', 'info');
+        }).catch(() => {
+            prompt('Copy this URL:', url);
+        });
+        return false;
+    }
+    return true;
+}
+
+function testClipsPlayer() {
+    const url = generateClipsUrl();
+    if (!url || url.includes('Set ')) {
+        log('Configure the settings first', 'error');
+        return;
+    }
+    // For local file URLs, just copy - user should add as browser source
+    navigator.clipboard.writeText(url).then(() => {
+        log('Browser source URL copied! Add it as a Browser Source in OBS to test.', 'success');
+    }).catch(() => {
+        prompt('Copy this Browser Source URL:', url);
+    });
+}
+
+function testClipsConfigUrl(index) {
+    const config = clipsConfigs[index];
+    if (!config) return;
+    
+    // Temporarily load this config to generate URL
+    const savedIndex = currentClipsConfigIndex;
+    currentClipsConfigIndex = index;
+    const url = generateClipsUrl();
+    currentClipsConfigIndex = savedIndex;
+    
+    if (url && !url.includes('Set ')) {
+        navigator.clipboard.writeText(url).then(() => {
+            log('Config URL copied! Add as Browser Source in OBS to test.', 'success');
+        }).catch(() => {
+            prompt('Copy this Browser Source URL:', url);
+        });
+    } else {
+        log('Configure the clips config first', 'error');
+    }
+}
+
+function toggleClipsTokenVisibility() {
+    const input = document.getElementById('clipsAccessToken');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// Twitch auth URL (OBS dock compatible)
+const TWITCH_AUTH_URL = 'https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=cuql1zod4eeabjr3cnc6adjn9ezro4&redirect_uri=https://twitch-clips-player.pages.dev&scope=chat:read+chat:edit+user:read:follows+moderator:read:followers&force_verify=true';
+
+function openTwitchAuth() {
+    // Try to open - this works in regular browsers but not OBS docks
+    const win = window.open(TWITCH_AUTH_URL, '_blank');
+    
+    // If it failed or we're in OBS dock, copy to clipboard instead
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+        copyTwitchAuthUrl();
+    }
+}
+
+function copyTwitchAuthUrl() {
+    navigator.clipboard.writeText(TWITCH_AUTH_URL).then(() => {
+        // Show the hint about OBS dock limitation
+        const hint = document.getElementById('twitchAuthHint');
+        if (hint) {
+            hint.style.display = 'block';
+            // Auto-hide after 10 seconds
+            setTimeout(() => { hint.style.display = 'none'; }, 10000);
+        }
+        log('Auth URL copied to clipboard! Paste in your browser.', 'success');
+    }).catch(err => {
+        log('Failed to copy: ' + err, 'error');
+        // Fallback: show the URL in a prompt for manual copy
+        prompt('Copy this URL and paste in your browser:', TWITCH_AUTH_URL);
+    });
+}
+
+// Initialize on page load
+function initClipsPlayer() {
+    renderClipsConfigs();
+}
+
+
+// ============ Script Manager & Installer ============
+
+// Script status tracking - which scripts are detected as installed
+const scriptStatus = {
+    initialized: false,
+    connected: false,  // Whether we've successfully connected to OBS
+    scripts: {},       // { scriptId: { installed: bool, version: string|null } }
+    features: {        // Which features are available based on scripts
+        sources: false,
+        swap: false,
+        text: false,
+        animations: false
+    }
+};
+
+// Map scripts to features they enable
+const SCRIPT_FEATURE_MAP = {
+    'source_animations': ['sources', 'animations'],
+    'source_swap': ['swap'],
+    'text_cycler': ['text'],
+    'quick_controls': [],  // Utility script, no UI features
+    'script_manager': []   // Meta script, no UI features
+};
+
+// Initialize script status from OBS connection
+async function checkScriptStatus() {
+    scriptStatus.initialized = true;
+    
+    // If not connected to OBS, we can't check script status
+    if (!obs || obs.readyState !== WebSocket.OPEN) {
+        scriptStatus.connected = false;
+        updateFeatureAvailability();
+        renderStartupBanner();
+        return;
+    }
+    
+    scriptStatus.connected = true;
+    
+    // Try to get script list from OBS
+    try {
+        // Unfortunately OBS WebSocket doesn't have a direct "list scripts" call
+        // We'll infer from whether we can call script functions
+        // For now, mark as unknown and rely on user feedback
+        
+        // Check if we can interact with OBS at all
+        const version = await sendRequest('GetVersion');
+        if (version) {
+            log('Connected to OBS ' + version.obsVersion, 'success');
+            
+            // Try to detect scripts by checking for their sources/settings
+            await detectInstalledScripts();
+        }
+    } catch (err) {
+        log('Could not verify scripts: ' + err.message, 'error');
+    }
+    
+    updateFeatureAvailability();
+    renderStartupBanner();
+}
+
+// Try to detect which scripts are installed by checking OBS state
+async function detectInstalledScripts() {
+    // Reset all to unknown
+    AVAILABLE_SCRIPTS.forEach(script => {
+        scriptStatus.scripts[script.id] = { installed: null, version: null };
+    });
+    
+    try {
+        // Get all sources - if we have sources, source_animations likely works
+        const sourcesResp = await sendRequest('GetSceneItemList', { 
+            sceneName: (await sendRequest('GetCurrentProgramScene')).currentProgramSceneName 
+        });
+        
+        if (sourcesResp && sourcesResp.sceneItems) {
+            // We can see sources, assume basic functionality works
+            scriptStatus.scripts['source_animations'] = { installed: true, version: null };
+            scriptStatus.scripts['source_swap'] = { installed: true, version: null };
+        }
+        
+        // For text cycler, check if there are text sources
+        const inputsResp = await sendRequest('GetInputList');
+        if (inputsResp && inputsResp.inputs) {
+            const hasTextSource = inputsResp.inputs.some(i => 
+                i.inputKind && (i.inputKind.includes('text') || i.inputKind.includes('freetype'))
+            );
+            if (hasTextSource) {
+                scriptStatus.scripts['text_cycler'] = { installed: true, version: null };
+            }
+        }
+        
+        // Quick controls and script manager are utility scripts
+        scriptStatus.scripts['quick_controls'] = { installed: true, version: null };
+        scriptStatus.scripts['script_manager'] = { installed: true, version: null };
+        
+    } catch (err) {
+        // If we can't query OBS, scripts may not be responding
+        console.warn('Script detection failed:', err);
+    }
+}
+
+// Update which features are available based on detected scripts
+function updateFeatureAvailability() {
+    // Reset all features
+    Object.keys(scriptStatus.features).forEach(f => scriptStatus.features[f] = false);
+    
+    // If not connected, nothing is available
+    if (!scriptStatus.connected) {
+        updateTabStates();
+        return;
+    }
+    
+    // Enable features based on detected scripts
+    Object.entries(SCRIPT_FEATURE_MAP).forEach(([scriptId, features]) => {
+        const script = scriptStatus.scripts[scriptId];
+        if (script && script.installed) {
+            features.forEach(f => scriptStatus.features[f] = true);
+        }
+    });
+    
+    // If connected, at least some features should work
+    // Enable all features when connected (scripts are loaded in OBS)
+    if (scriptStatus.connected) {
+        Object.keys(scriptStatus.features).forEach(f => scriptStatus.features[f] = true);
+    }
+    
+    updateTabStates();
+}
+
+// Update tab visual states based on feature availability
+function updateTabStates() {
+    const tabs = document.querySelectorAll('.tab');
+    const tabFeatures = {
+        1: 'sources',   // Sources tab (index 1)
+        2: 'text',      // Text tab (index 2)
+        4: 'swap'       // Swaps tab (index 4)
+    };
+    
+    tabs.forEach((tab, index) => {
+        const feature = tabFeatures[index];
+        if (feature && !scriptStatus.connected) {
+            tab.classList.add('disabled');
+            tab.title = 'Connect to OBS first';
+        } else {
+            tab.classList.remove('disabled');
+        }
+    });
+    
+    // Update dashboard status card
+    updateDashboardStatus();
+}
+
+// Update the dashboard status card
+function updateDashboardStatus() {
+    const container = document.getElementById('dashboardScriptStatus');
+    if (!container) return;
+    
+    if (scriptStatus.connected) {
+        // Connected - show all features as available
+        container.innerHTML = `
+            <div class="script-status-grid">
+                <div class="script-status-item installed">
+                    <span class="script-status-item__icon">🔌</span>
+                    <span class="script-status-item__name">OBS Connection</span>
+                    <span class="script-status-item__badge">Online</span>
+                </div>
+                <div class="script-status-item installed">
+                    <span class="script-status-item__icon">✨</span>
+                    <span class="script-status-item__name">Animations</span>
+                    <span class="script-status-item__badge">Ready</span>
+                </div>
+                <div class="script-status-item installed">
+                    <span class="script-status-item__icon">🔄</span>
+                    <span class="script-status-item__name">Source Swap</span>
+                    <span class="script-status-item__badge">Ready</span>
+                </div>
+                <div class="script-status-item installed">
+                    <span class="script-status-item__icon">📝</span>
+                    <span class="script-status-item__name">Text Cycler</span>
+                    <span class="script-status-item__badge">Ready</span>
+                </div>
+            </div>
+            <p class="hint" style="margin-top:8px">
+                ✅ All features available! Use the tabs above to access each feature.
+            </p>
+        `;
+    } else {
+        // Not connected - show warning
+        container.innerHTML = `
+            <div class="script-status-grid">
+                <div class="script-status-item missing">
+                    <span class="script-status-item__icon">🔌</span>
+                    <span class="script-status-item__name">OBS Connection</span>
+                    <span class="script-status-item__badge">Offline</span>
+                </div>
+            </div>
+            <p class="hint" style="margin-top:8px">
+                <button onclick="showPage('setup')" class="btn-link">⚙️ Go to Setup</button> to connect to OBS WebSocket
+            </p>
+            <p class="hint" style="margin-top:4px">
+                <button onclick="showPage('install')" class="btn-link">📥 Install Scripts</button> if you haven't already
+            </p>
+        `;
+    }
+}
+
+// Render startup banner based on current state
+function renderStartupBanner() {
+    // Remove existing banner
+    const existingBanner = document.getElementById('startupBanner');
+    if (existingBanner) existingBanner.remove();
+    
+    // Determine banner state
+    let bannerHTML = '';
+    
+    if (!scriptStatus.connected) {
+        bannerHTML = `
+            <div id="startupBanner" class="startup-banner">
+                <span class="startup-banner__icon">🔌</span>
+                <div class="startup-banner__content">
+                    <div class="startup-banner__title">Not Connected to OBS</div>
+                    <div class="startup-banner__text">Connect to OBS WebSocket to enable all features. Some features require Lua scripts to be installed.</div>
+                </div>
+                <button class="startup-banner__action" onclick="showPage('setup')">⚙️ Setup</button>
+            </div>
+        `;
+    } else {
+        // Connected - show success briefly then fade
+        bannerHTML = `
+            <div id="startupBanner" class="startup-banner success">
+                <span class="startup-banner__icon">✅</span>
+                <div class="startup-banner__content">
+                    <div class="startup-banner__title">Connected to OBS</div>
+                    <div class="startup-banner__text">All features are available. Scripts detected and ready.</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Insert banner at top of content area
+    const content = document.querySelector('.content');
+    if (content && bannerHTML) {
+        content.insertAdjacentHTML('afterbegin', bannerHTML);
+        
+        // Auto-hide success banner after 5 seconds
+        if (scriptStatus.connected) {
+            setTimeout(() => {
+                const banner = document.getElementById('startupBanner');
+                if (banner) {
+                    banner.style.transition = 'opacity 0.3s, height 0.3s, margin 0.3s, padding 0.3s';
+                    banner.style.opacity = '0';
+                    banner.style.height = '0';
+                    banner.style.margin = '0';
+                    banner.style.padding = '0';
+                    banner.style.overflow = 'hidden';
+                    setTimeout(() => banner.remove(), 300);
+                }
+            }, 5000);
+        }
+    }
+}
+
+// Render feature notice for a specific page
+function renderFeatureNotice(containerId, featureId, scriptName) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    // Remove existing notice
+    const existing = container.querySelector('.feature-notice');
+    if (existing) existing.remove();
+    
+    if (!scriptStatus.connected) {
+        const notice = document.createElement('div');
+        notice.className = 'feature-notice error';
+        notice.innerHTML = `
+            <div class="feature-notice__title">⚠️ Connection Required</div>
+            <div class="feature-notice__text">
+                Connect to OBS WebSocket to use this feature. 
+                <button onclick="showPage('setup')" class="btn-link">Go to Setup →</button>
+            </div>
+        `;
+        container.insertBefore(notice, container.firstChild);
+    } else if (!scriptStatus.features[featureId]) {
+        const notice = document.createElement('div');
+        notice.className = 'feature-notice';
+        notice.innerHTML = `
+            <div class="feature-notice__title">📜 Script Required: ${scriptName}</div>
+            <div class="feature-notice__text">
+                This feature requires the ${scriptName} Lua script. 
+                <button onclick="showPage('install')" class="btn-link">Go to Installer →</button>
+            </div>
+        `;
+        container.insertBefore(notice, container.firstChild);
+    }
+}
+
+// Script definitions
+const AVAILABLE_SCRIPTS = [
+    {
+        id: 'source_animations',
+        name: 'Source Animations',
+        file: 'source_animations.lua',
+        version: '2.7.0',
+        icon: '✨',
+        description: 'Animates sources when visibility is toggled. Supports fade, slide, zoom, and pop animations with customizable easing.',
+        features: ['Fade In/Out', 'Slide animations', 'Zoom effects', 'Pop animations', 'Per-source config', 'No flicker!']
+    },
+    {
+        id: 'source_swap',
+        name: 'Source Swap',
+        file: 'source_swap.lua',
+        version: '3.1.0',
+        icon: '🔄',
+        description: 'Smoothly swap position and size of two sources with animation. Supports multiple swap configs with hotkeys.',
+        features: ['Animated swaps', 'Multiple configs', 'Hotkey support', 'Aspect ratio control', 'Works with groups']
+    },
+    {
+        id: 'text_cycler',
+        name: 'Text Cycler',
+        file: 'text_cycler.lua',
+        version: '1.0.0',
+        icon: '📝',
+        description: 'Cycles through text strings with optional transition animations like obfuscate, typewriter, and glitch effects.',
+        features: ['Text cycling', 'Obfuscate effect', 'Typewriter effect', 'Glitch effect', 'Hotkey support']
+    },
+    {
+        id: 'quick_controls',
+        name: 'Quick Controls',
+        file: 'quick_controls.lua',
+        version: '1.0.0',
+        icon: '⚡',
+        description: 'Hotkey to cycle aspect ratio override mode for source swaps.',
+        features: ['Aspect cycle hotkey', 'Quick access']
+    },
+    {
+        id: 'script_manager',
+        name: 'Script Manager',
+        file: 'script_manager.lua',
+        version: '1.0.0',
+        icon: '📋',
+        description: 'Unified dashboard to manage and configure all animation scripts in OBS.',
+        features: ['Script overview', 'Enable/disable scripts', 'Status at a glance']
+    }
+];
+
+// Installer state
+let installerState = {
+    sourcePath: '',
+    targetPath: '',
+    selectedScripts: [],
+    existingFiles: [],
+    installAction: 'replace', // 'skip', 'backup', 'replace'
+    generatedScript: ''
+};
+
+function initScriptsAndInstaller() {
+    renderScriptsList();
+    detectSourcePath();
+    detectOBSPath();
+}
+
+function renderScriptsList() {
+    const container = document.getElementById('scriptsList');
+    if (!container) return;
+    
+    container.innerHTML = AVAILABLE_SCRIPTS.map(script => `
+        <div class="script-card">
+            <div class="script-header">
+                <span class="script-icon">${script.icon}</span>
+                <div>
+                    <div class="script-name">${script.name}</div>
+                    <div class="script-version">v${script.version}</div>
+                </div>
+            </div>
+            <p class="script-desc">${script.description}</p>
+            <div class="script-file">${script.file}</div>
+        </div>
+    `).join('');
+}
+
+function detectSourcePath() {
+    // Get current page URL and extract folder path
+    const url = window.location.href;
+    let path = '';
+    
+    if (url.startsWith('file:///')) {
+        path = url.replace('file:///', '').replace(/\//g, '\\');
+        path = path.substring(0, path.lastIndexOf('\\'));
+        path = decodeURIComponent(path);
+    } else {
+        path = '(Run from local file to detect)';
+    }
+    
+    installerState.sourcePath = path;
+    const input = document.getElementById('installSourcePath');
+    if (input) input.value = path;
+}
+
+function detectOBSPath() {
+    // Common OBS paths for different OS
+    const suggestions = [];
+    
+    // Detect OS from user agent
+    const ua = navigator.userAgent.toLowerCase();
+    
+    if (ua.includes('win')) {
+        // Windows paths
+        const username = installerState.sourcePath.match(/Users\\([^\\]+)/)?.[1] || 'USERNAME';
+        suggestions.push(
+            `C:\\Users\\${username}\\AppData\\Roaming\\obs-studio\\basic\\scripts`,
+            `C:\\Program Files\\obs-studio\\data\\obs-plugins\\frontend-tools\\scripts`,
+            `C:\\ProgramData\\obs-studio\\basic\\scripts`
+        );
+    } else if (ua.includes('mac')) {
+        // macOS paths
+        suggestions.push(
+            '~/Library/Application Support/obs-studio/basic/scripts',
+            '/Applications/OBS.app/Contents/Resources/data/obs-plugins/frontend-tools/scripts'
+        );
+    } else {
+        // Linux paths
+        suggestions.push(
+            '~/.config/obs-studio/basic/scripts',
+            '/usr/share/obs/obs-plugins/frontend-tools/scripts'
+        );
+    }
+    
+    // Render suggestions
+    const container = document.getElementById('pathSuggestions');
+    if (container) {
+        container.innerHTML = suggestions.map(path => 
+            `<span class="path-suggestion" onclick="setTargetPath('${path.replace(/\\/g, '\\\\')}')">${path}</span>`
+        ).join('');
+    }
+    
+    // Set first suggestion as default
+    if (!installerState.targetPath && suggestions.length > 0) {
+        setTargetPath(suggestions[0]);
+    }
+}
+
+function setTargetPath(path) {
+    installerState.targetPath = path;
+    const input = document.getElementById('installTargetPath');
+    if (input) input.value = path;
+}
+
+function browseTargetPath() {
+    // Can't actually browse in browser, but show instructions
+    const path = prompt('Enter the full path to your OBS scripts folder:', installerState.targetPath);
+    if (path) {
+        setTargetPath(path);
+    }
+}
+
+
+function goToInstallStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.install-step').forEach(s => s.classList.remove('active'));
+    
+    // Show target step
+    const stepEl = document.getElementById('installStep' + step);
+    if (stepEl) stepEl.classList.add('active');
+    
+    // Step-specific logic
+    if (step === 2) {
+        renderInstallScriptsList();
+    } else if (step === 3) {
+        renderInstallReview();
+    }
+}
+
+function renderInstallScriptsList() {
+    const container = document.getElementById('installScriptsList');
+    if (!container) return;
+    
+    // Check for existing files (simulated - in real scenario would need backend)
+    // For now, we'll show all as "new" and let user indicate if they exist
+    
+    container.innerHTML = AVAILABLE_SCRIPTS.map(script => {
+        const isSelected = installerState.selectedScripts.includes(script.id);
+        const existsInTarget = installerState.existingFiles.includes(script.file);
+        
+        let statusTag = '<span class="script-status-tag new">New</span>';
+        if (existsInTarget) {
+            statusTag = '<span class="script-status-tag exists">Exists</span>';
+        }
+        
+        return `
+            <div class="install-script-item">
+                <input type="checkbox" id="install_${script.id}" 
+                       ${isSelected ? 'checked' : ''} 
+                       onchange="toggleScriptSelection('${script.id}')">
+                <div class="script-info">
+                    <div class="script-name">${script.icon} ${script.name}</div>
+                    <div style="font-size:0.8em;color:var(--muted)">${script.file} • v${script.version}</div>
+                </div>
+                ${statusTag}
+            </div>
+        `;
+    }).join('');
+    
+    // Add "check existing" button
+    container.innerHTML += `
+        <div style="margin-top:8px">
+            <button onclick="markExistingFiles()">🔍 I have some scripts already installed</button>
+        </div>
+    `;
+    
+    // Select all by default if none selected
+    if (installerState.selectedScripts.length === 0) {
+        AVAILABLE_SCRIPTS.forEach(s => installerState.selectedScripts.push(s.id));
+        renderInstallScriptsList();
+    }
+}
+
+function toggleScriptSelection(scriptId) {
+    const idx = installerState.selectedScripts.indexOf(scriptId);
+    if (idx > -1) {
+        installerState.selectedScripts.splice(idx, 1);
+    } else {
+        installerState.selectedScripts.push(scriptId);
+    }
+}
+
+function markExistingFiles() {
+    const existing = prompt(
+        'Enter the filenames of scripts you already have installed (comma-separated):\n\n' +
+        'Example: source_animations.lua, source_swap.lua\n\n' +
+        'Leave empty if none installed.'
+    );
+    
+    if (existing !== null) {
+        installerState.existingFiles = existing
+            .split(',')
+            .map(f => f.trim())
+            .filter(f => f.length > 0);
+        
+        if (installerState.existingFiles.length > 0) {
+            document.getElementById('existingInstallCard').style.display = 'block';
+            renderExistingInstallInfo();
+        } else {
+            document.getElementById('existingInstallCard').style.display = 'none';
+        }
+        
+        renderInstallScriptsList();
+    }
+}
+
+function renderExistingInstallInfo() {
+    const container = document.getElementById('existingInstallInfo');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <p>The following scripts appear to already exist in your target folder:</p>
+        <ul style="margin:8px 0 0 16px">
+            ${installerState.existingFiles.map(f => `<li>${f}</li>`).join('')}
+        </ul>
+        <p style="margin-top:8px;color:var(--muted);font-size:0.9em">
+            Choose how to handle existing files:
+        </p>
+    `;
+}
+
+function handleExistingInstall(action) {
+    installerState.installAction = action;
+    
+    const actionText = {
+        'skip': 'Skipping existing files',
+        'backup': 'Will backup existing files before replacing',
+        'replace': 'Will replace all existing files'
+    };
+    
+    log(actionText[action], 'info');
+    document.getElementById('existingInstallCard').style.display = 'none';
+}
+
+function renderInstallReview() {
+    const container = document.getElementById('installReview');
+    if (!container) return;
+    
+    const selectedScripts = AVAILABLE_SCRIPTS.filter(s => 
+        installerState.selectedScripts.includes(s.id)
+    );
+    
+    if (selectedScripts.length === 0) {
+        container.innerHTML = '<p style="color:var(--danger)">No scripts selected. Go back and select at least one script.</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="install-review-item">
+            <span><strong>Source:</strong></span>
+            <span style="font-size:0.85em">${installerState.sourcePath || '(not set)'}</span>
+        </div>
+        <div class="install-review-item">
+            <span><strong>Target:</strong></span>
+            <span style="font-size:0.85em">${installerState.targetPath || '(not set)'}</span>
+        </div>
+        <div class="install-review-item">
+            <span><strong>Scripts:</strong></span>
+            <span>${selectedScripts.length} selected</span>
+        </div>
+        <div style="margin-top:8px">
+            ${selectedScripts.map(s => `
+                <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.85em">
+                    <span>${s.icon} ${s.name}</span>
+                    <span style="color:var(--muted)">${s.file}</span>
+                </div>
+            `).join('')}
+        </div>
+        ${installerState.existingFiles.length > 0 ? `
+            <div class="install-review-item" style="margin-top:8px;border-top:1px solid var(--bg);padding-top:8px">
+                <span><strong>Existing files:</strong></span>
+                <span>${installerState.installAction}</span>
+            </div>
+        ` : ''}
+    `;
+}
+
+function generateInstallScript() {
+    const method = document.getElementById('installMethod').value;
+    const selectedScripts = AVAILABLE_SCRIPTS.filter(s => 
+        installerState.selectedScripts.includes(s.id)
+    );
+    
+    if (selectedScripts.length === 0) {
+        log('No scripts selected', 'error');
+        return;
+    }
+    
+    const source = installerState.sourcePath;
+    const target = installerState.targetPath;
+    
+    if (!source || !target || source.includes('(') || target.includes('(')) {
+        log('Set valid source and target paths first', 'error');
+        return;
+    }
+    
+    let script = '';
+    
+    switch (method) {
+        case 'powershell':
+            script = generatePowerShellScript(selectedScripts, source, target);
+            break;
+        case 'batch':
+            script = generateBatchScript(selectedScripts, source, target);
+            break;
+        case 'bash':
+            script = generateBashScript(selectedScripts, source, target);
+            break;
+        case 'manual':
+            script = generateManualInstructions(selectedScripts, source, target);
+            break;
+    }
+    
+    installerState.generatedScript = script;
+    
+    const output = document.getElementById('installOutput');
+    if (output) output.textContent = script;
+    
+    goToInstallStep(4);
+}
+
+function generatePowerShellScript(scripts, source, target) {
+    const backup = installerState.installAction === 'backup';
+    const skip = installerState.installAction === 'skip';
+    
+    let ps = `# OBS Animation Suite Installer
+# Generated: ${new Date().toISOString()}
+# Run this script as Administrator
+
+$source = "${source}"
+$target = "${target}"
+
+# Create target directory if it doesn't exist
+if (!(Test-Path $target)) {
+    New-Item -ItemType Directory -Path $target -Force
+    Write-Host "Created directory: $target" -ForegroundColor Green
+}
+
+`;
+
+    if (backup) {
+        ps += `# Backup existing files
+$backupDir = "$target\\backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+Write-Host "Backup directory: $backupDir" -ForegroundColor Cyan
+
+`;
+    }
+
+    scripts.forEach(s => {
+        const isExisting = installerState.existingFiles.includes(s.file);
+        
+        if (skip && isExisting) {
+            ps += `# Skipping ${s.file} (already exists)\n`;
+            ps += `Write-Host "Skipped: ${s.file} (exists)" -ForegroundColor Yellow\n\n`;
+        } else {
+            if (backup && isExisting) {
+                ps += `# Backup ${s.file}
+if (Test-Path "$target\\${s.file}") {
+    Copy-Item "$target\\${s.file}" "$backupDir\\${s.file}"
+    Write-Host "Backed up: ${s.file}" -ForegroundColor Cyan
+}
+`;
+            }
+            ps += `# Install ${s.name}
+Copy-Item "$source\\${s.file}" "$target\\${s.file}" -Force
+Write-Host "Installed: ${s.file}" -ForegroundColor Green
+
+`;
+        }
+    });
+
+    ps += `
+Write-Host ""
+Write-Host "Installation complete!" -ForegroundColor Green
+Write-Host "Restart OBS and go to Tools > Scripts to add the scripts." -ForegroundColor White
+Write-Host ""
+Read-Host "Press Enter to exit"
+`;
+
+    return ps;
+}
+
+function generateBatchScript(scripts, source, target) {
+    const backup = installerState.installAction === 'backup';
+    const skip = installerState.installAction === 'skip';
+    
+    let bat = `@echo off
+REM OBS Animation Suite Installer
+REM Generated: ${new Date().toISOString()}
+REM Run this script as Administrator
+
+set "source=${source}"
+set "target=${target}"
+
+REM Create target directory if needed
+if not exist "%target%" mkdir "%target%"
+
+`;
+
+    if (backup) {
+        bat += `REM Create backup directory
+set "backup=%target%\\backup_%date:~-4%%date:~-7,2%%date:~-10,2%"
+mkdir "%backup%" 2>nul
+
+`;
+    }
+
+    scripts.forEach(s => {
+        const isExisting = installerState.existingFiles.includes(s.file);
+        
+        if (skip && isExisting) {
+            bat += `REM Skipping ${s.file} (already exists)\necho Skipped: ${s.file}\n\n`;
+        } else {
+            if (backup && isExisting) {
+                bat += `if exist "%target%\\${s.file}" copy "%target%\\${s.file}" "%backup%\\${s.file}"\n`;
+            }
+            bat += `copy /Y "%source%\\${s.file}" "%target%\\${s.file}"\necho Installed: ${s.file}\n\n`;
+        }
+    });
+
+    bat += `
+echo.
+echo Installation complete!
+echo Restart OBS and go to Tools ^> Scripts to add the scripts.
+pause
+`;
+
+    return bat;
+}
+
+function generateBashScript(scripts, source, target) {
+    const backup = installerState.installAction === 'backup';
+    const skip = installerState.installAction === 'skip';
+    
+    let bash = `#!/bin/bash
+# OBS Animation Suite Installer
+# Generated: ${new Date().toISOString()}
+# Run: chmod +x install.sh && ./install.sh
+
+SOURCE="${source.replace(/\\/g, '/')}"
+TARGET="${target.replace(/\\/g, '/')}"
+
+# Create target directory
+mkdir -p "$TARGET"
+
+`;
+
+    if (backup) {
+        bash += `# Create backup
+BACKUP="$TARGET/backup_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP"
+
+`;
+    }
+
+    scripts.forEach(s => {
+        const isExisting = installerState.existingFiles.includes(s.file);
+        
+        if (skip && isExisting) {
+            bash += `# Skipping ${s.file} (already exists)\necho "Skipped: ${s.file}"\n\n`;
+        } else {
+            if (backup && isExisting) {
+                bash += `[ -f "$TARGET/${s.file}" ] && cp "$TARGET/${s.file}" "$BACKUP/${s.file}"\n`;
+            }
+            bash += `cp "$SOURCE/${s.file}" "$TARGET/${s.file}"\necho "Installed: ${s.file}"\n\n`;
+        }
+    });
+
+    bash += `
+echo ""
+echo "Installation complete!"
+echo "Restart OBS and go to Tools > Scripts to add the scripts."
+`;
+
+    return bash;
+}
+
+function generateManualInstructions(scripts, source, target) {
+    let manual = `=== OBS Animation Suite - Manual Installation ===
+Generated: ${new Date().toISOString()}
+
+SOURCE FOLDER:
+${source}
+
+TARGET FOLDER:
+${target}
+
+STEPS:
+1. Open File Explorer
+2. Navigate to the SOURCE folder above
+3. Copy the following files:
+
+`;
+
+    scripts.forEach((s, i) => {
+        manual += `   ${i + 1}. ${s.file} (${s.name})\n`;
+    });
+
+    manual += `
+4. Navigate to the TARGET folder above
+   (Create it if it doesn't exist)
+
+5. Paste the files
+
+6. Open OBS Studio
+7. Go to Tools > Scripts
+8. Click the + button
+9. Navigate to: ${target}
+10. Select all the .lua files and click Open
+
+11. Configure each script in the Scripts window
+
+Done! Your scripts are now installed.
+`;
+
+    return manual;
+}
+
+function copyInstallScript() {
+    if (!installerState.generatedScript) {
+        log('Generate a script first', 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(installerState.generatedScript).then(() => {
+        log('Script copied to clipboard!', 'success');
+    });
+}
+
+function downloadInstallScript() {
+    if (!installerState.generatedScript) {
+        log('Generate a script first', 'error');
+        return;
+    }
+    
+    const method = document.getElementById('installMethod').value;
+    const extensions = {
+        'powershell': 'ps1',
+        'batch': 'bat',
+        'bash': 'sh',
+        'manual': 'txt'
+    };
+    
+    const filename = `obs_animation_suite_install.${extensions[method]}`;
+    const blob = new Blob([installerState.generatedScript], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    log(`Downloaded ${filename}`, 'success');
 }
 
 

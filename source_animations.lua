@@ -11,7 +11,7 @@ Features:
     - Full in-OBS configuration UI
 
 Author: OBS Animation System
-Version: 2.7.0 - Fixed config updates not resetting filter state
+Version: 2.8.0 - Fixed position drift bug in animations
 ================================================================================
 --]]
 
@@ -50,6 +50,10 @@ local managed_sources = {}
 
 -- Track sources we're hiding (to prevent re-trigger loops)
 local hiding_sources = {}
+
+-- CRITICAL: Store canonical (original) transforms to prevent drift
+-- These are the "home" positions/scales that sources should return to
+local canonical_transforms = {}
 
 
 -- =============================================================================
@@ -138,6 +142,61 @@ local function set_scene_item_scale(scene_item, sx, sy)
     local scale = obs.vec2()
     scale.x, scale.y = math.max(0.001, sx), math.max(0.001, sy)
     obs.obs_sceneitem_set_scale(scene_item, scale)
+end
+
+
+-- =============================================================================
+-- Canonical Transform Management (Prevents Position Drift!)
+-- =============================================================================
+
+-- Capture the canonical (home) transforms for a source
+-- Only called when source is in its "rest" state (not animating)
+local function capture_canonical_transform(scene_item, source_name)
+    -- NEVER capture if currently animating - would capture mid-animation state
+    if animating_sources[source_name] then
+        return
+    end
+    
+    local pos_x, pos_y = get_scene_item_pos(scene_item)
+    local scale_x, scale_y = get_scene_item_scale(scene_item)
+    
+    canonical_transforms[source_name] = {
+        x = pos_x,
+        y = pos_y,
+        scale_x = scale_x,
+        scale_y = scale_y
+    }
+end
+
+-- Get canonical transforms for a source
+-- If not stored yet, capture current (assumes source is at rest)
+local function get_canonical_transform(scene_item, source_name)
+    if canonical_transforms[source_name] == nil then
+        capture_canonical_transform(scene_item, source_name)
+    end
+    
+    local ct = canonical_transforms[source_name]
+    if ct then
+        return ct.x, ct.y, ct.scale_x, ct.scale_y
+    end
+    
+    -- Fallback to current position if something went wrong
+    local pos_x, pos_y = get_scene_item_pos(scene_item)
+    local scale_x, scale_y = get_scene_item_scale(scene_item)
+    return pos_x, pos_y, scale_x, scale_y
+end
+
+-- Force update canonical transform (called when user explicitly repositions)
+local function update_canonical_transform(scene_item, source_name)
+    if animating_sources[source_name] then
+        return  -- Don't update while animating
+    end
+    capture_canonical_transform(scene_item, source_name)
+end
+
+-- Clear canonical transform (forces recapture)
+local function clear_canonical_transform(source_name)
+    canonical_transforms[source_name] = nil
 end
 
 
@@ -308,11 +367,17 @@ local function start_animation(scene_item, source_name, config, is_showing)
     
     -- Cancel any existing animation for this source
     if active_animations[source_name] ~= nil then
+        -- Animation was interrupted - canonical position is still valid
         active_animations[source_name] = nil
+        animating_sources[source_name] = nil
     end
     
     local source = obs.obs_sceneitem_get_source(scene_item)
     if source == nil then return false end
+    
+    -- CRITICAL: Get canonical (home) transforms - NOT current transforms!
+    -- This prevents drift when animations are interrupted or chained
+    local canon_x, canon_y, canon_scale_x, canon_scale_y = get_canonical_transform(scene_item, source_name)
     
     -- CRITICAL: Ensure filter exists and set initial opacity BEFORE any visibility change
     if is_showing then
@@ -331,9 +396,6 @@ local function start_animation(scene_item, source_name, config, is_showing)
         managed_sources[source_name] = true
     end
     
-    local pos_x, pos_y = get_scene_item_pos(scene_item)
-    local scale_x, scale_y = get_scene_item_scale(scene_item)
-    
     local anim = {
         scene_item = scene_item,
         source = source,
@@ -343,14 +405,15 @@ local function start_animation(scene_item, source_name, config, is_showing)
         easing_fn = get_easing(config.easing),
         is_showing = is_showing,
         start_time = obs.os_gettime_ns() / 1000000,
-        orig_x = pos_x, orig_y = pos_y,
-        orig_scale_x = scale_x, orig_scale_y = scale_y,
+        -- ALWAYS use canonical (home) position - prevents drift!
+        orig_x = canon_x, orig_y = canon_y,
+        orig_scale_x = canon_scale_x, orig_scale_y = canon_scale_y,
         direction = config.direction or "left",
         offset = config.offset or 100,
-        start_x = pos_x, start_y = pos_y,
-        end_x = pos_x, end_y = pos_y,
-        start_scale_x = scale_x, start_scale_y = scale_y,
-        end_scale_x = scale_x, end_scale_y = scale_y,
+        start_x = canon_x, start_y = canon_y,
+        end_x = canon_x, end_y = canon_y,
+        start_scale_x = canon_scale_x, start_scale_y = canon_scale_y,
+        end_scale_x = canon_scale_x, end_scale_y = canon_scale_y,
         start_opacity = 0.0, end_opacity = 1.0
     }
     
@@ -370,33 +433,45 @@ local function start_animation(scene_item, source_name, config, is_showing)
         elseif anim.direction == "down" then oy = anim.offset end
         
         if is_showing then
-            anim.start_x, anim.start_y = pos_x + ox, pos_y + oy
+            -- Start from offset position, animate TO canonical position
+            anim.start_x, anim.start_y = canon_x + ox, canon_y + oy
+            anim.end_x, anim.end_y = canon_x, canon_y
             anim.start_opacity, anim.end_opacity = 0.0, 1.0
             set_scene_item_pos(scene_item, anim.start_x, anim.start_y)
         else
-            anim.end_x, anim.end_y = pos_x + ox, pos_y + oy
+            -- Start from canonical position, animate TO offset position
+            anim.start_x, anim.start_y = canon_x, canon_y
+            anim.end_x, anim.end_y = canon_x + ox, canon_y + oy
             anim.start_opacity, anim.end_opacity = 1.0, 0.0
+            -- Ensure we start from canonical position
+            set_scene_item_pos(scene_item, canon_x, canon_y)
         end
         
     elseif anim.anim_type == "zoom" then
         if is_showing then
             anim.start_scale_x, anim.start_scale_y = 0.01, 0.01
+            anim.end_scale_x, anim.end_scale_y = canon_scale_x, canon_scale_y
             anim.start_opacity, anim.end_opacity = 0.0, 1.0
             set_scene_item_scale(scene_item, 0.01, 0.01)
         else
+            anim.start_scale_x, anim.start_scale_y = canon_scale_x, canon_scale_y
             anim.end_scale_x, anim.end_scale_y = 0.01, 0.01
             anim.start_opacity, anim.end_opacity = 1.0, 0.0
+            set_scene_item_scale(scene_item, canon_scale_x, canon_scale_y)
         end
         
     elseif anim.anim_type == "pop" then
         anim.easing_fn = get_easing("back")
         if is_showing then
             anim.start_scale_x, anim.start_scale_y = 0.01, 0.01
+            anim.end_scale_x, anim.end_scale_y = canon_scale_x, canon_scale_y
             anim.start_opacity, anim.end_opacity = 0.0, 1.0
             set_scene_item_scale(scene_item, 0.01, 0.01)
         else
+            anim.start_scale_x, anim.start_scale_y = canon_scale_x, canon_scale_y
             anim.end_scale_x, anim.end_scale_y = 0.01, 0.01
             anim.start_opacity, anim.end_opacity = 1.0, 0.0
+            set_scene_item_scale(scene_item, canon_scale_x, canon_scale_y)
         end
     end
     
@@ -409,7 +484,7 @@ local function start_animation(scene_item, source_name, config, is_showing)
     end
     
     local dir = is_showing and "IN" or "OUT"
-    log_info("Animation " .. dir .. ": " .. anim.anim_type .. " on '" .. source_name .. "'")
+    log_info("Animation " .. dir .. ": " .. anim.anim_type .. " on '" .. source_name .. "' (canonical: " .. canon_x .. "," .. canon_y .. ")")
     return true
 end
 
@@ -519,6 +594,7 @@ local function find_scene_item_recursive(scene, source_name)
 end
 
 -- Pre-apply opacity filter to a source (prevents flash on show/hide)
+-- ALSO captures canonical transforms if not animating
 local function prepare_source(scene_item, source_name, is_visible)
     local source = obs.obs_sceneitem_get_source(scene_item)
     if source ~= nil then
@@ -526,6 +602,13 @@ local function prepare_source(scene_item, source_name, is_visible)
         local opacity = is_visible and 1.0 or 0.0
         ensure_opacity_filter(source, opacity)
         managed_sources[source_name] = true
+        
+        -- CRITICAL: Capture canonical transforms when source is at rest
+        -- This is the "home" position sources will always return to
+        if not animating_sources[source_name] and canonical_transforms[source_name] == nil then
+            capture_canonical_transform(scene_item, source_name)
+            log_info("Captured canonical position for '" .. source_name .. "'")
+        end
     end
 end
 
@@ -611,6 +694,9 @@ local function update_visibility_cache()
     visibility_cache = {}
     hiding_sources = {}
     managed_sources = {}
+    -- NOTE: We do NOT clear canonical_transforms here!
+    -- Canonical positions should persist across scene changes
+    -- They're only cleared when source is removed or reconfigured
     
     local current_scene_source = obs.obs_frontend_get_current_scene()
     if current_scene_source == nil then return end
@@ -726,11 +812,11 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>Source Animation System v2.7</h2>
+    return [[<h2>Source Animation System v2.8</h2>
 <p>Animate sources when visibility is toggled.</p>
 
-<h3>v2.7 - Config changes now reset properly!</h3>
-<p>Adding/updating a source resets its filter state.</p>
+<h3>v2.8 - Fixed Position Drift Bug!</h3>
+<p>Sources now always return to their original "home" position, even when animations are interrupted or chained rapidly.</p>
 
 <h3>Animation Types:</h3>
 <ul>
@@ -800,9 +886,10 @@ function script_properties()
             -- RESET source state so filter gets re-initialized properly
             managed_sources[name] = nil
             visibility_cache[name] = nil
+            canonical_transforms[name] = nil  -- Force recapture of home position
             
             save_source_configs(settings_ref)
-            log_info("Added/Updated: " .. name .. " (state reset)")
+            log_info("Added/Updated: " .. name .. " (state reset, will recapture position)")
             return true
         end)
     
@@ -837,8 +924,9 @@ function script_properties()
                 source_configs[name] = nil
                 managed_sources[name] = nil
                 visibility_cache[name] = nil
+                canonical_transforms[name] = nil
                 save_source_configs(settings_ref)
-                log_info("Removed: " .. name .. " (filter cleared)")
+                log_info("Removed: " .. name .. " (filter and position data cleared)")
             end
             return true
         end)
@@ -852,14 +940,20 @@ function script_properties()
             local count = 0
             for name, c in pairs(source_configs) do
                 count = count + 1
-                log_info(count .. ". " .. name .. " -> " .. c.anim_type)
+                local ct = canonical_transforms[name]
+                local pos_str = ct and string.format("(%.0f, %.0f)", ct.x, ct.y) or "(not captured)"
+                log_info(count .. ". " .. name .. " -> " .. c.anim_type .. " @ " .. pos_str)
             end
             if count == 0 then log_info("None configured") end
-            log_info("Managed sources: " .. (function()
-                local n = 0
-                for _ in pairs(managed_sources) do n = n + 1 end
-                return n
-            end)())
+            return false
+        end)
+    
+    obs.obs_properties_add_button(props, "recapture_btn", "🎯 Recapture Home Positions",
+        function(props, p)
+            log_info("Recapturing home positions for all sources...")
+            canonical_transforms = {}
+            update_visibility_cache()
+            log_info("Done! All sources will recapture their current position as 'home'.")
             return false
         end)
     
@@ -904,7 +998,7 @@ end
 
 function script_load(settings)
     settings_ref = settings
-    log_info("Loading Source Animation System v2.7...")
+    log_info("Loading Source Animation System v2.8 (Position Drift Fix)...")
     
     load_source_configs(settings)
     obs.obs_frontend_add_event_callback(on_frontend_event)
@@ -927,6 +1021,6 @@ function script_unload()
     if poll_timer_running then obs.timer_remove(check_visibility_changes) end
     if timer_running then obs.timer_remove(animation_tick) end
     obs.obs_frontend_remove_event_callback(on_frontend_event)
-    active_animations, animating_sources, visibility_cache, hiding_sources, managed_sources = {}, {}, {}, {}, {}
+    active_animations, animating_sources, visibility_cache, hiding_sources, managed_sources, canonical_transforms = {}, {}, {}, {}, {}, {}
     log_info("Unloaded.")
 end
