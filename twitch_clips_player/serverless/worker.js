@@ -148,12 +148,33 @@ async function handleClips(request, env) {
         const data = await twitchApiRequest(endpoint, env);
         
         // Transform clips to include direct video URL
-        const clips = data.data.map((clip, index) => ({
-            ...clip,
-            item: index,
-            // Twitch clip video URL pattern
-            clip_url: clip.thumbnail_url.replace('-preview-480x272.jpg', '.mp4'),
-        }));
+        // Modern Twitch clips use thumbnail_url with different patterns
+        const clips = data.data.map((clip, index) => {
+            // Extract the base slug from thumbnail URL
+            // Example: https://clips-media-assets2.twitch.tv/AT-cm%7CSLUG-preview-480x272.jpg
+            // Becomes: https://clips-media-assets2.twitch.tv/AT-cm%7CSLUG.mp4
+            let videoUrl = clip.thumbnail_url;
+            
+            // Try multiple patterns for different Twitch CDN formats
+            if (videoUrl.includes('-preview-')) {
+                // Modern format: -preview-480x272.jpg
+                videoUrl = videoUrl.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
+            } else if (videoUrl.endsWith('.jpg')) {
+                // Fallback: just replace .jpg with .mp4
+                videoUrl = videoUrl.replace(/\.jpg$/, '.mp4');
+            }
+            
+            console.log(`[Clips] Thumbnail: ${clip.thumbnail_url}`);
+            console.log(`[Clips] Video URL: ${videoUrl}`);
+            
+            return {
+                ...clip,
+                item: index,
+                clip_url: videoUrl,
+                // Also include embed_url as fallback
+                embed_url: `https://clips.twitch.tv/embed?clip=${clip.id}&parent=${new URL(request.url).hostname}`,
+            };
+        });
 
         // Shuffle if requested
         if (shuffle) {
