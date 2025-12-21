@@ -1,8 +1,8 @@
-# strixun's script suite [SSS]
+# Strixun's Stream Suite [SSS]
 
-An OBS Animation Suite for source-level animation(s)  
+A comprehensive OBS Studio production toolkit for professional streaming.
 
-A comprehensive suite of Lua scripts and browser sources for OBS Studio that provides smooth, professional animations for sources, text cycling with effects, and integrated Twitch clip playback.
+A full-service suite of Lua scripts, browser sources, and web dashboards that provides source animations, layout presets, text cycling with effects, Twitch clip integration, and a unified control panel dock.
 
 ---
 
@@ -132,7 +132,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Root[OBS-Animation-Suite/]
+    Root[strixun-stream-suite/]
     
     Root --> Lua[📜 Lua Scripts]
     Root --> Browser[🌐 Browser Sources]
@@ -220,7 +220,7 @@ flowchart TB
 ## File Inventory
 
 ```
-OBS-Animation-Suite/
+strixun-stream-suite/
 │
 ├── 📜 Lua Scripts (install to OBS scripts folder)
 │   ├── source_animations.lua   - Visibility animations (v2.8.0)

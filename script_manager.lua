@@ -125,13 +125,16 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>🎬 Animation Scripts Manager</h2>
-<p>Central dashboard for the OBS Animation Script Suite.</p>
+    return [[<h2>🎬 Stream Suite Script Manager</h2>
+<p>Central dashboard for Strixun's Stream Suite scripts.</p>
 
 <h3>Included Scripts:</h3>
 <table>
 <tr><td><b>Source Animations</b></td><td>Animate on visibility toggle</td></tr>
 <tr><td><b>Source Swap</b></td><td>Swap two sources with animation</td></tr>
+<tr><td><b>Source Layouts</b></td><td>Save/apply layout presets</td></tr>
+<tr><td><b>Text Cycler</b></td><td>Animated text cycling effects</td></tr>
+<tr><td><b>Quick Controls</b></td><td>Hotkeys and quick actions</td></tr>
 </table>
 
 <h3>How to Use:</h3>
@@ -147,6 +150,8 @@ function script_description()
     <li>Check <b>View → Script Log</b> for debugging info</li>
     <li>Use the buttons below to check script status</li>
 </ul>
+<hr>
+<p><i>Part of Strixun's Stream Suite</i></p>
 ]]
 end
 

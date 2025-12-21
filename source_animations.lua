@@ -847,6 +847,8 @@ function script_description()
     <li><b>Zoom</b> - Scale</li>
     <li><b>Pop</b> - Bouncy scale</li>
 </ul>
+<hr>
+<p><i>Part of Strixun's Stream Suite</i></p>
 ]]
 end
 

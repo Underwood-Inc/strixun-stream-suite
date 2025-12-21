@@ -258,6 +258,8 @@ function script_description()
 </ol>
 
 <p><b>Pro Tip:</b> Setting opacity to 100% removes the filter entirely, keeping your source list clean!</p>
+<hr>
+<p><i>Part of Strixun's Stream Suite</i></p>
 ]]
 end
 

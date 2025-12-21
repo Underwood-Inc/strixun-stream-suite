@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OBS Animation Suite</title>
+    <title>Strixun's Stream Suite</title>
     <link rel="stylesheet" href="assets/css/control-panel.css">
 </head>
 <body>
     <div class="app">
         <header class="header">
-            <h1><span class="status-dot" id="statusDot"></span><span class="title-text">Animation Suite</span></h1>
+            <h1><span class="status-dot" id="statusDot"></span><span class="title-text">Stream Suite</span></h1>
             <div style="display:flex;gap:4px">
                 <button onclick="location.reload()" title="Reload Panel">🔄</button>
                 <button onclick="showPage('setup')" id="connectHeaderBtn">Connect</button>
@@ -751,7 +751,7 @@
             <!-- Script Manager -->
             <div id="page-scripts" class="page">
                 <div class="card">
-                    <h3>📜 OBS Animation Suite Scripts</h3>
+                    <h3>📜 Stream Suite Scripts</h3>
                     <p class="hint" style="margin-bottom:12px">Lua scripts that run inside OBS Studio. Install via the Installer tab.</p>
                     
                     <div id="scriptsList" class="scripts-grid"></div>
@@ -815,7 +815,7 @@
                         <strong>Adding Custom Browser Dock:</strong>
                         <ol style="margin:8px 0 0 16px;font-size:0.85em">
                             <li>View → Docks → Custom Browser Docks</li>
-                            <li>Name: "Animation Suite"</li>
+                            <li>Name: "Stream Suite"</li>
                             <li>URL: file:///path/to/control_panel.html</li>
                         </ol>
                     </div>
@@ -2826,6 +2826,9 @@ async function handleMessage(data, password) {
 }
 
 function handleEvent(event) {
+    // Debug: log all events to console
+    console.log('[OBS Event]', event.eventType, event.eventData);
+    
     if (event.eventType === 'CurrentProgramSceneChanged') {
         currentScene = event.eventData.sceneName;
         document.getElementById('currentScene').textContent = currentScene;
@@ -2833,13 +2836,15 @@ function handleEvent(event) {
         renderSavedLayouts(); // Refresh layouts for new scene
     }
     
-    // Handle custom storage sync events
+    // Handle custom storage sync events (Vendor events)
     if (event.eventType === 'CustomEvent') {
+        console.log('[Storage Sync] CustomEvent received:', event.eventData);
         const customData = event.eventData?.eventData;
         if (customData?.type === 'strixun_storage_broadcast') {
+            log('Received storage broadcast from another client', 'info');
             handleStorageBroadcast(customData);
         } else if (customData?.type === 'strixun_storage_request') {
-            // Another client is requesting storage, broadcast ours
+            log('Another client requesting storage - broadcasting...', 'info');
             broadcastStorage();
         }
     }
@@ -6731,7 +6736,7 @@ function generatePowerShellScript(scripts, source, target) {
     const backup = installerState.installAction === 'backup';
     const skip = installerState.installAction === 'skip';
     
-    let ps = `# OBS Animation Suite Installer
+    let ps = `# Strixun's Stream Suite Installer
 # Generated: ${new Date().toISOString()}
 # Run this script as Administrator
 
@@ -6794,7 +6799,7 @@ function generateBatchScript(scripts, source, target) {
     const skip = installerState.installAction === 'skip';
     
     let bat = `@echo off
-REM OBS Animation Suite Installer
+REM Strixun's Stream Suite Installer
 REM Generated: ${new Date().toISOString()}
 REM Run this script as Administrator
 
@@ -6842,7 +6847,7 @@ function generateBashScript(scripts, source, target) {
     const skip = installerState.installAction === 'skip';
     
     let bash = `#!/bin/bash
-# OBS Animation Suite Installer
+# Strixun's Stream Suite Installer
 # Generated: ${new Date().toISOString()}
 # Run: chmod +x install.sh && ./install.sh
 
@@ -6885,7 +6890,7 @@ echo "Restart OBS and go to Tools > Scripts to add the scripts."
 }
 
 function generateManualInstructions(scripts, source, target) {
-    let manual = `=== OBS Animation Suite - Manual Installation ===
+    let manual = `=== Strixun's Stream Suite - Manual Installation ===
 Generated: ${new Date().toISOString()}
 
 SOURCE FOLDER:

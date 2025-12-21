@@ -390,7 +390,7 @@ function script_description()
 <p>Cycles through text strings with transition animations.</p>
 <p><b>Transitions:</b> None, Obfuscate (Minecraft enchant), Typewriter, Glitch, Scramble, Wave</p>
 <hr>
-<p><i>Part of OBS Animation Suite</i></p>]]
+<p><i>Part of Strixun's Stream Suite</i></p>]]
 end
 
 function script_properties()

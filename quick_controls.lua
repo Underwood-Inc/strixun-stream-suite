@@ -92,6 +92,8 @@ function script_description()
 </ol>
 
 <p><b>Tip:</b> Use this to quickly toggle aspect mode during a stream!</p>
+<hr>
+<p><i>Part of Strixun's Stream Suite</i></p>
 ]]
 end
 

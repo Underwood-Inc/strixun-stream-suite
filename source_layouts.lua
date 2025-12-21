@@ -1129,6 +1129,8 @@ function script_description()
 </ol>
 
 <p><b>Tip:</b> Assign hotkeys in Settings → Hotkeys for quick switching!</p>
+<hr>
+<p><i>Part of Strixun's Stream Suite</i></p>
 ]]
 end
 

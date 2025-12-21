@@ -581,6 +581,8 @@ function script_description()
 
 <p><b>Temp Override:</b> Set it to force Preserve or Stretch for ALL swaps 
 until you set it back to Off.</p>
+<hr>
+<p><i>Part of Strixun's Stream Suite</i></p>
 ]]
 end
 
