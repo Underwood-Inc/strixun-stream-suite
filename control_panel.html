@@ -2829,8 +2829,10 @@ async function handleMessage(data, password) {
 }
 
 function handleEvent(event) {
-    // Debug: log all events to console
-    console.log('[OBS Event]', event.eventType, event.eventData);
+    // Debug: log all events to console (verbose mode)
+    if (event.eventType !== 'SceneItemTransformChanged') { // Skip noisy events
+        console.log('[OBS Event]', event.eventType, event.eventData);
+    }
     
     if (event.eventType === 'CurrentProgramSceneChanged') {
         currentScene = event.eventData.sceneName;
@@ -2841,22 +2843,49 @@ function handleEvent(event) {
     
     // Handle custom storage sync events (Vendor events)
     if (event.eventType === 'CustomEvent') {
-        console.log('[Storage Sync] CustomEvent received:', event.eventData);
         const customData = event.eventData?.eventData;
+        console.log('[Storage Sync] CustomEvent received:', {
+            type: customData?.type,
+            source: customData?.source || customData?.clientId,
+            hasData: !!customData?.data,
+            timestamp: customData?.timestamp
+        });
+        
         if (customData?.type === 'strixun_storage_broadcast') {
-            log('Received storage broadcast from another client', 'info');
+            // Ignore our own broadcasts (prevent echo)
+            if (customData.clientId === getClientId()) {
+                console.log('[Storage Sync] Ignoring own broadcast (echo prevention)');
+                return;
+            }
+            
+            log('📥 Received storage broadcast from another client', 'info');
             handleStorageBroadcast(customData);
         } else if (customData?.type === 'strixun_storage_request') {
-            log('Another client requesting storage - broadcasting...', 'info');
+            console.log('[Storage Sync] 🔔 Storage request received!', {
+                requesterId: customData.requesterId,
+                ourClientId: getClientId(),
+                isOurOwn: customData.requesterId === getClientId()
+            });
+            
+            // Ignore our own requests (prevent echo)
+            if (customData.requesterId === getClientId()) {
+                console.log('[Storage Sync] Ignoring own storage request (echo prevention)');
+                return;
+            }
+            
+            console.log('[Storage Sync] 📤 Responding to storage request!');
+            log('📤 Another client requesting storage - broadcasting...', 'info');
             broadcastStorage();
         }
     }
 }
 
 // ============ Storage Sync (Cross-Client via OBS WebSocket) ============
-const STORAGE_SYNC_DEBOUNCE = 2000;
+const STORAGE_SYNC_DEBOUNCE = 500; // Reduced from 2000ms for faster sync
 let storageSyncTimer = null;
 let lastStorageSyncHash = '';
+let lastBroadcastTime = 0;
+const MIN_BROADCAST_INTERVAL = 1000; // Minimum 1s between broadcasts
 let pendingStorageRequest = false; // Flag: we're waiting for storage response
 
 /**
@@ -2938,14 +2967,29 @@ function loadAutoSyncPref() {
 
 /**
  * Broadcast our storage to all connected clients via OBS CustomEvent
+ * Includes rate limiting and deduplication
  */
 async function broadcastStorage() {
-    if (!connected) return;
+    if (!connected) {
+        console.log('[Broadcast] Skipped - not connected');
+        return;
+    }
+    
+    // Rate limiting: don't broadcast more than once per second
+    const now = Date.now();
+    if (now - lastBroadcastTime < MIN_BROADCAST_INTERVAL) {
+        console.log('[Broadcast] Rate limited, scheduling retry...');
+        // Schedule retry after interval
+        if (storageSyncTimer) clearTimeout(storageSyncTimer);
+        storageSyncTimer = setTimeout(() => broadcastStorage(), MIN_BROADCAST_INTERVAL);
+        return;
+    }
     
     const storageData = {
         type: 'strixun_storage_broadcast',
-        timestamp: Date.now(),
+        timestamp: now,
         source: 'strixun_control_panel',
+        clientId: getClientId(),
         data: {
             swapConfigs: swapConfigs || [],
             textCyclerConfigs: textCyclerConfigs || [],
@@ -2955,15 +2999,26 @@ async function broadcastStorage() {
     };
     
     // Create hash to avoid duplicate broadcasts
-    const hash = JSON.stringify(storageData.data).length.toString();
-    if (hash === lastStorageSyncHash) return;
+    const dataStr = JSON.stringify(storageData.data);
+    const hash = dataStr.length + '_' + dataStr.substring(0, 50); // Better hash
+    if (hash === lastStorageSyncHash) {
+        console.log('[Broadcast] Skipped - no changes detected');
+        return;
+    }
     lastStorageSyncHash = hash;
+    lastBroadcastTime = now;
     
     try {
         await request('BroadcastCustomEvent', { eventData: storageData });
-        log('Storage broadcast sent', 'info');
+        console.log('[Broadcast] ✅ Sent to other clients', {
+            swaps: storageData.data.swapConfigs.length,
+            texts: storageData.data.textCyclerConfigs.length,
+            clips: storageData.data.clipsConfigs.length,
+            layouts: storageData.data.layoutPresets.length
+        });
     } catch (e) {
-        console.log('Storage broadcast not available:', e);
+        console.warn('[Broadcast] ⚠️ Failed:', e);
+        lastBroadcastTime = 0; // Allow retry immediately on next change
     }
 }
 
