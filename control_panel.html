@@ -1003,9 +1003,12 @@
                         <button onclick="openUrlOrCopy('https://dev.twitch.tv/console/apps', 'Twitch Developer Console')" class="btn-link">dev.twitch.tv/console</button>
                     </p>
                     
-                    <label>Twitch Client ID</label>
-                    <input type="text" id="twitchClientId" placeholder="Your Twitch App Client ID">
-                    <p class="hint" style="margin-top:4px;font-size:0.75em">From your Twitch Developer Console app</p>
+                    <label>Twitch Client ID <span style="color:var(--muted);font-weight:normal">(Optional - Auto-configured)</span></label>
+                    <input type="text" id="twitchClientId" placeholder="Auto-configured from deployment">
+                    <p class="hint" style="margin-top:4px;font-size:0.75em">
+                        ✨ Auto-configured during deployment. Only override if using a different Twitch app.
+                        <span id="autoDetectedClientId" style="display:block;margin-top:4px;color:var(--success)"></span>
+                    </p>
                     
                     <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
                     <input type="text" id="twitchApiServer" placeholder="Auto-detected from deployment config">
@@ -5596,9 +5599,21 @@ let currentClipsConfigIndex = -1;
 // ============ Twitch API Configuration ============
 // These values are loaded from storage - configure in Setup → Twitch API Settings
 
-// Get Twitch Client ID from storage (REQUIRED - no hardcoded fallback)
+// Get Twitch Client ID (auto-configured from deployment or manual override)
 function getTwitchClientId() {
-    return storage.get('twitch_client_id') || '';
+    // Priority 1: Manual override
+    const manual = storage.get('twitch_client_id');
+    if (manual) return manual;
+    
+    // Priority 2: Auto-injected from deployment
+    if (typeof window.STRIXUN_CONFIG !== 'undefined' && window.STRIXUN_CONFIG.TWITCH_CLIENT_ID) {
+        const injected = window.STRIXUN_CONFIG.TWITCH_CLIENT_ID;
+        if (injected && !injected.startsWith('%%')) {
+            return injected;
+        }
+    }
+    
+    return '';
 }
 
 // Get API Server URL with auto-configuration fallback
@@ -5650,23 +5665,39 @@ function saveTwitchSettings() {
 function loadTwitchSettings() {
     const clientIdEl = document.getElementById('twitchClientId');
     const apiServerEl = document.getElementById('twitchApiServer');
-    const autoDetectedEl = document.getElementById('autoDetectedApiUrl');
+    const autoDetectedApiEl = document.getElementById('autoDetectedApiUrl');
+    const autoDetectedClientEl = document.getElementById('autoDetectedClientId');
     
-    if (clientIdEl) clientIdEl.value = getTwitchClientId();
+    // Show manual Client ID override only (if set)
+    const manualClientId = storage.get('twitch_client_id') || '';
+    if (clientIdEl) clientIdEl.value = manualClientId;
     
-    // Show manual override only (if set)
+    // Show auto-detected Client ID
+    if (autoDetectedClientEl) {
+        const autoClientId = window.STRIXUN_CONFIG?.TWITCH_CLIENT_ID;
+        if (autoClientId && !autoClientId.startsWith('%%') && !manualClientId) {
+            const masked = autoClientId.substring(0, 8) + '...' + autoClientId.substring(autoClientId.length - 4);
+            autoDetectedClientEl.innerHTML = `✅ Auto-configured: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${masked}</code>`;
+        } else if (autoClientId && !autoClientId.startsWith('%%') && manualClientId) {
+            autoDetectedClientEl.innerHTML = `ℹ️ Auto-configured but overridden with manual value`;
+        } else {
+            autoDetectedClientEl.innerHTML = `⚠️ Not auto-configured. Add TWITCH_CLIENT_ID to GitHub Secrets.`;
+        }
+    }
+    
+    // Show manual API Server override only (if set)
     const manualOverride = storage.get('twitch_api_server') || '';
     if (apiServerEl) apiServerEl.value = manualOverride;
     
-    // Show auto-detected URL
-    if (autoDetectedEl && typeof window.getWorkerApiUrl === 'function') {
+    // Show auto-detected API URL
+    if (autoDetectedApiEl && typeof window.getWorkerApiUrl === 'function') {
         const autoUrl = window.getWorkerApiUrl();
         if (autoUrl && !manualOverride) {
-            autoDetectedEl.innerHTML = `✅ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code>`;
+            autoDetectedApiEl.innerHTML = `✅ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code>`;
         } else if (autoUrl && manualOverride) {
-            autoDetectedEl.innerHTML = `ℹ️ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code> (overridden)`;
+            autoDetectedApiEl.innerHTML = `ℹ️ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code> (overridden)`;
         } else {
-            autoDetectedEl.innerHTML = `⚠️ No auto-detected URL. Deploy via GitHub Actions or configure manually.`;
+            autoDetectedApiEl.innerHTML = `⚠️ No auto-detected URL. Deploy via GitHub Actions or configure manually.`;
         }
     }
 }
@@ -6207,8 +6238,8 @@ function openTwitchAuth() {
     const authUrl = getTwitchAuthUrl();
     
     if (!authUrl) {
-        log('Twitch API not configured! Go to Setup → Twitch API Settings', 'error');
-        alert('Twitch API not configured!\n\nGo to Setup tab → Twitch API Settings to set your Client ID and OAuth Callback URL.');
+        log('⚠️ Twitch Client ID not available. Deploy via GitHub Actions or check GitHub Secrets.', 'error');
+        alert('Twitch Client ID not available!\n\nIf deployed via GitHub Pages, ensure TWITCH_CLIENT_ID is added to GitHub Secrets.\n\nOtherwise, you can manually add it in Setup → Twitch API Settings.');
         return;
     }
     
@@ -6225,8 +6256,8 @@ function copyTwitchAuthUrl() {
     const authUrl = getTwitchAuthUrl();
     
     if (!authUrl) {
-        log('Twitch API not configured! Go to Setup → Twitch API Settings', 'error');
-        alert('Twitch API not configured!\n\nGo to Setup tab → Twitch API Settings to set your Client ID and OAuth Callback URL.');
+        log('⚠️ Twitch Client ID not available. Deploy via GitHub Actions or check GitHub Secrets.', 'error');
+        alert('Twitch Client ID not available!\n\nIf deployed via GitHub Pages, ensure TWITCH_CLIENT_ID is added to GitHub Secrets.\n\nOtherwise, you can manually add it in Setup → Twitch API Settings.');
         return;
     }
     

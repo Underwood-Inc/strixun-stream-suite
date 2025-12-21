@@ -43,6 +43,8 @@ jobs:
         run: touch .nojekyll
       
       - name: Inject Auto-Configuration
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
         run: |
           # Read worker name from wrangler.toml
           WORKER_NAME=$(grep '^name = ' twitch_clips_player/serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/')
@@ -63,12 +65,14 @@ jobs:
           # Inject values into config.js
           sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" config.js
           sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" config.js
+          sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" config.js
           sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" config.js
           sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" config.js
           
           echo "✅ Configuration injected into config.js"
           echo "Worker API URL: $WORKER_URL"
           echo "GitHub Pages URL: $PAGES_URL"
+          echo "Twitch Client ID: ${TWITCH_CLIENT_ID:0:8}... (hidden)"
         
       - name: Remove unnecessary files for Pages
         run: |

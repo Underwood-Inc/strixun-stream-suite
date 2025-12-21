@@ -295,11 +295,16 @@ If you prefer to skip the wizard:
 
 **Zero-config steps:**
 1. Fork/clone the repository
-2. Enable GitHub Pages in repo settings
-3. Push to `main` or `master` branch
-4. GitHub Actions automatically deploys everything
-5. Open your GitHub Pages URL
-6. ✅ **Done!** No manual API URL configuration needed
+2. **Add GitHub Secrets** (Repository Settings → Secrets and variables → Actions):
+   - `TWITCH_CLIENT_ID` - Your Twitch app client ID ([get it here](https://dev.twitch.tv/console/apps))
+   - `TWITCH_CLIENT_SECRET` - Your Twitch app secret
+   - `CF_API_TOKEN` - Cloudflare API token (for Worker deployment)
+   - `CF_ACCOUNT_ID` - Cloudflare account ID
+3. Enable GitHub Pages in repo settings (Settings → Pages → Source: GitHub Actions)
+4. Push to `main` or `master` branch
+5. GitHub Actions automatically deploys everything with injected configs
+6. Open your GitHub Pages URL
+7. ✅ **Done!** Everything is auto-configured!
 
 **How it works:**
 - GitHub Actions reads your `wrangler.toml` worker configuration
