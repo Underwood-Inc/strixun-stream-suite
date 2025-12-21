@@ -728,6 +728,16 @@
 
     function onVideoError(e) {
         console.error('Video error:', e);
+        console.error('Failed video URL:', elements.videoPlayer.src);
+        console.error('Current clip:', state.clips[state.currentClipIndex]);
+        
+        // Get detailed error info
+        const video = elements.videoPlayer;
+        if (video.error) {
+            console.error('Video error code:', video.error.code);
+            console.error('Video error message:', video.error.message);
+        }
+        
         // Skip to next clip on error
         setTimeout(() => playNextClip(false), 1000);
     }
