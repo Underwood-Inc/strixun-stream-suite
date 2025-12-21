@@ -45,14 +45,16 @@ jobs:
       - name: Inject Auto-Configuration
         env:
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          CF_WORKERS_SUBDOMAIN: ${{ secrets.CF_WORKERS_SUBDOMAIN }}
         run: |
           # Read worker name from wrangler.toml
           WORKER_NAME=$(grep '^name = ' twitch_clips_player/serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/')
           echo "Worker name: $WORKER_NAME"
           
-          # Construct Worker URL (assumes default workers.dev subdomain)
-          # Format: https://WORKER_NAME.GITHUB_ACTOR.workers.dev
-          WORKER_URL="https://${WORKER_NAME}.${GITHUB_ACTOR}.workers.dev"
+          # Construct Worker URL using Cloudflare Workers subdomain from secrets
+          # If CF_WORKERS_SUBDOMAIN is not set, use hardcoded fallback
+          SUBDOMAIN="${CF_WORKERS_SUBDOMAIN:-strixuns-script-suite}"
+          WORKER_URL="https://${WORKER_NAME}.${SUBDOMAIN}.workers.dev"
           echo "Worker URL: $WORKER_URL"
           
           # Get GitHub Pages URL (will be available after deployment)

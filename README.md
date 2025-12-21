@@ -300,6 +300,8 @@ If you prefer to skip the wizard:
    - `TWITCH_CLIENT_SECRET` - Your Twitch app secret
    - `CF_API_TOKEN` - Cloudflare API token (for Worker deployment)
    - `CF_ACCOUNT_ID` - Cloudflare account ID
+   - `CF_WORKERS_SUBDOMAIN` - Your workers.dev subdomain (e.g., `your-name.workers.dev` → just `your-name`)
+     - Get this from Cloudflare dashboard: Workers & Pages → strixun-twitch-api → Settings → Domains
 3. Enable GitHub Pages in repo settings (Settings → Pages → Source: GitHub Actions)
 4. Push to `main` or `master` branch
 5. GitHub Actions automatically deploys everything with injected configs

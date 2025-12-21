@@ -33,7 +33,7 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
  * Priority:
  * 1. Manual override from localStorage (twitch_api_server)
  * 2. Auto-injected config from deployment
- * 3. Auto-detection based on wrangler.toml
+ * 3. Hardcoded fallback (for development/testing)
  * 4. Null (user must configure)
  */
 window.getWorkerApiUrl = function() {
@@ -53,21 +53,21 @@ window.getWorkerApiUrl = function() {
         return injected;
     }
     
-    // Priority 3: Auto-detect from known patterns
-    // If running on GitHub Pages, attempt to construct the Worker URL
-    const hostname = window.location.hostname;
-    if (hostname.includes('github.io')) {
-        // Extract GitHub username from URL: https://username.github.io/repo/
-        const username = hostname.split('.')[0];
-        // Construct Worker URL based on naming convention
-        const autoDetectedUrl = `https://strixun-twitch-api.${username}.workers.dev`;
-        console.log('[Config] Auto-detected API server:', autoDetectedUrl);
-        console.warn('[Config] ⚠️ This is an auto-detected URL. Verify it works or configure manually in Setup.');
-        return autoDetectedUrl;
+    // Priority 3: Hardcoded fallback for local development
+    // Actual Worker URL from Cloudflare dashboard
+    const HARDCODED_WORKER_URL = 'https://strixun-twitch-api.strixuns-script-suite.workers.dev';
+    if (HARDCODED_WORKER_URL && !HARDCODED_WORKER_URL.includes('UPDATE-ME')) {
+        console.log('[Config] Using hardcoded Worker URL:', HARDCODED_WORKER_URL);
+        console.warn('[Config] ⚠️ Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
+        return HARDCODED_WORKER_URL;
     }
     
     // Priority 4: No configuration available
-    console.warn('[Config] ⚠️ No API server configured. Please configure in Setup → Twitch API Settings');
+    console.error('[Config] ❌ No API server configured!');
+    console.log('[Config] Solutions:');
+    console.log('  1. Update HARDCODED_WORKER_URL in config.js with your actual Worker URL');
+    console.log('  2. OR manually configure in Setup → Twitch API Settings');
+    console.log('  3. OR add WORKER_URL to GitHub Secrets for auto-injection');
     return null;
 };
 
