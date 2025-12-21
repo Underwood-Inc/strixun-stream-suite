@@ -22,6 +22,7 @@
             <button class="tab" onclick="showPage('text')" title="Text Cycler">📝</button>
             <button class="tab" onclick="showPage('clips')" title="Clips Player">🎬</button>
             <button class="tab" onclick="showPage('swaps')" title="Swaps">🔄</button>
+            <button class="tab" onclick="showPage('layouts')" title="Layouts">📐</button>
             <button class="tab" onclick="showPage('scripts')" title="Script Manager">📜</button>
             <button class="tab" onclick="showPage('install')" title="Installer">📥</button>
             <button class="tab" onclick="showPage('setup')" title="Setup">⚙️</button>
@@ -98,6 +99,30 @@
                             </select>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Opacity Control -->
+                <div class="card">
+                    <h3>🎚️ Opacity Control</h3>
+                    <label>Source</label>
+                    <select id="opacitySourceSelect" onchange="loadSourceOpacity()">
+                        <option value="">-- Select Source --</option>
+                    </select>
+                    <div style="margin-top:12px">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <input type="range" id="opacitySlider" class="opacity-slider" 
+                                   min="0" max="100" value="100" 
+                                   oninput="updateOpacityPreview()">
+                            <span id="opacityValue" style="font-weight:700;font-size:1.4em;min-width:55px;text-align:right;color:var(--accent)">100%</span>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-top:12px">
+                        <button onclick="applySourceOpacity()" style="flex:1">✅ Apply</button>
+                        <button onclick="resetSourceOpacity()" class="btn-secondary" style="flex:1">🔄 Reset to 100%</button>
+                    </div>
+                    <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)">
+                        💡 Setting to 100% removes the filter (no overhead)
+                    </p>
                 </div>
                 
                 <div class="card">
@@ -346,6 +371,19 @@
                     <label>Config Name</label>
                     <input type="text" id="clipsConfigName" placeholder="BRB Screen Clips">
                     
+                    <div class="row" style="margin-top:8px">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsUseNewPlayer" checked>
+                            <label for="clipsUseNewPlayer">Use new Strixun player (recommended)</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsApiSection" style="margin-top:8px">
+                        <label>API Server URL</label>
+                        <input type="text" id="clipsApiServer" placeholder="https://your-worker.workers.dev">
+                        <p class="hint">Your Cloudflare Worker URL for Twitch API proxy</p>
+                    </div>
+                    
                     <label>Main Twitch Channel</label>
                     <input type="text" id="clipsMainChannel" placeholder="YourChannel">
                     <p class="hint">Your channel name for chat commands</p>
@@ -389,6 +427,25 @@
                             <input type="checkbox" id="clipsPreferFeatured">
                             <label for="clipsPreferFeatured">Prefer featured clips</label>
                         </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShuffle" checked>
+                            <label for="clipsShuffle">Shuffle clips</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsAutoPlay" checked>
+                            <label for="clipsAutoPlay">Auto-play on load</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row" style="margin-top:8px">
+                        <div>
+                            <label>Default Volume</label>
+                            <input type="range" id="clipsVolume" min="0" max="100" step="5" value="100">
+                            <span id="clipsVolumeValue" class="range-value">100%</span>
+                        </div>
                     </div>
                 </div>
 
@@ -400,6 +457,10 @@
                         <div class="form-check">
                             <input type="checkbox" id="clipsShowText" checked>
                             <label for="clipsShowText">Show channel name overlay</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowInfo" checked>
+                            <label for="clipsShowInfo">Show clip info bar</label>
                         </div>
                     </div>
                     
@@ -418,17 +479,19 @@
                     
                     <div id="clipsDetailsSection">
                         <label>Details Panel Text</label>
-                        <textarea id="clipsDetailsText" rows="3" placeholder="{title}&#10;While streaming {game}&#10;Clipped by {creator_name} {created_at}"></textarea>
+                        <textarea id="clipsDetailsText" rows="3" placeholder="{title}&#10;Playing {game}&#10;Clipped by {creator_name}"></textarea>
                         <p class="hint">Variables: {title}, {channel}, {game}, {creator_name}, {created_at}</p>
                     </div>
                     
-                    <label>Theme</label>
-                    <select id="clipsTheme">
-                        <option value="0">None</option>
-                        <option value="1">Slide in fancy skewed</option>
-                        <option value="2" selected>Slide in basic</option>
-                        <option value="3">Outside the box</option>
-                    </select>
+                    <div id="clipsLegacyThemeSection">
+                        <label>Theme (Legacy Player Only)</label>
+                        <select id="clipsTheme">
+                            <option value="0">None</option>
+                            <option value="1">Slide in fancy skewed</option>
+                            <option value="2" selected>Slide in basic</option>
+                            <option value="3">Outside the box</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Chat Commands -->
@@ -590,6 +653,85 @@
                         <button onclick="exportConfigs()">📤 Export</button>
                         <button onclick="importConfigs()">📥 Import</button>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Layouts -->
+            <div id="page-layouts" class="page">
+                <div class="card">
+                    <h3>💾 Save Current Layout</h3>
+                    <p style="color:var(--muted);margin-bottom:12px;font-size:0.85em">
+                        Capture all source positions/sizes in current scene
+                    </p>
+                    <label>Layout Name</label>
+                    <input type="text" id="layoutName" placeholder="e.g. Gaming Layout, Just Chatting">
+                    <button class="btn-primary" style="margin-top:12px;width:100%" onclick="captureLayout()">
+                        📸 Capture Current Layout
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <h3>📂 Saved Layouts</h3>
+                    <p style="color:var(--muted);margin-bottom:8px;font-size:0.85em" id="layoutSceneInfo">
+                        Scene: <span id="layoutCurrentScene">-</span>
+                    </p>
+                    <div class="search-box">
+                        <input type="text" class="search-box__input" id="layoutSearchInput" placeholder="Search layouts...">
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">✕</button>
+                    </div>
+                    <div id="savedLayouts" class="config-list"></div>
+                    <div class="row" style="margin-top:8px">
+                        <button onclick="refreshLayouts()">🔄 Refresh</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>⚙️ Animation Settings</h3>
+                    <div class="row">
+                        <div style="flex:1">
+                            <label>Duration (ms)</label>
+                            <input type="number" id="layoutDuration" value="500" min="100" max="2000" step="50">
+                        </div>
+                        <div style="flex:1">
+                            <label>Easing</label>
+                            <select id="layoutEasing">
+                                <option value="ease_out" selected>Ease Out</option>
+                                <option value="ease_in_out">Ease In/Out</option>
+                                <option value="ease_in">Ease In</option>
+                                <option value="linear">Linear</option>
+                                <option value="bounce">Bounce</option>
+                                <option value="elastic">Elastic</option>
+                                <option value="back">Back</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px">
+                        <label>Stagger (ms)</label>
+                        <input type="number" id="layoutStagger" value="0" min="0" max="200" step="10">
+                        <p style="font-size:0.75em;color:var(--muted);margin:4px 0 0">
+                            Delay between each source animation (0 = all at once)
+                        </p>
+                    </div>
+                    <div style="margin-top:12px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" id="layoutApplyVisibility" checked>
+                            <span>Apply visibility changes</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>ℹ️ How It Works</h3>
+                    <ol style="padding-left:20px;color:var(--muted);font-size:0.85em;margin:0">
+                        <li>Arrange sources how you want them</li>
+                        <li>Enter a name and click "Capture"</li>
+                        <li>Rearrange sources or change layouts</li>
+                        <li>Click "Apply" to animate back</li>
+                    </ol>
+                    <p style="color:var(--muted);font-size:0.8em;margin-top:8px">
+                        💡 <b>Tip:</b> Assign hotkeys in OBS → Settings → Hotkeys for quick switching!
+                    </p>
                 </div>
             </div>
             
@@ -871,6 +1013,11 @@
                                 <input type="checkbox" id="exportSwaps" checked style="width:auto;margin:0">
                                 <span>🔄 Swap Configs</span>
                                 <span id="swapCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
+                                <input type="checkbox" id="exportLayouts" checked style="width:auto;margin:0">
+                                <span>📐 Layout Presets</span>
+                                <span id="layoutCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportTextCyclers" checked style="width:auto;margin:0">
@@ -1175,10 +1322,12 @@ function updateStorageStatus() {
     
     // Update config counts
     const swapCountEl = document.getElementById('swapCount');
+    const layoutCountEl = document.getElementById('layoutCount');
     const textCyclerCountEl = document.getElementById('textCyclerCount');
     const clipsCountEl = document.getElementById('clipsCount');
     
     if (swapCountEl) swapCountEl.textContent = `(${swapConfigs?.length || 0})`;
+    if (layoutCountEl) layoutCountEl.textContent = `(${layoutPresets?.length || 0})`;
     if (textCyclerCountEl) textCyclerCountEl.textContent = `(${textCyclerConfigs?.length || 0})`;
     if (clipsCountEl) clipsCountEl.textContent = `(${clipsConfigs?.length || 0})`;
     
@@ -1205,6 +1354,11 @@ function getSelectedExportData() {
     if (document.getElementById('exportSwaps')?.checked && swapConfigs?.length) {
         backup.swapConfigs = swapConfigs;
         backup.exportedCategories.push('swaps');
+    }
+    
+    if (document.getElementById('exportLayouts')?.checked && layoutPresets?.length) {
+        backup.layoutPresets = layoutPresets;
+        backup.exportedCategories.push('layouts');
     }
     
     if (document.getElementById('exportTextCyclers')?.checked && textCyclerConfigs?.length) {
@@ -1299,6 +1453,7 @@ function importDataWithOptions() {
             // Build import summary
             const categories = [];
             if (backup.swapConfigs?.length) categories.push(`${backup.swapConfigs.length} swap configs`);
+            if (backup.layoutPresets?.length) categories.push(`${backup.layoutPresets.length} layout presets`);
             if (backup.textCyclerConfigs?.length) categories.push(`${backup.textCyclerConfigs.length} text cycler configs`);
             if (backup.clipsConfigs?.length) categories.push(`${backup.clipsConfigs.length} clips configs`);
             if (backup.ui_state) categories.push('UI preferences');
@@ -1328,6 +1483,19 @@ function importDataWithOptions() {
                     imported.push(`${backup.swapConfigs.length} swaps (replaced)`);
                 }
                 storage.set('swapConfigs', swapConfigs);
+            }
+            
+            if (importChoices.layouts && backup.layoutPresets) {
+                if (importChoices.merge) {
+                    const existingIds = new Set(layoutPresets.map(l => l.id));
+                    const newLayouts = backup.layoutPresets.filter(l => !existingIds.has(l.id));
+                    layoutPresets = [...layoutPresets, ...newLayouts];
+                    imported.push(`${newLayouts.length} new layouts (merged)`);
+                } else {
+                    layoutPresets = backup.layoutPresets;
+                    imported.push(`${backup.layoutPresets.length} layouts (replaced)`);
+                }
+                storage.set('layoutPresets', layoutPresets);
             }
             
             if (importChoices.textCyclers && backup.textCyclerConfigs) {
@@ -1369,6 +1537,7 @@ function importDataWithOptions() {
             
             // Re-render everything
             renderSavedSwaps();
+            renderSavedLayouts();
             renderTextCyclerConfigs();
             renderClipsConfigs();
             loadUIState();
@@ -1387,6 +1556,7 @@ async function showImportDialog(backup, categories) {
     return new Promise((resolve) => {
         // Simple confirm-based dialog (could be replaced with modal later)
         const hasSwaps = backup.swapConfigs?.length > 0;
+        const hasLayouts = backup.layoutPresets?.length > 0;
         const hasTextCyclers = backup.textCyclerConfigs?.length > 0;
         const hasClips = backup.clipsConfigs?.length > 0;
         const hasUI = !!backup.ui_state;
@@ -1414,6 +1584,7 @@ Import mode:
         
         resolve({
             swaps: hasSwaps,
+            layouts: hasLayouts,
             textCyclers: hasTextCyclers,
             clips: hasClips,
             uiState: hasUI,
@@ -1441,7 +1612,7 @@ async function forceStorageSync() {
 // Legacy export function (for backwards compatibility)
 function exportAllData() {
     // Check all boxes and export
-    ['exportSwaps', 'exportTextCyclers', 'exportClips', 'exportUIState'].forEach(id => {
+    ['exportSwaps', 'exportLayouts', 'exportTextCyclers', 'exportClips', 'exportUIState'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.checked = true;
     });
@@ -1546,6 +1717,7 @@ Restore this backup?`;
         }
         
         renderSavedSwaps();
+        renderSavedLayouts();
         renderTextCyclerConfigs();
         renderClipsConfigs();
         updateStorageStatus();
@@ -2192,11 +2364,12 @@ const UI_FIELDS = [
     'swapStyle', 'swapDuration', 'swapEasing', 'swapTempOverride',
     'textSource', 'textLines', 'textDuration', 'textTransition', 'transDuration',
     'swapSourceA', 'swapSourceB', 'swapNewSourceA', 'swapNewSourceB',
-    'visAnimType', 'visAnimDuration', 'visAnimEasing'
+    'visAnimType', 'visAnimDuration', 'visAnimEasing',
+    'layoutDuration', 'layoutEasing', 'layoutStagger'
 ];
 
 // Checkbox fields need special handling
-const UI_CHECKBOXES = ['swapPreserveAspect', 'swapDebugLogging'];
+const UI_CHECKBOXES = ['swapPreserveAspect', 'swapDebugLogging', 'layoutApplyVisibility'];
 
 function saveUIState() {
     const state = {};
@@ -2268,10 +2441,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     swapConfigs = storage.get('swapConfigs') || [];
     textCyclerConfigs = storage.get('textCyclerConfigs') || [];
     clipsConfigs = storage.get('clipsConfigs') || [];
+    loadSourceOpacityConfigs();
     
     console.log('[Init] Loaded configs - Swaps:', swapConfigs.length, 
                 'TextCycler:', textCyclerConfigs.length, 
-                'Clips:', clipsConfigs.length);
+                'Clips:', clipsConfigs.length,
+                'Opacity:', Object.keys(sourceOpacityConfigs).length);
     
     // Check for recovery if configs are empty
     const totalConfigs = swapConfigs.length + textCyclerConfigs.length + clipsConfigs.length;
@@ -2297,6 +2472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Render loaded configs
     renderSavedSwaps();
     renderTextCyclerConfigs();
+    initLayouts();
     initClipsPlayer();
     initScriptsAndInstaller();
     loadUIState();
@@ -2337,7 +2513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ============ UI ============
 function showPage(id, save = true) {
     // Check if tab is disabled (requires connection)
-    const featurePages = ['sources', 'text', 'swaps'];
+    const featurePages = ['sources', 'text', 'swaps', 'layouts'];
     if (featurePages.includes(id) && !scriptStatus.connected) {
         // Don't switch to disabled page, redirect to setup
         log('Connect to OBS first to use this feature', 'error');
@@ -2351,7 +2527,7 @@ function showPage(id, save = true) {
     
     // Find and activate the corresponding tab - must match order in HTML nav.tabs
     const tabs = document.querySelectorAll('.tab');
-    const tabIds = ['dashboard', 'sources', 'text', 'clips', 'swaps', 'scripts', 'install', 'setup'];
+    const tabIds = ['dashboard', 'sources', 'text', 'clips', 'swaps', 'layouts', 'scripts', 'install', 'setup'];
     const tabIndex = tabIds.indexOf(id);
     if (tabIndex >= 0 && tabs[tabIndex]) {
         tabs[tabIndex].classList.add('active');
@@ -2361,7 +2537,8 @@ function showPage(id, save = true) {
     const pageFeatureMap = {
         'sources': { id: 'page-sources', feature: 'sources', script: 'Source Animations' },
         'text': { id: 'page-text', feature: 'text', script: 'Text Cycler' },
-        'swaps': { id: 'page-swaps', feature: 'swap', script: 'Source Swap' }
+        'swaps': { id: 'page-swaps', feature: 'swap', script: 'Source Swap' },
+        'layouts': { id: 'page-layouts', feature: 'layouts', script: 'Source Layouts' }
     };
     
     const pageInfo = pageFeatureMap[id];
@@ -2533,6 +2710,9 @@ async function handleMessage(data, password) {
         log('Connected to OBS!', 'success');
         refreshScenes();
         
+        // Restore saved opacity settings
+        setTimeout(restoreSavedOpacities, 800);
+        
         // Check script status after connection
         setTimeout(checkScriptStatus, 500);
     } else if (data.op === 7) { // Response
@@ -2555,6 +2735,7 @@ function handleEvent(event) {
         currentScene = event.eventData.sceneName;
         document.getElementById('currentScene').textContent = currentScene;
         refreshSources();
+        renderSavedLayouts(); // Refresh layouts for new scene
     }
 }
 
@@ -2615,19 +2796,47 @@ function renderSources() {
     const list = document.getElementById('sourcesList');
     if (sources.length === 0) {
         list.innerHTML = '<div class="empty-state">No sources in current scene</div>';
+        updateOpacitySourceDropdown();
         return;
     }
     
-    list.innerHTML = sources.map(s => `
-        <div class="source-item">
-            <div>
-                <div class="name">${s.sourceName}</div>
-                <div class="type">${s.inputKind || 'scene'}</div>
+    list.innerHTML = sources.map(s => {
+        const savedOpacity = getSourceOpacityConfig(s.sourceName);
+        const opacityDisplay = savedOpacity !== null ? savedOpacity : 100;
+        const hasOpacitySet = savedOpacity !== null && savedOpacity < 100;
+        const escapedName = s.sourceName.replace(/'/g, "\\'");
+        const itemId = `source-item-${s.sceneItemId}`;
+        
+        return `
+        <div class="source-item" id="${itemId}" data-source="${escapedName}" data-item-id="${s.sceneItemId}">
+            <div class="source-item__header">
+                <div class="source-item__info">
+                    <div class="name">${s.sourceName}</div>
+                    <div class="type">${s.inputKind || 'scene'}</div>
+                </div>
+                <div class="toggle ${s.sceneItemEnabled ? 'on' : ''}" 
+                     id="toggle-${s.sceneItemId}"
+                     onclick="toggleSourceWithLoader('${escapedName}', ${s.sceneItemId}, ${!s.sceneItemEnabled}, this)"></div>
             </div>
-            <div class="toggle ${s.sceneItemEnabled ? 'on' : ''}" 
-                 onclick="toggleSource('${s.sourceName}', ${s.sceneItemId}, ${!s.sceneItemEnabled})"></div>
+            <div class="source-item__controls">
+                <div class="source-item__slider-wrap">
+                    <input type="range" min="0" max="100" value="${opacityDisplay}" 
+                           class="opacity-slider"
+                           id="slider-${s.sceneItemId}"
+                           oninput="updateSliderValue(this, 'value-${s.sceneItemId}')"
+                           onchange="quickSetOpacityWithLoader('${escapedName}', this.value, this)">
+                    <span class="source-item__opacity-value" id="value-${s.sceneItemId}">${opacityDisplay}%</span>
+                </div>
+                <button class="opacity-reset-btn" 
+                        id="reset-${s.sceneItemId}"
+                        onclick="resetOpacityWithLoader('${escapedName}', ${s.sceneItemId}, this)"
+                        title="Reset to 100%">↺ Reset</button>
+            </div>
         </div>
-    `).join('');
+    `}).join('');
+    
+    // Update opacity dropdown with current sources
+    updateOpacitySourceDropdown();
     
     // Initialize/refresh search for sources list
     initSearchForList('sources', 'sourcesSearchInput', list, sources.length);
@@ -2654,6 +2863,259 @@ async function toggleSource(name, id, enabled) {
         refreshSources();
     } catch (e) {
         log('Error: ' + e, 'error');
+    }
+}
+
+// ============ Loader-Aware Control Functions ============
+
+// Update slider value display in real-time
+function updateSliderValue(slider, valueId) {
+    const display = document.getElementById(valueId);
+    if (display) {
+        display.textContent = slider.value + '%';
+    }
+}
+
+// Toggle with loading state
+async function toggleSourceWithLoader(name, id, enabled, toggleEl) {
+    const animType = document.getElementById('visAnimType').value;
+    const duration = parseInt(document.getElementById('visAnimDuration').value) || 300;
+    
+    // Add loading state
+    toggleEl.classList.add('loading');
+    
+    try {
+        await toggleSource(name, id, enabled);
+    } finally {
+        // Remove loading state after animation duration (or immediately if instant)
+        const loadDuration = animType === 'none' ? 100 : duration + 100;
+        setTimeout(() => {
+            toggleEl.classList.remove('loading');
+        }, loadDuration);
+    }
+}
+
+// Opacity change with loading state
+async function quickSetOpacityWithLoader(sourceName, opacity, sliderEl) {
+    const resetBtn = sliderEl.closest('.source-item__controls')?.querySelector('.opacity-reset-btn');
+    
+    // Disable slider during update
+    sliderEl.disabled = true;
+    if (resetBtn) resetBtn.classList.add('loading');
+    
+    try {
+        await quickSetOpacity(sourceName, opacity);
+    } finally {
+        // Brief loading state for feedback
+        setTimeout(() => {
+            sliderEl.disabled = false;
+            if (resetBtn) resetBtn.classList.remove('loading');
+        }, 300);
+    }
+}
+
+// Reset with loading state
+async function resetOpacityWithLoader(sourceName, itemId, btnEl) {
+    const slider = document.getElementById(`slider-${itemId}`);
+    const valueDisplay = document.getElementById(`value-${itemId}`);
+    
+    // Add loading state
+    btnEl.classList.add('loading');
+    if (slider) slider.disabled = true;
+    
+    try {
+        await setSourceOpacity(sourceName, 100);
+        
+        // Update UI immediately
+        if (slider) slider.value = 100;
+        if (valueDisplay) valueDisplay.textContent = '100%';
+    } finally {
+        setTimeout(() => {
+            btnEl.classList.remove('loading');
+            if (slider) slider.disabled = false;
+        }, 400);
+    }
+}
+
+// ============ Opacity Control ============
+const OPACITY_FILTER_NAME = '_panel_opacity_control';
+let sourceOpacityConfigs = {}; // { sourceName: opacity (0-100) }
+
+function loadSourceOpacityConfigs() {
+    sourceOpacityConfigs = storage.get('sourceOpacityConfigs') || {};
+}
+
+function saveSourceOpacityConfigs() {
+    storage.set('sourceOpacityConfigs', sourceOpacityConfigs);
+}
+
+function getSourceOpacityConfig(sourceName) {
+    return sourceOpacityConfigs[sourceName] !== undefined ? sourceOpacityConfigs[sourceName] : null;
+}
+
+function updateOpacitySourceDropdown() {
+    const select = document.getElementById('opacitySourceSelect');
+    if (!select) return;
+    
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- Select Source --</option>';
+    
+    sources.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.sourceName;
+        opt.textContent = s.sourceName;
+        select.appendChild(opt);
+    });
+    
+    // Restore selection if still valid
+    if (currentVal && sources.find(s => s.sourceName === currentVal)) {
+        select.value = currentVal;
+    }
+}
+
+function updateOpacityPreview() {
+    const slider = document.getElementById('opacitySlider');
+    const display = document.getElementById('opacityValue');
+    if (slider && display) {
+        display.textContent = slider.value + '%';
+    }
+}
+
+function loadSourceOpacity() {
+    const select = document.getElementById('opacitySourceSelect');
+    const slider = document.getElementById('opacitySlider');
+    const display = document.getElementById('opacityValue');
+    
+    if (!select || !slider || !display) return;
+    
+    const sourceName = select.value;
+    if (!sourceName) {
+        slider.value = 100;
+        display.textContent = '100%';
+        return;
+    }
+    
+    const savedOpacity = getSourceOpacityConfig(sourceName);
+    const opacity = savedOpacity !== null ? savedOpacity : 100;
+    slider.value = opacity;
+    display.textContent = opacity + '%';
+}
+
+async function applySourceOpacity() {
+    const select = document.getElementById('opacitySourceSelect');
+    const slider = document.getElementById('opacitySlider');
+    
+    if (!select || !slider) return;
+    
+    const sourceName = select.value;
+    const opacity = parseInt(slider.value);
+    
+    if (!sourceName) {
+        log('Select a source first!', 'error');
+        return;
+    }
+    
+    await setSourceOpacity(sourceName, opacity);
+}
+
+async function resetSourceOpacity() {
+    const select = document.getElementById('opacitySourceSelect');
+    if (!select || !select.value) {
+        log('Select a source first!', 'error');
+        return;
+    }
+    
+    const sourceName = select.value;
+    await setSourceOpacity(sourceName, 100);
+    
+    // Update UI
+    const slider = document.getElementById('opacitySlider');
+    const display = document.getElementById('opacityValue');
+    if (slider) slider.value = 100;
+    if (display) display.textContent = '100%';
+}
+
+async function quickSetOpacity(sourceName, opacity) {
+    await setSourceOpacity(sourceName, parseInt(opacity));
+}
+
+async function setSourceOpacity(sourceName, opacity) {
+    if (!connected) {
+        log('Not connected to OBS', 'error');
+        return;
+    }
+    
+    opacity = Math.max(0, Math.min(100, opacity));
+    
+    try {
+        if (opacity >= 100) {
+            // Remove filter if it exists (no overhead at 100%)
+            await removeOpacityFilter(sourceName);
+            delete sourceOpacityConfigs[sourceName];
+            log(`${sourceName}: opacity reset to 100% (filter removed)`, 'success');
+        } else {
+            // Apply or update opacity filter
+            await applyOpacityFilter(sourceName, opacity);
+            sourceOpacityConfigs[sourceName] = opacity;
+            log(`${sourceName}: opacity set to ${opacity}%`, 'success');
+        }
+        
+        saveSourceOpacityConfigs();
+        refreshSources();
+    } catch (e) {
+        log(`Opacity error: ${e}`, 'error');
+        console.error('[Opacity]', e);
+    }
+}
+
+async function applyOpacityFilter(sourceName, opacity) {
+    const opacityNormalized = opacity / 100;
+    
+    // Check if filter exists
+    try {
+        const filterData = await request('GetSourceFilter', {
+            sourceName: sourceName,
+            filterName: OPACITY_FILTER_NAME
+        });
+        
+        // Filter exists, update it
+        await request('SetSourceFilterSettings', {
+            sourceName: sourceName,
+            filterName: OPACITY_FILTER_NAME,
+            filterSettings: { opacity: opacityNormalized }
+        });
+    } catch (e) {
+        // Filter doesn't exist, create it
+        await request('CreateSourceFilter', {
+            sourceName: sourceName,
+            filterName: OPACITY_FILTER_NAME,
+            filterKind: 'color_filter_v2',
+            filterSettings: { opacity: opacityNormalized }
+        });
+    }
+}
+
+async function removeOpacityFilter(sourceName) {
+    try {
+        await request('RemoveSourceFilter', {
+            sourceName: sourceName,
+            filterName: OPACITY_FILTER_NAME
+        });
+    } catch (e) {
+        // Filter might not exist, that's fine
+    }
+}
+
+async function restoreSavedOpacities() {
+    // Restore all saved opacity settings on connect
+    for (const [sourceName, opacity] of Object.entries(sourceOpacityConfigs)) {
+        if (opacity < 100) {
+            try {
+                await applyOpacityFilter(sourceName, opacity);
+            } catch (e) {
+                console.warn(`[Opacity] Could not restore ${sourceName}:`, e);
+            }
+        }
     }
 }
 
@@ -3516,6 +3978,461 @@ function importConfigs() {
     }
 }
 
+// ============ Source Layouts (Presets) ============
+let layoutPresets = []; // Loaded async from storage on init
+let isApplyingLayout = false;
+
+/**
+ * Capture the current scene state as a layout preset
+ */
+async function captureLayout() {
+    if (!connected) {
+        log('Connect to OBS first', 'error');
+        showPage('setup');
+        return;
+    }
+    
+    const layoutName = document.getElementById('layoutName').value.trim();
+    if (!layoutName) {
+        log('Enter a layout name first!', 'error');
+        return;
+    }
+    
+    try {
+        // Get current scene
+        const sceneData = await request('GetCurrentProgramScene', {});
+        const sceneName = sceneData.currentProgramSceneName;
+        
+        // Get all scene items
+        const itemsData = await request('GetSceneItemList', { sceneName });
+        const items = itemsData.sceneItems || [];
+        
+        if (items.length === 0) {
+            log('No sources found in scene', 'error');
+            return;
+        }
+        
+        // Capture transform for each source
+        const sources = {};
+        for (const item of items) {
+            const sourceName = item.sourceName;
+            const sceneItemId = item.sceneItemId;
+            
+            try {
+                // Get transform
+                const transformData = await request('GetSceneItemTransform', {
+                    sceneName,
+                    sceneItemId
+                });
+                const t = transformData.sceneItemTransform;
+                
+                // Get visibility
+                const enabledData = await request('GetSceneItemEnabled', {
+                    sceneName,
+                    sceneItemId
+                });
+                
+                sources[sourceName] = {
+                    sourceName,
+                    sceneItemId,
+                    visible: enabledData.sceneItemEnabled,
+                    positionX: t.positionX,
+                    positionY: t.positionY,
+                    scaleX: t.scaleX,
+                    scaleY: t.scaleY,
+                    boundsType: t.boundsType,
+                    boundsWidth: t.boundsWidth,
+                    boundsHeight: t.boundsHeight,
+                    sourceWidth: t.sourceWidth,
+                    sourceHeight: t.sourceHeight,
+                    rotation: t.rotation || 0,
+                    alignment: t.alignment
+                };
+            } catch (e) {
+                console.warn('Could not capture transform for:', sourceName, e);
+            }
+        }
+        
+        // Get animation settings
+        const duration = parseInt(document.getElementById('layoutDuration').value) || 500;
+        const easing = document.getElementById('layoutEasing').value || 'ease_out';
+        const stagger = parseInt(document.getElementById('layoutStagger').value) || 0;
+        const applyVisibility = document.getElementById('layoutApplyVisibility').checked;
+        
+        // Create the preset
+        const now = new Date().toISOString();
+        const existingIndex = layoutPresets.findIndex(p => p.name === layoutName && p.sceneName === sceneName);
+        
+        const preset = {
+            id: existingIndex >= 0 ? layoutPresets[existingIndex].id : generateLayoutId(),
+            name: layoutName,
+            sceneName,
+            createdAt: existingIndex >= 0 ? layoutPresets[existingIndex].createdAt : now,
+            updatedAt: now,
+            animation: { duration, easing, stagger },
+            options: { applyVisibility, warnOnMissing: true, ignoreNewSources: true },
+            sources,
+            sourceCount: Object.keys(sources).length
+        };
+        
+        if (existingIndex >= 0) {
+            layoutPresets[existingIndex] = preset;
+            log(`Updated layout: ${layoutName} (${preset.sourceCount} sources)`, 'success');
+        } else {
+            layoutPresets.push(preset);
+            log(`Saved layout: ${layoutName} (${preset.sourceCount} sources)`, 'success');
+        }
+        
+        // Save and refresh
+        storage.set('layoutPresets', layoutPresets);
+        document.getElementById('layoutName').value = '';
+        renderSavedLayouts();
+        
+    } catch (e) {
+        log('Failed to capture layout: ' + e, 'error');
+        console.error('Capture layout error:', e);
+    }
+}
+
+function generateLayoutId() {
+    return 'layout_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Apply a saved layout preset with animation
+ */
+async function applyLayout(index) {
+    if (!connected) {
+        log('Connect to OBS first', 'error');
+        return;
+    }
+    
+    if (isApplyingLayout) {
+        log('Layout animation in progress', 'error');
+        return;
+    }
+    
+    const preset = layoutPresets[index];
+    if (!preset) {
+        log('Layout not found', 'error');
+        return;
+    }
+    
+    // Verify we're on the right scene (or warn)
+    const sceneData = await request('GetCurrentProgramScene', {});
+    const currentSceneName = sceneData.currentProgramSceneName;
+    
+    if (currentSceneName !== preset.sceneName) {
+        log(`Warning: Layout was saved for "${preset.sceneName}" but you're on "${currentSceneName}"`, 'error');
+        // Continue anyway - user might want to apply cross-scene
+    }
+    
+    isApplyingLayout = true;
+    log(`Applying layout: ${preset.name}...`, 'info');
+    
+    try {
+        // Get current scene items
+        const itemsData = await request('GetSceneItemList', { sceneName: currentSceneName });
+        const currentItems = itemsData.sceneItems || [];
+        
+        // Build animation plan
+        const animations = [];
+        const missingFromScene = [];
+        const missingFromPreset = [];
+        
+        // Create map of current items for quick lookup
+        const currentItemsMap = {};
+        for (const item of currentItems) {
+            currentItemsMap[item.sourceName] = item;
+        }
+        
+        // Check each source in preset
+        for (const [sourceName, targetState] of Object.entries(preset.sources)) {
+            const currentItem = currentItemsMap[sourceName];
+            
+            if (!currentItem) {
+                missingFromScene.push(sourceName);
+                continue;
+            }
+            
+            // Get current transform
+            const transformData = await request('GetSceneItemTransform', {
+                sceneName: currentSceneName,
+                sceneItemId: currentItem.sceneItemId
+            });
+            const currentTransform = transformData.sceneItemTransform;
+            
+            // Get current visibility
+            const enabledData = await request('GetSceneItemEnabled', {
+                sceneName: currentSceneName,
+                sceneItemId: currentItem.sceneItemId
+            });
+            
+            animations.push({
+                sourceName,
+                sceneItemId: currentItem.sceneItemId,
+                from: {
+                    positionX: currentTransform.positionX,
+                    positionY: currentTransform.positionY,
+                    scaleX: currentTransform.scaleX,
+                    scaleY: currentTransform.scaleY,
+                    boundsWidth: currentTransform.boundsWidth,
+                    boundsHeight: currentTransform.boundsHeight,
+                    rotation: currentTransform.rotation || 0
+                },
+                to: {
+                    positionX: targetState.positionX,
+                    positionY: targetState.positionY,
+                    scaleX: targetState.scaleX,
+                    scaleY: targetState.scaleY,
+                    boundsWidth: targetState.boundsWidth,
+                    boundsHeight: targetState.boundsHeight,
+                    boundsType: targetState.boundsType,
+                    rotation: targetState.rotation || 0
+                },
+                currentVisible: enabledData.sceneItemEnabled,
+                targetVisible: targetState.visible
+            });
+        }
+        
+        // Find sources in scene but not in preset
+        for (const item of currentItems) {
+            if (!preset.sources[item.sourceName]) {
+                missingFromPreset.push(item.sourceName);
+            }
+        }
+        
+        // Log warnings
+        if (missingFromScene.length > 0) {
+            log(`Missing sources: ${missingFromScene.join(', ')}`, 'error');
+        }
+        if (missingFromPreset.length > 0) {
+            console.log('[Layouts] Sources not in preset (leaving alone):', missingFromPreset);
+        }
+        
+        if (animations.length === 0) {
+            log('No sources to animate', 'error');
+            isApplyingLayout = false;
+            return;
+        }
+        
+        // Animation settings
+        const duration = preset.animation.duration || 500;
+        const easingType = preset.animation.easing || 'ease_out';
+        const stagger = preset.animation.stagger || 0;
+        const applyVisibility = preset.options.applyVisibility !== false;
+        
+        // Hide sources that need hiding (before animation)
+        if (applyVisibility) {
+            for (const anim of animations) {
+                if (anim.currentVisible && !anim.targetVisible) {
+                    // Will hide after animation
+                }
+            }
+        }
+        
+        // Animate!
+        const startTime = performance.now();
+        
+        await new Promise((resolve) => {
+            function animate() {
+                const elapsed = performance.now() - startTime;
+                const maxDuration = duration + (stagger * animations.length);
+                
+                if (elapsed >= maxDuration) {
+                    // Final frame - apply exact end values
+                    for (const anim of animations) {
+                        setLayoutTransform(currentSceneName, anim.sceneItemId, anim.to);
+                        
+                        // Apply visibility
+                        if (applyVisibility && anim.currentVisible !== anim.targetVisible) {
+                            setSceneItemEnabled(currentSceneName, anim.sceneItemId, anim.targetVisible);
+                        }
+                    }
+                    resolve();
+                    return;
+                }
+                
+                // Animate each source (with stagger)
+                for (let i = 0; i < animations.length; i++) {
+                    const anim = animations[i];
+                    const sourceDelay = i * stagger;
+                    const sourceElapsed = elapsed - sourceDelay;
+                    
+                    if (sourceElapsed < 0) continue; // Not started yet
+                    
+                    const rawT = Math.min(sourceElapsed / duration, 1);
+                    const t = easeFunc(rawT, easingType);
+                    
+                    const current = {
+                        positionX: lerp(anim.from.positionX, anim.to.positionX, t),
+                        positionY: lerp(anim.from.positionY, anim.to.positionY, t),
+                        rotation: lerp(anim.from.rotation, anim.to.rotation, t)
+                    };
+                    
+                    // Handle bounds vs scale
+                    if (anim.to.boundsType && anim.to.boundsType !== 'OBS_BOUNDS_NONE') {
+                        current.boundsWidth = lerp(anim.from.boundsWidth || anim.from.scaleX * 1920, anim.to.boundsWidth, t);
+                        current.boundsHeight = lerp(anim.from.boundsHeight || anim.from.scaleY * 1080, anim.to.boundsHeight, t);
+                        current.boundsType = anim.to.boundsType;
+                    } else {
+                        current.scaleX = lerp(anim.from.scaleX, anim.to.scaleX, t);
+                        current.scaleY = lerp(anim.from.scaleY, anim.to.scaleY, t);
+                    }
+                    
+                    setLayoutTransform(currentSceneName, anim.sceneItemId, current);
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            requestAnimationFrame(animate);
+        });
+        
+        log(`Layout applied: ${preset.name}`, 'success');
+        
+    } catch (e) {
+        log('Failed to apply layout: ' + e, 'error');
+        console.error('Apply layout error:', e);
+    } finally {
+        isApplyingLayout = false;
+    }
+}
+
+async function setLayoutTransform(sceneName, sceneItemId, transform) {
+    try {
+        await request('SetSceneItemTransform', {
+            sceneName,
+            sceneItemId,
+            sceneItemTransform: transform
+        });
+    } catch (e) {
+        console.warn('Failed to set transform:', sceneItemId, e);
+    }
+}
+
+async function setSceneItemEnabled(sceneName, sceneItemId, enabled) {
+    try {
+        await request('SetSceneItemEnabled', {
+            sceneName,
+            sceneItemId,
+            sceneItemEnabled: enabled
+        });
+    } catch (e) {
+        console.warn('Failed to set visibility:', sceneItemId, e);
+    }
+}
+
+function deleteLayout(index) {
+    const preset = layoutPresets[index];
+    if (!preset) return;
+    
+    if (confirm(`Delete layout "${preset.name}"?`)) {
+        layoutPresets.splice(index, 1);
+        storage.set('layoutPresets', layoutPresets);
+        renderSavedLayouts();
+        log(`Deleted layout: ${preset.name}`, 'info');
+    }
+}
+
+function renderSavedLayouts() {
+    const container = document.getElementById('savedLayouts');
+    const searchInput = document.getElementById('layoutSearchInput');
+    const searchTerm = searchInput?.value?.toLowerCase() || '';
+    
+    // Update current scene display
+    const sceneEl = document.getElementById('layoutCurrentScene');
+    if (sceneEl) {
+        sceneEl.textContent = currentScene || '-';
+    }
+    
+    // Filter by current scene and search term
+    const filteredLayouts = layoutPresets.filter((p, i) => {
+        const matchesScene = !currentScene || p.sceneName === currentScene;
+        const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
+        return matchesScene && matchesSearch;
+    });
+    
+    if (filteredLayouts.length === 0) {
+        container.innerHTML = '<div class="empty-state">No layouts saved for this scene</div>';
+        return;
+    }
+    
+    container.innerHTML = filteredLayouts.map((preset) => {
+        const originalIndex = layoutPresets.indexOf(preset);
+        const sourceCount = preset.sourceCount || Object.keys(preset.sources || {}).length;
+        const age = getRelativeTime(preset.updatedAt);
+        
+        return `
+            <div class="config-item">
+                <div class="config-item__header">
+                    <span class="config-item__name">📐 ${preset.name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                    <span class="config-item__meta">${sourceCount} sources • ${age}</span>
+                </div>
+                <div class="config-item__actions">
+                    <button onclick="applyLayout(${originalIndex})" class="btn-primary btn-sm">▶️ Apply</button>
+                    <button onclick="previewLayout(${originalIndex})" class="btn-secondary btn-sm">👁️</button>
+                    <button onclick="deleteLayout(${originalIndex})" class="btn-danger btn-sm">🗑️</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function previewLayout(index) {
+    const preset = layoutPresets[index];
+    if (!preset) return;
+    
+    // Log the layout details
+    log(`=== Layout: ${preset.name} ===`, 'info');
+    log(`Scene: ${preset.sceneName}`, 'info');
+    log(`Sources: ${Object.keys(preset.sources).length}`, 'info');
+    log(`Animation: ${preset.animation.duration}ms, ${preset.animation.easing}`, 'info');
+    
+    const sourceNames = Object.keys(preset.sources);
+    for (const name of sourceNames.slice(0, 5)) {
+        const s = preset.sources[name];
+        log(`  • ${name}: (${Math.round(s.positionX)}, ${Math.round(s.positionY)}) ${s.visible ? '👁️' : '🚫'}`, 'info');
+    }
+    if (sourceNames.length > 5) {
+        log(`  ... and ${sourceNames.length - 5} more`, 'info');
+    }
+}
+
+function refreshLayouts() {
+    renderSavedLayouts();
+    log('Layouts refreshed', 'info');
+}
+
+function getRelativeTime(isoString) {
+    if (!isoString) return 'unknown';
+    
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+}
+
+// Initialize layouts on page load
+function initLayouts() {
+    layoutPresets = storage.get('layoutPresets') || [];
+    renderSavedLayouts();
+    
+    // Setup search
+    const searchInput = document.getElementById('layoutSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', renderSavedLayouts);
+    }
+}
+
 // ============ Text Cycler (Multi-Config) ============
 let textCyclerConfigs = []; // Loaded async from storage on init
 let currentTextConfigIndex = -1;
@@ -4153,8 +5070,12 @@ function restoreRunningTextCyclers() {
 let clipsConfigs = []; // Loaded async from storage on init
 let currentClipsConfigIndex = -1;
 
-// Twitch Client ID for clips player (from teklynk)
+// Twitch Client ID for clips player - set your own from Twitch Developer Console
 const CLIPS_CLIENT_ID = 'cuql1zod4eeabjr3cnc6adjn9ezro4';
+
+// Strixun API Server - Configure this to your Cloudflare Worker URL
+// This can be overridden in localStorage with key 'strixun_clips_api_server'
+const DEFAULT_CLIPS_API_SERVER = localStorage.getItem('strixun_clips_api_server') || '';
 
 function renderClipsConfigs() {
     const container = document.getElementById('clipsConfigs');
@@ -4184,6 +5105,7 @@ function newClipsConfig() {
     const config = {
         id: 'clips_' + Date.now(),
         name: 'Clips Player ' + (clipsConfigs.length + 1),
+        apiServer: DEFAULT_CLIPS_API_SERVER,
         mainChannel: '',
         channels: '',
         showFollowing: false,
@@ -4194,10 +5116,15 @@ function newClipsConfig() {
         showText: true,
         customText: '',
         showDetails: true,
-        detailsText: '{title}\nWhile streaming {game}\nClipped by {creator_name} {created_at}',
-        theme: 2,
+        showInfo: true,
+        detailsText: '{title}\nPlaying {game}\nClipped by {creator_name}',
+        theme: 0, // Use new themed player by default
         command: '',
-        accessToken: ''
+        accessToken: '',
+        autoPlay: true,
+        shuffle: true,
+        volume: 100,
+        useNewPlayer: true // Use new Strixun player vs legacy
     };
     
     clipsConfigs.push(config);
@@ -4238,6 +5165,21 @@ function loadClipsConfig(index) {
     document.getElementById('clipsCommand').value = config.command || '';
     document.getElementById('clipsAccessToken').value = config.accessToken || '';
     
+    // New player options
+    const apiServerEl = document.getElementById('clipsApiServer');
+    const useNewPlayerEl = document.getElementById('clipsUseNewPlayer');
+    const showInfoEl = document.getElementById('clipsShowInfo');
+    const autoPlayEl = document.getElementById('clipsAutoPlay');
+    const shuffleEl = document.getElementById('clipsShuffle');
+    const volumeEl = document.getElementById('clipsVolume');
+    
+    if (apiServerEl) apiServerEl.value = config.apiServer || DEFAULT_CLIPS_API_SERVER || '';
+    if (useNewPlayerEl) useNewPlayerEl.checked = config.useNewPlayer !== false;
+    if (showInfoEl) showInfoEl.checked = config.showInfo !== false;
+    if (autoPlayEl) autoPlayEl.checked = config.autoPlay !== false;
+    if (shuffleEl) shuffleEl.checked = config.shuffle !== false;
+    if (volumeEl) volumeEl.value = config.volume || 100;
+    
     updateClipsRangeValues();
     updateClipsUIVisibility();
     generateClipsUrl();
@@ -4248,29 +5190,48 @@ function loadClipsConfig(index) {
 function updateClipsRangeValues() {
     const limit = document.getElementById('clipsLimit').value;
     const dateRange = document.getElementById('clipsDateRange').value;
+    const volumeEl = document.getElementById('clipsVolume');
+    
     document.getElementById('clipsLimitValue').textContent = limit;
     document.getElementById('clipsDateRangeValue').textContent = dateRange == 0 ? '0 (all)' : dateRange;
+    
+    if (volumeEl) {
+        const volumeValueEl = document.getElementById('clipsVolumeValue');
+        if (volumeValueEl) volumeValueEl.textContent = volumeEl.value + '%';
+    }
 }
 
 function updateClipsUIVisibility() {
     const showFollowing = document.getElementById('clipsShowFollowing').checked;
     const showText = document.getElementById('clipsShowText').checked;
     const showDetails = document.getElementById('clipsShowDetails').checked;
+    const useNewPlayerEl = document.getElementById('clipsUseNewPlayer');
+    const useNewPlayer = useNewPlayerEl ? useNewPlayerEl.checked : true;
     
     document.getElementById('clipsExcludeSection').style.display = showFollowing ? 'block' : 'none';
     document.getElementById('clipsCustomTextSection').style.display = showText ? 'block' : 'none';
     document.getElementById('clipsDetailsSection').style.display = showDetails ? 'block' : 'none';
     
+    // Show API section only for new player
+    const apiSection = document.getElementById('clipsApiSection');
+    if (apiSection) apiSection.style.display = useNewPlayer ? 'block' : 'none';
+    
+    // Show legacy theme only for legacy player
+    const legacyThemeSection = document.getElementById('clipsLegacyThemeSection');
+    if (legacyThemeSection) legacyThemeSection.style.display = useNewPlayer ? 'none' : 'block';
+    
     // Disable channels if showFollowing
     document.getElementById('clipsChannels').disabled = showFollowing;
 }
 
-// Event listeners for range sliders
+// Event listeners for range sliders and checkboxes
 document.getElementById('clipsLimit')?.addEventListener('input', updateClipsRangeValues);
 document.getElementById('clipsDateRange')?.addEventListener('input', updateClipsRangeValues);
+document.getElementById('clipsVolume')?.addEventListener('input', updateClipsRangeValues);
 document.getElementById('clipsShowFollowing')?.addEventListener('change', updateClipsUIVisibility);
 document.getElementById('clipsShowText')?.addEventListener('change', updateClipsUIVisibility);
 document.getElementById('clipsShowDetails')?.addEventListener('change', updateClipsUIVisibility);
+document.getElementById('clipsUseNewPlayer')?.addEventListener('change', updateClipsUIVisibility);
 
 function saveCurrentClipsConfig() {
     if (currentClipsConfigIndex < 0) return;
@@ -4292,10 +5253,59 @@ function saveCurrentClipsConfig() {
     config.command = document.getElementById('clipsCommand').value.trim().replace('!', '');
     config.accessToken = document.getElementById('clipsAccessToken').value.trim();
     
+    // New player options
+    const apiServerEl = document.getElementById('clipsApiServer');
+    const useNewPlayerEl = document.getElementById('clipsUseNewPlayer');
+    const showInfoEl = document.getElementById('clipsShowInfo');
+    const autoPlayEl = document.getElementById('clipsAutoPlay');
+    const shuffleEl = document.getElementById('clipsShuffle');
+    const volumeEl = document.getElementById('clipsVolume');
+    
+    if (apiServerEl) config.apiServer = apiServerEl.value.trim();
+    if (useNewPlayerEl) config.useNewPlayer = useNewPlayerEl.checked;
+    if (showInfoEl) config.showInfo = showInfoEl.checked;
+    if (autoPlayEl) config.autoPlay = autoPlayEl.checked;
+    if (shuffleEl) config.shuffle = shuffleEl.checked;
+    if (volumeEl) config.volume = parseInt(volumeEl.value) || 100;
+    
+    // Broadcast config update to any open player instances
+    broadcastClipsConfigUpdate(config);
+    
     saveClipsConfigs();
     renderClipsConfigs();
     generateClipsUrl();
     log('Saved clips config: ' + config.name, 'success');
+}
+
+// Broadcast config changes to open clips player windows
+function broadcastClipsConfigUpdate(config) {
+    try {
+        const bc = new BroadcastChannel('strixun_clips_player');
+        bc.postMessage({
+            type: 'CONFIG_UPDATE',
+            data: {
+                channels: config.channels ? config.channels.split(',').map(c => c.trim()) : [],
+                mainChannel: config.mainChannel,
+                limit: config.limit,
+                dateRange: config.dateRange,
+                preferFeatured: config.preferFeatured,
+                showChannelOverlay: config.showText,
+                showDetailsPanel: config.showDetails,
+                showClipInfo: config.showInfo,
+                customChannelText: config.customText,
+                detailsTemplate: config.detailsText,
+                volume: config.volume,
+                autoPlay: config.autoPlay,
+                shuffle: config.shuffle,
+                showFollowing: config.showFollowing,
+                excludeChannels: config.exclude ? config.exclude.split(',').map(c => c.trim()) : []
+            }
+        });
+        bc.close();
+    } catch (e) {
+        // BroadcastChannel not supported, fall back to localStorage
+        localStorage.setItem('strixun_clips_config', JSON.stringify(config));
+    }
 }
 
 function deleteCurrentClipsConfig() {
@@ -4379,23 +5389,44 @@ function generateClipsUrl() {
         return;
     }
     
-    // Build URL
-    const basePath = window.location.pathname.replace('control_panel.html', 'twitch_clips_player/clips.html');
+    // Determine which player to use
+    const useNewPlayer = config.useNewPlayer !== false;
+    const playerFile = useNewPlayer ? 'twitch_clips_player/player.html' : 'twitch_clips_player/clips.html';
+    const basePath = window.location.pathname.replace('control_panel.html', playerFile);
     const baseUrl = window.location.protocol + '//' + window.location.host + basePath;
     
     const params = new URLSearchParams();
     
+    // API Server (required for new player)
+    const apiServer = config.apiServer || DEFAULT_CLIPS_API_SERVER;
+    if (useNewPlayer) {
+        if (!apiServer) {
+            document.getElementById('clipsGeneratedUrl').value = 'Set API Server URL first (Setup tab or config)';
+            return;
+        }
+        params.set('api', apiServer);
+    }
+    
     if (!config.showFollowing) {
         params.set('channel', config.channels.replace(/\s+/g, ''));
     }
-    params.set('mainAccount', config.mainChannel);
+    params.set('mainChannel', config.mainChannel);
     params.set('limit', config.limit || 20);
     params.set('dateRange', config.dateRange || 0);
-    params.set('themeOption', config.theme || 0);
     params.set('preferFeatured', config.preferFeatured);
     params.set('showText', config.showText);
     params.set('showDetails', config.showDetails);
+    params.set('showInfo', config.showInfo !== false);
     params.set('showFollowing', config.showFollowing);
+    params.set('autoPlay', config.autoPlay !== false);
+    params.set('shuffle', config.shuffle !== false);
+    params.set('volume', config.volume || 100);
+    
+    // Legacy compatibility
+    if (!useNewPlayer) {
+        params.set('themeOption', config.theme || 0);
+        params.set('mainAccount', config.mainChannel);
+    }
     
     if (config.customText) {
         params.set('customText', config.customText);
@@ -4405,13 +5436,16 @@ function generateClipsUrl() {
     }
     if (config.command) {
         params.set('command', config.command);
+        params.set('chatConnect', 'true');
     }
     if (config.exclude) {
         params.set('exclude', config.exclude.replace(/\s+/g, ''));
     }
     if (config.accessToken) {
         params.set('ref', btoa(config.accessToken));
-        params.set('clientId', btoa(CLIPS_CLIENT_ID));
+        if (!useNewPlayer) {
+            params.set('clientId', btoa(CLIPS_CLIENT_ID));
+        }
     }
     
     const fullUrl = baseUrl + '?' + params.toString();

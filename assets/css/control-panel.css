@@ -233,39 +233,294 @@ button:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 .log-entry.success { color: var(--success); }
 .log-entry.info { color: var(--accent); }
 
-/* ============ Source Item ============ */
+/* ============ Source Item (Stacked Layout) ============ */
 .source-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
+}
+.source-item:hover {
+    border-color: var(--border);
+    background: var(--bg-dark);
+}
+
+/* Source Header Row (name + visibility toggle) */
+.source-item__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
-    background: var(--bg);
-    border-radius: 6px;
-    margin-bottom: 6px;
+    gap: 12px;
 }
-.source-item .name { font-weight: 500; }
-.source-item .type { font-size: 0.8em; color: var(--muted); }
+.source-item__info {
+    flex: 1;
+    min-width: 0; /* Allow text truncation */
+}
+.source-item .name { 
+    font-weight: 600;
+    font-size: 0.95em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.source-item .type { 
+    font-size: 0.75em; 
+    color: var(--muted);
+    margin-top: 2px;
+}
 
-/* ============ Toggle Switch ============ */
+/* Source Controls Row (opacity slider + reset) */
+.source-item__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+.source-item__slider-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.source-item__opacity-value {
+    min-width: 38px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--accent);
+    text-align: right;
+}
+
+/* ============ Toggle Switch (GOLD Theme) ============ */
 .toggle {
-    width: 44px; height: 24px;
+    width: 48px; 
+    height: 26px;
     background: var(--border);
-    border-radius: 12px;
+    border-radius: 13px;
     position: relative;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
 }
-.toggle.on { background: var(--success); }
+.toggle:hover {
+    box-shadow: 0 0 0 2px var(--border-light);
+}
+.toggle.on { 
+    background: var(--accent); /* GOLD not green! */
+}
 .toggle::after {
     content: '';
     position: absolute;
-    width: 18px; height: 18px;
+    width: 20px; 
+    height: 20px;
     background: #fff;
     border-radius: 50%;
-    top: 3px; left: 3px;
+    top: 3px; 
+    left: 3px;
     transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
-.toggle.on::after { transform: translateX(20px); }
+.toggle.on::after { 
+    transform: translateX(22px); 
+}
+
+/* ============ Opacity Slider (Chunky) ============ */
+.opacity-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 12px;
+    background: var(--bg);
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.opacity-slider:hover {
+    border-color: var(--accent);
+}
+.opacity-slider:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Webkit (Chrome, Safari, Edge) */
+.opacity-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    background: var(--accent);
+    border-radius: 4px;
+    cursor: grab;
+    border: 2px solid var(--accent-dark);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    transition: transform 0.15s, background 0.15s;
+}
+.opacity-slider::-webkit-slider-thumb:hover {
+    background: var(--accent-light);
+    transform: scale(1.1);
+}
+.opacity-slider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+/* Firefox */
+.opacity-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    background: var(--accent);
+    border-radius: 4px;
+    cursor: grab;
+    border: 2px solid var(--accent-dark);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    transition: transform 0.15s, background 0.15s;
+}
+.opacity-slider::-moz-range-thumb:hover {
+    background: var(--accent-light);
+}
+.opacity-slider::-moz-range-track {
+    background: transparent;
+    border: none;
+}
+
+/* Inline version for source list (compact) */
+.opacity-slider--inline {
+    width: 80px;
+    height: 8px;
+    border-width: 1px;
+}
+.opacity-slider--inline::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+.opacity-slider--inline::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+/* Reset button for opacity */
+.opacity-reset-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: var(--border);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.opacity-reset-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent-dark);
+    color: #1a1611;
+}
+.opacity-reset-btn:active {
+    transform: scale(0.95);
+}
+.opacity-reset-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============ Loading States ============ */
+
+/* Spinner keyframe */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Toggle loading state */
+.toggle.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+.toggle.loading::after {
+    background: var(--accent-light);
+    animation: pulse 0.6s ease-in-out infinite;
+}
+
+/* Button loading state */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    color: transparent;
+}
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin: -8px 0 0 -8px;
+    border: 2px solid var(--border-light);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+/* Opacity reset button loading */
+.opacity-reset-btn.loading {
+    pointer-events: none;
+    color: transparent;
+    background: var(--border);
+}
+.opacity-reset-btn.loading::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-light);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+/* Source item loading overlay */
+.source-item.loading {
+    pointer-events: none;
+    opacity: 0.6;
+}
+.source-item.loading::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 22, 17, 0.5);
+    border-radius: 8px;
+    z-index: 1;
+}
+
+/* Slider disabled during loading */
+.opacity-slider:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.opacity-slider:disabled::-webkit-slider-thumb {
+    cursor: not-allowed;
+    background: var(--muted);
+}
 
 /* ============ URL Box ============ */
 .url-box {

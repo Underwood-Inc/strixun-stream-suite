@@ -44,6 +44,13 @@ local scripts = {
         enabled = true
     },
     {
+        id = "source_layouts",
+        name = "Source Layouts",
+        file = "source_layouts.lua",
+        description = "Save and apply layout presets with smooth multi-source animation",
+        enabled = true
+    },
+    {
         id = "quick_controls",
         name = "Quick Controls",
         file = "quick_controls.lua",
@@ -223,6 +230,23 @@ function script_properties()
             return false
         end)
     
+    -- Source Layouts Info
+    obs.obs_properties_add_text(props, "info_source_layouts", 
+        "📦 SOURCE LAYOUTS (source_layouts.lua)", obs.OBS_TEXT_INFO)
+    obs.obs_properties_add_text(props, "info_source_layouts_desc", 
+        "   Save and apply layout presets - animate all sources to saved positions.", 
+        obs.OBS_TEXT_INFO)
+    
+    obs.obs_properties_add_button(props, "test_source_layouts_btn", "   ↳ Test Source Layouts Log",
+        function(properties, property)
+            log_info("[Source Layouts] If loaded, check that:")
+            log_info("  1. Arrange sources how you want them")
+            log_info("  2. Enter a name and click 'Save Current Layout'")
+            log_info("  3. Select a layout and click 'Apply' to animate")
+            log_info("  4. Assign hotkeys in Settings → Hotkeys")
+            return false
+        end)
+    
     -- ==========================================================================
     -- Troubleshooting
     -- ==========================================================================
@@ -267,7 +291,7 @@ function script_properties()
         "═══════════ VERSION INFO ═══════════", obs.OBS_TEXT_INFO)
     
     obs.obs_properties_add_text(props, "version_info", 
-        "Manager v1.2 | Animations v2.7 | Swap v3.1 | TextCycler v1.0", 
+        "Manager v1.3 | Animations v2.8 | Swap v3.1 | Layouts v1.0 | TextCycler v1.0", 
         obs.OBS_TEXT_INFO)
     
     return props

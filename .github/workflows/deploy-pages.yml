@@ -1,0 +1,71 @@
+# Strixun Stream Suite - Deploy to GitHub Pages
+#
+# This workflow deploys the static frontend to GitHub Pages.
+# The Twitch Clips Player and Control Panel will be available at:
+#   https://<username>.github.io/<repo-name>/
+#
+# No secrets needed for static hosting, but you'll need to:
+# 1. Enable GitHub Pages in repo Settings > Pages
+# 2. Set source to "GitHub Actions"
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'twitch_clips_player/serverless/**'
+      - '.github/workflows/deploy-twitch-api.yml'
+  workflow_dispatch:
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+# Sets permissions for GITHUB_TOKEN
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Create .nojekyll
+        run: touch .nojekyll
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
+      - name: Deployment Summary
+        run: |
+          echo "## 🌐 GitHub Pages Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Site URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Pages:" >> $GITHUB_STEP_SUMMARY
+          echo "- Control Panel: \`${{ steps.deployment.outputs.page_url }}control_panel.html\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Clips Player: \`${{ steps.deployment.outputs.page_url }}twitch_clips_player/player.html\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Legacy Player: \`${{ steps.deployment.outputs.page_url }}twitch_clips_player/clips.html\`" >> $GITHUB_STEP_SUMMARY
+

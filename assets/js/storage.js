@@ -199,7 +199,7 @@ const storage = {
             }
             
             // Trigger auto-backup snapshot for config keys (debounced)
-            if (['swapConfigs', 'textCyclerConfigs', 'clipsConfigs'].includes(key)) {
+            if (['swapConfigs', 'layoutPresets', 'textCyclerConfigs', 'clipsConfigs'].includes(key)) {
                 if (typeof createRecoverySnapshot === 'function') {
                     clearTimeout(this._snapshotDebounce);
                     this._snapshotDebounce = setTimeout(createRecoverySnapshot, 2000);
@@ -290,6 +290,7 @@ let lastDataHash = '';
 function getDataHash() {
     const data = JSON.stringify({
         s: (typeof swapConfigs !== 'undefined' ? swapConfigs?.length : 0) || 0,
+        l: (typeof layoutPresets !== 'undefined' ? layoutPresets?.length : 0) || 0,
         t: (typeof textCyclerConfigs !== 'undefined' ? textCyclerConfigs?.length : 0) || 0,
         c: (typeof clipsConfigs !== 'undefined' ? clipsConfigs?.length : 0) || 0
     });
@@ -309,6 +310,7 @@ function createRecoverySnapshot() {
         timestamp: new Date().toISOString(),
         type: 'auto-recovery',
         swapConfigs: (typeof swapConfigs !== 'undefined' ? swapConfigs : []) || [],
+        layoutPresets: (typeof layoutPresets !== 'undefined' ? layoutPresets : []) || [],
         textCyclerConfigs: (typeof textCyclerConfigs !== 'undefined' ? textCyclerConfigs : []) || [],
         clipsConfigs: (typeof clipsConfigs !== 'undefined' ? clipsConfigs : []) || []
     };
@@ -335,9 +337,11 @@ function checkForRecoverySnapshot() {
         if (!data.version || !data.timestamp) return null;
         
         const currentTotal = ((typeof swapConfigs !== 'undefined' ? swapConfigs?.length : 0) || 0) + 
+                            ((typeof layoutPresets !== 'undefined' ? layoutPresets?.length : 0) || 0) + 
                             ((typeof textCyclerConfigs !== 'undefined' ? textCyclerConfigs?.length : 0) || 0) + 
                             ((typeof clipsConfigs !== 'undefined' ? clipsConfigs?.length : 0) || 0);
         const recoveryTotal = (data.swapConfigs?.length || 0) + 
+                             (data.layoutPresets?.length || 0) + 
                              (data.textCyclerConfigs?.length || 0) + 
                              (data.clipsConfigs?.length || 0);
         

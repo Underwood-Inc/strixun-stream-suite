@@ -28,6 +28,7 @@ A comprehensive suite of Lua scripts and browser sources for OBS Studio that pro
 |--------|-------------|
 | **Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
 | **Source Swap** | Swap position and size of two sources with animation |
+| **Source Layouts** | Save and apply layout presets with multi-source animation |
 | **Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
 | **Quick Controls** | Hotkey to cycle aspect override mode |
 | **Script Manager** | Unified dashboard for all animation scripts |
@@ -46,6 +47,7 @@ flowchart TB
         subgraph Scripts["Lua Scripts"]
             SA[source_animations.lua]
             SS[source_swap.lua]
+            SL[source_layouts.lua]
             TC[text_cycler.lua]
             QC[quick_controls.lua]
             SM[script_manager.lua]
@@ -312,6 +314,24 @@ Swap position and size between two sources with smooth animation.
 - Temporary aspect override
 - Works with grouped sources
 
+### Source Layouts (v1.0.0)
+
+Save and apply layout presets - snapshot all source positions and animate between them.
+
+**Features:**
+- Capture ALL source positions, sizes, and visibility in one click
+- Apply layouts with smooth multi-source animation
+- Stagger animation for cinematic transitions (configurable delay between sources)
+- Smart source tracking - handles missing/new sources gracefully
+- Scene-specific layout filtering
+- Hotkey support (layouts 1-9 can be triggered via OBS hotkeys)
+- Full export/import/backup integration
+
+**Use Cases:**
+- Scene variants (Full Gameplay, Gameplay + Chat, Just Chatting)
+- Dynamic layouts (swap camera positions during stream)
+- Show segments (intro, main content, outro layouts)
+
 ### Text Cycler (v1.0.0)
 
 Cycle through text strings with animated transitions.
@@ -330,10 +350,11 @@ The main interface for controlling the entire suite.
 | Tab | Description |
 |-----|-------------|
 | 🏠 Dashboard | Quick access to common actions |
-| 🎬 Sources | Source visibility animations |
+| 📦 Sources | Source visibility animations |
 | 📝 Text | Text cycler with multiple configs |
-| 🎥 Clips | Twitch clips player management |
+| 🎬 Clips | Twitch clips player management |
 | 🔄 Swaps | Source swap configurations |
+| 📐 Layouts | Layout presets (save/apply) |
 | 📜 Scripts | Script status and management |
 | 📥 Install | Installation wizard |
 | ⚙️ Setup | Connection and storage settings |
