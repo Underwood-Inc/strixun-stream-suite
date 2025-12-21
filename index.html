@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strixun Stream Suite</title>
+    <meta http-equiv="refresh" content="0; url=control_panel.html">
+    <style>
+        :root {
+            --bg: #1a1611;
+            --accent: #edae49;
+            --text: #f9f9f9;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 { color: var(--accent); margin-bottom: 16px; }
+        p { color: #888; margin-bottom: 24px; }
+        a {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: var(--bg);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4);
+        }
+        .loading { margin-top: 20px; font-size: 0.85em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>🎬 Strixun Stream Suite</h1>
+    <p>Professional streaming tools for OBS Studio</p>
+    <a href="control_panel.html">Open Control Panel</a>
+    <p class="loading">Redirecting automatically...</p>
+    <script>
+        // Fallback redirect if meta refresh doesn't work
+        setTimeout(function() {
+            window.location.href = 'control_panel.html';
+        }, 1000);
+    </script>
+</body>
+</html>
+

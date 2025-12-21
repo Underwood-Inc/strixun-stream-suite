@@ -14,7 +14,7 @@
     
     // Default configuration
     const DEFAULT_CONFIG = {
-        apiServer: '', // Will be set from environment or URL
+        apiServer: 'https://strixun-twitch-api.strixuns-script-suite.workers.dev', // Strixun API proxy
         channels: [],
         mainChannel: '',
         limit: 20,

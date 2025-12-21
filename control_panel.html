@@ -5073,9 +5073,15 @@ let currentClipsConfigIndex = -1;
 // Twitch Client ID for clips player - set your own from Twitch Developer Console
 const CLIPS_CLIENT_ID = 'cuql1zod4eeabjr3cnc6adjn9ezro4';
 
-// Strixun API Server - Configure this to your Cloudflare Worker URL
-// This can be overridden in localStorage with key 'strixun_clips_api_server'
-const DEFAULT_CLIPS_API_SERVER = localStorage.getItem('strixun_clips_api_server') || '';
+// Strixun API Server - Cloudflare Worker URL for Twitch API proxy
+// Can be overridden per-config or via storage key 'clips_api_server'
+const DEFAULT_CLIPS_API_SERVER = 'https://strixun-twitch-api.strixuns-script-suite.workers.dev';
+
+// Get custom API server from storage (if set) or use default
+function getClipsApiServer() {
+    const custom = storage.get('clips_api_server');
+    return custom || DEFAULT_CLIPS_API_SERVER;
+}
 
 function renderClipsConfigs() {
     const container = document.getElementById('clipsConfigs');
