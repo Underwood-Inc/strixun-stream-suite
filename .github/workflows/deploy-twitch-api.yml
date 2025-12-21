@@ -40,8 +40,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          wrangler deploy
+        run: wrangler deploy
           
       - name: Set Worker Secrets
         working-directory: twitch_clips_player/serverless
@@ -51,6 +50,7 @@ jobs:
         run: |
           echo "${{ secrets.TWITCH_CLIENT_ID }}" | wrangler secret put TWITCH_CLIENT_ID
           echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | wrangler secret put TWITCH_CLIENT_SECRET
+        continue-on-error: true  # Secrets may already exist
           
       - name: Deployment Summary
         run: |

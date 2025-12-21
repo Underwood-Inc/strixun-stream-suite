@@ -8,6 +8,7 @@ name: Release
 on:
   push:
     branches:
+      - main
       - master
 
 concurrency:
@@ -88,6 +89,8 @@ jobs:
             -x "node_modules/*" \
             -x ".changeset/*" \
             -x ".github/*" \
+            -x ".cursor/*" \
+            -x "twitch_clips_player/serverless/*" \
             -x "package.json" \
             -x "package-lock.json" \
             -x "pnpm-lock.yaml" \

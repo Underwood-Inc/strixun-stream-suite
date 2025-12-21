@@ -42,6 +42,19 @@ jobs:
       - name: Create .nojekyll
         run: touch .nojekyll
         
+      - name: Remove unnecessary files for Pages
+        run: |
+          # Remove node_modules if exists
+          rm -rf node_modules
+          # Remove serverless backend (deployed separately to Cloudflare)
+          rm -rf twitch_clips_player/serverless
+          # Remove git-related files
+          rm -rf .git .gitignore
+          # Remove dev configs
+          rm -rf .changeset .cursor
+          # Remove lock files
+          rm -f pnpm-lock.yaml package-lock.json yarn.lock
+        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clips Player - Strixun Stream Suite</title>
+    <link rel="stylesheet" href="assets/css/clips-player.css">
+    <link rel="apple-touch-icon" sizes="57x57" href="assets/images/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="assets/images/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="assets/images/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="assets/images/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="assets/images/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="assets/images/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/images/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="assets/images/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png">
+</head>
+<body class="dock-mode">
+    <div class="player-container" id="playerContainer">
+        <!-- Header -->
+        <header class="player-header">
+            <div class="player-header__title">
+                <span>🎬</span>
+                <span>Clips Player</span>
+            </div>
+            <div class="player-header__status">
+                <span class="status-badge" id="statusBadge">
+                    <span id="statusIcon">⏸</span>
+                    <span id="statusText">Ready</span>
+                </span>
+                <span class="clip-counter" id="clipCounter">0/0</span>
+            </div>
+        </header>
+
+        <!-- Video Area -->
+        <div class="video-wrapper" id="videoWrapper">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state__icon">🎬</div>
+                <div class="empty-state__title">No Clips Loaded</div>
+                <div class="empty-state__text">Configure channels in the control panel to start playing clips</div>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-spinner" id="loadingState" style="display: none;">
+                <div class="spinner"></div>
+                <div class="loading-text" id="loadingText">Loading clips...</div>
+            </div>
+
+            <!-- Video Element -->
+            <video id="videoPlayer" style="display: none;" playsinline></video>
+
+            <!-- Channel Overlay (top) -->
+            <div class="channel-overlay" id="channelOverlay" style="display: none;">
+                <span class="channel-overlay__text" id="channelText"></span>
+            </div>
+
+            <!-- Clip Info Overlay (bottom gradient) -->
+            <div class="clip-info" id="clipInfo" style="display: none;">
+                <div class="clip-info__channel" id="infoChannel"></div>
+                <div class="clip-info__title" id="infoTitle"></div>
+                <div class="clip-info__meta" id="infoMeta"></div>
+            </div>
+
+            <!-- Details Panel (lower third) -->
+            <div class="details-panel" id="detailsPanel" style="display: none;">
+                <div class="details-panel__title" id="detailsTitle"></div>
+                <div class="details-panel__game" id="detailsGame"></div>
+                <div class="details-panel__meta" id="detailsMeta"></div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="player-controls" id="playerControls">
+            <!-- Previous -->
+            <button class="control-btn" id="btnPrev" title="Previous Clip" disabled>
+                ⏮
+            </button>
+
+            <!-- Skip Back -->
+            <button class="control-btn" id="btnSkipBack" title="Skip Back 5s" disabled>
+                ↺
+            </button>
+
+            <!-- Play/Pause -->
+            <button class="control-btn primary" id="btnPlayPause" title="Play/Pause" disabled>
+                ▶
+            </button>
+
+            <!-- Skip Forward -->
+            <button class="control-btn" id="btnSkipForward" title="Skip Forward 5s" disabled>
+                ↻
+            </button>
+
+            <!-- Next -->
+            <button class="control-btn" id="btnNext" title="Next Clip" disabled>
+                ⏭
+            </button>
+
+            <!-- Progress -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <!-- Volume -->
+            <div class="volume-control">
+                <button class="control-btn" id="btnMute" title="Mute/Unmute" style="width: 32px; height: 32px; font-size: 0.9em;">
+                    🔊
+                </button>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100">
+            </div>
+        </div>
+    </div>
+
+    <!-- TMI.js for Twitch Chat Integration -->
+    <script src="assets/js/tmi.min.js"></script>
+    <!-- Moment.js for date formatting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <!-- Clips Player Logic -->
+    <script src="assets/js/clips-player.js"></script>
+</body>
+</html>
+
