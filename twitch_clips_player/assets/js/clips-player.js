@@ -13,8 +13,10 @@
     const CLIPS_CACHE_KEY = 'strixun_clips_cache';
     
     // Default configuration
+    // NOTE: apiServer MUST be configured - no hardcoded external defaults
+    // Set up your own Cloudflare Worker (see serverless/SETUP.md)
     const DEFAULT_CONFIG = {
-        apiServer: 'https://strixun-twitch-api.strixuns-script-suite.workers.dev', // Strixun API proxy
+        apiServer: '', // REQUIRED - Your Cloudflare Worker URL (e.g., https://your-worker.workers.dev)
         channels: [],
         mainChannel: '',
         limit: 20,

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch Authorization - Strixun Stream Suite</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+        
+        .subtitle {
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+        
+        .status {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .status.success {
+            background: rgba(63, 185, 80, 0.1);
+            border: 1px solid var(--success);
+        }
+        
+        .status.error {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--danger);
+        }
+        
+        .status.loading {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid var(--accent);
+        }
+        
+        .status-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .status-text {
+            font-weight: 600;
+        }
+        
+        .token-display {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 16px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+            text-align: left;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        
+        .token-masked {
+            color: var(--muted);
+        }
+        
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin: 4px;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(210, 153, 34, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        
+        .instructions h3 {
+            color: var(--warning);
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+            color: var(--muted);
+        }
+        
+        .instructions li {
+            margin-bottom: 4px;
+        }
+        
+        .copy-feedback {
+            color: var(--success);
+            font-size: 0.85em;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+        
+        .footer {
+            margin-top: 24px;
+            font-size: 0.8em;
+            color: var(--muted);
+        }
+        
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎮</div>
+        <h1>Strixun Stream Suite</h1>
+        <p class="subtitle">Twitch Authorization</p>
+        
+        <div id="content">
+            <!-- Content injected by JavaScript -->
+            <div class="status loading">
+                <div class="status-icon">⏳</div>
+                <div class="status-text">Processing authorization...</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Strixun Stream Suite • <a href="https://github.com/Underwood-Inc/strixun-stream-suite" target="_blank">GitHub</a></p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+            
+            const contentEl = document.getElementById('content');
+            
+            // Parse the URL fragment for OAuth token
+            function parseFragment() {
+                const fragment = window.location.hash.substring(1);
+                const params = new URLSearchParams(fragment);
+                return {
+                    accessToken: params.get('access_token'),
+                    tokenType: params.get('token_type'),
+                    scope: params.get('scope'),
+                    error: params.get('error'),
+                    errorDescription: params.get('error_description')
+                };
+            }
+            
+            // Mask token for display (show first/last 4 chars)
+            function maskToken(token) {
+                if (!token || token.length < 12) return token;
+                return token.substring(0, 4) + '•'.repeat(token.length - 8) + token.substring(token.length - 4);
+            }
+            
+            // Copy to clipboard
+            function copyToken(token) {
+                navigator.clipboard.writeText(token).then(() => {
+                    const feedback = document.getElementById('copyFeedback');
+                    if (feedback) {
+                        feedback.textContent = '✅ Copied to clipboard!';
+                        setTimeout(() => { feedback.textContent = ''; }, 3000);
+                    }
+                }).catch(err => {
+                    // Fallback for OBS dock or restrictive environments
+                    const textArea = document.createElement('textarea');
+                    textArea.value = token;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        const feedback = document.getElementById('copyFeedback');
+                        if (feedback) {
+                            feedback.textContent = '✅ Copied to clipboard!';
+                            setTimeout(() => { feedback.textContent = ''; }, 3000);
+                        }
+                    } catch (e) {
+                        alert('Copy failed. Please select and copy the token manually.');
+                    }
+                    document.body.removeChild(textArea);
+                });
+            }
+            
+            // Show token with toggle
+            function toggleTokenVisibility() {
+                const display = document.getElementById('tokenDisplay');
+                const btn = document.getElementById('toggleBtn');
+                const token = display.dataset.token;
+                
+                if (display.dataset.masked === 'true') {
+                    display.textContent = token;
+                    display.dataset.masked = 'false';
+                    btn.textContent = '🙈 Hide';
+                } else {
+                    display.textContent = maskToken(token);
+                    display.dataset.masked = 'true';
+                    btn.textContent = '👁️ Show';
+                }
+            }
+            
+            // Render success state
+            function renderSuccess(data) {
+                contentEl.innerHTML = `
+                    <div class="status success">
+                        <div class="status-icon">✅</div>
+                        <div class="status-text">Authorization Successful!</div>
+                    </div>
+                    
+                    <p style="color: var(--muted); margin-bottom: 12px;">Your access token:</p>
+                    
+                    <div class="token-display" id="tokenDisplay" data-token="${data.accessToken}" data-masked="true">
+                        ${maskToken(data.accessToken)}
+                    </div>
+                    
+                    <div>
+                        <button onclick="window.copyToken('${data.accessToken}')">📋 Copy Token</button>
+                        <button class="secondary" id="toggleBtn" onclick="window.toggleTokenVisibility()">👁️ Show</button>
+                    </div>
+                    <div class="copy-feedback" id="copyFeedback"></div>
+                    
+                    <div class="instructions">
+                        <h3>📋 Next Steps</h3>
+                        <ol>
+                            <li>Copy the token above</li>
+                            <li>Go back to the Control Panel</li>
+                            <li>Navigate to <strong>Clips → Twitch Auth</strong></li>
+                            <li>Paste the token in the <strong>Access Token</strong> field</li>
+                            <li>Save your clips config</li>
+                        </ol>
+                    </div>
+                `;
+            }
+            
+            // Render error state
+            function renderError(error, description) {
+                contentEl.innerHTML = `
+                    <div class="status error">
+                        <div class="status-icon">❌</div>
+                        <div class="status-text">Authorization Failed</div>
+                    </div>
+                    
+                    <p style="color: var(--danger); margin-bottom: 8px;">${error || 'Unknown error'}</p>
+                    <p style="color: var(--muted); font-size: 0.9em;">${description || 'Please try again or check your Twitch application settings.'}</p>
+                    
+                    <div style="margin-top: 20px;">
+                        <button onclick="window.history.back()">← Go Back</button>
+                    </div>
+                `;
+            }
+            
+            // Render no token state
+            function renderNoToken() {
+                contentEl.innerHTML = `
+                    <div class="status error">
+                        <div class="status-icon">⚠️</div>
+                        <div class="status-text">No Token Found</div>
+                    </div>
+                    
+                    <p style="color: var(--muted);">
+                        This page is used as an OAuth callback for Twitch authorization.
+                        It should be accessed via the Twitch login flow from the Control Panel.
+                    </p>
+                    
+                    <div class="instructions">
+                        <h3>📋 How to get here properly</h3>
+                        <ol>
+                            <li>Open the Control Panel</li>
+                            <li>Go to <strong>Setup → Twitch API Settings</strong></li>
+                            <li>Configure your Client ID and set this page as the OAuth Callback</li>
+                            <li>Go to <strong>Clips → Twitch Auth</strong></li>
+                            <li>Click <strong>"Get Access Token from Twitch"</strong></li>
+                        </ol>
+                    </div>
+                `;
+            }
+            
+            // Expose functions to window for onclick handlers
+            window.copyToken = copyToken;
+            window.toggleTokenVisibility = toggleTokenVisibility;
+            
+            // Main initialization
+            function init() {
+                const data = parseFragment();
+                
+                if (data.error) {
+                    renderError(data.error, data.errorDescription);
+                } else if (data.accessToken) {
+                    renderSuccess(data);
+                    // Clear the URL fragment for security (don't leave token in URL)
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, '', window.location.pathname);
+                    }
+                } else {
+                    renderNoToken();
+                }
+            }
+            
+            // Run on load
+            init();
+        })();
+    </script>
+</body>
+</html>
+

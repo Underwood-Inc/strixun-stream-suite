@@ -3,20 +3,28 @@ $(document).ready(function () {
     localStorage.clear();
     console.log('Cleared localStorage');
 
-    // Function to randomly select a api server
-    function setRandomServer() {
-        // set the api gateway servers 
-        const servers = ["https://twitchapi.teklynk.com", "https://twitchapi.teklynk.dev", "https://twitchapi2.teklynk.dev"];
-
-        // Randomly select a server
-        const randomIndex = Math.floor(Math.random() * servers.length);
-        const selectedServer = servers[randomIndex];
-
-        return selectedServer;
+    // Get API server from URL parameter (required - no hardcoded fallbacks to external services)
+    function getApiServer() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiParam = urlParams.get('api') || urlParams.get('apiServer');
+        
+        if (!apiParam) {
+            console.error('[Clips] ERROR: No API server configured! Add ?api=YOUR_WORKER_URL to the URL');
+            console.error('[Clips] See serverless/SETUP.md for instructions on deploying your own API proxy');
+            return null;
+        }
+        
+        return apiParam;
     }
 
-    // Call the function
-    const apiServer = setRandomServer();
+    // Get the API server from URL
+    const apiServer = getApiServer();
+    
+    // Abort if no API server configured
+    if (!apiServer) {
+        $('body').html('<div style="padding:20px;color:#ff6b6b;font-family:sans-serif;"><h2>⚠️ API Server Not Configured</h2><p>Add <code>?api=YOUR_CLOUDFLARE_WORKER_URL</code> to the URL.</p><p>See <code>serverless/SETUP.md</code> for setup instructions.</p></div>');
+        return;
+    }
 
     function getUrlParameter(name) {
         name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
@@ -166,7 +174,7 @@ $(document).ready(function () {
     // Get game details function
     function game_by_id(game_id) {
         let jsonParse = JSON.parse($.getJSON({
-            'url': apiServer + "/getgame.php?id=" + game_id,
+            'url': apiServer + "/game?id=" + game_id,
             'async': false
         }).responseText);
 
@@ -180,9 +188,9 @@ $(document).ready(function () {
             let apiUrl;
 
             if (cursor) {
-                apiUrl = apiServer + "/getuserfollowing.php?channel=" + mainAccount + "&limit=100&ref=" + ref + "&clientId=" + clientId + "&after=" + cursor
+                apiUrl = apiServer + "/following?channel=" + mainAccount + "&limit=100&ref=" + ref + "&after=" + cursor
             } else {
-                apiUrl = apiServer + "/getuserfollowing.php?channel=" + mainAccount + "&limit=100&ref=" + ref + "&clientId=" + clientId
+                apiUrl = apiServer + "/following?channel=" + mainAccount + "&limit=100&ref=" + ref
             }
 
             jsonParse = JSON.parse($.getJSON({
@@ -335,9 +343,9 @@ $(document).ready(function () {
 
             try {
                 if (preferFeatured !== "false") {
-                    apiUrl = apiServer + "/getuserclips.php?channel=" + channelName + "&prefer_featured=true&limit=" + limit + "&shuffle=true" + dateRange;
+                    apiUrl = apiServer + "/clips?channel=" + channelName + "&prefer_featured=true&limit=" + limit + "&shuffle=true" + dateRange;
                 } else {
-                    apiUrl = apiServer + "/getuserclips.php?channel=" + channelName + "&prefer_featured=false&limit=" + limit + "&shuffle=true" + dateRange;
+                    apiUrl = apiServer + "/clips?channel=" + channelName + "&prefer_featured=false&limit=" + limit + "&shuffle=true" + dateRange;
                 }
 
                 // Perform an asynchronous fetch request
@@ -346,7 +354,7 @@ $(document).ready(function () {
 
                 // If dateRange or preferFeatured is set but no clips are found or only 1 clip is found. Try to pull any clip. 
                 if (clips_json.data.length === 0 && (dateRange > "" || preferFeatured !== "false")) {
-                    asyncResponse = await fetch(`${apiServer}/getuserclips.php?channel=${channelName}&limit=${limit}&shuffle=true`);
+                    asyncResponse = await fetch(`${apiServer}/clips?channel=${channelName}&limit=${limit}&shuffle=true`);
                     clips_json = await asyncResponse.json();  // Parse the JSON response
                     console.log('No clips found matching dateRange or preferFeatured filter. PULL ANY Clip found from: ' + channelName);
                 }
@@ -373,9 +381,9 @@ $(document).ready(function () {
         if (localStorage.getItem(channelName) === null && typeof channelName !== 'undefined') {
             try {
                 if (preferFeatured !== "false") {
-                    apiUrl = apiServer + "/getuserclips.php?channel=" + channelName + "&prefer_featured=true&limit=" + limit + "&shuffle=true" + dateRange;
+                    apiUrl = apiServer + "/clips?channel=" + channelName + "&prefer_featured=true&limit=" + limit + "&shuffle=true" + dateRange;
                 } else {
-                    apiUrl = apiServer + "/getuserclips.php?channel=" + channelName + "&prefer_featured=false&limit=" + limit + "&shuffle=true" + dateRange;
+                    apiUrl = apiServer + "/clips?channel=" + channelName + "&prefer_featured=false&limit=" + limit + "&shuffle=true" + dateRange;
                 }
 
                 clips_json = JSON.parse($.getJSON({
@@ -386,7 +394,7 @@ $(document).ready(function () {
                 // If dateRange or preferFeatured is set but no clips are found or only 1 clip is found. Try to pull any clip. 
                 if (clips_json.data.length === 0 && (dateRange > "" || preferFeatured !== "false")) {
                     clips_json = JSON.parse($.getJSON({
-                        'url': apiServer + "/getuserclips.php?channel=" + channelName + "&limit=" + limit + "&shuffle=true",
+                        'url': apiServer + "/clips?channel=" + channelName + "&limit=" + limit + "&shuffle=true",
                         'async': false
                     }).responseText);
 

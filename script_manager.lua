@@ -291,7 +291,7 @@ function script_properties()
         "═══════════ VERSION INFO ═══════════", obs.OBS_TEXT_INFO)
     
     obs.obs_properties_add_text(props, "version_info", 
-        "Manager v1.3 | Animations v2.8 | Swap v3.1 | Layouts v1.0 | TextCycler v1.0", 
+        "Manager v1.3 | Animations v2.8.1 | Swap v3.1 | Layouts v1.0 | TextCycler v1.0", 
         obs.OBS_TEXT_INFO)
     
     return props

@@ -1,81 +1,82 @@
-# Twitch Clips Player Overlay
+# Twitch Clips Player - Strixun Stream Suite
 
 ## What is this?
 
-[obs_capture_clipsreel.webm](https://user-images.githubusercontent.com/4500737/225199595-d7a10be8-86dd-4669-9a86-280fb2b5907e.webm)
+A Twitch Clips Player browser source overlay for OBS Studio. Part of the [Strixun Stream Suite](https://github.com/Underwood-Inc/strixun-stream-suite).
 
+This grabs your Twitch clips and plays them one after the other in a loop. Keep your viewers entertained on your BRB or starting soon scenes.
 
-This is a Twitch Clips Player, browser source overlay for OBS. 
+## Quick Start
 
-This grabs your Twitch clips and plays them one after the other in a loop. Keep your viewers entertained on your BRB or starting soon scenes. 
+1. **Open the Control Panel** - Use `control_panel.html` in your browser or as an OBS dock
+2. **Go to Setup** → Configure your Twitch API settings
+3. **Go to Clips** → Create a clips player configuration
+4. **Copy the generated URL** → Add as Browser Source in OBS
 
-## DISCLAIMER:
-This project is "AS-IS". It is free to use, clone, fork, modify, make it your own.
+[Live Demo](https://underwood-inc.github.io/strixun-stream-suite/)
 
-[Try it here](https://twitch-clips-player.pages.dev/)
+## Features
 
-**FEATURES:** 
-- Control the clips from Twitch chat. !clipskip, !clippause, !clipplay, !clipreload. Limited to Mods and Streamer.
-- Show clips from channels that you follow. Grabs the most recent 700 channels.
-- Use a custom command to start the clips reel and restrict it to Mods only.
-- Type "!mycommand stop" in chat to stop the clips player.
-- Date Range option: This will grab a clip from within the last 5days, 10day, 30days... If no clips exist, then skip to the next channel.
-- Show clip details panel: This will display a panel in the lower third of the overlay that contains details about the clip. This can use variables:{channel},{title},{game},{creator_name},{created_at}.
+- **Chat Controls**: !clipskip, !clippause, !clipplay, !clipreload (Mods/Streamer only)
+- **Following Mode**: Show clips from channels you follow
+- **Custom Commands**: Trigger clips with custom chat commands
+- **Date Range Filter**: Only show recent clips
+- **Details Panel**: Customizable lower-third with clip info
+- **Multiple Themes**: Pre-built CSS themes
 
-## Notes:
-**Date range, featured clips:** The clips player will try to find and play clips that meet these options first. If no clips are found within these filters, then it will play a clip from the top most popular. Playing any clip is better than not playing a clip at all.
+## Setup Requirements
 
-Twitch authentication is now required if you would like to show clips from channels that you follow and/or show a message in chat.
-
-In OBS, set the browser source to: "Shutdown source when not visible" and "Refresh browser when scene becomes active". This will prevent the clips player from playing in the background. It will also reload/refresh the clips player when the source becomes active.
+1. **Cloudflare Worker** - Deploy your own API proxy (see `serverless/SETUP.md`)
+2. **Twitch App** - Create app at [dev.twitch.tv/console](https://dev.twitch.tv/console)
+3. **Configure in Control Panel** - Enter your Client ID and API Server URL
 
 ## URL Parameters
 
-**channel=Your channel name or a comma separated list of channels** (user1,user2,user3,user4)
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `api` | string | **Required** - Your Cloudflare Worker URL |
+| `channel` | string | Channel name or comma-separated list |
+| `mainChannel` | string | Main channel for chat commands |
+| `limit` | integer | Max clips to fetch (max 100) |
+| `dateRange` | integer | Only clips from last N days |
+| `preferFeatured` | boolean | Prefer featured clips |
+| `showText` | boolean | Show channel name overlay |
+| `showDetails` | boolean | Show details panel |
+| `detailsText` | string | Custom details template (supports {channel}, {title}, {game}, {creator_name}, {created_at}) |
+| `customText` | string | Custom overlay message (supports {channel}) |
+| `command` | string | Custom chat command to trigger playback |
+| `showFollowing` | boolean | Show clips from followed channels |
+| `ref` | base64 | Access token (for following/chat features) |
+| `themeOption` | integer | CSS theme selection |
 
-**preferFeatured=true/false**  Only pull featured clips.
+## OBS Browser Source Settings
 
-**showText=true/false**  Enables the channel name on top of the video.
+- **Shutdown source when not visible**: ✅ Enabled
+- **Refresh browser when scene becomes active**: ✅ Enabled
 
-**showDetails=true/false**  Enables the clips details panel on overlay.
+This prevents background playback and refreshes clips when the scene activates.
 
-**detailsText=string**  Displays custom details about the clips. Can include {channel},{title},{game},{creator_name},{created_at}.
+## Custom CSS (Optional)
 
-**limit=integer**  Max number of clips to pull from (max is 100).
-
-**dateRange=integer**  Only pull clips from a specific date range.
-
-**command=string**  Custom command to fire off the clips player. If Not set, clips player will play as soon as the scene is active.
-
-**showFollowing=true/false** Pulls clips from the latest 100 channels that you are following. 
-
-**customText=string**  Displays custom message on top of clips. Can include {channel}.
-
-**mainAccount=channel**  The main channel that you want to send chat messages to.
-
-**ref=base64**  Access token
-
-**themeOption=integer** Various pre-made css themes top choose from.
-
-## Custom CSS
-
-## Optional: Set a fixed video width and height.
-
-Add this to the OBS browser source CSS properties (optional).
+Add to OBS browser source CSS properties:
 
 ```css
 video {
-    width: 1280px !important;
-    height: 720px !important;
+    width: 1280px;
+    height: 720px;
     background-color: #000000;
 }
 
 #container {
-    padding:0;
-    margin:0;
+    padding: 0;
+    margin: 0;
 }
 
 #details-container {
     top: 44vw;
 }
 ```
+
+## Credits
+
+Based on [twitch_clips_player](https://github.com/teklynk/twitch_clips_player) by teklynk.

@@ -11,7 +11,7 @@ Features:
     - Full in-OBS configuration UI
 
 Author: OBS Animation System
-Version: 2.8.0 - Fixed position drift bug in animations
+Version: 2.8.1 - Fixed visibility flicker on show animation
 ================================================================================
 --]]
 
@@ -631,20 +631,32 @@ local function check_visibility_changes()
                 local is_visible = obs.obs_sceneitem_visible(scene_item)
                 local was_visible = visibility_cache[source_name]
                 
-                -- Ensure ALL sources have the opacity filter (visible at 1.0, hidden at 0.0)
-                if not managed_sources[source_name] then
-                    prepare_source(scene_item, source_name, is_visible)
-                end
-                
                 if was_visible ~= nil and was_visible ~= is_visible then
+                    -- VISIBILITY CHANGED - start animation
+                    -- CRITICAL: Do NOT call prepare_source here!
+                    -- start_animation will set up the filter at the correct initial opacity
+                    -- Calling prepare_source first would set opacity to 1.0 for show animations,
+                    -- causing a flicker before animation sets it to 0.0
                     local started = start_animation(scene_item, source_name, config, is_visible)
                     if not started then
+                        -- Animation didn't start (disabled), just prepare normally
+                        if not managed_sources[source_name] then
+                            prepare_source(scene_item, source_name, is_visible)
+                        end
                         visibility_cache[source_name] = is_visible
                     end
                 elseif was_visible == nil then
+                    -- FIRST TIME seeing this source - cache state and prepare filter
+                    -- No animation happens on first cache, so safe to prepare at current visibility
                     visibility_cache[source_name] = is_visible
-                    -- Prepare ALL sources with filter
-                    prepare_source(scene_item, source_name, is_visible)
+                    if not managed_sources[source_name] then
+                        prepare_source(scene_item, source_name, is_visible)
+                    end
+                else
+                    -- NO CHANGE - ensure source has filter if not managed yet
+                    if not managed_sources[source_name] then
+                        prepare_source(scene_item, source_name, is_visible)
+                    end
                 end
             end
         end
@@ -666,19 +678,29 @@ local function check_visibility_changes()
                         local is_visible = obs.obs_sceneitem_visible(scene_item)
                         local was_visible = visibility_cache[source_name]
                         
-                        -- Ensure ALL sources have the opacity filter
-                        if not managed_sources[source_name] then
-                            prepare_source(scene_item, source_name, is_visible)
-                        end
-                        
                         if was_visible ~= nil and was_visible ~= is_visible then
+                            -- VISIBILITY CHANGED - start animation
+                            -- CRITICAL: Do NOT call prepare_source here!
                             local config = get_source_config(source_name)
                             local started = start_animation(scene_item, source_name, config, is_visible)
                             if not started then
+                                -- Animation didn't start (disabled), prepare normally
+                                if not managed_sources[source_name] then
+                                    prepare_source(scene_item, source_name, is_visible)
+                                end
                                 visibility_cache[source_name] = is_visible
                             end
                         elseif was_visible == nil then
+                            -- FIRST TIME - cache and prepare
                             visibility_cache[source_name] = is_visible
+                            if not managed_sources[source_name] then
+                                prepare_source(scene_item, source_name, is_visible)
+                            end
+                        else
+                            -- NO CHANGE - ensure filter exists
+                            if not managed_sources[source_name] then
+                                prepare_source(scene_item, source_name, is_visible)
+                            end
                         end
                     end
                 end
@@ -812,11 +834,11 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>Source Animation System v2.8</h2>
+    return [[<h2>Source Animation System v2.8.1</h2>
 <p>Animate sources when visibility is toggled.</p>
 
-<h3>v2.8 - Fixed Position Drift Bug!</h3>
-<p>Sources now always return to their original "home" position, even when animations are interrupted or chained rapidly.</p>
+<h3>v2.8.1 - Fixed Visibility Flicker Bug!</h3>
+<p>Sources no longer flicker to full opacity before show animations begin. The prepare_source call is now properly deferred until AFTER animation setup.</p>
 
 <h3>Animation Types:</h3>
 <ul>
@@ -998,7 +1020,7 @@ end
 
 function script_load(settings)
     settings_ref = settings
-    log_info("Loading Source Animation System v2.8 (Position Drift Fix)...")
+    log_info("Loading Source Animation System v2.8.1 (Visibility Flicker Fix)...")
     
     load_source_configs(settings)
     obs.obs_frontend_add_event_callback(on_frontend_event)

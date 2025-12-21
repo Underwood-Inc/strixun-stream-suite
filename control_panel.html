@@ -125,9 +125,22 @@
                     </p>
                 </div>
                 
+                <!-- Scene Browser -->
                 <div class="card">
-                    <h3>Scene Sources</h3>
-                    <button onclick="refreshSources()" class="btn-secondary" style="width:100%;margin-bottom:12px">🔃 Refresh</button>
+                    <h3>🎬 Scenes</h3>
+                    <div class="search-box">
+                        <input type="text" class="search-box__input" id="scenesSearchInput" placeholder="Search scenes...">
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">✕</button>
+                    </div>
+                    <div id="scenesList" class="config-list" style="max-height:200px;overflow-y:auto"></div>
+                    <button onclick="refreshSceneList()" class="btn-secondary" style="width:100%;margin-top:8px">🔃 Refresh Scenes</button>
+                </div>
+                
+                <!-- Source Browser -->
+                <div class="card">
+                    <h3>📦 Sources</h3>
+                    <p class="hint" id="sourcesSceneLabel" style="margin-bottom:8px">Select a scene above to view sources</p>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="sourcesSearchInput" placeholder="Search sources...">
                         <span class="search-box__icon">🔍</span>
@@ -354,7 +367,7 @@
                     <h3>🎬 Twitch Clips Player</h3>
                     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
                         Auto-play Twitch clips during BRB/Starting screens. Based on 
-                        <button onclick="openUrlOrCopy('https://github.com/teklynk/twitch_clips_player', 'GitHub URL')" class="btn-link">teklynk/twitch_clips_player</button>
+                        <button onclick="openUrlOrCopy('https://github.com/Underwood-Inc/strixun-stream-suite', 'GitHub URL')" class="btn-link">Underwood-Inc/strixun-stream-suite</button>
                     </p>
                     <div id="clipsConfigs" class="config-list"></div>
                     <div class="row" style="margin-top:8px">
@@ -988,12 +1001,63 @@
                 </div>
                 
                 <div class="card">
+                    <h3>🎮 Twitch API Settings</h3>
+                    <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
+                        Required for Clips Player. Get credentials from 
+                        <button onclick="openUrlOrCopy('https://dev.twitch.tv/console/apps', 'Twitch Developer Console')" class="btn-link">dev.twitch.tv/console</button>
+                    </p>
+                    
+                    <label>Twitch Client ID</label>
+                    <input type="text" id="twitchClientId" placeholder="Your Twitch App Client ID">
+                    <p class="hint" style="margin-top:4px;font-size:0.75em">From your Twitch Developer Console app</p>
+                    
+                    <label style="margin-top:12px">API Server URL</label>
+                    <input type="text" id="twitchApiServer" placeholder="https://your-worker.your-subdomain.workers.dev">
+                    <p class="hint" style="margin-top:4px;font-size:0.75em">Your Cloudflare Worker URL (see serverless/SETUP.md)</p>
+                    
+                    <div style="margin-top:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:0.8em">
+                        <strong style="color:var(--accent)">OAuth Redirect URI:</strong>
+                        <code style="display:block;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px;word-break:break-all;user-select:all">https://underwood-inc.github.io/strixun-stream-suite/twitch_auth_callback.html</code>
+                        <p style="color:var(--muted);margin-top:4px">☝️ Add this URL to your Twitch app's OAuth Redirect URLs</p>
+                    </div>
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+                        <button onclick="saveTwitchSettings()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer">💾 Save Settings</button>
+                        <button onclick="testTwitchApi()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer">🔌 Test Connection</button>
+                    </div>
+                    <div id="twitchApiStatus" style="margin-top:8px;font-size:0.8em;text-align:center;color:var(--muted)"></div>
+                </div>
+                
+                <div class="card">
                     <h3>Keyboard Shortcuts</h3>
                     <p style="color:var(--muted);font-size:0.9em">When this panel is focused:</p>
                     <ul style="color:var(--muted);padding-left:20px;font-size:0.9em;line-height:2">
                         <li><strong>1-9</strong> - Trigger saved swap configs</li>
                         <li><strong>Space</strong> - Start/stop text cycler</li>
                     </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🔄 Cross-Client Sync</h3>
+                    <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
+                        Sync configs between OBS dock and remote browser panels via WebSocket.
+                    </p>
+                    <div style="display:grid;gap:8px">
+                        <button class="btn-primary btn-block requires-connection" onclick="requestStorageFromOBS()">
+                            📥 Pull Storage from OBS Dock
+                        </button>
+                        <button class="btn-block requires-connection" onclick="manualStorageSync()" style="background:var(--border)">
+                            📡 Push Storage to Other Clients
+                        </button>
+                    </div>
+                    <p class="hint" style="margin-top:6px">
+                        <strong>Pull</strong> = Overwrite local with OBS dock's storage<br>
+                        <strong>Push</strong> = Send your storage to other clients
+                    </p>
+                    <div class="form-check" style="margin-top:8px">
+                        <input type="checkbox" id="autoSyncOnConnect" checked onchange="saveAutoSyncPref()">
+                        <label for="autoSyncOnConnect">Auto-pull from OBS on connect</label>
+                    </div>
                 </div>
                 
                 <div class="card">
@@ -1059,6 +1123,31 @@
                     
                     <!-- Last backup info -->
                     <div id="lastBackupInfo" style="margin-top:8px;font-size:0.75em;color:var(--muted);text-align:center"></div>
+                </div>
+                
+                <!-- Version Info -->
+                <div class="card">
+                    <h3>📦 Version</h3>
+                    <div id="versionInfo" style="font-size:0.9em">
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+                            <span style="color:var(--muted)">Local Version:</span>
+                            <span id="localVersion" style="font-weight:600;font-family:monospace">--</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+                            <span style="color:var(--muted)">Remote (main):</span>
+                            <span id="remoteVersion" style="font-weight:600;font-family:monospace">--</span>
+                        </div>
+                        <div id="versionStatus" style="margin-top:10px;padding:8px;border-radius:6px;text-align:center;font-size:0.85em">
+                            <span style="color:var(--muted)">Click below to check for updates</span>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+                        <button onclick="checkForUpdates()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">🔄 Check Updates</button>
+                        <button onclick="openGitHubRepo()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">🐙 Open GitHub</button>
+                    </div>
+                    <div style="margin-top:10px;font-size:0.75em;color:var(--muted);text-align:center">
+                        <span id="lastVersionCheck">Never checked</span>
+                    </div>
                 </div>
             </div>
             </main>
@@ -2488,6 +2577,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(restoreRunningTextCyclers, 1000);
     updateTransitionMode();
     updateStorageStatus();
+    initVersionDisplay();
+    loadAutoSyncPref();
+    loadTwitchSettings();
     
     // Setup credential UI listeners
     document.getElementById('rememberCreds').addEventListener('change', updateSecurityWarning);
@@ -2715,6 +2807,9 @@ async function handleMessage(data, password) {
         
         // Check script status after connection
         setTimeout(checkScriptStatus, 500);
+        
+        // Sync storage across connected clients
+        setTimeout(requestStorageSync, 1000);
     } else if (data.op === 7) { // Response
         const req = pendingRequests[data.d.requestId];
         if (req) {
@@ -2737,6 +2832,213 @@ function handleEvent(event) {
         refreshSources();
         renderSavedLayouts(); // Refresh layouts for new scene
     }
+    
+    // Handle custom storage sync events
+    if (event.eventType === 'CustomEvent') {
+        const customData = event.eventData?.eventData;
+        if (customData?.type === 'strixun_storage_broadcast') {
+            handleStorageBroadcast(customData);
+        } else if (customData?.type === 'strixun_storage_request') {
+            // Another client is requesting storage, broadcast ours
+            broadcastStorage();
+        }
+    }
+}
+
+// ============ Storage Sync (Cross-Client via OBS WebSocket) ============
+const STORAGE_SYNC_DEBOUNCE = 2000;
+let storageSyncTimer = null;
+let lastStorageSyncHash = '';
+let pendingStorageRequest = false; // Flag: we're waiting for storage response
+
+/**
+ * Generate a unique client ID for this session
+ */
+function getClientId() {
+    if (!window._strixunClientId) {
+        window._strixunClientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    return window._strixunClientId;
+}
+
+/**
+ * Request storage from OBS dock - OVERWRITES local storage completely
+ * This is the "pull" operation - get state from the source of truth
+ */
+async function requestStorageFromOBS() {
+    if (!connected) {
+        log('Connect to OBS first', 'error');
+        return;
+    }
+    
+    pendingStorageRequest = true;
+    log('Requesting storage from OBS dock...', 'info');
+    
+    try {
+        await request('BroadcastCustomEvent', {
+            eventData: { 
+                type: 'strixun_storage_request',
+                requesterId: getClientId(),
+                timestamp: Date.now()
+            }
+        });
+        
+        // Timeout after 5 seconds if no response
+        setTimeout(() => {
+            if (pendingStorageRequest) {
+                pendingStorageRequest = false;
+                log('No response from OBS dock (is it connected?)', 'warning');
+            }
+        }, 5000);
+    } catch (e) {
+        pendingStorageRequest = false;
+        log('Storage request failed: ' + e, 'error');
+    }
+}
+
+/**
+ * Auto-sync on connection if checkbox is enabled
+ */
+async function requestStorageSync() {
+    if (!connected) return;
+    
+    const autoSync = document.getElementById('autoSyncOnConnect')?.checked !== false;
+    
+    if (autoSync) {
+        await requestStorageFromOBS();
+    }
+}
+
+/**
+ * Save auto-sync preference
+ */
+function saveAutoSyncPref() {
+    const checked = document.getElementById('autoSyncOnConnect')?.checked;
+    storage.set('autoSyncOnConnect', checked);
+}
+
+/**
+ * Load auto-sync preference on init
+ */
+function loadAutoSyncPref() {
+    const saved = storage.get('autoSyncOnConnect');
+    const checkbox = document.getElementById('autoSyncOnConnect');
+    if (checkbox && saved !== null) {
+        checkbox.checked = saved;
+    }
+}
+
+/**
+ * Broadcast our storage to all connected clients via OBS CustomEvent
+ */
+async function broadcastStorage() {
+    if (!connected) return;
+    
+    const storageData = {
+        type: 'strixun_storage_broadcast',
+        timestamp: Date.now(),
+        source: 'strixun_control_panel',
+        data: {
+            swapConfigs: swapConfigs || [],
+            textCyclerConfigs: textCyclerConfigs || [],
+            clipsConfigs: clipsConfigs || [],
+            layoutPresets: layoutPresets || []
+        }
+    };
+    
+    // Create hash to avoid duplicate broadcasts
+    const hash = JSON.stringify(storageData.data).length.toString();
+    if (hash === lastStorageSyncHash) return;
+    lastStorageSyncHash = hash;
+    
+    try {
+        await request('BroadcastCustomEvent', { eventData: storageData });
+        log('Storage broadcast sent', 'info');
+    } catch (e) {
+        console.log('Storage broadcast not available:', e);
+    }
+}
+
+/**
+ * Handle incoming storage broadcast from another client
+ * If we explicitly requested it (pendingStorageRequest), OVERWRITE local
+ * Otherwise, only auto-accept if our local storage is empty
+ */
+function handleStorageBroadcast(data) {
+    if (!data?.data) return;
+    
+    const incomingTotal = (data.data.swapConfigs?.length || 0) + 
+                          (data.data.textCyclerConfigs?.length || 0) + 
+                          (data.data.clipsConfigs?.length || 0) +
+                          (data.data.layoutPresets?.length || 0);
+    
+    // If we explicitly requested storage, always overwrite local
+    if (pendingStorageRequest) {
+        pendingStorageRequest = false;
+        
+        if (incomingTotal === 0) {
+            log('OBS dock has no configs saved', 'warning');
+            return;
+        }
+        
+        log(`Received ${incomingTotal} configs from OBS dock - applying...`, 'info');
+        applyIncomingStorage(data.data);
+        log('✅ Storage synced from OBS dock!', 'success');
+        return;
+    }
+    
+    // Auto-accept only if local is completely empty and incoming has data
+    const localTotal = (swapConfigs?.length || 0) + 
+                       (textCyclerConfigs?.length || 0) + 
+                       (clipsConfigs?.length || 0) +
+                       (layoutPresets?.length || 0);
+    
+    if (localTotal === 0 && incomingTotal > 0) {
+        log(`Auto-syncing ${incomingTotal} configs from connected client...`, 'info');
+        applyIncomingStorage(data.data);
+        log('✅ Storage auto-synced!', 'success');
+    }
+}
+
+/**
+ * Apply incoming storage data - OVERWRITES local completely
+ */
+function applyIncomingStorage(data) {
+    if (data.swapConfigs !== undefined) {
+        swapConfigs = data.swapConfigs;
+        storage.set('swapConfigs', swapConfigs);
+        if (typeof renderSavedSwaps === 'function') renderSavedSwaps();
+    }
+    if (data.textCyclerConfigs !== undefined) {
+        textCyclerConfigs = data.textCyclerConfigs;
+        storage.set('textCyclerConfigs', textCyclerConfigs);
+        if (typeof renderTextCyclerConfigs === 'function') renderTextCyclerConfigs();
+    }
+    if (data.clipsConfigs !== undefined) {
+        clipsConfigs = data.clipsConfigs;
+        storage.set('clipsConfigs', clipsConfigs);
+        if (typeof renderClipsConfigs === 'function') renderClipsConfigs();
+    }
+    if (data.layoutPresets !== undefined) {
+        layoutPresets = data.layoutPresets;
+        storage.set('layoutPresets', layoutPresets);
+        if (typeof renderSavedLayouts === 'function') renderSavedLayouts();
+    }
+    
+    // Update storage status display
+    if (typeof updateStorageStatus === 'function') updateStorageStatus();
+}
+
+/**
+ * Manually trigger storage broadcast (for UI button)
+ */
+function manualStorageSync() {
+    if (!connected) {
+        log('Connect to OBS first', 'error');
+        return;
+    }
+    broadcastStorage();
+    log('Storage broadcast triggered', 'success');
 }
 
 function send(data) {
@@ -2765,12 +3067,25 @@ async function sha256(msg) {
 }
 
 // ============ OBS Actions ============
+let allScenes = []; // Cache of all scenes
+let selectedScene = ''; // Currently selected scene in Sources tab (may differ from current program scene)
+
 async function refreshScenes() {
     if (!connected) return;
     try {
         const data = await request('GetCurrentProgramScene');
         currentScene = data.currentProgramSceneName;
         document.getElementById('currentScene').innerHTML = `<strong>${currentScene}</strong>`;
+        
+        // Also refresh the scene list
+        await refreshSceneList();
+        
+        // Select current scene in dropdown if none selected
+        if (!selectedScene) {
+            selectedScene = currentScene;
+            updateSceneSelector();
+        }
+        
         refreshSources();
         log('Refreshed scene: ' + currentScene);
     } catch (e) {
@@ -2778,15 +3093,100 @@ async function refreshScenes() {
     }
 }
 
-async function refreshSources() {
-    if (!connected || !currentScene) return;
+async function refreshSceneList() {
+    if (!connected) return;
     try {
-        const data = await request('GetSceneItemList', { sceneName: currentScene });
+        const data = await request('GetSceneList');
+        allScenes = data.scenes || [];
+        updateSceneSelector();
+        log(`Found ${allScenes.length} scenes`);
+    } catch (e) {
+        log('Error getting scene list: ' + e, 'error');
+    }
+}
+
+function updateSceneSelector() {
+    renderScenesList();
+}
+
+function renderScenesList() {
+    const list = document.getElementById('scenesList');
+    if (!list) return;
+    
+    if (allScenes.length === 0) {
+        list.innerHTML = '<div class="empty-state">Connect to OBS to see scenes</div>';
+        return;
+    }
+    
+    const currentValue = selectedScene || currentScene;
+    
+    list.innerHTML = allScenes.map(s => {
+        const name = s.sceneName;
+        const isCurrent = name === currentScene;
+        const isSelected = name === currentValue;
+        const escapedName = name.replace(/'/g, "\\'");
+        
+        return `
+        <div class="source-item ${isSelected ? 'selected' : ''}" 
+             data-source="${escapedName}"
+             style="cursor:pointer;${isSelected ? 'border-left:3px solid var(--accent);background:var(--border)' : ''}"
+             onclick="onSceneSelect('${escapedName}')">
+            <div>
+                <div class="name">${name}</div>
+                <div class="type">${isCurrent ? '🔴 Live' : 'Scene'}</div>
+            </div>
+            ${isSelected ? '<span style="color:var(--accent)">✓</span>' : ''}
+        </div>`;
+    }).join('');
+    
+    // If no selection and we have scenes, select the current scene
+    if (!selectedScene && allScenes.length > 0) {
+        selectedScene = currentScene || allScenes[0].sceneName;
+    }
+    
+    // Initialize search for scenes list
+    initSearchForList('scenes', 'scenesSearchInput', list, allScenes.length);
+}
+
+async function onSceneSelect(sceneName) {
+    if (!sceneName || !connected) return;
+    selectedScene = sceneName;
+    
+    // Update scenes list to show selection
+    renderScenesList();
+    
+    // Update sources label
+    const label = document.getElementById('sourcesSceneLabel');
+    if (label) {
+        const isLive = sceneName === currentScene;
+        label.innerHTML = `Viewing: <strong>${sceneName}</strong>${isLive ? ' <span style="color:var(--danger)">(Live)</span>' : ''}`;
+    }
+    
+    try {
+        // Load sources for the selected scene (not necessarily the current program scene)
+        const data = await request('GetSceneItemList', { sceneName: selectedScene });
+        sources = data.sceneItems || [];
+        renderSources();
+        log(`Loaded ${sources.length} sources from: ${selectedScene}`);
+    } catch (e) {
+        log('Error getting sources: ' + e, 'error');
+    }
+}
+
+async function refreshSources() {
+    if (!connected) return;
+    
+    // Use selected scene if set, otherwise use current program scene
+    const targetScene = selectedScene || currentScene;
+    if (!targetScene) return;
+    
+    try {
+        const data = await request('GetSceneItemList', { sceneName: targetScene });
         sources = data.sceneItems || [];
         renderSources();
         updateTextSourceDropdown();
         updateSwapDropdowns();
-        log(`Found ${sources.length} sources`);
+        log(`Found ${sources.length} sources in: ${targetScene}`);
     } catch (e) {
         log('Error getting sources: ' + e, 'error');
     }
@@ -5070,18 +5470,97 @@ function restoreRunningTextCyclers() {
 let clipsConfigs = []; // Loaded async from storage on init
 let currentClipsConfigIndex = -1;
 
-// Twitch Client ID for clips player - set your own from Twitch Developer Console
-const CLIPS_CLIENT_ID = 'cuql1zod4eeabjr3cnc6adjn9ezro4';
+// ============ Twitch API Configuration ============
+// These values are loaded from storage - configure in Setup → Twitch API Settings
 
-// Strixun API Server - Cloudflare Worker URL for Twitch API proxy
-// Can be overridden per-config or via storage key 'clips_api_server'
-const DEFAULT_CLIPS_API_SERVER = 'https://strixun-twitch-api.strixuns-script-suite.workers.dev';
-
-// Get custom API server from storage (if set) or use default
-function getClipsApiServer() {
-    const custom = storage.get('clips_api_server');
-    return custom || DEFAULT_CLIPS_API_SERVER;
+// Get Twitch Client ID from storage (REQUIRED - no hardcoded fallback)
+function getTwitchClientId() {
+    return storage.get('twitch_client_id') || '';
 }
+
+// Get API Server URL from storage (REQUIRED - no hardcoded fallback)
+function getClipsApiServer() {
+    return storage.get('twitch_api_server') || '';
+}
+
+// OAuth callback URL - hardcoded to our GitHub Pages hosted service
+function getTwitchOAuthCallback() {
+    return DEFAULT_OAUTH_CALLBACK;
+}
+
+// Generate dynamic OAuth URL using configured values
+function getTwitchAuthUrl() {
+    const clientId = getTwitchClientId();
+    const callback = getTwitchOAuthCallback();
+    
+    if (!clientId || !callback) {
+        return null; // Configuration required
+    }
+    
+    const scopes = 'chat:read+chat:edit+user:read:follows+moderator:read:followers';
+    return `https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(callback)}&scope=${scopes}&force_verify=true`;
+}
+
+// Save Twitch settings to storage
+function saveTwitchSettings() {
+    const clientId = document.getElementById('twitchClientId').value.trim();
+    const apiServer = document.getElementById('twitchApiServer').value.trim();
+    
+    storage.set('twitch_client_id', clientId);
+    storage.set('twitch_api_server', apiServer);
+    
+    const statusEl = document.getElementById('twitchApiStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span style="color:var(--success)">✅ Settings saved!</span>';
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    }
+    
+    log('Twitch API settings saved', 'success');
+}
+
+// Load Twitch settings into form
+function loadTwitchSettings() {
+    const clientIdEl = document.getElementById('twitchClientId');
+    const apiServerEl = document.getElementById('twitchApiServer');
+    
+    if (clientIdEl) clientIdEl.value = getTwitchClientId();
+    if (apiServerEl) apiServerEl.value = getClipsApiServer();
+}
+
+// Test Twitch API connection
+async function testTwitchApi() {
+    const apiServer = getClipsApiServer();
+    const statusEl = document.getElementById('twitchApiStatus');
+    
+    if (!apiServer) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger)">❌ API Server URL not configured</span>';
+        return;
+    }
+    
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">⏳ Testing connection...</span>';
+    
+    try {
+        const response = await fetch(`${apiServer}/health`, { 
+            method: 'GET',
+            cache: 'no-store'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (statusEl) statusEl.innerHTML = `<span style="color:var(--success)">✅ Connected! ${data.message || 'API is healthy'}</span>`;
+            log('Twitch API test: Connected successfully', 'success');
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+    } catch (err) {
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger)">❌ Failed: ${err.message}</span>`;
+        log(`Twitch API test failed: ${err.message}`, 'error');
+    }
+}
+
+// Legacy constant for backward compatibility (reads from storage now)
+const CLIPS_CLIENT_ID = ''; // Deprecated - use getTwitchClientId()
+const DEFAULT_CLIPS_API_SERVER = ''; // Deprecated - use getClipsApiServer()
 
 function renderClipsConfigs() {
     const container = document.getElementById('clipsConfigs');
@@ -5450,7 +5929,10 @@ function generateClipsUrl() {
     if (config.accessToken) {
         params.set('ref', btoa(config.accessToken));
         if (!useNewPlayer) {
-            params.set('clientId', btoa(CLIPS_CLIENT_ID));
+            const clientId = getTwitchClientId();
+            if (clientId) {
+                params.set('clientId', btoa(clientId));
+            }
         }
     }
     
@@ -5571,11 +6053,19 @@ function toggleClipsTokenVisibility() {
 }
 
 // Twitch auth URL (OBS dock compatible)
-const TWITCH_AUTH_URL = 'https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=cuql1zod4eeabjr3cnc6adjn9ezro4&redirect_uri=https://twitch-clips-player.pages.dev&scope=chat:read+chat:edit+user:read:follows+moderator:read:followers&force_verify=true';
+// Twitch auth - dynamically generated from configured values (no hardcoded external services!)
 
 function openTwitchAuth() {
+    const authUrl = getTwitchAuthUrl();
+    
+    if (!authUrl) {
+        log('Twitch API not configured! Go to Setup → Twitch API Settings', 'error');
+        alert('Twitch API not configured!\n\nGo to Setup tab → Twitch API Settings to set your Client ID and OAuth Callback URL.');
+        return;
+    }
+    
     // Try to open - this works in regular browsers but not OBS docks
-    const win = window.open(TWITCH_AUTH_URL, '_blank');
+    const win = window.open(authUrl, '_blank');
     
     // If it failed or we're in OBS dock, copy to clipboard instead
     if (!win || win.closed || typeof win.closed === 'undefined') {
@@ -5584,7 +6074,15 @@ function openTwitchAuth() {
 }
 
 function copyTwitchAuthUrl() {
-    navigator.clipboard.writeText(TWITCH_AUTH_URL).then(() => {
+    const authUrl = getTwitchAuthUrl();
+    
+    if (!authUrl) {
+        log('Twitch API not configured! Go to Setup → Twitch API Settings', 'error');
+        alert('Twitch API not configured!\n\nGo to Setup tab → Twitch API Settings to set your Client ID and OAuth Callback URL.');
+        return;
+    }
+    
+    navigator.clipboard.writeText(authUrl).then(() => {
         // Show the hint about OBS dock limitation
         const hint = document.getElementById('twitchAuthHint');
         if (hint) {
@@ -5596,7 +6094,7 @@ function copyTwitchAuthUrl() {
     }).catch(err => {
         log('Failed to copy: ' + err, 'error');
         // Fallback: show the URL in a prompt for manual copy
-        prompt('Copy this URL and paste in your browser:', TWITCH_AUTH_URL);
+        prompt('Copy this URL and paste in your browser:', authUrl);
     });
 }
 
@@ -6474,6 +6972,183 @@ function downloadInstallScript() {
         }, 500);
     } else {
         log(`Downloaded ${filename}`, 'success');
+    }
+}
+
+
+// ============ Version Management ============
+const APP_VERSION = {
+    // Component versions - update these when releasing
+    controlPanel: '1.3.0',
+    sourceAnimations: '2.8.1',
+    sourceSwap: '3.1.0',
+    sourceLayouts: '1.0.0',
+    textCycler: '1.0.0',
+    quickControls: '1.0.0',
+    scriptManager: '1.3.0'
+};
+
+// GitHub repository configuration
+const GITHUB_REPO = 'Underwood-Inc/strixun-stream-suite';
+const GITHUB_RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_REPO}/main`;
+const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
+const GITHUB_PAGES_URL = 'https://underwood-inc.github.io/strixun-stream-suite';
+
+// Default OAuth callback URL (GitHub Pages hosted)
+const DEFAULT_OAUTH_CALLBACK = `${GITHUB_PAGES_URL}/twitch_auth_callback.html`;
+
+// Get the main display version (control panel version)
+function getLocalVersion() {
+    return APP_VERSION.controlPanel;
+}
+
+// Parse version string to comparable array
+function parseVersion(versionStr) {
+    if (!versionStr || typeof versionStr !== 'string') return [0, 0, 0];
+    const match = versionStr.match(/(\d+)\.(\d+)\.(\d+)/);
+    if (!match) return [0, 0, 0];
+    return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+}
+
+// Compare two versions: returns -1 if a < b, 0 if a == b, 1 if a > b
+function compareVersions(a, b) {
+    const vA = parseVersion(a);
+    const vB = parseVersion(b);
+    for (let i = 0; i < 3; i++) {
+        if (vA[i] < vB[i]) return -1;
+        if (vA[i] > vB[i]) return 1;
+    }
+    return 0;
+}
+
+// Update local version display
+function updateLocalVersionDisplay() {
+    const el = document.getElementById('localVersion');
+    if (el) el.textContent = `v${getLocalVersion()}`;
+}
+
+// Check for updates from GitHub
+async function checkForUpdates() {
+    const statusEl = document.getElementById('versionStatus');
+    const remoteEl = document.getElementById('remoteVersion');
+    const lastCheckEl = document.getElementById('lastVersionCheck');
+    
+    if (statusEl) {
+        statusEl.style.background = 'rgba(255,255,255,0.05)';
+        statusEl.innerHTML = '<span style="color:var(--muted)">⏳ Checking for updates...</span>';
+    }
+    
+    try {
+        // Fetch package.json from GitHub main branch
+        const response = await fetch(`${GITHUB_RAW_BASE}/package.json?t=${Date.now()}`, {
+            cache: 'no-store'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`GitHub fetch failed: ${response.status}`);
+        }
+        
+        const packageJson = await response.json();
+        const remoteVersion = packageJson.version || '0.0.0';
+        
+        if (remoteEl) remoteEl.textContent = `v${remoteVersion}`;
+        
+        const localVersion = getLocalVersion();
+        const comparison = compareVersions(localVersion, remoteVersion);
+        
+        if (statusEl) {
+            if (comparison < 0) {
+                // Local is behind remote - update available!
+                statusEl.style.background = 'rgba(255,200,0,0.15)';
+                statusEl.style.borderLeft = '3px solid var(--warning)';
+                statusEl.innerHTML = `
+                    <span style="color:var(--warning);font-weight:600">⚠️ Update Available!</span><br>
+                    <span style="font-size:0.9em;color:var(--muted)">
+                        ${localVersion} → ${remoteVersion}
+                    </span>
+                `;
+            } else if (comparison > 0) {
+                // Local is ahead (development version)
+                statusEl.style.background = 'rgba(100,200,255,0.15)';
+                statusEl.style.borderLeft = '3px solid var(--accent)';
+                statusEl.innerHTML = '<span style="color:var(--accent)">🔧 Development Version</span>';
+            } else {
+                // Up to date
+                statusEl.style.background = 'rgba(0,255,100,0.1)';
+                statusEl.style.borderLeft = '3px solid var(--success)';
+                statusEl.innerHTML = '<span style="color:var(--success)">✅ Up to Date</span>';
+            }
+        }
+        
+        // Store last check time
+        const now = new Date();
+        storage.set('lastVersionCheck', now.toISOString());
+        storage.set('lastRemoteVersion', remoteVersion);
+        
+        if (lastCheckEl) {
+            lastCheckEl.textContent = `Last checked: ${now.toLocaleTimeString()}`;
+        }
+        
+        log(`Version check: local v${localVersion}, remote v${remoteVersion}`, comparison < 0 ? 'warning' : 'success');
+        
+    } catch (err) {
+        console.error('[Version] Check failed:', err);
+        
+        // Try to show cached version if available
+        const cachedVersion = storage.get('lastRemoteVersion');
+        if (remoteEl && cachedVersion) {
+            remoteEl.textContent = `v${cachedVersion} (cached)`;
+        } else if (remoteEl) {
+            remoteEl.textContent = '(unavailable)';
+        }
+        
+        if (statusEl) {
+            statusEl.style.background = 'rgba(255,100,100,0.1)';
+            statusEl.style.borderLeft = '3px solid var(--danger)';
+            statusEl.innerHTML = `
+                <span style="color:var(--danger)">❌ Check Failed</span><br>
+                <span style="font-size:0.85em;color:var(--muted)">${err.message}</span>
+            `;
+        }
+        
+        log(`Version check failed: ${err.message}`, 'error');
+    }
+}
+
+// Open GitHub repository
+function openGitHubRepo() {
+    openUrlOrCopy(GITHUB_REPO_URL, 'GitHub Repository');
+}
+
+// Initialize version display on load
+function initVersionDisplay() {
+    updateLocalVersionDisplay();
+    
+    // Show cached data if available
+    const lastCheck = storage.get('lastVersionCheck');
+    const cachedVersion = storage.get('lastRemoteVersion');
+    const lastCheckEl = document.getElementById('lastVersionCheck');
+    const remoteEl = document.getElementById('remoteVersion');
+    
+    if (lastCheck && lastCheckEl) {
+        const date = new Date(lastCheck);
+        lastCheckEl.textContent = `Last checked: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    }
+    
+    if (cachedVersion && remoteEl) {
+        remoteEl.textContent = `v${cachedVersion} (cached)`;
+        
+        // Show cached comparison
+        const comparison = compareVersions(getLocalVersion(), cachedVersion);
+        const statusEl = document.getElementById('versionStatus');
+        if (statusEl && comparison < 0) {
+            statusEl.style.background = 'rgba(255,200,0,0.15)';
+            statusEl.style.borderLeft = '3px solid var(--warning)';
+            statusEl.innerHTML = `
+                <span style="color:var(--warning);font-weight:600">⚠️ Update May Be Available</span><br>
+                <span style="font-size:0.85em;color:var(--muted)">(cached - click to refresh)</span>
+            `;
+        }
     }
 }
 
