@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strixun's Stream Suite</title>
     <link rel="stylesheet" href="assets/css/control-panel.css">
+    <!-- Auto-configuration (injected during deployment) -->
+    <script src="config.js"></script>
 </head>
 <body>
     <div class="app">
@@ -389,12 +391,6 @@
                             <input type="checkbox" id="clipsUseNewPlayer" checked>
                             <label for="clipsUseNewPlayer">Use new Strixun player (recommended)</label>
                         </div>
-                    </div>
-                    
-                    <div id="clipsApiSection" style="margin-top:8px">
-                        <label>API Server URL</label>
-                        <input type="text" id="clipsApiServer" placeholder="https://your-worker.workers.dev">
-                        <p class="hint">Your Cloudflare Worker URL for Twitch API proxy</p>
                     </div>
                     
                     <label>Main Twitch Channel</label>
@@ -1011,9 +1007,12 @@
                     <input type="text" id="twitchClientId" placeholder="Your Twitch App Client ID">
                     <p class="hint" style="margin-top:4px;font-size:0.75em">From your Twitch Developer Console app</p>
                     
-                    <label style="margin-top:12px">API Server URL</label>
-                    <input type="text" id="twitchApiServer" placeholder="https://your-worker.your-subdomain.workers.dev">
-                    <p class="hint" style="margin-top:4px;font-size:0.75em">Your Cloudflare Worker URL (see serverless/SETUP.md)</p>
+                    <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
+                    <input type="text" id="twitchApiServer" placeholder="Auto-detected from deployment config">
+                    <p class="hint" style="margin-top:4px;font-size:0.75em">
+                        ✨ Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
+                        <span id="autoDetectedApiUrl" style="display:block;margin-top:4px;color:var(--success)"></span>
+                    </p>
                     
                     <div style="margin-top:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:0.8em">
                         <strong style="color:var(--accent)">OAuth Redirect URI:</strong>
@@ -2782,14 +2781,18 @@ function disconnect() {
 }
 
 async function handleMessage(data, password) {
+    // EventSubscription bitmask: All standard events (2047) ensures we get Vendors/CustomEvent (512)
+    // This is critical for cross-client storage sync via BroadcastCustomEvent
+    const EVENT_SUBSCRIPTIONS = (1 << 11) - 1; // 2047 = All standard events including Vendors
+    
     if (data.op === 0) { // Hello
         const auth = data.d.authentication;
         if (auth && password) {
             const secret = await sha256(password + auth.salt);
             const authStr = await sha256(secret + auth.challenge);
-            send({ op: 1, d: { rpcVersion: 1, authentication: authStr } });
+            send({ op: 1, d: { rpcVersion: 1, authentication: authStr, eventSubscriptions: EVENT_SUBSCRIPTIONS } });
         } else if (!auth) {
-            send({ op: 1, d: { rpcVersion: 1 } });
+            send({ op: 1, d: { rpcVersion: 1, eventSubscriptions: EVENT_SUBSCRIPTIONS } });
         } else {
             log('Password required', 'error');
             disconnect();
@@ -5483,8 +5486,13 @@ function getTwitchClientId() {
     return storage.get('twitch_client_id') || '';
 }
 
-// Get API Server URL from storage (REQUIRED - no hardcoded fallback)
+// Get API Server URL with auto-configuration fallback
 function getClipsApiServer() {
+    // Use the auto-config system from config.js
+    if (typeof window.getWorkerApiUrl === 'function') {
+        return window.getWorkerApiUrl() || '';
+    }
+    // Fallback to storage-only if config.js not loaded
     return storage.get('twitch_api_server') || '';
 }
 
@@ -5527,9 +5535,25 @@ function saveTwitchSettings() {
 function loadTwitchSettings() {
     const clientIdEl = document.getElementById('twitchClientId');
     const apiServerEl = document.getElementById('twitchApiServer');
+    const autoDetectedEl = document.getElementById('autoDetectedApiUrl');
     
     if (clientIdEl) clientIdEl.value = getTwitchClientId();
-    if (apiServerEl) apiServerEl.value = getClipsApiServer();
+    
+    // Show manual override only (if set)
+    const manualOverride = storage.get('twitch_api_server') || '';
+    if (apiServerEl) apiServerEl.value = manualOverride;
+    
+    // Show auto-detected URL
+    if (autoDetectedEl && typeof window.getWorkerApiUrl === 'function') {
+        const autoUrl = window.getWorkerApiUrl();
+        if (autoUrl && !manualOverride) {
+            autoDetectedEl.innerHTML = `✅ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code>`;
+        } else if (autoUrl && manualOverride) {
+            autoDetectedEl.innerHTML = `ℹ️ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code> (overridden)`;
+        } else {
+            autoDetectedEl.innerHTML = `⚠️ No auto-detected URL. Deploy via GitHub Actions or configure manually.`;
+        }
+    }
 }
 
 // Test Twitch API connection
@@ -5595,7 +5619,7 @@ function newClipsConfig() {
     const config = {
         id: 'clips_' + Date.now(),
         name: 'Clips Player ' + (clipsConfigs.length + 1),
-        apiServer: DEFAULT_CLIPS_API_SERVER,
+        // Note: apiServer now globally configured in Setup tab
         mainChannel: '',
         channels: '',
         showFollowing: false,
@@ -5656,14 +5680,13 @@ function loadClipsConfig(index) {
     document.getElementById('clipsAccessToken').value = config.accessToken || '';
     
     // New player options
-    const apiServerEl = document.getElementById('clipsApiServer');
     const useNewPlayerEl = document.getElementById('clipsUseNewPlayer');
     const showInfoEl = document.getElementById('clipsShowInfo');
     const autoPlayEl = document.getElementById('clipsAutoPlay');
     const shuffleEl = document.getElementById('clipsShuffle');
     const volumeEl = document.getElementById('clipsVolume');
     
-    if (apiServerEl) apiServerEl.value = config.apiServer || DEFAULT_CLIPS_API_SERVER || '';
+    // Note: apiServer is now globally configured in Setup tab, not per-config
     if (useNewPlayerEl) useNewPlayerEl.checked = config.useNewPlayer !== false;
     if (showInfoEl) showInfoEl.checked = config.showInfo !== false;
     if (autoPlayEl) autoPlayEl.checked = config.autoPlay !== false;
@@ -5744,14 +5767,13 @@ function saveCurrentClipsConfig() {
     config.accessToken = document.getElementById('clipsAccessToken').value.trim();
     
     // New player options
-    const apiServerEl = document.getElementById('clipsApiServer');
     const useNewPlayerEl = document.getElementById('clipsUseNewPlayer');
     const showInfoEl = document.getElementById('clipsShowInfo');
     const autoPlayEl = document.getElementById('clipsAutoPlay');
     const shuffleEl = document.getElementById('clipsShuffle');
     const volumeEl = document.getElementById('clipsVolume');
     
-    if (apiServerEl) config.apiServer = apiServerEl.value.trim();
+    // Note: apiServer is now globally configured in Setup tab, not per-config
     if (useNewPlayerEl) config.useNewPlayer = useNewPlayerEl.checked;
     if (showInfoEl) config.showInfo = showInfoEl.checked;
     if (autoPlayEl) config.autoPlay = autoPlayEl.checked;
@@ -5887,11 +5909,11 @@ function generateClipsUrl() {
     
     const params = new URLSearchParams();
     
-    // API Server (required for new player)
-    const apiServer = config.apiServer || DEFAULT_CLIPS_API_SERVER;
+    // API Server (required for new player) - now globally configured
+    const apiServer = getClipsApiServer();
     if (useNewPlayer) {
         if (!apiServer) {
-            document.getElementById('clipsGeneratedUrl').value = 'Set API Server URL first (Setup tab or config)';
+            document.getElementById('clipsGeneratedUrl').value = '⚠️ API Server not configured! Go to Setup tab to configure or it will auto-detect on deployment.';
             return;
         }
         params.set('api', apiServer);

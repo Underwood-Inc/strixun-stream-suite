@@ -287,6 +287,42 @@ If you prefer to skip the wizard:
 
 ---
 
+## Configuration
+
+### Auto-Configuration (Zero-Config Setup) ✨
+
+**NEW:** The suite now features intelligent auto-configuration! When deployed via GitHub Pages, the Twitch API Worker URL is automatically detected and configured.
+
+**Zero-config steps:**
+1. Fork/clone the repository
+2. Enable GitHub Pages in repo settings
+3. Push to `main` or `master` branch
+4. GitHub Actions automatically deploys everything
+5. Open your GitHub Pages URL
+6. ✅ **Done!** No manual API URL configuration needed
+
+**How it works:**
+- GitHub Actions reads your `wrangler.toml` worker configuration
+- Auto-constructs the Cloudflare Worker URL
+- Injects it into `config.js` during deployment
+- Control panel auto-detects and uses it
+
+**Manual override:** You can still manually configure the API server URL in **Setup → Twitch API Settings** if needed (custom domains, local development, etc.)
+
+📚 **Full documentation:** See [`docs/AUTO_CONFIGURATION.md`](docs/AUTO_CONFIGURATION.md) for detailed info on priority system, troubleshooting, and advanced configurations.
+
+### Manual Configuration (Advanced)
+
+For custom deployments or local development:
+
+1. Go to **Setup** tab in control panel
+2. Enter your Cloudflare Worker URL in **API Server URL**
+3. Enter your Twitch Client ID
+4. Click **Save Twitch Settings**
+5. Test the connection with **Test API Connection** button
+
+---
+
 ## Scripts
 
 ### Source Animations (v2.8.0)
