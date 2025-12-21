@@ -27,9 +27,10 @@
             <button class="tab" onclick="showPage('setup')" title="Setup">⚙️</button>
         </nav>
         
-        <main class="content">
-            <!-- Dashboard -->
-            <div id="page-dashboard" class="page active">
+        <div class="split-container">
+            <main class="split-main content">
+                <!-- Dashboard -->
+                <div id="page-dashboard" class="page active">
                 <!-- Script Status Card -->
                 <div class="card" id="dashboardStatusCard">
                     <h3>📊 System Status</h3>
@@ -63,11 +64,6 @@
                 <div class="card">
                     <h3>Quick Swaps</h3>
                     <div class="grid" id="dashSwapGrid"></div>
-                </div>
-                
-                <div class="card">
-                    <h3>Activity Log</h3>
-                    <div id="log" class="log"></div>
                 </div>
             </div>
             
@@ -107,6 +103,11 @@
                 <div class="card">
                     <h3>Scene Sources</h3>
                     <button onclick="refreshSources()" class="btn-secondary" style="width:100%;margin-bottom:12px">🔃 Refresh</button>
+                    <div class="search-box">
+                        <input type="text" class="search-box__input" id="sourcesSearchInput" placeholder="Search sources...">
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">✕</button>
+                    </div>
                     <div id="sourcesList"></div>
                 </div>
             </div>
@@ -116,6 +117,11 @@
                 <!-- Saved Configs -->
                 <div class="card">
                     <h3>💾 Saved Configs</h3>
+                    <div class="search-box">
+                        <input type="text" class="search-box__input" id="textConfigsSearchInput" placeholder="Search configs...">
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">✕</button>
+                    </div>
                     <div id="textCyclerConfigs" class="config-list"></div>
                     <div class="row" style="margin-top:8px">
                         <button onclick="newTextConfig()">➕ New Config</button>
@@ -573,6 +579,11 @@
                 
                 <div class="card">
                     <h3>Saved Configs</h3>
+                    <div class="search-box">
+                        <input type="text" class="search-box__input" id="swapConfigsSearchInput" placeholder="Search configs...">
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">✕</button>
+                    </div>
                     <div id="savedSwaps"></div>
                     <div class="row" style="margin-top:8px">
                         <button onclick="refreshSwapSources()">🔄 Refresh Sources</button>
@@ -903,7 +914,26 @@
                     <div id="lastBackupInfo" style="margin-top:8px;font-size:0.75em;color:var(--muted);text-align:center"></div>
                 </div>
             </div>
-        </main>
+            </main>
+            
+            <!-- Draggable Divider -->
+            <div class="split-divider" id="splitDivider" title="Drag to resize"></div>
+            
+            <!-- Persistent Activity Log Panel -->
+            <div class="split-log" id="splitLog">
+                <div class="split-log__header">
+                    <button class="split-log__toggle" id="logToggle" title="Toggle Log">▼</button>
+                    <span class="split-log__title">Activity Log</span>
+                    <div class="search-box split-log__search">
+                        <input type="text" class="search-box__input" id="logSearchInput" placeholder="Search log...">
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" id="logSearchClear" title="Clear search">✕</button>
+                    </div>
+                    <button class="split-log__clear btn-link" onclick="clearLog()">Clear</button>
+                </div>
+                <div class="split-log__content" id="log"></div>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -1537,6 +1567,393 @@ function startAutoBackup() {
     console.log('[AutoBackup] Auto-backup system started');
 }
 
+// ============ Smart Search Module ============
+const SmartSearch = {
+    instances: new Map(),
+    
+    /**
+     * Create a search instance for a container
+     * @param {string} id - Unique identifier for this search
+     * @param {HTMLElement} inputEl - The search input element
+     * @param {HTMLElement} containerEl - The container with searchable items
+     * @param {Object} options - Configuration options
+     */
+    create(id, inputEl, containerEl, options = {}) {
+        const config = {
+            itemSelector: options.itemSelector || '.source-item, .config-item, .script-card',
+            textSelector: options.textSelector || '.name, .script-name, h3, h4',
+            minChars: options.minChars || 1,
+            debounceMs: options.debounceMs || 150,
+            onFilter: options.onFilter || null,
+            showCount: options.showCount !== false
+        };
+        
+        let debounceTimer = null;
+        
+        const doSearch = () => {
+            const query = inputEl.value.toLowerCase().trim();
+            const items = containerEl.querySelectorAll(config.itemSelector);
+            let visibleCount = 0;
+            let totalCount = items.length;
+            
+            items.forEach(item => {
+                // Get text content from multiple possible selectors
+                let text = '';
+                if (config.textSelector) {
+                    const textEls = item.querySelectorAll(config.textSelector);
+                    textEls.forEach(el => text += ' ' + el.textContent);
+                }
+                text = text || item.textContent;
+                text = text.toLowerCase();
+                
+                // Remove old highlights
+                item.querySelectorAll('.search-highlight').forEach(h => {
+                    h.replaceWith(h.textContent);
+                });
+                
+                if (!query || query.length < config.minChars) {
+                    item.classList.remove('search-hidden');
+                    visibleCount++;
+                    return;
+                }
+                
+                if (text.includes(query)) {
+                    item.classList.remove('search-hidden');
+                    visibleCount++;
+                    // Add highlights
+                    SmartSearch.highlightText(item, query, config.textSelector);
+                } else {
+                    item.classList.add('search-hidden');
+                }
+            });
+            
+            // Update count badge if enabled
+            if (config.showCount && query.length >= config.minChars) {
+                SmartSearch.updateCountBadge(inputEl, visibleCount, totalCount);
+            } else {
+                SmartSearch.removeCountBadge(inputEl);
+            }
+            
+            // Show/hide no results message
+            SmartSearch.updateNoResults(containerEl, visibleCount, query.length >= config.minChars);
+            
+            if (config.onFilter) config.onFilter(query, visibleCount, totalCount);
+        };
+        
+        // Debounced search
+        const onInput = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(doSearch, config.debounceMs);
+        };
+        
+        inputEl.addEventListener('input', onInput);
+        
+        // Clear button support
+        const clearBtn = inputEl.parentElement?.querySelector('.search-box__clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                inputEl.value = '';
+                doSearch();
+                inputEl.focus();
+            });
+        }
+        
+        this.instances.set(id, { inputEl, containerEl, config, doSearch });
+        return { doSearch, clear: () => { inputEl.value = ''; doSearch(); } };
+    },
+    
+    highlightText(element, query, textSelector) {
+        const textEls = textSelector ? element.querySelectorAll(textSelector) : [element];
+        textEls.forEach(el => {
+            if (el.children.length > 0) return; // Skip elements with children
+            const text = el.textContent;
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            if (regex.test(text)) {
+                el.innerHTML = text.replace(regex, '<span class="search-highlight">$1</span>');
+            }
+        });
+    },
+    
+    updateCountBadge(inputEl, visible, total) {
+        let badge = inputEl.parentElement?.querySelector('.search-box__count');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'search-box__count';
+            inputEl.parentElement?.insertBefore(badge, inputEl.nextSibling?.nextSibling);
+        }
+        badge.textContent = `${visible}/${total}`;
+    },
+    
+    removeCountBadge(inputEl) {
+        inputEl.parentElement?.querySelector('.search-box__count')?.remove();
+    },
+    
+    updateNoResults(container, count, isSearching) {
+        let msg = container.querySelector('.search-no-results');
+        if (isSearching && count === 0) {
+            if (!msg) {
+                msg = document.createElement('div');
+                msg.className = 'search-no-results';
+                msg.textContent = 'No results found';
+                container.appendChild(msg);
+            }
+        } else if (msg) {
+            msg.remove();
+        }
+    },
+    
+    refresh(id) {
+        const instance = this.instances.get(id);
+        if (instance) instance.doSearch();
+    }
+};
+
+/**
+ * Helper to initialize search for a list container
+ * Always initializes, but hides search box when < 3 items
+ */
+function initSearchForList(id, inputId, containerEl, itemCount) {
+    const searchInput = document.getElementById(inputId);
+    if (!searchInput) return;
+    
+    const searchBox = searchInput.closest('.search-box');
+    
+    // Show/hide search box based on item count
+    if (searchBox) {
+        searchBox.style.display = itemCount >= 3 ? '' : 'none';
+    }
+    
+    // Always initialize if not already done
+    if (!SmartSearch.instances.has(id)) {
+        SmartSearch.create(id, searchInput, containerEl, { 
+            itemSelector: '.source-item, .config-item, .script-card' 
+        });
+        console.log(`[Search] Initialized search for: ${id}`);
+    } else {
+        // Refresh to re-scan items
+        SmartSearch.refresh(id);
+    }
+}
+
+// ============ Collapsible Cards Module ============
+const CollapsibleCards = {
+    storageKey: 'ui_collapsed_cards',
+    
+    init() {
+        // Get saved state
+        const savedState = storage.get(this.storageKey) || {};
+        
+        // Find all cards with h3 and make them collapsible
+        document.querySelectorAll('.card > h3').forEach((h3, index) => {
+            const card = h3.parentElement;
+            const cardId = card.id || `card-${index}`;
+            card.dataset.cardId = cardId;
+            
+            // Wrap content after h3 in card-body div
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+            while (h3.nextSibling) {
+                cardBody.appendChild(h3.nextSibling);
+            }
+            card.appendChild(cardBody);
+            
+            // Add collapsible class
+            card.classList.add('collapsible');
+            
+            // Restore saved state
+            if (savedState[cardId]) {
+                card.classList.add('collapsed');
+            }
+            
+            // Add click handler
+            h3.addEventListener('click', (e) => {
+                // Don't toggle if clicking a button inside h3
+                if (e.target.tagName === 'BUTTON') return;
+                
+                card.classList.toggle('collapsed');
+                this.saveState();
+            });
+        });
+    },
+    
+    saveState() {
+        const state = {};
+        document.querySelectorAll('.card.collapsible').forEach(card => {
+            if (card.classList.contains('collapsed')) {
+                state[card.dataset.cardId] = true;
+            }
+        });
+        storage.set(this.storageKey, state);
+    },
+    
+    expandAll() {
+        document.querySelectorAll('.card.collapsible.collapsed').forEach(card => {
+            card.classList.remove('collapsed');
+        });
+        this.saveState();
+    },
+    
+    collapseAll() {
+        document.querySelectorAll('.card.collapsible').forEach(card => {
+            card.classList.add('collapsed');
+        });
+        this.saveState();
+    }
+};
+
+// ============ Split Panel Module ============
+const SplitPanel = {
+    storageKey: 'ui_split_panel',
+    minLogHeight: 40,
+    maxLogHeight: 500,
+    defaultLogHeight: 150,
+    
+    init() {
+        const divider = document.getElementById('splitDivider');
+        const logPanel = document.getElementById('splitLog');
+        const logToggle = document.getElementById('logToggle');
+        const logContent = document.getElementById('log');
+        const mainContent = document.querySelector('.split-main');
+        
+        if (!divider || !logPanel) return;
+        
+        // Restore saved state
+        const savedState = storage.get(this.storageKey) || {};
+        let logHeight = savedState.height || this.defaultLogHeight;
+        let isCollapsed = savedState.collapsed || false;
+        
+        // Apply initial state
+        if (isCollapsed) {
+            logPanel.classList.add('collapsed');
+            logToggle.textContent = '▲';
+            logPanel.style.height = ''; // Let CSS handle collapsed height
+        } else {
+            logPanel.style.height = logHeight + 'px';
+        }
+        
+        // Toggle collapse
+        logToggle.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            logPanel.classList.toggle('collapsed', isCollapsed);
+            logToggle.textContent = isCollapsed ? '▲' : '▼';
+            if (isCollapsed) {
+                // Clear inline height so CSS auto-height takes over
+                logPanel.style.height = '';
+            } else {
+                logPanel.style.height = logHeight + 'px';
+            }
+            this.saveState(logHeight, isCollapsed);
+        });
+        
+        // Draggable divider
+        let isDragging = false;
+        let startY = 0;
+        let startHeight = 0;
+        
+        divider.addEventListener('mousedown', (e) => {
+            if (isCollapsed) return;
+            isDragging = true;
+            startY = e.clientY;
+            startHeight = logPanel.offsetHeight;
+            divider.classList.add('dragging');
+            document.body.style.cursor = 'ns-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaY = startY - e.clientY;
+            logHeight = Math.max(this.minLogHeight, Math.min(this.maxLogHeight, startHeight + deltaY));
+            logPanel.style.height = logHeight + 'px';
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                divider.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                this.saveState(logHeight, isCollapsed);
+            }
+        });
+        
+        // Touch support for mobile
+        divider.addEventListener('touchstart', (e) => {
+            if (isCollapsed) return;
+            isDragging = true;
+            startY = e.touches[0].clientY;
+            startHeight = logPanel.offsetHeight;
+            divider.classList.add('dragging');
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const deltaY = startY - e.touches[0].clientY;
+            logHeight = Math.max(this.minLogHeight, Math.min(this.maxLogHeight, startHeight + deltaY));
+            logPanel.style.height = logHeight + 'px';
+        }, { passive: true });
+        
+        document.addEventListener('touchend', () => {
+            if (isDragging) {
+                isDragging = false;
+                divider.classList.remove('dragging');
+                this.saveState(logHeight, isCollapsed);
+            }
+        });
+        
+        // Initialize log search
+        const logSearchInput = document.getElementById('logSearchInput');
+        if (logSearchInput && logContent) {
+            logSearchInput.addEventListener('input', () => {
+                this.filterLog(logSearchInput.value);
+            });
+            document.getElementById('logSearchClear')?.addEventListener('click', () => {
+                logSearchInput.value = '';
+                this.filterLog('');
+                logSearchInput.focus();
+            });
+        }
+    },
+    
+    filterLog(query) {
+        const logEl = document.getElementById('log');
+        if (!logEl) return;
+        
+        const entries = logEl.querySelectorAll('.log-entry');
+        const q = query.toLowerCase().trim();
+        
+        entries.forEach(entry => {
+            // Remove old highlights
+            entry.querySelectorAll('.search-highlight').forEach(h => {
+                h.replaceWith(h.textContent);
+            });
+            
+            if (!q) {
+                entry.classList.remove('search-hidden');
+                return;
+            }
+            
+            const text = entry.textContent.toLowerCase();
+            if (text.includes(q)) {
+                entry.classList.remove('search-hidden');
+                // Highlight matching text
+                const textEl = entry.querySelector('.log-entry__text');
+                if (textEl) {
+                    const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    textEl.innerHTML = textEl.textContent.replace(regex, '<span class="search-highlight">$1</span>');
+                }
+            } else {
+                entry.classList.add('search-hidden');
+            }
+        });
+    },
+    
+    saveState(height, collapsed) {
+        storage.set(this.storageKey, { height, collapsed });
+    }
+};
+
 // ============ State ============
 let ws = null;
 let connected = false;
@@ -1868,6 +2285,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Start auto-backup system
     startAutoBackup();
     
+    // Initialize UI modules
+    console.log('[Init] Initializing UI modules...');
+    SplitPanel.init();
+    CollapsibleCards.init();
+    
     // Set dock URL
     const url = window.location.href;
     document.getElementById('dockUrl').value = url;
@@ -1962,11 +2384,30 @@ function restoreActiveTab() {
 
 function log(msg, type = '') {
     const el = document.getElementById('log');
+    if (!el) return;
+    
     const entry = document.createElement('div');
     entry.className = 'log-entry ' + type;
-    entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    
+    const time = document.createElement('span');
+    time.className = 'log-entry__time';
+    time.textContent = `[${new Date().toLocaleTimeString()}]`;
+    
+    const text = document.createElement('span');
+    text.className = 'log-entry__text';
+    text.textContent = msg;
+    
+    entry.appendChild(time);
+    entry.appendChild(text);
+    
     el.insertBefore(entry, el.firstChild);
-    if (el.children.length > 50) el.removeChild(el.lastChild);
+    if (el.children.length > 100) el.removeChild(el.lastChild);
+}
+
+function clearLog() {
+    const el = document.getElementById('log');
+    if (el) el.innerHTML = '';
+    log('Log cleared', 'info');
 }
 
 function copyUrl() {
@@ -2187,6 +2628,9 @@ function renderSources() {
                  onclick="toggleSource('${s.sourceName}', ${s.sceneItemId}, ${!s.sceneItemEnabled})"></div>
         </div>
     `).join('');
+    
+    // Initialize/refresh search for sources list
+    initSearchForList('sources', 'sourcesSearchInput', list, sources.length);
 }
 
 async function toggleSource(name, id, enabled) {
@@ -2406,24 +2850,70 @@ function updateSwapDropdowns() {
 }
 
 async function getSceneItemId(sourceName) {
-    const item = sources.find(s => s.sourceName === sourceName);
-    return item ? item.sceneItemId : null;
+    // First try cached sources (fast path)
+    const cached = sources.find(s => s.sourceName === sourceName);
+    if (cached) return cached.sceneItemId;
+    
+    // Cache miss - query OBS directly (handles stale cache, scene changes, etc.)
+    try {
+        const data = await request('GetSceneItemId', {
+            sceneName: currentScene,
+            sourceName: sourceName
+        });
+        return data.sceneItemId || null;
+    } catch (e) {
+        console.warn(`[Swap] Source "${sourceName}" not found in scene "${currentScene}":`, e);
+        return null;
+    }
 }
 
 async function getTransform(sceneItemId) {
-    const data = await request('GetSceneItemTransform', {
-        sceneName: currentScene,
-        sceneItemId: sceneItemId
-    });
-    return data.sceneItemTransform;
+    try {
+        const data = await request('GetSceneItemTransform', {
+            sceneName: currentScene,
+            sceneItemId: sceneItemId
+        });
+        return data.sceneItemTransform;
+    } catch (e) {
+        console.error(`[Swap] Failed to get transform for item ${sceneItemId}:`, e);
+        throw new Error(`Failed to get transform for item ${sceneItemId}: ${e}`);
+    }
 }
 
 async function setTransform(sceneItemId, transform) {
-    await request('SetSceneItemTransform', {
-        sceneName: currentScene,
-        sceneItemId: sceneItemId,
-        sceneItemTransform: transform
-    });
+    try {
+        // Sanitize transform values - OBS requires bounds >= 1 and scale > 0
+        const sanitized = { ...transform };
+        
+        // Ensure bounds are at least 1 (or remove if 0/invalid)
+        if (sanitized.boundsWidth !== undefined) {
+            if (sanitized.boundsWidth < 1) {
+                delete sanitized.boundsWidth;
+            }
+        }
+        if (sanitized.boundsHeight !== undefined) {
+            if (sanitized.boundsHeight < 1) {
+                delete sanitized.boundsHeight;
+            }
+        }
+        
+        // Ensure scale is positive
+        if (sanitized.scaleX !== undefined && sanitized.scaleX <= 0) {
+            sanitized.scaleX = 0.001;
+        }
+        if (sanitized.scaleY !== undefined && sanitized.scaleY <= 0) {
+            sanitized.scaleY = 0.001;
+        }
+        
+        await request('SetSceneItemTransform', {
+            sceneName: currentScene,
+            sceneItemId: sceneItemId,
+            sceneItemTransform: sanitized
+        });
+    } catch (e) {
+        console.error(`[Swap] Failed to set transform for item ${sceneItemId}:`, e);
+        throw new Error(`Failed to set transform: ${e}`);
+    }
 }
 
 // ============ Enhanced Easing Functions ============
@@ -2464,16 +2954,25 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 async function animateSlide(idA, idB, startA, startB, endA, endB, duration, easing, propsToSwap) {
     const startTime = performance.now();
     
-    await new Promise(resolve => {
+    await new Promise((resolve, reject) => {
         function animate() {
             const elapsed = performance.now() - startTime;
             const rawT = Math.min(elapsed / duration, 1);
             const t = easeFunc(rawT, easing);
             
-            const currentA = {}, currentB = {};
-            for (const p of propsToSwap) {
-                currentA[p] = lerp(startA[p], endA[p], t);
-                currentB[p] = lerp(startB[p], endB[p], t);
+            // Lerp each source's own properties (they may differ in mixed bounds/scale case)
+            const currentA = {};
+            const currentB = {};
+            
+            for (const p of Object.keys(startA)) {
+                if (endA[p] !== undefined) {
+                    currentA[p] = lerp(startA[p], endA[p], t);
+                }
+            }
+            for (const p of Object.keys(startB)) {
+                if (endB[p] !== undefined) {
+                    currentB[p] = lerp(startB[p], endB[p], t);
+                }
             }
             
             Promise.all([
@@ -2482,6 +2981,9 @@ async function animateSlide(idA, idB, startA, startB, endA, endB, duration, easi
             ]).then(() => {
                 if (rawT < 1) requestAnimationFrame(animate);
                 else resolve();
+            }).catch(err => {
+                console.error('[Swap] animateSlide error:', err);
+                reject(err);
             });
         }
         requestAnimationFrame(animate);
@@ -2492,7 +2994,7 @@ async function animateArc(idA, idB, startA, startB, endA, endB, duration, easing
     const startTime = performance.now();
     const arcHeight = 100; // Pixels to arc upward
     
-    await new Promise(resolve => {
+    await new Promise((resolve, reject) => {
         function animate() {
             const elapsed = performance.now() - startTime;
             const rawT = Math.min(elapsed / duration, 1);
@@ -2501,23 +3003,35 @@ async function animateArc(idA, idB, startA, startB, endA, endB, duration, easing
             // Parabolic arc: peaks at t=0.5
             const arcOffset = -4 * arcHeight * rawT * (rawT - 1);
             
-            // Animate ALL properties including bounds during animation
+            // Only animate properties that exist in start/end objects
             const currentA = {
                 positionX: lerp(startA.positionX, endA.positionX, t),
-                positionY: lerp(startA.positionY, endA.positionY, t) - arcOffset,
-                scaleX: lerp(startA.scaleX, endA.scaleX, t),
-                scaleY: lerp(startA.scaleY, endA.scaleY, t),
-                boundsWidth: lerp(startA.boundsWidth, endA.boundsWidth, t),
-                boundsHeight: lerp(startA.boundsHeight, endA.boundsHeight, t)
+                positionY: lerp(startA.positionY, endA.positionY, t) - arcOffset
             };
             const currentB = {
                 positionX: lerp(startB.positionX, endB.positionX, t),
-                positionY: lerp(startB.positionY, endB.positionY, t) - arcOffset,
-                scaleX: lerp(startB.scaleX, endB.scaleX, t),
-                scaleY: lerp(startB.scaleY, endB.scaleY, t),
-                boundsWidth: lerp(startB.boundsWidth, endB.boundsWidth, t),
-                boundsHeight: lerp(startB.boundsHeight, endB.boundsHeight, t)
+                positionY: lerp(startB.positionY, endB.positionY, t) - arcOffset
             };
+            
+            // Add scale if present
+            if (startA.scaleX !== undefined) {
+                currentA.scaleX = lerp(startA.scaleX, endA.scaleX, t);
+                currentA.scaleY = lerp(startA.scaleY, endA.scaleY, t);
+            }
+            if (startB.scaleX !== undefined) {
+                currentB.scaleX = lerp(startB.scaleX, endB.scaleX, t);
+                currentB.scaleY = lerp(startB.scaleY, endB.scaleY, t);
+            }
+            
+            // Add bounds if present
+            if (startA.boundsWidth !== undefined) {
+                currentA.boundsWidth = lerp(startA.boundsWidth, endA.boundsWidth, t);
+                currentA.boundsHeight = lerp(startA.boundsHeight, endA.boundsHeight, t);
+            }
+            if (startB.boundsWidth !== undefined) {
+                currentB.boundsWidth = lerp(startB.boundsWidth, endB.boundsWidth, t);
+                currentB.boundsHeight = lerp(startB.boundsHeight, endB.boundsHeight, t);
+            }
             
             Promise.all([
                 setTransform(idA, currentA),
@@ -2525,6 +3039,9 @@ async function animateArc(idA, idB, startA, startB, endA, endB, duration, easing
             ]).then(() => {
                 if (rawT < 1) requestAnimationFrame(animate);
                 else resolve();
+            }).catch(err => {
+                console.error('[Swap] animateArc error:', err);
+                reject(err);
             });
         }
         requestAnimationFrame(animate);
@@ -2534,7 +3051,7 @@ async function animateArc(idA, idB, startA, startB, endA, endB, duration, easing
 async function animateScale(idA, idB, startA, startB, endA, endB, duration, easing) {
     const startTime = performance.now();
     
-    await new Promise(resolve => {
+    await new Promise((resolve, reject) => {
         function animate() {
             const elapsed = performance.now() - startTime;
             const rawT = Math.min(elapsed / duration, 1);
@@ -2548,26 +3065,36 @@ async function animateScale(idA, idB, startA, startB, endA, endB, duration, easi
             }
             
             // Position JUMPS at midpoint (not smooth slide!)
-            // Before 0.5: stay at start position
-            // At/after 0.5: jump to end position
             const posT = rawT < 0.5 ? 0 : 1;
             
             const currentA = {
                 positionX: lerp(startA.positionX, endA.positionX, posT),
-                positionY: lerp(startA.positionY, endA.positionY, posT),
-                scaleX: startA.scaleX * scaleMod,
-                scaleY: startA.scaleY * scaleMod,
-                boundsWidth: lerp(startA.boundsWidth, endA.boundsWidth, posT),
-                boundsHeight: lerp(startA.boundsHeight, endA.boundsHeight, posT)
+                positionY: lerp(startA.positionY, endA.positionY, posT)
             };
             const currentB = {
                 positionX: lerp(startB.positionX, endB.positionX, posT),
-                positionY: lerp(startB.positionY, endB.positionY, posT),
-                scaleX: startB.scaleX * scaleMod,
-                scaleY: startB.scaleY * scaleMod,
-                boundsWidth: lerp(startB.boundsWidth, endB.boundsWidth, posT),
-                boundsHeight: lerp(startB.boundsHeight, endB.boundsHeight, posT)
+                positionY: lerp(startB.positionY, endB.positionY, posT)
             };
+            
+            // Add scale with modifier if using scale
+            if (startA.scaleX !== undefined) {
+                currentA.scaleX = (startA.scaleX || 1) * scaleMod;
+                currentA.scaleY = (startA.scaleY || 1) * scaleMod;
+            }
+            if (startB.scaleX !== undefined) {
+                currentB.scaleX = (startB.scaleX || 1) * scaleMod;
+                currentB.scaleY = (startB.scaleY || 1) * scaleMod;
+            }
+            
+            // Add bounds if present (jump at midpoint, no scale mod)
+            if (startA.boundsWidth !== undefined) {
+                currentA.boundsWidth = lerp(startA.boundsWidth, endA.boundsWidth, posT);
+                currentA.boundsHeight = lerp(startA.boundsHeight, endA.boundsHeight, posT);
+            }
+            if (startB.boundsWidth !== undefined) {
+                currentB.boundsWidth = lerp(startB.boundsWidth, endB.boundsWidth, posT);
+                currentB.boundsHeight = lerp(startB.boundsHeight, endB.boundsHeight, posT);
+            }
             
             Promise.all([
                 setTransform(idA, currentA),
@@ -2575,6 +3102,9 @@ async function animateScale(idA, idB, startA, startB, endA, endB, duration, easi
             ]).then(() => {
                 if (rawT < 1) requestAnimationFrame(animate);
                 else resolve();
+            }).catch(err => {
+                console.error('[Swap] animateScale error:', err);
+                reject(err);
             });
         }
         requestAnimationFrame(animate);
@@ -2592,7 +3122,7 @@ async function animateCrossfade(idA, idB, nameA, nameB, endA, endB, duration) {
     // Quick version: scale down, swap, scale up
     const startTime = performance.now();
     
-    await new Promise(resolve => {
+    await new Promise((resolve, reject) => {
         function animate() {
             const elapsed = performance.now() - startTime;
             const rawT = Math.min(elapsed / duration, 1);
@@ -2608,22 +3138,23 @@ async function animateCrossfade(idA, idB, nameA, nameB, endA, endB, duration) {
             // Position jumps at midpoint
             const posT = rawT < 0.5 ? 0 : 1;
             
-            const idAVal = sources.find(s => s.sourceName === nameA)?.sceneItemId;
-            const idBVal = sources.find(s => s.sourceName === nameB)?.sceneItemId;
-            
+            // Use the IDs passed to function, not stale cache lookup
             Promise.all([
-                setTransform(idAVal, { scaleX: endA.scaleX * opacityScale, scaleY: endA.scaleY * opacityScale }),
-                setTransform(idBVal, { scaleX: endB.scaleX * opacityScale, scaleY: endB.scaleY * opacityScale })
+                setTransform(idA, { scaleX: endA.scaleX * opacityScale, scaleY: endA.scaleY * opacityScale }),
+                setTransform(idB, { scaleX: endB.scaleX * opacityScale, scaleY: endB.scaleY * opacityScale })
             ]).then(() => {
                 if (rawT < 1) requestAnimationFrame(animate);
                 else resolve();
+            }).catch(err => {
+                console.error('[Swap] animateCrossfade error:', err);
+                reject(err);
             });
         }
         requestAnimationFrame(animate);
     });
 }
 
-async function executeSwap() {
+async function executeSwap(sourceAOverride, sourceBOverride) {
     if (!connected) { 
         log('Connect to OBS first', 'error'); 
         showPage('setup');
@@ -2631,8 +3162,9 @@ async function executeSwap() {
     }
     if (isSwapping) { log('Swap in progress', 'error'); return; }
     
-    const nameA = document.getElementById('swapSourceA').value;
-    const nameB = document.getElementById('swapSourceB').value;
+    // Use override params if provided (from loadSwapConfig), otherwise read from dropdowns
+    const nameA = sourceAOverride || document.getElementById('swapSourceA').value;
+    const nameB = sourceBOverride || document.getElementById('swapSourceB').value;
     
     if (!nameA || !nameB) { log('Select both sources', 'error'); return; }
     if (nameA === nameB) { log('Select different sources', 'error'); return; }
@@ -2640,7 +3172,14 @@ async function executeSwap() {
     const idA = await getSceneItemId(nameA);
     const idB = await getSceneItemId(nameB);
     
-    if (!idA || !idB) { log('Source not found', 'error'); return; }
+    if (!idA) { 
+        log(`Source not found: "${nameA}" - not in current scene "${currentScene}"`, 'error'); 
+        return; 
+    }
+    if (!idB) { 
+        log(`Source not found: "${nameB}" - not in current scene "${currentScene}"`, 'error'); 
+        return; 
+    }
     
     isSwapping = true;
     const style = document.getElementById('swapStyle').value;
@@ -2653,15 +3192,99 @@ async function executeSwap() {
         const duration = parseInt(document.getElementById('swapDuration').value) || 400;
         const easing = document.getElementById('swapEasing').value;
         
-        // Properties to swap
-        const propsToSwap = ['positionX', 'positionY', 'boundsWidth', 'boundsHeight', 'scaleX', 'scaleY'];
+        // Read control panel settings
+        const preserveAspect = document.getElementById('swapPreserveAspect')?.checked ?? true;
+        const debugLogging = document.getElementById('swapDebugLogging')?.checked ?? false;
+        const tempOverride = document.getElementById('swapTempOverride')?.value || 'off';
         
-        const startA = {}, startB = {}, endA = {}, endB = {};
-        for (const p of propsToSwap) {
-            startA[p] = tA[p];
-            startB[p] = tB[p];
-            endA[p] = tB[p];
-            endB[p] = tA[p];
+        if (debugLogging) {
+            console.log('[Swap Debug] Transform A:', JSON.stringify(tA, null, 2));
+            console.log('[Swap Debug] Transform B:', JSON.stringify(tB, null, 2));
+            console.log('[Swap Debug] Settings - preserveAspect:', preserveAspect, 'tempOverride:', tempOverride);
+        }
+        
+        // Calculate visual sizes for each source
+        // Bounds mode: visual size = bounds
+        // Scale mode: visual size = sourceWidth * scaleX, sourceHeight * scaleY
+        const aUsesBounds = tA.boundsWidth >= 1 && tA.boundsHeight >= 1;
+        const bUsesBounds = tB.boundsWidth >= 1 && tB.boundsHeight >= 1;
+        
+        // Get visual sizes
+        const sizeA = {
+            width: aUsesBounds ? tA.boundsWidth : (tA.sourceWidth * tA.scaleX),
+            height: aUsesBounds ? tA.boundsHeight : (tA.sourceHeight * tA.scaleY)
+        };
+        const sizeB = {
+            width: bUsesBounds ? tB.boundsWidth : (tB.sourceWidth * tB.scaleX),
+            height: bUsesBounds ? tB.boundsHeight : (tB.sourceHeight * tB.scaleY)
+        };
+        
+        if (debugLogging) {
+            console.log('[Swap Debug] A uses bounds:', aUsesBounds, 'size:', sizeA);
+            console.log('[Swap Debug] B uses bounds:', bUsesBounds, 'size:', sizeB);
+        }
+        
+        // Build start and end states - swap positions and visual sizes
+        const startA = {
+            positionX: tA.positionX,
+            positionY: tA.positionY
+        };
+        const startB = {
+            positionX: tB.positionX,
+            positionY: tB.positionY
+        };
+        
+        // End positions: swap them
+        const endA = {
+            positionX: tB.positionX,
+            positionY: tB.positionY
+        };
+        const endB = {
+            positionX: tA.positionX,
+            positionY: tA.positionY
+        };
+        
+        // Handle sizing based on what each source uses
+        // A should end up with B's visual size, and vice versa
+        if (aUsesBounds) {
+            startA.boundsWidth = tA.boundsWidth;
+            startA.boundsHeight = tA.boundsHeight;
+            endA.boundsWidth = sizeB.width;
+            endA.boundsHeight = sizeB.height;
+        } else {
+            startA.scaleX = tA.scaleX;
+            startA.scaleY = tA.scaleY;
+            // Convert B's size to scale for A
+            endA.scaleX = sizeB.width / (tA.sourceWidth || sizeA.width / tA.scaleX);
+            endA.scaleY = sizeB.height / (tA.sourceHeight || sizeA.height / tA.scaleY);
+        }
+        
+        if (bUsesBounds) {
+            startB.boundsWidth = tB.boundsWidth;
+            startB.boundsHeight = tB.boundsHeight;
+            endB.boundsWidth = sizeA.width;
+            endB.boundsHeight = sizeA.height;
+        } else {
+            startB.scaleX = tB.scaleX;
+            startB.scaleY = tB.scaleY;
+            // Convert A's size to scale for B
+            endB.scaleX = sizeA.width / (tB.sourceWidth || sizeB.width / tB.scaleX);
+            endB.scaleY = sizeA.height / (tB.sourceHeight || sizeB.height / tB.scaleY);
+        }
+        
+        // Build propsToSwap for animation functions
+        const propsToSwap = ['positionX', 'positionY'];
+        if (aUsesBounds || bUsesBounds) {
+            if (startA.boundsWidth !== undefined) propsToSwap.push('boundsWidth', 'boundsHeight');
+            if (startA.scaleX !== undefined) propsToSwap.push('scaleX', 'scaleY');
+        } else {
+            propsToSwap.push('scaleX', 'scaleY');
+        }
+        
+        if (debugLogging) {
+            console.log('[Swap Debug] startA:', startA, 'endA:', endA);
+            console.log('[Swap Debug] startB:', startB, 'endB:', endB);
+            console.log('[Swap Debug] propsToSwap:', propsToSwap);
         }
         
         if (style === 'teleport' || duration <= 0) {
@@ -2684,16 +3307,25 @@ async function executeSwap() {
             // Default slide
             const startTime = performance.now();
             
-            await new Promise(resolve => {
+            await new Promise((resolve, reject) => {
                 function animate() {
                     const elapsed = performance.now() - startTime;
                     const rawT = Math.min(elapsed / duration, 1);
                     const t = easeFunc(rawT, easing);
                     
-                    const currentA = {}, currentB = {};
-                    for (const p of propsToSwap) {
-                        currentA[p] = lerp(startA[p], endA[p], t);
-                        currentB[p] = lerp(startB[p], endB[p], t);
+                    // Lerp each source's own properties (they may differ)
+                    const currentA = {};
+                    const currentB = {};
+                    
+                    for (const p of Object.keys(startA)) {
+                        if (endA[p] !== undefined) {
+                            currentA[p] = lerp(startA[p], endA[p], t);
+                        }
+                    }
+                    for (const p of Object.keys(startB)) {
+                        if (endB[p] !== undefined) {
+                            currentB[p] = lerp(startB[p], endB[p], t);
+                        }
                     }
                     
                     Promise.all([
@@ -2705,10 +3337,37 @@ async function executeSwap() {
                         } else {
                             resolve();
                         }
+                    }).catch(err => {
+                        console.error('[Swap] Default slide error:', err);
+                        reject(err);
                     });
                 }
                 requestAnimationFrame(animate);
             });
+        }
+        
+        // Apply bounds type if using bounds (based on settings)
+        if (aUsesBounds) {
+            let boundsType = preserveAspect ? 'OBS_BOUNDS_SCALE_INNER' : 'OBS_BOUNDS_STRETCH';
+            if (tempOverride === 'preserve') boundsType = 'OBS_BOUNDS_SCALE_INNER';
+            else if (tempOverride === 'stretch') boundsType = 'OBS_BOUNDS_STRETCH';
+            
+            await request('SetSceneItemTransform', {
+                sceneName: currentScene,
+                sceneItemId: idA,
+                sceneItemTransform: { boundsType }
+            }).catch(e => console.warn('[Swap] Could not set bounds type for A:', e));
+        }
+        if (bUsesBounds) {
+            let boundsType = preserveAspect ? 'OBS_BOUNDS_SCALE_INNER' : 'OBS_BOUNDS_STRETCH';
+            if (tempOverride === 'preserve') boundsType = 'OBS_BOUNDS_SCALE_INNER';
+            else if (tempOverride === 'stretch') boundsType = 'OBS_BOUNDS_STRETCH';
+            
+            await request('SetSceneItemTransform', {
+                sceneName: currentScene,
+                sceneItemId: idB,
+                sceneItemTransform: { boundsType }
+            }).catch(e => console.warn('[Swap] Could not set bounds type for B:', e));
         }
         
         log(`Swapped ${nameA} ↔ ${nameB}`, 'success');
@@ -2786,13 +3445,24 @@ function renderSavedSwaps() {
         `).join('');
     }
     renderDashSwaps();
+    
+    // Initialize/refresh search for swap configs
+    initSearchForList('swapConfigs', 'swapConfigsSearchInput', container, swapConfigs.length);
 }
 
 function loadSwapConfig(index) {
     const c = swapConfigs[index];
-    document.getElementById('swapSourceA').value = c.sourceA;
-    document.getElementById('swapSourceB').value = c.sourceB;
-    executeSwap();
+    if (!c) {
+        log('Config not found', 'error');
+        return;
+    }
+    // Pass sources directly to executeSwap, bypassing dropdown dependency
+    // Also update dropdowns if possible (for visual feedback)
+    const selA = document.getElementById('swapSourceA');
+    const selB = document.getElementById('swapSourceB');
+    if (selA) selA.value = c.sourceA;
+    if (selB) selB.value = c.sourceB;
+    executeSwap(c.sourceA, c.sourceB);
 }
 
 function deleteSwapConfig(index) {
@@ -2876,6 +3546,9 @@ function renderTextCyclerConfigs() {
             </div>
         </div>
     `).join('');
+    
+    // Initialize/refresh search for text configs
+    initSearchForList('textConfigs', 'textConfigsSearchInput', container, textCyclerConfigs.length);
 }
 
 function newTextConfig() {

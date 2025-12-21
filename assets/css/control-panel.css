@@ -71,7 +71,7 @@ body {
 }
 
 /* ============ Layout ============ */
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .header {
     background: var(--card);
     border-bottom: 1px solid var(--border);
@@ -117,7 +117,7 @@ body {
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* ============ Content ============ */
-.content { flex: 1; padding: 20px; overflow-y: auto; }
+.content { flex: 1; padding: 20px; overflow-y: auto; min-height: 0; }
 .page { display: none; }
 .page.active { display: block; }
 
@@ -669,7 +669,6 @@ input[type="range"] {
     background: var(--danger);
     color: #fff;
 }
-
 .tab.disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -747,4 +746,282 @@ input[type="range"] {
     .card { padding: 12px; }
     .grid { grid-template-columns: 1fr 1fr; }
     .source-btn { padding: 12px 8px; font-size: 0.85em; }
+}
+
+/* ============ Split Layout with Activity Log ============ */
+.split-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
+}
+
+.split-main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.split-divider {
+    height: 6px;
+    background: var(--border);
+    cursor: ns-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.split-divider:hover,
+.split-divider.dragging {
+    background: var(--accent);
+}
+.split-divider::after {
+    content: '';
+    width: 40px;
+    height: 3px;
+    background: var(--muted);
+    border-radius: 2px;
+}
+.split-divider:hover::after,
+.split-divider.dragging::after {
+    background: var(--bg);
+}
+
+.split-log {
+    background: var(--bg-dark);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: height 0.2s ease;
+}
+.split-log.collapsed {
+    height: auto;
+}
+.split-log.collapsed .split-log__content,
+.split-log.collapsed .split-divider {
+    display: none;
+}
+
+.split-log__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    height: 34px;
+}
+.split-log__toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.75em;
+    transition: color 0.15s;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+.split-log__toggle:hover {
+    color: var(--text);
+}
+.split-log__title {
+    font-size: 0.75em;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    line-height: 1;
+}
+.split-log__search {
+    flex: 1;
+    max-width: 160px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+.split-log__search.search-box {
+    margin-bottom: 0;
+}
+.split-log__search .search-box__input {
+    width: 100%;
+    margin: 0;
+    padding: 5px 24px 5px 26px;
+    font-size: 0.75em;
+    height: 24px;
+    line-height: 1;
+    border-radius: 4px;
+}
+.split-log__search .search-box__icon {
+    font-size: 0.7em;
+    left: 7px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.split-log__search .search-box__clear {
+    font-size: 0.65em;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 2px 4px;
+}
+.split-log__clear {
+    font-size: 0.7em;
+    padding: 4px 10px;
+    white-space: nowrap;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+}
+.split-log__clear:hover {
+    color: var(--accent-light);
+    background: transparent;
+}
+
+.split-log__content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 11px;
+    background: #000;
+}
+
+/* ============ Collapsible Cards ============ */
+.card.collapsible > h3 {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.card.collapsible > h3::after {
+    content: '▼';
+    font-size: 0.7em;
+    transition: transform 0.2s;
+    color: var(--muted);
+}
+.card.collapsible.collapsed > h3::after {
+    transform: rotate(-90deg);
+}
+.card.collapsible.collapsed > h3 {
+    margin-bottom: 0;
+}
+.card.collapsible > .card-body {
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease, margin-top 0.2s ease;
+    max-height: 2000px;
+    opacity: 1;
+    margin-top: 12px;
+}
+.card.collapsible.collapsed > .card-body {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
+/* ============ Smart Search Module ============ */
+.search-box {
+    position: relative;
+    margin-bottom: 8px;
+}
+.search-box__input {
+    padding-left: 32px;
+    padding-right: 28px;
+    margin-bottom: 0;
+}
+.search-box__icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 0.9em;
+    pointer-events: none;
+}
+.search-box__clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 0.8em;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.search-box__input:not(:placeholder-shown) + .search-box__icon + .search-box__clear {
+    opacity: 1;
+}
+.search-box__clear:hover {
+    color: var(--text);
+}
+
+.search-box__count {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7em;
+    color: var(--muted);
+    background: var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+/* Search highlight */
+.search-highlight {
+    background: var(--accent);
+    color: var(--bg);
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* Hidden by search filter */
+.search-hidden {
+    display: none;
+}
+
+/* No results message */
+.search-no-results {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 0.9em;
+}
+
+/* ============ Log Entry Enhancements ============ */
+.log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.log-entry:last-child {
+    border-bottom: none;
+}
+.log-entry__time {
+    color: var(--muted);
+    margin-right: 8px;
+    font-size: 0.9em;
+}
+.log-entry__text {
+    word-break: break-word;
 }
