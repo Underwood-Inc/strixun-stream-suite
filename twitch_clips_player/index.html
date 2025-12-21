@@ -8,10 +8,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png">
     <style>
         :root {
-            --bg: #0d1117;
-            --surface: #161b22;
-            --text: #c9d1d9;
-            --accent: #58a6ff;
+            --bg: #1a1611;
+            --surface: #252017;
+            --text: #f9f9f9;
+            --accent: #edae49;
+            --muted: #888888;
+            --border: #3d3627;
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,11 +36,11 @@
         
         .logo { font-size: 64px; margin-bottom: 16px; }
         h1 { font-size: 1.8em; margin-bottom: 8px; }
-        .subtitle { color: #8b949e; margin-bottom: 24px; }
+        .subtitle { color: var(--muted); margin-bottom: 24px; }
         
         .redirect-notice {
             background: var(--surface);
-            border: 1px solid #30363d;
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 20px;
@@ -47,7 +49,7 @@
         .spinner {
             width: 24px;
             height: 24px;
-            border: 3px solid #30363d;
+            border: 3px solid var(--border);
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -79,7 +81,7 @@
         .footer {
             margin-top: 32px;
             font-size: 0.85em;
-            color: #8b949e;
+            color: var(--muted);
         }
     </style>
 </head>
@@ -92,7 +94,7 @@
         <div class="redirect-notice">
             <div class="spinner"></div>
             <p>Redirecting to Control Panel...</p>
-            <p style="margin-top: 12px; font-size: 0.9em; color: #8b949e;">
+            <p style="margin-top: 12px; font-size: 0.9em; color: var(--muted);">
                 Configure your clips player in the main control panel.
             </p>
         </div>

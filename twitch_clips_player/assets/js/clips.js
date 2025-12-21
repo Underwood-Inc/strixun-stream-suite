@@ -22,7 +22,7 @@ $(document).ready(function () {
     
     // Abort if no API server configured
     if (!apiServer) {
-        $('body').html('<div style="padding:20px;color:#ff6b6b;font-family:sans-serif;"><h2>⚠️ API Server Not Configured</h2><p>Add <code>?api=YOUR_CLOUDFLARE_WORKER_URL</code> to the URL.</p><p>See <code>serverless/SETUP.md</code> for setup instructions.</p></div>');
+        $('body').html('<div style="padding:20px;color:#ea2b1f;font-family:sans-serif;background:#1a1611;"><h2>⚠️ API Server Not Configured</h2><p>Add <code style="background:#3d3627;padding:2px 6px;border-radius:4px;">?api=YOUR_CLOUDFLARE_WORKER_URL</code> to the URL.</p><p>See <code style="background:#3d3627;padding:2px 6px;border-radius:4px;">serverless/SETUP.md</code> for setup instructions.</p></div>');
         return;
     }
 

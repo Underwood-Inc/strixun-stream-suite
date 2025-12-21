@@ -69,9 +69,9 @@ flowchart TB
     WS <--> Scripts
     CP -.->|BroadcastChannel| TCD
     
-    style OBS fill:#1a1a2e,stroke:#e94560,stroke-width:2px
-    style CP fill:#0f3460,stroke:#e94560
-    style Scripts fill:#16213e,stroke:#0f3460
+    style OBS fill:#1a1611,stroke:#edae49,stroke-width:2px
+    style CP fill:#edae49,stroke:#c68214
+    style Scripts fill:#252017,stroke:#3d3627
 ```
 
 ### Component Communication
@@ -123,9 +123,9 @@ flowchart LR
     LS -.->|Fallback| Cache
     RS -.->|Auto-Recovery| Cache
     
-    style IDB fill:#2ecc71,stroke:#27ae60
-    style LS fill:#f39c12,stroke:#e67e22
-    style RS fill:#3498db,stroke:#2980b9
+    style IDB fill:#edae49,stroke:#c68214
+    style LS fill:#c68214,stroke:#edae49
+    style RS fill:#6495ed,stroke:#4a7bc8
 ```
 
 ### File Structure
@@ -154,10 +154,10 @@ flowchart TD
     Assets --> JS[js/]
     Assets --> Img[images/]
     
-    style Root fill:#1a1a2e,stroke:#e94560
-    style Lua fill:#9b59b6,stroke:#8e44ad
-    style Browser fill:#3498db,stroke:#2980b9
-    style Clips fill:#e74c3c,stroke:#c0392b
+    style Root fill:#1a1611,stroke:#edae49
+    style Lua fill:#edae49,stroke:#c68214
+    style Browser fill:#6495ed,stroke:#4a7bc8
+    style Clips fill:#c68214,stroke:#edae49
 ```
 
 ### Animation State Machine
@@ -204,8 +204,8 @@ flowchart TB
         TCD2 -->|CSS Animations| Display[Animated Text]
     end
     
-    style Modern fill:#2ecc71,stroke:#27ae60
-    style Legacy fill:#f39c12,stroke:#e67e22
+    style Modern fill:#edae49,stroke:#c68214
+    style Legacy fill:#3d3627,stroke:#252017
 ```
 
 ---
@@ -268,8 +268,8 @@ flowchart LR
     F --> G[Configure Scripts]
     G --> H[🎉 Done!]
     
-    style A fill:#e74c3c
-    style H fill:#2ecc71
+    style A fill:#c68214,stroke:#edae49
+    style H fill:#28a745,stroke:#1e8449
 ```
 
 ### Manual Installation
@@ -406,10 +406,10 @@ flowchart TB
     LS -->|Empty?| RS
     RS -->|Offer Recovery| User
     
-    style Layer1 fill:#2ecc71,stroke:#27ae60
-    style Layer2 fill:#f39c12,stroke:#e67e22  
-    style Layer3 fill:#3498db,stroke:#2980b9
-    style Layer4 fill:#9b59b6,stroke:#8e44ad
+    style Layer1 fill:#edae49,stroke:#c68214
+    style Layer2 fill:#c68214,stroke:#edae49
+    style Layer3 fill:#6495ed,stroke:#4a7bc8
+    style Layer4 fill:#28a745,stroke:#1e8449
 ```
 
 ### Storage Implementation Details
