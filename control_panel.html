@@ -2905,6 +2905,8 @@ function getClientId() {
 /**
  * Request storage from OBS dock - OVERWRITES local storage completely
  * This is the "pull" operation - get state from the source of truth
+ * 
+ * NEW APPROACH: Use OBS persistent data (shared across all WebSocket clients)
  */
 async function requestStorageFromOBS() {
     if (!connected) {
@@ -2913,27 +2915,36 @@ async function requestStorageFromOBS() {
     }
     
     pendingStorageRequest = true;
-    log('Requesting storage from OBS dock...', 'info');
+    log('📥 Pulling storage from OBS persistent data...', 'info');
     
     try {
-        await request('BroadcastCustomEvent', {
-            eventData: { 
-                type: 'strixun_storage_request',
-                requesterId: getClientId(),
-                timestamp: Date.now()
-            }
+        // Get persistent data stored in OBS (realm: OBS_WEBSOCKET_DATA_REALM_GLOBAL, slot: strixun_configs)
+        const response = await request('GetPersistentData', {
+            realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
+            slotName: 'strixun_configs'
         });
         
-        // Timeout after 5 seconds if no response
-        setTimeout(() => {
-            if (pendingStorageRequest) {
-                pendingStorageRequest = false;
-                log('No response from OBS dock (is it connected?)', 'warning');
-            }
-        }, 5000);
+        if (response && response.slotValue) {
+            const storedConfigs = JSON.parse(response.slotValue);
+            
+            pendingStorageRequest = false;
+            console.log('[Storage Sync] ✅ Retrieved from OBS persistent data:', storedConfigs);
+            applyIncomingStorage(storedConfigs);
+            log('✅ Storage synced from OBS!', 'success');
+        } else {
+            pendingStorageRequest = false;
+            log('ℹ️ No shared storage found in OBS (OBS dock may need to save first)', 'info');
+        }
     } catch (e) {
         pendingStorageRequest = false;
-        log('Storage request failed: ' + e, 'error');
+        console.error('[Storage Sync] Error:', e);
+        
+        // If persistent data doesn't exist yet, that's okay
+        if (e.toString().includes('does not exist')) {
+            log('ℹ️ No configs saved to OBS yet. Save something in the OBS dock first.', 'info');
+        } else {
+            log('⚠️ Storage sync failed: ' + e.message, 'error');
+        }
     }
 }
 
@@ -2978,19 +2989,26 @@ function loadAutoSyncPref() {
 }
 
 /**
- * Broadcast our storage to all connected clients via OBS CustomEvent
- * Includes rate limiting and deduplication
+ * Save storage to OBS persistent data (shared across all WebSocket clients)
+ * This is the NEW approach - write to OBS so remote clients can read
  */
 async function broadcastStorage() {
     if (!connected) {
-        console.log('[Broadcast] Skipped - not connected');
+        console.log('[Storage Sync] Skipped - not connected');
         return;
     }
     
-    // Rate limiting: don't broadcast more than once per second
+    // Only OBS dock should write to persistent storage
+    // Remote clients only read from it
+    if (!isOBSDock()) {
+        console.log('[Storage Sync] Skipped - only OBS dock writes to persistent storage');
+        return;
+    }
+    
+    // Rate limiting: don't write more than once per second
     const now = Date.now();
     if (now - lastBroadcastTime < MIN_BROADCAST_INTERVAL) {
-        console.log('[Broadcast] Rate limited, scheduling retry...');
+        console.log('[Storage Sync] Rate limited, scheduling retry...');
         // Schedule retry after interval
         if (storageSyncTimer) clearTimeout(storageSyncTimer);
         storageSyncTimer = setTimeout(() => broadcastStorage(), MIN_BROADCAST_INTERVAL);
@@ -2998,38 +3016,38 @@ async function broadcastStorage() {
     }
     
     const storageData = {
-        type: 'strixun_storage_broadcast',
-        timestamp: now,
-        source: 'strixun_control_panel',
-        clientId: getClientId(),
-        data: {
-            swapConfigs: swapConfigs || [],
-            textCyclerConfigs: textCyclerConfigs || [],
-            clipsConfigs: clipsConfigs || [],
-            layoutPresets: layoutPresets || []
-        }
+        swapConfigs: swapConfigs || [],
+        textCyclerConfigs: textCyclerConfigs || [],
+        clipsConfigs: clipsConfigs || [],
+        layoutPresets: layoutPresets || []
     };
     
-    // Create hash to avoid duplicate broadcasts
-    const dataStr = JSON.stringify(storageData.data);
-    const hash = dataStr.length + '_' + dataStr.substring(0, 50); // Better hash
+    // Create hash to avoid duplicate writes
+    const dataStr = JSON.stringify(storageData);
+    const hash = dataStr.length + '_' + dataStr.substring(0, 50);
     if (hash === lastStorageSyncHash) {
-        console.log('[Broadcast] Skipped - no changes detected');
+        console.log('[Storage Sync] Skipped - no changes detected');
         return;
     }
     lastStorageSyncHash = hash;
     lastBroadcastTime = now;
     
     try {
-        await request('BroadcastCustomEvent', { eventData: storageData });
-        console.log('[Broadcast] ✅ Sent to other clients', {
-            swaps: storageData.data.swapConfigs.length,
-            texts: storageData.data.textCyclerConfigs.length,
-            clips: storageData.data.clipsConfigs.length,
-            layouts: storageData.data.layoutPresets.length
+        // Write to OBS persistent data (global realm, accessible by all clients)
+        await request('SetPersistentData', {
+            realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
+            slotName: 'strixun_configs',
+            slotValue: dataStr
+        });
+        
+        console.log('[Storage Sync] ✅ Saved to OBS persistent data', {
+            swaps: storageData.swapConfigs.length,
+            texts: storageData.textCyclerConfigs.length,
+            clips: storageData.clipsConfigs.length,
+            layouts: storageData.layoutPresets.length
         });
     } catch (e) {
-        console.warn('[Broadcast] ⚠️ Failed:', e);
+        console.warn('[Storage Sync] ⚠️ Failed to write:', e);
         lastBroadcastTime = 0; // Allow retry immediately on next change
     }
 }
@@ -4327,6 +4345,12 @@ function saveCurrentSwap() {
     storage.set('swapConfigs', swapConfigs);
     renderSavedSwaps();
     log(`Saved config: ${name}`, 'success');
+    
+    // OBS dock: debounced save to persistent storage
+    if (isOBSDock() && connected) {
+        if (storageSyncTimer) clearTimeout(storageSyncTimer);
+        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+    }
 }
 
 function addSwapConfig() {
@@ -4406,6 +4430,12 @@ function deleteSwapConfig(index) {
     swapConfigs.splice(index, 1);
     storage.set('swapConfigs', swapConfigs);
     renderSavedSwaps();
+    
+    // OBS dock: debounced save to persistent storage
+    if (isOBSDock() && connected) {
+        if (storageSyncTimer) clearTimeout(storageSyncTimer);
+        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+    }
 }
 
 function exportConfigs() {
@@ -4562,6 +4592,12 @@ async function captureLayout() {
         storage.set('layoutPresets', layoutPresets);
         document.getElementById('layoutName').value = '';
         renderSavedLayouts();
+        
+        // OBS dock: debounced save to persistent storage
+        if (isOBSDock() && connected) {
+            if (storageSyncTimer) clearTimeout(storageSyncTimer);
+            storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+        }
         
     } catch (e) {
         log('Failed to capture layout: ' + e, 'error');
@@ -4807,6 +4843,12 @@ function deleteLayout(index) {
         storage.set('layoutPresets', layoutPresets);
         renderSavedLayouts();
         log(`Deleted layout: ${preset.name}`, 'info');
+        
+        // OBS dock: debounced save to persistent storage
+        if (isOBSDock() && connected) {
+            if (storageSyncTimer) clearTimeout(storageSyncTimer);
+            storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+        }
     }
 }
 
@@ -5107,6 +5149,12 @@ function deleteCurrentTextConfig() {
 
 function saveTextCyclerConfigs() {
     storage.set('textCyclerConfigs', textCyclerConfigs);
+    
+    // OBS dock: debounced save to persistent storage for remote clients
+    if (isOBSDock() && connected) {
+        if (storageSyncTimer) clearTimeout(storageSyncTimer);
+        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+    }
 }
 
 function exportTextConfigs() {
@@ -5910,6 +5958,12 @@ function deleteCurrentClipsConfig() {
 
 function saveClipsConfigs() {
     storage.set('clipsConfigs', clipsConfigs);
+    
+    // OBS dock: debounced save to persistent storage for remote clients
+    if (isOBSDock() && connected) {
+        if (storageSyncTimer) clearTimeout(storageSyncTimer);
+        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+    }
 }
 
 function exportClipsConfigs() {
