@@ -2824,6 +2824,10 @@ async function handleMessage(data, password) {
             delete pendingRequests[data.d.requestId];
         }
     } else if (data.op === 5) { // Event
+        // Log ALL CustomEvents before filtering
+        if (data.d?.eventType === 'CustomEvent') {
+            console.log('[RAW CustomEvent]', JSON.stringify(data.d, null, 2));
+        }
         handleEvent(data.d);
     }
 }
@@ -2935,13 +2939,21 @@ async function requestStorageFromOBS() {
 
 /**
  * Auto-sync on connection if checkbox is enabled
+ * ONLY for remote clients - OBS dock is the source of truth!
  */
 async function requestStorageSync() {
     if (!connected) return;
     
+    // OBS dock should NEVER request storage from itself - it IS the source
+    if (isOBSDock()) {
+        console.log('[Storage Sync] Running as OBS dock - skipping auto-pull (we are the source)');
+        return;
+    }
+    
     const autoSync = document.getElementById('autoSyncOnConnect')?.checked !== false;
     
     if (autoSync) {
+        console.log('[Storage Sync] Running as remote client - auto-pulling from OBS dock');
         await requestStorageFromOBS();
     }
 }
