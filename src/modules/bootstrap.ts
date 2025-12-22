@@ -9,6 +9,7 @@ import { connected, currentScene, sources, textSources } from '../stores/connect
 import { initIndexedDB, loadStorageCache, storage } from './storage';
 import { loadCredentials, connect as wsConnect } from './websocket';
 import * as textCycler from './text-cycler';
+import * as sourceSwaps from './source-swaps';
 
 /**
  * Initialize the application
@@ -41,28 +42,24 @@ export async function initializeApp(): Promise<void> {
  * Initialize all modules
  */
 async function initializeModules(): Promise<void> {
-  // Initialize Source Swaps
-  if (window.SourceSwaps) {
-    window.SourceSwaps.init({
-      storage: storage,
-      log: (msg: string, type?: string) => {
-        // Use logger module when available
-        if (window.App?.log) {
-          window.App.log(msg, type);
-        } else {
-          console.log(`[${type || 'info'}] ${msg}`);
-        }
-      },
-      get connected() { return window.connected || false; },
-      get currentScene() { return window.currentScene || ''; },
-      get sources() { return window.sources || []; },
-      request: window.request,
-      isOBSDock: window.isOBSDock,
-      showPage: navigateTo,
-      initSearchForList: window.UIUtils?.initSearchForList
-    });
-    window.SourceSwaps.loadConfigs();
-  }
+  // Initialize Source Swaps (TypeScript module)
+  sourceSwaps.init({
+    log: (msg: string, type?: string) => {
+      // Use logger module when available
+      if (window.App?.log) {
+        window.App.log(msg, type);
+      } else {
+        console.log(`[${type || 'info'}] ${msg}`);
+      }
+    },
+    isOBSDock: window.isOBSDock || (() => false),
+    showPage: navigateTo,
+    initSearchForList: window.UIUtils?.initSearchForList
+  });
+  sourceSwaps.loadConfigs();
+  
+  // Expose to window for legacy compatibility
+  (window as any).SourceSwaps = sourceSwaps;
   
   // Initialize Text Cycler (TypeScript module)
   textCycler.init({

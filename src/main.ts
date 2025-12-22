@@ -11,6 +11,7 @@ import './styles/main.scss';
 import './modules/storage';
 import './modules/websocket';
 import './modules/text-cycler';
+import './modules/source-swaps';
 
 // Initialize the app
 const app = new App({
