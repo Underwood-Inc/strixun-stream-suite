@@ -196,18 +196,26 @@ async function handleClips(request, env) {
         const data = await twitchApiRequest(endpoint, env);
         
         // Transform clips to include video URLs
-        // Twitch uses multiple CDN patterns, we'll try to get actual MP4 URLs via GQL
-        const clips = await Promise.all(data.data.map(async (clip, index) => {
+        // Use Twitch GQL API to get actual MP4 URLs
+        const clipsWithVideos = await Promise.all(data.data.map(async (clip, index) => {
             // Get actual video URL using Twitch GQL API
             const videoUrl = await getClipVideoUrl(clip.id, env);
+            
+            if (!videoUrl) {
+                console.log('Failed to get video URL for clip:', clip.id);
+                return null; // Skip clips without video URLs
+            }
             
             return {
                 ...clip,
                 item: index,
-                clip_url: videoUrl || clip.thumbnail_url.replace(/-preview-\d+x\d+\.jpg$/, '.mp4'),
+                clip_url: videoUrl,
                 thumbnail_url: clip.thumbnail_url
             };
         }));
+        
+        // Filter out null clips (those that failed to get video URLs)
+        const clips = clipsWithVideos.filter(clip => clip !== null);
 
         // Shuffle if requested
         if (shuffle) {
