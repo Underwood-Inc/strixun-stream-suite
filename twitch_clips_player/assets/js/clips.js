@@ -337,8 +337,8 @@ function initClipsPlayer() {
         });
 
     } else {
-        // Plays clips when scene is active
-        loadClip(channel[clip_index]);
+        // Plays clips when scene is active (after preload finishes)
+        // This will be called from the preload completion
     }
 
     // Hard-coded commands to control the current clip. Limited to mods and streamer
@@ -517,10 +517,20 @@ function initClipsPlayer() {
         currentPlayer.volume = 1.0; // Full volume
         currentPlayer.muted = false;
         
-        // Ensure it plays (twitch-video supports standard play() method)
-        currentPlayer.play().catch(e => {
-            console.warn('[Clips] Autoplay blocked, might need interaction:', e);
-        });
+        // Wait for the video to be loaded before playing
+        // twitch-video-element needs time to create its internal iframe
+        const onCanPlay = () => {
+            console.log('[Clips] Video ready, playing...');
+            if (currentPlayer && currentPlayer.play) {
+                currentPlayer.play().catch(e => {
+                    console.warn('[Clips] Autoplay blocked:', e);
+                });
+            }
+            currentPlayer.removeEventListener('canplay', onCanPlay);
+        };
+        
+        // Listen for canplay event (video is ready to play)
+        currentPlayer.addEventListener('canplay', onCanPlay, { once: true });
         
         // Pre-buffer next clip if available
         const nextIndex = (randomClip + 1) % clips_json.data.length;
@@ -667,6 +677,12 @@ function initClipsPlayer() {
             } catch (error) {
                 console.error('Error while preloading clip:', error);
             }
+        }
+        
+        // After preloading, start playing if not in command mode
+        if (!command || command === '') {
+            console.log('[Clips] Preload complete, starting playback...');
+            loadClip(channel[clip_index]);
         }
     }
 
