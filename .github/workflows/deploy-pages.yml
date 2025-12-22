@@ -14,7 +14,7 @@ on:
   push:
     branches: [main, master]
     paths-ignore:
-      - 'twitch_clips_player/serverless/**'
+      - 'serverless/**'
       - '.github/workflows/deploy-twitch-api.yml'
   workflow_dispatch:
 
@@ -48,7 +48,7 @@ jobs:
           CF_WORKERS_SUBDOMAIN: ${{ secrets.CF_WORKERS_SUBDOMAIN }}
         run: |
           # Read worker name from wrangler.toml
-          WORKER_NAME=$(grep '^name = ' twitch_clips_player/serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/')
+          WORKER_NAME=$(grep '^name = ' serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/')
           echo "Worker name: $WORKER_NAME"
           
           # Construct Worker URL using Cloudflare Workers subdomain from secrets
@@ -81,7 +81,7 @@ jobs:
           # Remove node_modules if exists
           rm -rf node_modules
           # Remove serverless backend (deployed separately to Cloudflare)
-          rm -rf twitch_clips_player/serverless
+          rm -rf serverless
           # Remove git-related files
           rm -rf .git .gitignore
           # Remove dev configs
@@ -108,7 +108,7 @@ jobs:
       - name: Deployment Summary
         run: |
           # Read worker name from wrangler.toml (from checked out code)
-          WORKER_NAME=$(grep '^name = ' twitch_clips_player/serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/' || echo "strixun-twitch-api")
+          WORKER_NAME=$(grep '^name = ' serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/' || echo "strixun-twitch-api")
           WORKER_URL="https://${WORKER_NAME}.${GITHUB_ACTOR}.workers.dev"
           
           echo "## 🌐 GitHub Pages Deployed!" >> $GITHUB_STEP_SUMMARY

@@ -90,7 +90,7 @@ jobs:
             -x ".changeset/*" \
             -x ".github/*" \
             -x ".cursor/*" \
-            -x "twitch_clips_player/serverless/*" \
+            -x "serverless/*" \
             -x "package.json" \
             -x "package-lock.json" \
             -x "pnpm-lock.yaml" \
