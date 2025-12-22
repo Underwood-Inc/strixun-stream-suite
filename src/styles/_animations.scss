@@ -166,6 +166,8 @@
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 0 $border-color;
+    // Maintain text color for contrast - black text on gold background
+    color: #000;
     // Can't use color.scale on CSS variables, so we'll use opacity or a lighter CSS variable
     // For retro style, we'll just keep the same color - the transform provides the feedback
   }

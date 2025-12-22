@@ -6,11 +6,59 @@
    */
   
   import type { LogEntry } from '../stores/activity-log';
+  import { logFilters } from '../stores/activity-log';
   
   export let entry: LogEntry;
   export let index: number = 0;
   
   let isHovered = false;
+  
+  // Function to highlight search matches in text
+  // Supports advanced syntax: quotes for exact, space for AND, | for OR, * for wildcard
+  function highlightSearch(text: string, query: string): string {
+    if (!query || !query.trim()) {
+      return text;
+    }
+    
+    // Extract quoted phrases
+    const quotedPhrases: string[] = [];
+    let processedQuery = query.replace(/"([^"]+)"/g, (match, phrase) => {
+      quotedPhrases.push(phrase);
+      return '';
+    });
+    
+    // Combine quoted phrases and remaining terms for highlighting
+    const allTerms: string[] = [...quotedPhrases];
+    
+    // Split remaining query by | for OR, then by space for AND
+    if (processedQuery.trim()) {
+      const orGroups = processedQuery.split('|').map(g => g.trim()).filter(g => g);
+      orGroups.forEach(group => {
+        const terms = group.split(/\s+/).filter(t => t);
+        terms.forEach(term => {
+          // Remove wildcard * for highlighting
+          const cleanTerm = term.endsWith('*') ? term.slice(0, -1) : term;
+          if (cleanTerm) {
+            allTerms.push(cleanTerm);
+          }
+        });
+      });
+    }
+    
+    // Highlight all terms
+    let highlighted = text;
+    allTerms.forEach(term => {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      highlighted = highlighted.replace(regex, '<span class="search-highlight">$1</span>');
+    });
+    
+    return highlighted;
+  }
+  
+  // Get highlighted message
+  $: highlightedMessage = highlightSearch(entry.message, $logFilters.searchQuery);
+  $: highlightedFlair = entry.flair ? highlightSearch(entry.flair, $logFilters.searchQuery) : '';
   
   function formatTime(date: Date): string {
     return date.toLocaleTimeString('en-US', { 
@@ -51,38 +99,41 @@
   </div>
   
   <div class="log-entry__content">
-    <div class="log-entry__header">
-      <span class="log-entry__time" title={entry.timestamp.toISOString()}>
-        {formatTime(entry.timestamp)}
+    <span class="log-entry__time" title={entry.timestamp.toISOString()}>
+      {formatTime(entry.timestamp)}
+    </span>
+    {#if entry.flair}
+      <span class="log-entry__flair log-entry__flair--{entry.type}">
+        {@html highlightedFlair}
       </span>
-      {#if entry.flair}
-        <span class="log-entry__flair log-entry__flair--{entry.type}">
-          {entry.flair}
-        </span>
-      {/if}
-      <button 
-        class="log-entry__copy"
-        on:click={copyMessage}
-        title="Copy message"
-        aria-label="Copy message"
-      >
-        📋
-      </button>
-    </div>
-    <div class="log-entry__text">
-      {entry.message}
-    </div>
+    {/if}
+    <span class="log-entry__text">
+      {@html highlightedMessage}
+    </span>
+    {#if entry.count && entry.count > 1}
+      <span class="log-entry__count" title="This message appeared {entry.count} times">
+        x{entry.count}
+      </span>
+    {/if}
+    <button 
+      class="log-entry__copy"
+      on:click={copyMessage}
+      title="Copy message"
+      aria-label="Copy message"
+    >
+      📋
+    </button>
   </div>
 </div>
 
 <style lang="scss">
   .log-entry {
     display: flex;
-    gap: 10px;
-    padding: 8px 12px;
-    margin-bottom: 4px;
-    border-radius: 6px;
-    border-left: 3px solid transparent;
+    gap: 8px;
+    padding: 4px 8px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
     background: var(--bg-dark);
     transition: all 0.2s ease;
     animation: slide-in 0.3s ease;
@@ -93,15 +144,19 @@
       background: var(--border);
       transform: translateX(2px);
       
+      .log-entry__text {
+        color: var(--text);
+      }
+      
       .log-entry__copy {
         opacity: 1;
       }
     }
     
     &__icon {
-      font-size: 1.1em;
+      font-size: 0.95em;
       flex-shrink: 0;
-      width: 24px;
+      width: 18px;
       text-align: center;
       opacity: 0.8;
     }
@@ -109,61 +164,54 @@
     &__content {
       flex: 1;
       min-width: 0;
-    }
-    
-    &__header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
+      gap: 6px;
+      overflow: hidden;
     }
     
     &__time {
       font-family: 'Courier New', monospace;
-      font-size: 0.75em;
+      font-size: 0.7em;
       color: var(--muted);
       white-space: nowrap;
+      flex-shrink: 0;
     }
     
     &__flair {
       display: inline-block;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.7em;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.65em;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       white-space: nowrap;
-      
-      &--success {
-        background: rgba(40, 167, 69, 0.2);
-        color: var(--success);
-        border: 1px solid var(--success);
-      }
-      
-      &--error {
-        background: rgba(234, 43, 31, 0.2);
-        color: var(--danger);
-        border: 1px solid var(--danger);
-      }
-      
-      &--warning {
-        background: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-        border: 1px solid #ffc107;
-      }
-      
-      &--info {
-        background: rgba(100, 149, 237, 0.2);
-        color: var(--info);
-        border: 1px solid var(--info);
-      }
-      
-      &--debug {
-        background: rgba(128, 128, 128, 0.2);
-        color: var(--muted);
-        border: 1px solid var(--muted);
-      }
+      flex-shrink: 0;
+    }
+    
+    &__text {
+      font-size: 0.85em;
+      color: var(--text);
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    &__count {
+      display: inline-block;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.65em;
+      font-weight: 600;
+      color: var(--muted);
+      background: rgba(128, 128, 128, 0.15);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     
     &__copy {
@@ -175,18 +223,11 @@
       font-size: 0.85em;
       opacity: 0;
       transition: opacity 0.2s, color 0.2s;
-      margin-left: auto;
+      flex-shrink: 0;
       
       &:hover {
         color: var(--text);
       }
-    }
-    
-    &__text {
-      font-size: 0.9em;
-      color: var(--text);
-      line-height: 1.4;
-      word-wrap: break-word;
     }
     
     // Type-specific styling

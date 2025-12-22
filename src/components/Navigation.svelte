@@ -10,14 +10,14 @@
   import { celebrateClick } from '../utils/particles';
   
   const tabs = [
-    { id: 'dashboard', icon: '🏠', label: 'Dashboard', requiresConnection: false },
-    { id: 'sources', icon: '📦', label: 'Sources', requiresConnection: true },
-    { id: 'text', icon: '📝', label: 'Text Cycler', requiresConnection: true },
-    { id: 'swaps', icon: '🔄', label: 'Swaps', requiresConnection: true },
-    { id: 'layouts', icon: '📐', label: 'Layouts', requiresConnection: true },
-    { id: 'scripts', icon: '📜', label: 'Script Manager', requiresConnection: false },
-    { id: 'install', icon: '📥', label: 'Installer', requiresConnection: false },
-    { id: 'setup', icon: '⚙️', label: 'Setup', requiresConnection: false }
+    { id: 'dashboard', numeral: 'I', label: 'Dashboard', requiresConnection: false },
+    { id: 'sources', numeral: 'II', label: 'Sources', requiresConnection: true },
+    { id: 'text', numeral: 'III', label: 'Text Cycler', requiresConnection: true },
+    { id: 'swaps', numeral: 'IV', label: 'Swaps', requiresConnection: true },
+    { id: 'layouts', numeral: 'V', label: 'Layouts', requiresConnection: true },
+    { id: 'scripts', numeral: 'VI', label: 'Script Manager', requiresConnection: false },
+    { id: 'install', numeral: 'VII', label: 'Installer', requiresConnection: false },
+    { id: 'setup', numeral: 'VIII', label: 'Setup', requiresConnection: false }
   ];
   
   function handleTabClick(e: MouseEvent, tabId: string, requiresConnection: boolean): void {
@@ -52,7 +52,8 @@
       on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
       title={tab.label}
     >
-      {tab.icon}
+      <span class="tab__numeral">{tab.numeral}</span>
+      <span class="tab__label">{tab.label}</span>
     </button>
   {/each}
 </nav>
@@ -77,14 +78,34 @@
       cursor: pointer;
       color: var(--text-secondary);
       transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-      font-size: 1.1em;
+      font-size: 0.9em;
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 6px;
       min-width: 50px;
       position: relative;
       box-shadow: 0 2px 0 var(--border);
       @include ripple-effect(rgba(255, 255, 255, 0.1));
+      
+      &__numeral {
+        font-variant-numeric: oldstyle-nums;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+        font-size: 0.85em;
+      }
+      
+      &__label {
+        display: none;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.75em;
+        
+        @media (min-width: 800px) {
+          display: inline;
+        }
+      }
       
       // Staggered animation on mount
       animation: slide-down 0.3s ease-out backwards;

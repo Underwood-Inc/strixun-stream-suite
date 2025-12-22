@@ -23,6 +23,17 @@ body {
   @include scrollbar;
 }
 
+// ============ Text Selection ============
+::selection {
+  background: rgba(237, 174, 73, 0.3);
+  color: var(--accent-light);
+}
+
+::-moz-selection {
+  background: rgba(237, 174, 73, 0.3);
+  color: var(--accent-light);
+}
+
 // ============ Typography ============
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
@@ -74,9 +85,11 @@ button {
     background: transparent;
     color: var(--accent);
     padding: 4px 8px;
+    transition: all 0.2s ease;
     
     &:hover {
       background: rgba(237, 174, 73, 0.1);
+      color: var(--accent-light);
       text-decoration: none;
     }
   }

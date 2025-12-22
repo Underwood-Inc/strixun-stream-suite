@@ -542,7 +542,7 @@ export function log(msg: string, type: string = 'info', flair?: string, icon?: s
     if (!detectedFlair) {
       const upperMsg = msg.toUpperCase();
       if (upperMsg.includes('CONNECTED') || upperMsg.includes('SUCCESS')) {
-        detectedFlair = 'CONNECTED';
+        detectedFlair = 'CONNECTION';
       } else if (upperMsg.includes('ERROR') || upperMsg.includes('FAILED')) {
         detectedFlair = 'ERROR';
       } else if (upperMsg.includes('WARNING') || upperMsg.includes('WARN')) {

@@ -142,7 +142,7 @@
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: height 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 0;
   overflow: hidden;
   // GPU acceleration for smooth resizing
@@ -158,12 +158,11 @@
     height: 34px;
     
     .split-log__content {
-      // Don't hide immediately - delay opacity so height animates first
       overflow: hidden;
       max-height: 0;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s ease-out 0.2s, max-height 0.3s ease-out;
+      transition: opacity 0.15s ease-out, max-height 0.15s ease-out;
     }
   }
   
@@ -171,7 +170,7 @@
     opacity: 1;
     pointer-events: auto;
     max-height: 1000px;
-    transition: opacity 0.3s ease-in 0.1s, max-height 0.3s ease-in;
+    transition: opacity 0.2s ease-in, max-height 0.2s ease-in;
   }
 }
 
