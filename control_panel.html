@@ -9,6 +9,8 @@
     <script src="config.js"></script>
     <!-- Text Cycler Module -->
     <script src="assets/js/text-cycler.js"></script>
+    <!-- Storage Sync Module -->
+    <script src="assets/js/storage-sync.js"></script>
 </head>
 <body>
     <div class="app">
@@ -2303,10 +2305,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             isOBSDock,
             request,
             get sources() { return sources; },
-            get storageSyncTimer() { return storageSyncTimer; },
-            set storageSyncTimer(val) { storageSyncTimer = val; },
-            broadcastStorage,
-            STORAGE_SYNC_DEBOUNCE: 500
+            get storageSyncTimer() { return window.StorageSync ? window.StorageSync.storageSyncTimer : null; },
+            set storageSyncTimer(val) { if (window.StorageSync) window.StorageSync.storageSyncTimer = val; },
+            broadcastStorage: () => { if (window.StorageSync) window.StorageSync.scheduleBroadcast(); },
+            STORAGE_SYNC_DEBOUNCE: window.StorageSync ? window.StorageSync.STORAGE_SYNC_DEBOUNCE : 500
         });
         TextCycler.loadConfigs();
         
@@ -2371,7 +2373,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateTransitionMode();
     updateStorageStatus();
     initVersionDisplay();
-    loadAutoSyncPref();
+    
+    // Initialize Storage Sync module
+    if (window.StorageSync) {
+        StorageSync.init({
+            storage,
+            log,
+            get connected() { return connected; },
+            isOBSDock,
+            request,
+            // Callbacks for getting/setting configs
+            getSwapConfigs: () => swapConfigs || [],
+            setSwapConfigs: (val) => { swapConfigs = val; },
+            getTextCyclerConfigs: () => window.TextCycler ? window.TextCycler.getConfigs() : [],
+            setTextCyclerConfigs: (val) => { if (window.TextCycler) window.TextCycler.setConfigs(val); },
+            getLayoutPresets: () => layoutPresets || [],
+            setLayoutPresets: (val) => { layoutPresets = val; },
+            // Render callbacks
+            renderSavedSwaps,
+            renderTextCyclerConfigs: () => { if (window.TextCycler) window.TextCycler.renderConfigs(); },
+            renderSavedLayouts,
+            updateStorageStatus
+        });
+        StorageSync.loadAutoSyncPref();
+    }
+    
     loadTwitchSettings();
     
     // Setup credential UI listeners
@@ -2656,31 +2682,9 @@ function handleEvent(event) {
             timestamp: customData?.timestamp
         });
         
-        if (customData?.type === 'strixun_storage_broadcast') {
-            // Ignore our own broadcasts (prevent echo)
-            if (customData.clientId === getClientId()) {
-                console.log('[Storage Sync] Ignoring own broadcast (echo prevention)');
-                return;
-            }
-            
-            log('📥 Received storage broadcast from another client', 'info');
-            handleStorageBroadcast(customData);
-        } else if (customData?.type === 'strixun_storage_request') {
-            console.log('[Storage Sync] 🔔 Storage request received!', {
-                requesterId: customData.requesterId,
-                ourClientId: getClientId(),
-                isOurOwn: customData.requesterId === getClientId()
-            });
-            
-            // Ignore our own requests (prevent echo)
-            if (customData.requesterId === getClientId()) {
-                console.log('[Storage Sync] Ignoring own storage request (echo prevention)');
-                return;
-            }
-            
-            console.log('[Storage Sync] 📤 Responding to storage request!');
-            log('📤 Another client requesting storage - broadcasting...', 'info');
-            broadcastStorage();
+        // Delegate storage sync events to StorageSync module
+        if (window.StorageSync && (customData?.type === 'strixun_storage_broadcast' || customData?.type === 'strixun_storage_request')) {
+            window.StorageSync.handleCustomEvent(customData);
         } else if (customData?.type === 'strixun_text_cycler_msg') {
             // Handle text cycler messages from remote control panel (same pattern as quick swaps)
             // Remote sends via WebSocket, OBS dock receives and handles locally
@@ -2708,87 +2712,31 @@ function handleEvent(event) {
 }
 
 // ============ Storage Sync (Cross-Client via OBS WebSocket) ============
-const STORAGE_SYNC_DEBOUNCE = 500; // Reduced from 2000ms for faster sync
-let storageSyncTimer = null;
-let lastStorageSyncHash = '';
-let lastBroadcastTime = 0;
-const MIN_BROADCAST_INTERVAL = 1000; // Minimum 1s between broadcasts
-let pendingStorageRequest = false; // Flag: we're waiting for storage response
+// Functions moved to assets/js/storage-sync.js module
+// Wrapper functions for backward compatibility:
 
 /**
  * Generate a unique client ID for this session
  */
 function getClientId() {
-    if (!window._strixunClientId) {
-        window._strixunClientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-    return window._strixunClientId;
+    return window.StorageSync ? window.StorageSync.getClientId() : 'client_' + Date.now();
 }
 
 /**
- * Request storage from OBS dock - OVERWRITES local storage completely
- * This is the "pull" operation - get state from the source of truth
- * 
- * NEW APPROACH: Use OBS persistent data (shared across all WebSocket clients)
+ * Request storage from OBS dock
  */
 async function requestStorageFromOBS() {
-    if (!connected) {
-        log('Connect to OBS first', 'error');
-        return;
-    }
-    
-    pendingStorageRequest = true;
-    log('📥 Pulling storage from OBS persistent data...', 'info');
-    
-    try {
-        // Get persistent data stored in OBS (realm: OBS_WEBSOCKET_DATA_REALM_GLOBAL, slot: strixun_configs)
-        const response = await request('GetPersistentData', {
-            realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
-            slotName: 'strixun_configs'
-        });
-        
-        if (response && response.slotValue) {
-            const storedConfigs = JSON.parse(response.slotValue);
-            
-                pendingStorageRequest = false;
-            console.log('[Storage Sync] ✅ Retrieved from OBS persistent data:', storedConfigs);
-            applyIncomingStorage(storedConfigs);
-            log('✅ Storage synced from OBS!', 'success');
-        } else {
-            pendingStorageRequest = false;
-            log('ℹ️ No shared storage found in OBS (OBS dock may need to save first)', 'info');
-        }
-    } catch (e) {
-        pendingStorageRequest = false;
-        console.error('[Storage Sync] Error:', e);
-        
-        // If persistent data doesn't exist yet, that's okay
-        if (e.toString().includes('does not exist')) {
-            log('ℹ️ No configs saved to OBS yet. Save something in the OBS dock first.', 'info');
-        } else {
-            log('⚠️ Storage sync failed: ' + e.message, 'error');
-        }
+    if (window.StorageSync) {
+        return window.StorageSync.requestStorageFromOBS();
     }
 }
 
 /**
  * Auto-sync on connection if checkbox is enabled
- * ONLY for remote clients - OBS dock is the source of truth!
  */
 async function requestStorageSync() {
-    if (!connected) return;
-    
-    // OBS dock should NEVER request storage from itself - it IS the source
-    if (isOBSDock()) {
-        console.log('[Storage Sync] Running as OBS dock - skipping auto-pull (we are the source)');
-        return;
-    }
-    
-    const autoSync = document.getElementById('autoSyncOnConnect')?.checked !== false;
-    
-    if (autoSync) {
-        console.log('[Storage Sync] Running as remote client - auto-pulling from OBS dock');
-        await requestStorageFromOBS();
+    if (window.StorageSync) {
+        return window.StorageSync.requestStorageSync();
     }
 }
 
@@ -2796,157 +2744,54 @@ async function requestStorageSync() {
  * Save auto-sync preference
  */
 function saveAutoSyncPref() {
-    const checked = document.getElementById('autoSyncOnConnect')?.checked;
-    storage.set('autoSyncOnConnect', checked);
+    if (window.StorageSync) {
+        window.StorageSync.saveAutoSyncPref();
+    }
 }
 
 /**
  * Load auto-sync preference on init
  */
 function loadAutoSyncPref() {
-    const saved = storage.get('autoSyncOnConnect');
-    const checkbox = document.getElementById('autoSyncOnConnect');
-    if (checkbox && saved !== null) {
-        checkbox.checked = saved;
+    if (window.StorageSync) {
+        window.StorageSync.loadAutoSyncPref();
     }
 }
 
 /**
- * Save storage to OBS persistent data (shared across all WebSocket clients)
- * This is the NEW approach - write to OBS so remote clients can read
+ * Save storage to OBS persistent data
  */
 async function broadcastStorage() {
-    if (!connected) {
-        console.log('[Storage Sync] Skipped - not connected');
-        return;
-    }
-    
-    // Only OBS dock should write to persistent storage
-    // Remote clients only read from it
-    if (!isOBSDock()) {
-        console.log('[Storage Sync] Skipped - only OBS dock writes to persistent storage');
-        return;
-    }
-    
-    // Rate limiting: don't write more than once per second
-    const now = Date.now();
-    if (now - lastBroadcastTime < MIN_BROADCAST_INTERVAL) {
-        console.log('[Storage Sync] Rate limited, scheduling retry...');
-        // Schedule retry after interval
-        if (storageSyncTimer) clearTimeout(storageSyncTimer);
-        storageSyncTimer = setTimeout(() => broadcastStorage(), MIN_BROADCAST_INTERVAL);
-        return;
-    }
-    
-    const textCyclerConfigs = window.TextCycler ? window.TextCycler.getConfigs() : [];
-    const storageData = {
-        swapConfigs: swapConfigs || [],
-        textCyclerConfigs: textCyclerConfigs || [],
-        layoutPresets: layoutPresets || []
-    };
-    
-    // Create hash to avoid duplicate writes
-    const dataStr = JSON.stringify(storageData);
-    const hash = dataStr.length + '_' + dataStr.substring(0, 50);
-    if (hash === lastStorageSyncHash) {
-        console.log('[Storage Sync] Skipped - no changes detected');
-        return;
-    }
-    lastStorageSyncHash = hash;
-    lastBroadcastTime = now;
-    
-    try {
-        // Write to OBS persistent data (global realm, accessible by all clients)
-        await request('SetPersistentData', {
-            realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
-            slotName: 'strixun_configs',
-            slotValue: dataStr
-        });
-        
-        console.log('[Storage Sync] ✅ Saved to OBS persistent data', {
-            swaps: storageData.swapConfigs.length,
-            texts: storageData.textCyclerConfigs.length,
-            layouts: storageData.layoutPresets.length
-        });
-    } catch (e) {
-        console.warn('[Storage Sync] ⚠️ Failed to write:', e);
-        lastBroadcastTime = 0; // Allow retry immediately on next change
+    if (window.StorageSync) {
+        return window.StorageSync.broadcastStorage();
     }
 }
 
 /**
  * Handle incoming storage broadcast from another client
- * If we explicitly requested it (pendingStorageRequest), OVERWRITE local
- * Otherwise, only auto-accept if our local storage is empty
  */
 function handleStorageBroadcast(data) {
-    if (!data?.data) return;
-    
-    const incomingTotal = (data.data.swapConfigs?.length || 0) + 
-                          (data.data.textCyclerConfigs?.length || 0) + 
-                          (data.data.layoutPresets?.length || 0);
-    
-    // If we explicitly requested storage, always overwrite local
-    if (pendingStorageRequest) {
-        pendingStorageRequest = false;
-        
-        if (incomingTotal === 0) {
-            log('OBS dock has no configs saved', 'warning');
-            return;
-        }
-        
-        log(`Received ${incomingTotal} configs from OBS dock - applying...`, 'info');
-        applyIncomingStorage(data.data);
-        log('✅ Storage synced from OBS dock!', 'success');
-        return;
-    }
-    
-    // Auto-accept only if local is completely empty and incoming has data
-    const textCount = window.TextCycler ? window.TextCycler.getConfigs().length : 0;
-    const localTotal = (swapConfigs?.length || 0) + 
-                       textCount + 
-                       (layoutPresets?.length || 0);
-    
-    if (localTotal === 0 && incomingTotal > 0) {
-        log(`Auto-syncing ${incomingTotal} configs from connected client...`, 'info');
-        applyIncomingStorage(data.data);
-        log('✅ Storage auto-synced!', 'success');
+    if (window.StorageSync) {
+        window.StorageSync.handleStorageBroadcast(data);
     }
 }
 
 /**
- * Apply incoming storage data - OVERWRITES local completely
+ * Apply incoming storage data
  */
 function applyIncomingStorage(data) {
-    if (data.swapConfigs !== undefined) {
-        swapConfigs = data.swapConfigs;
-        storage.set('swapConfigs', swapConfigs);
-        if (typeof renderSavedSwaps === 'function') renderSavedSwaps();
+    if (window.StorageSync) {
+        window.StorageSync.applyIncomingStorage(data);
     }
-    if (data.textCyclerConfigs !== undefined && window.TextCycler) {
-        window.TextCycler.setConfigs(data.textCyclerConfigs);
-        window.TextCycler.renderTextCyclerConfigs();
-    }
-    if (data.layoutPresets !== undefined) {
-        layoutPresets = data.layoutPresets;
-        storage.set('layoutPresets', layoutPresets);
-        if (typeof renderSavedLayouts === 'function') renderSavedLayouts();
-    }
-    
-    // Update storage status display
-    if (typeof updateStorageStatus === 'function') updateStorageStatus();
 }
 
 /**
  * Manually trigger storage broadcast (for UI button)
  */
 function manualStorageSync() {
-    if (!connected) {
-        log('Connect to OBS first', 'error');
-        return;
+    if (window.StorageSync) {
+        window.StorageSync.manualStorageSync();
     }
-    broadcastStorage();
-    log('Storage broadcast triggered', 'success');
 }
 
 function send(data) {
@@ -4163,8 +4008,9 @@ function saveCurrentSwap() {
     
     // OBS dock: debounced save to persistent storage
     if (isOBSDock() && connected) {
-        if (storageSyncTimer) clearTimeout(storageSyncTimer);
-        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+        if (window.StorageSync) {
+            window.StorageSync.scheduleBroadcast();
+        }
     }
 }
 
@@ -4248,8 +4094,9 @@ function deleteSwapConfig(index) {
     
     // OBS dock: debounced save to persistent storage
     if (isOBSDock() && connected) {
-        if (storageSyncTimer) clearTimeout(storageSyncTimer);
-        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+        if (window.StorageSync) {
+            window.StorageSync.scheduleBroadcast();
+        }
     }
 }
 
@@ -4410,8 +4257,9 @@ async function captureLayout() {
         
         // OBS dock: debounced save to persistent storage
         if (isOBSDock() && connected) {
-            if (storageSyncTimer) clearTimeout(storageSyncTimer);
-            storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+            if (window.StorageSync) {
+                window.StorageSync.scheduleBroadcast();
+            }
         }
         
     } catch (e) {
@@ -4661,8 +4509,9 @@ function deleteLayout(index) {
         
         // OBS dock: debounced save to persistent storage
         if (isOBSDock() && connected) {
-            if (storageSyncTimer) clearTimeout(storageSyncTimer);
-            storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+            if (window.StorageSync) {
+                window.StorageSync.scheduleBroadcast();
+            }
         }
     }
 }
