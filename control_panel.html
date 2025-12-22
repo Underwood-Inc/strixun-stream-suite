@@ -6059,13 +6059,9 @@ function generateClipsUrl() {
     
     const params = new URLSearchParams();
     
-    // API Server (required for new player) - now globally configured
+    // API Server (auto-configured or from Setup tab)
     const apiServer = getClipsApiServer();
-    if (useNewPlayer) {
-        if (!apiServer) {
-            document.getElementById('clipsGeneratedUrl').value = '⚠️ API Server not configured! Go to Setup tab to configure or it will auto-detect on deployment.';
-            return;
-        }
+    if (apiServer) {
         params.set('api', apiServer);
     }
     
@@ -6073,22 +6069,15 @@ function generateClipsUrl() {
         params.set('channel', config.channels.replace(/\s+/g, ''));
     }
     params.set('mainChannel', config.mainChannel);
+    params.set('mainAccount', config.mainChannel); // Original teklynk format
     params.set('limit', config.limit || 20);
     params.set('dateRange', config.dateRange || 0);
     params.set('preferFeatured', config.preferFeatured);
     params.set('showText', config.showText);
     params.set('showDetails', config.showDetails);
-    params.set('showInfo', config.showInfo !== false);
     params.set('showFollowing', config.showFollowing);
-    params.set('autoPlay', config.autoPlay !== false);
-    params.set('shuffle', config.shuffle !== false);
-    params.set('volume', config.volume || 100);
-    
-    // Legacy compatibility
-    if (!useNewPlayer) {
-        params.set('themeOption', config.theme || 0);
-        params.set('mainAccount', config.mainChannel);
-    }
+    params.set('shuffle', true);
+    params.set('themeOption', config.theme || 0);
     
     if (config.customText) {
         params.set('customText', config.customText);
@@ -6105,11 +6094,9 @@ function generateClipsUrl() {
     }
     if (config.accessToken) {
         params.set('ref', btoa(config.accessToken));
-        if (!useNewPlayer) {
-            const clientId = getTwitchClientId();
-            if (clientId) {
-                params.set('clientId', btoa(clientId));
-            }
+        const clientId = getTwitchClientId();
+        if (clientId) {
+            params.set('clientId', btoa(clientId));
         }
     }
     
