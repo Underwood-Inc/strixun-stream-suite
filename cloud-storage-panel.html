@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Storage Panel</title>
+    <style>
+        .cloud-storage-panel {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .cloud-storage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .cloud-storage-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .cloud-icon {
+            width: 24px;
+            height: 24px;
+            fill: #00b8d4;
+        }
+        
+        .device-id-section {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .device-id-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        
+        .device-id-value {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #00b8d4;
+            word-break: break-all;
+        }
+        
+        .cloud-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .cloud-button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .cloud-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .cloud-button:active {
+            transform: translateY(0);
+        }
+        
+        .cloud-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-load {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-list {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-auto-sync {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: #1e1e1e;
+        }
+        
+        .btn-auto-sync.active {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .save-slots-section {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .save-slots-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #00b8d4;
+        }
+        
+        .save-slot-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .save-slot-item {
+            background: #1e1e1e;
+            padding: 12px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid #00b8d4;
+        }
+        
+        .save-slot-info {
+            flex: 1;
+        }
+        
+        .save-slot-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .save-slot-meta {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .save-slot-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .save-slot-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-load-slot {
+            background: #00b8d4;
+            color: white;
+        }
+        
+        .btn-delete-slot {
+            background: #f44336;
+            color: white;
+        }
+        
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .status-message.success {
+            background: rgba(67, 233, 123, 0.2);
+            border: 1px solid #43e97b;
+            color: #43e97b;
+        }
+        
+        .status-message.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+        
+        .status-message.info {
+            background: rgba(0, 184, 212, 0.2);
+            border: 1px solid #00b8d4;
+            color: #00b8d4;
+        }
+        
+        .sync-status {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .slot-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .slot-input {
+            flex: 1;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .slot-input:focus {
+            outline: none;
+            border-color: #00b8d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="cloud-storage-panel">
+        <div class="cloud-storage-header">
+            <div class="cloud-storage-title">
+                <svg class="cloud-icon" viewBox="0 0 24 24">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
+                </svg>
+                <span>Cloud Storage</span>
+            </div>
+        </div>
+        
+        <div id="statusMessage" class="status-message"></div>
+        
+        <div class="device-id-section">
+            <div class="device-id-label">
+                Device ID
+                <span style="color: #888; font-size: 11px; margin-left: 10px;">
+                    (Unique identifier for this device)
+                </span>
+            </div>
+            <div class="device-id-value" id="deviceIdDisplay">Loading...</div>
+            <div id="sharedKeyInfo" style="margin-top: 8px; padding: 8px; background: rgba(67, 233, 123, 0.1); border-radius: 4px; display: none;">
+                <div style="font-size: 12px; color: #43e97b;">
+                    🔑 Shared Key Active: <span id="sharedKeyValue" style="font-weight: 600;"></span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                <button class="save-slot-btn" style="background: #00b8d4; flex: 1; min-width: 140px;" id="btnCopyDeviceId">
+                    📋 Copy Device ID
+                </button>
+                <button class="save-slot-btn" style="background: #667eea; flex: 1; min-width: 140px;" id="btnImportDeviceId">
+                    📥 Import Device ID
+                </button>
+                <button class="save-slot-btn" style="background: #43e97b; flex: 1; min-width: 140px;" id="btnShareLink">
+                    🔗 Share Link
+                </button>
+                <button class="save-slot-btn" style="background: #f093fb; flex: 1; min-width: 140px;" id="btnSetSharedKey">
+                    🔑 Shared Key
+                </button>
+            </div>
+        </div>
+        
+        <div class="slot-input-group">
+            <input 
+                type="text" 
+                id="saveSlotInput" 
+                class="slot-input" 
+                placeholder="Save slot name (e.g., default, backup1)" 
+                value="default"
+            />
+        </div>
+        
+        <div class="cloud-actions">
+            <button class="cloud-button btn-save" id="btnSaveToCloud">
+                <span>💾</span>
+                <span>Save to Cloud</span>
+            </button>
+            <button class="cloud-button btn-load" id="btnLoadFromCloud">
+                <span>📥</span>
+                <span>Load from Cloud</span>
+            </button>
+            <button class="cloud-button btn-list" id="btnListSaves">
+                <span>📋</span>
+                <span>List Saves</span>
+            </button>
+            <button class="cloud-button btn-auto-sync" id="btnToggleAutoSync">
+                <span>🔄</span>
+                <span>Auto-Sync: OFF</span>
+            </button>
+        </div>
+        
+        <div class="save-slots-section" id="saveSlotsSection" style="display: none;">
+            <div class="save-slots-title">Available Cloud Saves</div>
+            <div class="save-slot-list" id="saveSlotList"></div>
+        </div>
+        
+        <div class="sync-status" id="syncStatus">
+            Last sync: Never
+        </div>
+    </div>
+
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/cloud-storage.js"></script>
+    <script>
+        // Initialize UI
+        document.addEventListener('DOMContentLoaded', () => {
+            initCloudStorageUI();
+        });
+        
+        function initCloudStorageUI() {
+            // Display device ID
+            const deviceId = CloudStorage.getDeviceId();
+            document.getElementById('deviceIdDisplay').textContent = deviceId;
+            
+            // Update sync status
+            updateSyncStatus();
+            
+            // Update auto-sync button state
+            updateAutoSyncButton();
+            
+            // Attach event listeners
+            document.getElementById('btnSaveToCloud').addEventListener('click', handleSaveToCloud);
+            document.getElementById('btnLoadFromCloud').addEventListener('click', handleLoadFromCloud);
+            document.getElementById('btnListSaves').addEventListener('click', handleListSaves);
+            document.getElementById('btnToggleAutoSync').addEventListener('click', handleToggleAutoSync);
+            
+            // Device ID management
+            document.getElementById('btnCopyDeviceId').addEventListener('click', handleCopyDeviceId);
+            document.getElementById('btnImportDeviceId').addEventListener('click', handleImportDeviceId);
+            document.getElementById('btnShareLink').addEventListener('click', handleShareLink);
+            
+            // Auto-load save list on init
+            handleListSaves();
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+            statusEl.style.display = 'block';
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function handleSaveToCloud() {
+            const slot = document.getElementById('saveSlotInput').value.trim() || 'default';
+            const btn = document.getElementById('btnSaveToCloud');
+            
+            btn.disabled = true;
+            showStatus('Saving to cloud...', 'info');
+            
+            try {
+                const result = await CloudStorage.saveToCloud(slot, {
+                    source: 'manual',
+                    note: 'Manual save from control panel',
+                });
+                
+                showStatus(`✅ Saved to cloud: ${slot} (${formatBytes(result.size)})`, 'success');
+                updateSyncStatus();
+                await handleListSaves();
+            } catch (error) {
+                showStatus(`❌ Failed to save: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function handleLoadFromCloud() {
+            const slot = document.getElementById('saveSlotInput').value.trim() || 'default';
+            const btn = document.getElementById('btnLoadFromCloud');
+            
+            // Confirm before loading
+            if (!confirm(`Load configuration from cloud slot "${slot}"?\n\nThis will replace your current configuration.`)) {
+                return;
+            }
+            
+            btn.disabled = true;
+            showStatus('Loading from cloud...', 'info');
+            
+            try {
+                const saveData = await CloudStorage.loadFromCloud(slot);
+                CloudStorage.applyCloudSave(saveData, false);
+                
+                showStatus(`✅ Loaded from cloud: ${slot}`, 'success');
+                updateSyncStatus();
+            } catch (error) {
+                showStatus(`❌ Failed to load: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function handleListSaves() {
+            const btn = document.getElementById('btnListSaves');
+            const slotsSection = document.getElementById('saveSlotsSection');
+            const slotList = document.getElementById('saveSlotList');
+            
+            btn.disabled = true;
+            
+            try {
+                const saves = await CloudStorage.listCloudSaves();
+                
+                if (saves.length === 0) {
+                    slotList.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No cloud saves found</div>';
+                } else {
+                    slotList.innerHTML = saves.map(save => `
+                        <div class="save-slot-item">
+                            <div class="save-slot-info">
+                                <div class="save-slot-name">${escapeHtml(save.slot)}</div>
+                                <div class="save-slot-meta">
+                                    ${formatDate(save.timestamp)} • ${formatBytes(save.size)} • ${save.configCount} configs
+                                </div>
+                            </div>
+                            <div class="save-slot-actions">
+                                <button class="save-slot-btn btn-load-slot" onclick="loadSlot('${escapeHtml(save.slot)}')">
+                                    Load
+                                </button>
+                                <button class="save-slot-btn btn-delete-slot" onclick="deleteSlot('${escapeHtml(save.slot)}')">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                slotsSection.style.display = 'block';
+            } catch (error) {
+                showStatus(`❌ Failed to list saves: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        function handleToggleAutoSync() {
+            const isEnabled = CloudStorage.isAutoSyncEnabled();
+            
+            if (isEnabled) {
+                CloudStorage.disableAutoSync();
+                showStatus('Auto-sync disabled', 'info');
+            } else {
+                CloudStorage.enableAutoSync();
+                showStatus('Auto-sync enabled (every 5 minutes)', 'success');
+            }
+            
+            updateAutoSyncButton();
+        }
+        
+        function updateAutoSyncButton() {
+            const btn = document.getElementById('btnToggleAutoSync');
+            const isEnabled = CloudStorage.isAutoSyncEnabled();
+            
+            if (isEnabled) {
+                btn.classList.add('active');
+                btn.innerHTML = '<span>🔄</span><span>Auto-Sync: ON</span>';
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '<span>🔄</span><span>Auto-Sync: OFF</span>';
+            }
+        }
+        
+        function updateSyncStatus() {
+            const lastSync = CloudStorage.getLastSyncTime();
+            const statusEl = document.getElementById('syncStatus');
+            
+            if (lastSync) {
+                statusEl.textContent = `Last sync: ${formatDate(lastSync)}`;
+            } else {
+                statusEl.textContent = 'Last sync: Never';
+            }
+        }
+        
+        async function loadSlot(slot) {
+            document.getElementById('saveSlotInput').value = slot;
+            await handleLoadFromCloud();
+        }
+        
+        async function deleteSlot(slot) {
+            if (!confirm(`Delete cloud save "${slot}"?\n\nThis cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                await CloudStorage.deleteCloudSave(slot);
+                showStatus(`✅ Deleted save: ${slot}`, 'success');
+                await handleListSaves();
+            } catch (error) {
+                showStatus(`❌ Failed to delete: ${error.message}`, 'error');
+            }
+        }
+        
+        // Utility functions
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' minutes ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+            if (diff < 604800000) return Math.floor(diff / 86400000) + ' days ago';
+            
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ============ Device ID Management ============
+        
+        async function handleCopyDeviceId() {
+            try {
+                const exportData = CloudStorage.exportDeviceId();
+                await exportData.copyToClipboard();
+                showStatus('✅ Device ID copied to clipboard!', 'success');
+            } catch (error) {
+                // Fallback for older browsers
+                const deviceId = CloudStorage.getDeviceId();
+                prompt('Copy this Device ID:', deviceId);
+                showStatus('📋 Device ID ready to copy', 'info');
+            }
+        }
+        
+        async function handleImportDeviceId() {
+            const importedId = prompt(
+                'Paste Device ID from another device:\n\n' +
+                'This will allow you to access cloud saves from that device.\n' +
+                'Your current device ID will be replaced.'
+            );
+            
+            if (!importedId) return;
+            
+            try {
+                CloudStorage.importDeviceId(importedId.trim());
+                document.getElementById('deviceIdDisplay').textContent = importedId.trim();
+                showStatus('✅ Device ID imported! Reloading saves...', 'success');
+                
+                // Reload save list with new device ID
+                await handleListSaves();
+            } catch (error) {
+                showStatus(`❌ Failed to import: ${error.message}`, 'error');
+            }
+        }
+        
+        async function handleShareLink() {
+            try {
+                const exportData = CloudStorage.exportDeviceId();
+                const shareUrl = exportData.url;
+                
+                // Try to copy URL
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    showStatus('✅ Share link copied! Send it to your other device.', 'success');
+                } else {
+                    prompt('Share this link with your other device:', shareUrl);
+                    showStatus('📋 Share link ready to copy', 'info');
+                }
+                
+                // Show instructions
+                setTimeout(() => {
+                    showStatus(
+                        'ℹ️ Open this link on another device to automatically import the Device ID',
+                        'info'
+                    );
+                }, 3000);
+            } catch (error) {
+                showStatus(`❌ Failed to create share link: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+

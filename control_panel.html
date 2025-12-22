@@ -1542,7 +1542,7 @@ async function offerRecovery() {
 
 Your configs appear empty, but we found a backup from ${ageStr} ago:
 • ${recovery.swapConfigs?.length || 0} swap configs
-• ${recovery.textCyclerConfigs?.length || 0} text cycler configs
+• ${recovery.textCyclerConfigs?.length || 0} text cycler configs  
 
 Restore this backup?`;
     
@@ -2282,7 +2282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadSourceOpacityConfigs();
     
     console.log('[Init] Loaded configs - Swaps:', swapConfigs.length, 
-                'TextCycler:', textCyclerConfigs.length,
+                'TextCycler:', textCyclerConfigs.length, 
                 'Opacity:', Object.keys(sourceOpacityConfigs).length);
     
     // Check for recovery if configs are empty
@@ -2590,7 +2590,7 @@ async function handleMessage(data, password) {
 function handleEvent(event) {
     // Debug: log all events to console (verbose mode)
     if (event.eventType !== 'SceneItemTransformChanged') { // Skip noisy events
-        console.log('[OBS Event]', event.eventType, event.eventData);
+    console.log('[OBS Event]', event.eventType, event.eventData);
     }
     
     if (event.eventType === 'CurrentProgramSceneChanged') {
@@ -2682,7 +2682,7 @@ async function requestStorageFromOBS() {
         if (response && response.slotValue) {
             const storedConfigs = JSON.parse(response.slotValue);
             
-            pendingStorageRequest = false;
+                pendingStorageRequest = false;
             console.log('[Storage Sync] ✅ Retrieved from OBS persistent data:', storedConfigs);
             applyIncomingStorage(storedConfigs);
             log('✅ Storage synced from OBS!', 'success');
@@ -2771,9 +2771,9 @@ async function broadcastStorage() {
     }
     
     const storageData = {
-        swapConfigs: swapConfigs || [],
-        textCyclerConfigs: textCyclerConfigs || [],
-        layoutPresets: layoutPresets || []
+            swapConfigs: swapConfigs || [],
+            textCyclerConfigs: textCyclerConfigs || [],
+            layoutPresets: layoutPresets || []
     };
     
     // Create hash to avoid duplicate writes
