@@ -659,7 +659,7 @@ function initClipsPlayer() {
                 if (preferFeatured !== "false") apiUrl += `&prefer_featured=true`;
                 
                 console.log(`[Clips] Preloading from: ${channelName}`);
-                const asyncResponse = await fetch(apiUrl);
+                let asyncResponse = await fetch(apiUrl);
                 let clips_json = await asyncResponse.json();
 
                 // If dateRange or preferFeatured is set but no clips are found or only 1 clip is found. Try to pull any clip. 
