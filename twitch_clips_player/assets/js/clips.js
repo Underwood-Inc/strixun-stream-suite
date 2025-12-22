@@ -288,11 +288,11 @@ $(document).ready(function () {
                 // Remove element before loading the clip
                 removeElements();
 
-                // Properly remove video source
-                let videoElement = document.querySelector("video");
-                videoElement.pause();
-                videoElement.removeAttribute("src"); // empty source
-                videoElement.load();
+                // Hide current iframe
+                if (curr_clip_iframe) {
+                    curr_clip_iframe.style.display = 'none';
+                    curr_clip_iframe.src = ''; // Stop playback
+                }
 
                 // Get second command. ie: stop
                 let commandOption = message.split(' ')[1];
@@ -311,39 +311,24 @@ $(document).ready(function () {
 
     } else {
         // Plays clips when scene is active
-        if (channel.length > 1 && typeof channel[clip_index + 1] !== 'undefined') {
-            preloadNextClip(channel[clip_index + 1]);
-        }
         loadClip(channel[clip_index]);
     }
 
     // Hard-coded commands to control the current clip. Limited to mods and streamer
-    // !clipskip, !clippause, !clipplay
+    // !clipskip, !clipreload
     // Triggers on message
     if (chatConnect === 'true') {
         client.on('chat', (channel, user, message, self) => {
-            const controlCommands = ["!clipskip", "!clippause", "!clipplay", "!clipreload"];
+            const controlCommands = ["!clipskip", "!clipreload"];
             const receivedCommand = message.toLowerCase().split(' ')[0];
 
             if (self || !message.startsWith('!')) return;
 
             if (user['message-type'] === 'chat' && controlCommands.includes(receivedCommand) && (user.mod || user.username === mainAccount)) {
-                let videoElement = document.querySelector("video");
-
                 switch (receivedCommand) {
                     case "!clipskip":
                         console.log("Skipping Clip");
                         nextClip(true); // skip clip
-                        break;
-                    case "!clippause":
-                        console.log("Pausing Clip");
-                        if (videoElement) videoElement.pause(); // pause clip
-                        break;
-                    case "!clipplay":
-                        if (videoElement && videoElement.paused) {
-                            console.log("Playing Clip");
-                            videoElement.play(); // continue playing clip if was paused
-                        }
                         break;
                     case "!clipreload":
                         // Remove element before loading the clip
@@ -652,18 +637,7 @@ $(document).ready(function () {
             clip_index = 0;
         }
 
-        if (skip === true) {
-            // Skips to the next clip if a clip does not exist
-            console.log("Skipping clip...");
-            loadClip(channel[clip_index]);
-            curr_clip.play();
-        } else {
-            if (channel.length > 1 && typeof channel[clip_index + 1] !== 'undefined') {
-                preloadNextClip(channel[clip_index + 1]);
-            }
-            // Play a clip
-            loadClip(channel[clip_index]);
-            curr_clip.play();
-        }
+        // Load clip (iframe will autoplay via URL param)
+        loadClip(channel[clip_index]);
     }
 });
