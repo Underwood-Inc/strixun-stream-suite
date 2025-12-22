@@ -486,8 +486,12 @@ $(document).ready(function () {
         const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=false`;
         
         curr_clip.src = embedUrl;
+        curr_clip.setAttribute('data-clip-id', clipId);
         
-        console.log('Loading clip embed:', embedUrl);
+        console.log('[Clips] Loading:', clipId);
+        
+        // Pre-buffer next clip
+        preloadNextClipIframe();
 
         // Remove elements before loading the clip and clip details
         removeElements();
@@ -563,12 +567,85 @@ $(document).ready(function () {
         }
 
         // Move to the next clip when the current one finishes playing
-        // With iframe embeds, we can't detect 'ended' event, so use clip duration
-        const clipDuration = clips_json.data[randomClip]['duration'] || 30; // duration in seconds, default to 30s
-        const advanceDelay = (parseFloat(clipDuration) + 1) * 1000; // Add 1 second buffer, convert to ms
+        // Use Twitch Embed Player API to detect actual end
+        setupClipEndListener(curr_clip, clipId);
+    }
+    
+    // Pre-buffer next clip in hidden iframe
+    function preloadNextClipIframe() {
+        const nextIndex = (clip_index + 1) % channel.length;
+        const nextChannel = channel[nextIndex];
         
-        console.log(`Clip duration: ${clipDuration}s, will advance in ${advanceDelay}ms`);
-        setTimeout(() => nextClip(false), advanceDelay);
+        // Get next clip data
+        const nextClipsJson = localStorage.getItem(nextChannel);
+        if (!nextClipsJson) return;
+        
+        try {
+            const nextClipsData = JSON.parse(nextClipsJson);
+            if (nextClipsData.data && nextClipsData.data.length > 0) {
+                const nextClip = nextClipsData.data[Math.floor(Math.random() * nextClipsData.data.length)];
+                const nextClipId = nextClip.id;
+                const parentDomain = window.location.hostname || 'localhost';
+                
+                // Create hidden preload iframe
+                let preloadIframe = document.getElementById('preload-iframe');
+                if (!preloadIframe) {
+                    preloadIframe = document.createElement('iframe');
+                    preloadIframe.id = 'preload-iframe';
+                    preloadIframe.style.display = 'none';
+                    preloadIframe.setAttribute('frameborder', '0');
+                    document.body.appendChild(preloadIframe);
+                }
+                
+                const preloadUrl = `https://clips.twitch.tv/embed?clip=${nextClipId}&parent=${parentDomain}&autoplay=false&muted=true`;
+                preloadIframe.src = preloadUrl;
+                
+                console.log('[Clips] Pre-buffering next:', nextClipId);
+            }
+        } catch (e) {
+            console.warn('[Clips] Failed to pre-buffer:', e);
+        }
+    }
+    
+    // Listen for clip end via Twitch Embed Player API
+    function setupClipEndListener(iframe, clipId) {
+        const clipDuration = clips_json.data.find(c => c.id === clipId)?.duration || 30;
+        const maxWait = (parseFloat(clipDuration) + 5) * 1000; // Max wait with 5s buffer
+        
+        let hasEnded = false;
+        
+        // Fallback timer in case events don't fire
+        const fallbackTimer = setTimeout(() => {
+            if (!hasEnded) {
+                console.log('[Clips] Fallback timer triggered');
+                hasEnded = true;
+                nextClip(false);
+            }
+        }, maxWait);
+        
+        // Listen for Twitch Player events via postMessage
+        const messageHandler = (event) => {
+            if (event.origin !== 'https://clips.twitch.tv') return;
+            
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                
+                // Twitch Embed sends events like: {eventName: 'ended', params: {...}}
+                if (data.eventName === 'ended' || data.namespace === 'video' && data.data?.event === 'ended') {
+                    if (!hasEnded) {
+                        console.log('[Clips] Clip ended via event');
+                        hasEnded = true;
+                        clearTimeout(fallbackTimer);
+                        window.removeEventListener('message', messageHandler);
+                        nextClip(false);
+                    }
+                }
+            } catch (e) {
+                // Ignore parse errors from other sources
+            }
+        };
+        
+        window.addEventListener('message', messageHandler);
     }
 
     function nextClip(skip = false) {
