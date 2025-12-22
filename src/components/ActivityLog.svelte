@@ -326,11 +326,7 @@
       flex: 1;
       overflow: hidden;
       transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    // When filter aside is expanded, push content
-    &__body:has(.activity-log-filter-aside.expanded) &__content {
-      margin-right: 280px;
+      margin-right: var(--filter-aside-width, 0px);
     }
     
     &__empty {

@@ -18,6 +18,24 @@
   
   import { onMount, onDestroy } from 'svelte';
   
+  // Portal action to render tooltip at body level
+  function portal(node: HTMLElement, target: HTMLElement) {
+    target.appendChild(node);
+    return {
+      update(newTarget: HTMLElement) {
+        if (newTarget !== target) {
+          newTarget.appendChild(node);
+          target = newTarget;
+        }
+      },
+      destroy() {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      }
+    };
+  }
+  
   // Props
   export let text: string = '';
   export let position: 'top' | 'bottom' | 'left' | 'right' | 'auto' = 'auto';
@@ -35,6 +53,7 @@
   let mouseX = 0;
   let mouseY = 0;
   let listenersActive = false;
+  let portalContainer: HTMLDivElement | null = null;
   
   // Calculate position based on available space
   function calculatePosition(): void {
@@ -169,6 +188,18 @@
   }
   
   onMount(() => {
+    // Create portal container at body level for tooltip
+    portalContainer = document.createElement('div');
+    portalContainer.id = `tooltip-portal-${tooltipId}`;
+    portalContainer.style.position = 'fixed';
+    portalContainer.style.top = '0';
+    portalContainer.style.left = '0';
+    portalContainer.style.width = '0';
+    portalContainer.style.height = '0';
+    portalContainer.style.pointerEvents = 'none';
+    portalContainer.style.zIndex = '99999';
+    document.body.appendChild(portalContainer);
+    
     // Find the trigger element (first child)
     if (triggerElement) {
       triggerElement.addEventListener('mouseenter', handleMouseEnter);
@@ -193,28 +224,33 @@
       window.removeEventListener('scroll', updateTooltipPosition, true);
       listenersActive = false;
     }
+    // Clean up portal container
+    if (portalContainer && portalContainer.parentNode) {
+      portalContainer.parentNode.removeChild(portalContainer);
+    }
   });
 </script>
 
 <div class="tooltip-wrapper" bind:this={triggerElement}>
   <slot />
-  
-  {#if show && text}
-    <div
-      class="tooltip"
-      class:tooltip--top={actualPosition === 'top'}
-      class:tooltip--bottom={actualPosition === 'bottom'}
-      class:tooltip--left={actualPosition === 'left'}
-      class:tooltip--right={actualPosition === 'right'}
-      id={tooltipId}
-      role="tooltip"
-      bind:this={tooltipElement}
-      style="max-width: {maxWidth};"
-    >
-      {text}
-    </div>
-  {/if}
 </div>
+
+{#if show && text && portalContainer}
+  <div
+    class="tooltip"
+    class:tooltip--top={actualPosition === 'top'}
+    class:tooltip--bottom={actualPosition === 'bottom'}
+    class:tooltip--left={actualPosition === 'left'}
+    class:tooltip--right={actualPosition === 'right'}
+    id={tooltipId}
+    role="tooltip"
+    bind:this={tooltipElement}
+    style="max-width: {maxWidth};"
+    use:portal={portalContainer}
+  >
+    {text}
+  </div>
+{/if}
 
 <style lang="scss">
   @use '../styles/animations' as *;

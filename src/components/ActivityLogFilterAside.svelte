@@ -6,12 +6,13 @@
    * Shares width with activity log area
    */
   
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { storage } from '../modules/storage';
   import {
-    logFilters,
-    toggleLogTypeFilter,
-    setLogSearchQuery,
     clearLogSearch,
+    logFilters,
+    setLogSearchQuery,
+    toggleLogTypeFilter,
     type LogType
   } from '../stores/activity-log';
   
@@ -26,42 +27,174 @@
   let filterAside: HTMLDivElement;
   let contentWrapper: HTMLDivElement;
   let resizeObserver: ResizeObserver | null = null;
+  let filterWidth = 280;
+  let isResizing = false;
+  let startX = 0;
+  let startWidth = 0;
+  let rafId: number | null = null;
+  let pendingWidth: number | null = null;
+  
+  // Update CSS variable when width changes
+  $: if (typeof document !== 'undefined') {
+    document.documentElement.style.setProperty('--filter-aside-width', expanded ? `${filterWidth}px` : '0px');
+  }
   
   onMount(() => {
-    // Watch for parent height changes to ensure proper scrolling
-    // The absolutely positioned element with top:0; bottom:0 should automatically
-    // adjust to parent height, but we observe to ensure the scrollable content
-    // area updates correctly when the split-log panel is resized
+    // Load saved width
+    const saved = storage.get('ui_filter_aside_width') as { width?: number } | null;
+    if (saved?.width) {
+      filterWidth = Math.max(200, Math.min(600, saved.width));
+    }
+    
     if (filterAside) {
+      filterAside.style.width = `${filterWidth}px`;
+      
+      // Watch for parent height changes to ensure proper scrolling
       resizeObserver = new ResizeObserver(() => {
-        // Force browser to recalculate layout
-        // The flex layout should handle this automatically, but this ensures
-        // the scroll container is properly sized when parent height changes
         if (contentWrapper) {
-          // Trigger a reflow to ensure scroll container updates
           void contentWrapper.offsetHeight;
         }
       });
       
-      // Observe the filter aside container to respond to parent height changes
       resizeObserver.observe(filterAside);
       
-      // Also try to observe the parent if available
       const parent = filterAside.parentElement;
       if (parent) {
         resizeObserver.observe(parent);
       }
+      
+      // Setup resize handle
+      const handle = filterAside.querySelector('.filter-aside__resize-handle') as HTMLElement;
+      if (handle) {
+        const handleMouseDown = (e: MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          isResizing = true;
+          startX = e.clientX;
+          startWidth = filterAside.offsetWidth;
+          filterAside.classList.add('resizing');
+          document.addEventListener('mousemove', handleResize);
+          document.addEventListener('mouseup', handleResizeEnd);
+          document.body.style.userSelect = 'none';
+          document.body.style.cursor = 'ew-resize';
+        };
+        
+        const handleTouchStart = (e: TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          isResizing = true;
+          startX = e.touches[0].clientX;
+          startWidth = filterAside.offsetWidth;
+          filterAside.classList.add('resizing');
+          document.addEventListener('touchmove', handleResizeTouch, { passive: false });
+          document.addEventListener('touchend', handleResizeEnd);
+          document.body.style.userSelect = 'none';
+          document.body.style.cursor = 'ew-resize';
+        };
+        
+        handle.addEventListener('mousedown', handleMouseDown);
+        handle.addEventListener('touchstart', handleTouchStart);
+      }
     }
   });
+  
+  function handleResize(e: MouseEvent): void {
+    if (!isResizing || !filterAside) return;
+    e.preventDefault();
+    
+    const deltaX = startX - e.clientX; // Inverted because handle is on left
+    const newWidth = Math.max(200, Math.min(600, startWidth + deltaX));
+    pendingWidth = newWidth;
+    
+    if (rafId === null) {
+      rafId = requestAnimationFrame(() => {
+        if (filterAside && pendingWidth !== null) {
+          filterWidth = pendingWidth;
+          filterAside.style.width = `${pendingWidth}px`;
+          document.documentElement.style.setProperty('--filter-aside-width', `${pendingWidth}px`);
+          pendingWidth = null;
+          rafId = null;
+        }
+      });
+    }
+  }
+  
+  function handleResizeTouch(e: TouchEvent): void {
+    if (!isResizing || !filterAside) return;
+    e.preventDefault();
+    
+    const deltaX = startX - e.touches[0].clientX;
+    const newWidth = Math.max(200, Math.min(600, startWidth + deltaX));
+    pendingWidth = newWidth;
+    
+    if (rafId === null) {
+      rafId = requestAnimationFrame(() => {
+        if (filterAside && pendingWidth !== null) {
+          filterWidth = pendingWidth;
+          filterAside.style.width = `${pendingWidth}px`;
+          document.documentElement.style.setProperty('--filter-aside-width', `${pendingWidth}px`);
+          pendingWidth = null;
+          rafId = null;
+        }
+      });
+    }
+  }
+  
+  function handleResizeEnd(): void {
+    if (!isResizing) return;
+    
+    isResizing = false;
+    
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    
+    if (filterAside && pendingWidth !== null) {
+      filterWidth = pendingWidth;
+      filterAside.style.width = `${pendingWidth}px`;
+      document.documentElement.style.setProperty('--filter-aside-width', `${pendingWidth}px`);
+      pendingWidth = null;
+    }
+    
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('touchmove', handleResizeTouch);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    document.removeEventListener('touchend', handleResizeEnd);
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    
+    filterAside?.classList.remove('resizing');
+    
+    // Save width
+    storage.set('ui_filter_aside_width', { width: filterWidth });
+  }
   
   onDestroy(() => {
     if (resizeObserver) {
       resizeObserver.disconnect();
     }
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('touchmove', handleResizeTouch);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    document.removeEventListener('touchend', handleResizeEnd);
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+    }
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
   });
+  
+  // Update width when expanded state changes
+  $: if (expanded) {
+    document.documentElement.style.setProperty('--filter-aside-width', `${filterWidth}px`);
+  } else {
+    document.documentElement.style.setProperty('--filter-aside-width', '0px');
+  }
 </script>
 
-<div class="activity-log-filter-aside" class:expanded={expanded} bind:this={filterAside}>
+<div class="activity-log-filter-aside" class:expanded={expanded} bind:this={filterAside} style="width: {expanded ? filterWidth + 'px' : '280px'}">
+  <div class="filter-aside__resize-handle" />
   <div class="filter-aside__wrapper">
     <div class="filter-aside__content" bind:this={contentWrapper}>
     <!-- Search at the top -->
@@ -182,10 +315,10 @@
     background: var(--card);
     border-left: 1px solid var(--border);
     transform: translateX(100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 10;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
   }
@@ -194,12 +327,40 @@
     transform: translateX(0);
   }
   
+  .activity-log-filter-aside .filter-aside__resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--border);
+    cursor: ew-resize;
+    z-index: 20;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+  }
+  
+  .activity-log-filter-aside .filter-aside__resize-handle:hover {
+    background: var(--border-light);
+  }
+  
+  .activity-log-filter-aside:has(.filter-aside__resize-handle:active) .filter-aside__resize-handle,
+  .activity-log-filter-aside.resizing .filter-aside__resize-handle {
+    background: var(--accent);
+  }
+  
+  .activity-log-filter-aside.resizing {
+    transition: none;
+  }
+  
   .activity-log-filter-aside .filter-aside__wrapper {
     flex: 1;
     min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    margin-left: 4px;
   }
   
   .activity-log-filter-aside .filter-aside__content {
