@@ -238,8 +238,8 @@ export async function refreshSources(): Promise<void> {
     if (typeof (window as any).updateTextSourceDropdown === 'function') {
       (window as any).updateTextSourceDropdown();
     }
-    if (typeof (window as any).updateSwapDropdowns === 'function') {
-      (window as any).updateSwapDropdowns();
+    if (typeof (window as any).SourceSwaps?.updateSwapDropdowns === 'function') {
+      (window as any).SourceSwaps.updateSwapDropdowns();
     }
     
     log(`Found ${sceneItems.length} sources in: ${targetScene}`);

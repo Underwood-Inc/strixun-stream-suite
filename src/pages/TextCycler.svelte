@@ -7,7 +7,7 @@
   
   import { onMount } from 'svelte';
   import { connected } from '../stores/connection';
-  import { UIUtils } from '../modules/ui-utils';
+  import SearchBox from '../components/SearchBox.svelte';
   
   let showEditor = false;
   let showTextLines = false;
@@ -16,19 +16,20 @@
   let showPreview = false;
   let showControls = false;
   
+  let configsContainer: HTMLDivElement;
+  
   onMount(() => {
-    // Initialize search for text cycler configs
-    const configsContainer = document.getElementById('textCyclerConfigs');
-    if (configsContainer) {
-      UIUtils.initSearchForList('textCyclerConfigs', 'textConfigsSearchInput', configsContainer, 0);
-    }
-    
-    // Load saved configs
+    // Load saved configs and render
+    (window as any).TextCycler?.loadConfigs();
+    (window as any).TextCycler?.renderTextCyclerConfigs();
+  });
+  
+  $: {
+    // Re-render configs when connection state changes
     if ($connected) {
-      (window as any).TextCycler?.loadConfigs();
       (window as any).TextCycler?.renderTextCyclerConfigs();
     }
-  });
+  }
   
   function handleNewConfig(): void {
     if ((window as any).newTextConfig) {
@@ -107,12 +108,17 @@
   <!-- Saved Configs -->
   <div class="card">
     <h3>💾 Saved Configs</h3>
-    <div class="search-box">
-      <input type="text" class="search-box__input" id="textConfigsSearchInput" placeholder="Search configs...">
-      <span class="search-box__icon">🔍</span>
-      <button class="search-box__clear" title="Clear">✕</button>
-    </div>
-    <div id="textCyclerConfigs" class="config-list"></div>
+    <SearchBox
+      inputId="textConfigsSearchInput"
+      placeholder="Search configs..."
+      containerId="textCyclerConfigs"
+      itemSelector=".config-item"
+      textSelector=".name, h3, h4"
+      minChars={1}
+      debounceMs={150}
+      showCount={true}
+    />
+    <div id="textCyclerConfigs" class="config-list" bind:this={configsContainer}></div>
     <div class="row" style="margin-top:8px">
       <button on:click={handleNewConfig} disabled={!$connected}>➕ New Config</button>
       <button on:click={handleExportConfigs}>📤 Export</button>

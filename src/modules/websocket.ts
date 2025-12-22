@@ -467,9 +467,9 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
       (window as any).ScriptStatus.renderStartupBanner();
     }
     
-    // Call refreshScenes if available
-    if (typeof (window as any).refreshScenes === 'function') {
-      (window as any).refreshScenes();
+    // Call refreshScenes if available (via Sources module)
+    if (typeof (window as any).Sources?.refreshScenes === 'function') {
+      (window as any).Sources.refreshScenes();
     }
     
     // Restore saved opacity settings

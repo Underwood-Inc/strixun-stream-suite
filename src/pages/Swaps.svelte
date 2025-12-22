@@ -6,8 +6,8 @@
    */
   
   import { onMount } from 'svelte';
-  import { connected } from '../stores/connection';
-  import { UIUtils } from '../modules/ui-utils';
+  import { connected, sources } from '../stores/connection';
+  import SearchBox from '../components/SearchBox.svelte';
   
   let swapSourceA = '';
   let swapSourceB = '';
@@ -21,24 +21,26 @@
   let swapNewSourceA = '';
   let swapNewSourceB = '';
   
+  let swapsContainer: HTMLDivElement;
+  
   onMount(() => {
-    // Initialize search for swap configs
-    const swapsContainer = document.getElementById('savedSwaps');
-    if (swapsContainer) {
-      UIUtils.initSearchForList('savedSwaps', 'swapConfigsSearchInput', swapsContainer, 0);
-    }
-    
     // Load saved swap configs
     if ($connected) {
       (window as any).SourceSwaps?.loadConfigs();
       (window as any).SourceSwaps?.renderSavedSwaps();
-      (window as any).SourceSwaps?.refreshSwapSources();
+      // Update dropdowns when sources are available
+      if ($sources && $sources.length > 0) {
+        (window as any).SourceSwaps?.updateSwapDropdowns();
+      }
     }
   });
   
   $: {
-    if ($connected) {
-      (window as any).SourceSwaps?.refreshSwapSources();
+    if ($connected && $sources && $sources.length > 0) {
+      // Update dropdowns when sources are available
+      if ((window as any).SourceSwaps?.updateSwapDropdowns) {
+        (window as any).SourceSwaps.updateSwapDropdowns();
+      }
     }
   }
   
@@ -170,12 +172,17 @@
   <!-- Saved Configs -->
   <div class="card">
     <h3>Saved Configs</h3>
-    <div class="search-box">
-      <input type="text" class="search-box__input" id="swapConfigsSearchInput" placeholder="Search configs...">
-      <span class="search-box__icon">🔍</span>
-      <button class="search-box__clear" title="Clear">✕</button>
-    </div>
-    <div id="savedSwaps"></div>
+    <SearchBox
+      inputId="swapConfigsSearchInput"
+      placeholder="Search configs..."
+      containerId="savedSwaps"
+      itemSelector=".config-item"
+      textSelector=".name, h3, h4"
+      minChars={1}
+      debounceMs={150}
+      showCount={true}
+    />
+    <div id="savedSwaps" bind:this={swapsContainer}></div>
     <div class="row" style="margin-top:8px">
       <button on:click={handleRefreshSwapSources} disabled={!$connected}>🔄 Refresh Sources</button>
       <button on:click={handleExportConfigs}>📤 Export</button>

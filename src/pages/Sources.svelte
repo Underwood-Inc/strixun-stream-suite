@@ -7,7 +7,7 @@
   
   import { onMount } from 'svelte';
   import { connected, currentScene, sources } from '../stores/connection';
-  import { UIUtils } from '../modules/ui-utils';
+  import SearchBox from '../components/SearchBox.svelte';
   
   let visAnimType = 'fade';
   let visAnimDuration = 300;
@@ -15,21 +15,8 @@
   let opacitySource = '';
   let opacityValue = 100;
   let selectedScene = '';
-  let scenesList: HTMLElement | null = null;
-  let sourcesList: HTMLElement | null = null;
   
   onMount(() => {
-    // Initialize search for scenes and sources
-    const scenesContainer = document.getElementById('scenesList');
-    const sourcesContainer = document.getElementById('sourcesList');
-    
-    if (scenesContainer) {
-      UIUtils.initSearchForList('scenesList', 'scenesSearchInput', scenesContainer, 0);
-    }
-    if (sourcesContainer) {
-      UIUtils.initSearchForList('sourcesList', 'sourcesSearchInput', sourcesContainer, 0);
-    }
-    
     // Load saved animation settings
     const savedAnimType = (window as any).App?.storage?.getRaw('visAnimType');
     const savedAnimDuration = (window as any).App?.storage?.getRaw('visAnimDuration');
@@ -62,7 +49,16 @@
   }
   
   function handleOpacityChange(): void {
-    (window as any).Sources?.updateOpacityPreview();
+    // Update the display element directly since we're using Svelte bind:value
+    // The reactive {opacityValue}% will update automatically, but we also call
+    // the module function for any additional logic it might have
+    const display = document.getElementById('opacityValue');
+    if (display) {
+      display.textContent = `${opacityValue}%`;
+    }
+    if ((window as any).Sources?.updateOpacityPreview) {
+      (window as any).Sources.updateOpacityPreview();
+    }
   }
   
   function handleApplyOpacity(): void {
@@ -144,12 +140,17 @@
   <!-- Scene Browser -->
   <div class="card">
     <h3>🎬 Scenes</h3>
-    <div class="search-box">
-      <input type="text" class="search-box__input" id="scenesSearchInput" placeholder="Search scenes...">
-      <span class="search-box__icon">🔍</span>
-      <button class="search-box__clear" title="Clear">✕</button>
-    </div>
-    <div id="scenesList" class="config-list" style="max-height:200px;overflow-y:auto"></div>
+    <SearchBox
+      inputId="scenesSearchInput"
+      placeholder="Search scenes..."
+      containerId="scenesList"
+      itemSelector=".source-item, .config-item"
+      textSelector=".name, h3, h4"
+      minChars={1}
+      debounceMs={150}
+      showCount={true}
+    />
+      <div id="scenesList" class="config-list" style="max-height:200px;overflow-y:auto"></div>
     <button on:click={handleRefreshSceneList} class="btn-secondary" style="width:100%;margin-top:8px">
       🔃 Refresh Scenes
     </button>
@@ -165,11 +166,16 @@
         Select a scene above to view sources
       {/if}
     </p>
-    <div class="search-box">
-      <input type="text" class="search-box__input" id="sourcesSearchInput" placeholder="Search sources...">
-      <span class="search-box__icon">🔍</span>
-      <button class="search-box__clear" title="Clear">✕</button>
-    </div>
+    <SearchBox
+      inputId="sourcesSearchInput"
+      placeholder="Search sources..."
+      containerId="sourcesList"
+      itemSelector=".source-item"
+      textSelector=".name"
+      minChars={1}
+      debounceMs={150}
+      showCount={true}
+    />
     <div id="sourcesList"></div>
   </div>
 </div>

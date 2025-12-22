@@ -9,18 +9,49 @@
   import { connected, currentScene } from '../stores/connection';
   import { navigateTo } from '../stores/navigation';
   
-  let systemStatus = 'offline';
+  let hasRefreshedOnConnect = false;
   
   onMount(() => {
-    updateStatus();
+    // Update dashboard status and quick swaps when page loads
+    updateDashboardStatus();
+    renderDashSwaps();
+    
+    // Refresh scenes to get current scene if already connected
+    if ($connected && !hasRefreshedOnConnect) {
+      handleRefreshScenes();
+      hasRefreshedOnConnect = true;
+    }
   });
   
-  $: {
-    systemStatus = $connected ? 'online' : 'offline';
+  // Update dashboard when connection state changes
+  $: if ($connected) {
+    updateDashboardStatus();
+    renderDashSwaps();
+    
+    // Refresh scenes to get current scene when connection is established (only once)
+    if (!hasRefreshedOnConnect) {
+      handleRefreshScenes();
+      hasRefreshedOnConnect = true;
+    }
+  } else {
+    // Reset flag when disconnected
+    hasRefreshedOnConnect = false;
   }
   
-  function updateStatus(): void {
+  function updateDashboardStatus(): void {
     // Update system status display
+    if ((window as any).ScriptStatus?.updateDashboardStatus) {
+      (window as any).ScriptStatus.updateDashboardStatus();
+    }
+  }
+  
+  function renderDashSwaps(): void {
+    // Render quick swap buttons
+    if ((window as any).SourceSwaps?.renderDashSwaps) {
+      (window as any).SourceSwaps.renderDashSwaps();
+    } else if ((window as any).App?.renderDashSwaps) {
+      (window as any).App.renderDashSwaps();
+    }
   }
   
   async function handleCycleAspect(): Promise<void> {
@@ -109,8 +140,10 @@
   
   <div class="card">
     <h3>Quick Swaps</h3>
-    <div class="quick-swaps-container" id="dashSwapGrid">
-      <div class="empty-state">No quick swaps configured</div>
+    <div class="quick-swaps-container">
+      <div class="grid" id="dashSwapGrid">
+        <div class="empty-state">No quick swaps configured</div>
+      </div>
     </div>
   </div>
 </div>
@@ -234,8 +267,18 @@
   .quick-swaps-container {
     min-height: 100px;
     
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 200px));
+      gap: 8px;
+    }
+    
     .empty-state {
       margin: 0;
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
     }
   }
 </style>

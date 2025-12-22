@@ -8,9 +8,9 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { writable } from 'svelte/store';
   import { storage } from '../modules/storage';
+  import SearchBox from './SearchBox.svelte';
   
   let collapsed = writable(false);
-  let searchQuery = writable('');
   let logContainer: HTMLDivElement;
   let splitLog: HTMLDivElement;
   let isResizing = false;
@@ -243,10 +243,6 @@
       window.App.log('Log cleared', 'info');
     }
   }
-  
-  function clearSearch(): void {
-    searchQuery.set('');
-  }
 </script>
 
 <div class="split-log" bind:this={splitLog}>
@@ -255,18 +251,17 @@
       {$collapsed ? '▲' : '▼'}
     </button>
     <span class="split-log__title">Activity Log</span>
-    <div class="search-box split-log__search">
-      <span class="search-box__icon">🔍</span>
-      <input
-        type="text"
-        class="search-box__input"
-        id="logSearchInput"
+    <div class="split-log__search">
+      <SearchBox
+        inputId="logSearchInput"
         placeholder="Search log..."
-        bind:value={$searchQuery}
+        containerElement={logContainer}
+        itemSelector=".log-entry"
+        textSelector=".log-entry__text"
+        minChars={1}
+        debounceMs={150}
+        showCount={false}
       />
-      {#if $searchQuery}
-        <button class="search-box__clear" onclick={clearSearch} title="Clear search" type="button">✕</button>
-      {/if}
     </div>
     <button class="split-log__clear btn-link" onclick={clearLog}>Clear</button>
   </div>

@@ -6,7 +6,7 @@
    */
   
   import { onMount } from 'svelte';
-  import { UIUtils } from '../modules/ui-utils';
+  import SearchBox from '../components/SearchBox.svelte';
   import { connected, currentScene } from '../stores/connection';
   
   let layoutName = '';
@@ -16,33 +16,30 @@
   let layoutApplyVisibility = true;
   
   onMount(() => {
-    // Initialize search for layouts
-    const layoutsContainer = document.getElementById('savedLayouts');
-    if (layoutsContainer) {
-      UIUtils.initSearchForList('savedLayouts', 'layoutSearchInput', layoutsContainer, 0);
-    }
-    
     // Load saved layouts
-    if ($connected) {
+    if ($connected && $currentScene) {
       (window as any).Layouts?.refreshLayouts();
+      (window as any).Layouts?.renderSavedLayouts();
     }
   });
   
   $: {
+    // Refresh and render layouts when scene changes
     if ($connected && $currentScene) {
       (window as any).Layouts?.refreshLayouts();
+      (window as any).Layouts?.renderSavedLayouts();
     }
   }
   
   function handleCaptureLayout(): void {
-    if ((window as any).captureLayout) {
-      (window as any).captureLayout();
+    if ((window as any).Layouts?.captureLayout) {
+      (window as any).Layouts.captureLayout();
     }
   }
   
   function handleRefreshLayouts(): void {
-    if ((window as any).refreshLayouts) {
-      (window as any).refreshLayouts();
+    if ((window as any).Layouts?.refreshLayouts) {
+      (window as any).Layouts.refreshLayouts();
     }
   }
 </script>
@@ -67,11 +64,16 @@
     <p style="color:var(--muted);margin-bottom:8px;font-size:0.85em" id="layoutSceneInfo">
       Scene: <span id="layoutCurrentScene">{$currentScene || '-'}</span>
     </p>
-    <div class="search-box">
-      <input type="text" class="search-box__input" id="layoutSearchInput" placeholder="Search layouts...">
-      <span class="search-box__icon">🔍</span>
-      <button class="search-box__clear" title="Clear">✕</button>
-    </div>
+    <SearchBox
+      inputId="layoutSearchInput"
+      placeholder="Search layouts..."
+      containerId="savedLayouts"
+      itemSelector=".config-item"
+      textSelector=".name, h3, h4"
+      minChars={1}
+      debounceMs={150}
+      showCount={true}
+    />
     <div id="savedLayouts" class="config-list"></div>
     <div class="row" style="margin-top:8px">
       <button on:click={handleRefreshLayouts} disabled={!$connected}>🔄 Refresh</button>

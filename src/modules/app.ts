@@ -580,9 +580,28 @@ export function renderDashSwaps(): void {
     grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to 🔄 tab to create one.</div>';
     return;
   }
-  grid.innerHTML = swapConfigs.map((c: any, i: number) => 
-    `<button class="source-btn" onclick="window.loadSwapConfig?.(${i})">${c.name}</button>`
-  ).join('');
+  // Render buttons with proper escaping
+  grid.innerHTML = swapConfigs.map((c: any, i: number) => {
+    const escapedName = (c.name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return `<button class="source-btn" data-swap-name="${escapedName}" onclick="window.loadSwapConfig?.(${i})">${escapedName}</button>`;
+  }).join('');
+  
+  // Set tooltips only for truncated buttons
+  setTimeout(() => {
+    const buttons = grid.querySelectorAll('.source-btn[data-swap-name]');
+    buttons.forEach((btn) => {
+      const button = btn as HTMLElement;
+      const fullName = button.getAttribute('data-swap-name') || '';
+      
+      // Check if text is truncated
+      if (button.scrollWidth > button.clientWidth) {
+        button.title = fullName;
+      } else {
+        // Remove title if not truncated to avoid unnecessary tooltips
+        button.removeAttribute('title');
+      }
+    });
+  }, 0);
 }
 
 // ============ Source Swap Wrapper Functions ============
@@ -937,6 +956,21 @@ if (typeof window !== 'undefined') {
   (window as any).exportConfigs = exportConfigs;
   (window as any).importConfigs = importConfigs;
   (window as any).renderSavedLayouts = renderSavedLayouts;
+  (window as any).captureLayout = () => {
+    if ((window as any).Layouts?.captureLayout) {
+      return (window as any).Layouts.captureLayout();
+    }
+  };
+  (window as any).refreshLayouts = () => {
+    if ((window as any).Layouts?.refreshLayouts) {
+      return (window as any).Layouts.refreshLayouts();
+    }
+  };
+  // Placeholder for cycleAspect - triggers Quick Controls Lua script hotkey
+  // The actual functionality is handled by the Lua script's hotkey system
+  (window as any).cycleAspect = () => {
+    log('Cycle Aspect: This feature requires the Quick Controls Lua script to be installed and a hotkey assigned in OBS Settings → Hotkeys', 'info');
+  };
   (window as any).renderTextCyclerConfigs = renderTextCyclerConfigs;
   (window as any).newTextConfig = newTextConfig;
   (window as any).loadTextConfig = loadTextConfig;

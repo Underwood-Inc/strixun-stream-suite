@@ -125,6 +125,10 @@
   gap: 6px;
   min-height: 44px;
   transition: all 0.2s;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   
   &:hover:not(:disabled) {
     transform: translateY(-1px);

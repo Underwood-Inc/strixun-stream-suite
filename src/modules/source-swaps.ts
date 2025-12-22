@@ -867,18 +867,8 @@ export function updateSwapDropdowns(): void {
  * Refresh swap source dropdowns
  */
 export function refreshSwapSources(): void {
-  // Populate the new source dropdowns for adding configs
-  const sourceASelect = document.getElementById('swapNewSourceA') as HTMLSelectElement;
-  const sourceBSelect = document.getElementById('swapNewSourceB') as HTMLSelectElement;
-  const quickSourceA = document.getElementById('swapSourceA') as HTMLSelectElement;
-  const quickSourceB = document.getElementById('swapSourceB') as HTMLSelectElement;
-  
-  if (quickSourceA && sourceASelect) {
-    sourceASelect.innerHTML = quickSourceA.innerHTML;
-  }
-  if (quickSourceB && sourceBSelect) {
-    sourceBSelect.innerHTML = quickSourceB.innerHTML;
-  }
+  // Update all swap dropdowns with current sources
+  updateSwapDropdowns();
   dependencies.log('Sources refreshed', 'info');
 }
 
@@ -924,9 +914,29 @@ export function renderDashSwaps(): void {
     grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to 🔄 tab to create one.</div>';
     return;
   }
-  grid.innerHTML = swapConfigs.map((c, i) => 
-    `<button class="source-btn" onclick="window.SourceSwaps?.loadSwapConfig(${i})">${c.name}</button>`
-  ).join('');
+  
+  // Render buttons with proper escaping
+  grid.innerHTML = swapConfigs.map((c, i) => {
+    const escapedName = c.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return `<button class="source-btn" data-swap-name="${escapedName}" onclick="window.SourceSwaps?.loadSwapConfig(${i})">${escapedName}</button>`;
+  }).join('');
+  
+  // Set tooltips only for truncated buttons
+  setTimeout(() => {
+    const buttons = grid.querySelectorAll('.source-btn[data-swap-name]');
+    buttons.forEach((btn) => {
+      const button = btn as HTMLElement;
+      const fullName = button.getAttribute('data-swap-name') || '';
+      
+      // Check if text is truncated
+      if (button.scrollWidth > button.clientWidth) {
+        button.title = fullName;
+      } else {
+        // Remove title if not truncated to avoid unnecessary tooltips
+        button.removeAttribute('title');
+      }
+    });
+  }, 0);
 }
 
 /**
