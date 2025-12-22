@@ -478,29 +478,40 @@
             return;
         }
 
-        // Show video element
-        elements.videoPlayer.style.display = 'block';
+        // Hide video player and use iframe instead
+        // Twitch no longer allows direct MP4 access - must use embed URLs
+        elements.videoPlayer.style.display = 'none';
         elements.emptyState.style.display = 'none';
         elements.loadingState.style.display = 'none';
 
-        // Set video source
-        elements.videoPlayer.poster = clip.thumbnail_url;
-        elements.videoPlayer.src = clip.clip_url;
-        elements.videoPlayer.volume = state.config.volume / 100;
-        elements.videoPlayer.load();
+        // Create or update iframe for clip
+        let iframe = document.getElementById('clipIframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'clipIframe';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            iframe.allow = 'autoplay';
+            iframe.allowFullscreen = true;
+            document.getElementById('videoWrapper').insertBefore(iframe, elements.videoPlayer);
+        }
+
+        // Set iframe to Twitch embed URL
+        const embedUrl = `https://clips.twitch.tv/embed?clip=${clip.id}&parent=${window.location.hostname}&autoplay=true`;
+        iframe.src = embedUrl;
+        
+        console.log('Loading clip via embed:', embedUrl);
 
         // Update UI
         updateClipInfo(clip);
         updateClipCounter();
         enableControls();
-
-        // Auto-play if configured
-        if (state.config.autoPlay) {
-            elements.videoPlayer.play().catch(e => {
-                console.warn('Autoplay prevented:', e);
-                updateStatus('paused');
-            });
-        }
+        
+        // Auto-advance after estimated clip duration (30 seconds default, can be improved)
+        setTimeout(() => {
+            playNextClip(false);
+        }, 30000);
     }
 
     async function updateClipInfo(clip) {
