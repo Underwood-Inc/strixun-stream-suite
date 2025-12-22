@@ -401,6 +401,18 @@ $(document).ready(function () {
                 }
 
                 if (clips_json.data.length > 0) {
+                    // Validate that clips have clip_url (MP4 URLs)
+                    const validClips = clips_json.data.filter(clip => clip.clip_url);
+                    console.log(`[Clips] Got ${validClips.length}/${clips_json.data.length} clips with valid MP4 URLs`);
+                    
+                    if (validClips.length === 0) {
+                        console.error(`[Clips] ERROR: No clips have valid MP4 URLs for ${channelName}!`);
+                        console.error('[Clips] This likely means the Twitch GQL API failed for all clips.');
+                        return;
+                    }
+                    
+                    // Only store clips with valid URLs
+                    clips_json.data = validClips;
                     console.log('Set ' + channelName + ' in localStorage');
                     // Store the data in localStorage
                     localStorage.setItem(channelName, JSON.stringify(clips_json));
@@ -443,6 +455,18 @@ $(document).ready(function () {
                 }
 
                 if (clips_json.data.length > 0) {
+                    // Validate that clips have clip_url (MP4 URLs)
+                    const validClips = clips_json.data.filter(clip => clip.clip_url);
+                    console.log(`[Clips] Got ${validClips.length}/${clips_json.data.length} clips with valid MP4 URLs`);
+                    
+                    if (validClips.length === 0) {
+                        console.error(`[Clips] ERROR: No clips have valid MP4 URLs for ${channelName}!`);
+                        nextClip(true);
+                        return false;
+                    }
+                    
+                    // Only store clips with valid URLs
+                    clips_json.data = validClips;
                     console.log('Set ' + channelName + ' in localStorage');
                     localStorage.setItem(channelName, JSON.stringify(clips_json));
                 } else {
