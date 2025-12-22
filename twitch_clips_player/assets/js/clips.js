@@ -519,10 +519,7 @@ $(document).ready(function () {
         console.log('Playing clip ID: ' + clips_json.data[randomClip]['id']);
         console.log('Data length: ' + clips_json.data.length)
 
-        // Clear old overlays first to prevent flickering
-        removeElements();
-        
-        // Get current iframe from pool
+        // Get current iframe from pool (overlays already cleared at function start)
         const iframe = iframe_pool[current_iframe_index];
         const clipId = clips_json.data[randomClip]['id'];
         const parentDomain = window.location.hostname || 'localhost';
@@ -559,10 +556,7 @@ $(document).ready(function () {
         // Pre-load next clips in background iframes (they'll buffer while hidden)
         preloadNextClipsInIframes();
 
-        // Remove elements before loading the clip and clip details
-        removeElements();
-
-        // Show channel name on top of video
+        // Show channel name on top of video (overlays already cleared at start of function)
         if (showText === 'true') {
             if (customText) {
                 // custom message to show on top of clip. includes {channel} name as a variable

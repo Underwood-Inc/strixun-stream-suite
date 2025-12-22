@@ -22,10 +22,19 @@ video {
     z-index: -1;
 }
 
+iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 10px;
+}
+
 #text-container {
     width: 100%;
     position: absolute;
     top: 10vw;
+    z-index: 100; /* Above iframes */
+    pointer-events: none; /* Allow clicks to pass through */
 }
 
 .title-text {
@@ -47,6 +56,8 @@ video {
     border-radius: 0px 24px 24px 0px;
     width: auto;
     animation: fadeout var(--overlay-duration, 15s) forwards;
+    z-index: 100; /* Above iframes (which are z-index: 10) */
+    pointer-events: none; /* Allow clicks to pass through to video controls if needed */
 }
 
 /* No fade if duration is set to 0 or persist */
