@@ -111,6 +111,60 @@ function shuffleArray(arr) {
 }
 
 /**
+ * Get direct MP4 URL for a clip using Twitch GQL API
+ */
+async function getClipMP4(clipSlug, env) {
+    const cacheKey = `clip_mp4_${clipSlug}`;
+    const cached = await env.TWITCH_CACHE.get(cacheKey);
+    if (cached) return cached;
+
+    const gqlQuery = {
+        operationName: 'VideoAccessToken_Clip',
+        query: `
+            query VideoAccessToken_Clip($slug: ID!) {
+                clip(slug: $slug) {
+                    playbackAccessToken(params: {platform: "web"}) {
+                        signature
+                        value
+                    }
+                    videoQualities {
+                        quality
+                        sourceURL
+                    }
+                }
+            }
+        `,
+        variables: { slug: clipSlug }
+    };
+
+    try {
+        const response = await fetch('https://gql.twitch.tv/gql', {
+            method: 'POST',
+            headers: {
+                'Client-ID': env.TWITCH_CLIENT_ID,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(gqlQuery)
+        });
+
+        const result = await response.json();
+        const qualities = result?.data?.clip?.videoQualities;
+        
+        if (qualities && qualities.length > 0) {
+            // Return highest quality (source)
+            const mp4Url = qualities[0].sourceURL;
+            // Cache for 1 hour
+            await env.TWITCH_CACHE.put(cacheKey, mp4Url, { expirationTtl: 3600 });
+            return mp4Url;
+        }
+    } catch (e) {
+        console.error(`[GQL] Failed to get MP4 for ${clipSlug}:`, e);
+    }
+    
+    return null;
+}
+
+/**
  * Handle /clips endpoint
  * GET /clips?channel=username&limit=20&shuffle=true&start_date=...&end_date=...&prefer_featured=true
  */
@@ -147,11 +201,24 @@ async function handleClips(request, env) {
 
         const data = await twitchApiRequest(endpoint, env);
         
-        // Transform clips - just add index, we use iframe embeds
-        const clips = data.data.map((clip, index) => ({
-            ...clip,
-            item: index,
-        }));
+        // Fetch MP4 URLs for each clip using GQL
+        const clipsWithMP4 = await Promise.all(
+            data.data.map(async (clip, index) => {
+                const mp4Url = await getClipMP4(clip.id, env);
+                if (!mp4Url) {
+                    console.warn(`[Worker] No MP4 for clip ${clip.id}, skipping`);
+                    return null;
+                }
+                return {
+                    ...clip,
+                    item: index,
+                    clip_url: mp4Url
+                };
+            })
+        );
+        
+        // Filter out clips that failed to get MP4 URLs
+        const clips = clipsWithMP4.filter(clip => clip !== null);
 
         // Shuffle if requested
         if (shuffle) {

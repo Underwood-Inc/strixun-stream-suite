@@ -249,68 +249,62 @@ $(document).ready(function () {
 
     console.log(channel);
 
-    // Create iframe pool for seamless clip transitions with z-index stacking
-    let curr_clip_iframe = null;
-    const iframe_pool = [];
-    const PRELOAD_COUNT = 2; // Use 2 iframes to allow smooth transition without memory leak
-    
-    // Initialize iframe pool - all VISIBLE but stacked with z-index
-    for (let i = 0; i < PRELOAD_COUNT; i++) {
-        const iframe = document.createElement('iframe');
-        iframe.setAttribute('frameborder', '0');
-        iframe.setAttribute('allowfullscreen', 'true');
-        iframe.setAttribute('scrolling', 'no');
-        iframe.setAttribute('allow', 'autoplay; fullscreen'); // Allow autoplay and fullscreen
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.position = 'absolute';
-        iframe.style.top = '0';
-        iframe.style.left = '0';
-        iframe.style.zIndex = '1'; // All start below (will change dynamically)
-        iframe.style.visibility = 'hidden'; // Hidden but rendered (allows buffering)
-        iframe.id = `clip-iframe-${i}`;
-        $(iframe).appendTo('#container');
-        iframe_pool.push(iframe);
-    }
-    
-    let current_iframe_index = 0;
+    // Create video.js players for seamless transitions with pre-buffering
+    let currentPlayer = null;
+    let nextPlayer = null;
     let isTransitioning = false; // Prevent duplicate transitions
     
-    // Listen for Twitch embed events via postMessage
-    window.addEventListener('message', (event) => {
-        // Only accept messages from clips.twitch.tv
-        if (event.origin !== 'https://clips.twitch.tv') return;
-        
-        // Debounce: ignore if already transitioning
-        if (isTransitioning) return;
-        
-        try {
-            const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-            
-            // Twitch embed sends 'ended' event when clip finishes
-            if (data.event === 'ended' || data.namespace === 'video-player' && data.data === 'ended') {
-                console.log('[Clips] Clip ended event received');
-                
-                // Find which iframe sent the message and verify it's the current one
-                const sendingIframe = Array.from(document.querySelectorAll('iframe')).find(
-                    frame => frame.contentWindow === event.source
-                );
-                
-                if (sendingIframe && sendingIframe.getAttribute('data-is-current') === 'true') {
-                    // Clear the fallback timeout since we got the real 'ended' event
-                    const timeoutId = sendingIframe.getAttribute('data-timeout-id');
-                    if (timeoutId) {
-                        clearTimeout(parseInt(timeoutId));
-                    }
-                    
-                    isTransitioning = true;
-                    nextClip(false);
-                    // Reset transition flag after a brief delay
-                    setTimeout(() => { isTransitioning = false; }, 500);
-                }
-            }
-        } catch (e) {
-            // Ignore parsing errors from non-JSON messages
+    // Create current video element
+    const currentVideo = document.createElement('video');
+    currentVideo.id = 'current-clip';
+    currentVideo.className = 'video-js vjs-default-skin';
+    currentVideo.setAttribute('playsinline', '');
+    currentVideo.style.width = '100%';
+    currentVideo.style.height = '100%';
+    currentVideo.style.position = 'absolute';
+    currentVideo.style.top = '0';
+    currentVideo.style.left = '0';
+    $('#container').append(currentVideo);
+    
+    // Create next video element for pre-buffering
+    const nextVideo = document.createElement('video');
+    nextVideo.id = 'next-clip';
+    nextVideo.className = 'video-js vjs-default-skin';
+    nextVideo.setAttribute('playsinline', '');
+    nextVideo.style.width = '100%';
+    nextVideo.style.height = '100%';
+    nextVideo.style.position = 'absolute';
+    nextVideo.style.top = '0';
+    nextVideo.style.left = '0';
+    nextVideo.style.display = 'none'; // Hidden for pre-buffering
+    $('#container').append(nextVideo);
+    
+    // Initialize video.js players
+    currentPlayer = videojs(currentVideo.id, {
+        controls: false,
+        autoplay: true,
+        preload: 'auto',
+        fluid: false,
+        fill: true,
+        muted: false
+    });
+    
+    nextPlayer = videojs(nextVideo.id, {
+        controls: false,
+        autoplay: false,
+        preload: 'auto',
+        fluid: false,
+        fill: true,
+        muted: true
+    });
+    
+    // Listen for video.js 'ended' event to advance to next clip
+    currentPlayer.on('ended', () => {
+        if (!isTransitioning) {
+            console.log('[Clips] Current clip ended, advancing...');
+            isTransitioning = true;
+            nextClip(false);
+            setTimeout(() => { isTransitioning = false; }, 500);
         }
     });
 
@@ -328,11 +322,9 @@ $(document).ready(function () {
                 // Remove element before loading the clip
                 removeElements();
 
-                // Hide current iframe
-                if (curr_clip_iframe) {
-                    curr_clip_iframe.style.visibility = 'hidden';
-                    curr_clip_iframe.style.zIndex = '1';
-                    curr_clip_iframe.src = ''; // Stop playback
+                // Stop current player
+                if (currentPlayer) {
+                    currentPlayer.pause();
                 }
 
                 // Get second command. ie: stop
@@ -519,56 +511,28 @@ $(document).ready(function () {
         console.log('Playing clip ID: ' + clips_json.data[randomClip]['id']);
         console.log('Data length: ' + clips_json.data.length)
 
-        // Get current iframe from pool (overlays already cleared at function start)
-        const iframe = iframe_pool[current_iframe_index];
+        // Load clip in video.js player
+        const clipUrl = clips_json.data[randomClip]['clip_url'];
         const clipId = clips_json.data[randomClip]['id'];
-        const parentDomain = window.location.hostname || 'localhost';
         
-        // STOP and cleanup previous iframe if exists (critical for memory!)
-        if (curr_clip_iframe && curr_clip_iframe !== iframe) {
-            // Clear timeout to prevent fallback from firing
-            const oldTimeoutId = curr_clip_iframe.getAttribute('data-timeout-id');
-            if (oldTimeoutId) {
-                clearTimeout(parseInt(oldTimeoutId));
-            }
-            
-            // STOP the old iframe by clearing its source
-            curr_clip_iframe.src = 'about:blank';
-            curr_clip_iframe.style.zIndex = '1';
-            curr_clip_iframe.style.visibility = 'hidden';
-            curr_clip_iframe.removeAttribute('data-is-current');
-            curr_clip_iframe.removeAttribute('data-clip-id');
-            curr_clip_iframe.removeAttribute('data-timeout-id');
+        if (!clipUrl) {
+            console.error('[Clips] No clip_url found for clip:', clipId);
+            nextClip(true); // Skip to next
+            return;
         }
         
-        // Load NEW clip in fresh iframe (MUST start muted for autoplay to work)
-        const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=true`;
-        iframe.src = embedUrl;
-        iframe.style.zIndex = '10'; // Bring to front
-        iframe.style.visibility = 'visible'; // Make visible
-        iframe.setAttribute('data-clip-id', clipId);
-        iframe.setAttribute('data-is-current', 'true'); // Mark as current
+        console.log('[Clips] Loading:', clipId, clipUrl);
         
-        curr_clip_iframe = iframe;
+        // Load in current player
+        currentPlayer.src({ type: 'video/mp4', src: clipUrl });
+        currentPlayer.volume(1.0); // Full volume
+        currentPlayer.play();
         
-        console.log('[Clips] Playing:', clipId, 'in iframe', current_iframe_index);
-        
-        // Unmute after iframe loads (browser requires muted=true for autoplay)
-        iframe.addEventListener('load', function unmute() {
-            setTimeout(() => {
-                try {
-                    iframe.contentWindow.postMessage('{"event":"command","func":"setMuted","args":[false]}', '*');
-                    iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[1]}', '*');
-                    console.log('[Clips] Sent unmute command to iframe');
-                } catch (e) {
-                    console.warn('[Clips] Could not unmute iframe:', e);
-                }
-            }, 500); // Wait 500ms for player to initialize
-            iframe.removeEventListener('load', unmute);
-        });
-        
-        // Pre-load next clips in background iframes (they'll buffer while hidden)
-        preloadNextClipsInIframes();
+        // Pre-buffer next clip if available
+        const nextIndex = (clip_index + 1) % channel.length;
+        if (channel.length > 1 && channel[nextIndex]) {
+            preloadNextClip(channel[nextIndex]);
+        }
 
         // Show channel name on top of video (overlays already cleared at start of function)
         if (showText === 'true') {
@@ -652,75 +616,40 @@ $(document).ready(function () {
             }
         }
         
-        // Fallback timeout in case iframe doesn't send 'ended' event (safety net)
-        const duration = parseFloat(clips_json.data[randomClip]['duration'] || 30);
-        const fallbackTimeout = setTimeout(() => {
-            if (!isTransitioning && iframe.getAttribute('data-is-current') === 'true') {
-                console.warn('[Clips] Fallback timeout triggered - advancing to next clip');
-                isTransitioning = true;
-                nextClip(false);
-                setTimeout(() => { isTransitioning = false; }, 500);
-            }
-        }, (duration + 3) * 1000); // +3 seconds buffer for safety
-        
-        // Store timeout ID on iframe so we can clear it if 'ended' fires first
-        iframe.setAttribute('data-timeout-id', fallbackTimeout);
+        // No fallback timeout needed - video.js 'ended' event is reliable
     }
     
-    // Pre-load next clips in background iframes (visible but behind for buffering)
-    function preloadNextClipsInIframes() {
-        // DISABLED FOR NOW - causing memory leaks and lag
-        // Will re-enable once core stability is confirmed
-        return;
+    // Pre-load next clip in background player for seamless transitions
+    function preloadNextClip(channelName) {
+        const nextClipsJson = localStorage.getItem(channelName);
+        if (!nextClipsJson) return;
         
-        /*
-        const parentDomain = window.location.hostname || 'localhost';
-        
-        // Pre-load up to PRELOAD_COUNT clips ahead
-        for (let i = 1; i < PRELOAD_COUNT; i++) {
-            const futureIndex = (clip_index + i) % channel.length;
-            const futureChannel = channel[futureIndex];
-            const futureClipsJson = localStorage.getItem(futureChannel);
-            
-            if (!futureClipsJson) continue;
-            
-            try {
-                const futureClipsData = JSON.parse(futureClipsJson);
-                if (futureClipsData.data && futureClipsData.data.length > 0) {
-                    const futureClip = futureClipsData.data[Math.floor(Math.random() * futureClipsData.data.length)];
-                    const iframeIndex = (current_iframe_index + i) % PRELOAD_COUNT;
-                    const iframe = iframe_pool[iframeIndex];
-                    
-                    // Don't preload if this iframe is currently playing
-                    if (iframe.getAttribute('data-is-current') === 'true') continue;
-                    
-                    // Pre-load clip in background (visible but hidden, allows buffering)
-                    const embedUrl = `https://clips.twitch.tv/embed?clip=${futureClip.id}&parent=${parentDomain}&autoplay=false&muted=true`;
-                    iframe.src = embedUrl;
-                    iframe.style.zIndex = '1'; // Keep in background
-                    iframe.style.visibility = 'hidden'; // Hidden but rendered for buffering
-                    
-                    console.log('[Clips] Pre-buffering:', futureClip.id, 'in iframe', iframeIndex);
+        try {
+            const nextClipsData = JSON.parse(nextClipsJson);
+            if (nextClipsData.data && nextClipsData.data.length > 0) {
+                const nextClip = nextClipsData.data[Math.floor(Math.random() * nextClipsData.data.length)];
+                const nextClipUrl = nextClip.clip_url;
+                
+                if (nextClipUrl) {
+                    // Pre-buffer in nextPlayer
+                    nextPlayer.src({ type: 'video/mp4', src: nextClipUrl });
+                    nextPlayer.load(); // Start buffering
+                    console.log('[Clips] Pre-buffering:', nextClip.id);
                 }
-            } catch (e) {
-                console.warn('[Clips] Failed to pre-load:', e);
             }
+        } catch (e) {
+            console.warn('[Clips] Failed to pre-buffer:', e);
         }
-        */
     }
 
     function nextClip(skip = false) {
-
-        // Move to next iframe in pool
-        current_iframe_index = (current_iframe_index + 1) % PRELOAD_COUNT;
-
         if (clip_index < channel.length - 1) {
             clip_index += 1;
         } else {
             clip_index = 0;
         }
 
-        // Load clip (iframe will autoplay via URL param)
+        // Load next clip
         loadClip(channel[clip_index]);
     }
 });
