@@ -247,8 +247,17 @@ $(document).ready(function () {
 
     console.log(channel);
 
-    // Create new video element
-    let curr_clip = document.createElement('video');
+    // Create new iframe element for Twitch embeds (direct video URLs no longer work)
+    let curr_clip = document.createElement('iframe');
+    curr_clip.setAttribute('frameborder', '0');
+    curr_clip.setAttribute('allowfullscreen', 'true');
+    curr_clip.setAttribute('scrolling', 'no');
+    curr_clip.setAttribute('allow', 'autoplay');
+    curr_clip.style.width = '100%';
+    curr_clip.style.height = '100%';
+    curr_clip.style.position = 'absolute';
+    curr_clip.style.top = '0';
+    curr_clip.style.left = '0';
     $(curr_clip).appendTo('#container');
 
     //if command is set
@@ -470,14 +479,15 @@ $(document).ready(function () {
         console.log('Playing clip ID: ' + clips_json.data[randomClip]['id']);
         console.log('Data length: ' + clips_json.data.length)
 
-        // Create video element and load a new clip
-        // adding a poster will help reduce the gap between clips.
-        curr_clip.poster = clips_json.data[randomClip]['thumbnail_url'];
-        curr_clip.src = clips_json.data[randomClip]['clip_url'];
-        curr_clip.autoplay = true;
-        curr_clip.controls = false;
-        curr_clip.volume = 1.0;
-        curr_clip.load();
+        // Create iframe embed and load a new clip
+        // Twitch now requires iframe embeds (direct MP4 URLs no longer work)
+        const clipId = clips_json.data[randomClip]['id'];
+        const parentDomain = window.location.hostname || 'localhost';
+        const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=false`;
+        
+        curr_clip.src = embedUrl;
+        
+        console.log('Loading clip embed:', embedUrl);
 
         // Remove elements before loading the clip and clip details
         removeElements();
@@ -553,16 +563,21 @@ $(document).ready(function () {
         }
 
         // Move to the next clip when the current one finishes playing
-        curr_clip.addEventListener("ended", nextClip);
+        // With iframe embeds, we can't detect 'ended' event, so use clip duration
+        const clipDuration = clips_json.data[randomClip]['duration'] || 30; // duration in seconds, default to 30s
+        const advanceDelay = (parseFloat(clipDuration) + 1) * 1000; // Add 1 second buffer, convert to ms
+        
+        console.log(`Clip duration: ${clipDuration}s, will advance in ${advanceDelay}ms`);
+        setTimeout(() => nextClip(false), advanceDelay);
     }
 
     function nextClip(skip = false) {
 
-        // Properly remove video source
-        let videoElement = document.querySelector("video");
-        videoElement.pause();
-        videoElement.removeAttribute("src"); // empty source
-        videoElement.load();
+        // Properly remove iframe source
+        let iframeElement = document.querySelector("iframe");
+        if (iframeElement) {
+            iframeElement.src = 'about:blank'; // Clear iframe
+        }
 
         if (clip_index < channel.length - 1) {
             clip_index += 1;
