@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="assets/css/control-panel.css">
     <!-- Auto-configuration (injected during deployment) -->
     <script src="config.js"></script>
+    <!-- Text Cycler Module -->
+    <script src="assets/js/text-cycler.js"></script>
 </head>
 <body>
     <div class="app">
@@ -1197,7 +1199,10 @@ function updateStorageStatus() {
     
     if (swapCountEl) swapCountEl.textContent = `(${swapConfigs?.length || 0})`;
     if (layoutCountEl) layoutCountEl.textContent = `(${layoutPresets?.length || 0})`;
-    if (textCyclerCountEl) textCyclerCountEl.textContent = `(${textCyclerConfigs?.length || 0})`;
+    if (textCyclerCountEl) {
+        const count = window.TextCycler ? window.TextCycler.getConfigs().length : 0;
+        textCyclerCountEl.textContent = `(${count})`;
+    }
     
     // Update last backup info
     const lastBackupEl = document.getElementById('lastBackupInfo');
@@ -1229,9 +1234,12 @@ function getSelectedExportData() {
         backup.exportedCategories.push('layouts');
     }
     
-    if (document.getElementById('exportTextCyclers')?.checked && textCyclerConfigs?.length) {
-        backup.textCyclerConfigs = textCyclerConfigs;
-        backup.exportedCategories.push('textCyclers');
+    if (document.getElementById('exportTextCyclers')?.checked) {
+        const configs = window.TextCycler ? window.TextCycler.getConfigs() : [];
+        if (configs.length) {
+            backup.textCyclerConfigs = configs;
+            backup.exportedCategories.push('textCyclers');
+        }
     }
     
     
@@ -1361,17 +1369,17 @@ function importDataWithOptions() {
                 storage.set('layoutPresets', layoutPresets);
             }
             
-            if (importChoices.textCyclers && backup.textCyclerConfigs) {
+            if (importChoices.textCyclers && backup.textCyclerConfigs && window.TextCycler) {
                 if (importChoices.merge) {
-                    const existingIds = new Set(textCyclerConfigs.map(c => c.id));
+                    const existingConfigs = window.TextCycler.getConfigs();
+                    const existingIds = new Set(existingConfigs.map(c => c.id));
                     const newConfigs = backup.textCyclerConfigs.filter(c => !existingIds.has(c.id));
-                    textCyclerConfigs = [...textCyclerConfigs, ...newConfigs];
+                    window.TextCycler.addConfigs(newConfigs);
                     imported.push(`${newConfigs.length} new text cyclers (merged)`);
                 } else {
-                    textCyclerConfigs = backup.textCyclerConfigs;
+                    window.TextCycler.setConfigs(backup.textCyclerConfigs);
                     imported.push(`${backup.textCyclerConfigs.length} text cyclers (replaced)`);
                 }
-                storage.set('textCyclerConfigs', textCyclerConfigs);
             }
             
             
@@ -1447,7 +1455,9 @@ async function forceStorageSync() {
     
     // Re-save all configs to both storages
     storage.set('swapConfigs', swapConfigs);
-    storage.set('textCyclerConfigs', textCyclerConfigs);
+    if (window.TextCycler) {
+        window.TextCycler.saveTextCyclerConfigs();
+    }
     
     // Flush to ensure everything is written
     await storage.flush();
@@ -1480,9 +1490,10 @@ let lastDataHash = '';
 
 function getDataHash() {
     // Simple hash to detect changes
+    const textCount = window.TextCycler ? window.TextCycler.getConfigs().length : 0;
     const data = JSON.stringify({
         s: swapConfigs?.length || 0,
-        t: textCyclerConfigs?.length || 0
+        t: textCount
     });
     return data;
 }
@@ -1491,6 +1502,7 @@ function createRecoverySnapshot() {
     const currentHash = getDataHash();
     if (currentHash === lastDataHash) return; // No changes
     
+    const textCyclerConfigs = window.TextCycler ? window.TextCycler.getConfigs() : [];
     const snapshot = {
         version: 2,
         timestamp: new Date().toISOString(),
@@ -1518,7 +1530,8 @@ function checkForRecoverySnapshot() {
         if (!data.version || !data.timestamp) return null;
         
         // Check if we have empty configs but recovery has data
-        const currentTotal = (swapConfigs?.length || 0) + (textCyclerConfigs?.length || 0);
+        const textCount = window.TextCycler ? window.TextCycler.getConfigs().length : 0;
+        const currentTotal = (swapConfigs?.length || 0) + textCount;
         const recoveryTotal = (data.swapConfigs?.length || 0) + (data.textCyclerConfigs?.length || 0);
         
         if (currentTotal === 0 && recoveryTotal > 0) {
@@ -1551,9 +1564,8 @@ Restore this backup?`;
             swapConfigs = recovery.swapConfigs;
             storage.set('swapConfigs', swapConfigs);
         }
-        if (recovery.textCyclerConfigs) {
-            textCyclerConfigs = recovery.textCyclerConfigs;
-            storage.set('textCyclerConfigs', textCyclerConfigs);
+        if (recovery.textCyclerConfigs && window.TextCycler) {
+            window.TextCycler.setConfigs(recovery.textCyclerConfigs);
         }
         
         renderSavedSwaps();
@@ -2278,8 +2290,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // NOW load configs from storage into memory
     swapConfigs = storage.get('swapConfigs') || [];
-    textCyclerConfigs = storage.get('textCyclerConfigs') || [];
     loadSourceOpacityConfigs();
+    
+    // Initialize Text Cycler module
+    if (window.TextCycler) {
+        TextCycler.init({
+            storage,
+            log,
+            get connected() { return connected; },
+            get ws() { return ws; },
+            get msgId() { return msgId; },
+            isOBSDock,
+            request,
+            get sources() { return sources; },
+            get storageSyncTimer() { return storageSyncTimer; },
+            set storageSyncTimer(val) { storageSyncTimer = val; },
+            broadcastStorage,
+            STORAGE_SYNC_DEBOUNCE: 500
+        });
+        TextCycler.loadConfigs();
+        
+        // Compatibility: expose textCyclerConfigs and currentTextConfigIndex as global variables
+        Object.defineProperty(window, 'textCyclerConfigs', {
+            get: () => TextCycler.getConfigs(),
+            configurable: true,
+            enumerable: true
+        });
+        Object.defineProperty(window, 'currentTextConfigIndex', {
+            get: () => TextCycler.getCurrentIndex(),
+            set: (val) => TextCycler.setCurrentIndex(val),
+            configurable: true,
+            enumerable: true
+        });
+    }
+    
+    // Get textCyclerConfigs from module for compatibility (local const for init code)
+    const textCyclerConfigs = window.TextCycler ? window.TextCycler.getConfigs() : (storage.get('textCyclerConfigs') || []);
     
     console.log('[Init] Loaded configs - Swaps:', swapConfigs.length, 
                 'TextCycler:', textCyclerConfigs.length, 
@@ -2636,22 +2682,24 @@ function handleEvent(event) {
             log('📤 Another client requesting storage - broadcasting...', 'info');
             broadcastStorage();
         } else if (customData?.type === 'strixun_text_cycler_msg') {
-            // Handle text cycler messages from remote control panel
+            // Handle text cycler messages from remote control panel (same pattern as quick swaps)
+            // Remote sends via WebSocket, OBS dock receives and handles locally
             const configId = customData.configId;
             const message = customData.message;
+            const timestamp = customData.timestamp || Date.now();
             
             if (configId && message) {
-                // If we're the OBS dock, forward to localStorage so browser source can receive it
+                // OBS dock: forward to localStorage so browser source can receive it
                 if (isOBSDock()) {
                     try {
                         const messageData = {
                             message: message,
-                            timestamp: Date.now()
+                            timestamp: timestamp
                         };
                         localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
-                        console.log('[Text Cycler] Forwarded message to localStorage:', configId, message.type);
+                        console.log('[Text Cycler] OBS dock forwarded to localStorage:', configId, message.type);
                     } catch (e) {
-                        console.warn('[Text Cycler] Failed to forward to localStorage:', e);
+                        console.warn('[Text Cycler] Failed to forward:', e);
                     }
                 }
             }
@@ -2790,10 +2838,11 @@ async function broadcastStorage() {
         return;
     }
     
+    const textCyclerConfigs = window.TextCycler ? window.TextCycler.getConfigs() : [];
     const storageData = {
-            swapConfigs: swapConfigs || [],
-            textCyclerConfigs: textCyclerConfigs || [],
-            layoutPresets: layoutPresets || []
+        swapConfigs: swapConfigs || [],
+        textCyclerConfigs: textCyclerConfigs || [],
+        layoutPresets: layoutPresets || []
     };
     
     // Create hash to avoid duplicate writes
@@ -2853,8 +2902,9 @@ function handleStorageBroadcast(data) {
     }
     
     // Auto-accept only if local is completely empty and incoming has data
+    const textCount = window.TextCycler ? window.TextCycler.getConfigs().length : 0;
     const localTotal = (swapConfigs?.length || 0) + 
-                       (textCyclerConfigs?.length || 0) + 
+                       textCount + 
                        (layoutPresets?.length || 0);
     
     if (localTotal === 0 && incomingTotal > 0) {
@@ -2873,10 +2923,9 @@ function applyIncomingStorage(data) {
         storage.set('swapConfigs', swapConfigs);
         if (typeof renderSavedSwaps === 'function') renderSavedSwaps();
     }
-    if (data.textCyclerConfigs !== undefined) {
-        textCyclerConfigs = data.textCyclerConfigs;
-        storage.set('textCyclerConfigs', textCyclerConfigs);
-        if (typeof renderTextCyclerConfigs === 'function') renderTextCyclerConfigs();
+    if (data.textCyclerConfigs !== undefined && window.TextCycler) {
+        window.TextCycler.setConfigs(data.textCyclerConfigs);
+        window.TextCycler.renderTextCyclerConfigs();
     }
     if (data.layoutPresets !== undefined) {
         layoutPresets = data.layoutPresets;
@@ -4717,245 +4766,55 @@ function initLayouts() {
 }
 
 // ============ Text Cycler (Multi-Config) ============
-let textCyclerConfigs = []; // Loaded async from storage on init
-let currentTextConfigIndex = -1;
-let cycleInterval = null;
-let cycleIndex = 0;
-let transitionInterval = null;
-let textChannels = {}; // BroadcastChannels for each config
-
-// Character sets for effects
-const CHARS_ENCHANT = 'ᔑᒷᓵ↸ᒷ⎓⊣⍑╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ⚍⍊∴⨅';
-const CHARS_GLITCH = '█▓▒░╔╗╚╝║═┌┐└┘│─┼▀▄▌▐■□▪▫●○';
+// Text Cycler functionality has been moved to assets/js/text-cycler.js
+// Wrapper functions below maintain backward compatibility
+// Global compatibility variables are defined during module initialization
 
 function renderTextCyclerConfigs() {
-    const container = document.getElementById('textCyclerConfigs');
-    if (textCyclerConfigs.length === 0) {
-        container.innerHTML = '<div class="empty-state">No configs yet. Click "New Config" to create one.</div>';
-        return;
+    if (window.TextCycler) {
+        TextCycler.renderTextCyclerConfigs();
     }
-    
-    container.innerHTML = textCyclerConfigs.map((c, i) => `
-        <div class="source-item" style="cursor:pointer" onclick="loadTextConfig(${i})">
-            <div>
-                <div class="name">${c.name || 'Unnamed'} ${c.isRunning ? '<span class="badge badge-success">Running</span>' : ''}</div>
-                <div class="type">${c.mode === 'browser' ? '🌐 Browser' : '📝 Legacy'} • ${(c.textLines || []).length} lines • ${c.transition || 'none'}</div>
-            </div>
-            <div style="display:flex;gap:4px">
-                <button onclick="event.stopPropagation(); quickStartConfig(${i})" title="${c.isRunning ? 'Stop' : 'Start'}">${c.isRunning ? '⏹' : '▶'}</button>
-            </div>
-        </div>
-    `).join('');
-    
-    // Initialize/refresh search for text configs
-    initSearchForList('textConfigs', 'textConfigsSearchInput', container, textCyclerConfigs.length);
 }
 
 function newTextConfig() {
-    const config = {
-        id: 'config_' + Date.now(),
-        name: 'Text Cycler ' + (textCyclerConfigs.length + 1),
-        mode: 'browser',
-        configId: 'text' + (textCyclerConfigs.length + 1),
-        textSource: '',
-        textLines: ['Welcome to the stream!', 'Don\'t forget to subscribe!', 'Thanks for watching!'],
-        transition: 'obfuscate',
-        transDuration: 500,
-        cycleDuration: 3000,
-        styles: {
-            fontSize: '48px',
-            fontWeight: '700',
-            color: '#ffffff',
-            align: 'center',
-            shadow: '2px 2px 4px rgba(0,0,0,0.5)'
-        },
-        isRunning: false
-    };
-    
-    textCyclerConfigs.push(config);
-    saveTextCyclerConfigs();
-    renderTextCyclerConfigs();
-    loadTextConfig(textCyclerConfigs.length - 1);
-    log('Created new text config', 'success');
+    if (window.TextCycler) {
+        TextCycler.newTextConfig();
+    }
 }
 
 function loadTextConfig(index) {
-    currentTextConfigIndex = index;
-    const config = textCyclerConfigs[index];
-    if (!config) return;
-    
-    // Show editor cards
-    document.getElementById('textConfigEditor').style.display = 'block';
-    document.getElementById('textLinesCard').style.display = 'block';
-    document.getElementById('textAnimationCard').style.display = 'block';
-    document.getElementById('textPreviewCard').style.display = 'block';
-    document.getElementById('textControls').style.display = 'block';
-    
-    // Load values
-    document.getElementById('textConfigName').value = config.name || '';
-    document.getElementById('textCyclerMode').value = config.mode || 'browser';
-    document.getElementById('textConfigId').value = config.configId || config.id;
-    document.getElementById('textSource').value = config.textSource || '';
-    document.getElementById('textLines').value = (config.textLines || []).join('\n');
-    document.getElementById('textTransition').value = config.transition || 'none';
-    document.getElementById('transDuration').value = config.transDuration || 500;
-    document.getElementById('textDuration').value = config.cycleDuration || 3000;
-    
-    // Style settings
-    if (config.styles) {
-        // Font family - check if it's a preset or custom
-        const fontFamily = config.styles.fontFamily || "'Segoe UI', system-ui, sans-serif";
-        const fontSelect = document.getElementById('textFontFamily');
-        const fontCustom = document.getElementById('textFontFamilyCustom');
-        let isPreset = false;
-        for (let opt of fontSelect.options) {
-            if (opt.value === fontFamily) {
-                fontSelect.value = fontFamily;
-                fontCustom.value = '';
-                isPreset = true;
-                break;
-            }
-        }
-        if (!isPreset) {
-            fontSelect.selectedIndex = 0;
-            fontCustom.value = fontFamily;
-        }
-        
-        document.getElementById('textFontSize').value = config.styles.fontSize || '48px';
-        document.getElementById('textFontWeight').value = config.styles.fontWeight || '700';
-        document.getElementById('textFontStyle').value = config.styles.fontStyle || 'normal';
-        document.getElementById('textColor').value = config.styles.color || '#ffffff';
-        document.getElementById('textColorPicker').value = config.styles.color || '#ffffff';
-        document.getElementById('textAlign').value = config.styles.align || 'center';
-        document.getElementById('textLetterSpacing').value = config.styles.letterSpacing || 'normal';
-        document.getElementById('textLineHeight').value = config.styles.lineHeight || '1.2';
-        document.getElementById('textTransform').value = config.styles.textTransform || 'none';
-        document.getElementById('textShadow').value = config.styles.shadow || '';
-        document.getElementById('textStrokeWidth').value = config.styles.strokeWidth || '0';
-        document.getElementById('textStrokeColor').value = config.styles.strokeColor || '#000000';
-        document.getElementById('textStrokeColorPicker').value = config.styles.strokeColor || '#000000';
+    if (window.TextCycler) {
+        TextCycler.loadConfig(index);
     }
-    
-    updateTextCyclerMode();
-    updateTransitionMode();
-    updateBrowserSourceUrlPreview();
-    
-    // Reset preview to show current config's first line or current cycling text
-    const preview = document.getElementById('textPreview');
-    if (config.isRunning && config.textLines && config.textLines.length > 0) {
-        const currentIndex = config.cycleIndex || 0;
-        preview.textContent = config.textLines[currentIndex] || config.textLines[0];
-    } else if (config.textLines && config.textLines.length > 0) {
-        preview.textContent = config.textLines[0];
-    } else {
-        preview.textContent = '(no text lines)';
-    }
-    
-    // Update button states
-    document.getElementById('startCycleBtn').disabled = config.isRunning;
-    document.getElementById('stopCycleBtn').disabled = !config.isRunning;
-    
-    log('Loaded config: ' + config.name, 'info');
 }
 
 function saveCurrentTextConfig() {
-    if (currentTextConfigIndex < 0) return;
-    
-    const config = textCyclerConfigs[currentTextConfigIndex];
-    config.name = document.getElementById('textConfigName').value || 'Unnamed';
-    config.mode = document.getElementById('textCyclerMode').value;
-    config.configId = document.getElementById('textConfigId').value || config.id;
-    config.textSource = document.getElementById('textSource').value;
-    config.textLines = document.getElementById('textLines').value.split('\n').map(l => l.trim()).filter(l => l);
-    config.transition = document.getElementById('textTransition').value;
-    config.transDuration = parseInt(document.getElementById('transDuration').value) || 500;
-    config.cycleDuration = parseInt(document.getElementById('textDuration').value) || 3000;
-    config.styles = {
-        fontFamily: document.getElementById('textFontFamilyCustom').value || document.getElementById('textFontFamily').value,
-        fontSize: document.getElementById('textFontSize').value,
-        fontWeight: document.getElementById('textFontWeight').value,
-        fontStyle: document.getElementById('textFontStyle').value,
-        color: document.getElementById('textColor').value,
-        align: document.getElementById('textAlign').value,
-        letterSpacing: document.getElementById('textLetterSpacing').value,
-        lineHeight: document.getElementById('textLineHeight').value,
-        textTransform: document.getElementById('textTransform').value,
-        shadow: document.getElementById('textShadow').value,
-        strokeWidth: document.getElementById('textStrokeWidth').value,
-        strokeColor: document.getElementById('textStrokeColor').value
-    };
-    
-    saveTextCyclerConfigs();
-    renderTextCyclerConfigs();
-    log('Saved config: ' + config.name, 'success');
+    if (window.TextCycler) {
+        TextCycler.saveCurrentTextConfig();
+    }
 }
 
 function deleteCurrentTextConfig() {
-    if (currentTextConfigIndex < 0) return;
-    if (!confirm('Delete this config?')) return;
-    
-    const config = textCyclerConfigs[currentTextConfigIndex];
-    if (config.isRunning) stopConfigCycling(currentTextConfigIndex);
-    
-    textCyclerConfigs.splice(currentTextConfigIndex, 1);
-    saveTextCyclerConfigs();
-    renderTextCyclerConfigs();
-    
-    // Hide editor
-    document.getElementById('textConfigEditor').style.display = 'none';
-    document.getElementById('textLinesCard').style.display = 'none';
-    document.getElementById('textAnimationCard').style.display = 'none';
-    document.getElementById('textStyleCard').style.display = 'none';
-    document.getElementById('textPreviewCard').style.display = 'none';
-    document.getElementById('textControls').style.display = 'none';
-    
-    currentTextConfigIndex = -1;
-    log('Config deleted', 'info');
+    if (window.TextCycler) {
+        TextCycler.deleteCurrentTextConfig();
+    }
 }
 
 function saveTextCyclerConfigs() {
-    storage.set('textCyclerConfigs', textCyclerConfigs);
-    
-    // OBS dock: debounced save to persistent storage for remote clients
-    if (isOBSDock() && connected) {
-        if (storageSyncTimer) clearTimeout(storageSyncTimer);
-        storageSyncTimer = setTimeout(() => broadcastStorage(), STORAGE_SYNC_DEBOUNCE);
+    if (window.TextCycler) {
+        TextCycler.saveTextCyclerConfigs();
     }
 }
 
 function exportTextConfigs() {
-    if (textCyclerConfigs.length === 0) {
-        log('No configs to export', 'error');
-        return;
+    if (window.TextCycler) {
+        TextCycler.exportTextConfigs();
     }
-    const json = JSON.stringify(textCyclerConfigs, null, 2);
-    navigator.clipboard.writeText(json).then(() => {
-        log('Configs copied to clipboard!', 'success');
-    }).catch(() => {
-        prompt('Copy this JSON:', json);
-    });
 }
 
 function importTextConfigs() {
-    const json = prompt('Paste config JSON:');
-    if (!json) return;
-    
-    try {
-        const imported = JSON.parse(json);
-        if (!Array.isArray(imported)) throw new Error('Must be array');
-        
-        const merge = textCyclerConfigs.length > 0 && confirm('Merge with existing? (Cancel to replace)');
-        if (merge) {
-            textCyclerConfigs = [...textCyclerConfigs, ...imported];
-        } else {
-            textCyclerConfigs = imported;
-        }
-        
-        saveTextCyclerConfigs();
-        renderTextCyclerConfigs();
-        log(`Imported ${imported.length} configs`, 'success');
-    } catch (e) {
-        log('Invalid JSON: ' + e.message, 'error');
+    if (window.TextCycler) {
+        TextCycler.importTextConfigs();
     }
 }
 
@@ -5082,306 +4941,35 @@ async function loadTextSource() {
 }
 
 // ============ Text Cycler Engine ============
-
-function getOrCreateChannel(configId) {
-    if (!textChannels[configId]) {
-        try {
-            textChannels[configId] = new BroadcastChannel('text_cycler_' + configId);
-        } catch (e) {
-            console.warn('BroadcastChannel not supported');
-        }
-    }
-    return textChannels[configId];
-}
-
-async function sendToDisplay(configId, message) {
-    // BroadcastChannel (works when same origin)
-    const channel = getOrCreateChannel(configId);
-    if (channel) {
-        channel.postMessage(message);
-    }
-    
-    // LocalStorage fallback (works when same origin)
-    const messageData = {
-        message: message,
-        timestamp: Date.now()
-    };
-    localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
-    
-    // Remote mode: use BroadcastCustomEvent and OBS persistent data
-    if (connected && !isOBSDock()) {
-        try {
-            // Send via BroadcastCustomEvent so OBS dock can forward to localStorage
-            await request('BroadcastCustomEvent', {
-                eventData: {
-                    type: 'strixun_text_cycler_msg',
-                    configId: configId,
-                    message: message,
-                    timestamp: Date.now(),
-                    clientId: getClientId()
-                }
-            });
-            
-            // Also write to OBS persistent data as backup
-            await request('SetPersistentData', {
-                realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
-                slotName: 'text_cycler_msg_' + configId,
-                slotValue: JSON.stringify(messageData)
-            });
-            console.log('[Text Cycler] Sent via BroadcastCustomEvent and persistent data:', configId, message.type);
-        } catch (e) {
-            console.warn('[Text Cycler] Failed to send remotely:', e);
-        }
-    }
-}
+// Engine functions moved to assets/js/text-cycler.js module
 
 function startTextCycler() {
-    saveCurrentTextConfig(); // Save first
-    
-    if (currentTextConfigIndex < 0) return;
-    const config = textCyclerConfigs[currentTextConfigIndex];
-    
-    if (!config.textLines || config.textLines.length === 0) {
-        log('Enter at least one text line', 'error');
-        return;
-    }
-    
-    if (config.mode === 'legacy' && !config.textSource) {
-        log('Select a text source first', 'error');
-        return;
-    }
-    
-    if (config.mode === 'legacy' && !connected) {
-        log('Connect to OBS first for legacy mode', 'error');
-        showPage('setup');
-        return;
-    }
-    
-    startConfigCycling(currentTextConfigIndex);
-}
-
-function startConfigCycling(index) {
-    const config = textCyclerConfigs[index];
-    if (!config) return;
-    
-    // Stop if already running
-    if (config.isRunning) {
-        stopConfigCycling(index);
-    }
-    
-    config.isRunning = true;
-    config.cycleIndex = 0;
-    
-    // Send styles first (browser mode only)
-    if (config.mode === 'browser' && config.styles) {
-        sendToDisplay(config.configId, {
-            type: 'style',
-            styles: config.styles
-        });
-    }
-    
-    // Send initial text
-    showConfigText(index, config.textLines[0]);
-    
-    // Start interval
-    config.intervalId = setInterval(() => {
-        config.cycleIndex = (config.cycleIndex + 1) % config.textLines.length;
-        showConfigText(index, config.textLines[config.cycleIndex]);
-    }, config.cycleDuration);
-    
-    saveTextCyclerConfigs();
-    renderTextCyclerConfigs();
-    
-    // Update UI if this is current config
-    if (index === currentTextConfigIndex) {
-        document.getElementById('startCycleBtn').disabled = true;
-        document.getElementById('stopCycleBtn').disabled = false;
-    }
-    
-    log(`Started: ${config.name} (${config.textLines.length} lines)`, 'success');
-}
-
-function showConfigText(index, text) {
-    const config = textCyclerConfigs[index];
-    if (!config) return;
-    
-    if (config.mode === 'browser') {
-        // Send to browser source
-        sendToDisplay(config.configId, {
-            type: 'show',
-            text: text,
-            transition: config.transition,
-            duration: config.transDuration
-        });
-        
-        // Only update preview if this is the currently selected config
-        if (index === currentTextConfigIndex) {
-            document.getElementById('textPreview').textContent = text;
-        }
-    } else {
-        // Legacy: update OBS text source directly
-        showTextWithTransitionLegacy(text, config, index);
+    if (window.TextCycler) {
+        TextCycler.startTextCycler();
     }
 }
 
-function showTextWithTransitionLegacy(targetText, config, configIndex) {
-    const transition = config.transition;
-    const transDuration = config.transDuration || 500;
-    
-    if (transitionInterval) {
-        clearInterval(transitionInterval);
-        transitionInterval = null;
-    }
-    
-    if (transition === 'none') {
-        setTextFast(targetText, config.textSource, configIndex);
-        return;
-    }
-    
-    const STEP_MS = 100;
-    const totalSteps = Math.max(Math.floor(transDuration / STEP_MS), 1);
-    let currentStep = 0;
-    
-    function doStep() {
-        currentStep++;
-        const progress = currentStep / totalSteps;
-        
-        let displayText = targetText;
-        
-        if (transition === 'typewriter') {
-            const chars = Math.ceil(progress * targetText.length);
-            displayText = targetText.substring(0, chars);
-        } else if (transition === 'glitch' || transition === 'obfuscate') {
-            if (progress < 0.6) {
-                displayText = scrambleTextLegacy(targetText);
-            } else {
-                displayText = revealTextLegacy(targetText, (progress - 0.6) / 0.4);
-            }
-        } else if (transition === 'scramble') {
-            if (progress < 0.9) {
-                displayText = scrambleTextLegacy(targetText);
-            }
-        } else if (transition === 'wave') {
-            displayText = waveTextLegacy(targetText, progress);
-        }
-        
-        setTextFast(displayText, config.textSource, configIndex);
-        
-        if (currentStep >= totalSteps) {
-            clearInterval(transitionInterval);
-            transitionInterval = null;
-            setTextFast(targetText, config.textSource, configIndex);
-        }
-    }
-    
-    doStep();
-    if (totalSteps > 1) {
-        transitionInterval = setInterval(doStep, STEP_MS);
-    }
-}
-
-let lastTextSend = 0;
-const MIN_TEXT_INTERVAL = 80;
-
-function setTextFast(text, sourceName, configIndex) {
-    if (!sourceName || !connected || !ws || ws.readyState !== WebSocket.OPEN) return;
-    
-    const now = Date.now();
-    if (now - lastTextSend < MIN_TEXT_INTERVAL) {
-        // Only update preview if this is the currently selected config
-        if (configIndex === currentTextConfigIndex) {
-            document.getElementById('textPreview').textContent = text;
-        }
-        return;
-    }
-    lastTextSend = now;
-    
-    ws.send(JSON.stringify({
-        op: 6,
-        d: {
-            requestType: 'SetInputSettings',
-            requestId: 'txt_' + (msgId++),
-            requestData: {
-                inputName: sourceName,
-                inputSettings: { text: text }
-            }
-        }
-    }));
-    
-    // Only update preview if this is the currently selected config
-    if (configIndex === currentTextConfigIndex) {
-        document.getElementById('textPreview').textContent = text;
-    }
-}
-
-function scrambleTextLegacy(text) {
-    const chars = '#$%&*@!?+=~<>[]{}';
-    return text.split('').map(c => c === ' ' ? ' ' : chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
-function revealTextLegacy(target, progress) {
-    const chars = '#$%&*@!?+=~<>[]{}';
-    const revealed = Math.ceil(progress * target.length);
-    return target.split('').map((c, i) => i < revealed ? c : (c === ' ' ? ' ' : chars[Math.floor(Math.random() * chars.length)])).join('');
-}
-
-function waveTextLegacy(target, progress) {
-    const waveWidth = 3;
-    const center = progress * (target.length + waveWidth);
-    return target.split('').map((c, i) => {
-        if (Math.abs(i - center) < waveWidth && c !== ' ') return CHARS_ENCHANT[Math.floor(Math.random() * CHARS_ENCHANT.length)];
-        if (i < center - waveWidth) return c;
-        return ' ';
-    }).join('');
-}
+// Engine functions (startConfigCycling, showConfigText, etc.) moved to module
 
 function stopTextCycler() {
-    if (currentTextConfigIndex >= 0) {
-        stopConfigCycling(currentTextConfigIndex);
+    if (window.TextCycler) {
+        TextCycler.stopTextCycler();
     }
 }
 
-function stopConfigCycling(index) {
-    const config = textCyclerConfigs[index];
-    if (!config) return;
-    
-    if (config.intervalId) {
-        clearInterval(config.intervalId);
-        config.intervalId = null;
-    }
-    
-    config.isRunning = false;
-    saveTextCyclerConfigs();
-    renderTextCyclerConfigs();
-    
-    if (index === currentTextConfigIndex) {
-        document.getElementById('startCycleBtn').disabled = false;
-        document.getElementById('stopCycleBtn').disabled = true;
-    }
-    
-    log(`Stopped: ${config.name}`, 'info');
-}
+// stopConfigCycling moved to module
 
 function quickStartConfig(index) {
-    const config = textCyclerConfigs[index];
-    if (!config) return;
-    
-    if (config.isRunning) {
-        stopConfigCycling(index);
-    } else {
-        startConfigCycling(index);
+    if (window.TextCycler) {
+        TextCycler.quickStart(index);
     }
 }
 
 // Restore running configs on load
 function restoreRunningTextCyclers() {
-    textCyclerConfigs.forEach((config, index) => {
-        if (config.isRunning) {
-            // Reset running state and restart
-            config.isRunning = false;
-            startConfigCycling(index);
-        }
-    });
+    if (window.TextCycler) {
+        TextCycler.restoreRunningTextCyclers();
+    }
 }
 
 
