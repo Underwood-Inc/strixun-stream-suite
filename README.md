@@ -16,6 +16,7 @@ A full-service suite of Lua scripts, browser sources, and web dashboards that pr
 - [Control Panel (Dock)](#control-panel-dock)
 - [Data Persistence](#data-persistence)
 - [Twitch Clips Player](#twitch-clips-player)
+- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 - [Version History](#version-history)
 - [References](#references)
@@ -395,7 +396,6 @@ The main interface for controlling the entire suite.
 | 🏠 Dashboard | Quick access to common actions |
 | 📦 Sources | Source visibility animations |
 | 📝 Text | Text cycler with multiple configs |
-| 🎬 Clips | Twitch clips player management |
 | 🔄 Swaps | Source swap configurations |
 | 📐 Layouts | Layout presets (save/apply) |
 | 📜 Scripts | Script status and management |
@@ -484,6 +484,34 @@ Auto-play Twitch clips during BRB/Starting screens.
 3. Configure options (limit, date range, theme)
 4. Copy the generated browser source URL
 5. Add as a Browser Source in OBS
+
+---
+
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](./docs/) directory:
+
+### 📘 For Everyone
+
+- **[Product Overview](./docs/PRODUCT_OVERVIEW.md)** - Understand what Strixun Stream Suite does and why it matters (non-technical)
+
+### 🔧 For Developers
+
+- **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture, components, and design decisions
+- **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation with examples
+- **[Database Schema](./docs/DATABASE_SCHEMA.md)** - Storage schemas, data structures, and relationships
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows, deployment procedures, and operations
+
+### 📚 Documentation Index
+
+See [docs/README.md](./docs/README.md) for a complete documentation index and navigation guide.
+
+All documentation includes:
+- ✅ Mermaid diagrams for visual understanding
+- ✅ Code examples in JavaScript/TypeScript
+- ✅ Complete API and schema references
+- ✅ Troubleshooting guides
+- ✅ Best practices and patterns
 
 ---
 
