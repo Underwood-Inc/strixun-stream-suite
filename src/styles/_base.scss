@@ -1,0 +1,152 @@
+/**
+ * Strixun Stream Suite - Base Styles
+ * 
+ * Reset, typography, and base element styles
+ */
+
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ============ Reset ============
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+// ============ Body ============
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  @include scrollbar;
+}
+
+// ============ Typography ============
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.5em;
+}
+
+h1 { font-size: 2em; }
+h2 { font-size: 1.75em; }
+h3 { font-size: 1.5em; }
+h4 { font-size: 1.25em; }
+
+p {
+  margin-bottom: 1em;
+}
+
+code {
+  font-family: 'Courier New', monospace;
+  background: var(--bg-dark);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+// ============ Links ============
+a {
+  color: var(--accent);
+  text-decoration: none;
+  
+  &:hover {
+    color: var(--accent-light);
+    text-decoration: underline;
+  }
+}
+
+// ============ Buttons ============
+button {
+  @include button('primary');
+  
+  &.btn-secondary {
+    @include button('secondary');
+  }
+  
+  &.btn-danger {
+    @include button('danger');
+  }
+  
+  &.btn-link {
+    background: transparent;
+    color: var(--accent);
+    padding: 4px 8px;
+    
+    &:hover {
+      background: rgba(237, 174, 73, 0.1);
+      text-decoration: none;
+    }
+  }
+}
+
+// ============ Inputs ============
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+select,
+textarea {
+  @include input;
+  width: 100%;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+  
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  
+  &::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+}
+
+input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+
+input[type="color"] {
+  width: 40px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+// ============ Labels ============
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+// ============ Scrollable Containers ============
+.scrollable {
+  @include scrollbar;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+

@@ -3,57 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strixun Stream Suite</title>
-    <meta http-equiv="refresh" content="0; url=control_panel.html">
-    <style>
-        :root {
-            --bg: #1a1611;
-            --accent: #edae49;
-            --text: #f9f9f9;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 20px;
-        }
-        h1 { color: var(--accent); margin-bottom: 16px; }
-        p { color: #888; margin-bottom: 24px; }
-        a {
-            display: inline-block;
-            padding: 12px 24px;
-            background: var(--accent);
-            color: var(--bg);
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        a:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4);
-        }
-        .loading { margin-top: 20px; font-size: 0.85em; color: #666; }
-    </style>
+    <title>Strixun's Stream Suite</title>
+    <!-- Auto-configuration (injected during deployment) -->
+    <script src="config.js"></script>
+    <!-- Particle effects library (lightweight confetti) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <!-- Legacy modules (will be migrated to TypeScript) -->
+    <!-- Storage migrated to TypeScript - loaded via main.ts -->
+    <!-- <script src="assets/js/storage.js"></script> -->
+    <!-- WebSocket migrated to TypeScript - loaded via main.ts -->
+    <!-- <script src="assets/js/websocket.js"></script> -->
+    <!-- Text Cycler migrated to TypeScript - loaded via main.ts -->
+    <!-- <script src="assets/js/text-cycler.js"></script> -->
+    <script src="assets/js/storage-sync.js"></script>
+    <script src="assets/js/source-swaps.js"></script>
+    <script src="assets/js/modules/installer.js"></script>
+    <script src="assets/js/modules/sources.js"></script>
+    <script src="assets/js/modules/layouts.js"></script>
+    <script src="assets/js/modules/script-status.js"></script>
+    <script src="assets/js/ui-utils.js"></script>
+    <script src="assets/js/modules/version.js"></script>
+    <script src="assets/js/modules/twitch-api.js"></script>
+    <!-- Main Svelte application -->
+    <script type="module" src="/src/main.ts"></script>
 </head>
 <body>
-    <h1>🎬 Strixun Stream Suite</h1>
-    <p>Professional streaming tools for OBS Studio</p>
-    <a href="control_panel.html">Open Control Panel</a>
-    <p class="loading">Redirecting automatically...</p>
-    <script>
-        // Fallback redirect if meta refresh doesn't work
-        setTimeout(function() {
-            window.location.href = 'control_panel.html';
-        }, 1000);
-    </script>
+    <!-- Svelte app will mount here -->
 </body>
 </html>
-

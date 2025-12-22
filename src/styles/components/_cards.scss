@@ -1,0 +1,48 @@
+/**
+ * Card Component Styles
+ */
+
+@use '../mixins' as *;
+
+.card {
+  @include card;
+  margin-bottom: 20px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.2em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  &.collapsible {
+    h3 {
+      cursor: pointer;
+      user-select: none;
+      
+      &:hover {
+        color: var(--accent);
+      }
+    }
+    
+    &.collapsed {
+      .card-body {
+        display: none;
+      }
+    }
+  }
+}
+
+.card-body {
+  // Content wrapper for collapsible cards
+}
+

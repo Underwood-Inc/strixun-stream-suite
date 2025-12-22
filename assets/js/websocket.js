@@ -133,7 +133,10 @@ async function saveCredentials() {
 
 async function loadCredentials() {
     const remembered = storage.getRaw('obs_remember') === 'true';
-    document.getElementById('rememberCreds').checked = remembered;
+    const rememberEl = document.getElementById('rememberCreds');
+    if (rememberEl) {
+        rememberEl.checked = remembered;
+    }
     
     if (remembered) {
         const host = storage.getRaw('obs_host');
@@ -141,8 +144,10 @@ async function loadCredentials() {
         const encryptedPw = storage.getRaw('obs_pw');
         const isEncrypted = storage.getRaw('obs_pw_encrypted') === 'true';
         
-        if (host) document.getElementById('host').value = host;
-        if (port) document.getElementById('port').value = port;
+        const hostEl = document.getElementById('host');
+        const portEl = document.getElementById('port');
+        if (host && hostEl) hostEl.value = host;
+        if (port && portEl) portEl.value = port;
         
         if (encryptedPw && isEncrypted) {
             // Check if crypto is available
@@ -166,7 +171,10 @@ async function loadCredentials() {
             try {
                 const password = await decryptPassword(encryptedPw, pin);
                 if (password) {
-                    document.getElementById('password').value = password;
+                    const passwordEl = document.getElementById('password');
+                    if (passwordEl) {
+                        passwordEl.value = password;
+                    }
                     sessionStorage.setItem('obs_pin', pin); // Remember for session
                     updateSecurityWarning();
                     return true;
@@ -197,10 +205,14 @@ function clearSavedCredentials() {
     storage.remove('obs_pw_encrypted');
     storage.remove('obs_remember');
     sessionStorage.removeItem('obs_pin');
-    document.getElementById('host').value = 'localhost';
-    document.getElementById('port').value = '4455';
-    document.getElementById('password').value = '';
-    document.getElementById('rememberCreds').checked = false;
+    const hostEl = document.getElementById('host');
+    const portEl = document.getElementById('port');
+    const passwordEl = document.getElementById('password');
+    const rememberEl = document.getElementById('rememberCreds');
+    if (hostEl) hostEl.value = 'localhost';
+    if (portEl) portEl.value = '4455';
+    if (passwordEl) passwordEl.value = '';
+    if (rememberEl) rememberEl.checked = false;
     updateSecurityWarning();
     log('Saved credentials cleared', 'info');
 }

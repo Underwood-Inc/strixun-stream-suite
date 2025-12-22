@@ -1,0 +1,72 @@
+/**
+ * Strixun Stream Suite - SCSS Variables
+ * 
+ * Color palette and design tokens
+ */
+
+@use 'sass:map';
+
+// ============ Color Palette ============
+$colors: (
+  // Backgrounds
+  bg: #1a1611,
+  bg-dark: #0f0e0b,
+  card: #252017,
+  border: #3d3627,
+  border-light: #4a4336,
+  
+  // Brand Colors
+  accent: #edae49,
+  accent-light: #f9df74,
+  accent-dark: #c68214,
+  accent2: #6495ed,
+  
+  // Status Colors
+  success: #28a745,
+  warning: #ffc107,
+  danger: #ea2b1f,
+  info: #6495ed,
+  
+  // Text Colors
+  text: #f9f9f9,
+  text-secondary: #b8b8b8,
+  muted: #888
+);
+
+// ============ CSS Variables (for runtime) ============
+:root {
+  // Backgrounds
+  --bg: #{map.get($colors, bg)};
+  --bg-dark: #{map.get($colors, bg-dark)};
+  --card: #{map.get($colors, card)};
+  --border: #{map.get($colors, border)};
+  --border-light: #{map.get($colors, border-light)};
+  
+  // Brand Colors
+  --accent: #{map.get($colors, accent)};
+  --accent-light: #{map.get($colors, accent-light)};
+  --accent-dark: #{map.get($colors, accent-dark)};
+  --accent2: #{map.get($colors, accent2)};
+  
+  // Status Colors
+  --success: #{map.get($colors, success)};
+  --warning: #{map.get($colors, warning)};
+  --danger: #{map.get($colors, danger)};
+  --info: #{map.get($colors, info)};
+  
+  // Text Colors
+  --text: #{map.get($colors, text)};
+  --text-secondary: #{map.get($colors, text-secondary)};
+  --muted: #{map.get($colors, muted)};
+  
+  // Glass Effects
+  --glass-bg: rgba(37, 32, 23, 0.95);
+  --glass-bg-dark: rgba(26, 22, 17, 0.98);
+  --glass-border: rgba(61, 54, 39, 0.8);
+}
+
+// ============ Helper Functions ============
+@function color($name) {
+  @return map.get($colors, $name);
+}
+

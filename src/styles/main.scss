@@ -1,0 +1,176 @@
+/**
+ * Strixun Stream Suite - Main Stylesheet
+ * 
+ * Entry point for all styles
+ */
+
+@use 'variables';
+@use 'mixins';
+@use 'base';
+@use 'animations';
+
+// Import component styles
+@use 'components/cards';
+@use 'components/forms';
+@use 'components/navigation';
+@use 'components/log';
+@use 'components/sources';
+@use 'components/utilities';
+@use 'components/staggered';
+
+// ============ Layout ============
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  @include mixins.flex-between;
+  padding: 12px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  
+  h1 {
+    @include mixins.flex-center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.5em;
+  }
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  
+  .tab {
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    
+    &:hover {
+      background: var(--card);
+      color: var(--text);
+    }
+    
+    &.active {
+      background: var(--accent);
+      color: #000;
+    }
+  }
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  @include mixins.scrollbar;
+  
+  // Center content with max-width for better readability
+  > * {
+    max-width: 100%;
+  }
+}
+
+.page {
+  display: none;
+  
+  &.active {
+    display: block;
+  }
+}
+
+.split-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-main {
+  flex: 1;
+  overflow-y: auto;
+  @include mixins.scrollbar;
+}
+
+.split-divider {
+  height: 4px;
+  background: var(--border);
+  cursor: ns-resize;
+  
+  &:hover {
+    background: var(--border-light);
+  }
+  
+  &.dragging {
+    background: var(--accent);
+  }
+}
+
+.split-divider {
+  height: 4px;
+  background: var(--border);
+  cursor: ns-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  
+  &:hover {
+    background: var(--border-light);
+  }
+  
+  &.dragging {
+    background: var(--accent);
+  }
+}
+
+.split-log {
+  flex-shrink: 0;
+  height: 200px;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 0;
+  overflow: hidden;
+  // GPU acceleration for smooth resizing
+  transform: translateZ(0);
+  will-change: height;
+  
+  // Disable transition during drag for immediate response
+  &.resizing {
+    transition: none;
+  }
+  
+  &.collapsed {
+    height: 34px;
+    
+    .split-log__content {
+      // Don't hide immediately - delay opacity so height animates first
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-out 0.2s, max-height 0.3s ease-out;
+    }
+  }
+  
+  &:not(.collapsed) .split-log__content {
+    opacity: 1;
+    pointer-events: auto;
+    max-height: 1000px;
+    transition: opacity 0.3s ease-in 0.1s, max-height 0.3s ease-in;
+  }
+}
+
+

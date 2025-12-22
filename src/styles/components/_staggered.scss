@@ -1,0 +1,47 @@
+/**
+ * Staggered Animation Utilities
+ * 
+ * For animating lists and grids with delays
+ */
+
+@use '../animations' as *;
+
+// Staggered fade-in for lists
+@mixin staggered-list($delay: 0.05s, $duration: 0.3s) {
+  > * {
+    animation: slide-up $duration ease-out backwards;
+    
+    @for $i from 1 through 20 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * $delay};
+      }
+    }
+  }
+}
+
+// Staggered scale-in for grids
+@mixin staggered-grid($delay: 0.03s, $duration: 0.4s) {
+  > * {
+    animation: bounce-in $duration cubic-bezier(0.68, -0.55, 0.265, 1.55) backwards;
+    
+    @for $i from 1 through 30 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * $delay};
+      }
+    }
+  }
+}
+
+// Staggered fade-in for cards
+@mixin staggered-cards($delay: 0.08s, $duration: 0.4s) {
+  > * {
+    animation: fade-in $duration ease-out backwards;
+    
+    @for $i from 1 through 15 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * $delay};
+      }
+    }
+  }
+}
+
