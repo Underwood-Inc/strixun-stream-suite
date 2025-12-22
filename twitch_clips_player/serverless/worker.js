@@ -59,6 +59,54 @@ async function getAppAccessToken(env) {
 }
 
 /**
+ * Get actual video URL for a clip using Twitch GQL API
+ */
+async function getClipVideoUrl(clipId, env) {
+    try {
+        const gqlQuery = {
+            operationName: 'VideoAccessToken_Clip',
+            query: `query VideoAccessToken_Clip($slug: ID!) {
+                clip(slug: $slug) {
+                    playbackAccessToken(params: {platform: "web"}) {
+                        signature
+                        value
+                    }
+                    videoQualities {
+                        frameRate
+                        quality
+                        sourceURL
+                    }
+                }
+            }`,
+            variables: { slug: clipId }
+        };
+
+        const response = await fetch('https://gql.twitch.tv/gql', {
+            method: 'POST',
+            headers: {
+                'Client-ID': env.TWITCH_CLIENT_ID,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(gqlQuery)
+        });
+
+        const result = await response.json();
+        
+        // Get highest quality video URL (usually source)
+        const qualities = result?.data?.clip?.videoQualities;
+        if (qualities && qualities.length > 0) {
+            // Return source quality (highest)
+            return qualities[0].sourceURL;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Failed to get video URL for clip:', clipId, error);
+        return null;
+    }
+}
+
+/**
  * Make authenticated request to Twitch API
  */
 async function twitchApiRequest(endpoint, env, userToken = null) {
@@ -147,35 +195,16 @@ async function handleClips(request, env) {
 
         const data = await twitchApiRequest(endpoint, env);
         
-        // Transform clips to include direct video URL
-        // Get actual video URL from thumbnail URL (multiple format support)
+        // Transform clips to include video URLs
+        // Twitch uses multiple CDN patterns, we'll try to get actual MP4 URLs via GQL
         const clips = await Promise.all(data.data.map(async (clip, index) => {
-            let videoUrl = null;
-            
-            // Try different Twitch CDN URL patterns
-            const thumbnail = clip.thumbnail_url;
-            
-            // Pattern 1: Modern AT-cm format
-            // https://clips-media-assets2.twitch.tv/AT-cm%7C123-preview-480x272.jpg
-            // -> https://clips-media-assets2.twitch.tv/AT-cm%7C123.mp4
-            if (thumbnail.includes('AT-cm')) {
-                videoUrl = thumbnail.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
-            }
-            // Pattern 2: Legacy numbered format  
-            // https://clips-media-assets2.twitch.tv/12345-preview-480x272.jpg
-            // -> https://clips-media-assets2.twitch.tv/12345.mp4
-            else if (thumbnail.match(/\/\d+-preview-/)) {
-                videoUrl = thumbnail.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
-            }
-            // Pattern 3: Slug-based format
-            else {
-                videoUrl = thumbnail.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
-            }
+            // Get actual video URL using Twitch GQL API
+            const videoUrl = await getClipVideoUrl(clip.id, env);
             
             return {
                 ...clip,
                 item: index,
-                clip_url: videoUrl,
+                clip_url: videoUrl || clip.thumbnail_url.replace(/-preview-\d+x\d+\.jpg$/, '.mp4'),
                 thumbnail_url: clip.thumbnail_url
             };
         }));
