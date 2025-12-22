@@ -514,23 +514,9 @@ function initClipsPlayer() {
         
         // Set the video attribute to the clip ID (twitch-video-element API)
         currentPlayer.setAttribute('video', clipId);
+        currentPlayer.setAttribute('autoplay', 'true');
         currentPlayer.volume = 1.0; // Full volume
         currentPlayer.muted = false;
-        
-        // Wait for the video to be loaded before playing
-        // twitch-video-element needs time to create its internal iframe
-        const onCanPlay = () => {
-            console.log('[Clips] Video ready, playing...');
-            if (currentPlayer && currentPlayer.play) {
-                currentPlayer.play().catch(e => {
-                    console.warn('[Clips] Autoplay blocked:', e);
-                });
-            }
-            currentPlayer.removeEventListener('canplay', onCanPlay);
-        };
-        
-        // Listen for canplay event (video is ready to play)
-        currentPlayer.addEventListener('canplay', onCanPlay, { once: true });
         
         // Pre-buffer next clip if available
         const nextIndex = (randomClip + 1) % clips_json.data.length;
