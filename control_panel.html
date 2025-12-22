@@ -6054,7 +6054,8 @@ function generateClipsUrl() {
     }
     
     // Determine which player to use
-    const useNewPlayer = config.useNewPlayer !== false;
+    // Default to simple overlay (clips.html) - clean for OBS overlays
+    const useNewPlayer = config.useNewPlayer === true; // Must be explicitly enabled
     const playerFile = useNewPlayer ? 'twitch_clips_player/player.html' : 'twitch_clips_player/clips.html';
     const basePath = window.location.pathname.replace('control_panel.html', playerFile);
     const baseUrl = window.location.protocol + '//' + window.location.host + basePath;
