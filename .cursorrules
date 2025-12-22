@@ -1,12 +1,6 @@
-# GitHub Copilot Instructions - Strixun Stream Suite
+# Cursor AI Rules - Strixun Stream Suite
 
 ## CSS/SCSS Rules - CRITICAL
-
-### NEVER Use !important
-- **ABSOLUTE PROHIBITION**: Never use `!important` in CSS, SCSS, SASS, or any CSS preprocessor
-- **Exception**: Only utility classes (`.hidden`, `.visible`) may use `!important` for override purposes
-- **Solution**: Use correct CSS specificity selectors instead
-- **Why**: `!important` breaks the cascade and makes styles unmaintainable
 
 ### NEVER Use Nested BEM Selectors in Svelte Components
 - **ABSOLUTE PROHIBITION**: Never use nested BEM selectors with `&__` or `&--` in Svelte `<style>` blocks
@@ -67,34 +61,6 @@
 - Disable transitions during drag/resize operations: `.resizing { transition: none; }`
 - Use GPU-accelerated properties: `transform`, `opacity` (not `width`, `height`, `top`, `left`)
 
-### Smooth Width Transitions for Side Panels/Overlays
-- **CRITICAL**: Transitions must be applied to the element that changes, not parent selectors
-- **NEVER** use `:has()` selector for width transitions - CSS transitions don't work on selector matching changes
-- **Problem**: When using `:has()` on a parent, the transition is scoped incorrectly and won't animate
-  ```scss
-  // ❌ WRONG - transition won't work because selector matching doesn't trigger transitions
-  .parent:has(.child.expanded) .content {
-    transition: margin-right 0.3s ease;
-    margin-right: 280px;
-  }
-  ```
-- **Solution**: Use CSS variables on the element that needs to transition
-  ```scss
-  // ✅ CORRECT - transition is on the element that changes
-  .content {
-    transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    margin-right: var(--filter-aside-width, 0px);
-  }
-  ```
-  ```typescript
-  // Set CSS variable on document root, not on parent element
-  $: document.documentElement.style.setProperty('--filter-aside-width', expanded ? `${width}px` : '0px');
-  ```
-- **Why**: CSS transitions only work on property value changes, not selector matching changes
-- **Scoping**: The transition must be on the same element that has the property being animated
-- This ensures smooth transitions when side panels expand/collapse
-- Works for any dynamic width adjustment that needs to animate
-
 ### Responsive Design
 - Use CSS custom properties for breakpoints
 - Mobile-first approach: start with mobile styles, add desktop with `@media (min-width: ...)`
@@ -124,6 +90,34 @@
 - Apply adjustment only when scrollbar is present
 - Use CSS variables for dynamic width: `margin-right: var(--scrollbar-width, 0px);`
 - Remove adjustment when scrollbar disappears
+
+### Smooth Width Transitions for Side Panels/Overlays
+- **CRITICAL**: Transitions must be applied to the element that changes, not parent selectors
+- **NEVER** use `:has()` selector for width transitions - CSS transitions don't work on selector matching changes
+- **Problem**: When using `:has()` on a parent, the transition is scoped incorrectly and won't animate
+  ```scss
+  // ❌ WRONG - transition won't work because selector matching doesn't trigger transitions
+  .parent:has(.child.expanded) .content {
+    transition: margin-right 0.3s ease;
+    margin-right: 280px;
+  }
+  ```
+- **Solution**: Use CSS variables on the element that needs to transition
+  ```scss
+  // ✅ CORRECT - transition is on the element that changes
+  .content {
+    transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-right: var(--filter-aside-width, 0px);
+  }
+  ```
+  ```typescript
+  // Set CSS variable on document root, not on parent element
+  $: document.documentElement.style.setProperty('--filter-aside-width', expanded ? `${width}px` : '0px');
+  ```
+- **Why**: CSS transitions only work on property value changes, not selector matching changes
+- **Scoping**: The transition must be on the same element that has the property being animated
+- This ensures smooth transitions when side panels expand/collapse
+- Works for any dynamic width adjustment that needs to animate
 
 ## Component Architecture Rules
 
@@ -173,3 +167,19 @@
 - Provide fallbacks for missing data
 - Use optional chaining: `obj?.prop?.nested`
 - Validate inputs in components
+
+## Git Commit Rules
+
+- Use conventional commit syntax: `type(scope): description`
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- Examples:
+  - `feat(ui): add tooltip component with portal rendering`
+  - `fix(css): remove !important from button styles`
+  - `refactor(components): split ActivityLog into smaller modules`
+
+## Testing Considerations
+
+- Components should be testable in isolation
+- Avoid side effects in component initialization
+- Use dependency injection for services
+- Mock external dependencies in tests
