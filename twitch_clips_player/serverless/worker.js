@@ -111,6 +111,52 @@ function shuffleArray(arr) {
 }
 
 /**
+ * Get MP4 URL for a clip using Twitch GQL API (based on api-twitch library)
+ */
+async function getClipMP4ViaGQL(clipSlug, env) {
+    const gqlQuery = {
+        operationName: 'ClipPlayback',
+        variables: {
+            slug: clipSlug
+        },
+        extensions: {
+            persistedQuery: {
+                version: 1,
+                sha256Hash: '36b89d2507fce29e5ca551df756d27c1cfe079e2609642b4390aa4c35796eb11'
+            }
+        }
+    };
+
+    try {
+        const response = await fetch('https://gql.twitch.tv/gql', {
+            method: 'POST',
+            headers: {
+                'Client-ID': 'kimne78kx3ncx6brgo4mv6wki5h1ko', // Public GQL client ID
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(gqlQuery)
+        });
+
+        if (!response.ok) {
+            throw new Error(`GQL HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const qualities = result?.data?.clip?.videoQualities;
+        
+        if (qualities && qualities.length > 0) {
+            // Return highest quality (first in array is usually source)
+            return qualities[0].sourceURL;
+        }
+        
+        return null;
+    } catch (e) {
+        console.error(`[GQL] Failed for clip ${clipSlug}:`, e.message);
+        return null;
+    }
+}
+
+/**
  * Handle /clips endpoint
  * GET /clips?channel=username&limit=20&shuffle=true&start_date=...&end_date=...&prefer_featured=true
  */
@@ -147,13 +193,25 @@ async function handleClips(request, env) {
 
         const data = await twitchApiRequest(endpoint, env);
         
-        console.log(`[Worker] Fetched ${data.data.length} clips`);
+        console.log(`[Worker] Fetched ${data.data.length} clips, fetching MP4 URLs via GQL...`);
         
-        // Just return clips as-is (frontend will use iframes, no MP4 needed)
-        const clips = data.data.map((clip, index) => ({
-            ...clip,
-            item: index,
-        }));
+        // Use GQL to get MP4 URLs for each clip
+        const clipsWithMP4 = await Promise.all(
+            data.data.map(async (clip, index) => {
+                const mp4Url = await getClipMP4ViaGQL(clip.id, env);
+                if (!mp4Url) {
+                    console.warn(`[Worker] No MP4 URL for clip ${clip.id}`);
+                }
+                return {
+                    ...clip,
+                    item: index,
+                    clip_url: mp4Url || clip.thumbnail_url.replace('-preview-480x272.jpg', '.mp4') // Fallback
+                };
+            })
+        );
+        
+        const clips = clipsWithMP4;
+        console.log(`[Worker] Successfully got MP4 URLs for ${clips.filter(c => c.clip_url).length}/${clips.length} clips`);
 
         // Shuffle if requested
         if (shuffle) {
