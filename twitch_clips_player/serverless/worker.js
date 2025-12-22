@@ -59,54 +59,6 @@ async function getAppAccessToken(env) {
 }
 
 /**
- * Get actual video URL for a clip using Twitch GQL API
- */
-async function getClipVideoUrl(clipId, env) {
-    try {
-        const gqlQuery = {
-            operationName: 'VideoAccessToken_Clip',
-            query: `query VideoAccessToken_Clip($slug: ID!) {
-                clip(slug: $slug) {
-                    playbackAccessToken(params: {platform: "web"}) {
-                        signature
-                        value
-                    }
-                    videoQualities {
-                        frameRate
-                        quality
-                        sourceURL
-                    }
-                }
-            }`,
-            variables: { slug: clipId }
-        };
-
-        const response = await fetch('https://gql.twitch.tv/gql', {
-            method: 'POST',
-            headers: {
-                'Client-ID': env.TWITCH_CLIENT_ID,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(gqlQuery)
-        });
-
-        const result = await response.json();
-        
-        // Get highest quality video URL (usually source)
-        const qualities = result?.data?.clip?.videoQualities;
-        if (qualities && qualities.length > 0) {
-            // Return source quality (highest)
-            return qualities[0].sourceURL;
-        }
-        
-        return null;
-    } catch (error) {
-        console.error('Failed to get video URL for clip:', clipId, error);
-        return null;
-    }
-}
-
-/**
  * Make authenticated request to Twitch API
  */
 async function twitchApiRequest(endpoint, env, userToken = null) {
@@ -195,27 +147,11 @@ async function handleClips(request, env) {
 
         const data = await twitchApiRequest(endpoint, env);
         
-        // Transform clips to include video URLs
-        // Use Twitch GQL API to get actual MP4 URLs
-        const clipsWithVideos = await Promise.all(data.data.map(async (clip, index) => {
-            // Get actual video URL using Twitch GQL API
-            const videoUrl = await getClipVideoUrl(clip.id, env);
-            
-            if (!videoUrl) {
-                console.log('Failed to get video URL for clip:', clip.id);
-                return null; // Skip clips without video URLs
-            }
-            
-            return {
-                ...clip,
-                item: index,
-                clip_url: videoUrl,
-                thumbnail_url: clip.thumbnail_url
-            };
+        // Transform clips - just add index, we use iframe embeds
+        const clips = data.data.map((clip, index) => ({
+            ...clip,
+            item: index,
         }));
-        
-        // Filter out null clips (those that failed to get video URLs)
-        const clips = clipsWithVideos.filter(clip => clip !== null);
 
         // Shuffle if requested
         if (shuffle) {

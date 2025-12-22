@@ -249,19 +249,30 @@ $(document).ready(function () {
 
     console.log(channel);
 
-    // Create new video element - use direct MP4 URLs
-    let curr_clip = document.createElement('video');
-    curr_clip.setAttribute('playsinline', '');
-    curr_clip.setAttribute('preload', 'auto');
-    $(curr_clip).appendTo('#container');
+    // Create iframe pool for seamless clip transitions
+    let curr_clip_iframe = null;
+    const iframe_pool = [];
+    const PRELOAD_COUNT = 3; // Pre-load 3 clips ahead
     
-    // Create hidden preload video for next clip
-    let next_clip = document.createElement('video');
-    next_clip.setAttribute('playsinline', '');
-    next_clip.setAttribute('preload', 'auto');
-    next_clip.style.display = 'none';
-    next_clip.id = 'next-video-preload';
-    $(next_clip).appendTo('#container');
+    // Initialize iframe pool
+    for (let i = 0; i < PRELOAD_COUNT; i++) {
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('scrolling', 'no');
+        iframe.setAttribute('allow', 'autoplay');
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.position = 'absolute';
+        iframe.style.top = '0';
+        iframe.style.left = '0';
+        iframe.style.display = 'none';
+        iframe.id = `clip-iframe-${i}`;
+        $(iframe).appendTo('#container');
+        iframe_pool.push(iframe);
+    }
+    
+    let current_iframe_index = 0;
 
     //if command is set
     if (command && chatConnect === 'true') {
@@ -482,19 +493,29 @@ $(document).ready(function () {
         console.log('Playing clip ID: ' + clips_json.data[randomClip]['id']);
         console.log('Data length: ' + clips_json.data.length)
 
-        // Load clip with direct video URL
-        curr_clip.poster = clips_json.data[randomClip]['thumbnail_url'];
-        curr_clip.src = clips_json.data[randomClip]['clip_url'];
-        curr_clip.autoplay = true;
-        curr_clip.controls = false;
-        curr_clip.volume = 1.0; // Always full volume
-        curr_clip.muted = false;
-        curr_clip.load();
+        // Get current iframe from pool
+        const iframe = iframe_pool[current_iframe_index];
+        const clipId = clips_json.data[randomClip]['id'];
+        const parentDomain = window.location.hostname || 'localhost';
         
-        console.log('[Clips] Loading:', clips_json.data[randomClip]['id'], clips_json.data[randomClip]['clip_url']);
+        // Load clip in iframe with autoplay
+        const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=false`;
+        iframe.src = embedUrl;
+        iframe.style.display = 'block';
+        iframe.setAttribute('data-clip-id', clipId);
+        iframe.setAttribute('data-duration', clips_json.data[randomClip]['duration'] || 30);
         
-        // Pre-load next clip
-        preloadNextClipVideo();
+        // Hide previous iframe if exists
+        if (curr_clip_iframe && curr_clip_iframe !== iframe) {
+            curr_clip_iframe.style.display = 'none';
+        }
+        
+        curr_clip_iframe = iframe;
+        
+        console.log('[Clips] Playing:', clipId, 'in iframe', current_iframe_index);
+        
+        // Pre-load next clips in hidden iframes
+        preloadNextClipsInIframes();
 
         // Remove elements before loading the clip and clip details
         removeElements();
@@ -581,46 +602,49 @@ $(document).ready(function () {
             }
         }
 
-        // Move to the next clip when the current one finishes playing
-        curr_clip.addEventListener("ended", nextClip);
+        // Auto-advance after clip duration
+        const duration = parseFloat(clips_json.data[randomClip]['duration'] || 30);
+        setTimeout(() => {
+            nextClip(false);
+        }, (duration + 1) * 1000);
     }
     
-    // Pre-load next clip video
-    function preloadNextClipVideo() {
-        const nextIndex = (clip_index + 1) % channel.length;
-        const nextChannel = channel[nextIndex];
+    // Pre-load next clips in hidden iframes
+    function preloadNextClipsInIframes() {
+        const parentDomain = window.location.hostname || 'localhost';
         
-        // Get next clip data
-        const nextClipsJson = localStorage.getItem(nextChannel);
-        if (!nextClipsJson) return;
-        
-        try {
-            const nextClipsData = JSON.parse(nextClipsJson);
-            if (nextClipsData.data && nextClipsData.data.length > 0) {
-                const nextClip = nextClipsData.data[Math.floor(Math.random() * nextClipsData.data.length)];
-                
-                // Pre-load in hidden video element
-                let preloadVideo = document.getElementById('next-video-preload');
-                if (preloadVideo) {
-                    preloadVideo.src = nextClip.clip_url;
-                    preloadVideo.load();
-                    console.log('[Clips] Pre-buffering:', nextClip.id);
+        // Pre-load up to PRELOAD_COUNT clips ahead
+        for (let i = 1; i < PRELOAD_COUNT; i++) {
+            const futureIndex = (clip_index + i) % channel.length;
+            const futureChannel = channel[futureIndex];
+            const futureClipsJson = localStorage.getItem(futureChannel);
+            
+            if (!futureClipsJson) continue;
+            
+            try {
+                const futureClipsData = JSON.parse(futureClipsJson);
+                if (futureClipsData.data && futureClipsData.data.length > 0) {
+                    const futureClip = futureClipsData.data[Math.floor(Math.random() * futureClipsData.data.length)];
+                    const iframeIndex = (current_iframe_index + i) % PRELOAD_COUNT;
+                    const iframe = iframe_pool[iframeIndex];
+                    
+                    // Pre-load clip in hidden iframe
+                    const embedUrl = `https://clips.twitch.tv/embed?clip=${futureClip.id}&parent=${parentDomain}&autoplay=false&muted=true`;
+                    iframe.src = embedUrl;
+                    iframe.style.display = 'none';
+                    
+                    console.log('[Clips] Pre-loading:', futureClip.id, 'in iframe', iframeIndex);
                 }
+            } catch (e) {
+                console.warn('[Clips] Failed to pre-load:', e);
             }
-        } catch (e) {
-            console.warn('[Clips] Failed to pre-buffer:', e);
         }
     }
 
     function nextClip(skip = false) {
 
-        // Properly remove video source
-        let videoElement = document.querySelector("video");
-        if (videoElement && videoElement.id !== 'next-video-preload') {
-            videoElement.pause();
-            videoElement.removeAttribute("src");
-            videoElement.load();
-        }
+        // Move to next iframe in pool
+        current_iframe_index = (current_iframe_index + 1) % PRELOAD_COUNT;
 
         if (clip_index < channel.length - 1) {
             clip_index += 1;
