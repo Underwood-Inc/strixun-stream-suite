@@ -1,4 +1,10 @@
-$(document).ready(function () {
+// Wait for custom element to be defined before initializing
+customElements.whenDefined('twitch-video').then(() => {
+    console.log('[Clips] twitch-video element loaded');
+    initClipsPlayer();
+});
+
+function initClipsPlayer() {
     // clear localStorage on load. Some clips have a expire time that needs to be refreshed and can not sit in localStorage for too long.
     localStorage.clear();
     console.log('Cleared localStorage');
@@ -632,4 +638,41 @@ $(document).ready(function () {
         // Load next clip
         loadClip(channel[clip_index]);
     }
-});
+    
+    // Preload clips asynchronously for all channels
+    async function preloadClips(channels) {
+        for (const channelName of channels) {
+            try {
+                // Build API URL
+                let apiUrl = `${apiServer}/clips?channel=${channelName}&limit=${limit}`;
+                if (dateRange) apiUrl += `&start_date=${dateRange}`;
+                if (preferFeatured !== "false") apiUrl += `&prefer_featured=true`;
+                
+                console.log(`[Clips] Preloading from: ${channelName}`);
+                const asyncResponse = await fetch(apiUrl);
+                let clips_json = await asyncResponse.json();
+
+                // If dateRange or preferFeatured is set but no clips are found or only 1 clip is found. Try to pull any clip. 
+                if (clips_json.data.length === 0 && (dateRange > "" || preferFeatured !== "false")) {
+                    asyncResponse = await fetch(`${apiServer}/clips?channel=${channelName}&limit=${limit}&shuffle=true`);
+                    clips_json = await asyncResponse.json();
+                    console.log('No clips found matching dateRange or preferFeatured filter. PULL ANY Clip found from: ' + channelName);
+                }
+
+                if (clips_json.data.length > 0) {
+                    console.log(`[Clips] Got ${clips_json.data.length} clips for ${channelName}`);
+                    console.log('Set ' + channelName + ' in localStorage');
+                    localStorage.setItem(channelName, JSON.stringify(clips_json));
+                }
+            } catch (error) {
+                console.error('Error while preloading clip:', error);
+            }
+        }
+    }
+
+    // Start preloading on DOM ready
+    $(document).ready(function() {
+        console.log('[Clips] DOM ready, preloading clips...');
+        preloadClips(channel);
+    });
+}
