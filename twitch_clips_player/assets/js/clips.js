@@ -274,6 +274,38 @@ $(document).ready(function () {
     }
     
     let current_iframe_index = 0;
+    
+    // Listen for Twitch embed events via postMessage
+    window.addEventListener('message', (event) => {
+        // Only accept messages from clips.twitch.tv
+        if (event.origin !== 'https://clips.twitch.tv') return;
+        
+        try {
+            const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+            
+            // Twitch embed sends 'ended' event when clip finishes
+            if (data.event === 'ended' || data.namespace === 'video-player' && data.data === 'ended') {
+                console.log('[Clips] Clip ended naturally, advancing to next...');
+                
+                // Find which iframe sent the message and verify it's the current one
+                const sendingIframe = Array.from(document.querySelectorAll('iframe')).find(
+                    frame => frame.contentWindow === event.source
+                );
+                
+                if (sendingIframe && sendingIframe.getAttribute('data-is-current') === 'true') {
+                    // Clear the fallback timeout since we got the real 'ended' event
+                    const timeoutId = sendingIframe.getAttribute('data-timeout-id');
+                    if (timeoutId) {
+                        clearTimeout(parseInt(timeoutId));
+                    }
+                    
+                    nextClip(false);
+                }
+            }
+        } catch (e) {
+            // Ignore parsing errors from non-JSON messages
+        }
+    });
 
     //if command is set
     if (command && chatConnect === 'true') {
@@ -491,12 +523,13 @@ $(document).ready(function () {
         iframe.style.zIndex = '10'; // Bring to front
         iframe.style.visibility = 'visible'; // Make visible
         iframe.setAttribute('data-clip-id', clipId);
-        iframe.setAttribute('data-duration', clips_json.data[randomClip]['duration'] || 30);
+        iframe.setAttribute('data-is-current', 'true'); // Mark as current
         
         // Send previous iframe to back if exists
         if (curr_clip_iframe && curr_clip_iframe !== iframe) {
             curr_clip_iframe.style.zIndex = '1'; // Send to back
             curr_clip_iframe.style.visibility = 'hidden'; // Hide but keep rendered
+            curr_clip_iframe.removeAttribute('data-is-current');
         }
         
         curr_clip_iframe = iframe;
@@ -590,12 +623,18 @@ $(document).ready(function () {
                 detailsDiv.appendTo('#container');
             }
         }
-
-        // Auto-advance after clip duration
+        
+        // Fallback timeout in case iframe doesn't send 'ended' event (safety net)
         const duration = parseFloat(clips_json.data[randomClip]['duration'] || 30);
-        setTimeout(() => {
-            nextClip(false);
-        }, (duration + 1) * 1000);
+        const fallbackTimeout = setTimeout(() => {
+            console.warn('[Clips] Fallback timeout triggered - advancing to next clip');
+            if (iframe.getAttribute('data-is-current') === 'true') {
+                nextClip(false);
+            }
+        }, (duration + 3) * 1000); // +3 seconds buffer for safety
+        
+        // Store timeout ID on iframe so we can clear it if 'ended' fires first
+        iframe.setAttribute('data-timeout-id', fallbackTimeout);
     }
     
     // Pre-load next clips in background iframes (visible but behind for buffering)
