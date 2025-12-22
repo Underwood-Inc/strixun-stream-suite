@@ -2635,6 +2635,26 @@ function handleEvent(event) {
             console.log('[Storage Sync] 📤 Responding to storage request!');
             log('📤 Another client requesting storage - broadcasting...', 'info');
             broadcastStorage();
+        } else if (customData?.type === 'strixun_text_cycler_msg') {
+            // Handle text cycler messages from remote control panel
+            const configId = customData.configId;
+            const message = customData.message;
+            
+            if (configId && message) {
+                // If we're the OBS dock, forward to localStorage so browser source can receive it
+                if (isOBSDock()) {
+                    try {
+                        const messageData = {
+                            message: message,
+                            timestamp: Date.now()
+                        };
+                        localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
+                        console.log('[Text Cycler] Forwarded message to localStorage:', configId, message.type);
+                    } catch (e) {
+                        console.warn('[Text Cycler] Failed to forward to localStorage:', e);
+                    }
+                }
+            }
         }
     }
 }
@@ -5074,15 +5094,45 @@ function getOrCreateChannel(configId) {
     return textChannels[configId];
 }
 
-function sendToDisplay(configId, message) {
-    // BroadcastChannel
+async function sendToDisplay(configId, message) {
+    // BroadcastChannel (works when same origin)
     const channel = getOrCreateChannel(configId);
     if (channel) {
         channel.postMessage(message);
     }
     
-    // LocalStorage fallback
-    localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(message));
+    // LocalStorage fallback (works when same origin)
+    const messageData = {
+        message: message,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
+    
+    // Remote mode: use BroadcastCustomEvent and OBS persistent data
+    if (connected && !isOBSDock()) {
+        try {
+            // Send via BroadcastCustomEvent so OBS dock can forward to localStorage
+            await request('BroadcastCustomEvent', {
+                eventData: {
+                    type: 'strixun_text_cycler_msg',
+                    configId: configId,
+                    message: message,
+                    timestamp: Date.now(),
+                    clientId: getClientId()
+                }
+            });
+            
+            // Also write to OBS persistent data as backup
+            await request('SetPersistentData', {
+                realm: 'OBS_WEBSOCKET_DATA_REALM_GLOBAL',
+                slotName: 'text_cycler_msg_' + configId,
+                slotValue: JSON.stringify(messageData)
+            });
+            console.log('[Text Cycler] Sent via BroadcastCustomEvent and persistent data:', configId, message.type);
+        } catch (e) {
+            console.warn('[Text Cycler] Failed to send remotely:', e);
+        }
+    }
 }
 
 function startTextCycler() {

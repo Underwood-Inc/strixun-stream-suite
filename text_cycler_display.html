@@ -466,6 +466,31 @@ window.addEventListener('storage', (e) => {
     }
 });
 
+// Polling for remote control panel (when BroadcastChannel/localStorage don't work)
+// Polls localStorage periodically to catch messages from remote control panel
+// Remote control panel writes to OBS persistent data, which a Lua script can bridge to localStorage
+let lastPolledTimestamp = 0;
+const POLL_INTERVAL = 100; // Poll every 100ms for responsive updates
+setInterval(() => {
+    try {
+        const msgKey = 'text_cycler_msg_' + CONFIG_ID;
+        const msgData = localStorage.getItem(msgKey);
+        if (msgData) {
+            const parsed = JSON.parse(msgData);
+            // Check if this is a new message (has timestamp and it's newer)
+            if (parsed.timestamp && parsed.timestamp > lastPolledTimestamp) {
+                lastPolledTimestamp = parsed.timestamp;
+                handleMessage(parsed.message || parsed);
+            } else if (!parsed.timestamp) {
+                // Legacy format without timestamp
+                handleMessage(parsed);
+            }
+        }
+    } catch (err) {
+        // Silently ignore parse errors
+    }
+}, POLL_INTERVAL);
+
 function handleMessage(msg) {
     updateStatus(`Received: ${msg.type}`);
     
