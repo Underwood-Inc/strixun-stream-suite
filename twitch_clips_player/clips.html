@@ -31,5 +31,70 @@
 <div id="container">
 </div>
 
+<!-- Hover Controls Overlay -->
+<div id="hover-controls" style="display:none;">
+    <button id="btn-prev" title="Previous Clip">⏮</button>
+    <button id="btn-play-pause" title="Play/Pause">⏸</button>
+    <button id="btn-next" title="Next Clip">⏭</button>
+</div>
+
+<style>
+#hover-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(18, 18, 18, 0.9);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+    display: flex !important;
+    gap: 12px;
+}
+
+body:hover #hover-controls {
+    opacity: 1;
+}
+
+#hover-controls button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 18px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#hover-controls button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+</style>
+
+<script>
+// Hook up hover controls
+document.getElementById('btn-next')?.addEventListener('click', () => {
+    if (typeof nextClip === 'function') nextClip(true);
+});
+
+document.getElementById('btn-prev')?.addEventListener('click', () => {
+    // Implement previous if needed
+    console.log('Previous clip - not implemented in original');
+});
+
+document.getElementById('btn-play-pause')?.addEventListener('click', () => {
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+        // Can't control iframe directly, just skip to next
+        if (typeof nextClip === 'function') nextClip(true);
+    }
+});
+</script>
+
 </body>
 </html>

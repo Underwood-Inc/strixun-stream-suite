@@ -5783,8 +5783,7 @@ function newClipsConfig() {
         accessToken: '',
         autoPlay: true,
         shuffle: true,
-        volume: 100,
-        useNewPlayer: false // Default to simple overlay (clips.html) for clean OBS overlays
+        volume: 100
     };
     
     clipsConfigs.push(config);
@@ -6053,10 +6052,8 @@ function generateClipsUrl() {
         return;
     }
     
-    // Determine which player to use
-    // Default to simple overlay (clips.html) - clean for OBS overlays
-    const useNewPlayer = config.useNewPlayer === true; // Must be explicitly enabled
-    const playerFile = useNewPlayer ? 'twitch_clips_player/player.html' : 'twitch_clips_player/clips.html';
+    // Use clips.html (original teklynk player with hover controls)
+    const playerFile = 'twitch_clips_player/clips.html';
     const basePath = window.location.pathname.replace('control_panel.html', playerFile);
     const baseUrl = window.location.protocol + '//' + window.location.host + basePath;
     
