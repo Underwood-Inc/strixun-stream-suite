@@ -229,27 +229,33 @@
    - **Risk:** Low (self-contained)
    - **Status:** Successfully extracted, all functions working
 
-3. 🔄 **Extract WebSocket Module** (~870 lines) ⏳ IN PROGRESS
+3. ✅ **Extract WebSocket Module** (~870 lines) ✅ COMPLETE
    - File: `assets/js/websocket.js`
    - **Impact:** Core functionality
    - **Risk:** Medium (many dependencies)
+   - **Status:** Successfully extracted, all functions working
 
 ### Phase 3: Feature Modules (Medium Impact)
-4. **Extract Source Management** (~563 lines)
+4. ✅ **Extract Source Management** (~615 lines) ✅ COMPLETE
    - File: `assets/js/modules/sources.js`
+   - **Status:** Successfully extracted, includes opacity management and animations
 
-5. **Extract Layout Management** (~492 lines)
+5. ✅ **Extract Layout Management** (~503 lines) ✅ COMPLETE
    - File: `assets/js/modules/layouts.js`
+   - **Status:** Successfully extracted, uses global easeFunc/lerp from sources.js
 
-6. **Extract Script Status** (~399 lines)
+6. ✅ **Extract Script Status** (~355 lines) ✅ COMPLETE
    - File: `assets/js/modules/script-status.js`
+   - **Status:** Successfully extracted, includes OBS dock detection utilities
 
 ### Phase 4: Utilities (Low Impact, High Value)
-7. **Extract UI Utilities** (~386 lines)
+7. ✅ **Extract UI Utilities** (~386 lines) ✅ COMPLETE
    - File: `assets/js/ui-utils.js`
+   - **Status:** Successfully extracted, includes SmartSearch, CollapsibleCards, and SplitPanel
 
-8. **Extract Version Management** (~174 lines)
+8. ✅ **Extract Version Management** (~174 lines) ✅ COMPLETE
    - File: `assets/js/modules/version.js`
+   - **Status:** Successfully extracted, includes version comparison and GitHub update checking
 
 9. **Extract Twitch API** (~226 lines)
    - File: `assets/js/modules/twitch-api.js`
@@ -426,6 +432,27 @@ After each extraction:
 
 ---
 
+## 📋 Extraction Progress Log
+
+### 2025-12-22: Phase 2 & 3 Progress ✅
+
+**Completed:**
+- ✅ Removed duplicate storage code (~643 lines)
+- ✅ Extracted Installer/Script Manager module (~620 lines)
+- ✅ Extracted WebSocket/OBS Connection module (~870 lines)
+- ✅ Extracted Source Management module (~615 lines)
+- ✅ Extracted Layout Management module (~503 lines)
+- ✅ Extracted Script Status module (~355 lines)
+- ✅ Extracted UI Utilities module (~386 lines)
+- ✅ Extracted Version Management module (~174 lines)
+
+**Current File Size:** ~2,145 lines (down from 5,572)
+**Total Reduction:** ~3,425 lines (61.5%)
+
+**Next:** Twitch API Module extraction (~226 lines) or remaining core functionality
+
+---
+
 **Generated:** 2025  
-**Last Updated:** 2025
+**Last Updated:** 2025-12-22
 
