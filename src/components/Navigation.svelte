@@ -5,8 +5,8 @@
    * Tab navigation for different pages
    */
   
+  import { connected } from '../stores/connection';
   import { currentPage } from '../stores/navigation';
-  import { isReady } from '../stores/connection';
   import { celebrateClick } from '../utils/particles';
   
   const tabs = [
@@ -21,14 +21,24 @@
   ];
   
   function handleTabClick(e: MouseEvent, tabId: string, requiresConnection: boolean): void {
-    if (requiresConnection && !$isReady) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (requiresConnection && !$connected) {
       if (window.App?.log) {
         window.App.log('Connect to OBS first to use this feature', 'error');
       }
       currentPage.set('setup');
       return;
     }
-    celebrateClick(e.currentTarget as HTMLElement);
+    
+    try {
+      celebrateClick(e.currentTarget as HTMLElement);
+    } catch (err) {
+      // Ignore particle errors
+      console.warn('[Navigation] Particle effect failed:', err);
+    }
+    
     currentPage.set(tabId);
   }
 </script>
@@ -38,7 +48,7 @@
     <button
       class="tab"
       class:active={$currentPage === tab.id}
-      class:disabled={tab.requiresConnection && !$isReady}
+      class:disabled={tab.requiresConnection && !$connected}
       on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
       title={tab.label}
     >

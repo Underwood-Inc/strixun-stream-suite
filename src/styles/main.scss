@@ -82,11 +82,13 @@
 }
 
 .page {
-  display: none;
+  display: block;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
   
-  &.active {
-    display: block;
-  }
+  // Note: Svelte conditionally renders pages, so we don't need .active class logic
+  // Legacy HTML pages may still use .active class, but Svelte pages are always visible when rendered
 }
 
 .split-container {

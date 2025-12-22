@@ -350,7 +350,7 @@ export function updateConnectionUI(): void {
  * Toggle connection state
  */
 export function toggleConnection(): void {
-  $connected ? disconnect() : connect();
+  get(connected) ? disconnect() : connect();
 }
 
 /**
@@ -428,6 +428,11 @@ export function disconnect(): void {
   connected.set(false);
   updateConnectionUI();
   updateConnectionState();
+  
+  // Update banner when disconnected
+  if (typeof (window as any).ScriptStatus?.renderStartupBanner === 'function') {
+    (window as any).ScriptStatus.renderStartupBanner();
+  }
 }
 
 /**
@@ -457,6 +462,11 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
     await saveCredentials(); // Save on successful connection
     log('Connected to OBS!', 'success');
     
+    // Update banner when connected
+    if (typeof (window as any).ScriptStatus?.renderStartupBanner === 'function') {
+      (window as any).ScriptStatus.renderStartupBanner();
+    }
+    
     // Call refreshScenes if available
     if (typeof (window as any).refreshScenes === 'function') {
       (window as any).refreshScenes();
@@ -468,8 +478,8 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
     }
     
     // Check script status after connection
-    if (typeof (window as any).checkScriptStatus === 'function') {
-      setTimeout((window as any).checkScriptStatus, 500);
+    if (typeof (window as any).ScriptStatus?.checkScriptStatus === 'function') {
+      setTimeout(() => (window as any).ScriptStatus.checkScriptStatus(), 500);
     }
     
     // Sync storage across connected clients
@@ -532,6 +542,7 @@ function handleEvent(event: OBSEvent): void {
     });
     
     // Delegate storage sync events to StorageSync module
+    // Use window.StorageSync to avoid circular dependency (initialized in bootstrap)
     if ((window as any).StorageSync && (customData?.type === 'strixun_storage_broadcast' || customData?.type === 'strixun_storage_request')) {
       (window as any).StorageSync.handleCustomEvent(customData);
     } else if (customData?.type === 'strixun_text_cycler_msg') {

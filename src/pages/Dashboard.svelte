@@ -23,20 +23,25 @@
     // Update system status display
   }
   
-  function cycleAspect(): void {
-    if (window.cycleAspect) {
-      window.cycleAspect();
+  async function handleCycleAspect(): Promise<void> {
+    // cycleAspect is handled by the Quick Controls Lua script
+    // This button triggers the script's hotkey functionality
+    if ($connected && (window as any).cycleAspect) {
+      (window as any).cycleAspect();
+    } else if ($connected) {
+      // Fallback: try to trigger via OBS WebSocket if available
+      console.log('Cycle Aspect: Requires Quick Controls script to be loaded in OBS');
     }
   }
   
-  function refreshScenes(): void {
-    if (window.refreshScenes) {
-      window.refreshScenes();
+  async function handleRefreshScenes(): Promise<void> {
+    if ($connected && (window as any).Sources?.refreshScenes) {
+      await (window as any).Sources.refreshScenes();
     }
   }
 </script>
 
-<div class="page active dashboard-page">
+<div class="page dashboard-page">
   <!-- Script Status Card -->
   <div class="card" id="dashboardStatusCard">
     <h3>📊 System Status</h3>
@@ -54,7 +59,15 @@
       </div>
       {#if !$connected}
         <p class="hint">
-          <button onclick={() => navigateTo('setup')} class="btn-link">
+          <button 
+            on:click={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[Dashboard] Navigating to setup...');
+              navigateTo('setup');
+            }} 
+            class="btn-link"
+          >
             ⚙️ Go to Setup
           </button>
           to connect to OBS WebSocket
@@ -68,14 +81,14 @@
     <div class="quick-actions-grid">
       <button
         class="source-btn requires-connection"
-        onclick={cycleAspect}
+        on:click={handleCycleAspect}
         disabled={!$connected}
       >
         🔄 Cycle Aspect
       </button>
       <button
         class="source-btn requires-connection"
-        onclick={refreshScenes}
+        on:click={handleRefreshScenes}
         disabled={!$connected}
       >
         🔃 Refresh

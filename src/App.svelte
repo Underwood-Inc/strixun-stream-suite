@@ -31,7 +31,12 @@
   
   // Initialize app on mount
   onMount(async () => {
-    await initializeApp();
+    try {
+      await initializeApp();
+    } catch (error) {
+      console.error('[App] Failed to initialize:', error);
+      // Still show the app even if initialization fails
+    }
   });
 </script>
 
