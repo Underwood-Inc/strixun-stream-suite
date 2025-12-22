@@ -260,7 +260,7 @@ $(document).ready(function () {
         iframe.setAttribute('frameborder', '0');
         iframe.setAttribute('allowfullscreen', 'true');
         iframe.setAttribute('scrolling', 'no');
-        iframe.setAttribute('allow', 'autoplay');
+        iframe.setAttribute('allow', 'autoplay; fullscreen'); // Allow autoplay and fullscreen
         iframe.style.width = '100%';
         iframe.style.height = '100%';
         iframe.style.position = 'absolute';
@@ -541,8 +541,8 @@ $(document).ready(function () {
             curr_clip_iframe.removeAttribute('data-timeout-id');
         }
         
-        // Load NEW clip in fresh iframe
-        const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=false`;
+        // Load NEW clip in fresh iframe (MUST start muted for autoplay to work)
+        const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=true`;
         iframe.src = embedUrl;
         iframe.style.zIndex = '10'; // Bring to front
         iframe.style.visibility = 'visible'; // Make visible
@@ -552,6 +552,20 @@ $(document).ready(function () {
         curr_clip_iframe = iframe;
         
         console.log('[Clips] Playing:', clipId, 'in iframe', current_iframe_index);
+        
+        // Unmute after iframe loads (browser requires muted=true for autoplay)
+        iframe.addEventListener('load', function unmute() {
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.postMessage('{"event":"command","func":"setMuted","args":[false]}', '*');
+                    iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[1]}', '*');
+                    console.log('[Clips] Sent unmute command to iframe');
+                } catch (e) {
+                    console.warn('[Clips] Could not unmute iframe:', e);
+                }
+            }, 500); // Wait 500ms for player to initialize
+            iframe.removeEventListener('load', unmute);
+        });
         
         // Pre-load next clips in background iframes (they'll buffer while hidden)
         preloadNextClipsInIframes();
