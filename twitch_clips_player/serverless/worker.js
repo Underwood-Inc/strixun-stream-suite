@@ -111,67 +111,6 @@ function shuffleArray(arr) {
 }
 
 /**
- * Get direct MP4 URL for a clip using Twitch GQL API
- */
-async function getClipMP4(clipSlug, thumbnailUrl, env) {
-    const cacheKey = `clip_mp4_${clipSlug}`;
-    const cached = await env.TWITCH_CACHE.get(cacheKey);
-    if (cached) return cached;
-
-    // Try GQL API first
-    const gqlQuery = [{
-        operationName: 'VideoAccessToken_Clip',
-        variables: { slug: clipSlug },
-        extensions: {
-            persistedQuery: {
-                version: 1,
-                sha256Hash: 'e9b6d9f8f3c5c7e8f5c3c7e8f5c3c7e8f5c3c7e8f5c3c7e8f5c3c7e8f5c3c7e8'
-            }
-        }
-    }];
-
-    try {
-        const response = await fetch('https://gql.twitch.tv/gql', {
-            method: 'POST',
-            headers: {
-                'Client-ID': env.TWITCH_CLIENT_ID,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(gqlQuery)
-        });
-
-        if (!response.ok) {
-            console.error(`[GQL] HTTP ${response.status} for ${clipSlug}`);
-        } else {
-            const result = await response.json();
-            console.log(`[GQL] Response for ${clipSlug}:`, JSON.stringify(result).substring(0, 200));
-            
-            const clipData = result[0]?.data?.clip;
-            const qualities = clipData?.videoQualities;
-            
-            if (qualities && qualities.length > 0) {
-                // Return highest quality (source)
-                const mp4Url = qualities[0].sourceURL;
-                // Cache for 1 hour
-                await env.TWITCH_CACHE.put(cacheKey, mp4Url, { expirationTtl: 3600 });
-                return mp4Url;
-            }
-        }
-    } catch (e) {
-        console.error(`[GQL] Failed to get MP4 for ${clipSlug}:`, e.message);
-    }
-    
-    // FALLBACK: Try deriving from thumbnail (old method, may work for some clips)
-    if (thumbnailUrl) {
-        const derivedUrl = thumbnailUrl.replace('-preview-480x272.jpg', '.mp4');
-        console.log(`[Worker] Using fallback MP4 URL for ${clipSlug}`);
-        return derivedUrl;
-    }
-    
-    return null;
-}
-
-/**
  * Handle /clips endpoint
  * GET /clips?channel=username&limit=20&shuffle=true&start_date=...&end_date=...&prefer_featured=true
  */
@@ -208,28 +147,13 @@ async function handleClips(request, env) {
 
         const data = await twitchApiRequest(endpoint, env);
         
-        console.log(`[Worker] Fetched ${data.data.length} clips, attempting to get MP4 URLs...`);
+        console.log(`[Worker] Fetched ${data.data.length} clips`);
         
-        // Fetch MP4 URLs for each clip using GQL (with fallback)
-        const clipsWithMP4 = await Promise.all(
-            data.data.map(async (clip, index) => {
-                const mp4Url = await getClipMP4(clip.id, clip.thumbnail_url, env);
-                if (!mp4Url) {
-                    console.warn(`[Worker] No MP4 for clip ${clip.id}, skipping`);
-                    return null;
-                }
-                return {
-                    ...clip,
-                    item: index,
-                    clip_url: mp4Url
-                };
-            })
-        );
-        
-        // Filter out clips that failed to get MP4 URLs
-        const clips = clipsWithMP4.filter(clip => clip !== null);
-        
-        console.log(`[Worker] Successfully got MP4 URLs for ${clips.length}/${data.data.length} clips`);
+        // Just return clips as-is (frontend will use iframes, no MP4 needed)
+        const clips = data.data.map((clip, index) => ({
+            ...clip,
+            item: index,
+        }));
 
         // Shuffle if requested
         if (shuffle) {

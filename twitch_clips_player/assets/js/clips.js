@@ -249,28 +249,31 @@ $(document).ready(function () {
 
     console.log(channel);
 
-    // Create video.js players for seamless transitions with pre-buffering
+    // Create twitch-video elements for seamless transitions with pre-buffering
     let currentPlayer = null;
     let nextPlayer = null;
     let isTransitioning = false; // Prevent duplicate transitions
     
-    // Create current video element
-    const currentVideo = document.createElement('video');
+    // Create current twitch-video element
+    const currentVideo = document.createElement('twitch-video');
     currentVideo.id = 'current-clip';
-    currentVideo.className = 'video-js vjs-default-skin';
     currentVideo.setAttribute('playsinline', '');
+    currentVideo.setAttribute('muted', 'false');
+    currentVideo.setAttribute('autoplay', 'true');
     currentVideo.style.width = '100%';
     currentVideo.style.height = '100%';
     currentVideo.style.position = 'absolute';
     currentVideo.style.top = '0';
     currentVideo.style.left = '0';
+    currentVideo.volume = 1.0;
     $('#container').append(currentVideo);
     
-    // Create next video element for pre-buffering
-    const nextVideo = document.createElement('video');
+    // Create next twitch-video element for pre-buffering
+    const nextVideo = document.createElement('twitch-video');
     nextVideo.id = 'next-clip';
-    nextVideo.className = 'video-js vjs-default-skin';
     nextVideo.setAttribute('playsinline', '');
+    nextVideo.setAttribute('muted', 'true');
+    nextVideo.setAttribute('preload', 'auto');
     nextVideo.style.width = '100%';
     nextVideo.style.height = '100%';
     nextVideo.style.position = 'absolute';
@@ -279,27 +282,12 @@ $(document).ready(function () {
     nextVideo.style.display = 'none'; // Hidden for pre-buffering
     $('#container').append(nextVideo);
     
-    // Initialize video.js players
-    currentPlayer = videojs(currentVideo.id, {
-        controls: false,
-        autoplay: true,
-        preload: 'auto',
-        fluid: false,
-        fill: true,
-        muted: false
-    });
+    // Store references (twitch-video elements act like native video elements)
+    currentPlayer = currentVideo;
+    nextPlayer = nextVideo;
     
-    nextPlayer = videojs(nextVideo.id, {
-        controls: false,
-        autoplay: false,
-        preload: 'auto',
-        fluid: false,
-        fill: true,
-        muted: true
-    });
-    
-    // Listen for video.js 'ended' event to advance to next clip
-    currentPlayer.on('ended', () => {
+    // Listen for 'ended' event to advance to next clip
+    currentPlayer.addEventListener('ended', () => {
         if (!isTransitioning) {
             console.log('[Clips] Current clip ended, advancing...');
             isTransitioning = true;
@@ -401,18 +389,7 @@ $(document).ready(function () {
                 }
 
                 if (clips_json.data.length > 0) {
-                    // Validate that clips have clip_url (MP4 URLs)
-                    const validClips = clips_json.data.filter(clip => clip.clip_url);
-                    console.log(`[Clips] Got ${validClips.length}/${clips_json.data.length} clips with valid MP4 URLs`);
-                    
-                    if (validClips.length === 0) {
-                        console.error(`[Clips] ERROR: No clips have valid MP4 URLs for ${channelName}!`);
-                        console.error('[Clips] This likely means the Twitch GQL API failed for all clips.');
-                        return;
-                    }
-                    
-                    // Only store clips with valid URLs
-                    clips_json.data = validClips;
+                    console.log(`[Clips] Got ${clips_json.data.length} clips for ${channelName}`);
                     console.log('Set ' + channelName + ' in localStorage');
                     // Store the data in localStorage
                     localStorage.setItem(channelName, JSON.stringify(clips_json));
@@ -455,18 +432,7 @@ $(document).ready(function () {
                 }
 
                 if (clips_json.data.length > 0) {
-                    // Validate that clips have clip_url (MP4 URLs)
-                    const validClips = clips_json.data.filter(clip => clip.clip_url);
-                    console.log(`[Clips] Got ${validClips.length}/${clips_json.data.length} clips with valid MP4 URLs`);
-                    
-                    if (validClips.length === 0) {
-                        console.error(`[Clips] ERROR: No clips have valid MP4 URLs for ${channelName}!`);
-                        nextClip(true);
-                        return false;
-                    }
-                    
-                    // Only store clips with valid URLs
-                    clips_json.data = validClips;
+                    console.log(`[Clips] Got ${clips_json.data.length} clips for ${channelName}`);
                     console.log('Set ' + channelName + ' in localStorage');
                     localStorage.setItem(channelName, JSON.stringify(clips_json));
                 } else {
@@ -535,27 +501,26 @@ $(document).ready(function () {
         console.log('Playing clip ID: ' + clips_json.data[randomClip]['id']);
         console.log('Data length: ' + clips_json.data.length)
 
-        // Load clip in video.js player
-        const clipUrl = clips_json.data[randomClip]['clip_url'];
+        // Load clip in twitch-video player
         const clipId = clips_json.data[randomClip]['id'];
         
-        if (!clipUrl) {
-            console.error('[Clips] No clip_url found for clip:', clipId);
-            nextClip(true); // Skip to next
-            return;
-        }
+        console.log('[Clips] Loading clip:', clipId);
         
-        console.log('[Clips] Loading:', clipId, clipUrl);
+        // Set the video attribute to the clip ID (twitch-video-element API)
+        currentPlayer.setAttribute('video', clipId);
+        currentPlayer.volume = 1.0; // Full volume
+        currentPlayer.muted = false;
         
-        // Load in current player
-        currentPlayer.src({ type: 'video/mp4', src: clipUrl });
-        currentPlayer.volume(1.0); // Full volume
-        currentPlayer.play();
+        // Ensure it plays (twitch-video supports standard play() method)
+        currentPlayer.play().catch(e => {
+            console.warn('[Clips] Autoplay blocked, might need interaction:', e);
+        });
         
         // Pre-buffer next clip if available
-        const nextIndex = (clip_index + 1) % channel.length;
-        if (channel.length > 1 && channel[nextIndex]) {
-            preloadNextClip(channel[nextIndex]);
+        const nextIndex = (randomClip + 1) % clips_json.data.length;
+        if (clips_json.data[nextIndex]) {
+            const nextClipId = clips_json.data[nextIndex]['id'];
+            preloadNextClip(nextClipId);
         }
 
         // Show channel name on top of video (overlays already cleared at start of function)
@@ -644,23 +609,14 @@ $(document).ready(function () {
     }
     
     // Pre-load next clip in background player for seamless transitions
-    function preloadNextClip(channelName) {
-        const nextClipsJson = localStorage.getItem(channelName);
-        if (!nextClipsJson) return;
+    function preloadNextClip(clipId) {
+        if (!clipId) return;
         
         try {
-            const nextClipsData = JSON.parse(nextClipsJson);
-            if (nextClipsData.data && nextClipsData.data.length > 0) {
-                const nextClip = nextClipsData.data[Math.floor(Math.random() * nextClipsData.data.length)];
-                const nextClipUrl = nextClip.clip_url;
-                
-                if (nextClipUrl) {
-                    // Pre-buffer in nextPlayer
-                    nextPlayer.src({ type: 'video/mp4', src: nextClipUrl });
-                    nextPlayer.load(); // Start buffering
-                    console.log('[Clips] Pre-buffering:', nextClip.id);
-                }
-            }
+            // Set the video attribute on the next player to pre-buffer
+            nextPlayer.setAttribute('video', clipId);
+            nextPlayer.load(); // Start buffering
+            console.log('[Clips] Pre-buffering:', clipId);
         } catch (e) {
             console.warn('[Clips] Failed to pre-buffer:', e);
         }
