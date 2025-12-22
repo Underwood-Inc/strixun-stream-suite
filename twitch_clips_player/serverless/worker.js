@@ -148,11 +148,36 @@ async function handleClips(request, env) {
         const data = await twitchApiRequest(endpoint, env);
         
         // Transform clips to include direct video URL
-        const clips = data.data.map((clip, index) => ({
-            ...clip,
-            item: index,
-            // Twitch clip video URL pattern
-            clip_url: clip.thumbnail_url.replace('-preview-480x272.jpg', '.mp4'),
+        // Get actual video URL from thumbnail URL (multiple format support)
+        const clips = await Promise.all(data.data.map(async (clip, index) => {
+            let videoUrl = null;
+            
+            // Try different Twitch CDN URL patterns
+            const thumbnail = clip.thumbnail_url;
+            
+            // Pattern 1: Modern AT-cm format
+            // https://clips-media-assets2.twitch.tv/AT-cm%7C123-preview-480x272.jpg
+            // -> https://clips-media-assets2.twitch.tv/AT-cm%7C123.mp4
+            if (thumbnail.includes('AT-cm')) {
+                videoUrl = thumbnail.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
+            }
+            // Pattern 2: Legacy numbered format  
+            // https://clips-media-assets2.twitch.tv/12345-preview-480x272.jpg
+            // -> https://clips-media-assets2.twitch.tv/12345.mp4
+            else if (thumbnail.match(/\/\d+-preview-/)) {
+                videoUrl = thumbnail.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
+            }
+            // Pattern 3: Slug-based format
+            else {
+                videoUrl = thumbnail.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
+            }
+            
+            return {
+                ...clip,
+                item: index,
+                clip_url: videoUrl,
+                thumbnail_url: clip.thumbnail_url
+            };
         }));
 
         // Shuffle if requested

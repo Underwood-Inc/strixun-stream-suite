@@ -247,18 +247,19 @@ $(document).ready(function () {
 
     console.log(channel);
 
-    // Create new iframe element for Twitch embeds (direct video URLs no longer work)
-    let curr_clip = document.createElement('iframe');
-    curr_clip.setAttribute('frameborder', '0');
-    curr_clip.setAttribute('allowfullscreen', 'true');
-    curr_clip.setAttribute('scrolling', 'no');
-    curr_clip.setAttribute('allow', 'autoplay');
-    curr_clip.style.width = '100%';
-    curr_clip.style.height = '100%';
-    curr_clip.style.position = 'absolute';
-    curr_clip.style.top = '0';
-    curr_clip.style.left = '0';
+    // Create new video element - use direct MP4 URLs
+    let curr_clip = document.createElement('video');
+    curr_clip.setAttribute('playsinline', '');
+    curr_clip.setAttribute('preload', 'auto');
     $(curr_clip).appendTo('#container');
+    
+    // Create hidden preload video for next clip
+    let next_clip = document.createElement('video');
+    next_clip.setAttribute('playsinline', '');
+    next_clip.setAttribute('preload', 'auto');
+    next_clip.style.display = 'none';
+    next_clip.id = 'next-video-preload';
+    $(next_clip).appendTo('#container');
 
     //if command is set
     if (command && chatConnect === 'true') {
@@ -479,19 +480,19 @@ $(document).ready(function () {
         console.log('Playing clip ID: ' + clips_json.data[randomClip]['id']);
         console.log('Data length: ' + clips_json.data.length)
 
-        // Create iframe embed and load a new clip
-        // Twitch now requires iframe embeds (direct MP4 URLs no longer work)
-        const clipId = clips_json.data[randomClip]['id'];
-        const parentDomain = window.location.hostname || 'localhost';
-        const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=false`;
+        // Load clip with direct video URL
+        curr_clip.poster = clips_json.data[randomClip]['thumbnail_url'];
+        curr_clip.src = clips_json.data[randomClip]['clip_url'];
+        curr_clip.autoplay = true;
+        curr_clip.controls = false;
+        curr_clip.volume = 1.0; // Always full volume
+        curr_clip.muted = false;
+        curr_clip.load();
         
-        curr_clip.src = embedUrl;
-        curr_clip.setAttribute('data-clip-id', clipId);
+        console.log('[Clips] Loading:', clips_json.data[randomClip]['id'], clips_json.data[randomClip]['clip_url']);
         
-        console.log('[Clips] Loading:', clipId);
-        
-        // Pre-buffer next clip
-        preloadNextClipIframe();
+        // Pre-load next clip
+        preloadNextClipVideo();
 
         // Remove elements before loading the clip and clip details
         removeElements();
@@ -567,12 +568,11 @@ $(document).ready(function () {
         }
 
         // Move to the next clip when the current one finishes playing
-        // Use Twitch Embed Player API to detect actual end
-        setupClipEndListener(curr_clip, clipId);
+        curr_clip.addEventListener("ended", nextClip);
     }
     
-    // Pre-buffer next clip in hidden iframe
-    function preloadNextClipIframe() {
+    // Pre-load next clip video
+    function preloadNextClipVideo() {
         const nextIndex = (clip_index + 1) % channel.length;
         const nextChannel = channel[nextIndex];
         
@@ -584,76 +584,28 @@ $(document).ready(function () {
             const nextClipsData = JSON.parse(nextClipsJson);
             if (nextClipsData.data && nextClipsData.data.length > 0) {
                 const nextClip = nextClipsData.data[Math.floor(Math.random() * nextClipsData.data.length)];
-                const nextClipId = nextClip.id;
-                const parentDomain = window.location.hostname || 'localhost';
                 
-                // Create hidden preload iframe
-                let preloadIframe = document.getElementById('preload-iframe');
-                if (!preloadIframe) {
-                    preloadIframe = document.createElement('iframe');
-                    preloadIframe.id = 'preload-iframe';
-                    preloadIframe.style.display = 'none';
-                    preloadIframe.setAttribute('frameborder', '0');
-                    document.body.appendChild(preloadIframe);
+                // Pre-load in hidden video element
+                let preloadVideo = document.getElementById('next-video-preload');
+                if (preloadVideo) {
+                    preloadVideo.src = nextClip.clip_url;
+                    preloadVideo.load();
+                    console.log('[Clips] Pre-buffering:', nextClip.id);
                 }
-                
-                const preloadUrl = `https://clips.twitch.tv/embed?clip=${nextClipId}&parent=${parentDomain}&autoplay=false&muted=true`;
-                preloadIframe.src = preloadUrl;
-                
-                console.log('[Clips] Pre-buffering next:', nextClipId);
             }
         } catch (e) {
             console.warn('[Clips] Failed to pre-buffer:', e);
         }
     }
-    
-    // Listen for clip end via Twitch Embed Player API
-    function setupClipEndListener(iframe, clipId) {
-        const clipDuration = clips_json.data.find(c => c.id === clipId)?.duration || 30;
-        const maxWait = (parseFloat(clipDuration) + 5) * 1000; // Max wait with 5s buffer
-        
-        let hasEnded = false;
-        
-        // Fallback timer in case events don't fire
-        const fallbackTimer = setTimeout(() => {
-            if (!hasEnded) {
-                console.log('[Clips] Fallback timer triggered');
-                hasEnded = true;
-                nextClip(false);
-            }
-        }, maxWait);
-        
-        // Listen for Twitch Player events via postMessage
-        const messageHandler = (event) => {
-            if (event.origin !== 'https://clips.twitch.tv') return;
-            
-            try {
-                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                
-                // Twitch Embed sends events like: {eventName: 'ended', params: {...}}
-                if (data.eventName === 'ended' || data.namespace === 'video' && data.data?.event === 'ended') {
-                    if (!hasEnded) {
-                        console.log('[Clips] Clip ended via event');
-                        hasEnded = true;
-                        clearTimeout(fallbackTimer);
-                        window.removeEventListener('message', messageHandler);
-                        nextClip(false);
-                    }
-                }
-            } catch (e) {
-                // Ignore parse errors from other sources
-            }
-        };
-        
-        window.addEventListener('message', messageHandler);
-    }
 
     function nextClip(skip = false) {
 
-        // Properly remove iframe source
-        let iframeElement = document.querySelector("iframe");
-        if (iframeElement) {
-            iframeElement.src = 'about:blank'; // Clear iframe
+        // Properly remove video source
+        let videoElement = document.querySelector("video");
+        if (videoElement && videoElement.id !== 'next-video-preload') {
+            videoElement.pause();
+            videoElement.removeAttribute("src");
+            videoElement.load();
         }
 
         if (clip_index < channel.length - 1) {
