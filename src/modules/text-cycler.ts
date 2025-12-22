@@ -427,7 +427,10 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
   
   // Remote mode: send via OBS WebSocket API (same as quick swaps)
   // OBS dock will receive via CustomEvent and forward to localStorage
-  if (get(connected) && !dependencies.isOBSDock()) {
+  const isConnected = get(connected);
+  const isDock = dependencies.isOBSDock();
+  
+  if (isConnected && !isDock) {
     try {
       await request('BroadcastCustomEvent', {
         eventData: {
@@ -439,8 +442,12 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
       });
       console.log('[Text Cycler] Sent via WebSocket:', configId, message.type);
     } catch (e) {
-      console.warn('[Text Cycler] Failed to send:', e);
+      console.warn('[Text Cycler] Failed to send via WebSocket:', e);
+      dependencies.log(`Failed to send text cycler message: ${e}`, 'error');
     }
+  } else if (!isConnected && !isDock) {
+    console.warn('[Text Cycler] Not connected to OBS - cannot send message via WebSocket');
+    dependencies.log('Not connected to OBS - text cycler messages will not be sent', 'warning');
   }
 }
 
@@ -452,8 +459,16 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
 export function startTextCycler(): void {
   saveCurrentTextConfig();
   
-  if (currentTextConfigIndex < 0) return;
+  if (currentTextConfigIndex < 0) {
+    dependencies.log('No config selected', 'error');
+    return;
+  }
+  
   const config = textCyclerConfigs[currentTextConfigIndex];
+  if (!config) {
+    dependencies.log('Config not found', 'error');
+    return;
+  }
   
   if (!config.textLines || config.textLines.length === 0) {
     dependencies.log('Enter at least one text line', 'error');
@@ -465,8 +480,15 @@ export function startTextCycler(): void {
     return;
   }
   
-  if (config.mode === 'legacy' && !get(connected)) {
+  const isConnected = get(connected);
+  if (config.mode === 'legacy' && !isConnected) {
     dependencies.log('Connect to OBS first for legacy mode', 'error');
+    if (dependencies.showPage) dependencies.showPage('setup');
+    return;
+  }
+  
+  if (config.mode === 'browser' && !isConnected && !dependencies.isOBSDock()) {
+    dependencies.log('Connect to OBS first for browser mode (remote)', 'error');
     if (dependencies.showPage) dependencies.showPage('setup');
     return;
   }
@@ -612,7 +634,16 @@ function showTextWithTransitionLegacy(targetText: string, config: TextCyclerConf
  * Set text on OBS source (legacy mode)
  */
 function setTextFast(text: string, sourceName: string, configIndex: number): void {
-  if (!sourceName || !get(connected)) return;
+  if (!sourceName) {
+    console.warn('[Text Cycler] No source name provided');
+    return;
+  }
+  
+  const isConnected = get(connected);
+  if (!isConnected) {
+    console.warn('[Text Cycler] Not connected to OBS - cannot set text');
+    return;
+  }
   
   const now = Date.now();
   if (now - lastTextSend < MIN_TEXT_INTERVAL) {
@@ -629,7 +660,8 @@ function setTextFast(text: string, sourceName: string, configIndex: number): voi
     inputName: sourceName,
     inputSettings: { text: text }
   }).catch((e) => {
-    console.warn('[Text Cycler] Failed to set text:', e);
+    console.error('[Text Cycler] Failed to set text on source:', sourceName, e);
+    dependencies.log(`Failed to update text source "${sourceName}": ${e}`, 'error');
   });
   
   if (configIndex === currentTextConfigIndex) {

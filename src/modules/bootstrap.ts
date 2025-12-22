@@ -137,6 +137,11 @@ async function initializeModules(): Promise<void> {
   // Expose to window for legacy compatibility
   (window as any).UIUtils = UIUtils;
   
+  // Expose log store functions for backward compatibility
+  const { addLogEntry, clearLogEntries } = await import('../stores/activity-log');
+  (window as any).addLogEntry = addLogEntry;
+  (window as any).clearLogEntries = clearLogEntries;
+  
   // Initialize Version (TypeScript module)
   Version.initVersionDisplay();
   

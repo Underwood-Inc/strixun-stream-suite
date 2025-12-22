@@ -528,7 +528,37 @@ export function restoreActiveTab(): void {
   }
 }
 
-export function log(msg: string, type: string = ''): void {
+export function log(msg: string, type: string = 'info', flair?: string, icon?: string): void {
+  // Use new store-based logging if available
+  if (typeof window !== 'undefined' && (window as any).addLogEntry) {
+    // Map old type strings to new LogType
+    let logType: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
+    if (type === 'success' || type === 'error' || type === 'warning' || type === 'debug') {
+      logType = type as 'info' | 'success' | 'error' | 'warning' | 'debug';
+    }
+    
+    // Auto-detect flairs from common patterns
+    let detectedFlair = flair;
+    if (!detectedFlair) {
+      const upperMsg = msg.toUpperCase();
+      if (upperMsg.includes('CONNECTED') || upperMsg.includes('SUCCESS')) {
+        detectedFlair = 'CONNECTED';
+      } else if (upperMsg.includes('ERROR') || upperMsg.includes('FAILED')) {
+        detectedFlair = 'ERROR';
+      } else if (upperMsg.includes('WARNING') || upperMsg.includes('WARN')) {
+        detectedFlair = 'WARNING';
+      } else if (upperMsg.includes('IMPORTED') || upperMsg.includes('EXPORTED')) {
+        detectedFlair = 'DATA';
+      } else if (upperMsg.includes('REFRESHED') || upperMsg.includes('UPDATED')) {
+        detectedFlair = 'UPDATE';
+      }
+    }
+    
+    (window as any).addLogEntry(msg, logType, detectedFlair, icon);
+    return;
+  }
+  
+  // Fallback to DOM-based logging for backward compatibility
   const el = document.getElementById('log');
   if (!el) return;
   
