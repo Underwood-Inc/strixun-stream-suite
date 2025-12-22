@@ -635,46 +635,11 @@ function initClipsPlayer() {
         loadClip(channel[clip_index]);
     }
     
-    // Preload clips asynchronously for all channels
-    async function preloadClips(channels) {
-        for (const channelName of channels) {
-            try {
-                // Build API URL
-                let apiUrl = `${apiServer}/clips?channel=${channelName}&limit=${limit}`;
-                if (dateRange) apiUrl += `&start_date=${dateRange}`;
-                if (preferFeatured !== "false") apiUrl += `&prefer_featured=true`;
-                
-                console.log(`[Clips] Preloading from: ${channelName}`);
-                let asyncResponse = await fetch(apiUrl);
-                let clips_json = await asyncResponse.json();
-
-                // If dateRange or preferFeatured is set but no clips are found or only 1 clip is found. Try to pull any clip. 
-                if (clips_json.data.length === 0 && (dateRange > "" || preferFeatured !== "false")) {
-                    asyncResponse = await fetch(`${apiServer}/clips?channel=${channelName}&limit=${limit}&shuffle=true`);
-                    clips_json = await asyncResponse.json();
-                    console.log('No clips found matching dateRange or preferFeatured filter. PULL ANY Clip found from: ' + channelName);
-                }
-
-                if (clips_json.data.length > 0) {
-                    console.log(`[Clips] Got ${clips_json.data.length} clips for ${channelName}`);
-                    console.log('Set ' + channelName + ' in localStorage');
-                    localStorage.setItem(channelName, JSON.stringify(clips_json));
-                }
-            } catch (error) {
-                console.error('Error while preloading clip:', error);
-            }
-        }
-        
-        // After preloading, start playing if not in command mode
+    // Start playing on DOM ready (clips load on-demand in loadClip)
+    $(document).ready(function() {
         if (!command || command === '') {
-            console.log('[Clips] Preload complete, starting playback...');
+            console.log('[Clips] Starting playback...');
             loadClip(channel[clip_index]);
         }
-    }
-
-    // Start preloading on DOM ready
-    $(document).ready(function() {
-        console.log('[Clips] DOM ready, preloading clips...');
-        preloadClips(channel);
     });
 }
