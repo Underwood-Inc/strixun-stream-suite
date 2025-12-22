@@ -759,6 +759,14 @@
         renderTextCyclerConfigs();
     }
 
+    /**
+     * Check if text cycler is currently running
+     * @returns {boolean} True if any config is cycling
+     */
+    function isRunning() {
+        return textCyclerConfigs.some(config => config.isRunning === true);
+    }
+
     // ============ Public API ============
     window.TextCycler = {
         init,
@@ -775,6 +783,7 @@
         stopTextCycler,
         quickStart,
         restoreRunningTextCyclers,
+        isRunning,
         getConfigs: () => textCyclerConfigs,
         setConfigs,
         addConfigs,
