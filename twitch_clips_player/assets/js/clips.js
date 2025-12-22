@@ -58,6 +58,8 @@ $(document).ready(function () {
     let clientId = getUrlParameter('clientId').trim();
     let customText = getUrlParameter('customText').trim();
     let detailsText = getUrlParameter('detailsText').trim();
+    let detailsPersist = getUrlParameter('detailsPersist').trim(); // Keep details visible whole video
+    let detailsColor = getUrlParameter('detailsColor').trim(); // Custom background color
     let command = getUrlParameter('command').trim();
     let showFollowing = getUrlParameter('showFollowing').trim();
     let exclude = getUrlParameter('exclude').trim();
@@ -563,7 +565,19 @@ $(document).ready(function () {
                     dText += "<div class='details-text item-" + index + "'>" + item + "</div>";
                 }
 
-                $("<div id='details-container'>" + dText + "</div>").appendTo('#container');
+                const detailsDiv = $("<div id='details-container'>" + dText + "</div>");
+                
+                // Apply persist class if detailsPersist is true
+                if (detailsPersist === 'true') {
+                    detailsDiv.addClass('persist');
+                }
+                
+                // Apply custom background color if provided
+                if (detailsColor) {
+                    detailsDiv.css('background', detailsColor);
+                }
+                
+                detailsDiv.appendTo('#container');
             }
         }
 

@@ -41,12 +41,18 @@ video {
 #details-container {
     position: absolute;
     top: 36vw;
-    background: #00000090;
+    background: var(--overlay-bg, #00000090);
     padding: 12px 24px 12px 24px;
     margin-right: 24px;
     border-radius: 0px 24px 24px 0px;
     width: auto;
-    animation: fadeout 15s forwards;
+    animation: fadeout var(--overlay-duration, 15s) forwards;
+}
+
+/* No fade if duration is set to 0 or persist */
+#details-container.persist {
+    animation: none !important;
+    opacity: 1 !important;
 }
 
 #details-container .details-text {
