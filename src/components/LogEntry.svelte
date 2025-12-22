@@ -139,142 +139,141 @@
     animation: slide-in 0.3s ease;
     animation-delay: calc(var(--index) * 0.02s);
     animation-fill-mode: both;
-    
-    &:hover {
-      background: var(--border);
-      transform: translateX(2px);
-      
-      .log-entry__text {
-        color: var(--text);
-      }
-      
-      .log-entry__copy {
-        opacity: 1;
-      }
-    }
-    
-    &__icon {
-      font-size: 0.95em;
-      flex-shrink: 0;
-      width: 18px;
-      text-align: center;
-      opacity: 0.8;
-    }
-    
-    &__content {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      overflow: hidden;
-    }
-    
-    &__time {
-      font-family: 'Courier New', monospace;
-      font-size: 0.7em;
-      color: var(--muted);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    
-    &__flair {
-      display: inline-block;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 0.65em;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    
-    &__text {
-      font-size: 0.85em;
-      color: var(--text);
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1;
-      min-width: 0;
-    }
-    
-    &__count {
-      display: inline-block;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 0.65em;
-      font-weight: 600;
-      color: var(--muted);
-      background: rgba(128, 128, 128, 0.15);
-      border: 1px solid var(--border);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    
-    &__copy {
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 2px 4px;
-      font-size: 0.85em;
-      opacity: 0;
-      transition: opacity 0.2s, color 0.2s;
-      flex-shrink: 0;
-      
-      &:hover {
-        color: var(--text);
-      }
-    }
-    
-    // Type-specific styling
-    &--success {
-      border-left-color: var(--success);
-      background: rgba(40, 167, 69, 0.05);
-      
-      .log-entry__text {
-        color: var(--success);
-      }
-    }
-    
-    &--error {
-      border-left-color: var(--danger);
-      background: rgba(234, 43, 31, 0.05);
-      
-      .log-entry__text {
-        color: var(--danger);
-      }
-    }
-    
-    &--warning {
-      border-left-color: #ffc107;
-      background: rgba(255, 193, 7, 0.05);
-      
-      .log-entry__text {
-        color: #ffc107;
-      }
-    }
-    
-    &--info {
-      border-left-color: var(--info);
-      background: rgba(100, 149, 237, 0.05);
-      
-      .log-entry__text {
-        color: var(--info);
-      }
-    }
-    
-    &--debug {
-      border-left-color: var(--muted);
-      background: rgba(128, 128, 128, 0.05);
-      
-      .log-entry__text {
-        color: var(--muted);
-      }
-    }
+  }
+  
+  .log-entry:hover {
+    background: var(--border);
+    transform: translateX(2px);
+  }
+  
+  .log-entry:hover .log-entry__text {
+    color: var(--text);
+  }
+  
+  .log-entry:hover .log-entry__copy {
+    opacity: 1;
+  }
+  
+  .log-entry .log-entry__icon {
+    font-size: 0.95em;
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+    opacity: 0.8;
+  }
+  
+  .log-entry .log-entry__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+  }
+  
+  .log-entry .log-entry__time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.7em;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__flair {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.65em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__text {
+    font-size: 0.85em;
+    color: var(--text);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .log-entry .log-entry__count {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.65em;
+    font-weight: 600;
+    color: var(--muted);
+    background: rgba(128, 128, 128, 0.15);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__copy {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.85em;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__copy:hover {
+    color: var(--text);
+  }
+  
+  .log-entry.log-entry--success {
+    border-left-color: var(--success);
+    background: rgba(40, 167, 69, 0.05);
+  }
+  
+  .log-entry.log-entry--success .log-entry__text {
+    color: var(--success);
+  }
+  
+  .log-entry.log-entry--error {
+    border-left-color: var(--danger);
+    background: rgba(234, 43, 31, 0.05);
+  }
+  
+  .log-entry.log-entry--error .log-entry__text {
+    color: var(--danger);
+  }
+  
+  .log-entry.log-entry--warning {
+    border-left-color: #ffc107;
+    background: rgba(255, 193, 7, 0.05);
+  }
+  
+  .log-entry.log-entry--warning .log-entry__text {
+    color: #ffc107;
+  }
+  
+  .log-entry.log-entry--info {
+    border-left-color: var(--info);
+    background: rgba(100, 149, 237, 0.05);
+  }
+  
+  .log-entry.log-entry--info .log-entry__text {
+    color: var(--info);
+  }
+  
+  .log-entry.log-entry--debug {
+    border-left-color: var(--muted);
+    background: rgba(128, 128, 128, 0.05);
+  }
+  
+  .log-entry.log-entry--debug .log-entry__text {
+    color: var(--muted);
   }
   
   @keyframes slide-in {

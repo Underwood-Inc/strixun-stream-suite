@@ -63,10 +63,14 @@
       await tick();
       if (splitLog) {
         splitLog.classList.remove('collapsed');
-      }
-      if (saved?.height && splitLog) {
-        splitLog.style.height = `${saved.height}px`;
-        logContainerHeight = saved.height - 34; // Subtract header height
+        if (saved?.height) {
+          splitLog.style.height = `${saved.height}px`;
+          logContainerHeight = saved.height - 34; // Subtract header height
+        } else {
+          // Default height if no saved height
+          splitLog.style.height = '200px';
+          logContainerHeight = 166;
+        }
       }
     }
     
@@ -321,7 +325,7 @@
     &__content {
       flex: 1;
       overflow: hidden;
-      transition: margin-right 0.3s ease;
+      transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     // When filter aside is expanded, push content

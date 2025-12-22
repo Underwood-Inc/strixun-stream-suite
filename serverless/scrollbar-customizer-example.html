@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrollbar Customizer - Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1611;
+            color: #f9f9f9;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #edae49;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            background: #252017;
+            border: 1px solid #3d3627;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #b8b8b8;
+            font-size: 14px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: 1px solid #3d3627;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #edae49;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #f9df74;
+        }
+        
+        .content {
+            background: #252017;
+            border: 1px solid #3d3627;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .demo-content {
+            height: 200vh;
+            padding: 20px;
+            background: linear-gradient(180deg, #1a1611 0%, #0f0e0b 100%);
+            border-radius: 8px;
+        }
+        
+        .info {
+            background: rgba(237, 174, 73, 0.1);
+            border-left: 3px solid #edae49;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        code {
+            background: #0f0e0b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #edae49;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Scrollbar Customizer Demo</h1>
+        
+        <div class="info">
+            <strong>Content Adjustment:</strong> This feature prevents layout shift when the scrollbar appears/disappears.
+            It's enabled by default and can be toggled using the button below.
+        </div>
+        
+        <div class="controls">
+            <h2>Customization Controls</h2>
+            
+            <div class="control-group">
+                <label for="width">Scrollbar Width: <span id="width-value">6</span>px</label>
+                <input type="range" id="width" min="4" max="20" value="6">
+            </div>
+            
+            <div class="control-group">
+                <label for="thumb-color">Thumb Color</label>
+                <input type="color" id="thumb-color" value="#3d3627">
+            </div>
+            
+            <div class="control-group">
+                <label for="thumb-hover-color">Thumb Hover Color</label>
+                <input type="color" id="thumb-hover-color" value="#888888">
+            </div>
+            
+            <div class="control-group">
+                <label for="track-color">Track Color</label>
+                <input type="color" id="track-color" value="#000000" data-transparent="true">
+                <small style="color: #888; display: block; margin-top: 5px;">
+                    Note: Set to black (#000000) for transparent track
+                </small>
+            </div>
+            
+            <div class="control-group">
+                <label for="border-radius">Border Radius: <span id="radius-value">3</span>px</label>
+                <input type="range" id="border-radius" min="0" max="10" value="3">
+            </div>
+            
+            <button id="toggle-adjustment">Disable Content Adjustment</button>
+            <button id="reset">Reset to Defaults</button>
+        </div>
+        
+        <div class="content">
+            <h2>Scrollable Content Area</h2>
+            <p>Scroll down to see the custom scrollbar in action. The content adjustment feature ensures the page doesn't shift when the scrollbar appears.</p>
+            
+            <div class="demo-content">
+                <h3>Long Content Section</h3>
+                <p>This is a tall content area to demonstrate the scrollbar customization.</p>
+                <p>Try scrolling and notice how the scrollbar looks and behaves.</p>
+                <p>The content adjustment feature prevents layout shift when the scrollbar appears.</p>
+                
+                <div style="margin-top: 50px;">
+                    <h4>More Content</h4>
+                    <p>Keep scrolling to see more...</p>
+                </div>
+                
+                <div style="margin-top: 50px;">
+                    <h4>Even More Content</h4>
+                    <p>The scrollbar should remain consistent throughout.</p>
+                </div>
+                
+                <div style="margin-top: 50px; padding-bottom: 100px;">
+                    <h4>Bottom of Content</h4>
+                    <p>You've reached the end! Scroll back up to see the scrollbar again.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load the scrollbar customizer from CDN -->
+    <!-- Replace with your actual Cloudflare Worker URL -->
+    <script src="/cdn/scrollbar-customizer.js"></script>
+    <!-- For local testing, use: -->
+    <!-- <script src="../scrollbar-customizer.js"></script> -->
+    
+    <script>
+        // Wait for the customizer to initialize
+        function waitForCustomizer(callback, maxAttempts = 50) {
+            if (window.ScrollbarCustomizerInstance && window.ScrollbarCustomizerInstance.isInitialized) {
+                callback(window.ScrollbarCustomizerInstance);
+                return;
+            }
+            
+            if (maxAttempts <= 0) {
+                console.error('ScrollbarCustomizer failed to initialize');
+                return;
+            }
+            
+            setTimeout(() => waitForCustomizer(callback, maxAttempts - 1), 100);
+        }
+        
+        waitForCustomizer((customizer) => {
+            // Width control
+            const widthInput = document.getElementById('width');
+            const widthValue = document.getElementById('width-value');
+            
+            widthInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                widthValue.textContent = value;
+                customizer.updateConfig({ width: value });
+            });
+            
+            // Thumb color
+            const thumbColorInput = document.getElementById('thumb-color');
+            thumbColorInput.addEventListener('input', (e) => {
+                customizer.updateConfig({ thumbColor: e.target.value });
+            });
+            
+            // Thumb hover color
+            const thumbHoverColorInput = document.getElementById('thumb-hover-color');
+            thumbHoverColorInput.addEventListener('input', (e) => {
+                customizer.updateConfig({ thumbHoverColor: e.target.value });
+            });
+            
+            // Track color
+            const trackColorInput = document.getElementById('track-color');
+            trackColorInput.addEventListener('input', (e) => {
+                const color = e.target.value === '#000000' ? 'transparent' : e.target.value;
+                customizer.updateConfig({ trackColor: color });
+            });
+            
+            // Border radius
+            const radiusInput = document.getElementById('border-radius');
+            const radiusValue = document.getElementById('radius-value');
+            
+            radiusInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                radiusValue.textContent = value;
+                customizer.updateConfig({ borderRadius: value });
+            });
+            
+            // Toggle content adjustment
+            const toggleBtn = document.getElementById('toggle-adjustment');
+            toggleBtn.addEventListener('click', () => {
+                const enabled = customizer.toggleContentAdjustment();
+                toggleBtn.textContent = enabled 
+                    ? 'Disable Content Adjustment' 
+                    : 'Enable Content Adjustment';
+            });
+            
+            // Reset to defaults
+            const resetBtn = document.getElementById('reset');
+            resetBtn.addEventListener('click', () => {
+                customizer.destroy();
+                window.ScrollbarCustomizerInstance = new ScrollbarCustomizer();
+                window.ScrollbarCustomizerInstance.init();
+                
+                // Reset UI
+                widthInput.value = 6;
+                widthValue.textContent = '6';
+                thumbColorInput.value = '#3d3627';
+                thumbHoverColorInput.value = '#888888';
+                trackColorInput.value = '#000000';
+                radiusInput.value = 3;
+                radiusValue.textContent = '3';
+                toggleBtn.textContent = 'Disable Content Adjustment';
+                
+                // Re-attach event listeners
+                waitForCustomizer((c) => {
+                    // Event listeners are already attached to the new instance
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+

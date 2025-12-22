@@ -8,6 +8,7 @@
   import { connected } from '../stores/connection';
   import { currentPage } from '../stores/navigation';
   import { celebrateClick } from '../utils/particles';
+  import Tooltip from './Tooltip.svelte';
   
   const tabs = [
     { id: 'dashboard', numeral: 'I', label: 'Dashboard', requiresConnection: false },
@@ -45,16 +46,17 @@
 
 <nav class="tabs">
   {#each tabs as tab}
-    <button
-      class="tab"
-      class:active={$currentPage === tab.id}
-      class:disabled={tab.requiresConnection && !$connected}
-      on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
-      title={tab.label}
-    >
-      <span class="tab__numeral">{tab.numeral}</span>
-      <span class="tab__label">{tab.label}</span>
-    </button>
+    <Tooltip text={tab.label} position="bottom" delay={0}>
+      <button
+        class="tab"
+        class:active={$currentPage === tab.id}
+        class:disabled={tab.requiresConnection && !$connected}
+        on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
+      >
+        <span class="tab__numeral">{tab.numeral}</span>
+        <span class="tab__label">{tab.label}</span>
+      </button>
+    </Tooltip>
   {/each}
 </nav>
 
@@ -68,102 +70,103 @@
     background: var(--bg-dark);
     border-bottom: 2px solid var(--border);
     overflow-x: auto;
+    overflow-y: visible;
     @include gpu-accelerated;
-    
-    .tab {
-      padding: 10px 16px;
-      background: transparent;
-      border: 2px solid var(--border);
-      border-radius: 0;
-      cursor: pointer;
-      color: var(--text-secondary);
-      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-      font-size: 0.9em;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      min-width: 50px;
-      position: relative;
-      box-shadow: 0 2px 0 var(--border);
-      @include ripple-effect(rgba(255, 255, 255, 0.1));
-      
-      &__numeral {
-        font-variant-numeric: oldstyle-nums;
-        font-weight: 600;
-        letter-spacing: -0.5px;
-        font-size: 0.85em;
-      }
-      
-      &__label {
-        display: none;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.75em;
-        
-        @media (min-width: 800px) {
-          display: inline;
-        }
-      }
-      
-      // Staggered animation on mount
-      animation: slide-down 0.3s ease-out backwards;
-      @for $i from 1 through 8 {
-        &:nth-child(#{$i}) {
-          animation-delay: #{$i * 0.05}s;
-        }
-      }
-      
-      &:hover:not(.disabled):not(.active) {
-        background: var(--card);
-        color: var(--text);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 0 var(--border);
-        border-color: var(--border-light);
-      }
-      
-      &.active {
-        background: var(--accent);
-        color: #000;
-        font-weight: 700;
-        border-color: var(--accent-dark);
-        box-shadow: 0 4px 0 var(--accent-dark);
-        transform: translateY(-1px);
-        
-        // Simple retro indicator line instead of glow
-        &::after {
-          content: '';
-          position: absolute;
-          bottom: -2px;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background: var(--accent);
-        }
-      }
-      
-      &:active:not(.disabled) {
-        transform: translateY(1px);
-        box-shadow: 0 2px 0 var(--border);
-        
-        &.active {
-          box-shadow: 
-            0 2px 0 var(--accent-dark),
-            0 4px 0 rgba(0, 0, 0, 0.2);
-        }
-      }
-      
-      &.disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        box-shadow: 0 1px 0 var(--border);
-        
-        &:hover {
-          transform: none;
-        }
-      }
+  }
+  
+  .tabs .tab {
+    padding: 10px 16px;
+    background: transparent;
+    border: 2px solid var(--border);
+    border-radius: 0;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 50px;
+    position: relative;
+    box-shadow: 0 2px 0 var(--border);
+    @include ripple-effect(rgba(255, 255, 255, 0.1));
+    animation: slide-down 0.3s ease-out backwards;
+  }
+  
+  .tabs .tab .tab__numeral {
+    font-variant-numeric: oldstyle-nums;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    font-size: 0.85em;
+  }
+  
+  .tabs .tab .tab__label {
+    display: none;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.75em;
+  }
+  
+  @media (min-width: 800px) {
+    .tabs .tab .tab__label {
+      display: inline;
     }
+  }
+  
+  @for $i from 1 through 8 {
+    .tabs > *:nth-child(#{$i}) .tab {
+      animation-delay: #{$i * 0.05}s;
+    }
+  }
+  
+  .tabs .tab:hover:not(.disabled):not(.active) {
+    background: var(--card);
+    color: var(--text);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 var(--border);
+    border-color: var(--border-light);
+  }
+  
+  .tabs .tab.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    border-color: var(--accent-dark);
+    box-shadow: 0 4px 0 var(--accent-dark);
+    transform: translateY(-1px);
+  }
+  
+  .tabs .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+  
+  .tabs .tab:active:not(.disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 var(--border);
+  }
+  
+  .tabs .tab:active:not(.disabled).active {
+    box-shadow: 
+      0 2px 0 var(--accent-dark),
+      0 4px 0 rgba(0, 0, 0, 0.2);
+  }
+  
+  .tabs .tab.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  
+  .tabs .tab.disabled:hover {
+    transform: none;
   }
 </style>
 
