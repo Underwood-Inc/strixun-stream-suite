@@ -22,6 +22,7 @@
             <button class="tab active" onclick="showPage('dashboard')" title="Dashboard">🏠</button>
             <button class="tab" onclick="showPage('sources')" title="Sources">📦</button>
             <button class="tab" onclick="showPage('text')" title="Text Cycler">📝</button>
+            <button class="tab" onclick="showPage('clips')" title="Clips Player">🎬</button>
             <button class="tab" onclick="showPage('swaps')" title="Swaps">🔄</button>
             <button class="tab" onclick="showPage('layouts')" title="Layouts">📐</button>
             <button class="tab" onclick="showPage('scripts')" title="Script Manager">📜</button>
@@ -357,6 +358,209 @@
                     <div class="row" style="margin-top:8px">
                         <button onclick="saveCurrentTextConfig()">💾 Save Config</button>
                         <button onclick="deleteCurrentTextConfig()" style="background:var(--danger);border-color:var(--danger)">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Clips Player -->
+            <div id="page-clips" class="page">
+                <!-- Saved Clip Configs -->
+                <div class="card">
+                    <h3>🎬 Twitch Clips Player</h3>
+                    <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
+                        Auto-play Twitch clips during BRB/Starting screens. Based on 
+                        <button onclick="openUrlOrCopy('https://github.com/Underwood-Inc/strixun-stream-suite', 'GitHub URL')" class="btn-link">Underwood-Inc/strixun-stream-suite</button>
+                    </p>
+                    <div id="clipsConfigs" class="config-list"></div>
+                    <div class="row" style="margin-top:8px">
+                        <button onclick="newClipsConfig()">➕ New Config</button>
+                        <button onclick="exportClipsConfigs()">📤 Export</button>
+                        <button onclick="importClipsConfigs()">📥 Import</button>
+                    </div>
+                </div>
+
+                <!-- Config Editor -->
+                <div class="card" id="clipsConfigEditor" style="display:none">
+                    <h3>✏️ Edit Config</h3>
+                    
+                    <label>Config Name</label>
+                    <input type="text" id="clipsConfigName" placeholder="BRB Screen Clips">
+                    
+                    <div class="row" style="margin-top:8px">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsUseNewPlayer" checked>
+                            <label for="clipsUseNewPlayer">Use new Strixun player (recommended)</label>
+                        </div>
+                    </div>
+                    
+                    <label>Main Twitch Channel</label>
+                    <input type="text" id="clipsMainChannel" placeholder="YourChannel">
+                    <p class="hint">Your channel name for chat commands</p>
+                    
+                    <label>Channels to Pull Clips From</label>
+                    <textarea id="clipsChannels" rows="3" placeholder="Channel1, Channel2, Channel3&#10;Leave empty if using 'Show Following'"></textarea>
+                    <p class="hint">Comma separated. Leave empty to use followed channels</p>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowFollowing">
+                            <label for="clipsShowFollowing">Show clips from followed channels</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsExcludeSection" style="display:none">
+                        <label>Exclude Channels</label>
+                        <textarea id="clipsExclude" rows="2" placeholder="Channel1, Channel2"></textarea>
+                    </div>
+                </div>
+
+                <!-- Clip Settings -->
+                <div class="card" id="clipsSettingsCard" style="display:none">
+                    <h3>📋 Clip Settings</h3>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Max Clips</label>
+                            <input type="range" id="clipsLimit" min="10" max="100" step="10" value="20">
+                            <span id="clipsLimitValue" class="range-value">20</span>
+                        </div>
+                        <div>
+                            <label>Date Range (days)</label>
+                            <input type="range" id="clipsDateRange" min="0" max="360" step="10" value="0">
+                            <span id="clipsDateRangeValue" class="range-value">0 (all)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsPreferFeatured">
+                            <label for="clipsPreferFeatured">Prefer featured clips</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShuffle" checked>
+                            <label for="clipsShuffle">Shuffle clips</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsAutoPlay" checked>
+                            <label for="clipsAutoPlay">Auto-play on load</label>
+                        </div>
+                    </div>
+                    
+                    <div class="row" style="margin-top:8px">
+                        <div>
+                            <label>Default Volume</label>
+                            <input type="range" id="clipsVolume" min="0" max="100" step="5" value="100">
+                            <span id="clipsVolumeValue" class="range-value">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Settings -->
+                <div class="card" id="clipsDisplayCard" style="display:none">
+                    <h3>🎨 Display Settings</h3>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowText" checked>
+                            <label for="clipsShowText">Show channel name overlay</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowInfo" checked>
+                            <label for="clipsShowInfo">Show clip info bar</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsCustomTextSection">
+                        <label>Custom Overlay Text</label>
+                        <input type="text" id="clipsCustomText" placeholder="Go check out {channel}">
+                        <p class="hint">Use {channel} for channel name</p>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-check">
+                            <input type="checkbox" id="clipsShowDetails" checked>
+                            <label for="clipsShowDetails">Show clip details panel</label>
+                        </div>
+                    </div>
+                    
+                    <div id="clipsDetailsSection">
+                        <label>Details Panel Text</label>
+                        <textarea id="clipsDetailsText" rows="3" placeholder="{title}&#10;Playing {game}&#10;Clipped by {creator_name}"></textarea>
+                        <p class="hint">Variables: {title}, {channel}, {game}, {creator_name}, {created_at}</p>
+                    </div>
+                    
+                    <div id="clipsLegacyThemeSection">
+                        <label>Theme (Legacy Player Only)</label>
+                        <select id="clipsTheme">
+                            <option value="0">None</option>
+                            <option value="1">Slide in fancy skewed</option>
+                            <option value="2" selected>Slide in basic</option>
+                            <option value="3">Outside the box</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Chat Commands -->
+                <div class="card" id="clipsChatCard" style="display:none">
+                    <h3>💬 Chat Commands</h3>
+                    
+                    <label>Custom Start Command (optional)</label>
+                    <input type="text" id="clipsCommand" placeholder="playclips">
+                    <p class="hint">If set, clips only play when !command is used. Leave empty to auto-play</p>
+                    
+                    <div class="info-box" style="margin-top:12px">
+                        <strong>Built-in Commands (Mods only):</strong>
+                        <ul style="margin:4px 0 0 16px;font-size:0.85em">
+                            <li>!clipskip - Skip current clip</li>
+                            <li>!clippause - Pause playback</li>
+                            <li>!clipplay - Resume playback</li>
+                            <li>!clipreload - Reload player</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Auth -->
+                <div class="card" id="clipsAuthCard" style="display:none">
+                    <h3>🔐 Twitch Auth</h3>
+                    <p class="hint" style="margin-bottom:8px">Required for "Show Following" and chat messages</p>
+                    
+                    <label>Access Token</label>
+                    <div class="url-box">
+                        <input type="password" id="clipsAccessToken" placeholder="oauth:xxxxxxxxxx">
+                        <button onclick="toggleClipsTokenVisibility()">👁️</button>
+                    </div>
+                    <div class="hint" style="margin-top:8px">
+                        <button onclick="openTwitchAuth()" class="btn-link">🔗 Get Access Token from Twitch</button>
+                        <button onclick="copyTwitchAuthUrl()" style="margin-left:4px" title="Copy auth URL to clipboard">📋</button>
+                    </div>
+                    <p class="hint" id="twitchAuthHint" style="display:none;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px">
+                        ⚠️ OBS docks can't open external browsers. URL copied to clipboard - paste it in your browser!
+                    </p>
+                </div>
+
+                <!-- Preview & Actions -->
+                <div class="card" id="clipsPreviewCard" style="display:none">
+                    <h3>🔗 Browser Source URL</h3>
+                    <div class="url-box">
+                        <input type="text" id="clipsGeneratedUrl" readonly placeholder="Configure settings above...">
+                        <button onclick="copyClipsUrl()">📋 Copy</button>
+                    </div>
+                    <p class="hint">Add this as a Browser Source in OBS. Never share this URL!</p>
+                    
+                    <div class="row" style="margin-top:12px">
+                        <button onclick="generateClipsUrl()">🔄 Generate URL</button>
+                        <button onclick="testClipsPlayer()" style="background:var(--success);border-color:var(--success)">▶ Test in Browser</button>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div id="clipsControls" style="display:none">
+                    <div class="row">
+                        <button onclick="saveCurrentClipsConfig()">💾 Save Config</button>
+                        <button onclick="deleteCurrentClipsConfig()" style="background:var(--danger);border-color:var(--danger)">🗑️ Delete</button>
                     </div>
                 </div>
             </div>
@@ -1125,7 +1329,7 @@ const storage = {
             }
             
             // Trigger auto-backup snapshot for config keys (debounced)
-            if (['swapConfigs', 'textCyclerConfigs'].includes(key)) {
+            if (['swapConfigs', 'textCyclerConfigs', 'clipsConfigs'].includes(key)) {
                 if (typeof createRecoverySnapshot === 'function') {
                     // Debounce: wait 2 seconds after last change before snapshotting
                     clearTimeout(this._snapshotDebounce);
@@ -1211,10 +1415,12 @@ function updateStorageStatus() {
     const swapCountEl = document.getElementById('swapCount');
     const layoutCountEl = document.getElementById('layoutCount');
     const textCyclerCountEl = document.getElementById('textCyclerCount');
+    const clipsCountEl = document.getElementById('clipsCount');
     
     if (swapCountEl) swapCountEl.textContent = `(${swapConfigs?.length || 0})`;
     if (layoutCountEl) layoutCountEl.textContent = `(${layoutPresets?.length || 0})`;
     if (textCyclerCountEl) textCyclerCountEl.textContent = `(${textCyclerConfigs?.length || 0})`;
+    if (clipsCountEl) clipsCountEl.textContent = `(${clipsConfigs?.length || 0})`;
     
     // Update last backup info
     const lastBackupEl = document.getElementById('lastBackupInfo');
@@ -1251,6 +1457,10 @@ function getSelectedExportData() {
         backup.exportedCategories.push('textCyclers');
     }
     
+    if (document.getElementById('exportClips')?.checked && clipsConfigs?.length) {
+        backup.clipsConfigs = clipsConfigs;
+        backup.exportedCategories.push('clips');
+    }
     
     if (document.getElementById('exportUIState')?.checked) {
         backup.ui_state = storage.get('ui_state') || {};
@@ -1336,6 +1546,7 @@ function importDataWithOptions() {
             if (backup.swapConfigs?.length) categories.push(`${backup.swapConfigs.length} swap configs`);
             if (backup.layoutPresets?.length) categories.push(`${backup.layoutPresets.length} layout presets`);
             if (backup.textCyclerConfigs?.length) categories.push(`${backup.textCyclerConfigs.length} text cycler configs`);
+            if (backup.clipsConfigs?.length) categories.push(`${backup.clipsConfigs.length} clips configs`);
             if (backup.ui_state) categories.push('UI preferences');
             if (backup.connectionSettings) categories.push('connection settings');
             
@@ -1391,6 +1602,18 @@ function importDataWithOptions() {
                 storage.set('textCyclerConfigs', textCyclerConfigs);
             }
             
+            if (importChoices.clips && backup.clipsConfigs) {
+                if (importChoices.merge) {
+                    const existingIds = new Set(clipsConfigs.map(c => c.id));
+                    const newConfigs = backup.clipsConfigs.filter(c => !existingIds.has(c.id));
+                    clipsConfigs = [...clipsConfigs, ...newConfigs];
+                    imported.push(`${newConfigs.length} new clips configs (merged)`);
+                } else {
+                    clipsConfigs = backup.clipsConfigs;
+                    imported.push(`${backup.clipsConfigs.length} clips configs (replaced)`);
+                }
+                storage.set('clipsConfigs', clipsConfigs);
+            }
             
             if (importChoices.uiState && backup.ui_state) {
                 storage.set('ui_state', backup.ui_state);
@@ -1426,6 +1649,7 @@ async function showImportDialog(backup, categories) {
         const hasSwaps = backup.swapConfigs?.length > 0;
         const hasLayouts = backup.layoutPresets?.length > 0;
         const hasTextCyclers = backup.textCyclerConfigs?.length > 0;
+        const hasClips = backup.clipsConfigs?.length > 0;
         const hasUI = !!backup.ui_state;
         const hasConnection = !!backup.connectionSettings;
         
@@ -5368,6 +5592,10 @@ function restoreRunningTextCyclers() {
 }
 
 
+// ============ Twitch Clips Player (Multi-Config) ============
+let clipsConfigs = []; // Loaded async from storage on init
+let currentClipsConfigIndex = -1;
+
 // ============ Twitch API Configuration ============
 // These values are loaded from storage - configure in Setup → Twitch API Settings
 
@@ -5505,10 +5733,38 @@ async function testTwitchApi() {
     }
 }
 
-// ============ Script Manager & Installer ============
+// Legacy constant for backward compatibility (reads from storage now)
+const CLIPS_CLIENT_ID = ''; // Deprecated - use getTwitchClientId()
+const DEFAULT_CLIPS_API_SERVER = ''; // Deprecated - use getClipsApiServer()
 
-// Script status tracking - which scripts are detected as installed
-const scriptStatus = {
+function renderClipsConfigs() {
+    const container = document.getElementById('clipsConfigs');
+    if (clipsConfigs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No clip player configs. Click "New Config" to create one.</div>';
+        return;
+    }
+    
+    container.innerHTML = clipsConfigs.map((c, i) => `
+        <div class="source-item" style="cursor:pointer" onclick="loadClipsConfig(${i})">
+            <div>
+                <div class="name">${c.name || 'Unnamed'}</div>
+                <div class="type">
+                    ${c.showFollowing ? '👥 Following' : `📺 ${(c.channels || '').split(',').length} channels`}
+                    • ${c.limit || 20} clips
+                    ${c.command ? `• !${c.command}` : '• Auto-play'}
+                </div>
+            </div>
+            <div style="display:flex;gap:4px">
+                <button onclick="event.stopPropagation(); testClipsConfigUrl(${i})" title="Test">▶</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function newClipsConfig() {
+    const config = {
+        id: 'clips_' + Date.now(),
+        name: 'Clips Player ' + (clipsConfigs.length + 1),
         // Note: apiServer now globally configured in Setup tab
         mainChannel: '',
         channels: '',
