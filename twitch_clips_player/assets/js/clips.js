@@ -249,12 +249,12 @@ $(document).ready(function () {
 
     console.log(channel);
 
-    // Create iframe pool for seamless clip transitions
+    // Create iframe pool for seamless clip transitions with z-index stacking
     let curr_clip_iframe = null;
     const iframe_pool = [];
     const PRELOAD_COUNT = 3; // Pre-load 3 clips ahead
     
-    // Initialize iframe pool
+    // Initialize iframe pool - all VISIBLE but stacked with z-index
     for (let i = 0; i < PRELOAD_COUNT; i++) {
         const iframe = document.createElement('iframe');
         iframe.setAttribute('frameborder', '0');
@@ -266,7 +266,8 @@ $(document).ready(function () {
         iframe.style.position = 'absolute';
         iframe.style.top = '0';
         iframe.style.left = '0';
-        iframe.style.display = 'none';
+        iframe.style.zIndex = '1'; // All start below (will change dynamically)
+        iframe.style.visibility = 'hidden'; // Hidden but rendered (allows buffering)
         iframe.id = `clip-iframe-${i}`;
         $(iframe).appendTo('#container');
         iframe_pool.push(iframe);
@@ -290,7 +291,8 @@ $(document).ready(function () {
 
                 // Hide current iframe
                 if (curr_clip_iframe) {
-                    curr_clip_iframe.style.display = 'none';
+                    curr_clip_iframe.style.visibility = 'hidden';
+                    curr_clip_iframe.style.zIndex = '1';
                     curr_clip_iframe.src = ''; // Stop playback
                 }
 
@@ -486,20 +488,22 @@ $(document).ready(function () {
         // Load clip in iframe with autoplay
         const embedUrl = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${parentDomain}&autoplay=true&muted=false`;
         iframe.src = embedUrl;
-        iframe.style.display = 'block';
+        iframe.style.zIndex = '10'; // Bring to front
+        iframe.style.visibility = 'visible'; // Make visible
         iframe.setAttribute('data-clip-id', clipId);
         iframe.setAttribute('data-duration', clips_json.data[randomClip]['duration'] || 30);
         
-        // Hide previous iframe if exists
+        // Send previous iframe to back if exists
         if (curr_clip_iframe && curr_clip_iframe !== iframe) {
-            curr_clip_iframe.style.display = 'none';
+            curr_clip_iframe.style.zIndex = '1'; // Send to back
+            curr_clip_iframe.style.visibility = 'hidden'; // Hide but keep rendered
         }
         
         curr_clip_iframe = iframe;
         
         console.log('[Clips] Playing:', clipId, 'in iframe', current_iframe_index);
         
-        // Pre-load next clips in hidden iframes
+        // Pre-load next clips in background iframes (they'll buffer while hidden)
         preloadNextClipsInIframes();
 
         // Remove elements before loading the clip and clip details
@@ -594,7 +598,7 @@ $(document).ready(function () {
         }, (duration + 1) * 1000);
     }
     
-    // Pre-load next clips in hidden iframes
+    // Pre-load next clips in background iframes (visible but behind for buffering)
     function preloadNextClipsInIframes() {
         const parentDomain = window.location.hostname || 'localhost';
         
@@ -613,12 +617,13 @@ $(document).ready(function () {
                     const iframeIndex = (current_iframe_index + i) % PRELOAD_COUNT;
                     const iframe = iframe_pool[iframeIndex];
                     
-                    // Pre-load clip in hidden iframe
+                    // Pre-load clip in background (visible but hidden, allows buffering)
                     const embedUrl = `https://clips.twitch.tv/embed?clip=${futureClip.id}&parent=${parentDomain}&autoplay=false&muted=true`;
                     iframe.src = embedUrl;
-                    iframe.style.display = 'none';
+                    iframe.style.zIndex = '1'; // Keep in background
+                    iframe.style.visibility = 'hidden'; // Hidden but rendered for buffering
                     
-                    console.log('[Clips] Pre-loading:', futureClip.id, 'in iframe', iframeIndex);
+                    console.log('[Clips] Pre-buffering:', futureClip.id, 'in iframe', iframeIndex);
                 }
             } catch (e) {
                 console.warn('[Clips] Failed to pre-load:', e);
