@@ -11,6 +11,47 @@
  * @version 2.0.0
  */
 
+// In-memory cache for customer data (5-minute TTL)
+const customerCache = new Map();
+const cacheTTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get customer from cache or KV
+ * @param {string} customerId - Customer ID
+ * @param {*} env - Worker environment
+ * @returns {Promise<object|null>} Customer data
+ */
+async function getCustomerCached(customerId, env) {
+    if (!customerId) return null;
+    
+    const cacheKey = `customer_${customerId}`;
+    const cached = customerCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < cacheTTL) {
+        return cached.data;
+    }
+    
+    const customer = await getCustomer(customerId, env);
+    if (customer) {
+        customerCache.set(cacheKey, {
+            data: customer,
+            timestamp: Date.now()
+        });
+    }
+    
+    return customer;
+}
+
+/**
+ * Invalidate customer cache
+ * @param {string} customerId - Customer ID
+ */
+function invalidateCustomerCache(customerId) {
+    if (customerId) {
+        customerCache.delete(`customer_${customerId}`);
+    }
+}
+
 // CORS headers for cross-origin requests
 function getCorsHeaders(env, request, customer = null) {
     const origin = request.headers.get('Origin');
@@ -18,7 +59,7 @@ function getCorsHeaders(env, request, customer = null) {
     // Get customer-specific allowed origins if customer is provided
     let allowedOrigins = [];
     
-    if (customer && customer.config && customer.config.allowedOrigins) {
+    if (customer && customer.config && customer.config.allowedOrigins && customer.config.allowedOrigins.length > 0) {
         allowedOrigins = customer.config.allowedOrigins;
     }
     
@@ -212,7 +253,7 @@ async function checkOTPRateLimit(emailHash, customerId, env) {
         // Get customer configuration for rate limits
         let rateLimitPerHour = 3; // Default
         if (customerId) {
-            const customer = await getCustomer(customerId, env);
+            const customer = await getCustomerCached(customerId, env);
             if (customer && customer.config && customer.config.rateLimits) {
                 rateLimitPerHour = customer.config.rateLimits.otpRequestsPerHour || 3;
             }
@@ -491,6 +532,45 @@ class SMTPProvider {
 }
 
 /**
+ * Check for high error rate and alert
+ * @param {string} customerId - Customer ID
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function checkErrorRateAlert(customerId, env) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const usageKey = `usage_${customerId}_${today}`;
+        const errorKey = `errors_${customerId}_${today}`;
+        
+        const usage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' }) || { otpRequests: 0 };
+        const errors = await env.OTP_AUTH_KV.get(errorKey, { type: 'json' }) || { total: 0 };
+        
+        const totalRequests = usage.otpRequests || 0;
+        const totalErrors = errors.total || 0;
+        
+        if (totalRequests > 0) {
+            const errorRate = (totalErrors / totalRequests) * 100;
+            
+            // Alert if error rate > 5%
+            if (errorRate > 5) {
+                // Send webhook alert
+                await sendWebhook(customerId, 'error_rate_high', {
+                    errorRate: errorRate.toFixed(2),
+                    totalRequests,
+                    totalErrors,
+                    threshold: 5
+                }, env);
+                
+                console.warn(`High error rate for customer ${customerId}: ${errorRate.toFixed(2)}%`);
+            }
+        }
+    } catch (error) {
+        console.error('Error rate check failed:', error);
+    }
+}
+
+/**
  * Get email provider for customer
  * @param {object} customer - Customer object
  * @param {*} env - Worker environment
@@ -543,7 +623,7 @@ async function sendOTPEmail(email, otp, customerId, env) {
         throw new Error('RESEND_API_KEY not configured');
     }
     
-    // Get customer configuration if customerId provided
+        // Get customer configuration if customerId provided
     let customer = null;
     let emailConfig = null;
     let fromEmail = env.RESEND_FROM_EMAIL;
@@ -560,7 +640,7 @@ async function sendOTPEmail(email, otp, customerId, env) {
     };
     
     if (customerId) {
-        customer = await getCustomer(customerId, env);
+        customer = await getCustomerCached(customerId, env);
         if (customer && customer.config && customer.config.emailConfig) {
             emailConfig = customer.config.emailConfig;
             
@@ -1146,7 +1226,8 @@ async function handleRegisterCustomer(request, env) {
                     secret: null,
                     events: []
                 },
-                allowedOrigins: [] // Empty = allow all (for development)
+                allowedOrigins: [], // Empty = allow all (for development)
+                allowedIPs: [] // Empty = allow all IPs
             },
             features: {
                 customEmailTemplates: plan !== 'free',
@@ -1484,6 +1565,9 @@ async function handleUpdateConfig(request, env, customerId) {
         
         await storeCustomer(customerId, customer, env);
         
+        // Invalidate cache
+        invalidateCustomerCache(customerId);
+        
         return new Response(JSON.stringify({
             success: true,
             config: customer.config,
@@ -1544,6 +1628,9 @@ async function handleUpdateEmailConfig(request, env, customerId) {
         customer.updatedAt = new Date().toISOString();
         
         await storeCustomer(customerId, customer, env);
+        
+        // Invalidate cache
+        invalidateCustomerCache(customerId);
         
         return new Response(JSON.stringify({
             success: true,
@@ -2216,7 +2303,7 @@ async function checkQuota(customerId, env) {
     }
     
     try {
-        const customer = await getCustomer(customerId, env);
+        const customer = await getCustomerCached(customerId, env);
         if (!customer) {
             return { allowed: false, reason: 'customer_not_found' };
         }
@@ -2616,6 +2703,374 @@ async function handleRotateApiKey(request, env, customerId, keyId) {
     } catch (error) {
         return new Response(JSON.stringify({
             error: 'Failed to rotate API key',
+            message: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Get onboarding progress
+ * GET /admin/onboarding
+ */
+async function handleGetOnboarding(request, env, customerId) {
+    try {
+        const onboardingKey = `onboarding_${customerId}`;
+        const onboarding = await env.OTP_AUTH_KV.get(onboardingKey, { type: 'json' }) || {
+            customerId,
+            step: 1,
+            completed: false,
+            steps: {
+                accountCreated: false,
+                emailVerified: false,
+                apiKeyGenerated: false,
+                firstTestCompleted: false,
+                webhookConfigured: false,
+                emailTemplateConfigured: false
+            },
+            createdAt: new Date().toISOString()
+        };
+        
+        return new Response(JSON.stringify({
+            success: true,
+            onboarding
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: 'Failed to get onboarding status',
+            message: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Update onboarding progress
+ * PUT /admin/onboarding
+ */
+async function handleUpdateOnboarding(request, env, customerId) {
+    try {
+        const body = await request.json();
+        const { step, completed, steps } = body;
+        
+        const onboardingKey = `onboarding_${customerId}`;
+        const existing = await env.OTP_AUTH_KV.get(onboardingKey, { type: 'json' }) || {
+            customerId,
+            step: 1,
+            completed: false,
+            steps: {
+                accountCreated: false,
+                emailVerified: false,
+                apiKeyGenerated: false,
+                firstTestCompleted: false,
+                webhookConfigured: false,
+                emailTemplateConfigured: false
+            },
+            createdAt: new Date().toISOString()
+        };
+        
+        if (step !== undefined) existing.step = step;
+        if (completed !== undefined) existing.completed = completed;
+        if (steps) existing.steps = { ...existing.steps, ...steps };
+        existing.updatedAt = new Date().toISOString();
+        
+        await env.OTP_AUTH_KV.put(onboardingKey, JSON.stringify(existing), { expirationTtl: 2592000 });
+        
+        return new Response(JSON.stringify({
+            success: true,
+            onboarding: existing
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: 'Failed to update onboarding',
+            message: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Test OTP request (for onboarding)
+ * POST /admin/onboarding/test-otp
+ */
+async function handleTestOTP(request, env, customerId) {
+    try {
+        const body = await request.json();
+        const { email } = body;
+        
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return new Response(JSON.stringify({ error: 'Valid email address required' }), {
+                status: 400,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Use the actual OTP request handler
+        const testRequest = new Request(request.url, {
+            method: 'POST',
+            headers: request.headers,
+            body: JSON.stringify({ email })
+        });
+        
+        const response = await handleRequestOTP(testRequest, env, customerId);
+        
+        // If successful, update onboarding
+        if (response.ok) {
+            const onboardingKey = `onboarding_${customerId}`;
+            const onboarding = await env.OTP_AUTH_KV.get(onboardingKey, { type: 'json' }) || {};
+            onboarding.steps = onboarding.steps || {};
+            onboarding.steps.firstTestCompleted = true;
+            onboarding.step = Math.max(onboarding.step || 1, 4);
+            await env.OTP_AUTH_KV.put(onboardingKey, JSON.stringify(onboarding), { expirationTtl: 2592000 });
+        }
+        
+        return response;
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: 'Failed to test OTP',
+            message: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Check IP allowlist
+ * @param {string} customerId - Customer ID
+ * @param {string} ip - IP address
+ * @param {*} env - Worker environment
+ * @returns {Promise<boolean>} True if IP is allowed
+ */
+async function checkIPAllowlist(customerId, ip, env) {
+    if (!customerId || !ip) return true; // Allow if no customer or IP
+    
+    try {
+        const customer = await getCustomer(customerId, env);
+        if (!customer || !customer.config || !customer.config.allowedIPs) {
+            return true; // No IP restrictions
+        }
+        
+        const allowedIPs = customer.config.allowedIPs;
+        
+        // Check for wildcard (allow all)
+        if (allowedIPs.includes('*')) {
+            return true;
+        }
+        
+        // Check exact match
+        if (allowedIPs.includes(ip)) {
+            return true;
+        }
+        
+        // Check CIDR ranges
+        for (const allowed of allowedIPs) {
+            if (allowed.includes('/')) {
+                // Simple CIDR check (for IPv4)
+                if (isIPInCIDR(ip, allowed)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('IP allowlist check error:', error);
+        return true; // Fail open
+    }
+}
+
+/**
+ * Check if IP is in CIDR range (simplified IPv4)
+ * @param {string} ip - IP address
+ * @param {string} cidr - CIDR notation (e.g., "192.168.1.0/24")
+ * @returns {boolean} True if IP is in range
+ */
+function isIPInCIDR(ip, cidr) {
+    try {
+        const [network, prefixLength] = cidr.split('/');
+        const prefix = parseInt(prefixLength, 10);
+        
+        const ipParts = ip.split('.').map(Number);
+        const networkParts = network.split('.').map(Number);
+        
+        if (ipParts.length !== 4 || networkParts.length !== 4) {
+            return false;
+        }
+        
+        // Convert to 32-bit integers
+        const ipNum = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
+        const networkNum = (networkParts[0] << 24) + (networkParts[1] << 16) + (networkParts[2] << 8) + networkParts[3];
+        const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+        
+        return (ipNum & mask) === (networkNum & mask);
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Export user data (GDPR)
+ * GET /admin/users/{userId}/export
+ */
+async function handleExportUserData(request, env, customerId, userId) {
+    try {
+        // Get user data
+        const userKey = getCustomerKey(customerId, `user_${userId.replace('user_', '')}`);
+        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), {
+                status: 404,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Get all related data
+        const emailHash = await hashEmail(user.email);
+        const exportData = {
+            userId: user.userId,
+            email: user.email,
+            createdAt: user.createdAt,
+            lastLogin: user.lastLogin,
+            // Note: OTP codes are not stored after use, so no OTP history
+            // Sessions are stored but don't contain sensitive data
+        };
+        
+        return new Response(JSON.stringify({
+            success: true,
+            data: exportData,
+            exportedAt: new Date().toISOString()
+        }), {
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/json',
+                'Content-Disposition': `attachment; filename="user-data-${userId}.json"`
+            },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: 'Failed to export user data',
+            message: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Delete user data (GDPR)
+ * DELETE /admin/users/{userId}
+ */
+async function handleDeleteUserData(request, env, customerId, userId) {
+    try {
+        // Get user data first
+        const userKey = getCustomerKey(customerId, `user_${userId.replace('user_', '')}`);
+        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), {
+                status: 404,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const emailHash = await hashEmail(user.email);
+        
+        // Delete all user-related data
+        // Note: We can't easily list all OTP keys, but they expire automatically
+        // Delete user record
+        await env.OTP_AUTH_KV.delete(userKey);
+        
+        // Delete session
+        const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+        await env.OTP_AUTH_KV.delete(sessionKey);
+        
+        // Delete latest OTP key reference
+        const latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
+        await env.OTP_AUTH_KV.delete(latestOtpKey);
+        
+        // Log deletion for audit
+        await logSecurityEvent(customerId, 'user_data_deleted', {
+            userId,
+            email: user.email,
+            deletedAt: new Date().toISOString()
+        }, env);
+        
+        return new Response(JSON.stringify({
+            success: true,
+            message: 'User data deleted successfully'
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: 'Failed to delete user data',
+            message: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Get audit logs
+ * GET /admin/audit-logs
+ */
+async function handleGetAuditLogs(request, env, customerId) {
+    try {
+        const url = new URL(request.url);
+        const startDate = url.searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const endDate = url.searchParams.get('endDate') || new Date().toISOString().split('T')[0];
+        const eventType = url.searchParams.get('eventType');
+        
+        const events = [];
+        
+        // Iterate through date range
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const auditKey = `audit_${customerId}_${dateStr}`;
+            const dayAudit = await env.OTP_AUTH_KV.get(auditKey, { type: 'json' });
+            
+            if (dayAudit && dayAudit.events) {
+                const filteredEvents = eventType 
+                    ? dayAudit.events.filter(e => e.eventType === eventType)
+                    : dayAudit.events;
+                
+                events.push(...filteredEvents);
+            }
+        }
+        
+        // Sort by timestamp (newest first)
+        events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        return new Response(JSON.stringify({
+            success: true,
+            period: { start: startDate, end: endDate },
+            total: events.length,
+            events: events.slice(0, 1000) // Limit to 1000 most recent
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: 'Failed to get audit logs',
             message: error.message
         }), {
             status: 500,
@@ -3442,6 +3897,79 @@ export default {
                 return handleGetErrorAnalytics(request, env, auth.customerId);
             }
             
+            // Onboarding endpoints (require API key auth)
+            if (path === '/admin/onboarding' && request.method === 'GET') {
+                const auth = await authenticateRequest(request, env);
+                if (!auth) {
+                    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                        status: 401,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+                return handleGetOnboarding(request, env, auth.customerId);
+            }
+            
+            if (path === '/admin/onboarding' && request.method === 'PUT') {
+                const auth = await authenticateRequest(request, env);
+                if (!auth) {
+                    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                        status: 401,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+                return handleUpdateOnboarding(request, env, auth.customerId);
+            }
+            
+            if (path === '/admin/onboarding/test-otp' && request.method === 'POST') {
+                const auth = await authenticateRequest(request, env);
+                if (!auth) {
+                    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                        status: 401,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+                return handleTestOTP(request, env, auth.customerId);
+            }
+            
+            // GDPR endpoints (require API key auth)
+            const exportUserMatch = path.match(/^\/admin\/users\/([^\/]+)\/export$/);
+            if (exportUserMatch && request.method === 'GET') {
+                const userId = exportUserMatch[1];
+                const auth = await authenticateRequest(request, env);
+                if (!auth) {
+                    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                        status: 401,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+                return handleExportUserData(request, env, auth.customerId, userId);
+            }
+            
+            const deleteUserMatch = path.match(/^\/admin\/users\/([^\/]+)$/);
+            if (deleteUserMatch && request.method === 'DELETE') {
+                const userId = deleteUserMatch[1];
+                const auth = await authenticateRequest(request, env);
+                if (!auth) {
+                    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                        status: 401,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+                return handleDeleteUserData(request, env, auth.customerId, userId);
+            }
+            
+            // Audit logs endpoint (require API key auth)
+            if (path === '/admin/audit-logs' && request.method === 'GET') {
+                const auth = await authenticateRequest(request, env);
+                if (!auth) {
+                    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                        status: 401,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+                return handleGetAuditLogs(request, env, auth.customerId);
+            }
+            
             // Configuration endpoints (require API key auth)
             if (path === '/admin/config' && request.method === 'GET') {
                 const auth = await authenticateRequest(request, env);
@@ -3608,21 +4136,39 @@ export default {
             const auth = await authenticateRequest(request, env);
             if (auth) {
                 customerId = auth.customerId;
-                customer = await getCustomer(customerId, env);
+                customer = await getCustomerCached(customerId, env);
+                
+                // Check IP allowlist
+                const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+                const ipAllowed = await checkIPAllowlist(customerId, clientIP, env);
+                
+                if (!ipAllowed) {
+                    await logSecurityEvent(customerId, 'ip_blocked', {
+                        ip: clientIP,
+                        endpoint: path,
+                        method: request.method
+                    }, env);
+                    
+                    return new Response(JSON.stringify({ error: 'IP address not allowed' }), {
+                        status: 403,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
                 
                 // Log API key authentication
                 await logSecurityEvent(customerId, 'api_key_auth', {
                     keyId: auth.keyId,
                     endpoint: path,
                     method: request.method,
-                    ip: request.headers.get('CF-Connecting-IP') || 'unknown'
+                    ip: clientIP
                 }, env);
             } else if (path.startsWith('/auth/') || path.startsWith('/admin/')) {
                 // Log failed authentication attempt
+                const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
                 await logSecurityEvent(null, 'auth_failed', {
                     endpoint: path,
                     method: request.method,
-                    ip: request.headers.get('CF-Connecting-IP') || 'unknown'
+                    ip: clientIP
                 }, env);
             }
             
@@ -3657,6 +4203,8 @@ export default {
             // Track error
             if (customerId) {
                 await trackError(customerId, 'internal', error.message, endpoint, env);
+                // Check error rate after tracking
+                await checkErrorRateAlert(customerId, env);
             }
             
             const errorResponse = new Response(JSON.stringify({ 

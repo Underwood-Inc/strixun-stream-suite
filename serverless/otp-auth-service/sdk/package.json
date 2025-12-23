@@ -1,0 +1,23 @@
+{
+  "name": "@otpauth/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript/JavaScript SDK for OTP Auth Service",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "otp",
+    "authentication",
+    "auth",
+    "sdk"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
+

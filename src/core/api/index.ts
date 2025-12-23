@@ -1,0 +1,143 @@
+/**
+ * API Framework - Main Export
+ * 
+ * Facebook/Meta-level API framework for Strixun Stream Suite
+ */
+
+// Core client
+export { APIClient } from './client';
+export { EnhancedAPIClient } from './enhanced-client';
+
+// Factory functions
+export {
+  createAPIClient,
+  getAPIClient,
+  setAPIClient,
+  resetAPIClient,
+} from './factory';
+
+// Types
+export type {
+  APIRequest,
+  APIResponse,
+  APIError,
+  APIClientConfig,
+  Middleware,
+  Plugin,
+  RequestPriority,
+  CacheConfig,
+  RetryConfig,
+  OptimisticConfig,
+  OfflineConfig,
+  WebSocketRequest,
+  WebSocketResponse,
+} from './types';
+
+// Request management
+export {
+  RequestDeduplicator,
+  RequestQueue,
+  CancellationManager,
+  comparePriority,
+  getDefaultPriority,
+  isHigherPriority,
+} from './request';
+
+export type { QueueConfig } from './request';
+
+// Resilience
+export {
+  RetryManager,
+  CircuitBreaker,
+  OfflineQueue,
+} from './resilience';
+
+export type {
+  RetryConfig as RetryConfigType,
+  CircuitBreakerConfig,
+  CircuitBreakerState,
+  CircuitState,
+  OfflineConfig as OfflineConfigType,
+} from './resilience';
+
+// Cache
+export {
+  MemoryCache,
+  IndexedDBCache,
+  CacheManager,
+} from './cache';
+
+// Batching
+export {
+  RequestBatcher,
+  RequestDebouncer,
+} from './batch';
+
+export type {
+  BatcherConfig,
+  DebouncerConfig,
+} from './batch';
+
+// Optimistic updates
+export {
+  OptimisticUpdateManager,
+} from './optimistic';
+
+// WebSocket
+export {
+  WebSocketClient,
+} from './websocket';
+
+export type {
+  WebSocketConfig,
+} from './websocket';
+
+// Plugins
+export {
+  PluginManager,
+  createLoggingPlugin,
+  createMetricsPlugin,
+  createAnalyticsPlugin,
+} from './plugins';
+
+export type {
+  LoggingConfig,
+  MetricsConfig,
+  Metric,
+  AnalyticsConfig,
+} from './plugins';
+
+// Utils
+export {
+  RequestBuilder,
+  createRequest,
+} from './utils/request-builder';
+
+export {
+  handleResponse,
+  handleErrorResponse,
+  createError,
+  isRetryableError,
+  isSuccessResponse,
+  extractErrorMessage,
+} from './utils/response-handler';
+
+// Middleware
+export {
+  MiddlewarePipeline,
+} from './middleware';
+
+export {
+  createAuthMiddleware,
+} from './middleware/auth';
+
+export {
+  createErrorMiddleware,
+} from './middleware/error';
+
+export {
+  createTransformMiddleware,
+  defaultRequestTransformer,
+  defaultResponseTransformer,
+} from './middleware/transform';
+

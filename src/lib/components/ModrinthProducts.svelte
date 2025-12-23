@@ -41,35 +41,39 @@
     }
   ];
 
-  function handleProductClick(url: string): void {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
 </script>
 
 <div class="modrinth-products">
   <Carousel autoRotate={true} interval={6000} showIndicators={true} showControls={true}>
     {#each products as product}
-      <Card clickable={true} onCardClick={() => handleProductClick(product.url)}>
-        <div class="modrinth-product">
-          <h3 class="modrinth-product__title">{product.title}</h3>
-          {#if product.status}
-            <span class="modrinth-product__status">{product.status}</span>
-          {/if}
-          <p class="modrinth-product__description">{product.description}</p>
-          <div class="modrinth-product__stats">
-            {#if product.downloads}
-              <span class="modrinth-product__stat">
-                <strong>{product.downloads}</strong> downloads
-              </span>
+      <a
+        href={product.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="modrinth-product__link"
+      >
+        <Card clickable={false}>
+          <div class="modrinth-product">
+            <h3 class="modrinth-product__title">{product.title}</h3>
+            {#if product.status}
+              <span class="modrinth-product__status">{product.status}</span>
             {/if}
-            {#if product.followers}
-              <span class="modrinth-product__stat">
-                <strong>{product.followers}</strong> {product.followers === '1' ? 'follower' : 'followers'}
-              </span>
-            {/if}
+            <p class="modrinth-product__description">{product.description}</p>
+            <div class="modrinth-product__stats">
+              {#if product.downloads}
+                <span class="modrinth-product__stat">
+                  <strong>{product.downloads}</strong> downloads
+                </span>
+              {/if}
+              {#if product.followers}
+                <span class="modrinth-product__stat">
+                  <strong>{product.followers}</strong> {product.followers === '1' ? 'follower' : 'followers'}
+                </span>
+              {/if}
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </a>
     {/each}
   </Carousel>
 </div>
@@ -77,6 +81,39 @@
 <style lang="scss">
   .modrinth-products {
     width: 100%;
+  }
+
+  .modrinth-product__link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    
+    &:hover,
+    &:focus,
+    &:active {
+      text-decoration: none;
+      color: inherit;
+    }
+    
+    // Apply clickable card hover effects
+    &:hover .card {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    &:active .card {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
   }
 
   .modrinth-product {
