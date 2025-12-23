@@ -49,16 +49,15 @@
   }
   
   onMount(async () => {
-    if ($isAuthenticated) {
-      await loadNotebooks();
-    } else {
+    // NO automatic API calls - user must manually load notebooks
+    if (!$isAuthenticated) {
       showLoginModal = true;
     }
   });
   
-  // Watch for authentication changes
-  $: if ($isAuthenticated && !showLoginModal) {
-    loadNotebooks();
+  // Watch for authentication changes - only show/hide login modal, NO automatic API calls
+  $: if (!$isAuthenticated && !showLoginModal) {
+    showLoginModal = true;
   }
   
   function handleLoginClose(): void {
@@ -367,6 +366,13 @@
           <p class="user-info">Signed in as {$user?.email}</p>
         </div>
         <div class="header-actions">
+          <button 
+            class="btn btn-secondary" 
+            on:click={loadNotebooks}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : '🔄 Refresh'}
+          </button>
           <button 
             class="btn btn-primary" 
             on:click={() => showNewNotebookDialog = true}

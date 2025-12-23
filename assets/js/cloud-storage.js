@@ -486,19 +486,22 @@ function enableAutoSync() {
     
     if (autoSyncTimer) clearInterval(autoSyncTimer);
     
-    autoSyncTimer = setInterval(async () => {
-        if (!isAutoSyncEnabled()) {
-            disableAutoSync();
-            return;
-        }
-        
-        try {
-            console.log('[CloudStorage] Auto-sync triggered...');
-            await saveToCloud('autosave', { type: 'auto' });
-        } catch (e) {
-            console.warn('[CloudStorage] Auto-sync failed:', e.message);
-        }
-    }, AUTO_SYNC_INTERVAL);
+    // DISABLED: Auto-sync removed to prevent automatic API calls
+    // Auto-sync timer is disabled - users must manually save to cloud
+    // This prevents expensive API calls without user action
+    // autoSyncTimer = setInterval(async () => {
+    //     if (!isAutoSyncEnabled()) {
+    //         disableAutoSync();
+    //         return;
+    //     }
+    //     
+    //     try {
+    //         console.log('[CloudStorage] Auto-sync triggered...');
+    //         await saveToCloud('autosave', { type: 'auto' });
+    //     } catch (e) {
+    //         console.warn('[CloudStorage] Auto-sync failed:', e.message);
+    //     }
+    // }, AUTO_SYNC_INTERVAL);
     
     console.log('[CloudStorage] ✅ Auto-sync enabled (every 5 minutes)');
 }
@@ -632,9 +635,11 @@ if (typeof window !== 'undefined') {
         }
     }
     
-    // Auto-enable sync if previously enabled
-    if (isAutoSyncEnabled()) {
-        enableAutoSync();
-    }
+    // DISABLED: Auto-enable sync removed to prevent automatic API calls
+    // Users must manually enable auto-sync if desired (via GUI)
+    // This prevents expensive API calls without user action
+    // if (isAutoSyncEnabled()) {
+    //     enableAutoSync();
+    // }
 }
 

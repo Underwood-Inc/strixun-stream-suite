@@ -225,39 +225,52 @@
     if (warningEl) securityWarning = warningEl.textContent || '';
   }
   
-  // Watch ONLY authentication state - use a separate variable to track auth changes
+  // Watch ONLY authentication state for UI updates - NO automatic API calls
   let previousAuthState = false;
+  
   $: {
     const authChanged = $isAuthenticated !== previousAuthState;
     previousAuthState = $isAuthenticated;
     
-    if (authChanged && $isAuthenticated && !hasLoadedCloudSaves) {
-      hasLoadedCloudSaves = true;
-      // Use setTimeout to break the reactive cycle
-      setTimeout(() => {
-        loadCloudSavesList();
-      }, 0);
-    } else if (authChanged && !$isAuthenticated) {
-      // Reset when logged out
+    // Only reset UI state on logout - NO automatic API calls
+    if (authChanged && !$isAuthenticated) {
       hasLoadedCloudSaves = false;
       cloudSaves = [];
+      // Clear any pending debounce timer
+      if (loadCloudSavesDebounceTimer) {
+        clearTimeout(loadCloudSavesDebounceTimer);
+        loadCloudSavesDebounceTimer = null;
+      }
     }
   }
+  
+  // Debounce timer to prevent rapid-fire API calls
+  let loadCloudSavesDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   
   async function loadCloudSavesList(): Promise<void> {
     if (!$isAuthenticated || isLoadingCloudSaves) return;
     
-    try {
-      isLoadingCloudSaves = true;
-      cloudSaves = await listCloudSaves();
-      hasLoadedCloudSaves = true; // Mark as loaded
-    } catch (error) {
-      console.error('[Setup] Failed to load cloud saves:', error);
-      showToast({ message: 'Failed to load cloud saves', type: 'error' });
-      hasLoadedCloudSaves = false; // Reset on error so it can retry
-    } finally {
-      isLoadingCloudSaves = false;
+    // Clear any pending debounce timer
+    if (loadCloudSavesDebounceTimer) {
+      clearTimeout(loadCloudSavesDebounceTimer);
+      loadCloudSavesDebounceTimer = null;
     }
+    
+    // Debounce the actual API call to prevent spam
+    loadCloudSavesDebounceTimer = setTimeout(async () => {
+      try {
+        isLoadingCloudSaves = true;
+        cloudSaves = await listCloudSaves();
+        hasLoadedCloudSaves = true; // Mark as loaded
+      } catch (error) {
+        console.error('[Setup] Failed to load cloud saves:', error);
+        showToast({ message: 'Failed to load cloud saves', type: 'error' });
+        hasLoadedCloudSaves = false; // Reset on error so it can retry
+      } finally {
+        isLoadingCloudSaves = false;
+        loadCloudSavesDebounceTimer = null;
+      }
+    }, 500); // 500ms debounce
   }
   
   async function handleSaveToCloud(): Promise<void> {
@@ -329,9 +342,7 @@
   
   function handleLoginClose(): void {
     showLoginModal = false;
-    if ($isAuthenticated) {
-      loadCloudSavesList();
-    }
+    // NO automatic API calls - user must click "Refresh List" button to load cloud saves
   }
 </script>
 
