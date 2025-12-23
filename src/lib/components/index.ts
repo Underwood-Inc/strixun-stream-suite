@@ -28,6 +28,9 @@ export * from './ui';
 
 // Primitives
 export * from './primitives/ResizableZone';
+export { default as Card } from './primitives/Card';
+export { default as Carousel } from './primitives/Carousel';
+export { default as FloatingPanel } from './primitives/FloatingPanel';
 
 // Auth Components
 export { default as LoginModal } from './auth/LoginModal.svelte';
@@ -50,4 +53,7 @@ export { default as ToastContainer } from './ToastContainer.svelte';
 // Documentation Components
 export { default as StorybookViewer } from './StorybookViewer.svelte';
 export { default as ComponentDocsButton } from './ComponentDocsButton.svelte';
+
+// Modrinth Products
+export { default as ModrinthProducts } from './ModrinthProducts.svelte';
 

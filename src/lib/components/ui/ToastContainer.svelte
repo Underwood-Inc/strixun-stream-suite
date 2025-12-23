@@ -16,6 +16,7 @@
   import { visibleToasts, overflowToasts, dismissToast } from '../../../stores/toast-queue';
   import { getToastConfig } from '../../../config/toast.config';
   import Toast from './Toast.svelte';
+  import { getScrollbarCompensation } from '../../utils/scrollbar-compensation';
   
   let container: HTMLDivElement;
   let stackContainer: HTMLDivElement;
@@ -31,6 +32,11 @@
   let previousToastIds: string[] = [];
   let toastPositions = new Map<string, { top: number; height: number }>();
   let isAnimating = false;
+  
+  // Scrollbar compensation instance
+  const scrollbarComp = getScrollbarCompensation({
+    cssVariable: '--toast-scrollbar-width'
+  });
   
   function updateContentBounds(): void {
     const navigation = document.querySelector('nav.tabs');
@@ -109,6 +115,11 @@
       updateContentBounds();
     });
     
+    // Attach scrollbar compensation to container
+    if (container) {
+      scrollbarComp.attach(container);
+    }
+    
     // Update bounds on resize and scroll
     window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleResize, true);
@@ -130,6 +141,11 @@
   onDestroy(() => {
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('scroll', handleResize, true);
+    
+    // Detach scrollbar compensation
+    if (container) {
+      scrollbarComp.detach(container);
+    }
     
     // Clean up portal container
     if (portalContainer && portalContainer.parentNode) {
@@ -261,6 +277,13 @@
         animateToastPositions();
       }, 10);
     }
+    
+    // Update scrollbar compensation when toast list changes
+    if (container) {
+      requestAnimationFrame(() => {
+        scrollbarComp.update(container);
+      });
+    }
   });
   
   $: positionClass = `toast-container--${config.position}`;
@@ -332,6 +355,10 @@
     flex-direction: column;
     /* Height will be set dynamically by JavaScript via maxHeight style */
     
+    // Scrollbar compensation is handled by the scrollbar-compensation utility
+    // The utility applies margin-right and padding-right automatically via inline styles
+    // CSS variable --toast-scrollbar-width is available for custom styling if needed
+    
     // Position variants - constrained to content area
     &.toast-container--top-right {
       align-items: flex-end;
@@ -369,7 +396,6 @@
     flex-direction: column;
     gap: var(--toast-stack-spacing, 12px);
     pointer-events: none;
-    padding-right: 4px; // Space for scrollbar
     min-height: 0;
     width: 100%;
     

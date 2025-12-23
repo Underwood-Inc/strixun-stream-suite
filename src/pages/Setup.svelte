@@ -13,7 +13,7 @@
   import { requestStorageFromOBS, manualStorageSync, saveAutoSyncPref } from '../modules/storage-sync';
   import { checkForUpdates, openGitHubRepo } from '../modules/version';
   import { storage } from '../modules/storage';
-  import { Tooltip, LoginModal } from '@components';
+  import { Tooltip, LoginModal, ConfirmationModal } from '@components';
   import { isAuthenticated, user } from '../stores/auth';
   import { saveToCloud, loadFromCloud, listCloudSaves, deleteCloudSave, type CloudSave } from '../modules/cloud-save';
   import { showToast } from '../stores/toast-queue';
@@ -54,6 +54,9 @@
   let saveSlotName = 'default';
   let saveDescription = '';
   let hasLoadedCloudSaves = false; // Guard to prevent infinite loop
+  
+  // Confirmation modal state
+  let showClearCredentialsModal = false;
   
   onMount(async () => {
     // Set dock URL
@@ -343,39 +346,69 @@
     showLoginModal = false;
     // NO automatic API calls - user must click "Refresh List" button to load cloud saves
   }
+  
+  function handleClearCredentialsClick(): void {
+    showClearCredentialsModal = true;
+  }
+  
+  async function handleClearCredentialsConfirm(): Promise<void> {
+    showClearCredentialsModal = false;
+    await clearSavedCredentials();
+    // Sync back to Svelte variables
+    host = 'localhost';
+    port = '4455';
+    password = '';
+    rememberCreds = false;
+  }
+  
+  function handleClearCredentialsCancel(): void {
+    showClearCredentialsModal = false;
+  }
 </script>
 
 <div class="page setup-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Connection Card -->
-  <div class="card">
+  <div class="card connection-card">
     <h3>Connection</h3>
-    <div class="row">
-      <div>
-        <label>Host</label>
-        <input type="text" id="host" bind:value={host}>
+    <div class="connection-form">
+      <div class="connection-row">
+        <div class="connection-field">
+          <label>Host</label>
+          <input type="text" id="host" bind:value={host}>
+        </div>
+        <div class="connection-field">
+          <label>Port</label>
+          <input type="text" id="port" bind:value={port}>
+        </div>
       </div>
-      <div>
-        <label>Port</label>
-        <input type="text" id="port" bind:value={port}>
+      <div class="connection-field">
+        <label>Password</label>
+        <input type="password" id="password" bind:value={password} placeholder="Leave empty if not set">
+      </div>
+      <div class="connection-remember">
+        <label class="remember-label">
+          <input type="checkbox" id="rememberCreds" bind:checked={rememberCreds}>
+          <span>Remember credentials</span>
+        </label>
+        {#if securityWarning}
+          <p class="security-warning" id="securityWarning">
+            {securityWarning}
+          </p>
+        {/if}
+      </div>
+      <div class="connection-actions">
+        <button class="btn-primary btn-connect" id="connectBtn" on:click={toggleConnection}>
+          {$connected ? 'Disconnect' : 'Connect'}
+        </button>
+        <button 
+          type="button" 
+          class="btn-clear-credentials" 
+          on:click={handleClearCredentialsClick}
+        >
+          Clear Saved Credentials
+        </button>
       </div>
     </div>
-    <label>Password</label>
-    <input type="password" id="password" bind:value={password} placeholder="Leave empty if not set">
-    <div style="margin:8px 0">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" id="rememberCreds" bind:checked={rememberCreds} style="width:auto;margin:0">
-        <span>Remember credentials</span>
-      </label>
-      <p style="font-size:0.75em;color:var(--warning);margin-top:4px" id="securityWarning">
-        {securityWarning}
-      </p>
-      <button type="button" on:click={clearSavedCredentials} style="font-size:0.75em;padding:4px 8px;margin-top:4px;background:var(--danger);border:none;color:#fff;border-radius:4px;cursor:pointer">
-        Clear Saved Credentials
-      </button>
-    </div>
-    <button class="btn-primary btn-block" id="connectBtn" on:click={toggleConnection}>
-      {$connected ? 'Disconnect' : 'Connect'}
-    </button>
   </div>
   
   <!-- OBS Dock Card -->
@@ -671,6 +704,18 @@
     <LoginModal onClose={handleLoginClose} />
   {/if}
   
+  {#if showClearCredentialsModal}
+    <ConfirmationModal
+      title="Clear Saved Credentials"
+      message="This will permanently delete all saved connection credentials (host, port, and password) from both local and cloud storage. This action cannot be undone."
+      confirmLabel="Clear Credentials"
+      cancelLabel="Cancel"
+      confirmVariant="danger"
+      onConfirm={handleClearCredentialsConfirm}
+      onCancel={handleClearCredentialsCancel}
+    />
+  {/if}
+  
   <!-- Version Info Card -->
   <div class="card">
     <h3>📦 Version</h3>
@@ -713,6 +758,102 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+    }
+    
+    .connection-card {
+      .connection-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .connection-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      
+      .connection-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        
+        label {
+          font-size: 0.9em;
+          font-weight: 500;
+          color: var(--text);
+        }
+        
+        input {
+          width: 100%;
+        }
+      }
+      
+      .connection-remember {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+        
+        .remember-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          font-size: 0.9em;
+          
+          input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+          }
+        }
+        
+        .security-warning {
+          font-size: 0.75em;
+          color: var(--warning);
+          margin: 0;
+          padding: 0;
+        }
+      }
+      
+      .connection-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        
+        .btn-connect {
+          flex: 1;
+          padding: 10px 16px;
+          background: var(--primary, var(--accent));
+          border: none;
+          color: #fff;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+          
+          &:hover {
+            background: var(--primary-dark, var(--accent-dark));
+          }
+        }
+        
+        .btn-clear-credentials {
+          padding: 10px 16px;
+          background: var(--danger);
+          border: none;
+          color: #fff;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          font-size: 0.9em;
+          transition: all 0.2s;
+          white-space: nowrap;
+          
+          &:hover {
+            background: var(--danger-dark, rgba(var(--danger-rgb, 255, 0, 0), 0.8));
+          }
+        }
+      }
     }
     
     .url-box {

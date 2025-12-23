@@ -11,6 +11,7 @@
   import { visibleToasts, overflowToasts, dismissToast } from '../../stores/toast-queue';
   import Toast from './Toast.svelte';
   import { getToastConfig } from '../../config/toast.config';
+  import { getScrollbarCompensation } from '../utils/scrollbar-compensation';
   
   let container: HTMLDivElement;
   let portalContainer: HTMLDivElement | null = null;
@@ -20,6 +21,11 @@
   let contentBottom = 0;
   let contentLeft = 0;
   let contentRight = 0;
+  
+  // Scrollbar compensation instance
+  const scrollbarComp = getScrollbarCompensation({
+    cssVariable: '--toast-scrollbar-width'
+  });
   
   function updateContentBounds(): void {
     const navigation = document.querySelector('nav.tabs');
@@ -98,6 +104,11 @@
       updateContentBounds();
     });
     
+    // Attach scrollbar compensation to container
+    if (container) {
+      scrollbarComp.attach(container);
+    }
+    
     // Update bounds on resize and scroll
     window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleResize, true);
@@ -120,11 +131,23 @@
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('scroll', handleResize, true);
     
+    // Detach scrollbar compensation
+    if (container) {
+      scrollbarComp.detach(container);
+    }
+    
     // Clean up portal container
     if (portalContainer && portalContainer.parentNode) {
       portalContainer.parentNode.removeChild(portalContainer);
     }
   });
+  
+  // Watch for toast changes and update scrollbar compensation
+  $: if ($visibleToasts && container) {
+    requestAnimationFrame(() => {
+      scrollbarComp.update(container);
+    });
+  }
 </script>
 
 <div 
@@ -170,6 +193,10 @@
     flex-direction: column;
     gap: 12px;
     @include scrollbar(6px);
+    
+    // Scrollbar compensation is handled by the scrollbar-compensation utility
+    // The utility applies margin-right and padding-right automatically via inline styles
+    // CSS variable --toast-scrollbar-width is available for custom styling if needed
     
     :global(.toast) {
       pointer-events: auto;

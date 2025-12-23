@@ -17,8 +17,7 @@
   import Scripts from './pages/Scripts.svelte';
   import Install from './pages/Install.svelte';
   import Setup from './pages/Setup.svelte';
-  import { ActivityLog } from '@components';
-  import { ToastContainer } from '@components';
+  import { ActivityLog, ToastContainer, FloatingPanel, ModrinthProducts } from '@components';
   
   import { currentPage } from './stores/navigation';
   import { initializeApp } from './modules/bootstrap';
@@ -92,6 +91,18 @@
     <div class="split-divider" id="logDivider"></div>
     <ActivityLog />
   </div>
+  
+  <FloatingPanel
+    position="left"
+    collapsedWidth={40}
+    expandedWidth={320}
+    minWidth={200}
+    maxWidth={500}
+    defaultExpanded={true}
+    storageKey="ui_modrinth_panel"
+  >
+    <ModrinthProducts />
+  </FloatingPanel>
   
   <ToastContainer />
 </div>

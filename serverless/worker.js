@@ -846,6 +846,289 @@ const SCROLLBAR_CUSTOMIZER_CODE = `(function(global) {
 })(typeof window !== 'undefined' ? window : this);`;
 
 /**
+ * Scrollbar Compensation Utility Code
+ * Prevents horizontal layout shift when scrollbars appear/disappear
+ */
+const SCROLLBAR_COMPENSATION_CODE = `/**
+ * Scrollbar Compensation Utility
+ * 
+ * A standalone, agnostic utility that prevents horizontal layout shift
+ * when scrollbars appear/disappear on any element.
+ * 
+ * @version 1.0.0
+ */
+
+(function(global) {
+  'use strict';
+
+  const DEFAULT_CONFIG = {
+    cssVariable: '--scrollbar-width',
+    transitionDuration: '0.2s',
+    transitionEasing: 'ease',
+    autoInit: true,
+    selector: null,
+    namespace: 'scrollbar-compensation'
+  };
+
+  class ScrollbarCompensation {
+    constructor(config = {}) {
+      this.config = { ...DEFAULT_CONFIG, ...config };
+      this.elements = new Map();
+      this.observers = new Map();
+      this.scrollbarWidth = 0;
+      this.isInitialized = false;
+      
+      this.attach = this.attach.bind(this);
+      this.detach = this.detach.bind(this);
+      this.update = this.update.bind(this);
+      this.getScrollbarWidth = this.getScrollbarWidth.bind(this);
+      this.hasScrollbar = this.hasScrollbar.bind(this);
+      this.applyCompensation = this.applyCompensation.bind(this);
+      this.removeCompensation = this.removeCompensation.bind(this);
+    }
+
+    getScrollbarWidth() {
+      const outer = document.createElement('div');
+      outer.style.visibility = 'hidden';
+      outer.style.overflow = 'scroll';
+      outer.style.msOverflowStyle = 'scrollbar';
+      outer.style.width = '100px';
+      outer.style.position = 'absolute';
+      outer.style.top = '-9999px';
+      document.body.appendChild(outer);
+
+      const inner = document.createElement('div');
+      inner.style.width = '100%';
+      outer.appendChild(inner);
+
+      const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+      outer.parentNode.removeChild(outer);
+      return scrollbarWidth;
+    }
+
+    hasScrollbar(element) {
+      if (!element) return false;
+      return element.scrollHeight > element.clientHeight;
+    }
+
+    applyCompensation(element) {
+      if (!element) return;
+
+      const hasScroll = this.hasScrollbar(element);
+      const scrollbarWidth = hasScroll ? this.scrollbarWidth : 0;
+
+      element.style.setProperty(this.config.cssVariable, \`\${scrollbarWidth}px\`);
+
+      const transition = \`margin-right \${this.config.transitionDuration} \${this.config.transitionEasing}, padding-right \${this.config.transitionDuration} \${this.config.transitionEasing}\`;
+      
+      const currentTransition = element.style.transition || '';
+      if (!currentTransition.includes('margin-right')) {
+        element.style.transition = currentTransition
+          ? \`\${currentTransition}, \${transition}\`
+          : transition;
+      }
+
+      element.style.marginRight = \`calc(\${this.config.cssVariable} * -1)\`;
+      element.style.paddingRight = \`var(\${this.config.cssVariable}, 0px)\`;
+
+      this.elements.set(element, {
+        hasScrollbar: hasScroll,
+        scrollbarWidth: scrollbarWidth,
+        applied: true
+      });
+    }
+
+    removeCompensation(element) {
+      if (!element) return;
+
+      element.style.removeProperty(this.config.cssVariable);
+      element.style.removeProperty('margin-right');
+      element.style.removeProperty('padding-right');
+
+      const transition = element.style.transition || '';
+      if (transition.includes('margin-right')) {
+        const newTransition = transition
+          .split(',')
+          .filter(t => !t.trim().includes('margin-right') && !t.trim().includes('padding-right'))
+          .join(',')
+          .trim();
+        element.style.transition = newTransition || '';
+      }
+
+      this.elements.delete(element);
+    }
+
+    update(element) {
+      if (!element) return;
+
+      this.scrollbarWidth = this.getScrollbarWidth();
+      const hasScroll = this.hasScrollbar(element);
+      const previousState = this.elements.get(element);
+
+      if (!previousState || previousState.hasScrollbar !== hasScroll || previousState.scrollbarWidth !== this.scrollbarWidth) {
+        if (hasScroll) {
+          this.applyCompensation(element);
+        } else {
+          this.removeCompensation(element);
+        }
+      }
+    }
+
+    attach(element) {
+      if (!element || this.elements.has(element)) return;
+
+      this.update(element);
+
+      const observer = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          this.update(element);
+        });
+      });
+
+      observer.observe(element);
+
+      const handleScroll = () => {
+        requestAnimationFrame(() => {
+          this.update(element);
+        });
+      };
+
+      element.addEventListener('scroll', handleScroll, { passive: true });
+
+      this.observers.set(element, {
+        observer: observer,
+        cleanup: () => {
+          observer.disconnect();
+          element.removeEventListener('scroll', handleScroll);
+        }
+      });
+    }
+
+    detach(element) {
+      if (!element) return;
+
+      this.removeCompensation(element);
+
+      const observerData = this.observers.get(element);
+      if (observerData) {
+        observerData.cleanup();
+        this.observers.delete(element);
+      }
+    }
+
+    attachAll(selector) {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(el => this.attach(el));
+      return elements.length;
+    }
+
+    detachAll() {
+      const elements = Array.from(this.elements.keys());
+      elements.forEach(el => this.detach(el));
+    }
+
+    init() {
+      if (this.isInitialized) {
+        console.warn('ScrollbarCompensation already initialized');
+        return;
+      }
+
+      this.scrollbarWidth = this.getScrollbarWidth();
+
+      if (this.config.selector) {
+        this.attachAll(this.config.selector);
+      }
+
+      if (this.config.selector) {
+        const mutationObserver = new MutationObserver(() => {
+          this.attachAll(this.config.selector);
+        });
+
+        mutationObserver.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+
+        this.mutationObserver = mutationObserver;
+      }
+
+      this.isInitialized = true;
+    }
+
+    destroy() {
+      this.detachAll();
+
+      if (this.mutationObserver) {
+        this.mutationObserver.disconnect();
+        this.mutationObserver = null;
+      }
+
+      this.isInitialized = false;
+    }
+  }
+
+  let globalInstance = null;
+
+  function getInstance(config) {
+    if (!globalInstance) {
+      globalInstance = new ScrollbarCompensation(config);
+    }
+    return globalInstance;
+  }
+
+  if (DEFAULT_CONFIG.autoInit) {
+    function initialize() {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          getInstance().init();
+        });
+      } else {
+        getInstance().init();
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+      initialize();
+    }
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ScrollbarCompensation;
+  } else {
+    global.ScrollbarCompensation = ScrollbarCompensation;
+    global.scrollbarCompensation = getInstance();
+  }
+
+})(typeof window !== 'undefined' ? window : this);`;
+
+/**
+ * Handle scrollbar compensation CDN endpoint
+ * GET /cdn/scrollbar-compensation.js
+ * Serves the scrollbar compensation utility
+ */
+async function handleScrollbarCompensation(request, env) {
+    try {
+        return new Response(SCROLLBAR_COMPENSATION_CODE, {
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/javascript; charset=utf-8',
+                'Cache-Control': 'public, max-age=31536000, immutable'
+            },
+        });
+    } catch (error) {
+        return new Response(`// Error loading scrollbar compensation: ${error.message}`, {
+            status: 500,
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/javascript'
+            },
+        });
+    }
+}
+
+/**
  * Handle scrollbar base styling CDN endpoint
  * GET /cdn/scrollbar.js
  * Serves the base scrollbar styling injection (defaults only)
@@ -2914,6 +3197,7 @@ export default {
             // CDN endpoints
             if (path === '/cdn/scrollbar.js' && request.method === 'GET') return handleScrollbar();
             if (path === '/cdn/scrollbar-customizer.js' && request.method === 'GET') return handleScrollbarCustomizer(request);
+            if (path === '/cdn/scrollbar-compensation.js' && request.method === 'GET') return handleScrollbarCompensation(request, env);
             
             // Authentication endpoints
             if (path === '/auth/request-otp' && request.method === 'POST') return handleRequestOTP(request, env);

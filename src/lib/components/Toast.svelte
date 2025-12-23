@@ -6,7 +6,6 @@
    */
   
   import { onMount } from 'svelte';
-  import Tooltip from './Tooltip.svelte';
   
   export let message: string;
   export let type: 'success' | 'error' | 'info' | 'warning' = 'info';
