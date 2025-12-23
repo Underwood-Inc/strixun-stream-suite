@@ -75,22 +75,34 @@
       },
     });
     
+    // Ensure container is ready
+    if (!editorContainer) {
+      console.error('[LexicalEditor] Container not found');
+      return;
+    }
+    
+    console.log('[LexicalEditor] Initializing editor, container:', editorContainer);
+    
     // Mount editor to DOM (this makes it contentEditable automatically)
     editor.setRootElement(editorContainer);
+    
+    console.log('[LexicalEditor] Editor mounted, contentEditable:', editorContainer.contentEditable);
     
     // Initialize with empty paragraph if no content
     editor.update(() => {
       const root = getRoot();
+      console.log('[LexicalEditor] Root children:', root.getChildrenSize());
       if (root.getChildrenSize() === 0) {
         const paragraph = createParagraphNode();
         root.append(paragraph);
+        console.log('[LexicalEditor] Added initial paragraph');
       }
-    });
+    }, { discrete: true });
     
     // Handle content changes
-    editor.registerUpdateListener(({ editorState, prevEditorState }) => {
+    editor.registerUpdateListener(({ editorState }) => {
       editorState.read(() => {
-        if (onChange) {
+        if (onChange && editor) {
           try {
             const html = generateHtmlFromNodes(editor, null);
             onChange(html);
@@ -102,11 +114,12 @@
     });
     
     // Load initial content if provided
-    if (initialContent) {
-      editor.update(() => {
+    if (initialContent && editor) {
+      const editorInstance = editor; // Capture for closure
+      editorInstance.update(() => {
         const parser = new DOMParser();
         const dom = parser.parseFromString(initialContent, 'text/html');
-        const nodes = generateNodesFromDOM(editor, dom);
+        const nodes = generateNodesFromDOM(editorInstance, dom);
         const root = getRoot();
         root.clear();
         if (nodes.length > 0) {
@@ -120,9 +133,6 @@
     }
     
     isReady = true;
-    if (onReady) {
-      onReady();
-    }
   });
   
   onDestroy(() => {
@@ -245,7 +255,14 @@
 </script>
 
 <div class="lexical-editor-wrapper">
-  <div bind:this={editorContainer} class="lexical-editor" />
+  <div 
+    bind:this={editorContainer} 
+    class="lexical-editor"
+    contenteditable="true"
+    spellcheck="true"
+    data-lexical-editor="true"
+    data-placeholder={placeholder}
+  />
   {#if !isReady}
     <div class="editor-loading">Loading editor...</div>
   {/if}
@@ -275,6 +292,22 @@
     line-height: 1.6;
     outline: none;
     overflow-y: auto;
+    
+    // Ensure editor is visible and interactive
+    &[contenteditable="true"] {
+      cursor: text;
+      
+      &:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      
+      &:empty::before {
+        content: attr(data-placeholder);
+        color: var(--text-secondary);
+        pointer-events: none;
+      }
+    }
     
     // Text formatting
     :global(.editor-text-bold) {

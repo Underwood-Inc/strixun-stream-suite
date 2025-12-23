@@ -40,6 +40,7 @@
   let portalContainer: HTMLDivElement | null = null;
   let header: HTMLDivElement;
   let content: HTMLDivElement;
+  let isInitialized = false;
   
   // Calculate available height for VirtualList (max-height - header height)
   const PANEL_MAX_HEIGHT = 500;
@@ -101,20 +102,25 @@
   
   onMount(() => {
     // Create portal container at body level for dropdown
-    portalContainer = document.createElement('div');
-    portalContainer.id = 'alerts-dropdown-portal';
-    portalContainer.style.position = 'fixed';
-    portalContainer.style.top = '0';
-    portalContainer.style.left = '0';
-    portalContainer.style.width = '100%';
-    portalContainer.style.height = '100%';
-    portalContainer.style.pointerEvents = 'none';
-    portalContainer.style.zIndex = '100001'; // Above toasts (99999)
-    document.body.appendChild(portalContainer);
-    
-    document.addEventListener('click', handleClickOutside);
-    window.addEventListener('resize', updateDropdownPosition);
-    window.addEventListener('scroll', updateDropdownPosition, true);
+    try {
+      portalContainer = document.createElement('div');
+      portalContainer.id = 'alerts-dropdown-portal';
+      portalContainer.style.position = 'fixed';
+      portalContainer.style.top = '0';
+      portalContainer.style.left = '0';
+      portalContainer.style.width = '100%';
+      portalContainer.style.height = '100%';
+      portalContainer.style.pointerEvents = 'none';
+      portalContainer.style.zIndex = '100001'; // Above toasts (99999)
+      document.body.appendChild(portalContainer);
+      isInitialized = true;
+      
+      document.addEventListener('click', handleClickOutside);
+      window.addEventListener('resize', updateDropdownPosition);
+      window.addEventListener('scroll', updateDropdownPosition, true);
+    } catch (error) {
+      console.error('Error initializing alerts dropdown:', error);
+    }
   });
   
   onDestroy(() => {
@@ -127,13 +133,15 @@
     }
   });
   
-  // Update position when dropdown opens
-  $: if (open && dropdown && button) {
+  // Update position when dropdown opens - with proper guards
+  $: if (open) {
     tick().then(() => {
-      try {
-        updateDropdownPosition();
-      } catch (error) {
-        console.error('Error updating dropdown position:', error);
+      if (dropdown && button && portalContainer) {
+        try {
+          updateDropdownPosition();
+        } catch (error) {
+          console.error('Error updating dropdown position:', error);
+        }
       }
     });
   }
@@ -179,11 +187,13 @@
     </button>
   </Tooltip>
   
-  {#if open && portalContainer}
+  {#if open && portalContainer && isInitialized}
     <div 
       bind:this={dropdown} 
       class="alerts-dropdown__panel"
       use:portal={portalContainer}
+      role="dialog"
+      aria-label="Alerts panel"
     >
       <div class="alerts-dropdown__header" bind:this={header}>
         <h3 class="alerts-dropdown__title">Alerts</h3>
@@ -192,35 +202,37 @@
       
       {#if $allToastsHistory && $allToastsHistory.length > 0}
         <div class="alerts-dropdown__content" bind:this={content}>
-          <VirtualList
-            items={$allToastsHistory.filter(item => item && item.id)}
-            itemHeight={80}
-            containerHeight={availableHeight}
-            overscan={3}
-          >
-            <svelte:fragment let:item let:index>
-              {#if item}
-                <div class="alerts-dropdown__item" class:alerts-dropdown__item--dismissed={!item.visible}>
-                  <div class="alerts-dropdown__item-header">
-                    <span class="alerts-dropdown__item-time">{formatTime(item.createdAt || Date.now())}</span>
-                    {#if item.count && item.count > 1}
-                      <span class="alerts-dropdown__item-count">x{item.count}</span>
-                    {/if}
+          {#key $allToastsHistory.length}
+            <VirtualList
+              items={$allToastsHistory.filter(item => item && item.id)}
+              itemHeight={80}
+              containerHeight={availableHeight}
+              overscan={3}
+            >
+              <svelte:fragment let:item let:index>
+                {#if item && item.id}
+                  <div class="alerts-dropdown__item" class:alerts-dropdown__item--dismissed={!item.visible}>
+                    <div class="alerts-dropdown__item-header">
+                      <span class="alerts-dropdown__item-time">{formatTime(item.createdAt || Date.now())}</span>
+                      {#if item.count && item.count > 1}
+                        <span class="alerts-dropdown__item-count">x{item.count}</span>
+                      {/if}
+                    </div>
+                    <div class="alerts-dropdown__item-toast">
+                      <Toast
+                        toast={item}
+                        index={index}
+                        inOverflow={false}
+                        overflowIndex={0}
+                        showCloseButton={false}
+                        onDismiss={() => {}}
+                      />
+                    </div>
                   </div>
-                  <div class="alerts-dropdown__item-toast">
-                    <Toast
-                      toast={item}
-                      index={index}
-                      inOverflow={false}
-                      overflowIndex={0}
-                      showCloseButton={false}
-                      onDismiss={() => {}}
-                    />
-                  </div>
-                </div>
-              {/if}
-            </svelte:fragment>
-          </VirtualList>
+                {/if}
+              </svelte:fragment>
+            </VirtualList>
+          {/key}
         </div>
       {:else}
         <div class="alerts-dropdown__empty">
