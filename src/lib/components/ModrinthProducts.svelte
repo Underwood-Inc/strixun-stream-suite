@@ -9,6 +9,9 @@
   import { Card, Carousel } from '@components';
   import { onMount } from 'svelte';
 
+  // Get base URL for asset paths (handles GitHub Pages subdirectory deployment)
+  const BASE_URL = import.meta.env.BASE_URL;
+
   interface ModrinthProduct {
     title: string;
     description: string;
@@ -37,21 +40,21 @@
       description: 'Introducing Rituals—a custom datapack/mod that brings mystical totems and ritual magic into your world. Craft totems, display items, and trigger powerful effects through immersive rituals.',
       url: 'https://modrinth.com/project/totem-rituals',
       slug: 'totem-rituals',
-      image: '/rituals-brand.png'
+      image: `${BASE_URL}rituals-brand.png`
     },
     {
       title: 'strixun | Pack A',
       description: 'Dive into my personal mega-pack with a massive collection of mods, all carefully curated for balanced progression and immersive gameplay. My Rituals mod combined with the gamerules disable raids true and disable health regen true are advised.',
       url: 'https://modrinth.com/modpack/strixun-pack-a',
       slug: 'strixun-pack-a',
-      image: '/strixun-pack-a-brand.png'
+      image: `${BASE_URL}strixun-pack-a-brand.png`
     },
     {
       title: 'compressy',
       description: 'A Fabric mod to add automatic support for near infinite compression of any block that is placeable! Fancy tooltips and roman numerals included.',
       url: 'https://modrinth.com/mod/compressy',
       slug: 'compressy',
-      image: '/compressy-brand.png',
+      image: `${BASE_URL}compressy-brand.png`,
       status: 'Under review'
     }
   ];
