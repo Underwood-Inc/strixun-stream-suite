@@ -1174,11 +1174,24 @@ async function sendOTPEmail(email, otp, env) {
     });
     
     if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Resend API error: ${response.status} - ${error}`);
+        const errorText = await response.text();
+        let errorData;
+        try {
+            errorData = JSON.parse(errorText);
+        } catch (e) {
+            errorData = { message: errorText };
+        }
+        console.error('Resend API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+        });
+        throw new Error(`Resend API error: ${response.status} - ${errorData.message || errorText}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    console.log('Email sent successfully via Resend:', result);
+    return result;
 }
 
 /**
@@ -1231,11 +1244,24 @@ async function handleRequestOTP(request, env) {
         
         // Send email
         try {
-            await sendOTPEmail(email, otp, env);
+            const emailResult = await sendOTPEmail(email, otp, env);
+            console.log('OTP email sent successfully:', emailResult);
         } catch (error) {
-            // If email fails, still return success (don't reveal email issues)
-            console.error('Failed to send OTP email:', error);
-            // Continue - we'll let the user know if email sending fails
+            // Log the full error for debugging
+            console.error('Failed to send OTP email:', {
+                message: error.message,
+                stack: error.stack,
+                email: email.toLowerCase().trim(),
+                hasResendKey: !!env.RESEND_API_KEY
+            });
+            // Return error so user knows email failed
+            return new Response(JSON.stringify({ 
+                error: 'Failed to send email. Please check your email address and try again.',
+                details: process.env.ENVIRONMENT === 'development' ? error.message : undefined
+            }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
         }
         
         return new Response(JSON.stringify({ 
