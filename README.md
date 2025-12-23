@@ -194,6 +194,7 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 | **📜 Script Manager** | Unified dashboard for all animation scripts |
 | **🎛️ Control Panel** | Web-based dock UI to control everything |
 | **🎬 Twitch Clips Player** | Auto-play Twitch clips with chat command support |
+| **🎨 Scrollbar Customizer** | Free CDN-hosted tool to customize scrollbars on any website |
 
 ---
 
@@ -224,6 +225,7 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 ### 📘 For Everyone
 - **[Product Overview](./docs/PRODUCT_OVERVIEW.md)** - Understand what Strixun Stream Suite does (non-technical)
+- **[Scrollbar Customizer](./serverless/SCROLLBAR_CUSTOMIZER.md)** - Free CDN tool to customize scrollbars on any website (super beginner-friendly!)
 
 ### 🔧 For Developers
 - **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture
