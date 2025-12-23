@@ -141,6 +141,9 @@ export default defineConfig({
   // Optimize for OBS dock environment
   optimizeDeps: {
     include: ['svelte']
-  }
+  },
+  
+  // Explicitly set root to prevent PostCSS from searching in serverless/
+  root: resolve(__dirname)
 });
 
