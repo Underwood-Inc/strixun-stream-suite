@@ -1554,6 +1554,346 @@ async function handleRefresh(request, env) {
     }
 }
 
+// ============ Notes/Notebook System ============
+
+/**
+ * Authenticate request and get user info
+ * @param {Request} request - HTTP request
+ * @param {*} env - Worker environment
+ * @returns {Promise<{userId: string, email: string}|null>} User info or null if not authenticated
+ */
+async function authenticateRequest(request, env) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return null;
+    }
+    
+    const token = authHeader.substring(7);
+    const jwtSecret = getJWTSecret(env);
+    const payload = await verifyJWT(token, jwtSecret);
+    
+    if (!payload) {
+        return null;
+    }
+    
+    // Check if token is blacklisted
+    const tokenHash = await hashEmail(token);
+    const blacklistKey = `blacklist_${tokenHash}`;
+    const blacklisted = await env.TWITCH_CACHE.get(blacklistKey);
+    if (blacklisted) {
+        return null;
+    }
+    
+    return {
+        userId: payload.userId,
+        email: payload.email
+    };
+}
+
+/**
+ * Compress content using gzip (client-side compression, but we can also compress server-side)
+ * For now, we'll store as-is and rely on KV compression
+ * @param {string} content - Content to compress
+ * @returns {Promise<string>} Compressed content (base64)
+ */
+async function compressContent(content) {
+    // KV automatically compresses, but we can add explicit compression if needed
+    // For now, just return as-is
+    return content;
+}
+
+/**
+ * Get notes storage key
+ * @param {string} userId - User ID
+ * @param {string} notebookId - Notebook ID
+ * @returns {string} Storage key
+ */
+function getNotesKey(userId, notebookId) {
+    return `notes_${userId}_${notebookId}`;
+}
+
+/**
+ * Get user's notebook list key
+ * @param {string} userId - User ID
+ * @returns {string} Storage key
+ */
+function getNotebookListKey(userId) {
+    return `notes_list_${userId}`;
+}
+
+/**
+ * Save notebook endpoint
+ * POST /notes/save
+ * Requires: Authorization: Bearer {token}
+ */
+async function handleNotesSave(request, env) {
+    try {
+        // Authenticate
+        const user = await authenticateRequest(request, env);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const body = await request.json();
+        const { notebookId, content, metadata } = body;
+        
+        // Validate input
+        if (!notebookId || !/^[a-zA-Z0-9_-]{1,64}$/.test(notebookId)) {
+            return new Response(JSON.stringify({ error: 'Valid notebookId required (1-64 alphanumeric chars)' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        if (!content) {
+            return new Response(JSON.stringify({ error: 'Content required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Validate content size (10MB max)
+        const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+        if (contentStr.length > 10 * 1024 * 1024) {
+            return new Response(JSON.stringify({ error: 'Content too large (max 10MB)' }), {
+                status: 413,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Create notebook data
+        const notebookData = {
+            version: 1,
+            userId: user.userId,
+            notebookId,
+            content,
+            metadata: {
+                title: metadata?.title || 'Untitled',
+                lastEdited: new Date().toISOString(),
+                createdAt: metadata?.createdAt || new Date().toISOString(),
+                ...(metadata || {}),
+            },
+            timestamp: new Date().toISOString(),
+        };
+        
+        // Store in KV
+        const key = getNotesKey(user.userId, notebookId);
+        const dataStr = JSON.stringify(notebookData);
+        await env.TWITCH_CACHE.put(key, dataStr, { expirationTtl: 31536000 }); // 1 year
+        
+        // Update notebook list
+        const listKey = getNotebookListKey(user.userId);
+        let notebookList = await env.TWITCH_CACHE.get(listKey, { type: 'json' });
+        if (!notebookList) {
+            notebookList = [];
+        }
+        
+        // Add or update notebook in list
+        const existingIndex = notebookList.findIndex(n => n.id === notebookId);
+        const notebookInfo = {
+            id: notebookId,
+            title: notebookData.metadata.title,
+            lastEdited: notebookData.metadata.lastEdited,
+            createdAt: notebookData.metadata.createdAt,
+        };
+        
+        if (existingIndex >= 0) {
+            notebookList[existingIndex] = notebookInfo;
+        } else {
+            notebookList.push(notebookInfo);
+        }
+        
+        await env.TWITCH_CACHE.put(listKey, JSON.stringify(notebookList), { expirationTtl: 31536000 });
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            notebookId,
+            timestamp: notebookData.timestamp,
+            size: dataStr.length,
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to save notebook',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Load notebook endpoint
+ * GET /notes/load?notebookId=notebook_1
+ * Requires: Authorization: Bearer {token}
+ */
+async function handleNotesLoad(request, env) {
+    try {
+        // Authenticate
+        const user = await authenticateRequest(request, env);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const url = new URL(request.url);
+        const notebookId = url.searchParams.get('notebookId');
+        
+        if (!notebookId) {
+            return new Response(JSON.stringify({ error: 'notebookId parameter required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Load from KV
+        const key = getNotesKey(user.userId, notebookId);
+        const dataStr = await env.TWITCH_CACHE.get(key);
+        
+        if (!dataStr) {
+            return new Response(JSON.stringify({ 
+                error: 'Notebook not found',
+                notebookId 
+            }), {
+                status: 404,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const notebookData = JSON.parse(dataStr);
+        
+        // Verify ownership
+        if (notebookData.userId !== user.userId) {
+            return new Response(JSON.stringify({ error: 'Access denied' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            notebookId: notebookData.notebookId,
+            content: notebookData.content,
+            metadata: notebookData.metadata,
+            timestamp: notebookData.timestamp,
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to load notebook',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * List notebooks endpoint
+ * GET /notes/list
+ * Requires: Authorization: Bearer {token}
+ */
+async function handleNotesList(request, env) {
+    try {
+        // Authenticate
+        const user = await authenticateRequest(request, env);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Load notebook list
+        const listKey = getNotebookListKey(user.userId);
+        const notebookList = await env.TWITCH_CACHE.get(listKey, { type: 'json' }) || [];
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            notebooks: notebookList,
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to list notebooks',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Delete notebook endpoint
+ * DELETE /notes/delete?notebookId=notebook_1
+ * Requires: Authorization: Bearer {token}
+ */
+async function handleNotesDelete(request, env) {
+    try {
+        // Authenticate
+        const user = await authenticateRequest(request, env);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const url = new URL(request.url);
+        const notebookId = url.searchParams.get('notebookId');
+        
+        if (!notebookId) {
+            return new Response(JSON.stringify({ error: 'notebookId parameter required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Delete notebook
+        const key = getNotesKey(user.userId, notebookId);
+        await env.TWITCH_CACHE.delete(key);
+        
+        // Update notebook list
+        const listKey = getNotebookListKey(user.userId);
+        let notebookList = await env.TWITCH_CACHE.get(listKey, { type: 'json' });
+        if (notebookList) {
+            notebookList = notebookList.filter(n => n.id !== notebookId);
+            if (notebookList.length > 0) {
+                await env.TWITCH_CACHE.put(listKey, JSON.stringify(notebookList), { expirationTtl: 31536000 });
+            } else {
+                await env.TWITCH_CACHE.delete(listKey);
+            }
+        }
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            notebookId,
+            message: 'Notebook deleted',
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to delete notebook',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
 /**
  * Test email sending endpoint
  * GET /test/email?to=your@email.com
@@ -1708,6 +2048,12 @@ export default {
             if (path === '/auth/me' && request.method === 'GET') return handleGetMe(request, env);
             if (path === '/auth/logout' && request.method === 'POST') return handleLogout(request, env);
             if (path === '/auth/refresh' && request.method === 'POST') return handleRefresh(request, env);
+            
+            // Notes/Notebook endpoints (require authentication)
+            if (path === '/notes/save' && request.method === 'POST') return handleNotesSave(request, env);
+            if (path === '/notes/load' && request.method === 'GET') return handleNotesLoad(request, env);
+            if (path === '/notes/list' && request.method === 'GET') return handleNotesList(request, env);
+            if (path === '/notes/delete' && request.method === 'DELETE') return handleNotesDelete(request, env);
             
             // Test endpoints
             if (path === '/test/email' && request.method === 'GET') return handleTestEmail(request, env);
