@@ -7,6 +7,7 @@
   
   import { onMount } from 'svelte';
   import Header from './components/Header.svelte';
+  import InfoBar from './components/InfoBar.svelte';
   import Navigation from './components/Navigation.svelte';
   import Dashboard from './pages/Dashboard.svelte';
   import Sources from './pages/Sources.svelte';
@@ -42,6 +43,7 @@
 
 <div class="app">
   <Header />
+  <InfoBar />
   <Navigation />
   
   <div class="split-container">

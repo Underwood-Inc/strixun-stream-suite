@@ -36,11 +36,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build Svelte app
+        run: pnpm build
+        
       - name: Setup Pages
         uses: actions/configure-pages@v4
         
       - name: Create .nojekyll
-        run: touch .nojekyll
+        run: touch dist/.nojekyll
+      
+      - name: Copy config.js to dist
+        run: cp config.js dist/config.js
       
       - name: Inject Auto-Configuration
         env:
@@ -64,35 +84,22 @@ jobs:
           # Get deployment timestamp
           DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          # Inject values into config.js
-          sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" config.js
-          sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" config.js
-          sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" config.js
-          sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" config.js
-          sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" config.js
+          # Inject values into config.js in dist directory
+          sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" dist/config.js
+          sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" dist/config.js
+          sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" dist/config.js
+          sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" dist/config.js
+          sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" dist/config.js
           
-          echo "✅ Configuration injected into config.js"
+          echo "✅ Configuration injected into dist/config.js"
           echo "Worker API URL: $WORKER_URL"
           echo "GitHub Pages URL: $PAGES_URL"
           echo "Twitch Client ID: ${TWITCH_CLIENT_ID:0:8}... (hidden)"
         
-      - name: Remove unnecessary files for Pages
-        run: |
-          # Remove node_modules if exists
-          rm -rf node_modules
-          # Remove serverless backend (deployed separately to Cloudflare)
-          rm -rf serverless
-          # Remove git-related files
-          rm -rf .git .gitignore
-          # Remove dev configs
-          rm -rf .changeset .cursor
-          # Remove lock files
-          rm -f pnpm-lock.yaml package-lock.json yarn.lock
-        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'dist'
 
   deploy:
     environment:

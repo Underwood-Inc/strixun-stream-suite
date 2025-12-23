@@ -6,12 +6,27 @@
 - **ABSOLUTE PROHIBITION**: Never use nested BEM selectors with `&__` or `&--` in Svelte `<style>` blocks
 - **Why**: Svelte's scoped styles don't compile nested BEM selectors correctly, causing styles to not apply
 - **Solution**: Always use explicit descendant selectors
+- **CRITICAL**: This is a compile-time error - the code will not build if you use nested BEM in Svelte components
 
-### ❌ WRONG - Nested BEM (DO NOT USE):
+### ❌ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
 ```scss
 .component {
   &__child {
     color: red;
+  }
+  &--modifier {
+    background: blue;
+  }
+}
+
+.info-item {
+  &__label {
+    font-weight: bold;
+  }
+  &__value {
+    &--active {
+      color: green;
+    }
   }
 }
 ```
@@ -19,12 +34,47 @@
 ### ✅ CORRECT - Explicit Selectors (ALWAYS USE):
 ```scss
 .component {
-  // Base styles
+  // Base styles only
 }
 
 .component .component__child {
   color: red;
 }
+
+.component .component--modifier {
+  background: blue;
+}
+
+.info-item {
+  // Base styles only
+}
+
+.info-item .info-item__label {
+  font-weight: bold;
+}
+
+.info-item .info-item__value {
+  // Value styles
+}
+
+.info-item .info-item__value--active {
+  color: green;
+}
+```
+
+### Import Requirements for SCSS Mixins
+- **ALWAYS** import mixins/animations at the top of `<style lang="scss">` block
+- Use: `@use '../styles/animations' as *;` or `@use '@styles/animations' as *;`
+- Required before using mixins like `@include gpu-accelerated;`, `@include fade-in;`, etc.
+- Example:
+```scss
+<style lang="scss">
+  @use '../styles/animations' as *;
+  
+  .my-component {
+    @include gpu-accelerated;
+  }
+</style>
 ```
 
 ### CSS Specificity Rules

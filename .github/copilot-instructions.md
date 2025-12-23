@@ -1,5 +1,88 @@
 # GitHub Copilot Instructions - Strixun Stream Suite
 
+## CRITICAL: Svelte SCSS Rules - MUST FOLLOW
+
+### NEVER Use Nested BEM Selectors in Svelte Components
+- **ABSOLUTE PROHIBITION**: Never use nested BEM selectors with `&__` or `&--` in Svelte `<style lang="scss">` blocks
+- **Why**: Svelte's scoped styles don't compile nested BEM selectors correctly, causing styles to not apply
+- **This is a compile-time error** - the code will NOT build if you use nested BEM in Svelte components
+- **Solution**: Always use explicit descendant selectors
+
+### ❌ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
+```scss
+<style lang="scss">
+.component {
+  &__child {
+    color: red;
+  }
+  &--modifier {
+    background: blue;
+  }
+}
+
+.info-item {
+  &__label {
+    font-weight: bold;
+  }
+  &__value {
+    &--active {
+      color: green;
+    }
+  }
+}
+</style>
+```
+
+### ✅ CORRECT - Explicit Selectors (ALWAYS USE):
+```scss
+<style lang="scss">
+.component {
+  // Base styles only
+}
+
+.component .component__child {
+  color: red;
+}
+
+.component .component--modifier {
+  background: blue;
+}
+
+.info-item {
+  // Base styles only
+}
+
+.info-item .info-item__label {
+  font-weight: bold;
+}
+
+.info-item .info-item__value {
+  // Value styles
+}
+
+.info-item .info-item__value--active {
+  color: green;
+}
+</style>
+```
+
+### Import Requirements for SCSS Mixins
+- **ALWAYS** import mixins/animations at the top of `<style lang="scss">` block
+- Use: `@use '../styles/animations' as *;` or `@use '@styles/animations' as *;`
+- Required before using mixins like `@include gpu-accelerated;`, `@include fade-in;`, etc.
+- Example:
+```scss
+<style lang="scss">
+  @use '../styles/animations' as *;
+  
+  .my-component {
+    @include gpu-accelerated;
+  }
+</style>
+```
+
+# GitHub Copilot Instructions - Strixun Stream Suite
+
 ## CSS/SCSS Rules - CRITICAL
 
 ### NEVER Use !important
@@ -9,28 +92,82 @@
 - **Why**: `!important` breaks the cascade and makes styles unmaintainable
 
 ### NEVER Use Nested BEM Selectors in Svelte Components
-- **ABSOLUTE PROHIBITION**: Never use nested BEM selectors with `&__` or `&--` in Svelte `<style>` blocks
+- **ABSOLUTE PROHIBITION**: Never use nested BEM selectors with `&__` or `&--` in Svelte `<style lang="scss">` blocks
 - **Why**: Svelte's scoped styles don't compile nested BEM selectors correctly, causing styles to not apply
 - **Solution**: Always use explicit descendant selectors
+- **CRITICAL**: This is a compile-time error - the code will NOT build if you use nested BEM in Svelte components
 
-### ❌ WRONG - Nested BEM (DO NOT USE):
+### ❌ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
 ```scss
+<style lang="scss">
 .component {
   &__child {
     color: red;
   }
+  &--modifier {
+    background: blue;
+  }
 }
+
+.info-item {
+  &__label {
+    font-weight: bold;
+  }
+  &__value {
+    &--active {
+      color: green;
+    }
+  }
+}
+</style>
 ```
 
 ### ✅ CORRECT - Explicit Selectors (ALWAYS USE):
 ```scss
+<style lang="scss">
 .component {
-  // Base styles
+  // Base styles only
 }
 
 .component .component__child {
   color: red;
 }
+
+.component .component--modifier {
+  background: blue;
+}
+
+.info-item {
+  // Base styles only
+}
+
+.info-item .info-item__label {
+  font-weight: bold;
+}
+
+.info-item .info-item__value {
+  // Value styles
+}
+
+.info-item .info-item__value--active {
+  color: green;
+}
+</style>
+```
+
+### Import Requirements for SCSS Mixins
+- **ALWAYS** import mixins/animations at the top of `<style lang="scss">` block
+- Use: `@use '../styles/animations' as *;` or `@use '@styles/animations' as *;`
+- Required before using mixins like `@include gpu-accelerated;`, `@include fade-in;`, etc.
+- Example:
+```scss
+<style lang="scss">
+  @use '../styles/animations' as *;
+  
+  .my-component {
+    @include gpu-accelerated;
+  }
+</style>
 ```
 
 ### CSS Specificity Rules

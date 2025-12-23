@@ -6,11 +6,12 @@
    */
   
   import { onMount } from 'svelte';
-  import { connected, currentScene } from '../stores/connection';
+  import { connected } from '../stores/connection';
   import { navigateTo } from '../stores/navigation';
   import { celebrateClick, celebrateConnection } from '../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../stores/toast-queue';
   import Tooltip from './Tooltip.svelte';
+  import TruncatedText from './TruncatedText.svelte';
   import AlertsDropdown from './ui/AlertsDropdown.svelte';
   
   let statusClass = 'disconnected';
@@ -82,18 +83,10 @@
     >
       <span class="status-dot {statusClass}" id="statusDot"></span>
     </Tooltip>
-    <span class="title-text">Strixun's Stream Suite [SSS]</span>
+    <TruncatedText position="bottom">
+      <span class="title-text">Strixun's Stream Suite [SSS]</span>
+    </TruncatedText>
   </h1>
-  <div class="header-info">
-    <div class="current-scene-info">
-      <span class="info-label">Current Scene:</span>
-      {#if $connected && $currentScene}
-        <span class="scene-name">{$currentScene}</span>
-      {:else}
-        <span class="scene-empty">Not connected</span>
-      {/if}
-    </div>
-  </div>
   <div class="header-actions">
     <AlertsDropdown open={alertsOpen} onToggle={toggleAlerts} />
     <Tooltip text="Test Toasts - Demonstrates toast system features" position="bottom">
@@ -136,71 +129,15 @@
       font-size: 1.1em;
       display: flex;
       align-items: center;
+      justify-content: flex-start; // Ensure left alignment
       gap: 6px;
       margin: 0;
       flex-shrink: 0;
+      flex-grow: 0; // Prevent unwanted growth
     }
     
     .title-text {
       white-space: nowrap;
-    }
-    
-    .header-info {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      min-width: 0;
-    }
-    
-    .current-scene-info {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 12px;
-      background: var(--bg-dark);
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      font-size: 0.9em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      min-width: 0;
-      
-      .info-label {
-        color: var(--text-secondary);
-        font-weight: 500;
-        flex-shrink: 0;
-      }
-      
-      .scene-name {
-        color: var(--accent);
-        font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        min-width: 0;
-      }
-      
-      .scene-empty {
-        color: var(--muted);
-        font-style: italic;
-      }
-    }
-    
-    @media (max-width: 768px) {
-      .header {
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-      
-      .header-info {
-        order: 3;
-        width: 100%;
-        justify-content: flex-start;
-      }
-      
-      h1 {
-        flex: 1;
-      }
     }
     
     .header-actions {
@@ -208,6 +145,45 @@
       gap: 8px;
       align-items: center;
       flex-shrink: 0;
+      margin-left: auto;
+    }
+    
+    @media (max-width: 768px) {
+      .header {
+        gap: 12px;
+      }
+      
+      h1 {
+        flex: 1;
+        min-width: 0;
+        justify-content: flex-start; // Ensure left alignment even when flexible
+      }
+      
+      .title-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .header-actions {
+        gap: 4px;
+      }
+      
+      .btn-icon {
+        padding: 6px 8px;
+      }
+      
+      .btn-primary {
+        padding: 6px 12px;
+        font-size: 0.85em;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .header-actions {
+        .btn-icon:not(:last-child) {
+          display: none;
+        }
+      }
     }
   
   .btn-icon {
