@@ -149,6 +149,9 @@
   // GPU acceleration for smooth resizing
   transform: translateZ(0);
   will-change: height;
+  // Ensure activity log appears above sidebar (sidebar is z-index: 1000)
+  position: relative;
+  z-index: 1001;
   
   // Disable transition during drag for immediate response
   &.resizing {

@@ -131,12 +131,16 @@
     
     const navRect = navigation?.getBoundingClientRect();
     const logRect = activityLog?.getBoundingClientRect();
+    const dividerRect = divider?.getBoundingClientRect();
     
     // Top bound: below navigation
     panelTop = navRect ? navRect.bottom : 0;
     
-    // Bottom bound: above activity log (or viewport bottom if log is collapsed)
-    if (logRect && logRect.top < window.innerHeight && logRect.top > panelTop) {
+    // Bottom bound: above divider (which is above activity log)
+    // Use divider if available, otherwise use activity log top
+    if (dividerRect && dividerRect.top < window.innerHeight && dividerRect.top > panelTop) {
+      panelBottom = dividerRect.top;
+    } else if (logRect && logRect.top < window.innerHeight && logRect.top > panelTop) {
       panelBottom = logRect.top;
     } else {
       panelBottom = window.innerHeight;
@@ -479,7 +483,7 @@
     // Create portal container at body level
     portalContainer = document.createElement('div');
     portalContainer.id = `floating-panel-portal-${position}`;
-    portalContainer.style.cssText = 'position: fixed; z-index: 10000; pointer-events: none;';
+    portalContainer.style.cssText = 'position: fixed; z-index: 100; pointer-events: none;';
     document.body.appendChild(portalContainer);
     
     // Move panel to portal
@@ -540,10 +544,13 @@
             
             if (stillResizing && panel && savedBoundsDuringLogResize) {
               const logRect = activityLog?.getBoundingClientRect();
+              const dividerRect = divider?.getBoundingClientRect();
               
-              // Calculate new bottom bound based on activity log's current position
+              // Calculate new bottom bound based on divider's current position (above activity log)
               let newBottom: number;
-              if (logRect && logRect.top < window.innerHeight && logRect.top > savedBoundsDuringLogResize.top) {
+              if (dividerRect && dividerRect.top < window.innerHeight && dividerRect.top > savedBoundsDuringLogResize.top) {
+                newBottom = dividerRect.top;
+              } else if (logRect && logRect.top < window.innerHeight && logRect.top > savedBoundsDuringLogResize.top) {
                 newBottom = logRect.top;
               } else {
                 newBottom = window.innerHeight;
@@ -607,10 +614,13 @@
                 
                 if (stillResizing && panel && savedBoundsDuringLogResize) {
                   const logRect = activityLog?.getBoundingClientRect();
+                  const dividerRect = divider?.getBoundingClientRect();
                   
-                  // Calculate new bottom bound based on activity log's current position
+                  // Calculate new bottom bound based on divider's current position (above activity log)
                   let newBottom: number;
-                  if (logRect && logRect.top < window.innerHeight && logRect.top > savedBoundsDuringLogResize.top) {
+                  if (dividerRect && dividerRect.top < window.innerHeight && dividerRect.top > savedBoundsDuringLogResize.top) {
+                    newBottom = dividerRect.top;
+                  } else if (logRect && logRect.top < window.innerHeight && logRect.top > savedBoundsDuringLogResize.top) {
                     newBottom = logRect.top;
                   } else {
                     newBottom = window.innerHeight;
@@ -679,10 +689,13 @@
                 
                 if (stillResizing && panel && savedBoundsDuringLogResize) {
                   const logRect = activityLog?.getBoundingClientRect();
+                  const dividerRect = divider?.getBoundingClientRect();
                   
-                  // Calculate new bottom bound based on activity log's current position
+                  // Calculate new bottom bound based on divider's current position (above activity log)
                   let newBottom: number;
-                  if (logRect && logRect.top < window.innerHeight && logRect.top > savedBoundsDuringLogResize.top) {
+                  if (dividerRect && dividerRect.top < window.innerHeight && dividerRect.top > savedBoundsDuringLogResize.top) {
+                    newBottom = dividerRect.top;
+                  } else if (logRect && logRect.top < window.innerHeight && logRect.top > savedBoundsDuringLogResize.top) {
                     newBottom = logRect.top;
                   } else {
                     newBottom = window.innerHeight;
@@ -878,14 +891,17 @@
   .floating-panel {
     position: fixed;
     background: var(--card);
-    border: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-bottom: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     pointer-events: auto;
     display: flex;
     flex-direction: column;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    z-index: 10000;
+    z-index: 100;
     @include gpu-accelerated;
   }
 
@@ -972,7 +988,7 @@
     bottom: 0;
     width: 4px;
     cursor: ew-resize;
-    background: transparent;
+    background: var(--border);
     z-index: 10;
     transition: background 0.2s ease;
     user-select: none;
@@ -987,7 +1003,10 @@
     left: 0;
   }
 
-  .floating-panel__resize-handle:hover,
+  .floating-panel__resize-handle:hover {
+    background: var(--border-light);
+  }
+
   .floating-panel--resizing .floating-panel__resize-handle {
     background: var(--accent);
   }

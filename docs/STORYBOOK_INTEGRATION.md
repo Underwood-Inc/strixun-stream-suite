@@ -160,3 +160,4 @@ Potential improvements:
 - [ ] Usage examples in tooltip
 - [ ] Keyboard shortcuts for navigation
 
+

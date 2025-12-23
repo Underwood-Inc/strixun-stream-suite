@@ -35,8 +35,8 @@
     {
       title: 'Rituals',
       description: 'Introducing Rituals—a custom datapack/mod that brings mystical totems and ritual magic into your world. Craft totems, display items, and trigger powerful effects through immersive rituals.',
-      url: 'https://modrinth.com/project/rituals',
-      slug: 'rituals',
+      url: 'https://modrinth.com/project/totem-rituals',
+      slug: 'totem-rituals',
       image: '/rituals-brand.png'
     },
     {
@@ -62,7 +62,10 @@
     followers: undefined
   }));
 
+  let isLoading = true;
+
   async function fetchModrinthData(): Promise<void> {
+    isLoading = true;
     try {
       // Fetch all projects in parallel
       const promises = baseProducts.map(async (product) => {
@@ -108,6 +111,8 @@
       });
     } catch (error) {
       console.error('[Modrinth] Error fetching product data:', error);
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -153,15 +158,22 @@
                 {/if}
                 <p class="modrinth-product__description">{product.description}</p>
                 <div class="modrinth-product__stats">
-                  {#if product.downloads !== undefined}
-                    <span class="modrinth-product__stat">
-                      <strong>{formatNumber(product.downloads)}</strong> downloads
-                    </span>
-                  {/if}
-                  {#if product.followers !== undefined}
-                    <span class="modrinth-product__stat">
-                      <strong>{formatNumber(product.followers)}</strong> {product.followers === 1 ? 'follower' : 'followers'}
-                    </span>
+                  {#if isLoading}
+                    <div class="modrinth-product__loading">
+                      <span class="modrinth-product__loading-spinner"></span>
+                      <span class="modrinth-product__loading-text">Loading stats...</span>
+                    </div>
+                  {:else}
+                    {#if product.downloads !== undefined}
+                      <span class="modrinth-product__stat">
+                        <strong>{formatNumber(product.downloads)}</strong> downloads
+                      </span>
+                    {/if}
+                    {#if product.followers !== undefined}
+                      <span class="modrinth-product__stat">
+                        <strong>{formatNumber(product.followers)}</strong> {product.followers === 1 ? 'follower' : 'followers'}
+                      </span>
+                    {/if}
                   {/if}
                 </div>
               </div>
@@ -326,6 +338,33 @@
     strong {
       color: var(--accent);
       font-weight: 600;
+    }
+  }
+
+  .modrinth-product__loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+  }
+
+  .modrinth-product__loading-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .modrinth-product__loading-text {
+    color: var(--text-secondary);
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>
