@@ -1140,6 +1140,11 @@ async function sendOTPEmail(email, otp, env) {
         throw new Error('RESEND_API_KEY not configured');
     }
     
+    // REQUIRED: Use your verified domain email to avoid test mode restrictions
+    if (!env.RESEND_FROM_EMAIL) {
+        throw new Error('RESEND_FROM_EMAIL must be set to your verified domain email (e.g., noreply@yourdomain.com). Set it via: wrangler secret put RESEND_FROM_EMAIL');
+    }
+    
     const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -1147,7 +1152,7 @@ async function sendOTPEmail(email, otp, env) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            from: env.RESEND_FROM_EMAIL || 'onboarding@resend.dev', // Use your verified domain email
+            from: env.RESEND_FROM_EMAIL,
             to: email,
             subject: 'Your Verification Code - Strixun Stream Suite',
             html: `
@@ -1202,12 +1207,26 @@ async function sendOTPEmail(email, otp, env) {
         } catch (e) {
             errorData = { message: errorText };
         }
+        
+        // Log detailed error for debugging
         console.error('Resend API error:', {
             status: response.status,
             statusText: response.statusText,
-            error: errorData
+            error: errorData,
+            errorCode: errorData.code || errorData.name,
+            errorMessage: errorData.message
         });
-        throw new Error(`Resend API error: ${response.status} - ${errorData.message || errorText}`);
+        
+        // Provide more helpful error messages for common issues
+        let errorMessage = errorData.message || errorText;
+        if (errorData.code === 'restricted_to_test_environment' || 
+            errorMessage.includes('test') || 
+            errorMessage.includes('verified') ||
+            errorMessage.includes('restricted')) {
+            errorMessage = `Email sending restricted: ${errorMessage}. You may need to verify recipient email addresses in Resend dashboard or upgrade your Resend account.`;
+        }
+        
+        throw new Error(`Resend API error: ${response.status} - ${errorMessage}`);
     }
     
     const result = await response.json();
@@ -2035,7 +2054,7 @@ async function handleTestEmail(request, env) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                from: env.RESEND_FROM_EMAIL || 'onboarding@resend.dev', // Use your verified domain email
+                from: env.RESEND_FROM_EMAIL || (() => { throw new Error('RESEND_FROM_EMAIL must be set'); })(),
                 to: to,
                 subject: 'Test Email from Strixun Stream Suite',
                 html: `

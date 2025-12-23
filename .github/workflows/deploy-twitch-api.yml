@@ -9,7 +9,7 @@
 #   - TWITCH_CLIENT_ID: Your Twitch application client ID
 #   - TWITCH_CLIENT_SECRET: Your Twitch application client secret
 #   - RESEND_API_KEY: Resend API key for OTP email functionality (required for authentication)
-#   - RESEND_FROM_EMAIL: (Optional) Custom email address for sending OTP emails (e.g., noreply@yourdomain.com)
+#   - RESEND_FROM_EMAIL: REQUIRED - Verified domain email for sending OTP emails (e.g., noreply@mail.yourdomain.com)
 
 name: Deploy Twitch API Proxy
 
@@ -53,9 +53,7 @@ jobs:
           echo "${{ secrets.TWITCH_CLIENT_ID }}" | wrangler secret put TWITCH_CLIENT_ID
           echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | wrangler secret put TWITCH_CLIENT_SECRET
           echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY
-          if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
-            echo "${{ secrets.RESEND_FROM_EMAIL }}" | wrangler secret put RESEND_FROM_EMAIL
-          fi
+          echo "${{ secrets.RESEND_FROM_EMAIL }}" | wrangler secret put RESEND_FROM_EMAIL
         continue-on-error: true  # Secrets may already exist
           
       - name: Deployment Summary
