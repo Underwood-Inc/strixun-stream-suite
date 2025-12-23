@@ -38,11 +38,11 @@
   $: circumference = 2 * Math.PI * ((size - strokeWidth) / 2);
   $: offset = circumference - (progress / 100) * circumference;
   
-  import ComponentDocsButton from './ComponentDocsButton.svelte';
+  // import ComponentDocsButton from './ComponentDocsButton.svelte';
 </script>
 
 <div class="progress-ring-wrapper" style="position: relative; display: inline-block;">
-  <ComponentDocsButton componentName="ProgressRing" position="top-right" size="small" />
+  <!-- <ComponentDocsButton componentName="ProgressRing" position="top-right" size="small" /> -->
   <div class="progress-ring" style="width: {size}px; height: {size}px;">
   <svg class="progress-ring__svg" width={size} height={size}>
     <circle

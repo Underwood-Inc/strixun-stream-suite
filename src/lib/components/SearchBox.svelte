@@ -18,7 +18,7 @@
   
   import { onDestroy, onMount } from 'svelte';
   import { writable } from 'svelte/store';
-  import ComponentDocsButton from './ComponentDocsButton.svelte';
+// import ComponentDocsButton from './ComponentDocsButton.svelte';
   import Tooltip from './Tooltip.svelte';
   
   // Props
@@ -205,7 +205,7 @@
 </script>
 
 <div class="search-box-wrapper">
-  <ComponentDocsButton componentName="SearchBox" position="top-right" size="small" />
+  <!-- <ComponentDocsButton componentName="SearchBox" position="top-right" size="small" /> -->
   <div class="search-box">
     <span class="search-box__icon">🔍</span>
     <input

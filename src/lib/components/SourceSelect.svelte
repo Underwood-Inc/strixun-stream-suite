@@ -17,7 +17,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { sources } from '../../stores/connection';
   import type { Source } from '../../types';
-  import ComponentDocsButton from './ComponentDocsButton.svelte';
+  // import ComponentDocsButton from './ComponentDocsButton.svelte';
   
   const dispatch = createEventDispatcher();
   
@@ -124,7 +124,7 @@
 {#if searchable}
   <!-- Searchable Dropdown -->
   <div class="source-select-wrapper" style="position: relative;">
-    <ComponentDocsButton componentName="SourceSelect" position="top-right" size="small" />
+    <!-- <ComponentDocsButton componentName="SourceSelect" position="top-right" size="small" /> -->
     <div class="source-select source-select--searchable" bind:this={dropdownContainer}>
     <button
       type="button"

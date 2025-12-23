@@ -18,7 +18,7 @@
   
   import { onMount, onDestroy } from 'svelte';
   import Tooltip from './Tooltip.svelte';
-  import ComponentDocsButton from './ComponentDocsButton.svelte';
+  // import ComponentDocsButton from './ComponentDocsButton.svelte';
   
   export let position: 'top' | 'bottom' | 'left' | 'right' | 'auto' = 'auto';
   export let level: 'log' | 'info' | 'warning' | 'error' = 'log';
@@ -245,7 +245,7 @@
 </script>
 
 <div class="truncated-text-wrapper" bind:this={containerElement} style="position: relative;">
-  <ComponentDocsButton componentName="TruncatedText" position="top-right" size="small" />
+  <!-- <ComponentDocsButton componentName="TruncatedText" position="top-right" size="small" /> -->
   {#if isTruncated && fullText}
     <Tooltip text={fullText} position={position} level={level} delay={delay}>
       <slot />

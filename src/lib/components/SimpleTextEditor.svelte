@@ -43,11 +43,11 @@
     return Promise.resolve(value);
   }
   
-  import ComponentDocsButton from './ComponentDocsButton.svelte';
+  // import ComponentDocsButton from './ComponentDocsButton.svelte';
 </script>
 
 <div class="simple-text-editor-wrapper" style="position: relative; width: 100%; height: 100%;">
-  <ComponentDocsButton componentName="SimpleTextEditor" position="top-right" size="small" />
+  <!-- <ComponentDocsButton componentName="SimpleTextEditor" position="top-right" size="small" /> -->
   <textarea
   bind:this={textarea}
   value={internalValue}

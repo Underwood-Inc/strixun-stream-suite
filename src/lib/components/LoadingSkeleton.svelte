@@ -21,11 +21,11 @@
   /** Height of each skeleton line (CSS value) */
   export let height: string = '20px';
   
-  import ComponentDocsButton from './ComponentDocsButton.svelte';
+  // import ComponentDocsButton from './ComponentDocsButton.svelte';
 </script>
 
 <div class="loading-skeleton-wrapper" style="position: relative;">
-  <ComponentDocsButton componentName="LoadingSkeleton" position="top-right" size="small" />
+  <!-- <ComponentDocsButton componentName="LoadingSkeleton" position="top-right" size="small" /> -->
   <div class="skeleton" style="width: {width};">
   {#each Array(lines) as _, i}
     <div 
