@@ -46,10 +46,12 @@ export interface ToastConfig {
 
 /**
  * Default toast configuration
+ * Note: defaultDuration is set to 0 to disable auto-dismiss by default
+ * Toasts should be manually dismissed to preserve history in alerts menu
  */
 export const defaultToastConfig: ToastConfig = {
   maxVisible: 4,
-  defaultDuration: 3000,
+  defaultDuration: 0, // Disabled by default - toasts require manual dismissal
   position: 'top-right',
   stackSpacing: 12,
   cardDeckAngle: 35,

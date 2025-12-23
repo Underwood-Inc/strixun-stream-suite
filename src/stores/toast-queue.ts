@@ -255,20 +255,9 @@ export function showToast(options: ToastOptions): string {
   // Update positions
   updateToastPositions();
   
-  // Set up auto-dismiss if needed (only for new toasts, not merged ones)
-  if (mergedId) {
-    const queue = get(toastQueue);
-    const toast = queue.find(t => t.id === mergedId);
-    if (toast && !toast.persistent && toast.duration && toast.duration > 0) {
-      // Only set timeout for new toasts (count === 1), not merged ones
-      // Merged toasts keep their existing timeout
-      if (toast.count === 1) {
-        setTimeout(() => {
-          dismissToast(mergedId!);
-        }, toast.duration);
-      }
-    }
-  }
+  // Note: Auto-dismiss is disabled by default
+  // To enable auto-dismiss, set duration > 0 and persistent: false
+  // Most toasts should be manually dismissed to preserve history in alerts menu
   
   return mergedId || '';
 }
@@ -294,8 +283,10 @@ export function dismissToast(id: string): void {
 
 /**
  * Dismiss all toasts
+ * Note: Toasts are kept in history for alerts dropdown, just marked as not visible
+ * @param clearHistory - If true, removes all toasts from history. Default: false
  */
-export function dismissAllToasts(): void {
+export function dismissAllToasts(clearHistory: boolean = false): void {
   toastQueue.update((queue) => {
     queue.forEach(toast => {
       toast.visible = false;
@@ -303,9 +294,12 @@ export function dismissAllToasts(): void {
     return queue;
   });
   
-  setTimeout(() => {
-    toastQueue.set([]);
-  }, 300);
+  // Only clear history if explicitly requested
+  if (clearHistory) {
+    setTimeout(() => {
+      toastQueue.set([]);
+    }, 300);
+  }
 }
 
 /**

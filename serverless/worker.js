@@ -1765,7 +1765,8 @@ async function handleNotesSave(request, env) {
             });
         }
         
-        if (!content) {
+        // Allow empty strings for new notebooks, but reject null/undefined
+        if (content === null || content === undefined) {
             return new Response(JSON.stringify({ error: 'Content required' }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
