@@ -54,8 +54,7 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
   static importJSON(serializedNode: SerializedMermaidNode): MermaidNode {
     const { diagram } = serializedNode;
-    const node = $createMermaidNode(diagram);
-    return node;
+    return new MermaidNode(diagram);
   }
 
   exportJSON(): SerializedMermaidNode {

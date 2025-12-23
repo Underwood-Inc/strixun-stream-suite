@@ -1,7 +1,7 @@
+import { Button, Card, Checkbox, Input, Select, Slider, Spinner, Toggle } from '@/components';
+import { GlobalStyle, colors, spacing } from '@/theme';
 import { useState } from 'react';
 import styled from 'styled-components';
-import { GlobalStyle, colors, spacing, radii } from '@/theme';
-import { Button, Toggle, Slider, Card, Input, Select, Checkbox, Spinner } from '@/components';
 
 /**
  * Temporary demo app to showcase the component library.

@@ -95,11 +95,14 @@
   }
   
   // Render preview when diagram code changes
+  let previewTimer: ReturnType<typeof setTimeout> | null = null;
   $: if (isOpen && diagramCode) {
-    const timer = setTimeout(() => {
+    if (previewTimer) {
+      clearTimeout(previewTimer);
+    }
+    previewTimer = setTimeout(() => {
       renderPreview();
     }, 500);
-    return () => clearTimeout(timer);
   }
   
   // Initialize on mount
@@ -190,7 +193,7 @@
     align-items: center;
     justify-content: center;
     z-index: 10000;
-    @include fade-in;
+    animation: fade-in 0.3s ease-out;
   }
   
   .mermaid-builder-modal {

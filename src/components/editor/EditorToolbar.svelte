@@ -5,18 +5,14 @@
    * Provides formatting buttons for the rich text editor
    */
   
+  import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list';
+  import { $createHeadingNode as createHeadingNode, $isHeadingNode as isHeadingNode, type HeadingTagType } from '@lexical/rich-text';
   import type { LexicalEditor } from 'lexical';
-  import { 
-    $getSelection, 
-    $isRangeSelection,
+  import {
     FORMAT_TEXT_COMMAND,
-    FORMAT_ELEMENT_COMMAND,
-    $createHeadingNode,
-    HeadingTagType
+    $getSelection as getSelection,
+    $isRangeSelection as isRangeSelection
   } from 'lexical';
-  import { $isHeadingNode } from '@lexical/rich-text';
-  import { INSERT_UNORDERED_LIST_COMMAND, INSERT_ORDERED_LIST_COMMAND } from '@lexical/list';
-  import { $createLinkNode } from '@lexical/link';
   
   export let editor: LexicalEditor | null = null;
   
@@ -34,8 +30,8 @@
     if (!editor) return;
     
     editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (selection && $isRangeSelection(selection)) {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
         isBold = selection.hasFormat('bold');
         isItalic = selection.hasFormat('italic');
         isUnderline = selection.hasFormat('underline');
@@ -45,7 +41,7 @@
         // Check heading
         const anchorNode = selection.anchor.getNode();
         const parent = anchorNode.getParent();
-        if ($isHeadingNode(parent)) {
+        if (isHeadingNode(parent)) {
           headingLevel = parent.getTag();
         } else {
           headingLevel = null;
@@ -69,15 +65,23 @@
   function setHeading(level: HeadingTagType | null): void {
     if (!editor) return;
     editor.update(() => {
-      const selection = $getSelection();
-      if (selection && $isRangeSelection(selection)) {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
         if (level) {
-          const heading = $createHeadingNode(level);
+          const heading = createHeadingNode(level);
           selection.insertNodes([heading]);
         }
       }
     });
     setTimeout(updateToolbar, 0);
+  }
+  
+  /**
+   * Handle heading select change
+   */
+  function handleHeadingChange(value: string): void {
+    const level = value ? (value as HeadingTagType) : null;
+    setHeading(level);
   }
   
   /**
@@ -148,7 +152,7 @@
     <select 
       class="toolbar-select"
       value={headingLevel || ''}
-      on:change={(e) => setHeading(e.currentTarget.value as HeadingTagType || null)}
+      on:change={(e) => handleHeadingChange(e.currentTarget.value)}
       title="Heading"
     >
       <option value="">Normal</option>

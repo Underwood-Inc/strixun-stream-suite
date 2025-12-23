@@ -113,5 +113,6 @@ export const STORAGE_KEYS = {
   UI_STATE: 'ui_state',
   ACTIVE_TAB: 'active_tab',
   CONNECTION: 'obs_connection',
+  SCROLLBAR_CUSTOMIZER: 'scrollbarCustomizerConfig',
 } as const;
 

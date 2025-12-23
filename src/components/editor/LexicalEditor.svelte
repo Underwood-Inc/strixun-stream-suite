@@ -11,17 +11,16 @@
     $getRoot as getRoot, 
     $getSelection as getSelection,
     $isRangeSelection as isRangeSelection,
-    $isTextNode as isTextNode
+    $isTextNode as isTextNode,
+    $createParagraphNode as createParagraphNode,
+    $createTextNode as createTextNode
   } from 'lexical';
-  import { HeadingNode, QuoteNode } from '@lexical/rich-text';
-  import { ListNode, ListItemNode } from '@lexical/list';
+  import { HeadingNode, QuoteNode, $isHeadingNode as isHeadingNode } from '@lexical/rich-text';
+  import { ListNode, ListItemNode, $isListNode as isListNode, $isListItemNode as isListItemNode } from '@lexical/list';
   import { LinkNode } from '@lexical/link';
   import { CodeNode } from '@lexical/code';
   import { MermaidNode, $createMermaidNode as createMermaidNode } from './MermaidNode';
   import { $generateHtmlFromNodes as generateHtmlFromNodes, $generateNodesFromDOM as generateNodesFromDOM } from '@lexical/html';
-  import { $createParagraphNode, $createTextNode, $isTextNode } from 'lexical';
-  import { $isHeadingNode } from '@lexical/rich-text';
-  import { $isListNode, $isListItemNode } from '@lexical/list';
   
   export let initialContent: string | null = null;
   export let onChange: ((content: string) => void) | null = null;
@@ -85,7 +84,7 @@
     editor.update(() => {
       const root = getRoot();
       if (root.getChildrenSize() === 0) {
-        const paragraph = $createParagraphNode();
+        const paragraph = createParagraphNode();
         root.append(paragraph);
       }
     });
@@ -116,7 +115,7 @@
           root.append(...nodes);
         } else {
           // Ensure at least one paragraph
-          const paragraph = $createParagraphNode();
+          const paragraph = createParagraphNode();
           root.append(paragraph);
         }
       });

@@ -1,610 +1,288 @@
-# Strixun's Stream Suite [SSS]
+# 🎬 Strixun's Stream Suite
 
-A comprehensive OBS Studio production toolkit for professional streaming.
+<div align="center">
 
-A full-service suite of Lua scripts, browser sources, and web dashboards that provides source animations, layout presets, text cycling with effects, Twitch clip integration, and a unified control panel dock.
+![Version](https://img.shields.io/badge/version-1.3.0-blue?style=for-the-badge&logo=github)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![OBS Studio](https://img.shields.io/badge/OBS%20Studio-28%2B-orange?style=for-the-badge&logo=obsstudio)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=for-the-badge)
 
----
+**A comprehensive OBS Studio production toolkit for professional streaming**
 
-## Table of Contents
+*Source animations, layout presets, text cycling, and Twitch integration - all in one powerful suite*
 
-- [Features](#features)
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Scripts](#scripts)
-- [Control Panel (Dock)](#control-panel-dock)
-- [Data Persistence](#data-persistence)
-- [Twitch Clips Player](#twitch-clips-player)
-- [Documentation](#documentation)
-- [Troubleshooting](#troubleshooting)
-- [Version History](#version-history)
-- [References](#references)
+[🚀 Quick Start](#-quick-start) • [📖 Documentation](#-documentation) • [🐛 Issues](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [💬 Discussions](https://github.com/Underwood-Inc/strixun-stream-suite/discussions)
+
+</div>
 
 ---
 
-## Features
+## ✨ What Is This?
 
-| Script | Description |
-|--------|-------------|
-| **Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
-| **Source Swap** | Swap position and size of two sources with animation |
-| **Source Layouts** | Save and apply layout presets with multi-source animation |
-| **Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
-| **Quick Controls** | Hotkey to cycle aspect override mode |
-| **Script Manager** | Unified dashboard for all animation scripts |
-| **Control Panel** | Web-based dock UI to control everything |
-| **Twitch Clips Player** | Auto-play Twitch clips with chat command support |
+**Strixun's Stream Suite** is a professional streaming toolkit that helps content creators automate and enhance their live streams. It provides:
+
+- 🎭 **Source Animations** - Smooth fade, slide, zoom, and pop effects
+- 🔄 **Source Swaps** - Animated position swapping between sources
+- 📐 **Layout Presets** - Save and apply entire scene layouts instantly
+- 📝 **Text Cycler** - Cycle text with animated transitions
+- 🎬 **Twitch Clips Player** - Auto-play clips during BRB screens
+- 🎛️ **Unified Control Panel** - One dock to control everything
 
 ---
 
-## Architecture
+## 🚀 Quick Start
 
-### System Overview
+### For GitHub Pages Users (Recommended)
 
-```mermaid
-flowchart TB
-    subgraph OBS["OBS Studio"]
-        subgraph Scripts["Lua Scripts"]
-            SA[source_animations.lua]
-            SS[source_swap.lua]
-            SL[source_layouts.lua]
-            TC[text_cycler.lua]
-            QC[quick_controls.lua]
-            SM[script_manager.lua]
-        end
-        
-        subgraph Sources["Browser Sources"]
-            TCD[text_cycler_display.html]
-            TCP[twitch_clips_player/]
-        end
-        
-        subgraph Docks["Custom Browser Docks"]
-            CP[control_panel.html]
-        end
-        
-        WS[WebSocket Server<br/>Port 4455]
-    end
-    
-    CP <-->|WebSocket| WS
-    WS <--> Scripts
-    CP -.->|BroadcastChannel| TCD
-    
-    style OBS fill:#1a1611,stroke:#edae49,stroke-width:2px
-    style CP fill:#edae49,stroke:#c68214
-    style Scripts fill:#252017,stroke:#3d3627
+If you're viewing this on GitHub, the easiest way to use Strixun Stream Suite is via GitHub Pages:
+
+#### Step 1: Navigate to GitHub Pages URL
+
+Simply open your browser and go to:
+
+```
+https://underwood-inc.github.io/strixun-stream-suite
 ```
 
-### Component Communication
+> **Note:** If you've forked this repository, your URL will be `https://YOUR-USERNAME.github.io/strixun-stream-suite`
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant CP as Control Panel
-    participant WS as OBS WebSocket
-    participant Scripts as Lua Scripts
-    participant Scene as OBS Scene
-    
-    User->>CP: Click "Swap Sources"
-    CP->>WS: WebSocket Request
-    WS->>Scripts: Execute Swap
-    Scripts->>Scene: Animate Sources
-    Scene-->>Scripts: Animation Complete
-    Scripts-->>WS: Success Response
-    WS-->>CP: Update UI
-    CP-->>User: Show Confirmation
+#### Step 2: Add to OBS Studio as a Dock
+
+1. Open **OBS Studio**
+2. Go to **View → Docks → Custom Browser Docks**
+3. Click **"+"** to add a new dock
+4. Enter a name (e.g., "Stream Suite")
+5. Paste your GitHub Pages URL: `https://underwood-inc.github.io/strixun-stream-suite`
+6. Click **OK**
+
+#### Step 3: Connect to OBS
+
+The control panel will automatically attempt to connect to OBS via WebSocket. Make sure:
+
+- OBS Studio is running
+- WebSocket Server is enabled in **OBS → Tools → WebSocket Server Settings**
+- Default port is **4455** (or configure custom port)
+
+#### Step 4: Install Scripts (First Time Only)
+
+1. In the control panel dock, click the **📥 Install** tab
+2. Follow the installation wizard
+3. Restart OBS Studio when prompted
+4. Configure your scripts in the **📜 Scripts** tab
+
+---
+
+## 📱 What You'll See
+
+### Initial Setup Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Strixun's Stream Suite - Control Panel                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Connection Status                                     │ │
+│  │  [!] Not Connected                                     │ │
+│  │  Connecting to OBS WebSocket (localhost:4455)...       │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Installer Tab                                         │ │
+│  │                                                        │ │
+│  │  Welcome! Let's get you set up:                        │ │
+│  │                                                        │ │
+│  │  [1] Generate Install Script                           │ │
+│  │  [2] Run Script (Windows/Mac/Linux)                    │ │
+│  │  [3] Restart OBS                                       │ │
+│  │  [4] Configure Scripts                                 │ │
+│  │                                                        │ │
+│  │  [> Start Installation]                                │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow & Storage
+### After Installation - Main Dashboard
 
-```mermaid
-flowchart LR
-    subgraph Browser["Control Panel (Browser)"]
-        UI[User Interface]
-        Cache[Memory Cache]
-    end
-    
-    subgraph Storage["Persistent Storage"]
-        IDB[(IndexedDB<br/>PRIMARY)]
-        LS[(localStorage<br/>BACKUP)]
-        RS[(Recovery<br/>Snapshot)]
-    end
-    
-    subgraph Backup["External Backup"]
-        JSON[JSON Export File]
-    end
-    
-    UI --> Cache
-    Cache --> IDB
-    Cache --> LS
-    Cache -.->|Every 60s| RS
-    Cache <-->|Import/Export| JSON
-    
-    IDB -.->|Recovery| Cache
-    LS -.->|Fallback| Cache
-    RS -.->|Auto-Recovery| Cache
-    
-    style IDB fill:#edae49,stroke:#c68214
-    style LS fill:#c68214,stroke:#edae49
-    style RS fill:#6495ed,stroke:#4a7bc8
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Strixun's Stream Suite v1.3.0                              │
+├─────────────────────────────────────────────────────────────┤
+│  Dashboard  Sources  Text  Swaps  Layouts                   │
+│  Scripts   Install   Setup                                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  [OK] Connected to OBS (localhost:4455)                     │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Quick Actions                                         │ │
+│  │                                                        │ │
+│  │  [Animate Source]  [Swap Sources]                      │ │
+│  │  [Apply Layout]    [Cycle Text]                        │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Script Status                                         │ │
+│  │                                                        │ │
+│  │  [OK] Source Animations (v2.8.1)                       │ │
+│  │  [OK] Source Swap (v3.1.0)                             │ │
+│  │  [OK] Source Layouts (v1.0.0)                          │ │
+│  │  [OK] Text Cycler (v1.0.0)                             │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### File Structure
+### Adding a Dock in OBS Studio (Visual Guide)
 
-```mermaid
-flowchart TD
-    Root[strixun-stream-suite/]
-    
-    Root --> Lua[📜 Lua Scripts]
-    Root --> Browser[🌐 Browser Sources]
-    Root --> Clips[🎬 Twitch Clips Player]
-    Root --> Config[⚙️ Config]
-    Root --> Docs[📖 README.md]
-    
-    Lua --> SA[source_animations.lua<br/>v2.8.0]
-    Lua --> SS[source_swap.lua<br/>v3.1.0]
-    Lua --> TC_L[text_cycler.lua<br/>v1.0.0]
-    Lua --> QC[quick_controls.lua<br/>v1.0.0]
-    Lua --> SM[script_manager.lua<br/>v1.0.0]
-    
-    Browser --> CP[control_panel.html]
-    Browser --> TCD[text_cycler_display.html]
-    
-    Clips --> Assets[assets/]
-    Assets --> CSS[css/]
-    Assets --> JS[js/]
-    Assets --> Img[images/]
-    
-    style Root fill:#1a1611,stroke:#edae49
-    style Lua fill:#edae49,stroke:#c68214
-    style Browser fill:#6495ed,stroke:#4a7bc8
-    style Clips fill:#c68214,stroke:#edae49
+```
+┌─────────────────────────────────────────────────────────────┐
+│  OBS Studio                                                 │
+├─────────────────────────────────────────────────────────────┤
+│  File  Edit  View  Docks  Tools  Help                       │
+│                                                             │
+│  View → Docks → Custom Browser Docks → [+]                  │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Add Custom Browser Dock                               │ │
+│  ├────────────────────────────────────────────────────────┤ │
+│  │  Dock Name: [Stream Suite                  ]           │ │
+│  │                                                        │ │
+│  │  URL:                                                  │ │
+│  │  ┌───────────────────────────────────────────────────┐ │ │
+│  │  │ https://underwood-inc.github.io/                  │ │ │
+│  │  │ strixun-stream-suite                              │ │ │
+│  │  └───────────────────────────────────────────────────┘ │ │
+│  │                                                        │ │
+│  │  [  Cancel  ]  [  OK  ]                                │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Animation State Machine
+### Control Panel Tabs Overview
 
-```mermaid
-stateDiagram-v2
-    [*] --> Idle: Source Created
-    
-    Idle --> ShowAnimation: Visibility ON
-    Idle --> Idle: Already Visible
-    
-    ShowAnimation --> Animating: Start Animation
-    Animating --> Visible: Animation Complete
-    
-    Visible --> HideAnimation: Visibility OFF
-    HideAnimation --> Animating2: Start Animation
-    Animating2 --> Hidden: Animation Complete
-    
-    Hidden --> ShowAnimation: Visibility ON
-    
-    note right of Animating
-        Opacity filter applied
-        Position/Scale interpolated
-        Easing function used
-    end note
 ```
-
-### Text Cycler Modes
-
-```mermaid
-flowchart TB
-    subgraph Legacy["Legacy Mode (Direct)"]
-        TC[Text Cycler Script]
-        OBS_TXT[OBS Text Source]
-        TC -->|obs_source_update| OBS_TXT
-    end
-    
-    subgraph Modern["Browser Mode (Recommended)"]
-        CP2[Control Panel]
-        BC[BroadcastChannel]
-        TCD2[text_cycler_display.html]
-        CP2 -->|postMessage| BC
-        BC -->|Receive| TCD2
-        TCD2 -->|CSS Animations| Display[Animated Text]
-    end
-    
-    style Modern fill:#edae49,stroke:#c68214
-    style Legacy fill:#3d3627,stroke:#252017
+┌─────────────────────────────────────────────────────────────┐
+│  Tab Navigation                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Dashboard  ->  Quick access to common actions              │
+│  Sources    ->  Configure source visibility animations      │
+│  Text       ->  Set up text cycler configurations           │
+│  Swaps      ->  Create source swap presets                  │
+│  Layouts    ->  Save and apply layout presets               │
+│  Scripts    ->  View script status and manage               │
+│  Install    ->  Installation wizard (first time)            │
+│  Setup      ->  Connection and storage settings             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Requirements
+## 🎯 Features
 
-- OBS Studio 28+ (includes WebSocket support)
-- No additional plugins needed
-
----
-
-## File Inventory
-
-```
-strixun-stream-suite/
-│
-├── 📜 Lua Scripts (install to OBS scripts folder)
-│   ├── source_animations.lua   - Visibility animations (v2.8.0)
-│   ├── source_swap.lua         - Position swap animations (v3.1.0)
-│   ├── text_cycler.lua         - Text cycling effects (v1.0.0)
-│   ├── quick_controls.lua      - Hotkey controls (v1.0.0)
-│   └── script_manager.lua      - Script dashboard (v1.0.0)
-│
-├── 🌐 Browser Sources (keep in suite folder)
-│   ├── control_panel.html       - Main dock / control panel
-│   └── text_cycler_display.html - Animated text browser source
-│
-├── 🎬 Twitch Clips Player (keep in suite folder)
-│   └── twitch_clips_player/
-│       ├── clips.html           - Browser source for clips
-│       ├── index.html           - Configuration page
-│       └── assets/              - CSS, JS, images
-│
-├── ⚙️ Config
-│   └── animations.json          - Animation configurations
-│
-└── 📖 README.md
-```
+| Feature | Description |
+|---------|-------------|
+| **🎭 Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
+| **🔄 Source Swap** | Swap position and size of two sources with animation |
+| **📐 Source Layouts** | Save and apply layout presets with multi-source animation |
+| **📝 Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
+| **⚡ Quick Controls** | Hotkey to cycle aspect override mode |
+| **📜 Script Manager** | Unified dashboard for all animation scripts |
+| **🎛️ Control Panel** | Web-based dock UI to control everything |
+| **🎬 Twitch Clips Player** | Auto-play Twitch clips with chat command support |
 
 ---
 
-## Installation
+## 📋 Requirements
 
-### Quick Start
+- **OBS Studio 28+** (includes WebSocket support)
+- **No additional plugins needed** - works out of the box!
 
-1. Download/clone the suite to a folder on your computer
-2. In OBS: **View → Docks → Custom Browser Docks**
-3. Add a dock with URL: `file:///C:/path/to/suite/control_panel.html`
-4. Use the **📥 Installer** tab in the dock to install scripts
+---
 
-### Installation Flow
+## 🔧 Manual Installation (Alternative)
 
-```mermaid
-flowchart LR
-    A[Download Suite] --> B[Add Dock to OBS]
-    B --> C[Open Installer Tab]
-    C --> D[Generate Install Script]
-    D --> E[Run Script]
-    E --> F[Restart OBS]
-    F --> G[Configure Scripts]
-    G --> H[🎉 Done!]
-    
-    style A fill:#c68214,stroke:#edae49
-    style H fill:#28a745,stroke:#1e8449
-```
+If you prefer to install scripts manually:
 
-### Manual Installation
-
-If you prefer to skip the wizard:
-
-1. Copy all `.lua` files to your OBS scripts folder:
+1. **Download/Clone** this repository
+2. **Copy all `.lua` files** to your OBS scripts folder:
    - **Windows:** `%AppData%\obs-studio\basic\scripts\`
    - **macOS:** `~/Library/Application Support/obs-studio/basic/scripts/`
    - **Linux:** `~/.config/obs-studio/basic/scripts/`
-
-2. In OBS: **Tools → Scripts → + → Select all .lua files**
-
-3. Add the control panel as a Custom Browser Dock
+3. **In OBS:** `Tools → Scripts → + → Select all .lua files`
+4. **Add the control panel** as a Custom Browser Dock (use local file path or GitHub Pages URL)
 
 ---
 
-## Configuration
-
-### Auto-Configuration (Zero-Config Setup) ✨
-
-**NEW:** The suite now features intelligent auto-configuration! When deployed via GitHub Pages, the Twitch API Worker URL is automatically detected and configured.
-
-**Zero-config steps:**
-1. Fork/clone the repository
-2. **Add GitHub Secrets** (Repository Settings → Secrets and variables → Actions):
-   - `TWITCH_CLIENT_ID` - Your Twitch app client ID ([get it here](https://dev.twitch.tv/console/apps))
-   - `TWITCH_CLIENT_SECRET` - Your Twitch app secret
-   - `CF_API_TOKEN` - Cloudflare API token (for Worker deployment)
-   - `CF_ACCOUNT_ID` - Cloudflare account ID
-   - `CF_WORKERS_SUBDOMAIN` - Your workers.dev subdomain (e.g., `your-name.workers.dev` → just `your-name`)
-     - Get this from Cloudflare dashboard: Workers & Pages → strixun-twitch-api → Settings → Domains
-3. Enable GitHub Pages in repo settings (Settings → Pages → Source: GitHub Actions)
-4. Push to `main` or `master` branch
-5. GitHub Actions automatically deploys everything with injected configs
-6. Open your GitHub Pages URL
-7. ✅ **Done!** Everything is auto-configured!
-
-**How it works:**
-- GitHub Actions reads your `wrangler.toml` worker configuration
-- Auto-constructs the Cloudflare Worker URL
-- Injects it into `config.js` during deployment
-- Control panel auto-detects and uses it
-
-**Manual override:** You can still manually configure the API server URL in **Setup → Twitch API Settings** if needed (custom domains, local development, etc.)
-
-📚 **Full documentation:** See [`docs/AUTO_CONFIGURATION.md`](docs/AUTO_CONFIGURATION.md) for detailed info on priority system, troubleshooting, and advanced configurations.
-
-### Manual Configuration (Advanced)
-
-For custom deployments or local development:
-
-1. Go to **Setup** tab in control panel
-2. Enter your Cloudflare Worker URL in **API Server URL**
-3. Enter your Twitch Client ID
-4. Click **Save Twitch Settings**
-5. Test the connection with **Test API Connection** button
-
----
-
-## Scripts
-
-### Source Animations (v2.8.0)
-
-Animates sources when their visibility is toggled.
-
-**Animation Types:**
-- Fade - opacity transition
-- Slide - move from direction
-- Zoom - scale in/out
-- Pop - bouncy scale
-
-**New in v2.8.0:**
-- Fixed position drift bug with canonical transforms
-- Sources now reliably return to their "home" position
-- Added "Recapture Home Positions" button
-
-### Source Swap (v3.1.0)
-
-Swap position and size between two sources with smooth animation.
-
-**Features:**
-- Unlimited swap configurations
-- Per-config hotkeys
-- Temporary aspect override
-- Works with grouped sources
-
-### Source Layouts (v1.0.0)
-
-Save and apply layout presets - snapshot all source positions and animate between them.
-
-**Features:**
-- Capture ALL source positions, sizes, and visibility in one click
-- Apply layouts with smooth multi-source animation
-- Stagger animation for cinematic transitions (configurable delay between sources)
-- Smart source tracking - handles missing/new sources gracefully
-- Scene-specific layout filtering
-- Hotkey support (layouts 1-9 can be triggered via OBS hotkeys)
-- Full export/import/backup integration
-
-**Use Cases:**
-- Scene variants (Full Gameplay, Gameplay + Chat, Just Chatting)
-- Dynamic layouts (swap camera positions during stream)
-- Show segments (intro, main content, outro layouts)
-
-### Text Cycler (v1.0.0)
-
-Cycle through text strings with animated transitions.
-
-**Transitions:**
-- None, Obfuscate, Typewriter, Glitch, Scramble, Wave, Fade, Slide, Pop
-
----
-
-## Control Panel (Dock)
-
-The main interface for controlling the entire suite.
-
-### Tabs
-
-| Tab | Description |
-|-----|-------------|
-| 🏠 Dashboard | Quick access to common actions |
-| 📦 Sources | Source visibility animations |
-| 📝 Text | Text cycler with multiple configs |
-| 🔄 Swaps | Source swap configurations |
-| 📐 Layouts | Layout presets (save/apply) |
-| 📜 Scripts | Script status and management |
-| 📥 Install | Installation wizard |
-| ⚙️ Setup | Connection and storage settings |
-
----
-
-## Data Persistence
-
-### The Storage Challenge
-
-> ⚠️ **OBS browser docks use an embedded Chromium browser that can lose localStorage data during:**
-> - OBS cache clears
-> - OBS updates
-> - Browser source setting changes
-> - Debugging operations
-
-### Our Solution: Multi-Layer Storage
-
-We implement a **triple-redundancy storage system** specifically designed for OBS dock reliability:
-
-```mermaid
-flowchart TB
-    subgraph Layer1["Layer 1: IndexedDB (Primary)"]
-        IDB[(IndexedDB)]
-        note1[More persistent than localStorage<br/>Survives most cache operations]
-    end
-    
-    subgraph Layer2["Layer 2: localStorage (Backup)"]
-        LS[(localStorage)]
-        note2[Synced on every write<br/>Fast synchronous access]
-    end
-    
-    subgraph Layer3["Layer 3: Recovery Snapshot"]
-        RS[(Recovery Key)]
-        note3[Separate storage key<br/>Auto-saves every 60 seconds<br/>Offers recovery on empty load]
-    end
-    
-    subgraph Layer4["Layer 4: Manual Export"]
-        JSON[JSON File]
-        note4[User-initiated backup<br/>Platform-independent<br/>Can restore anywhere]
-    end
-    
-    Write[Config Save] --> IDB
-    Write --> LS
-    IDB -.-> RS
-    
-    Load[Page Load] --> IDB
-    IDB -->|Empty?| LS
-    LS -->|Empty?| RS
-    RS -->|Offer Recovery| User
-    
-    style Layer1 fill:#edae49,stroke:#c68214
-    style Layer2 fill:#c68214,stroke:#edae49
-    style Layer3 fill:#6495ed,stroke:#4a7bc8
-    style Layer4 fill:#28a745,stroke:#1e8449
-```
-
-### Storage Implementation Details
-
-| Storage | Purpose | Persistence Level |
-|---------|---------|-------------------|
-| **IndexedDB** | Primary data store | High - survives most cache clears |
-| **localStorage** | Backup & sync | Medium - can be wiped by OBS |
-| **Recovery Snapshot** | Emergency fallback | Medium - separate key, auto-restored |
-| **JSON Export** | User backup | Highest - external file |
-
-### Backup Recommendations
-
-1. **Export backups regularly** - especially before OBS updates
-2. **Use the "Force Sync" button** after major config changes
-3. **Keep the exported JSON file** in a safe location
-4. The system will **automatically offer recovery** if it detects data loss
-
----
-
-## Twitch Clips Player
-
-Auto-play Twitch clips during BRB/Starting screens.
-
-### Setup
-
-1. Open the **🎬 Clips** tab in the control panel
-2. Create a new config with your channel name
-3. Configure options (limit, date range, theme)
-4. Copy the generated browser source URL
-5. Add as a Browser Source in OBS
-
----
-
-## Documentation
+## 📖 Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 ### 📘 For Everyone
-
-- **[Product Overview](./docs/PRODUCT_OVERVIEW.md)** - Understand what Strixun Stream Suite does and why it matters (non-technical)
+- **[Product Overview](./docs/PRODUCT_OVERVIEW.md)** - Understand what Strixun Stream Suite does (non-technical)
 
 ### 🔧 For Developers
+- **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture
+- **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows and deployment
 
-- **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture, components, and design decisions
-- **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation with examples
-- **[Database Schema](./docs/DATABASE_SCHEMA.md)** - Storage schemas, data structures, and relationships
-- **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows, deployment procedures, and operations
-
-### 📚 Documentation Index
-
-See [docs/README.md](./docs/README.md) for a complete documentation index and navigation guide.
-
-All documentation includes:
-- ✅ Mermaid diagrams for visual understanding
-- ✅ Code examples in JavaScript/TypeScript
-- ✅ Complete API and schema references
-- ✅ Troubleshooting guides
-- ✅ Best practices and patterns
+See [docs/README.md](./docs/README.md) for a complete documentation index.
 
 ---
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
 **Scripts not appearing in OBS?**
 - Ensure `.lua` files are in the correct scripts folder
 - Restart OBS after adding scripts
-- Check **Tools → Scripts** for error messages
+- Check `Tools → Scripts` for error messages
+
+**Control panel not connecting?**
+- Verify OBS WebSocket Server is enabled (`Tools → WebSocket Server Settings`)
+- Check that port 4455 is not blocked by firewall
+- Try restarting OBS Studio
 
 **Animations not playing?**
 - First visibility toggle caches state, second triggers animation
-- Check "Animate on SHOW/HIDE" is enabled
+- Check "Animate on SHOW/HIDE" is enabled in script settings
 - Click "Refresh Sources" in script settings
 
 **Sources drifting out of position?**
 - Click "🎯 Recapture Home Positions" in source_animations settings
 - This resets the canonical transform cache
 
-**Control panel lost all configs?**
-- Check Setup tab for Recovery options
-- Use "Import Backup" if you have an export
-- The system should auto-offer recovery on empty load
-
 ---
 
-## Version History
-
-### Source Animations
-- v2.8.0 - Fixed position drift with canonical transforms
-- v2.7.0 - Config changes reset filter state properly
-- v2.6.0 - Fixed hide flicker with faster polling
-- v2.5.0 - Persistent opacity filter approach
-
-### Source Swap
-- v3.1.0 - Temporary aspect override in settings
-- v3.0.0 - Simplified to local coordinates
-- v2.8.0 - Fixed grouped source sizing
+## 📜 Version History
 
 ### Control Panel
-- v3.0.0 - Multi-layer storage system (IndexedDB + localStorage + Recovery)
-- v2.0.0 - Added installer wizard, script manager, Twitch clips integration
-- v1.0.0 - Initial release with swap controls and text cycler
+- **v1.3.0** - Current version
+- **v3.0.0** - Multi-layer storage system (IndexedDB + localStorage + Recovery)
+- **v2.0.0** - Added installer wizard, script manager, Twitch clips integration
+
+### Scripts
+- **Source Animations v2.8.1** - Fixed position drift with canonical transforms
+- **Source Swap v3.1.0** - Temporary aspect override in settings
+- **Source Layouts v1.0.0** - Save and apply layout presets
 
 ---
 
-## References
-
-### OBS Documentation & Resources
-
-The storage system was designed based on research into OBS browser source behavior:
-
-1. **OBS Browser Source Cache Behavior**
-   - GitHub Issue: [obsproject/obs-browser#66](https://github.com/obsproject/obs-browser/issues/66) - Local files don't reload when updated
-   - Insight: OBS uses an embedded Chromium browser with its own cache
-
-2. **localStorage Volatility in OBS**
-   - OBS Forum: [Does localStorage get cleared during OBS updates?](https://obsproject.com/forum/threads/does-localstorage-get-cleared-during-obs-updates.159835/)
-   - Finding: localStorage is considered "bad practice" for critical data as debugging steps can clear cache
-
-3. **WebSocket Settings Persistence**
-   - GitHub Issue: [obsproject/obs-studio#11665](https://github.com/obsproject/obs-studio/issues/11665) - WebSocket settings resetting
-   - Related: Configuration persistence issues in OBS
-
-4. **Browser Source Sizing Issues**  
-   - GitHub Issue: [obsproject/obs-studio#5830](https://github.com/obsproject/obs-studio/issues/5830) - Cache refresh resets size
-
-### Why IndexedDB + localStorage + Recovery?
-
-Based on our research:
-
-| Storage Method | Survives Cache Clear | Survives OBS Update | Complexity |
-|---------------|---------------------|---------------------|------------|
-| localStorage only | ❌ Often cleared | ❌ Can be wiped | Low |
-| IndexedDB only | ✅ Usually survives | ⚠️ Sometimes wiped | Medium |
-| IndexedDB + localStorage | ✅ Redundant | ⚠️ One may survive | Medium |
-| Triple redundancy + Export | ✅ Multiple fallbacks | ✅ Manual recovery | Higher |
-
-We chose the **triple redundancy approach** because OBS streamers cannot afford to lose their configurations during a live stream.
-
-### Mermaid Diagram Types Used
-
-This documentation uses [Mermaid.js](https://mermaid.js.org/) diagrams:
-
-- **Flowchart** (`flowchart`) - System architecture and data flow
-- **Sequence Diagram** (`sequenceDiagram`) - Component communication
-- **State Diagram** (`stateDiagram-v2`) - Animation state machine
-- **Subgraphs** - Grouping related components
-
-For more diagram types, see: [Mermaid.js Documentation](https://mermaid.js.org/syntax/examples.html)
-
----
-
-## License
+## 📄 License
 
 MIT License - feel free to use and modify.
+
+---
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the streaming community**
+
+[⭐ Star this repo](https://github.com/Underwood-Inc/strixun-stream-suite) • [🐛 Report Bug](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [💡 Request Feature](https://github.com/Underwood-Inc/strixun-stream-suite/issues)
+
+</div>

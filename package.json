@@ -14,7 +14,8 @@
     "lint": "eslint . --ext .ts,.js,.svelte",
     "version": "changeset version",
     "release": "changeset publish",
-    "generate-icons": "node scripts/generate-pwa-icons.js"
+    "generate-icons": "node scripts/generate-pwa-icons.js",
+    "update-badge": "node scripts/update-version-badge.js"
   },
   "dependencies": {
     "@lexical/code": "^0.38.0",

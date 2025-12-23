@@ -1,0 +1,84 @@
+# Strixun Stream Suite - Auto-Update Version Badge
+#
+# This workflow automatically updates the version badge in README.md
+# when the version in package.json changes.
+#
+# Triggers:
+# - When package.json version changes
+# - Manual workflow dispatch
+# - On release creation
+
+name: Update Version Badge
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'package.json'
+  workflow_dispatch:
+  release:
+    types: [published, edited]
+
+# Sets permissions for GITHUB_TOKEN
+permissions:
+  contents: write
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Read version from package.json
+        id: get_version
+        run: |
+          VERSION=$(grep -o '"version": "[^"]*"' package.json | cut -d'"' -f4)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current version: $VERSION"
+
+      - name: Update version badge in README.md
+        run: |
+          node scripts/update-version-badge.js
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No changes detected in README.md"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "📝 Changes detected in README.md"
+            git diff README.md
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "chore: auto-update version badge to ${{ steps.get_version.outputs.version }}"
+          git push
+
+      - name: Summary
+        run: |
+          echo "## ✅ Version Badge Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.get_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_changes.outputs.changed }}" == "true" ]; then
+            echo "✅ **Status:** Badge updated and committed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️  **Status:** No changes needed (badge already up to date)" >> $GITHUB_STEP_SUMMARY
+          fi
+
