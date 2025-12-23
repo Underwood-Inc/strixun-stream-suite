@@ -19,7 +19,19 @@ id = "66b9a4425cb7492fbae8f690780cd0ae"
 [vars]
 ENVIRONMENT = "production"
 
-# Optional: Custom domain (configure in Cloudflare dashboard)
+# Optional: Custom domain configuration
+# 
+# To use a custom domain, you have two options:
+#
+# Option 1: Configure routes in wrangler.toml (uncomment and update):
 # routes = [
-#   { pattern = "twitch-api.yourdomain.com/*", zone_name = "yourdomain.com" }
+#   { pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }
 # ]
+#
+# Option 2: Configure in Cloudflare Dashboard (recommended):
+# 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-twitch-api
+# 2. Go to Settings → Triggers → Routes
+# 3. Add custom domain route
+# 4. Update DNS records as instructed by Cloudflare
+#
+# Note: Routes configured in the dashboard take precedence over wrangler.toml

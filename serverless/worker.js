@@ -1080,31 +1080,52 @@ function getJWTSecret(env) {
  * @returns {Promise<{allowed: boolean, remaining: number}>}
  */
 async function checkOTPRateLimit(emailHash, env) {
-    const rateLimitKey = `ratelimit_otp_${emailHash}`;
-    const rateLimit = await env.TWITCH_CACHE.get(rateLimitKey, { type: 'json' });
-    
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-    
-    if (!rateLimit || now > new Date(rateLimit.resetAt).getTime()) {
-        // Reset or create new rate limit
-        await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify({
+    try {
+        const rateLimitKey = `ratelimit_otp_${emailHash}`;
+        const rateLimitData = await env.TWITCH_CACHE.get(rateLimitKey);
+        let rateLimit = null;
+        
+        if (rateLimitData) {
+            try {
+                rateLimit = typeof rateLimitData === 'string' ? JSON.parse(rateLimitData) : rateLimitData;
+            } catch (e) {
+                // Invalid JSON, treat as no rate limit
+                rateLimit = null;
+            }
+        }
+        
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        // Check if rate limit exists and is still valid
+        if (rateLimit && rateLimit.resetAt && now <= new Date(rateLimit.resetAt).getTime()) {
+            // Rate limit exists and is valid
+            if (rateLimit.otpRequests >= 3) {
+                return { allowed: false, remaining: 0, resetAt: rateLimit.resetAt };
+            }
+            
+            // Increment counter (this request counts)
+            rateLimit.otpRequests = (rateLimit.otpRequests || 0) + 1;
+            await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify(rateLimit), { expirationTtl: 3600 });
+            
+            return { allowed: true, remaining: 3 - rateLimit.otpRequests, resetAt: rateLimit.resetAt };
+        }
+        
+        // No rate limit or expired - create new one (this request counts as 1)
+        const resetAt = new Date(now + oneHour).toISOString();
+        const newRateLimit = {
             otpRequests: 1,
             failedAttempts: 0,
-            resetAt: new Date(now + oneHour).toISOString()
-        }), { expirationTtl: 3600 });
-        return { allowed: true, remaining: 2 };
+            resetAt: resetAt
+        };
+        await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify(newRateLimit), { expirationTtl: 3600 });
+        
+        return { allowed: true, remaining: 2, resetAt: resetAt };
+    } catch (error) {
+        console.error('Rate limit check error:', error);
+        // On error, allow the request (fail open for availability)
+        return { allowed: true, remaining: 3, resetAt: new Date(Date.now() + 3600000).toISOString() };
     }
-    
-    if (rateLimit.otpRequests >= 3) {
-        return { allowed: false, remaining: 0 };
-    }
-    
-    // Increment counter
-    rateLimit.otpRequests++;
-    await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify(rateLimit), { expirationTtl: 3600 });
-    
-    return { allowed: true, remaining: 3 - rateLimit.otpRequests };
 }
 
 /**
@@ -1126,7 +1147,7 @@ async function sendOTPEmail(email, otp, env) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            from: 'onboarding@resend.dev', // Use your verified domain if you have one
+            from: env.RESEND_FROM_EMAIL || 'onboarding@resend.dev', // Use your verified domain email
             to: email,
             subject: 'Your Verification Code - Strixun Stream Suite',
             html: `
@@ -1218,7 +1239,8 @@ async function handleRequestOTP(request, env) {
         if (!rateLimit.allowed) {
             return new Response(JSON.stringify({ 
                 error: 'Too many requests. Please try again later.',
-                resetAt: await env.TWITCH_CACHE.get(`ratelimit_otp_${emailHash}`, { type: 'json' }).then(r => r?.resetAt)
+                resetAt: rateLimit.resetAt,
+                remaining: rateLimit.remaining
             }), {
                 status: 429,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1257,7 +1279,7 @@ async function handleRequestOTP(request, env) {
             // Return error so user knows email failed
             return new Response(JSON.stringify({ 
                 error: 'Failed to send email. Please check your email address and try again.',
-                details: process.env.ENVIRONMENT === 'development' ? error.message : undefined
+                details: env.ENVIRONMENT === 'development' ? error.message : undefined
             }), {
                 status: 500,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1273,9 +1295,15 @@ async function handleRequestOTP(request, env) {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        console.error('OTP request error:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         return new Response(JSON.stringify({ 
             error: 'Failed to request OTP',
-            message: error.message 
+            message: error.message,
+            details: env.ENVIRONMENT === 'development' ? error.stack : undefined
         }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -2007,7 +2035,7 @@ async function handleTestEmail(request, env) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                from: 'onboarding@resend.dev', // Use your verified domain if you have one
+                from: env.RESEND_FROM_EMAIL || 'onboarding@resend.dev', // Use your verified domain email
                 to: to,
                 subject: 'Test Email from Strixun Stream Suite',
                 html: `
@@ -2134,6 +2162,31 @@ export default {
             
             // Test endpoints
             if (path === '/test/email' && request.method === 'GET') return handleTestEmail(request, env);
+            
+            // Debug: Clear rate limit (for testing)
+            if (path === '/debug/clear-rate-limit' && request.method === 'POST') {
+                try {
+                    const body = await request.json();
+                    const { email } = body;
+                    if (!email) {
+                        return new Response(JSON.stringify({ error: 'email required' }), {
+                            status: 400,
+                            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        });
+                    }
+                    const emailHash = await hashEmail(email);
+                    const rateLimitKey = `ratelimit_otp_${emailHash}`;
+                    await env.TWITCH_CACHE.delete(rateLimitKey);
+                    return new Response(JSON.stringify({ success: true, message: 'Rate limit cleared' }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    });
+                } catch (error) {
+                    return new Response(JSON.stringify({ error: error.message }), {
+                        status: 500,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    });
+                }
+            }
             
             // Health check
             if (path === '/health' || path === '/') return handleHealth(env);
