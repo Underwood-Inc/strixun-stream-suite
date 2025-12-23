@@ -8,15 +8,16 @@
  * - User following fetching
  * - Game data fetching
  * - Cloud Save System (backup/restore configs across devices)
+ * - Email OTP Authentication System (secure user authentication)
  * 
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 // CORS headers for cross-origin requests
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID, X-Requested-With',
     'Access-Control-Max-Age': '86400',
 };
 
@@ -892,6 +893,667 @@ async function removeFromSlotList(env, deviceId, slot) {
     }
 }
 
+// ============ Authentication System ============
+
+/**
+ * Generate secure 6-digit OTP
+ * @returns {string} 6-digit OTP code
+ */
+function generateOTP() {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    // Generate 6-digit number (000000-999999)
+    const otp = (array[0] % 1000000).toString().padStart(6, '0');
+    return otp;
+}
+
+/**
+ * Hash email for storage key (SHA-256)
+ * @param {string} email - Email address
+ * @returns {Promise<string>} Hex-encoded hash
+ */
+async function hashEmail(email) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(email.toLowerCase().trim());
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Generate user ID from email
+ * @param {string} email - Email address
+ * @returns {Promise<string>} User ID
+ */
+async function generateUserId(email) {
+    const hash = await hashEmail(email);
+    return `user_${hash.substring(0, 12)}`;
+}
+
+/**
+ * Create JWT token
+ * @param {object} payload - Token payload
+ * @param {string} secret - Secret key for signing
+ * @returns {Promise<string>} JWT token
+ */
+async function createJWT(payload, secret) {
+    const header = {
+        alg: 'HS256',
+        typ: 'JWT'
+    };
+    
+    const encoder = new TextEncoder();
+    const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    
+    const signatureInput = `${headerB64}.${payloadB64}`;
+    const keyData = encoder.encode(secret);
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signatureInput));
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    
+    return `${signatureInput}.${signatureB64}`;
+}
+
+/**
+ * Verify JWT token
+ * @param {string} token - JWT token
+ * @param {string} secret - Secret key for verification
+ * @returns {Promise<object|null>} Decoded payload or null if invalid
+ */
+async function verifyJWT(token, secret) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        
+        const [headerB64, payloadB64, signatureB64] = parts;
+        
+        // Verify signature
+        const encoder = new TextEncoder();
+        const signatureInput = `${headerB64}.${payloadB64}`;
+        const keyData = encoder.encode(secret);
+        const key = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['verify']
+        );
+        
+        // Decode signature
+        const signature = Uint8Array.from(
+            atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')),
+            c => c.charCodeAt(0)
+        );
+        
+        const isValid = await crypto.subtle.verify(
+            'HMAC',
+            key,
+            signature,
+            encoder.encode(signatureInput)
+        );
+        
+        if (!isValid) return null;
+        
+        // Decode payload
+        const payload = JSON.parse(
+            atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+        );
+        
+        // Check expiration
+        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+            return null;
+        }
+        
+        return payload;
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Get JWT secret from environment or generate default
+ * @param {*} env - Worker environment
+ * @returns {string} JWT secret
+ */
+function getJWTSecret(env) {
+    // Use environment secret if available, otherwise use a default (not recommended for production)
+    return env.JWT_SECRET || 'strixun-stream-suite-default-secret-change-in-production';
+}
+
+/**
+ * Check rate limit for OTP requests
+ * @param {string} emailHash - Hashed email
+ * @param {*} env - Worker environment
+ * @returns {Promise<{allowed: boolean, remaining: number}>}
+ */
+async function checkOTPRateLimit(emailHash, env) {
+    const rateLimitKey = `ratelimit_otp_${emailHash}`;
+    const rateLimit = await env.TWITCH_CACHE.get(rateLimitKey, { type: 'json' });
+    
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    if (!rateLimit || now > new Date(rateLimit.resetAt).getTime()) {
+        // Reset or create new rate limit
+        await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify({
+            otpRequests: 1,
+            failedAttempts: 0,
+            resetAt: new Date(now + oneHour).toISOString()
+        }), { expirationTtl: 3600 });
+        return { allowed: true, remaining: 2 };
+    }
+    
+    if (rateLimit.otpRequests >= 3) {
+        return { allowed: false, remaining: 0 };
+    }
+    
+    // Increment counter
+    rateLimit.otpRequests++;
+    await env.TWITCH_CACHE.put(rateLimitKey, JSON.stringify(rateLimit), { expirationTtl: 3600 });
+    
+    return { allowed: true, remaining: 3 - rateLimit.otpRequests };
+}
+
+/**
+ * Send OTP email via Resend
+ * @param {string} email - Recipient email
+ * @param {string} otp - OTP code
+ * @param {*} env - Worker environment
+ * @returns {Promise<object>} Resend API response
+ */
+async function sendOTPEmail(email, otp, env) {
+    if (!env.RESEND_API_KEY) {
+        throw new Error('RESEND_API_KEY not configured');
+    }
+    
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            from: 'onboarding@resend.dev', // Use your verified domain if you have one
+            to: email,
+            subject: 'Your Verification Code - Strixun Stream Suite',
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .otp-code { 
+                            font-size: 32px; 
+                            font-weight: bold; 
+                            letter-spacing: 8px; 
+                            text-align: center;
+                            background: #f4f4f4;
+                            padding: 20px;
+                            border-radius: 8px;
+                            margin: 20px 0;
+                            font-family: monospace;
+                        }
+                        .footer { 
+                            margin-top: 30px; 
+                            font-size: 12px; 
+                            color: #666; 
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>Your Verification Code</h1>
+                        <p>Use this code to verify your email address:</p>
+                        <div class="otp-code">${otp}</div>
+                        <p>This code will expire in <strong>10 minutes</strong>.</p>
+                        <p>If you didn't request this code, please ignore this email.</p>
+                        <div class="footer">
+                            <p>Strixun Stream Suite</p>
+                            <p>This is an automated message, please do not reply.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+        }),
+    });
+    
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Resend API error: ${response.status} - ${error}`);
+    }
+    
+    return await response.json();
+}
+
+/**
+ * Request OTP endpoint
+ * POST /auth/request-otp
+ */
+async function handleRequestOTP(request, env) {
+    try {
+        const body = await request.json();
+        const { email } = body;
+        
+        // Validate email
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return new Response(JSON.stringify({ error: 'Valid email address required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Check rate limit
+        const emailHash = await hashEmail(email);
+        const rateLimit = await checkOTPRateLimit(emailHash, env);
+        
+        if (!rateLimit.allowed) {
+            return new Response(JSON.stringify({ 
+                error: 'Too many requests. Please try again later.',
+                resetAt: await env.TWITCH_CACHE.get(`ratelimit_otp_${emailHash}`, { type: 'json' }).then(r => r?.resetAt)
+            }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Generate OTP
+        const otp = generateOTP();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        
+        // Store OTP in KV
+        const otpKey = `otp_${emailHash}_${Date.now()}`;
+        await env.TWITCH_CACHE.put(otpKey, JSON.stringify({
+            email: email.toLowerCase().trim(),
+            otp,
+            expiresAt: expiresAt.toISOString(),
+            attempts: 0,
+        }), { expirationTtl: 600 }); // 10 minutes TTL
+        
+        // Also store latest OTP for quick lookup (overwrites previous)
+        const latestOtpKey = `otp_latest_${emailHash}`;
+        await env.TWITCH_CACHE.put(latestOtpKey, otpKey, { expirationTtl: 600 });
+        
+        // Send email
+        try {
+            await sendOTPEmail(email, otp, env);
+        } catch (error) {
+            // If email fails, still return success (don't reveal email issues)
+            console.error('Failed to send OTP email:', error);
+            // Continue - we'll let the user know if email sending fails
+        }
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            message: 'OTP sent to email',
+            expiresIn: 600,
+            remaining: rateLimit.remaining
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to request OTP',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Verify OTP endpoint
+ * POST /auth/verify-otp
+ */
+async function handleVerifyOTP(request, env) {
+    try {
+        const body = await request.json();
+        const { email, otp } = body;
+        
+        // Validate input
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return new Response(JSON.stringify({ error: 'Valid email address required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        if (!otp || !/^\d{6}$/.test(otp)) {
+            return new Response(JSON.stringify({ error: 'Valid 6-digit OTP required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const emailHash = await hashEmail(email);
+        const emailLower = email.toLowerCase().trim();
+        
+        // Get latest OTP key
+        const latestOtpKey = await env.TWITCH_CACHE.get(`otp_latest_${emailHash}`);
+        if (!latestOtpKey) {
+            return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
+                status: 404,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Get OTP data
+        const otpDataStr = await env.TWITCH_CACHE.get(latestOtpKey);
+        if (!otpDataStr) {
+            return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
+                status: 404,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const otpData = JSON.parse(otpDataStr);
+        
+        // Verify email matches
+        if (otpData.email !== emailLower) {
+            return new Response(JSON.stringify({ error: 'Invalid OTP' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Check expiration
+        if (new Date(otpData.expiresAt) < new Date()) {
+            await env.TWITCH_CACHE.delete(latestOtpKey);
+            await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
+            return new Response(JSON.stringify({ error: 'OTP expired' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Check attempts
+        if (otpData.attempts >= 5) {
+            await env.TWITCH_CACHE.delete(latestOtpKey);
+            await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
+            return new Response(JSON.stringify({ error: 'Too many failed attempts' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Verify OTP
+        if (otpData.otp !== otp) {
+            otpData.attempts++;
+            await env.TWITCH_CACHE.put(latestOtpKey, JSON.stringify(otpData), { expirationTtl: 600 });
+            return new Response(JSON.stringify({ 
+                error: 'Invalid OTP',
+                remainingAttempts: 5 - otpData.attempts
+            }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // OTP is valid! Delete it (single-use)
+        await env.TWITCH_CACHE.delete(latestOtpKey);
+        await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
+        
+        // Get or create user
+        const userId = await generateUserId(emailLower);
+        const userKey = `user_${emailHash}`;
+        let user = await env.TWITCH_CACHE.get(userKey, { type: 'json' });
+        
+        if (!user) {
+            // Create new user
+            user = {
+                userId,
+                email: emailLower,
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString(),
+            };
+            await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 }); // 1 year
+        } else {
+            // Update last login
+            user.lastLogin = new Date().toISOString();
+            await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+        }
+        
+        // Generate JWT token
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const tokenPayload = {
+            userId,
+            email: emailLower,
+            exp: Math.floor(expiresAt.getTime() / 1000),
+            iat: Math.floor(Date.now() / 1000),
+        };
+        
+        const jwtSecret = getJWTSecret(env);
+        const token = await createJWT(tokenPayload, jwtSecret);
+        
+        // Store session
+        const sessionKey = `session_${userId}`;
+        await env.TWITCH_CACHE.put(sessionKey, JSON.stringify({
+            userId,
+            email: emailLower,
+            token: await hashEmail(token), // Store hash of token
+            expiresAt: expiresAt.toISOString(),
+            createdAt: new Date().toISOString(),
+        }), { expirationTtl: 2592000 }); // 30 days
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            token,
+            userId,
+            email: emailLower,
+            expiresAt: expiresAt.toISOString(),
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to verify OTP',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Get current user endpoint
+ * GET /auth/me
+ */
+async function handleGetMe(request, env) {
+    try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const token = authHeader.substring(7);
+        const jwtSecret = getJWTSecret(env);
+        const payload = await verifyJWT(token, jwtSecret);
+        
+        if (!payload) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Get user data
+        const emailHash = await hashEmail(payload.email);
+        const userKey = `user_${emailHash}`;
+        const user = await env.TWITCH_CACHE.get(userKey, { type: 'json' });
+        
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), {
+                status: 404,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            userId: user.userId,
+            email: user.email,
+            createdAt: user.createdAt,
+            lastLogin: user.lastLogin,
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to get user info',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Logout endpoint
+ * POST /auth/logout
+ */
+async function handleLogout(request, env) {
+    try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const token = authHeader.substring(7);
+        const jwtSecret = getJWTSecret(env);
+        const payload = await verifyJWT(token, jwtSecret);
+        
+        if (!payload) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Add token to blacklist
+        const tokenHash = await hashEmail(token);
+        const blacklistKey = `blacklist_${tokenHash}`;
+        await env.TWITCH_CACHE.put(blacklistKey, JSON.stringify({
+            token: tokenHash,
+            revokedAt: new Date().toISOString(),
+        }), { expirationTtl: 2592000 }); // 30 days (same as token expiry)
+        
+        // Delete session
+        const sessionKey = `session_${payload.userId}`;
+        await env.TWITCH_CACHE.delete(sessionKey);
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            message: 'Logged out successfully'
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to logout',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Refresh token endpoint
+ * POST /auth/refresh
+ */
+async function handleRefresh(request, env) {
+    try {
+        const body = await request.json();
+        const { token } = body;
+        
+        if (!token) {
+            return new Response(JSON.stringify({ error: 'Token required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const jwtSecret = getJWTSecret(env);
+        const payload = await verifyJWT(token, jwtSecret);
+        
+        if (!payload) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Check if token is blacklisted
+        const tokenHash = await hashEmail(token);
+        const blacklistKey = `blacklist_${tokenHash}`;
+        const blacklisted = await env.TWITCH_CACHE.get(blacklistKey);
+        if (blacklisted) {
+            return new Response(JSON.stringify({ error: 'Token has been revoked' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Generate new token
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const newTokenPayload = {
+            userId: payload.userId,
+            email: payload.email,
+            exp: Math.floor(expiresAt.getTime() / 1000),
+            iat: Math.floor(Date.now() / 1000),
+        };
+        
+        const newToken = await createJWT(newTokenPayload, jwtSecret);
+        
+        // Update session
+        const sessionKey = `session_${payload.userId}`;
+        await env.TWITCH_CACHE.put(sessionKey, JSON.stringify({
+            userId: payload.userId,
+            email: payload.email,
+            token: await hashEmail(newToken),
+            expiresAt: expiresAt.toISOString(),
+            createdAt: new Date().toISOString(),
+        }), { expirationTtl: 2592000 });
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            token: newToken,
+            expiresAt: expiresAt.toISOString(),
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to refresh token',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
 /**
  * Test email sending endpoint
  * GET /test/email?to=your@email.com
@@ -1039,6 +1701,13 @@ export default {
             
             // CDN endpoints
             if (path === '/cdn/scrollbar-customizer.js' && request.method === 'GET') return handleScrollbarCustomizer();
+            
+            // Authentication endpoints
+            if (path === '/auth/request-otp' && request.method === 'POST') return handleRequestOTP(request, env);
+            if (path === '/auth/verify-otp' && request.method === 'POST') return handleVerifyOTP(request, env);
+            if (path === '/auth/me' && request.method === 'GET') return handleGetMe(request, env);
+            if (path === '/auth/logout' && request.method === 'POST') return handleLogout(request, env);
+            if (path === '/auth/refresh' && request.method === 'POST') return handleRefresh(request, env);
             
             // Test endpoints
             if (path === '/test/email' && request.method === 'GET') return handleTestEmail(request, env);
