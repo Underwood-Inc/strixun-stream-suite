@@ -7,6 +7,7 @@
 import { writable, derived, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
 import { storage } from '../modules/storage';
+import { secureFetch } from '../core/services/encryption';
 
 export interface User {
   userId: string;
@@ -126,7 +127,8 @@ export async function authenticatedFetch(
   headers.set('Authorization', `Bearer ${token}`);
   headers.set('Content-Type', 'application/json');
   
-  return fetch(`${apiUrl}${endpoint}`, {
+  // Use secureFetch to enforce HTTPS
+  return secureFetch(`${apiUrl}${endpoint}`, {
     ...options,
     headers,
   });

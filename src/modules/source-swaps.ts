@@ -701,7 +701,15 @@ export function saveCurrentSwap(): void {
   swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
   storage.set('swapConfigs', swapConfigs);
   renderSavedSwaps();
+  
+  // Emit EventBus event (new architecture)
+  import('../core/events/EventBus').then(({ EventBus }) => {
+    EventBus.emitSync('source-swaps:configs-changed', { configs: swapConfigs });
+  });
+  
+  // Legacy window event (for backward compatibility)
   window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
+  
   dependencies.log(`Saved config: ${name}`, 'success');
   
   // OBS dock: debounced save to persistent storage
@@ -715,7 +723,47 @@ export function saveCurrentSwap(): void {
 /**
  * Add a new swap config
  */
-export function addSwapConfig(): void {
+/**
+ * Add swap config (for reactive components)
+ */
+export function addSwapConfig(
+  configName: string,
+  sourceA: string,
+  sourceB: string,
+  options?: { style?: string; duration?: number; easing?: string; preserveAspect?: boolean }
+): void {
+  const trimmedName = configName?.trim();
+  
+  if (!trimmedName) { 
+    dependencies.log('Enter a config name', 'error'); 
+    return; 
+  }
+  if (!sourceA || !sourceB) { 
+    dependencies.log('Select both sources', 'error'); 
+    return; 
+  }
+  if (sourceA === sourceB) { 
+    dependencies.log('Select different sources', 'error'); 
+    return; 
+  }
+  
+  const config: SwapConfig = { 
+    name: trimmedName, 
+    sourceA, 
+    sourceB,
+    ...options
+  };
+  
+  swapConfigs.push(config);
+  storage.set('swapConfigs', swapConfigs);
+  renderSavedSwaps();
+}
+
+/**
+ * Legacy function for DOM-based components
+ * @deprecated Use addSwapConfig(configName, sourceA, sourceB, options) instead
+ */
+export function addSwapConfigLegacy(): void {
   const configName = (document.getElementById('swapConfigName') as HTMLInputElement)?.value.trim();
   const sourceA = (document.getElementById('swapNewSourceA') as HTMLSelectElement)?.value;
   const sourceB = (document.getElementById('swapNewSourceB') as HTMLSelectElement)?.value;
@@ -736,6 +784,13 @@ export function addSwapConfig(): void {
   swapConfigs.push({ name: configName, sourceA, sourceB });
   storage.set('swapConfigs', swapConfigs);
   renderSavedSwaps();
+  
+  // Emit EventBus event (new architecture)
+  import('../core/events/EventBus').then(({ EventBus }) => {
+    EventBus.emitSync('source-swaps:configs-changed', { configs: swapConfigs });
+  });
+  
+  // Legacy window event (for backward compatibility)
   window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
   
   // Clear the form
@@ -751,6 +806,13 @@ export function deleteSwapConfig(index: number): void {
   swapConfigs.splice(index, 1);
   storage.set('swapConfigs', swapConfigs);
   renderSavedSwaps();
+  
+  // Emit EventBus event (new architecture)
+  import('../core/events/EventBus').then(({ EventBus }) => {
+    EventBus.emitSync('source-swaps:configs-changed', { configs: swapConfigs });
+  });
+  
+  // Legacy window event (for backward compatibility)
   window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
   
   // OBS dock: debounced save to persistent storage
@@ -824,7 +886,15 @@ export function importConfigs(): void {
     
     storage.set('swapConfigs', swapConfigs);
     renderSavedSwaps();
+    
+    // Emit EventBus event (new architecture)
+    import('../core/events/EventBus').then(({ EventBus }) => {
+      EventBus.emitSync('source-swaps:configs-changed', { configs: swapConfigs });
+    });
+    
+    // Legacy window event (for backward compatibility)
     window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
+    
     dependencies.log(`Imported ${imported.length} configs`, 'success');
   } catch (e) {
     const error = e as Error;

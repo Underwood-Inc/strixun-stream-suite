@@ -5,14 +5,19 @@
    * Main dashboard with system status and quick actions
    */
   
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { connected, currentScene } from '../stores/connection';
   import { navigateTo } from '../stores/navigation';
   import Tooltip from '../components/Tooltip.svelte';
   import type { SwapConfig } from '../types';
+  import { stagger } from '../core/animations';
+  import { EventBus } from '../core/events/EventBus';
   
   let hasRefreshedOnConnect = false;
   let swapConfigs: SwapConfig[] = [];
+  
+  // Track previous connection state to detect changes
+  let previousConnected: boolean | undefined = undefined;
   
   // Function to refresh swap configs
   function refreshSwapConfigs(): void {
@@ -23,9 +28,14 @@
     }
   }
   
-  // Reactive statement to refresh configs when connection changes
-  $: if ($connected !== undefined) {
-    refreshSwapConfigs();
+  // Reactive statement to refresh configs when connection actually changes (not on every update)
+  $: {
+    if ($connected !== previousConnected) {
+      previousConnected = $connected;
+      if ($connected !== undefined) {
+        refreshSwapConfigs();
+      }
+    }
   }
   
   onMount(() => {
@@ -44,29 +54,41 @@
       hasRefreshedOnConnect = true;
     }
     
-    // Listen for custom event when swap configs change (fired by SourceSwaps module)
+    // Listen for swap config changes via EventBus (replaces window events)
+    const unsubscribeSwapConfigs = EventBus.on('source-swaps:configs-changed', () => {
+      refreshSwapConfigs();
+    });
+    
+    // Also listen for legacy window events (for backward compatibility during migration)
     const handleSwapConfigsChange = () => {
       refreshSwapConfigs();
     };
     window.addEventListener('swapConfigsChanged', handleSwapConfigsChange);
     
     return () => {
+      unsubscribeSwapConfigs();
       window.removeEventListener('swapConfigsChanged', handleSwapConfigsChange);
     };
   });
   
-  // Update dashboard when connection state changes
-  $: if ($connected) {
-    updateDashboardStatus();
-    
-    // Refresh scenes to get current scene when connection is established (only once)
-    if (!hasRefreshedOnConnect) {
-      handleRefreshScenes();
-      hasRefreshedOnConnect = true;
+  // Update dashboard when connection state actually changes (with change detection)
+  $: {
+    if ($connected !== previousConnected) {
+      previousConnected = $connected;
+      
+      if ($connected) {
+        updateDashboardStatus();
+        
+        // Refresh scenes to get current scene when connection is established (only once)
+        if (!hasRefreshedOnConnect) {
+          handleRefreshScenes();
+          hasRefreshedOnConnect = true;
+        }
+      } else {
+        // Reset flag when disconnected
+        hasRefreshedOnConnect = false;
+      }
     }
-  } else {
-    // Reset flag when disconnected
-    hasRefreshedOnConnect = false;
   }
   
   function updateDashboardStatus(): void {
@@ -100,7 +122,7 @@
   }
 </script>
 
-<div class="page dashboard-page">
+<div class="page dashboard-page" use:stagger={{ preset: 'fadeIn', stagger: 100, config: { duration: 300 } }}>
   <!-- Status Card -->
   <div class="card status-card" id="dashboardStatusCard">
     <div id="dashboardScriptStatus">

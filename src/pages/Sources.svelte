@@ -8,6 +8,8 @@
   import { onMount } from 'svelte';
   import { connected, currentScene, sources } from '../stores/connection';
   import SearchBox from '../components/SearchBox.svelte';
+  import SourceSelect from '../components/SourceSelect.svelte';
+  import { stagger } from '../core/animations';
   
   let visAnimType = 'fade';
   let visAnimDuration = 300;
@@ -49,28 +51,39 @@
   }
   
   function handleOpacityChange(): void {
-    // Update the display element directly since we're using Svelte bind:value
-    // The reactive {opacityValue}% will update automatically, but we also call
-    // the module function for any additional logic it might have
-    const display = document.getElementById('opacityValue');
-    if (display) {
-      display.textContent = `${opacityValue}%`;
-    }
-    if ((window as any).Sources?.updateOpacityPreview) {
-      (window as any).Sources.updateOpacityPreview();
-    }
+    // Opacity value is reactive, no DOM manipulation needed
+    // The {opacityValue}% display updates automatically via Svelte reactivity
   }
   
   function handleApplyOpacity(): void {
-    (window as any).Sources?.applySourceOpacity();
+    if (opacitySource) {
+      (window as any).Sources?.applySourceOpacity(opacitySource, opacityValue);
+    }
   }
   
   function handleResetOpacity(): void {
-    (window as any).Sources?.resetSourceOpacity();
+    if (opacitySource) {
+      opacityValue = 100;
+      (window as any).Sources?.applySourceOpacity(opacitySource, 100);
+    }
   }
   
   function handleLoadOpacity(): void {
-    (window as any).Sources?.loadSourceOpacity();
+    if (opacitySource && (window as any).Sources?.loadSourceOpacity) {
+      const savedOpacity = (window as any).Sources.loadSourceOpacity(opacitySource);
+      opacityValue = savedOpacity;
+    } else {
+      opacityValue = 100;
+    }
+  }
+  
+  // Watch for source changes and load opacity
+  $: {
+    if (opacitySource && $connected) {
+      handleLoadOpacity();
+    } else if (!opacitySource) {
+      opacityValue = 100;
+    }
   }
   
   function handleRefreshSceneList(): void {
@@ -78,7 +91,7 @@
   }
 </script>
 
-<div class="page sources-page">
+<div class="page sources-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Visibility Animation -->
   <div class="card">
     <h3>Visibility Animation</h3>
@@ -115,9 +128,13 @@
   <div class="card">
     <h3>🎚️ Opacity Control</h3>
     <label>Source</label>
-    <select id="opacitySourceSelect" bind:value={opacitySource} on:change={handleLoadOpacity}>
-      <option value="">-- Select Source --</option>
-    </select>
+    <SourceSelect
+      bind:value={opacitySource}
+      placeholder="-- Select Source --"
+      searchable={true}
+      disabled={!$connected}
+      on:change={handleLoadOpacity}
+    />
     <div style="margin-top:12px">
       <div style="display:flex;align-items:center;gap:12px">
         <input type="range" id="opacitySlider" class="opacity-slider" 

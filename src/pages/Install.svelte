@@ -6,6 +6,7 @@
    */
   
   import { onMount } from 'svelte';
+  import { stagger } from '../core/animations';
   
   onMount(() => {
     // Initialize installer if available
@@ -51,7 +52,7 @@
   }
 </script>
 
-<div class="page install-page">
+<div class="page install-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <div class="card">
     <h3>📥 Installation Wizard</h3>
     <p class="hint">Automatically install Lua scripts to your OBS scripts folder.</p>

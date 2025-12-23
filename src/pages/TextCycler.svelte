@@ -6,9 +6,11 @@
    */
   
   import { onMount } from 'svelte';
-  import { connected } from '../stores/connection';
+  import { connected, textSources } from '../stores/connection';
   import SearchBox from '../components/SearchBox.svelte';
   import Tooltip from '../components/Tooltip.svelte';
+  import SourceSelect from '../components/SourceSelect.svelte';
+  import { stagger } from '../core/animations';
   
   let showEditor = false;
   let showTextLines = false;
@@ -93,7 +95,12 @@
   }
   
   function handleLoadTextSource(): void {
-    if ((window as any).loadTextSource) {
+    if (textSource && (window as any).loadTextSource) {
+      // Pass the reactive value instead of reading from DOM
+      const selectEl = document.getElementById('textSource') as HTMLSelectElement;
+      if (selectEl) {
+        selectEl.value = textSource;
+      }
       (window as any).loadTextSource();
     }
   }
@@ -105,7 +112,7 @@
   }
 </script>
 
-<div class="page text-cycler-page">
+<div class="page text-cycler-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Saved Configs -->
   <div class="card">
     <h3>💾 Saved Configs</h3>
@@ -159,9 +166,20 @@
     
     <div id="legacyModeSettings" style="display:none">
       <label>Text Source</label>
-      <select id="textSource" on:change={handleLoadTextSource}>
-        <option value="">-- Select Text Source --</option>
-      </select>
+      <SourceSelect
+        id="textSource"
+        placeholder="-- Select Text Source --"
+        searchable={true}
+        disabled={!$connected}
+        filter={(source) => 
+          source.inputKind && (
+            source.inputKind.includes('text') || 
+            source.inputKind === 'text_gdiplus_v2' || 
+            source.inputKind === 'text_ft2_source_v2'
+          )
+        }
+        on:change={handleLoadTextSource}
+      />
     </div>
   </div>
 

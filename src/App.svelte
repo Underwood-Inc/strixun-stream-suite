@@ -23,8 +23,11 @@
   
   import { currentPage } from './stores/navigation';
   import { initializeApp } from './modules/bootstrap';
+  import { animate } from './core/animations';
+  import { initAnimationPreferences } from './core/animations/store';
   
   let pageKey = 0;
+  let pageWrapper: HTMLDivElement;
   
   $: {
     // Force re-render on page change for transitions
@@ -35,6 +38,8 @@
   onMount(async () => {
     try {
       await initializeApp();
+      // Initialize animation preferences
+      initAnimationPreferences();
     } catch (error) {
       console.error('[App] Failed to initialize:', error);
       // Still show the app even if initialization fails
@@ -49,7 +54,18 @@
   
   <div class="split-container">
     <main class="split-main content">
-      <div class="page-wrapper" key={pageKey}>
+      <div 
+        class="page-wrapper" 
+        key={pageKey}
+        bind:this={pageWrapper}
+        use:animate={{
+          preset: 'fadeIn',
+          duration: 250,
+          easing: 'easeOutCubic',
+          id: 'page-transition',
+          trigger: 'mount'
+        }}
+      >
         {#if $currentPage === 'dashboard'}
           <Dashboard />
         {:else if $currentPage === 'sources'}

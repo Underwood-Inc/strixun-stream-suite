@@ -16,6 +16,7 @@
   export let inOverflow: boolean = false;
   export let overflowIndex: number = 0;
   export let showCloseButton: boolean = true; // Allow disabling close button (e.g., in alerts panel)
+  export let showCount: boolean = true; // Allow disabling count indicator (e.g., in alerts panel)
   
   let mounted = false;
   let visible = false;
@@ -86,7 +87,7 @@
     <div class="toast__body">
       <div class="toast__message-row">
         <p class="toast__message">{toast.message}</p>
-        {#if toast.count && toast.count > 1}
+        {#if showCount && toast.count && toast.count > 1}
           <Tooltip text="This message appeared {toast.count} times" position="top">
             <span class="toast__count">
               x{toast.count}

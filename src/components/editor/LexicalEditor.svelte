@@ -15,7 +15,9 @@
     $createParagraphNode as createParagraphNode,
     $getRoot as getRoot,
     $getSelection as getSelection,
-    $isRangeSelection as isRangeSelection
+    $isRangeSelection as isRangeSelection,
+    TextNode,
+    ParagraphNode
   } from 'lexical';
   import { onDestroy, onMount } from 'svelte';
   import { MermaidNode, $createMermaidNode as createMermaidNode } from './MermaidNode';
@@ -30,6 +32,12 @@
   
   // Initialize Mermaid
   onMount(async () => {
+    // Wait for container to be bound (use tick to ensure DOM is ready)
+    if (!editorContainer) {
+      console.error('[LexicalEditor] Container not found on mount');
+      return;
+    }
+    
     if (typeof window !== 'undefined') {
       const mermaidModule = await import('mermaid');
       mermaidModule.default.initialize({
@@ -43,6 +51,8 @@
     editor = createEditor({
       namespace: 'notes-editor',
       nodes: [
+        TextNode, // REQUIRED for text input
+        ParagraphNode, // REQUIRED for paragraphs
         HeadingNode,
         ListNode,
         ListItemNode,
@@ -73,20 +83,17 @@
         link: 'editor-link',
         mermaid: 'editor-mermaid',
       },
+      editable: true,
     });
-    
-    // Ensure container is ready
-    if (!editorContainer) {
-      console.error('[LexicalEditor] Container not found');
-      return;
-    }
     
     console.log('[LexicalEditor] Initializing editor, container:', editorContainer);
     
     // Mount editor to DOM (this makes it contentEditable automatically)
+    // IMPORTANT: Don't set contentEditable manually - Lexical handles this
     editor.setRootElement(editorContainer);
     
     console.log('[LexicalEditor] Editor mounted, contentEditable:', editorContainer.contentEditable);
+    console.log('[LexicalEditor] Editor editable state:', editor.isEditable());
     
     // Initialize with empty paragraph if no content
     editor.update(() => {
@@ -131,6 +138,28 @@
         }
       });
     }
+    
+    // Ensure editor is editable
+    if (!editor.isEditable()) {
+      console.warn('[LexicalEditor] Editor is not editable, setting editable state');
+      // Editor should already be editable from config, but double-check
+    }
+    
+    // Focus the editor to make it interactive
+    setTimeout(() => {
+      if (editorContainer && editor) {
+        // Ensure the container can receive focus
+        editorContainer.focus();
+        console.log('[LexicalEditor] Editor focused, editable:', editor.isEditable());
+        console.log('[LexicalEditor] Container contentEditable:', editorContainer.contentEditable);
+        
+        // Test if we can get selection
+        editor.getEditorState().read(() => {
+          const selection = getSelection();
+          console.log('[LexicalEditor] Initial selection:', selection);
+        });
+      }
+    }, 100);
     
     isReady = true;
   });
@@ -258,10 +287,12 @@
   <div 
     bind:this={editorContainer} 
     class="lexical-editor"
-    contenteditable="true"
     spellcheck="true"
     data-lexical-editor="true"
     data-placeholder={placeholder}
+    tabindex="0"
+    role="textbox"
+    aria-label="Rich text editor"
   />
   {#if !isReady}
     <div class="editor-loading">Loading editor...</div>
@@ -292,10 +323,13 @@
     line-height: 1.6;
     outline: none;
     overflow-y: auto;
+    cursor: text;
     
     // Ensure editor is visible and interactive
     &[contenteditable="true"] {
       cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
       
       &:focus {
         outline: 2px solid var(--accent);
@@ -307,6 +341,12 @@
         color: var(--text-secondary);
         pointer-events: none;
       }
+    }
+    
+    // Ensure editor can receive focus and input
+    &:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
     }
     
     // Text formatting

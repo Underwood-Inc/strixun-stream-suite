@@ -19,6 +19,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { writable } from 'svelte/store';
   import Tooltip from './Tooltip.svelte';
+  import { animate } from '../core/animations';
   
   // Props
   export let inputId: string;
@@ -209,8 +210,8 @@
     type="text"
     class="search-box__input"
     id={inputId}
-    placeholder={placeholder}
     bind:this={inputElement}
+    placeholder={placeholder}
     on:input={handleInput}
   />
   {#if $searchQuery}

@@ -36,38 +36,63 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
  * 3. Hardcoded fallback (for development/testing)
  * 4. Null (user must configure)
  */
+// Cache the API URL to prevent repeated logging
+let cachedApiUrl = null;
+let apiUrlLogged = false;
+
 window.getWorkerApiUrl = function() {
+    // Return cached value if available
+    if (cachedApiUrl !== null) {
+        return cachedApiUrl;
+    }
+    
     // Priority 1: Manual override from storage
     if (typeof storage !== 'undefined') {
         const manualOverride = storage.get('twitch_api_server');
         if (manualOverride && manualOverride.trim() !== '') {
-            console.log('[Config] Using manual API server override:', manualOverride);
-            return manualOverride;
+            if (!apiUrlLogged) {
+                console.log('[Config] Using manual API server override:', manualOverride);
+                apiUrlLogged = true;
+            }
+            cachedApiUrl = manualOverride;
+            return cachedApiUrl;
         }
     }
     
     // Priority 2: Auto-injected during deployment
     const injected = window.STRIXUN_CONFIG.WORKER_API_URL;
     if (injected && !injected.startsWith('%%')) {
-        console.log('[Config] Using auto-injected API server:', injected);
-        return injected;
+        if (!apiUrlLogged) {
+            console.log('[Config] Using auto-injected API server:', injected);
+            apiUrlLogged = true;
+        }
+        cachedApiUrl = injected;
+        return cachedApiUrl;
     }
     
     // Priority 3: Hardcoded fallback for local development
     // Actual Worker URL from Cloudflare dashboard
     const HARDCODED_WORKER_URL = 'https://strixun-twitch-api.strixuns-script-suite.workers.dev';
     if (HARDCODED_WORKER_URL && !HARDCODED_WORKER_URL.includes('UPDATE-ME')) {
-        console.log('[Config] Using hardcoded Worker URL:', HARDCODED_WORKER_URL);
-        console.warn('[Config] ⚠️ Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
-        return HARDCODED_WORKER_URL;
+        if (!apiUrlLogged) {
+            console.log('[Config] Using hardcoded Worker URL:', HARDCODED_WORKER_URL);
+            console.warn('[Config] ⚠️ Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
+            apiUrlLogged = true;
+        }
+        cachedApiUrl = HARDCODED_WORKER_URL;
+        return cachedApiUrl;
     }
     
     // Priority 4: No configuration available
-    console.error('[Config] ❌ No API server configured!');
-    console.log('[Config] Solutions:');
-    console.log('  1. Update HARDCODED_WORKER_URL in config.js with your actual Worker URL');
-    console.log('  2. OR manually configure in Setup → Twitch API Settings');
-    console.log('  3. OR add WORKER_URL to GitHub Secrets for auto-injection');
+    if (!apiUrlLogged) {
+        console.error('[Config] ❌ No API server configured!');
+        console.log('[Config] Solutions:');
+        console.log('  1. Update HARDCODED_WORKER_URL in config.js with your actual Worker URL');
+        console.log('  2. OR manually configure in Setup → Twitch API Settings');
+        console.log('  3. OR add WORKER_URL to GitHub Secrets for auto-injection');
+        apiUrlLogged = true;
+    }
+    cachedApiUrl = null;
     return null;
 };
 

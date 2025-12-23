@@ -21,6 +21,7 @@
   } from '../modules/notes-storage';
   import { isAuthenticated, user, clearAuth } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
+  import { stagger } from '../core/animations';
   
   let notebooks: NotebookMetadata[] = [];
   let currentNotebook: Notebook | null = null;
@@ -224,7 +225,7 @@
       hasUnsavedChanges = false;
       saveStatus = 'Saved';
       
-      showToast({ message: 'Notebook saved', type: 'success' });
+      showToast({ message: 'Notebook saved', type: 'success', title: 'Success' });
       
       // Reload notebook list to update lastEdited
       await loadNotebooks();
@@ -347,7 +348,7 @@
   
 </script>
 
-<div class="notes-page">
+<div class="notes-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   {#if !$isAuthenticated}
     <div class="auth-required">
       <div class="auth-required-content">

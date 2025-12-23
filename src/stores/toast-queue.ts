@@ -131,9 +131,14 @@ export const allToasts = derived(toastQueue, ($queue) => $queue.filter(t => t.vi
 /**
  * Get all toasts ever created in this session (including dismissed ones)
  * Used for alerts history/dropdown
+ * CRITICAL: Returns a stable reference when queue hasn't changed
  */
 export const allToastsHistory = derived(toastQueue, ($queue) => {
   // Return all toasts sorted by creation time (newest first)
+  // Create a new array only when queue actually changes
+  if (!$queue || $queue.length === 0) {
+    return [];
+  }
   return [...$queue].sort((a, b) => b.createdAt - a.createdAt);
 });
 
@@ -148,19 +153,29 @@ function generateToastId(): string {
 
 /**
  * Update toast positions (visible vs overflow)
+ * CRITICAL: Returns a new array to ensure Svelte reactivity works correctly
  */
 function updateToastPositions(): void {
   const config = getToastConfig();
   toastQueue.update((queue) => {
-    const visible = queue.filter(t => t.visible && !t.inOverflow);
-    const overflow = queue.filter(t => t.visible && t.inOverflow);
+    // Create a new array to ensure reactivity
+    let newQueue = queue.map(toast => ({ ...toast }));
+    
+    const visible = newQueue.filter(t => t.visible && !t.inOverflow);
+    const overflow = newQueue.filter(t => t.visible && t.inOverflow);
     
     // If we have more visible toasts than maxVisible, move extras to overflow
     if (visible.length > config.maxVisible) {
       const toMove = visible.slice(config.maxVisible);
       toMove.forEach((toast, index) => {
-        toast.inOverflow = true;
-        toast.overflowIndex = overflow.length + index;
+        const queueIndex = newQueue.findIndex(t => t.id === toast.id);
+        if (queueIndex >= 0) {
+          newQueue[queueIndex] = {
+            ...newQueue[queueIndex],
+            inOverflow: true,
+            overflowIndex: overflow.length + index
+          };
+        }
       });
     }
     
@@ -168,18 +183,30 @@ function updateToastPositions(): void {
     if (visible.length < config.maxVisible && overflow.length > 0) {
       const toPromote = overflow.slice(0, config.maxVisible - visible.length);
       toPromote.forEach((toast) => {
-        toast.inOverflow = false;
-        toast.overflowIndex = 0;
+        const queueIndex = newQueue.findIndex(t => t.id === toast.id);
+        if (queueIndex >= 0) {
+          newQueue[queueIndex] = {
+            ...newQueue[queueIndex],
+            inOverflow: false,
+            overflowIndex: 0
+          };
+        }
       });
     }
     
     // Update overflow indices for remaining overflow toasts
-    const remainingOverflow = queue.filter(t => t.visible && t.inOverflow);
+    const remainingOverflow = newQueue.filter(t => t.visible && t.inOverflow);
     remainingOverflow.forEach((toast, index) => {
-      toast.overflowIndex = index;
+      const queueIndex = newQueue.findIndex(t => t.id === toast.id);
+      if (queueIndex >= 0) {
+        newQueue[queueIndex] = {
+          ...newQueue[queueIndex],
+          overflowIndex: index
+        };
+      }
     });
     
-    return queue;
+    return newQueue;
   });
 }
 
@@ -265,12 +292,19 @@ export function showToast(options: ToastOptions): string {
 /**
  * Dismiss a toast by ID
  * Note: Toasts are kept in history for alerts dropdown, just marked as not visible
+ * CRITICAL: Returns a new array to ensure Svelte reactivity works correctly
  */
 export function dismissToast(id: string): void {
   toastQueue.update((queue) => {
-    const toast = queue.find(t => t.id === id);
-    if (toast) {
-      toast.visible = false;
+    const toastIndex = queue.findIndex(t => t.id === id);
+    if (toastIndex >= 0) {
+      // Create a new array with the updated toast to ensure reactivity
+      const newQueue = [...queue];
+      newQueue[toastIndex] = {
+        ...newQueue[toastIndex],
+        visible: false
+      };
+      return newQueue;
     }
     return queue;
   });
@@ -284,14 +318,17 @@ export function dismissToast(id: string): void {
 /**
  * Dismiss all toasts
  * Note: Toasts are kept in history for alerts dropdown, just marked as not visible
+ * CRITICAL: Returns a new array to ensure Svelte reactivity works correctly
  * @param clearHistory - If true, removes all toasts from history. Default: false
  */
 export function dismissAllToasts(clearHistory: boolean = false): void {
   toastQueue.update((queue) => {
-    queue.forEach(toast => {
-      toast.visible = false;
-    });
-    return queue;
+    // Create new array with all toasts marked as not visible
+    const newQueue = queue.map(toast => ({
+      ...toast,
+      visible: false
+    }));
+    return newQueue;
   });
   
   // Only clear history if explicitly requested

@@ -7,16 +7,18 @@
    * - 3D card deck view for overflow toasts
    * - Portal rendering at body level
    * - Constrained to content area (between navigation and activity log)
+   * - Smooth position animations when toasts are dismissed
    * 
    * Part of the agnostic UI component library.
    */
   
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick, afterUpdate } from 'svelte';
   import { visibleToasts, overflowToasts, dismissToast } from '../../stores/toast-queue';
   import { getToastConfig } from '../../config/toast.config';
   import Toast from './Toast.svelte';
   
   let container: HTMLDivElement;
+  let stackContainer: HTMLDivElement;
   let portalContainer: HTMLDivElement | null = null;
   const config = getToastConfig();
   
@@ -24,6 +26,11 @@
   let contentBottom = 0;
   let contentLeft = 0;
   let contentRight = 0;
+  
+  // FLIP animation state
+  let previousToastIds: string[] = [];
+  let toastPositions = new Map<string, { top: number; height: number }>();
+  let isAnimating = false;
   
   function updateContentBounds(): void {
     const navigation = document.querySelector('nav.tabs');
@@ -126,8 +133,130 @@
   });
   
   function handleDismiss(id: string): void {
+    // Capture positions BEFORE dismissal (FLIP: First)
+    if (stackContainer && !isAnimating) {
+      captureToastPositions();
+    }
     dismissToast(id);
   }
+  
+  /**
+   * Capture current positions of all toasts (FLIP: First)
+   */
+  function captureToastPositions(): void {
+    if (!stackContainer) return;
+    
+    const toastElements = Array.from(stackContainer.children) as HTMLElement[];
+    toastPositions.clear();
+    
+    toastElements.forEach((element) => {
+      const toastId = element.getAttribute('data-toast-id');
+      if (toastId) {
+        const rect = element.getBoundingClientRect();
+        toastPositions.set(toastId, {
+          top: rect.top,
+          height: rect.height
+        });
+      }
+    });
+    
+    // Store current IDs
+    previousToastIds = $visibleToasts.map(t => t.id);
+  }
+  
+  /**
+   * Animate toast positions after DOM update (FLIP: Last, Invert, Play)
+   */
+  async function animateToastPositions(): Promise<void> {
+    if (isAnimating || !stackContainer || toastPositions.size === 0) return;
+    
+    isAnimating = true;
+    
+    // Wait for DOM to update (FLIP: Last)
+    await tick();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    
+    const currentIds = $visibleToasts.map(t => t.id);
+    const removedIds = previousToastIds.filter(id => !currentIds.includes(id));
+    
+    // If no toasts were removed, just update state
+    if (removedIds.length === 0) {
+      toastPositions.clear();
+      previousToastIds = currentIds;
+      isAnimating = false;
+      return;
+    }
+    
+    // Get new positions after removal
+    const toastElements = Array.from(stackContainer.children) as HTMLElement[];
+    let animationCount = 0;
+    let completedCount = 0;
+    
+    toastElements.forEach((element) => {
+      const toastId = element.getAttribute('data-toast-id');
+      if (!toastId) return;
+      
+      const oldPos = toastPositions.get(toastId);
+      if (!oldPos) return; // This toast wasn't in the previous state
+      
+      const newRect = element.getBoundingClientRect();
+      const newTop = newRect.top;
+      
+      // Calculate offset (FLIP: Invert)
+      const offsetY = oldPos.top - newTop;
+      
+      if (Math.abs(offsetY) > 0.5) { // Only animate if there's actual movement
+        animationCount++;
+        
+        // Set initial position (inverted)
+        const currentTransform = element.style.transform || '';
+        const baseTransform = currentTransform.replace(/translateY\([^)]+\)/g, '').trim();
+        element.style.transform = `${baseTransform} translateY(${offsetY}px)`.trim();
+        
+        // Force reflow
+        element.offsetHeight;
+        
+        // Animate to final position (FLIP: Play) using Web Animations API
+        const anim = element.animate(
+          [
+            { transform: `${baseTransform} translateY(${offsetY}px)`.trim() },
+            { transform: baseTransform || 'none' }
+          ],
+          {
+            duration: 300,
+            easing: 'cubic-bezier(0.33, 1, 0.68, 1)', // easeOutCubic
+            fill: 'forwards'
+          }
+        );
+        
+        anim.addEventListener('finish', () => {
+          // Clean up transform
+          element.style.transform = baseTransform || '';
+          completedCount++;
+        });
+      }
+    });
+    
+    // Wait for all animations to complete (300ms duration + buffer)
+    if (animationCount > 0) {
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+    
+    // Update state
+    toastPositions.clear();
+    previousToastIds = currentIds;
+    isAnimating = false;
+  }
+  
+  // Watch for changes and animate after DOM updates
+  afterUpdate(() => {
+    if (stackContainer && toastPositions.size > 0 && !isAnimating) {
+      // Small delay to ensure DOM has fully updated
+      setTimeout(() => {
+        animateToastPositions();
+      }, 10);
+    }
+  });
   
   $: positionClass = `toast-container--${config.position}`;
   $: stackSpacing = config.stackSpacing;
@@ -140,15 +269,17 @@
   style="--toast-stack-spacing: {stackSpacing}px;"
 >
   <!-- Visible toasts stack -->
-  <div class="toast-container__stack">
-    {#each $visibleToasts as toast, index}
-      <Toast
-        {toast}
-        index={index}
-        inOverflow={false}
-        overflowIndex={0}
-        onDismiss={handleDismiss}
-      />
+  <div class="toast-container__stack" bind:this={stackContainer}>
+    {#each $visibleToasts as toast (toast.id)}
+      <div data-toast-id={toast.id}>
+        <Toast
+          {toast}
+          index={$visibleToasts.indexOf(toast)}
+          inOverflow={false}
+          overflowIndex={0}
+          onDismiss={handleDismiss}
+        />
+      </div>
     {/each}
   </div>
   
@@ -230,9 +361,13 @@
     pointer-events: none;
     padding-right: 4px; // Space for scrollbar
     
-    :global(.toast) {
-      pointer-events: auto;
+    > div {
+      pointer-events: none;
       flex-shrink: 0;
+      
+      :global(.toast) {
+        pointer-events: auto;
+      }
     }
   }
   

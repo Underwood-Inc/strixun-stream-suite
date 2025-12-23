@@ -20,12 +20,18 @@
   let scrollTop = 0;
   
   // Reactive variables for virtual list calculations
-  let visibleItems: ItemWithId[] = [];
+  let visibleItems: Array<{ item: ItemWithId; index: number }> = [];
   let offsetY = 0;
   let totalHeight = 0;
   let visibleStart = 0;
   
-  // Calculate visible items reactively with error handling
+  // Cache to preserve object references and prevent unnecessary re-renders
+  let itemCache = new Map<string | number, { item: ItemWithId; index: number }>();
+  let lastItemsLength = 0;
+  let lastStart = -1;
+  let lastEnd = -1;
+  
+  // Calculate visible items reactively with error handling and memoization
   $: {
     try {
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -33,16 +39,64 @@
         offsetY = 0;
         totalHeight = 0;
         visibleStart = 0;
+        itemCache.clear();
+        lastItemsLength = 0;
+        lastStart = -1;
+        lastEnd = -1;
       } else {
         const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
         const end = Math.min(
           items.length,
           Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan
         );
-        visibleItems = items.slice(start, end).filter(item => item != null);
-        offsetY = start * itemHeight;
-        totalHeight = items.length * itemHeight;
-        visibleStart = start;
+        
+        // Only recalculate if the visible range or items actually changed
+        const itemsChanged = items.length !== lastItemsLength;
+        const rangeChanged = start !== lastStart || end !== lastEnd;
+        
+        if (itemsChanged || rangeChanged) {
+          // Clear cache if items length changed (items were added/removed)
+          if (itemsChanged) {
+            itemCache.clear();
+          }
+          
+          // Build visible items, reusing cached objects when possible
+          const newVisibleItems: Array<{ item: ItemWithId; index: number }> = [];
+          const slice = items.slice(start, end).filter(item => item != null);
+          
+          for (let i = 0; i < slice.length; i++) {
+            const item = slice[i];
+            const index = start + i;
+            const cacheKey = item.id;
+            
+            // Reuse cached object if item and index haven't changed
+            let cached = itemCache.get(cacheKey);
+            if (cached && cached.item === item && cached.index === index) {
+              newVisibleItems.push(cached);
+            } else {
+              // Create new wrapper object
+              cached = { item, index };
+              itemCache.set(cacheKey, cached);
+              newVisibleItems.push(cached);
+            }
+          }
+          
+          // Clean up cache - remove items that are no longer in the visible range
+          const visibleIds = new Set(slice.map(item => item.id));
+          for (const [id] of itemCache) {
+            if (!visibleIds.has(id)) {
+              itemCache.delete(id);
+            }
+          }
+          
+          visibleItems = newVisibleItems;
+          offsetY = start * itemHeight;
+          totalHeight = items.length * itemHeight;
+          visibleStart = start;
+          lastItemsLength = items.length;
+          lastStart = start;
+          lastEnd = end;
+        }
       }
     } catch (error) {
       console.error('Error calculating virtual list items:', error);
@@ -50,6 +104,10 @@
       offsetY = 0;
       totalHeight = 0;
       visibleStart = 0;
+      itemCache.clear();
+      lastItemsLength = 0;
+      lastStart = -1;
+      lastEnd = -1;
     }
   }
   
@@ -82,8 +140,8 @@
     class="virtual-list__viewport"
     style="transform: translateY({offsetY}px);"
   >
-    {#each visibleItems as item, localIndex (item.id || `${visibleStart + localIndex}`)}
-      <slot item={item} index={visibleStart + localIndex} />
+    {#each visibleItems as { item, index } (item.id)}
+      <slot {item} {index} />
     {/each}
   </div>
 </div>

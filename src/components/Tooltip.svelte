@@ -22,7 +22,8 @@
    * </Tooltip>
    */
   
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
+  import { animate } from '../core/animations';
   
   // Portal action to render tooltip at body level
   function portal(node: HTMLElement, target: HTMLElement) {
@@ -239,6 +240,9 @@
   $: if (show && tooltipElement && !listenersActive) {
     // Use requestAnimationFrame to ensure DOM is updated
     requestAnimationFrame(() => {
+      // Double-check tooltipElement is still valid (might be destroyed between reactive update and RAF)
+      if (!tooltipElement) return;
+      
       // Apply width constraints
       tooltipElement.style.maxWidth = calculatedMaxWidth;
       tooltipElement.style.minWidth = calculatedMinWidth;
@@ -256,6 +260,8 @@
   // Update notch position when tooltip position changes
   $: if (show && tooltipElement && actualPosition) {
     requestAnimationFrame(() => {
+      // Double-check tooltipElement is still valid
+      if (!tooltipElement) return;
       updateNotchPosition();
     });
   }
@@ -338,6 +344,13 @@
     class:tooltip--info={level === 'info'}
     class:tooltip--warning={level === 'warning'}
     class:tooltip--error={level === 'error'}
+    use:animate={{
+      preset: 'fadeIn',
+      duration: 150,
+      easing: 'easeOutCubic',
+      id: `tooltip-${tooltipId}`,
+      trigger: 'mount'
+    }}
     id={tooltipId}
     role="tooltip"
     bind:this={tooltipElement}

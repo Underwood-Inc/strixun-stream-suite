@@ -9,6 +9,7 @@
   import SearchBox from '../components/SearchBox.svelte';
   import { connected, currentScene } from '../stores/connection';
   import Tooltip from '../components/Tooltip.svelte';
+  import { stagger } from '../core/animations';
   
   let layoutName = '';
   let layoutDuration = 500;
@@ -45,7 +46,7 @@
   }
 </script>
 
-<div class="page layouts-page">
+<div class="page layouts-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Save Current Layout -->
   <div class="card">
     <h3>💾 Save Current Layout</h3>

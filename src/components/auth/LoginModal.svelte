@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { isAuthenticated, setAuth, user } from '../../stores/auth';
   import { showToast } from '../../stores/toast-queue';
+  import { animate } from '../../core/animations';
   
   export let onClose: () => void;
   
@@ -169,7 +170,18 @@
 </script>
 
 <div class="login-modal-overlay" on:click={onClose} role="button" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onClose()}>
-  <div class="login-modal" on:click|stopPropagation role="dialog" aria-labelledby="login-title">
+  <div 
+    class="login-modal" 
+    on:click|stopPropagation 
+    use:animate={{
+      preset: 'scaleIn',
+      duration: 300,
+      easing: 'easeOutBack',
+      id: 'login-modal'
+    }}
+    role="dialog" 
+    aria-labelledby="login-title"
+  >
     <div class="login-header">
       <h2 id="login-title">Sign In</h2>
       <button class="close-btn" on:click={onClose} aria-label="Close">×</button>

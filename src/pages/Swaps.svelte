@@ -9,6 +9,8 @@
   import { connected, sources } from '../stores/connection';
   import SearchBox from '../components/SearchBox.svelte';
   import Tooltip from '../components/Tooltip.svelte';
+  import SourceSelect from '../components/SourceSelect.svelte';
+  import { stagger } from '../core/animations';
   
   let swapSourceA = '';
   let swapSourceB = '';
@@ -29,37 +31,39 @@
     if ($connected) {
       (window as any).SourceSwaps?.loadConfigs();
       (window as any).SourceSwaps?.renderSavedSwaps();
-      // Update dropdowns when sources are available
-      if ($sources && $sources.length > 0) {
-        (window as any).SourceSwaps?.updateSwapDropdowns();
-      }
     }
   });
   
+  // Reactive: re-render when sources change
   $: {
     if ($connected && $sources && $sources.length > 0) {
-      // Update dropdowns when sources are available
-      if ((window as any).SourceSwaps?.updateSwapDropdowns) {
-        (window as any).SourceSwaps.updateSwapDropdowns();
-      }
+      (window as any).SourceSwaps?.renderSavedSwaps();
     }
   }
   
   function handleExecuteSwap(): void {
     if ((window as any).executeSwap) {
-      (window as any).executeSwap();
+      // Pass reactive values directly instead of reading from DOM
+      (window as any).executeSwap(swapSourceA, swapSourceB);
     }
   }
   
   function handleAddSwapConfig(): void {
     if ((window as any).addSwapConfig) {
-      (window as any).addSwapConfig();
+      // Pass reactive values directly instead of reading from DOM
+      (window as any).addSwapConfig(swapConfigName, swapNewSourceA, swapNewSourceB, {
+        style: swapStyle,
+        duration: swapDuration,
+        easing: swapEasing,
+        preserveAspect: swapPreserveAspect
+      });
     }
   }
   
   function handleRefreshSwapSources(): void {
-    if ((window as any).refreshSwapSources) {
-      (window as any).refreshSwapSources();
+    // Sources are reactive, just refresh from OBS
+    if ((window as any).Sources?.refreshSources) {
+      (window as any).Sources.refreshSources();
     }
   }
   
@@ -76,7 +80,7 @@
   }
 </script>
 
-<div class="page swaps-page">
+<div class="page swaps-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Quick Swap -->
   <div class="card">
     <h3>Quick Swap</h3>
@@ -84,9 +88,19 @@
       Select two sources and swap their position/size
     </p>
     <label>Source A</label>
-    <select id="swapSourceA" bind:value={swapSourceA}></select>
+    <SourceSelect
+      bind:value={swapSourceA}
+      placeholder="-- Select Source --"
+      searchable={true}
+      disabled={!$connected}
+    />
     <label>Source B</label>
-    <select id="swapSourceB" bind:value={swapSourceB}></select>
+    <SourceSelect
+      bind:value={swapSourceB}
+      placeholder="-- Select Source --"
+      searchable={true}
+      disabled={!$connected}
+    />
     <div class="row" style="margin-top:8px">
       <Tooltip 
         text={$connected ? 'Execute the swap between selected sources' : 'Connect to OBS first to execute swaps'} 
@@ -164,11 +178,21 @@
     <div class="row" style="margin-top:8px">
       <div style="flex:1">
         <label>Source A</label>
-        <select id="swapNewSourceA" bind:value={swapNewSourceA}></select>
+        <SourceSelect
+          bind:value={swapNewSourceA}
+          placeholder="-- Select Source --"
+          searchable={true}
+          disabled={!$connected}
+        />
       </div>
       <div style="flex:1">
         <label>Source B</label>
-        <select id="swapNewSourceB" bind:value={swapNewSourceB}></select>
+        <SourceSelect
+          bind:value={swapNewSourceB}
+          placeholder="-- Select Source --"
+          searchable={true}
+          disabled={!$connected}
+        />
       </div>
     </div>
     <Tooltip 

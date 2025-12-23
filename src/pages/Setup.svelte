@@ -5,7 +5,7 @@
    * OBS WebSocket connection, Twitch API settings, storage backup, and version info
    */
   
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { connected } from '../stores/connection';
   import { connect, disconnect, toggleConnection, loadCredentials, clearSavedCredentials, updateSecurityWarning, updateConnectionState } from '../modules/websocket';
   import { openUrlOrCopy } from '../modules/script-status';
@@ -18,6 +18,8 @@
   import { isAuthenticated, user } from '../stores/auth';
   import { saveToCloud, loadFromCloud, listCloudSaves, deleteCloudSave, type CloudSave } from '../modules/cloud-save';
   import { showToast } from '../stores/toast-queue';
+  import { stagger } from '../core/animations';
+  import { EventBus } from '../core/events/EventBus';
   
   let host = 'localhost';
   let port = '4455';
@@ -52,19 +54,26 @@
   let isSavingToCloud = false;
   let saveSlotName = 'default';
   let saveDescription = '';
+  let hasLoadedCloudSaves = false; // Guard to prevent infinite loop
   
   onMount(async () => {
     // Set dock URL
     dockUrl = window.location.href;
     
+    // Listen for dock URL updates from bootstrap (replaces direct DOM manipulation)
+    const unsubscribeDockUrl = EventBus.on('app:dock-url-ready', (data: { url: string }) => {
+      dockUrl = data.url;
+      // Update DOM element if it exists (for legacy compatibility)
+      const dockUrlEl = document.getElementById('dockUrl') as HTMLInputElement | null;
+      if (dockUrlEl) dockUrlEl.value = data.url;
+    });
+    
     // Wait for DOM to be ready, then load credentials
     await new Promise(resolve => setTimeout(resolve, 50));
     await loadCredentials();
     
-    // Load cloud saves if authenticated
-    if ($isAuthenticated) {
-      await loadCloudSavesList();
-    }
+    // Load cloud saves if authenticated (reactive statement will handle this)
+    // Don't call here to avoid conflict with reactive statement
     
     // Sync loaded values back to Svelte variables
     const hostEl = document.getElementById('host') as HTMLInputElement;
@@ -101,6 +110,11 @@
       (window as any).Version.initVersionDisplay();
     }
     setTimeout(updateVersionDisplay, 100);
+    
+    // Return cleanup function
+    return () => {
+      unsubscribeDockUrl();
+    };
   });
   
   // Sync Svelte variables to DOM elements (for websocket module compatibility)
@@ -200,6 +214,7 @@
     openGitHubRepo();
   }
   
+  // Separate reactive statements to prevent infinite loops
   $: {
     // Update last backup info
     const lastBackupEl = document.getElementById('lastBackupInfo');
@@ -208,22 +223,38 @@
     // Update security warning
     const warningEl = document.getElementById('securityWarning');
     if (warningEl) securityWarning = warningEl.textContent || '';
+  }
+  
+  // Watch ONLY authentication state - use a separate variable to track auth changes
+  let previousAuthState = false;
+  $: {
+    const authChanged = $isAuthenticated !== previousAuthState;
+    previousAuthState = $isAuthenticated;
     
-    // Reload cloud saves when authentication changes
-    if ($isAuthenticated && cloudSaves.length === 0) {
-      loadCloudSavesList();
+    if (authChanged && $isAuthenticated && !hasLoadedCloudSaves) {
+      hasLoadedCloudSaves = true;
+      // Use setTimeout to break the reactive cycle
+      setTimeout(() => {
+        loadCloudSavesList();
+      }, 0);
+    } else if (authChanged && !$isAuthenticated) {
+      // Reset when logged out
+      hasLoadedCloudSaves = false;
+      cloudSaves = [];
     }
   }
   
   async function loadCloudSavesList(): Promise<void> {
-    if (!$isAuthenticated) return;
+    if (!$isAuthenticated || isLoadingCloudSaves) return;
     
     try {
       isLoadingCloudSaves = true;
       cloudSaves = await listCloudSaves();
+      hasLoadedCloudSaves = true; // Mark as loaded
     } catch (error) {
       console.error('[Setup] Failed to load cloud saves:', error);
       showToast({ message: 'Failed to load cloud saves', type: 'error' });
+      hasLoadedCloudSaves = false; // Reset on error so it can retry
     } finally {
       isLoadingCloudSaves = false;
     }
@@ -304,7 +335,7 @@
   }
 </script>
 
-<div class="page setup-page">
+<div class="page setup-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Connection Card -->
   <div class="card">
     <h3>Connection</h3>

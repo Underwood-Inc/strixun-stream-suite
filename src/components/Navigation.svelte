@@ -9,6 +9,7 @@
   import { currentPage } from '../stores/navigation';
   import { celebrateClick } from '../utils/particles';
   import Tooltip from './Tooltip.svelte';
+  import { animate, stagger } from '../core/animations';
   
   const tabs = [
     { 
@@ -108,14 +109,14 @@
   }
 </script>
 
-<nav class="tabs">
-  {#each tabs as tab}
+<nav class="tabs" use:stagger={{ preset: 'slideDown', stagger: 50, config: { duration: 250 } }}>
+  {#each tabs as tab, index}
     {@const isDisabled = tab.requiresConnection && !$connected}
     {@const tooltipLevel = tab.requiresConnection && !$connected ? 'warning' : 'log'}
     {@const tooltipContent = tab.requiresConnection && !$connected && tab.disabledReason 
       ? `${tab.label}\n${tab.disabledReason}` 
       : tab.label}
-    <!-- Debug: tab={tab.id}, requiresConnection={tab.requiresConnection}, connected={$connected}, isDisabled={isDisabled} -->
+    {@const isActive = $currentPage === tab.id && !isDisabled}
     <Tooltip 
       text={tooltipContent} 
       position="bottom" 
@@ -124,8 +125,15 @@
     >
       <button
         class="tab"
-        class:active={$currentPage === tab.id && !isDisabled}
+        class:active={isActive}
         class:disabled={isDisabled}
+        use:animate={{
+          preset: isActive ? 'scaleIn' : 'none',
+          duration: 200,
+          trigger: 'change',
+          id: `nav-tab-${tab.id}`,
+          enabled: isActive
+        }}
         on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
       >
         <span class="tab__numeral">{tab.numeral}</span>
@@ -156,7 +164,7 @@
     border-radius: 0;
     cursor: pointer;
     color: var(--text-secondary);
-    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 0.9em;
     display: flex;
     align-items: center;
@@ -166,7 +174,6 @@
     position: relative;
     box-shadow: 0 2px 0 var(--border);
     @include ripple-effect(rgba(255, 255, 255, 0.1));
-    animation: slide-down 0.3s ease-out backwards;
   }
   
   .tabs .tab .tab__numeral {
@@ -190,16 +197,10 @@
     }
   }
   
-  @for $i from 1 through 8 {
-    .tabs > *:nth-child(#{$i}) .tab {
-      animation-delay: #{$i * 0.05}s;
-    }
-  }
-  
   .tabs .tab:hover:not(.disabled):not(.active) {
     background: var(--card);
     color: var(--text);
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.02);
     box-shadow: 0 4px 0 var(--border);
     border-color: var(--border-light);
   }

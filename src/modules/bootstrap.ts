@@ -20,6 +20,96 @@ import { TwitchAPI } from './twitch-api';
 import * as App from './app';
 
 /**
+ * Show authentication blocker UI when encryption is enabled but user is not authenticated
+ */
+function showAuthenticationBlocker(): void {
+  // Create blocker overlay
+  const blocker = document.createElement('div');
+  blocker.id = 'auth-blocker';
+  blocker.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+  
+  blocker.innerHTML = `
+    <div style="text-align: center; max-width: 500px; padding: 40px;">
+      <h1 style="font-size: 2em; margin-bottom: 20px; color: var(--error, #ff4444);">🔐 Authentication Required</h1>
+      <p style="font-size: 1.2em; margin-bottom: 30px; color: #ccc;">
+        Encryption is enabled for this application. You must authenticate via email OTP to access the app.
+      </p>
+      <p style="font-size: 1em; margin-bottom: 40px; color: #999;">
+        Please sign in using your email address to continue.
+      </p>
+      <button 
+        id="auth-blocker-login-btn"
+        style="
+          padding: 16px 32px;
+          font-size: 1.1em;
+          background: var(--primary, #007bff);
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+        "
+      >
+        Sign In with Email
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(blocker);
+  
+  // Handle login button click - navigate to Setup page and trigger login modal
+  const loginBtn = blocker.querySelector('#auth-blocker-login-btn');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+      // Navigate to Setup page
+      navigateTo('setup');
+      
+      // Wait for page to load, then trigger login modal
+      setTimeout(() => {
+        const setupPage = document.querySelector('.setup-page');
+        if (setupPage) {
+          // Find and click the cloud backup login button
+          const cloudLoginBtn = setupPage.querySelector('button:has-text("Sign In to Use Cloud Backup")') as HTMLButtonElement;
+          if (cloudLoginBtn) {
+            cloudLoginBtn.click();
+          } else {
+            // Fallback: try to find any login button
+            const anyLoginBtn = setupPage.querySelector('[onclick*="showLoginModal"]') as HTMLElement;
+            if (anyLoginBtn) {
+              anyLoginBtn.click();
+            }
+          }
+        }
+        
+        // Remove blocker after navigation
+        blocker.remove();
+      }, 500);
+    });
+  }
+  
+  // Prevent any interaction with the app
+  blocker.addEventListener('click', (e) => {
+    if (e.target === blocker) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+}
+
+/**
  * Initialize the application
  */
 export async function initializeApp(): Promise<void> {
@@ -34,9 +124,27 @@ export async function initializeApp(): Promise<void> {
     // Notes storage is cloud-only, no initialization needed
     
     // Load authentication state
-    const { loadAuthState } = await import('../stores/auth');
+    const { loadAuthState, getAuthToken } = await import('../stores/auth');
     loadAuthState();
     console.log('[Bootstrap] Authentication state loaded');
+    
+    // CRITICAL: If encryption is enabled but no auth token exists, BLOCK APP ACCESS
+    // Encryption requires JWT token (email OTP auth) - app cannot function without it
+    const { isEncryptionEnabled } = await import('../core/services/encryption');
+    const encryptionEnabled = await isEncryptionEnabled();
+    const authToken = getAuthToken();
+    
+    if (encryptionEnabled && !authToken) {
+      // Encryption is enabled but user is not authenticated - BLOCK ACCESS
+      console.error('[Bootstrap] ❌ BLOCKED: Encryption enabled but user not authenticated');
+      console.error('[Bootstrap] User must authenticate via email OTP to access the application');
+      
+      // Show authentication blocker UI
+      showAuthenticationBlocker();
+      
+      // Stop initialization - app cannot proceed without auth when encryption is enabled
+      return;
+    }
     
     // Initialize modules in order
     await initializeModules();
@@ -224,10 +332,11 @@ export async function completeAppInitialization(): Promise<void> {
     // Start auto-backup system
     startAutoBackup();
     
-    // Set dock URL
+    // Set dock URL - use EventBus to notify Setup page instead of direct DOM manipulation
     const url = window.location.href;
-    const dockUrlEl = document.getElementById('dockUrl') as HTMLInputElement | null;
-    if (dockUrlEl) dockUrlEl.value = url;
+    // Emit event for Setup page to handle (avoids direct DOM manipulation)
+    const { EventBus } = await import('../core/events/EventBus');
+    EventBus.emitSync('app:dock-url-ready', { url });
     
     // Render loaded configs
     if ((window as any).SourceSwaps) {

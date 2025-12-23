@@ -27,7 +27,8 @@
     "@lexical/rich-text": "^0.38.0",
     "@lexical/utils": "^0.38.0",
     "lexical": "^0.38.0",
-    "mermaid": "^10.6.0"
+    "mermaid": "^10.6.0",
+    "svelte-lexical": "^0.6.3"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",

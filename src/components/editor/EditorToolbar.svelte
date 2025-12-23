@@ -13,6 +13,7 @@
     $getSelection as getSelection,
     $isRangeSelection as isRangeSelection
   } from 'lexical';
+  import { onDestroy } from 'svelte';
   
   export let editor: LexicalEditor | null = null;
   
@@ -22,6 +23,7 @@
   let isStrikethrough = false;
   let isCode = false;
   let headingLevel: HeadingTagType | null = null;
+  let updateListenerRegistered = false;
   
   /**
    * Update toolbar state based on selection
@@ -96,11 +98,17 @@
     }
   }
   
-  // Update toolbar on selection change
-  if (editor) {
+  // Register update listener when editor becomes available
+  $: if (editor && !updateListenerRegistered) {
     editor.registerUpdateListener(() => {
       updateToolbar();
     });
+    updateListenerRegistered = true;
+  }
+  
+  // Reset registration flag when editor changes
+  $: if (!editor) {
+    updateListenerRegistered = false;
   }
 </script>
 

@@ -8,11 +8,13 @@
   import type { LogEntry } from '../stores/activity-log';
   import { logFilters } from '../stores/activity-log';
   import Tooltip from './Tooltip.svelte';
+  import { animate } from '../core/animations';
   
   export let entry: LogEntry;
   export let index: number = 0;
   
   let isHovered = false;
+  let entryElement: HTMLElement;
   
   // Function to highlight search matches in text
   // Supports advanced syntax: quotes for exact, space for AND, | for OR, * for wildcard
@@ -57,9 +59,26 @@
     return highlighted;
   }
   
-  // Get highlighted message
-  $: highlightedMessage = highlightSearch(entry.message, $logFilters.searchQuery);
-  $: highlightedFlair = entry.flair ? highlightSearch(entry.flair, $logFilters.searchQuery) : '';
+  // Get highlighted message - memoize based on entry id and search query
+  let lastEntryId = entry.id;
+  let lastSearchQuery = $logFilters.searchQuery;
+  let cachedHighlightedMessage = highlightSearch(entry.message, lastSearchQuery);
+  let cachedHighlightedFlair = entry.flair ? highlightSearch(entry.flair, lastSearchQuery) : '';
+  
+  $: {
+    const currentQuery = $logFilters.searchQuery;
+    const currentEntryId = entry.id;
+    // Only recalculate if search query or entry id changes
+    if (currentQuery !== lastSearchQuery || currentEntryId !== lastEntryId) {
+      cachedHighlightedMessage = highlightSearch(entry.message, currentQuery);
+      cachedHighlightedFlair = entry.flair ? highlightSearch(entry.flair, currentQuery) : '';
+      lastSearchQuery = currentQuery;
+      lastEntryId = currentEntryId;
+    }
+  }
+  
+  const highlightedMessage = cachedHighlightedMessage;
+  const highlightedFlair = cachedHighlightedFlair;
   
   function formatTime(date: Date): string {
     return date.toLocaleTimeString('en-US', { 
@@ -88,9 +107,17 @@
 </script>
 
 <div 
+  bind:this={entryElement}
   class="log-entry log-entry--{entry.type}" 
   class:hovered={isHovered}
-  style="--index: {index}"
+  use:animate={{
+    preset: 'fadeIn',
+    duration: 250,
+    delay: index * 20,
+    id: `log-entry-${entry.id}`,
+    easing: 'easeOutCubic',
+    trigger: 'mount'
+  }}
   on:mouseenter={() => isHovered = true}
   on:mouseleave={() => isHovered = false}
   role="log"
@@ -141,15 +168,12 @@
     border-radius: 4px;
     border-left: 2px solid transparent;
     background: var(--bg-dark);
-    transition: all 0.2s ease;
-    animation: slide-in 0.3s ease;
-    animation-delay: calc(var(--index) * 0.02s);
-    animation-fill-mode: both;
+    transition: background 0.2s ease, transform 0.15s ease;
   }
   
   .log-entry:hover {
     background: var(--border);
-    transform: translateX(2px);
+    transform: translateX(2px) scale(1.01);
   }
   
   .log-entry:hover .log-entry__text {
@@ -282,15 +306,5 @@
     color: var(--muted);
   }
   
-  @keyframes slide-in {
-    from {
-      opacity: 0;
-      transform: translateX(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
 </style>
 

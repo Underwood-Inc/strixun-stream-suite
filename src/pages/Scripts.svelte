@@ -6,6 +6,7 @@
    */
   
   import { onMount } from 'svelte';
+  import { stagger } from '../core/animations';
   
   onMount(() => {
     // Render scripts list
@@ -15,7 +16,7 @@
   });
 </script>
 
-<div class="page scripts-page">
+<div class="page scripts-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <div class="card">
     <h3>📜 Stream Suite Scripts</h3>
     <p class="hint" style="margin-bottom:12px">

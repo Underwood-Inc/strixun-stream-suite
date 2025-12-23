@@ -7,6 +7,7 @@
    */
   
   import { connected, currentScene } from '../stores/connection';
+  import { animate } from '../core/animations';
 </script>
 
 <div class="info-bar">
@@ -14,7 +15,19 @@
     <div class="info-item">
       <span class="info-item__label">Current Scene:</span>
       {#if $connected && $currentScene}
-        <span class="info-item__value info-item__value--active">{$currentScene}</span>
+        <span 
+          class="info-item__value info-item__value--active"
+          use:animate={{
+            preset: 'pulse',
+            duration: 400,
+            easing: 'easeOutCubic',
+            id: 'info-scene-value',
+            trigger: 'change',
+            enabled: $connected && $currentScene
+          }}
+        >
+          {$currentScene}
+        </span>
       {:else}
         <span class="info-item__value info-item__value--inactive">Not connected</span>
       {/if}

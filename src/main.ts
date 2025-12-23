@@ -7,6 +7,9 @@
 import App from './App.svelte';
 import './styles/main.scss';
 
+// Initialize core communication layer FIRST
+import { initializeCore } from './core/init';
+
 // Import modules to ensure they're available
 import './modules/app';
 import './modules/layouts';
@@ -20,6 +23,11 @@ import './modules/twitch-api';
 import './modules/ui-utils';
 import './modules/version';
 import './modules/websocket';
+
+// Initialize core architecture
+initializeCore().catch(error => {
+  console.error('[Main] Failed to initialize core:', error);
+});
 
 // Initialize the app
 const app = new App({
