@@ -8,6 +8,8 @@
   
   import { onMount, onDestroy } from 'svelte';
   import LexicalEditor from '../components/editor/LexicalEditor.svelte';
+  import EditorToolbar from '../components/editor/EditorToolbar.svelte';
+  import MermaidBuilder from '../components/editor/MermaidBuilder.svelte';
   import LoginModal from '../components/auth/LoginModal.svelte';
   import { 
     listNotebooks,
@@ -34,6 +36,8 @@
   let lastContentHash = '';
   let hasUnsavedChanges = false;
   let showLoginModal = false;
+  let showMermaidBuilder = false;
+  let editorInstance: ReturnType<typeof import('lexical').createEditor> | null = null;
   
   // Auto-save debounce (30 seconds) - saves to cloud only
   const AUTO_SAVE_DELAY = 30000;
@@ -322,11 +326,23 @@
    * Insert Mermaid diagram
    */
   function insertMermaid(): void {
-    const diagram = prompt('Enter Mermaid diagram code:');
-    if (diagram && editorComponent) {
+    showMermaidBuilder = true;
+  }
+  
+  /**
+   * Handle Mermaid diagram save from builder
+   */
+  function handleMermaidSave(diagram: string): void {
+    if (editorComponent && diagram.trim()) {
       editorComponent.insertMermaid(diagram);
       showToast({ message: 'Mermaid diagram inserted', type: 'success' });
     }
+    showMermaidBuilder = false;
+  }
+  
+  // Get editor instance when component is ready
+  $: if (editorComponent) {
+    editorInstance = editorComponent.getEditor();
   }
 </script>
 
@@ -411,7 +427,7 @@
         <button class="btn btn-secondary" on:click={goBack}>← Back</button>
         <h2>{currentNotebook?.metadata.title || 'Untitled'}</h2>
         <div class="editor-actions">
-          <button class="btn btn-secondary" on:click={insertMermaid}>Insert Mermaid</button>
+          <button class="btn btn-secondary" on:click={insertMermaid}>📊 Insert Mermaid</button>
           <button 
             class="btn btn-primary" 
             on:click={() => saveCurrentNotebook(true)}
@@ -430,12 +446,15 @@
       
       <div class="editor-container">
         {#if currentNotebook}
-          <LexicalEditor
-            bind:this={editorComponent}
-            initialContent={typeof currentNotebook.content === 'string' ? currentNotebook.content : ''}
-            onChange={handleContentChange}
-            placeholder="Start writing your notes..."
-          />
+          <div class="editor-wrapper">
+            <EditorToolbar editor={editorInstance} />
+            <LexicalEditor
+              bind:this={editorComponent}
+              initialContent={typeof currentNotebook.content === 'string' ? currentNotebook.content : ''}
+              onChange={handleContentChange}
+              placeholder="Start writing your notes..."
+            />
+          </div>
         {/if}
       </div>
     </div>
@@ -444,6 +463,12 @@
   {#if showLoginModal}
     <LoginModal onClose={handleLoginClose} />
   {/if}
+  
+  <MermaidBuilder 
+    isOpen={showMermaidBuilder}
+    onSave={handleMermaidSave}
+    onClose={() => showMermaidBuilder = false}
+  />
 </div>
 
 <style lang="scss">
@@ -641,6 +666,16 @@
     overflow: hidden;
     padding: 24px;
     background: var(--bg);
+  }
+  
+  .editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
   }
   
   .btn {

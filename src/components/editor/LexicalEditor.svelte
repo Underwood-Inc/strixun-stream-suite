@@ -10,7 +10,8 @@
     createEditor,
     $getRoot as getRoot, 
     $getSelection as getSelection,
-    $isRangeSelection as isRangeSelection
+    $isRangeSelection as isRangeSelection,
+    $isTextNode as isTextNode
   } from 'lexical';
   import { HeadingNode, QuoteNode } from '@lexical/rich-text';
   import { ListNode, ListItemNode } from '@lexical/list';
@@ -18,6 +19,9 @@
   import { CodeNode } from '@lexical/code';
   import { MermaidNode, $createMermaidNode as createMermaidNode } from './MermaidNode';
   import { $generateHtmlFromNodes as generateHtmlFromNodes, $generateNodesFromDOM as generateNodesFromDOM } from '@lexical/html';
+  import { $createParagraphNode, $createTextNode, $isTextNode } from 'lexical';
+  import { $isHeadingNode } from '@lexical/rich-text';
+  import { $isListNode, $isListItemNode } from '@lexical/list';
   
   export let initialContent: string | null = null;
   export let onChange: ((content: string) => void) | null = null;
@@ -77,9 +81,14 @@
     // Mount editor to DOM
     editor.setRootElement(editorContainer);
     
-    // Register plugins (Lexical plugins are registered via editor configuration or update listener)
-    // RichTextPlugin, ListPlugin, LinkPlugin, MarkPlugin are handled via editor configuration
-    // HistoryPlugin needs to be registered separately if needed
+    // Initialize with empty paragraph if no content
+    editor.update(() => {
+      const root = getRoot();
+      if (root.getChildrenSize() === 0) {
+        const paragraph = $createParagraphNode();
+        root.append(paragraph);
+      }
+    });
     
     // Handle content changes
     editor.registerUpdateListener(({ editorState, prevEditorState }) => {
@@ -103,11 +112,20 @@
         const nodes = generateNodesFromDOM(editor, dom);
         const root = getRoot();
         root.clear();
-        root.append(...nodes);
+        if (nodes.length > 0) {
+          root.append(...nodes);
+        } else {
+          // Ensure at least one paragraph
+          const paragraph = $createParagraphNode();
+          root.append(paragraph);
+        }
       });
     }
     
     isReady = true;
+    if (onReady) {
+      onReady();
+    }
   });
   
   onDestroy(() => {
@@ -164,6 +182,66 @@
       } else {
         const root = getRoot();
         root.append(mermaidNode);
+      }
+    });
+  }
+  
+  /**
+   * Get editor instance (for toolbar)
+   */
+  export function getEditor() {
+    return editor;
+  }
+  
+  /**
+   * Format text commands
+   */
+  export function formatBold(): void {
+    if (!editor) return;
+    editor.update(() => {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
+        selection.formatText('bold');
+      }
+    });
+  }
+  
+  export function formatItalic(): void {
+    if (!editor) return;
+    editor.update(() => {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
+        selection.formatText('italic');
+      }
+    });
+  }
+  
+  export function formatUnderline(): void {
+    if (!editor) return;
+    editor.update(() => {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
+        selection.formatText('underline');
+      }
+    });
+  }
+  
+  export function formatStrikethrough(): void {
+    if (!editor) return;
+    editor.update(() => {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
+        selection.formatText('strikethrough');
+      }
+    });
+  }
+  
+  export function formatCode(): void {
+    if (!editor) return;
+    editor.update(() => {
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
+        selection.formatText('code');
       }
     });
   }

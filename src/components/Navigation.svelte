@@ -76,24 +76,6 @@
     }
   ];
   
-  function getTooltipText(tab: typeof tabs[0]): string {
-    return tab.label;
-  }
-  
-  function getTooltipLevel(tab: typeof tabs[0]): 'log' | 'info' | 'warning' | 'error' {
-    if (tab.requiresConnection && !$connected) {
-      return 'warning';
-    }
-    return 'log';
-  }
-  
-  function getTooltipContent(tab: typeof tabs[0]): string {
-    if (tab.requiresConnection && !$connected && tab.disabledReason) {
-      return `${tab.label}\n${tab.disabledReason}`;
-    }
-    return tab.label;
-  }
-  
   // Redirect away from disabled pages when connection is lost
   $: {
     const currentTab = tabs.find(t => t.id === $currentPage);
@@ -129,12 +111,16 @@
 <nav class="tabs">
   {#each tabs as tab}
     {@const isDisabled = tab.requiresConnection && !$connected}
+    {@const tooltipLevel = tab.requiresConnection && !$connected ? 'warning' : 'log'}
+    {@const tooltipContent = tab.requiresConnection && !$connected && tab.disabledReason 
+      ? `${tab.label}\n${tab.disabledReason}` 
+      : tab.label}
     <!-- Debug: tab={tab.id}, requiresConnection={tab.requiresConnection}, connected={$connected}, isDisabled={isDisabled} -->
     <Tooltip 
-      text={getTooltipContent(tab)} 
+      text={tooltipContent} 
       position="bottom" 
       delay={0}
-      level={getTooltipLevel(tab)}
+      level={tooltipLevel}
     >
       <button
         class="tab"
