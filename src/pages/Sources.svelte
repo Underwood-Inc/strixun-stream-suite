@@ -7,8 +7,7 @@
   
   import { onMount } from 'svelte';
   import { connected, currentScene, sources } from '../stores/connection';
-  import SearchBox from '../components/SearchBox.svelte';
-  import SourceSelect from '../components/SourceSelect.svelte';
+  import { SearchBox, SourceSelect } from '@components';
   import { stagger } from '../core/animations';
   
   let visAnimType = 'fade';

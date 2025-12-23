@@ -14,12 +14,33 @@
  */
 
 // CORS headers for cross-origin requests
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID, X-Requested-With',
-    'Access-Control-Max-Age': '86400',
-};
+// Get allowed origins from environment or use default
+function getCorsHeaders(env, request) {
+    const origin = request.headers.get('Origin');
+    
+    // Get allowed origins from environment (comma-separated)
+    const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : [];
+    
+    // If no origins configured, allow all (for development only)
+    // In production, you MUST set ALLOWED_ORIGINS via: wrangler secret put ALLOWED_ORIGINS
+    const allowOrigin = allowedOrigins.length > 0 
+        ? (origin && allowedOrigins.includes(origin) ? origin : null)
+        : '*'; // Fallback for development
+    
+    return {
+        'Access-Control-Allow-Origin': allowOrigin || 'null',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID, X-Requested-With, X-CSRF-Token',
+        'Access-Control-Allow-Credentials': allowOrigin !== '*' ? 'true' : 'false',
+        'Access-Control-Max-Age': '86400',
+        // Security headers
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+    };
+}
 
 // Twitch API base URL
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
@@ -128,7 +149,7 @@ async function handleClips(request, env) {
     if (!channel) {
         return new Response(JSON.stringify({ error: 'Channel parameter required' }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 
@@ -137,7 +158,7 @@ async function handleClips(request, env) {
         if (!userId) {
             return new Response(JSON.stringify({ error: 'User not found', data: [] }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -163,12 +184,12 @@ async function handleClips(request, env) {
         }
 
         return new Response(JSON.stringify({ data: clips, pagination: data.pagination || {} }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message, data: [] }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -187,7 +208,7 @@ async function handleFollowing(request, env) {
     if (!channel) {
         return new Response(JSON.stringify({ error: 'Channel parameter required' }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 
@@ -196,7 +217,7 @@ async function handleFollowing(request, env) {
         if (!userId) {
             return new Response(JSON.stringify({ error: 'User not found', data: [] }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -216,12 +237,12 @@ async function handleFollowing(request, env) {
         const data = await twitchApiRequest(endpoint, env, userToken);
 
         return new Response(JSON.stringify({ data: data.data, pagination: data.pagination || {} }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message, data: [], pagination: {} }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -237,7 +258,7 @@ async function handleGame(request, env) {
     if (!gameId) {
         return new Response(JSON.stringify({ error: 'Game ID required' }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 
@@ -247,7 +268,7 @@ async function handleGame(request, env) {
         const cached = await env.TWITCH_CACHE.get(cacheKey, { type: 'json' });
         if (cached) {
             return new Response(JSON.stringify(cached), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -257,12 +278,12 @@ async function handleGame(request, env) {
         await env.TWITCH_CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: 604800 });
 
         return new Response(JSON.stringify(data), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message, data: [] }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -278,19 +299,19 @@ async function handleUser(request, env) {
     if (!login) {
         return new Response(JSON.stringify({ error: 'Login parameter required' }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 
     try {
         const data = await twitchApiRequest(`/users?login=${encodeURIComponent(login)}`, env);
         return new Response(JSON.stringify(data), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message, data: [] }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -308,7 +329,7 @@ async function handleHealth(env) {
             features: ['twitch-api', 'cloud-storage', 'scrollbar-customizer'],
             timestamp: new Date().toISOString()
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -316,7 +337,7 @@ async function handleHealth(env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -833,7 +854,7 @@ async function handleScrollbar() {
     try {
         return new Response(SCROLLBAR_CODE, {
             headers: { 
-                ...corsHeaders, 
+                ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/javascript; charset=utf-8',
                 'Cache-Control': 'public, max-age=31536000, immutable'
             },
@@ -842,7 +863,7 @@ async function handleScrollbar() {
         return new Response(`// Error loading scrollbar: ${error.message}`, {
             status: 500,
             headers: { 
-                ...corsHeaders, 
+                ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/javascript'
             },
         });
@@ -1112,7 +1133,7 @@ async function handleScrollbarCustomizer(request) {
         
         return new Response(customizerCode, {
             headers: { 
-                ...corsHeaders, 
+                ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/javascript; charset=utf-8',
                 'Cache-Control': 'public, max-age=3600'
             },
@@ -1121,7 +1142,7 @@ async function handleScrollbarCustomizer(request) {
         return new Response(`// Error loading scrollbar customizer: ${error.message}`, {
             status: 500,
             headers: { 
-                ...corsHeaders, 
+                ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/javascript'
             },
         });
@@ -1158,16 +1179,16 @@ function isValidDeviceId(deviceId) {
  */
 async function handleCloudSave(request, env) {
     try {
-        // Authenticate request
-        const authResult = await authenticateRequest(request, env);
-        if (!authResult.authenticated) {
-            return new Response(JSON.stringify({ error: authResult.error }), {
-                status: authResult.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // Authenticate request (require CSRF for state-changing operations)
+        const user = await authenticateRequest(request, env, true);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required or invalid CSRF token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        const userId = authResult.userId;
+        const userId = user.userId;
         const url = new URL(request.url);
         const slot = url.searchParams.get('slot') || 'default';
         
@@ -1175,7 +1196,7 @@ async function handleCloudSave(request, env) {
         if (!/^[a-zA-Z0-9_-]{1,32}$/.test(slot)) {
             return new Response(JSON.stringify({ error: 'Invalid slot name (1-32 alphanumeric chars)' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -1186,7 +1207,7 @@ async function handleCloudSave(request, env) {
         if (!backup || !backup.version || !backup.timestamp) {
             return new Response(JSON.stringify({ error: 'Invalid backup data format' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1207,7 +1228,7 @@ async function handleCloudSave(request, env) {
         if (saveDataStr.length > 10 * 1024 * 1024) {
             return new Response(JSON.stringify({ error: 'Save data too large (max 10MB)' }), {
                 status: 413,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -1225,7 +1246,7 @@ async function handleCloudSave(request, env) {
             timestamp: saveData.timestamp,
             size: saveDataStr.length,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -1233,7 +1254,7 @@ async function handleCloudSave(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -1245,16 +1266,16 @@ async function handleCloudSave(request, env) {
  */
 async function handleCloudLoad(request, env) {
     try {
-        // Authenticate request
-        const authResult = await authenticateRequest(request, env);
-        if (!authResult.authenticated) {
-            return new Response(JSON.stringify({ error: authResult.error }), {
-                status: authResult.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // Authenticate request (GET operations don't require CSRF)
+        const user = await authenticateRequest(request, env, false);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        const userId = authResult.userId;
+        const userId = user.userId;
         const url = new URL(request.url);
         const slot = url.searchParams.get('slot') || 'default';
 
@@ -1268,7 +1289,7 @@ async function handleCloudLoad(request, env) {
                 slot 
             }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
@@ -1280,7 +1301,7 @@ async function handleCloudLoad(request, env) {
             metadata: saveData.metadata,
             timestamp: saveData.timestamp,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -1288,7 +1309,7 @@ async function handleCloudLoad(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -1300,16 +1321,16 @@ async function handleCloudLoad(request, env) {
  */
 async function handleCloudList(request, env) {
     try {
-        // Authenticate request
-        const authResult = await authenticateRequest(request, env);
-        if (!authResult.authenticated) {
-            return new Response(JSON.stringify({ error: authResult.error }), {
-                status: authResult.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // Authenticate request (GET operations don't require CSRF)
+        const user = await authenticateRequest(request, env, false);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        const userId = authResult.userId;
+        const userId = user.userId;
         const slotListKey = `cloudsave_${userId}_slots`;
         const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
         const slots = slotsStr ? JSON.parse(slotsStr) : [];
@@ -1346,7 +1367,7 @@ async function handleCloudList(request, env) {
             userId,
             saves: saveList,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -1354,7 +1375,7 @@ async function handleCloudList(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -1383,16 +1404,16 @@ async function updateCloudSaveSlotList(env, userId, slot, metadata) {
  */
 async function handleCloudDelete(request, env) {
     try {
-        // Authenticate request
-        const authResult = await authenticateRequest(request, env);
-        if (!authResult.authenticated) {
-            return new Response(JSON.stringify({ error: authResult.error }), {
-                status: authResult.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // Authenticate request (require CSRF for state-changing operations)
+        const user = await authenticateRequest(request, env, true);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required or invalid CSRF token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        const userId = authResult.userId;
+        const userId = user.userId;
         const url = new URL(request.url);
         const slot = url.searchParams.get('slot') || 'default';
 
@@ -1418,7 +1439,7 @@ async function handleCloudDelete(request, env) {
             slot,
             message: 'Save deleted',
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -1426,7 +1447,7 @@ async function handleCloudDelete(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -1470,15 +1491,18 @@ async function removeFromSlotList(env, deviceId, slot) {
 // ============ Authentication System ============
 
 /**
- * Generate secure 6-digit OTP
+ * Generate secure 6-digit OTP (cryptographically secure, no modulo bias)
  * @returns {string} 6-digit OTP code
  */
 function generateOTP() {
-    const array = new Uint32Array(1);
+    // Use 2 Uint32 values to get 64 bits, eliminating modulo bias
+    const array = new Uint32Array(2);
     crypto.getRandomValues(array);
-    // Generate 6-digit number (000000-999999)
-    const otp = (array[0] % 1000000).toString().padStart(6, '0');
-    return otp;
+    // Combine two 32-bit values for 64-bit range (0 to 2^64-1)
+    // Then modulo 1,000,000 for 6-digit code
+    // This eliminates modulo bias since 2^64 is much larger than 1,000,000
+    const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % 1000000;
+    return value.toString().padStart(6, '0');
 }
 
 /**
@@ -1594,13 +1618,16 @@ async function verifyJWT(token, secret) {
 }
 
 /**
- * Get JWT secret from environment or generate default
+ * Get JWT secret from environment
  * @param {*} env - Worker environment
  * @returns {string} JWT secret
+ * @throws {Error} If JWT_SECRET is not set
  */
 function getJWTSecret(env) {
-    // Use environment secret if available, otherwise use a default (not recommended for production)
-    return env.JWT_SECRET || 'strixun-stream-suite-default-secret-change-in-production';
+    if (!env.JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is required. Set it via: wrangler secret put JWT_SECRET');
+    }
+    return env.JWT_SECRET;
 }
 
 /**
@@ -1777,7 +1804,7 @@ async function handleRequestOTP(request, env) {
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ error: 'Valid email address required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1792,7 +1819,7 @@ async function handleRequestOTP(request, env) {
                 remaining: rateLimit.remaining
             }), {
                 status: 429,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1831,7 +1858,7 @@ async function handleRequestOTP(request, env) {
                 details: env.ENVIRONMENT === 'development' ? error.message : undefined
             }), {
                 status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1841,7 +1868,7 @@ async function handleRequestOTP(request, env) {
             expiresIn: 600,
             remaining: rateLimit.remaining
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         console.error('OTP request error:', {
@@ -1855,7 +1882,7 @@ async function handleRequestOTP(request, env) {
             details: env.ENVIRONMENT === 'development' ? error.stack : undefined
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -1873,14 +1900,14 @@ async function handleVerifyOTP(request, env) {
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ error: 'Valid email address required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
         if (!otp || !/^\d{6}$/.test(otp)) {
             return new Response(JSON.stringify({ error: 'Valid 6-digit OTP required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1892,7 +1919,7 @@ async function handleVerifyOTP(request, env) {
         if (!latestOtpKey) {
             return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1901,7 +1928,7 @@ async function handleVerifyOTP(request, env) {
         if (!otpDataStr) {
             return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1911,7 +1938,7 @@ async function handleVerifyOTP(request, env) {
         if (otpData.email !== emailLower) {
             return new Response(JSON.stringify({ error: 'Invalid OTP' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1921,7 +1948,7 @@ async function handleVerifyOTP(request, env) {
             await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
             return new Response(JSON.stringify({ error: 'OTP expired' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1931,12 +1958,22 @@ async function handleVerifyOTP(request, env) {
             await env.TWITCH_CACHE.delete(`otp_latest_${emailHash}`);
             return new Response(JSON.stringify({ error: 'Too many failed attempts' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // Verify OTP
-        if (otpData.otp !== otp) {
+        // Verify OTP using constant-time comparison to prevent timing attacks
+        // Convert both to strings and pad to same length for comparison
+        const expectedOtp = String(otpData.otp).padStart(6, '0');
+        const providedOtp = String(otp).padStart(6, '0');
+        
+        // Constant-time string comparison
+        let isValid = expectedOtp.length === providedOtp.length;
+        for (let i = 0; i < expectedOtp.length; i++) {
+            isValid = isValid && (expectedOtp.charCodeAt(i) === providedOtp.charCodeAt(i));
+        }
+        
+        if (!isValid) {
             otpData.attempts++;
             await env.TWITCH_CACHE.put(latestOtpKey, JSON.stringify(otpData), { expirationTtl: 600 });
             return new Response(JSON.stringify({ 
@@ -1944,7 +1981,7 @@ async function handleVerifyOTP(request, env) {
                 remainingAttempts: 5 - otpData.attempts
             }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -1972,11 +2009,17 @@ async function handleVerifyOTP(request, env) {
             await env.TWITCH_CACHE.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
-        // Generate JWT token
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        // Generate CSRF token for this session
+        const csrfToken = crypto.randomUUID ? crypto.randomUUID() : 
+            Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        // Generate JWT token (7 hours expiration for security)
+        const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
         const tokenPayload = {
             userId,
             email: emailLower,
+            csrf: csrfToken, // CSRF token included in JWT
             exp: Math.floor(expiresAt.getTime() / 1000),
             iat: Math.floor(Date.now() / 1000),
         };
@@ -1992,7 +2035,7 @@ async function handleVerifyOTP(request, env) {
             token: await hashEmail(token), // Store hash of token
             expiresAt: expiresAt.toISOString(),
             createdAt: new Date().toISOString(),
-        }), { expirationTtl: 2592000 }); // 30 days
+        }), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
         
         return new Response(JSON.stringify({ 
             success: true,
@@ -2001,7 +2044,7 @@ async function handleVerifyOTP(request, env) {
             email: emailLower,
             expiresAt: expiresAt.toISOString(),
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2009,7 +2052,7 @@ async function handleVerifyOTP(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2024,7 +2067,7 @@ async function handleGetMe(request, env) {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return new Response(JSON.stringify({ error: 'Authorization header required' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2035,7 +2078,7 @@ async function handleGetMe(request, env) {
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2047,7 +2090,7 @@ async function handleGetMe(request, env) {
         if (!user) {
             return new Response(JSON.stringify({ error: 'User not found' }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2058,7 +2101,7 @@ async function handleGetMe(request, env) {
             createdAt: user.createdAt,
             lastLogin: user.lastLogin,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2066,7 +2109,7 @@ async function handleGetMe(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2081,7 +2124,7 @@ async function handleLogout(request, env) {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return new Response(JSON.stringify({ error: 'Authorization header required' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2092,7 +2135,7 @@ async function handleLogout(request, env) {
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2102,7 +2145,7 @@ async function handleLogout(request, env) {
         await env.TWITCH_CACHE.put(blacklistKey, JSON.stringify({
             token: tokenHash,
             revokedAt: new Date().toISOString(),
-        }), { expirationTtl: 2592000 }); // 30 days (same as token expiry)
+        }), { expirationTtl: 25200 }); // 7 hours (matches token expiration) (same as token expiry)
         
         // Delete session
         const sessionKey = `session_${payload.userId}`;
@@ -2112,7 +2155,7 @@ async function handleLogout(request, env) {
             success: true,
             message: 'Logged out successfully'
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2120,7 +2163,7 @@ async function handleLogout(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2137,7 +2180,7 @@ async function handleRefresh(request, env) {
         if (!token) {
             return new Response(JSON.stringify({ error: 'Token required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2147,7 +2190,7 @@ async function handleRefresh(request, env) {
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2158,15 +2201,21 @@ async function handleRefresh(request, env) {
         if (blacklisted) {
             return new Response(JSON.stringify({ error: 'Token has been revoked' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // Generate new token
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        // Generate new CSRF token for refreshed session
+        const newCsrfToken = crypto.randomUUID ? crypto.randomUUID() : 
+            Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        // Generate new token (7 hours expiration)
+        const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
         const newTokenPayload = {
             userId: payload.userId,
             email: payload.email,
+            csrf: newCsrfToken, // New CSRF token for refreshed session
             exp: Math.floor(expiresAt.getTime() / 1000),
             iat: Math.floor(Date.now() / 1000),
         };
@@ -2181,14 +2230,14 @@ async function handleRefresh(request, env) {
             token: await hashEmail(newToken),
             expiresAt: expiresAt.toISOString(),
             createdAt: new Date().toISOString(),
-        }), { expirationTtl: 2592000 });
+        }), { expirationTtl: 25200 }); // 7 hours
         
         return new Response(JSON.stringify({ 
             success: true,
             token: newToken,
             expiresAt: expiresAt.toISOString(),
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2196,7 +2245,7 @@ async function handleRefresh(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2209,7 +2258,14 @@ async function handleRefresh(request, env) {
  * @param {*} env - Worker environment
  * @returns {Promise<{userId: string, email: string}|null>} User info or null if not authenticated
  */
-async function authenticateRequest(request, env) {
+/**
+ * Authenticate request and validate CSRF token for state-changing operations
+ * @param {Request} request - HTTP request
+ * @param {*} env - Worker environment
+ * @param {boolean} requireCsrf - Whether to require CSRF token (for POST/PUT/DELETE)
+ * @returns {Promise<{userId: string, email: string}|null>} User info or null if not authenticated
+ */
+async function authenticateRequest(request, env, requireCsrf = false) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return null;
@@ -2229,6 +2285,14 @@ async function authenticateRequest(request, env) {
     const blacklisted = await env.TWITCH_CACHE.get(blacklistKey);
     if (blacklisted) {
         return null;
+    }
+    
+    // Validate CSRF token for state-changing operations
+    if (requireCsrf) {
+        const csrfHeader = request.headers.get('X-CSRF-Token');
+        if (!csrfHeader || csrfHeader !== payload.csrf) {
+            return null; // CSRF token mismatch
+        }
     }
     
     return {
@@ -2275,12 +2339,12 @@ function getNotebookListKey(userId) {
  */
 async function handleNotesSave(request, env) {
     try {
-        // Authenticate
-        const user = await authenticateRequest(request, env);
+        // Authenticate (require CSRF for state-changing operations like POST)
+        const user = await authenticateRequest(request, env, true);
         if (!user) {
-            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            return new Response(JSON.stringify({ error: 'Authentication required or invalid CSRF token' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2291,7 +2355,7 @@ async function handleNotesSave(request, env) {
         if (!notebookId || !/^[a-zA-Z0-9_-]{1,64}$/.test(notebookId)) {
             return new Response(JSON.stringify({ error: 'Valid notebookId required (1-64 alphanumeric chars)' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2299,7 +2363,7 @@ async function handleNotesSave(request, env) {
         if (content === null || content === undefined) {
             return new Response(JSON.stringify({ error: 'Content required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2308,7 +2372,7 @@ async function handleNotesSave(request, env) {
         if (contentStr.length > 10 * 1024 * 1024) {
             return new Response(JSON.stringify({ error: 'Content too large (max 10MB)' }), {
                 status: 413,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2362,7 +2426,7 @@ async function handleNotesSave(request, env) {
             timestamp: notebookData.timestamp,
             size: dataStr.length,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2370,7 +2434,7 @@ async function handleNotesSave(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2387,7 +2451,7 @@ async function handleNotesLoad(request, env) {
         if (!user) {
             return new Response(JSON.stringify({ error: 'Authentication required' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2397,7 +2461,7 @@ async function handleNotesLoad(request, env) {
         if (!notebookId) {
             return new Response(JSON.stringify({ error: 'notebookId parameter required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2411,7 +2475,7 @@ async function handleNotesLoad(request, env) {
                 notebookId 
             }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2421,7 +2485,7 @@ async function handleNotesLoad(request, env) {
         if (notebookData.userId !== user.userId) {
             return new Response(JSON.stringify({ error: 'Access denied' }), {
                 status: 403,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2432,7 +2496,7 @@ async function handleNotesLoad(request, env) {
             metadata: notebookData.metadata,
             timestamp: notebookData.timestamp,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2440,7 +2504,7 @@ async function handleNotesLoad(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2457,7 +2521,7 @@ async function handleNotesList(request, env) {
         if (!user) {
             return new Response(JSON.stringify({ error: 'Authentication required' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2469,7 +2533,7 @@ async function handleNotesList(request, env) {
             success: true,
             notebooks: notebookList,
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2477,7 +2541,7 @@ async function handleNotesList(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2489,12 +2553,12 @@ async function handleNotesList(request, env) {
  */
 async function handleNotesDelete(request, env) {
     try {
-        // Authenticate
-        const user = await authenticateRequest(request, env);
+        // Authenticate (require CSRF for DELETE operations)
+        const user = await authenticateRequest(request, env, true);
         if (!user) {
-            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            return new Response(JSON.stringify({ error: 'Authentication required or invalid CSRF token' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2504,7 +2568,7 @@ async function handleNotesDelete(request, env) {
         if (!notebookId) {
             return new Response(JSON.stringify({ error: 'notebookId parameter required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2529,7 +2593,7 @@ async function handleNotesDelete(request, env) {
             notebookId,
             message: 'Notebook deleted',
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2537,7 +2601,160 @@ async function handleNotesDelete(request, env) {
             message: error.message 
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+// ============ OBS Credentials System ============
+
+/**
+ * Get OBS credentials storage key
+ * @param {string} userId - User ID
+ * @returns {string} Storage key
+ */
+function getOBSCredentialsKey(userId) {
+    return `obs_credentials_${userId}`;
+}
+
+/**
+ * Save OBS credentials endpoint
+ * POST /obs-credentials/save
+ * Requires: Authorization: Bearer {token}
+ * Body: { host: string, port: string, password: string }
+ */
+async function handleOBSCredentialsSave(request, env) {
+    try {
+        // Authenticate (require CSRF for POST operations)
+        const user = await authenticateRequest(request, env, true);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required or invalid CSRF token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const body = await request.json();
+        const { host, port, password } = body;
+        
+        // Validate input
+        if (!host || !port) {
+            return new Response(JSON.stringify({ error: 'host and port are required' }), {
+                status: 400,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Store credentials (password is optional)
+        const credentials = {
+            host: String(host),
+            port: String(port),
+            password: password || '',
+            savedAt: new Date().toISOString(),
+        };
+        
+        const key = getOBSCredentialsKey(user.userId);
+        // Store with 7 hour expiration (matches token expiration)
+        await env.TWITCH_CACHE.put(key, JSON.stringify(credentials), { expirationTtl: 25200 });
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            message: 'Credentials saved (expires in 7 hours)',
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to save credentials',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Load OBS credentials endpoint
+ * GET /obs-credentials/load
+ * Requires: Authorization: Bearer {token}
+ */
+async function handleOBSCredentialsLoad(request, env) {
+    try {
+        // Authenticate (GET operations don't require CSRF)
+        const user = await authenticateRequest(request, env, false);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const key = getOBSCredentialsKey(user.userId);
+        const credentials = await env.TWITCH_CACHE.get(key, { type: 'json' });
+        
+        if (!credentials) {
+            return new Response(JSON.stringify({ 
+                error: 'No credentials found',
+                message: 'Credentials may have expired (7 hour limit)'
+            }), {
+                status: 404,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            host: credentials.host,
+            port: credentials.port,
+            password: credentials.password || '',
+            savedAt: credentials.savedAt,
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to load credentials',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
+ * Delete OBS credentials endpoint
+ * DELETE /obs-credentials/delete
+ * Requires: Authorization: Bearer {token}
+ */
+async function handleOBSCredentialsDelete(request, env) {
+    try {
+        // Authenticate (require CSRF for DELETE operations)
+        const user = await authenticateRequest(request, env, true);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Authentication required or invalid CSRF token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const key = getOBSCredentialsKey(user.userId);
+        await env.TWITCH_CACHE.delete(key);
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            message: 'Credentials deleted',
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to delete credentials',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2554,7 +2771,7 @@ async function handleTestEmail(request, env) {
         if (!to) {
             return new Response(JSON.stringify({ error: 'to parameter required' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2562,7 +2779,7 @@ async function handleTestEmail(request, env) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
             return new Response(JSON.stringify({ error: 'Invalid email format' }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2573,7 +2790,7 @@ async function handleTestEmail(request, env) {
                 message: 'Please add RESEND_API_KEY secret using: wrangler secret put RESEND_API_KEY'
             }), {
                 status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2634,7 +2851,7 @@ async function handleTestEmail(request, env) {
                 details: errorData
             }), {
                 status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
@@ -2647,7 +2864,7 @@ async function handleTestEmail(request, env) {
             to: to,
             timestamp: new Date().toISOString()
         }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2656,7 +2873,7 @@ async function handleTestEmail(request, env) {
             stack: error.stack
         }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -2668,7 +2885,7 @@ export default {
     async fetch(request, env, ctx) {
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
-            return new Response(null, { headers: corsHeaders });
+            return new Response(null, { headers: getCorsHeaders(env, request) });
         }
 
         const url = new URL(request.url);
@@ -2711,6 +2928,11 @@ export default {
             if (path === '/notes/list' && request.method === 'GET') return handleNotesList(request, env);
             if (path === '/notes/delete' && request.method === 'DELETE') return handleNotesDelete(request, env);
             
+            // OBS Credentials endpoints (require authentication, 7 hour expiration)
+            if (path === '/obs-credentials/save' && request.method === 'POST') return handleOBSCredentialsSave(request, env);
+            if (path === '/obs-credentials/load' && request.method === 'GET') return handleOBSCredentialsLoad(request, env);
+            if (path === '/obs-credentials/delete' && request.method === 'DELETE') return handleOBSCredentialsDelete(request, env);
+            
             // Test endpoints
             if (path === '/test/email' && request.method === 'GET') return handleTestEmail(request, env);
             
@@ -2722,19 +2944,19 @@ export default {
                     if (!email) {
                         return new Response(JSON.stringify({ error: 'email required' }), {
                             status: 400,
-                            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                         });
                     }
                     const emailHash = await hashEmail(email);
                     const rateLimitKey = `ratelimit_otp_${emailHash}`;
                     await env.TWITCH_CACHE.delete(rateLimitKey);
                     return new Response(JSON.stringify({ success: true, message: 'Rate limit cleared' }), {
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                     });
                 } catch (error) {
                     return new Response(JSON.stringify({ error: error.message }), {
                         status: 500,
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                     });
                 }
             }
@@ -2745,12 +2967,24 @@ export default {
             // Not found
             return new Response(JSON.stringify({ error: 'Not found' }), {
                 status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         } catch (error) {
+            // Check if it's a JWT secret error (configuration issue)
+            if (error.message && error.message.includes('JWT_SECRET')) {
+                return new Response(JSON.stringify({ 
+                    error: 'Server configuration error',
+                    message: 'JWT_SECRET environment variable is required. Please contact the administrator.',
+                    details: 'The server is not properly configured. JWT_SECRET must be set via: wrangler secret put JWT_SECRET'
+                }), {
+                    status: 500,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
+            }
+            
             return new Response(JSON.stringify({ error: 'Internal server error', message: error.message }), {
                 status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
     },

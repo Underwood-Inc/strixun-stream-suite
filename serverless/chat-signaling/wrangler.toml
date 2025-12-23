@@ -1,0 +1,19 @@
+name = "strixun-chat-signaling"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+[[kv_namespaces]]
+binding = "CHAT_KV"
+id = "78a1bd4cd5dc468780de442aacc9d1ee"
+preview_id = "78a1bd4cd5dc468780de442aacc9d1ee"
+
+# Note: Create KV namespace with:
+# wrangler kv namespace create "CHAT_KV"
+# Then update the IDs above
+

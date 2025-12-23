@@ -13,8 +13,7 @@
   import { requestStorageFromOBS, manualStorageSync, saveAutoSyncPref } from '../modules/storage-sync';
   import { checkForUpdates, openGitHubRepo } from '../modules/version';
   import { storage } from '../modules/storage';
-  import Tooltip from '../components/Tooltip.svelte';
-  import LoginModal from '../components/auth/LoginModal.svelte';
+  import { Tooltip, LoginModal } from '@components';
   import { isAuthenticated, user } from '../stores/auth';
   import { saveToCloud, loadFromCloud, listCloudSaves, deleteCloudSave, type CloudSave } from '../modules/cloud-save';
   import { showToast } from '../stores/toast-queue';

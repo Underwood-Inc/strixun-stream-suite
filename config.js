@@ -13,6 +13,9 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     // GitHub Pages base URL (auto-injected during deployment)
     GITHUB_PAGES_URL: '%%GITHUB_PAGES_URL%%',
     
+    // Storybook URL (auto-injected during deployment)
+    STORYBOOK_URL: '%%STORYBOOK_URL%%',
+    
     // Twitch API Configuration (auto-injected during deployment)
     TWITCH_CLIENT_ID: '%%TWITCH_CLIENT_ID%%',
     

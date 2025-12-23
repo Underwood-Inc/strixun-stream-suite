@@ -10,6 +10,8 @@
 import { storage } from './storage';
 import { connected, currentScene, sources, textSources } from '../stores/connection';
 import { get } from 'svelte/store';
+import { authenticatedFetch, isAuthenticated } from '../stores/auth';
+import { isOBSDock } from './script-status';
 import type { Source } from '../types';
 
 // ============ Types ============
@@ -36,75 +38,13 @@ let aspectMode = 0;
 let reconnectAttempts = 0;
 const MAX_RECONNECT = 3;
 
-// ============ Secure Credential Storage (AES-GCM) ============
-let encryptionKey: CryptoKey | null = null; // Derived from PIN, kept in memory only
+// ============ Cloud Credential Storage ============
+// OBS credentials are stored in the cloud, encrypted with the user's auth token
+// Credentials expire when the auth token expires (7 hours maximum)
 
 /**
- * Derive encryption key from PIN
- */
-async function deriveKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', encoder.encode(pin), 'PBKDF2', false, ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-/**
- * Encrypt password with PIN
- */
-async function encryptPassword(password: string, pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(pin, salt);
-  
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv },
-    key,
-    encoder.encode(password)
-  );
-  
-  // Combine salt + iv + encrypted data and encode as base64
-  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-  combined.set(salt, 0);
-  combined.set(iv, salt.length);
-  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-  
-  return btoa(String.fromCharCode(...combined));
-}
-
-/**
- * Decrypt password with PIN
- */
-async function decryptPassword(encryptedData: string, pin: string): Promise<string | null> {
-  try {
-    const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
-    const salt = combined.slice(0, 16);
-    const iv = combined.slice(16, 28);
-    const data = combined.slice(28);
-    
-    const key = await deriveKey(pin, salt);
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      data
-    );
-    
-    return new TextDecoder().decode(decrypted);
-  } catch (e) {
-    return null; // Wrong PIN or corrupted data
-  }
-}
-
-/**
- * Save credentials to storage
+ * Save credentials to cloud storage
+ * Requires authentication - credentials expire when auth token expires (7 hours max)
  */
 export async function saveCredentials(): Promise<void> {
   const rememberEl = document.getElementById('rememberCreds') as HTMLInputElement;
@@ -118,55 +58,55 @@ export async function saveCredentials(): Promise<void> {
   const password = passwordEl?.value || '';
   
   if (remember) {
+    // Always save host/port locally for quick access
     storage.setRaw('obs_host', host);
     storage.setRaw('obs_port', port);
-    
-    if (password) {
-      // Check if crypto is available
-      if (!crypto || !crypto.subtle) {
-        log('ERROR: Encryption not available (file:// mode). Use localhost or HTTPS.', 'error');
-        return;
-      }
-      
-      // Get or create PIN for encryption
-      let pin = sessionStorage.getItem('obs_pin');
-      if (!pin) {
-        pin = prompt('Create a PIN to encrypt your password (4+ characters):');
-        if (!pin || pin.length < 4) {
-          log('PIN must be 4+ characters. Password not saved.', 'error');
-          storage.remove('obs_pw');
-          return;
-        }
-        sessionStorage.setItem('obs_pin', pin); // Keep in session only
-      }
-      
-      try {
-        const encrypted = await encryptPassword(password, pin);
-        storage.setRaw('obs_pw', encrypted);
-        storage.setRaw('obs_pw_encrypted', 'true');
-        log('Credentials saved securely', 'success');
-      } catch (e: any) {
-        log('Encryption failed: ' + e.message, 'error');
-        storage.remove('obs_pw');
-        storage.remove('obs_pw_encrypted');
-      }
-    } else {
-      storage.remove('obs_pw');
-      storage.remove('obs_pw_encrypted');
-    }
     storage.setRaw('obs_remember', 'true');
+    
+    // Save password to cloud if authenticated (REQUIRED - no local fallback)
+    if (password && get(isAuthenticated)) {
+      try {
+        await authenticatedFetch('/obs-credentials/save', {
+          method: 'POST',
+          body: JSON.stringify({
+            host,
+            port,
+            password
+          })
+        });
+        log('Credentials saved to cloud (expires in 7 hours)', 'success');
+      } catch (e: any) {
+        if (e.message === 'Not authenticated') {
+          log('Sign in to save password securely in the cloud', 'warning');
+        } else {
+          log('Failed to save credentials to cloud: ' + e.message, 'error');
+        }
+      }
+    } else if (password) {
+      log('Sign in to save password securely in the cloud', 'warning');
+    }
   } else {
+    // Clear local storage
     storage.remove('obs_host');
     storage.remove('obs_port');
-    storage.remove('obs_pw');
-    storage.remove('obs_pw_encrypted');
     storage.remove('obs_remember');
-    sessionStorage.removeItem('obs_pin');
+    
+    // Clear cloud storage if authenticated
+    if (get(isAuthenticated)) {
+      try {
+        await authenticatedFetch('/obs-credentials/delete', {
+          method: 'DELETE'
+        });
+      } catch (e) {
+        // Ignore errors when clearing
+      }
+    }
   }
 }
 
 /**
- * Load credentials from storage
+ * Load credentials from cloud storage
+ * Requires authentication - credentials expire when auth token expires (7 hours max)
  */
 export async function loadCredentials(): Promise<boolean> {
   const remembered = storage.getRaw('obs_remember') === 'true';
@@ -176,56 +116,34 @@ export async function loadCredentials(): Promise<boolean> {
   }
   
   if (remembered) {
+    // Load host/port from local storage (always available)
     const host = storage.getRaw('obs_host');
     const port = storage.getRaw('obs_port');
-    const encryptedPw = storage.getRaw('obs_pw');
-    const isEncrypted = storage.getRaw('obs_pw_encrypted') === 'true';
     
     const hostEl = document.getElementById('host') as HTMLInputElement;
     const portEl = document.getElementById('port') as HTMLInputElement;
     if (host && hostEl) hostEl.value = String(host);
     if (port && portEl) portEl.value = String(port);
     
-    if (encryptedPw && isEncrypted) {
-      // Check if crypto is available
-      if (!crypto || !crypto.subtle) {
-        log('ERROR: Decryption not available (file:// mode). Clear credentials.', 'error');
-        updateSecurityWarning();
-        return false;
-      }
-      
-      // Need PIN to decrypt
-      let pin = sessionStorage.getItem('obs_pin');
-      if (!pin) {
-        pin = prompt('Enter PIN to unlock saved password:');
-        if (!pin) {
-          log('PIN required to use saved password', 'error');
-          updateSecurityWarning();
-          return false;
-        }
-      }
-      
+    // Load password from cloud if authenticated
+    if (get(isAuthenticated)) {
       try {
-        const password = await decryptPassword(String(encryptedPw), pin);
-        if (password) {
-          const passwordEl = document.getElementById('password') as HTMLInputElement;
-          if (passwordEl) {
-            passwordEl.value = password;
+        const response = await authenticatedFetch('/obs-credentials/load');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.password) {
+            const passwordEl = document.getElementById('password') as HTMLInputElement;
+            if (passwordEl) {
+              passwordEl.value = data.password;
+            }
+            updateSecurityWarning();
+            return true;
           }
-          sessionStorage.setItem('obs_pin', pin); // Remember for session
-          updateSecurityWarning();
-          return true;
-        } else {
-          log('Wrong PIN or corrupted data', 'error');
-          sessionStorage.removeItem('obs_pin');
-          updateSecurityWarning();
-          return false;
         }
       } catch (e: any) {
-        log('Decryption failed: ' + e.message, 'error');
-        sessionStorage.removeItem('obs_pin');
-        updateSecurityWarning();
-        return false;
+        if (e.message !== 'Not authenticated') {
+          log('Failed to load credentials from cloud: ' + e.message, 'error');
+        }
       }
     }
     
@@ -236,15 +154,25 @@ export async function loadCredentials(): Promise<boolean> {
 }
 
 /**
- * Clear saved credentials
+ * Clear saved credentials (local and cloud)
  */
-export function clearSavedCredentials(): void {
+export async function clearSavedCredentials(): Promise<void> {
+  // Clear local storage
   storage.remove('obs_host');
   storage.remove('obs_port');
-  storage.remove('obs_pw');
-  storage.remove('obs_pw_encrypted');
   storage.remove('obs_remember');
-  sessionStorage.removeItem('obs_pin');
+  
+  // Clear cloud storage if authenticated
+  if (getAuth(isAuthenticated)) {
+    try {
+      await authenticatedFetch('/obs-credentials/delete', {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      // Ignore errors when clearing
+    }
+  }
+  
   const hostEl = document.getElementById('host') as HTMLInputElement;
   const portEl = document.getElementById('port') as HTMLInputElement;
   const passwordEl = document.getElementById('password') as HTMLInputElement;
@@ -269,15 +197,15 @@ export function updateSecurityWarning(): void {
   
   const pw = passwordEl.value;
   const remember = rememberEl.checked;
-  const isEncrypted = storage.getRaw('obs_pw_encrypted') === 'true';
+  const authenticated = get(isAuthenticated);
   
   if (remember && pw) {
-    if (isEncrypted) {
-      warn.textContent = '🔐 Password encrypted with AES-256-GCM';
+    if (authenticated) {
+      warn.textContent = '🔐 Password will be saved securely in the cloud (expires in 7 hours)';
       (warn as HTMLElement).style.color = 'var(--success)';
     } else {
-      warn.textContent = '🔒 Password will be encrypted with your PIN';
-      (warn as HTMLElement).style.color = 'var(--accent)';
+      warn.textContent = '⚠️ Sign in to save password securely in the cloud';
+      (warn as HTMLElement).style.color = 'var(--warning)';
     }
   } else {
     warn.textContent = '';

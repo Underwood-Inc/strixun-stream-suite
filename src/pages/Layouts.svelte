@@ -6,9 +6,8 @@
    */
   
   import { onMount } from 'svelte';
-  import SearchBox from '../components/SearchBox.svelte';
+  import { SearchBox, Tooltip } from '@components';
   import { connected, currentScene } from '../stores/connection';
-  import Tooltip from '../components/Tooltip.svelte';
   import { stagger } from '../core/animations';
   
   let layoutName = '';

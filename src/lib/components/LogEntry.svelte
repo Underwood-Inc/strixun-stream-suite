@@ -1,0 +1,310 @@
+<script lang="ts">
+  /**
+   * Log Entry Component
+   * 
+   * Individual log entry with color coding, flairs, and animations
+   */
+  
+import type { LogEntry } from '../../stores/activity-log';
+import { logFilters } from '../../stores/activity-log';
+  import Tooltip from './Tooltip.svelte';
+  import { animate } from '../../core/animations';
+  
+  export let entry: LogEntry;
+  export let index: number = 0;
+  
+  let isHovered = false;
+  let entryElement: HTMLElement;
+  
+  // Function to highlight search matches in text
+  // Supports advanced syntax: quotes for exact, space for AND, | for OR, * for wildcard
+  function highlightSearch(text: string, query: string): string {
+    if (!query || !query.trim()) {
+      return text;
+    }
+    
+    // Extract quoted phrases
+    const quotedPhrases: string[] = [];
+    let processedQuery = query.replace(/"([^"]+)"/g, (match, phrase) => {
+      quotedPhrases.push(phrase);
+      return '';
+    });
+    
+    // Combine quoted phrases and remaining terms for highlighting
+    const allTerms: string[] = [...quotedPhrases];
+    
+    // Split remaining query by | for OR, then by space for AND
+    if (processedQuery.trim()) {
+      const orGroups = processedQuery.split('|').map(g => g.trim()).filter(g => g);
+      orGroups.forEach(group => {
+        const terms = group.split(/\s+/).filter(t => t);
+        terms.forEach(term => {
+          // Remove wildcard * for highlighting
+          const cleanTerm = term.endsWith('*') ? term.slice(0, -1) : term;
+          if (cleanTerm) {
+            allTerms.push(cleanTerm);
+          }
+        });
+      });
+    }
+    
+    // Highlight all terms
+    let highlighted = text;
+    allTerms.forEach(term => {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      highlighted = highlighted.replace(regex, '<span class="search-highlight">$1</span>');
+    });
+    
+    return highlighted;
+  }
+  
+  // Get highlighted message - memoize based on entry id and search query
+  let lastEntryId = entry.id;
+  let lastSearchQuery = $logFilters.searchQuery;
+  let cachedHighlightedMessage = highlightSearch(entry.message, lastSearchQuery);
+  let cachedHighlightedFlair = entry.flair ? highlightSearch(entry.flair, lastSearchQuery) : '';
+  
+  $: {
+    const currentQuery = $logFilters.searchQuery;
+    const currentEntryId = entry.id;
+    // Only recalculate if search query or entry id changes
+    if (currentQuery !== lastSearchQuery || currentEntryId !== lastEntryId) {
+      cachedHighlightedMessage = highlightSearch(entry.message, currentQuery);
+      cachedHighlightedFlair = entry.flair ? highlightSearch(entry.flair, currentQuery) : '';
+      lastSearchQuery = currentQuery;
+      lastEntryId = currentEntryId;
+    }
+  }
+  
+  const highlightedMessage = cachedHighlightedMessage;
+  const highlightedFlair = cachedHighlightedFlair;
+  
+  function formatTime(date: Date): string {
+    return date.toLocaleTimeString('en-US', { 
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+  
+  function copyMessage(): void {
+    navigator.clipboard.writeText(entry.message).then(() => {
+      // Visual feedback could be added here
+    });
+  }
+  
+  function getTypeIcon(type: string): string {
+    switch (type) {
+      case 'success': return '✅';
+      case 'error': return '❌';
+      case 'warning': return '⚠️';
+      case 'debug': return '🔍';
+      default: return 'ℹ️';
+    }
+  }
+</script>
+
+<div 
+  bind:this={entryElement}
+  class="log-entry log-entry--{entry.type}" 
+  class:hovered={isHovered}
+  use:animate={{
+    preset: 'fadeIn',
+    duration: 250,
+    delay: index * 20,
+    id: `log-entry-${entry.id}`,
+    easing: 'easeOutCubic',
+    trigger: 'mount'
+  }}
+  on:mouseenter={() => isHovered = true}
+  on:mouseleave={() => isHovered = false}
+  role="log"
+>
+  <div class="log-entry__icon">
+    {entry.icon || getTypeIcon(entry.type)}
+  </div>
+  
+  <div class="log-entry__content">
+    <Tooltip text={entry.timestamp.toISOString()} position="top">
+      <span class="log-entry__time">
+        {formatTime(entry.timestamp)}
+      </span>
+    </Tooltip>
+    {#if entry.flair}
+      <span class="log-entry__flair log-entry__flair--{entry.type}">
+        {@html highlightedFlair}
+      </span>
+    {/if}
+    <span class="log-entry__text">
+      {@html highlightedMessage}
+    </span>
+    {#if entry.count && entry.count > 1}
+      <Tooltip text="This message appeared {entry.count} times" position="top">
+        <span class="log-entry__count">
+          x{entry.count}
+        </span>
+      </Tooltip>
+    {/if}
+    <Tooltip text="Copy message" position="top">
+      <button 
+        class="log-entry__copy"
+        on:click={copyMessage}
+        aria-label="Copy message"
+      >
+        📋
+      </button>
+    </Tooltip>
+  </div>
+</div>
+
+<style lang="scss">
+  .log-entry {
+    display: flex;
+    gap: 8px;
+    padding: 4px 8px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    background: var(--bg-dark);
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+  
+  .log-entry:hover {
+    background: var(--border);
+    transform: translateX(2px) scale(1.01);
+  }
+  
+  .log-entry:hover .log-entry__text {
+    color: var(--text);
+  }
+  
+  .log-entry:hover .log-entry__copy {
+    opacity: 1;
+  }
+  
+  .log-entry .log-entry__icon {
+    font-size: 0.95em;
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+    opacity: 0.8;
+  }
+  
+  .log-entry .log-entry__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+  }
+  
+  .log-entry .log-entry__time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.7em;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__flair {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.65em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__text {
+    font-size: 0.85em;
+    color: var(--text);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .log-entry .log-entry__count {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.65em;
+    font-weight: 600;
+    color: var(--muted);
+    background: rgba(128, 128, 128, 0.15);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__copy {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.85em;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  
+  .log-entry .log-entry__copy:hover {
+    color: var(--text);
+  }
+  
+  .log-entry.log-entry--success {
+    border-left-color: var(--success);
+    background: rgba(40, 167, 69, 0.05);
+  }
+  
+  .log-entry.log-entry--success .log-entry__text {
+    color: var(--success);
+  }
+  
+  .log-entry.log-entry--error {
+    border-left-color: var(--danger);
+    background: rgba(234, 43, 31, 0.05);
+  }
+  
+  .log-entry.log-entry--error .log-entry__text {
+    color: var(--danger);
+  }
+  
+  .log-entry.log-entry--warning {
+    border-left-color: #ffc107;
+    background: rgba(255, 193, 7, 0.05);
+  }
+  
+  .log-entry.log-entry--warning .log-entry__text {
+    color: #ffc107;
+  }
+  
+  .log-entry.log-entry--info {
+    border-left-color: var(--info);
+    background: rgba(100, 149, 237, 0.05);
+  }
+  
+  .log-entry.log-entry--info .log-entry__text {
+    color: var(--info);
+  }
+  
+  .log-entry.log-entry--debug {
+    border-left-color: var(--muted);
+    background: rgba(128, 128, 128, 0.05);
+  }
+  
+  .log-entry.log-entry--debug .log-entry__text {
+    color: var(--muted);
+  }
+  
+</style>
+

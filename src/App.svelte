@@ -6,20 +6,19 @@
    */
   
   import { onMount } from 'svelte';
-  import Header from './components/Header.svelte';
-  import InfoBar from './components/InfoBar.svelte';
-  import Navigation from './components/Navigation.svelte';
+  import { Header, InfoBar, Navigation } from '@components';
   import Dashboard from './pages/Dashboard.svelte';
   import Sources from './pages/Sources.svelte';
   import TextCycler from './pages/TextCycler.svelte';
   import Swaps from './pages/Swaps.svelte';
   import Layouts from './pages/Layouts.svelte';
   import Notes from './pages/Notes.svelte';
+  import Chat from './pages/Chat.svelte';
   import Scripts from './pages/Scripts.svelte';
   import Install from './pages/Install.svelte';
   import Setup from './pages/Setup.svelte';
-  import ActivityLog from './components/ActivityLog.svelte';
-  import ToastContainer from './components/ui/ToastContainer.svelte';
+  import { ActivityLog } from '@components';
+  import { ToastContainer } from '@components';
   
   import { currentPage } from './stores/navigation';
   import { initializeApp } from './modules/bootstrap';
@@ -78,6 +77,8 @@
           <Layouts />
         {:else if $currentPage === 'notes'}
           <Notes />
+        {:else if $currentPage === 'chat'}
+          <Chat />
         {:else if $currentPage === 'scripts'}
           <Scripts />
         {:else if $currentPage === 'install'}

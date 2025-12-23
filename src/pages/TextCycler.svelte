@@ -7,9 +7,7 @@
   
   import { onMount } from 'svelte';
   import { connected, textSources } from '../stores/connection';
-  import SearchBox from '../components/SearchBox.svelte';
-  import Tooltip from '../components/Tooltip.svelte';
-  import SourceSelect from '../components/SourceSelect.svelte';
+  import { SearchBox, Tooltip, SourceSelect } from '@components';
   import { stagger } from '../core/animations';
   
   let showEditor = false;

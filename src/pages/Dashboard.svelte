@@ -8,7 +8,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { connected, currentScene } from '../stores/connection';
   import { navigateTo } from '../stores/navigation';
-  import Tooltip from '../components/Tooltip.svelte';
+  import { Tooltip } from '@components';
   import type { SwapConfig } from '../types';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';

@@ -10,6 +10,8 @@
 #   - TWITCH_CLIENT_SECRET: Your Twitch application client secret
 #   - RESEND_API_KEY: Resend API key for OTP email functionality (required for authentication)
 #   - RESEND_FROM_EMAIL: REQUIRED - Verified domain email for sending OTP emails (e.g., noreply@mail.yourdomain.com)
+#   - JWT_SECRET: REQUIRED - Secure random secret for JWT token signing (generate with: openssl rand -base64 32)
+#   - ALLOWED_ORIGINS: OPTIONAL - Comma-separated list of allowed CORS origins (e.g., "https://yourdomain.com,https://www.yourdomain.com")
 
 name: Deploy Twitch API Proxy
 
@@ -54,6 +56,7 @@ jobs:
           echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | wrangler secret put TWITCH_CLIENT_SECRET
           echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY
           echo "${{ secrets.RESEND_FROM_EMAIL }}" | wrangler secret put RESEND_FROM_EMAIL
+          echo "${{ secrets.JWT_SECRET }}" | wrangler secret put JWT_SECRET
         continue-on-error: true  # Secrets may already exist
           
       - name: Deployment Summary

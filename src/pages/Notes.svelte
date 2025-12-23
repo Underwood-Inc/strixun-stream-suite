@@ -2,31 +2,29 @@
   /**
    * Notes/Notebook Page
    * 
-   * Rich text editor with Mermaid support for notes and notebooks
+   * Simple text editor for notes and notebooks
    * REQUIRES AUTHENTICATION - All notes are cloud-only
    */
   
-  import { onMount, onDestroy } from 'svelte';
-  import LexicalEditor from '../components/editor/LexicalEditor.svelte';
-  import EditorToolbar from '../components/editor/EditorToolbar.svelte';
-  import MermaidBuilder from '../components/editor/MermaidBuilder.svelte';
-  import LoginModal from '../components/auth/LoginModal.svelte';
-  import { 
+  import { onDestroy, onMount } from 'svelte';
+  import { SimpleTextEditor, LoginModal } from '@components';
+  import { stagger } from '../core/animations';
+  import {
+    deleteNotebook,
     listNotebooks,
     loadNotebook,
     saveNotebook,
-    deleteNotebook,
-    type NotebookMetadata,
-    type Notebook
+    type Notebook,
+    type NotebookMetadata
   } from '../modules/notes-storage';
-  import { isAuthenticated, user, clearAuth } from '../stores/auth';
+  import { clearAuth, isAuthenticated, user } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
-  import { stagger } from '../core/animations';
   
   let notebooks: NotebookMetadata[] = [];
   let currentNotebook: Notebook | null = null;
   let currentNotebookId: string | null = null;
-  let editorComponent: LexicalEditor | null = null;
+  let editorComponent: SimpleTextEditor | null = null;
+  let notebookContent = '';
   let isLoading = false;
   let isSaving = false;
   let saveStatus = '';
@@ -37,16 +35,9 @@
   let lastContentHash = '';
   let hasUnsavedChanges = false;
   let showLoginModal = false;
-  let showMermaidBuilder = false;
-  let editorInstance: ReturnType<typeof import('lexical').createEditor> | null = null;
   
   // Auto-save debounce (30 seconds) - saves to cloud only
   const AUTO_SAVE_DELAY = 30000;
-  
-  // Update editor instance when component is ready
-  $: if (editorComponent) {
-    editorInstance = editorComponent.getEditor();
-  }
   
   onMount(async () => {
     // NO automatic API calls - user must manually load notebooks
@@ -121,14 +112,12 @@
       showNotebookList = false;
       
       // Load content into editor
-      if (editorComponent) {
-        const content = typeof notebook.content === 'string' 
-          ? notebook.content 
-          : JSON.stringify(notebook.content);
-        editorComponent.setContent(content);
-        lastContentHash = hashContent(content);
-        hasUnsavedChanges = false;
-      }
+      const content = typeof notebook.content === 'string' 
+        ? notebook.content 
+        : JSON.stringify(notebook.content);
+      notebookContent = content;
+      lastContentHash = hashContent(content);
+      hasUnsavedChanges = false;
     } catch (error) {
       console.error('[Notes] Failed to load notebook:', error);
       showToast({ message: 'Failed to load notebook', type: 'error' });
@@ -188,13 +177,13 @@
       return;
     }
     
-    if (!currentNotebook || !editorComponent) return;
+    if (!currentNotebook) return;
     
     try {
       isSaving = true;
       saveStatus = 'Saving...';
       
-      const content = await editorComponent.getContent();
+      const content = notebookContent;
       const contentHash = hashContent(content);
       
       // Only save if content changed
@@ -248,6 +237,7 @@
    * Auto-saves to cloud after debounce
    */
   function handleContentChange(content: string): void {
+    notebookContent = content;
     const contentHash = hashContent(content);
     hasUnsavedChanges = contentHash !== lastContentHash;
     
@@ -327,23 +317,6 @@
     }
   }
   
-  /**
-   * Insert Mermaid diagram
-   */
-  function insertMermaid(): void {
-    showMermaidBuilder = true;
-  }
-  
-  /**
-   * Handle Mermaid diagram save from builder
-   */
-  function handleMermaidSave(diagram: string): void {
-    if (editorComponent && diagram.trim()) {
-      editorComponent.insertMermaid(diagram);
-      showToast({ message: 'Mermaid diagram inserted', type: 'success' });
-    }
-    showMermaidBuilder = false;
-  }
   
 </script>
 
@@ -435,7 +408,6 @@
         <button class="btn btn-secondary" on:click={goBack}>← Back</button>
         <h2>{currentNotebook?.metadata.title || 'Untitled'}</h2>
         <div class="editor-actions">
-          <button class="btn btn-secondary" on:click={insertMermaid}>📊 Insert Mermaid</button>
           <button 
             class="btn btn-primary" 
             on:click={() => saveCurrentNotebook(true)}
@@ -455,10 +427,9 @@
       <div class="editor-container">
         {#if currentNotebook}
           <div class="editor-wrapper">
-            <EditorToolbar editor={editorInstance} />
-            <LexicalEditor
+            <SimpleTextEditor
               bind:this={editorComponent}
-              initialContent={typeof currentNotebook.content === 'string' ? currentNotebook.content : ''}
+              value={notebookContent}
               onChange={handleContentChange}
               placeholder="Start writing your notes..."
             />
@@ -471,12 +442,6 @@
   {#if showLoginModal}
     <LoginModal onClose={handleLoginClose} />
   {/if}
-  
-  <MermaidBuilder 
-    isOpen={showMermaidBuilder}
-    onSave={handleMermaidSave}
-    onClose={() => showMermaidBuilder = false}
-  />
 </div>
 
 <style lang="scss">

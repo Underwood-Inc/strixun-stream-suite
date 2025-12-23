@@ -4,11 +4,17 @@
  * Initializes the Svelte application
  */
 
+import { mount } from 'svelte';
 import App from './App.svelte';
 import './styles/main.scss';
 
 // Initialize core communication layer FIRST
 import { initializeCore } from './core/init';
+
+// Set chat signaling server URL
+if (typeof window !== 'undefined') {
+  (window as any).CHAT_SIGNALING_URL = 'https://strixun-chat-signaling.strixuns-script-suite.workers.dev';
+}
 
 // Import modules to ensure they're available
 import './modules/app';
@@ -29,8 +35,8 @@ initializeCore().catch(error => {
   console.error('[Main] Failed to initialize core:', error);
 });
 
-// Initialize the app
-const app = new App({
+// Initialize the app using Svelte 5 mount API
+const app = mount(App, {
   target: document.body,
   props: {}
 });

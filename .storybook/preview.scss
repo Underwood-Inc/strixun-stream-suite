@@ -1,0 +1,94 @@
+/**
+ * Storybook Preview Styles
+ * 
+ * Additional styling to ensure Storybook matches the app theme.
+ * This file is imported in preview.ts
+ */
+
+@use '../src/styles/variables' as *;
+
+/* Storybook wrapper styling */
+.sb-show-main {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Storybook docs container */
+.sbdocs-wrapper {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+.sbdocs-content {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* Code blocks in docs */
+.sbdocs pre {
+  background: var(--bg-dark) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+.sbdocs code {
+  background: var(--bg-dark) !important;
+  color: var(--accent) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Tables in docs */
+.sbdocs table {
+  border-color: var(--border) !important;
+}
+
+.sbdocs th {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+.sbdocs td {
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Links in docs */
+.sbdocs a {
+  color: var(--accent) !important;
+}
+
+.sbdocs a:hover {
+  color: var(--accent-light) !important;
+}
+
+/* Headings in docs */
+.sbdocs h1,
+.sbdocs h2,
+.sbdocs h3,
+.sbdocs h4,
+.sbdocs h5,
+.sbdocs h6 {
+  color: var(--text) !important;
+}
+
+/* Story container */
+.sb-story {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* Ensure proper contrast for all text */
+.sbdocs p,
+.sbdocs li,
+.sbdocs blockquote {
+  color: var(--text) !important;
+}
+
+/* Blockquotes */
+.sbdocs blockquote {
+  border-left-color: var(--accent) !important;
+  background: var(--card) !important;
+}
+

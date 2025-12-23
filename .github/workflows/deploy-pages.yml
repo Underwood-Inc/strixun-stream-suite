@@ -92,9 +92,14 @@ jobs:
           # Get deployment timestamp
           DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
+          # Construct Storybook URL
+          STORYBOOK_URL="${PAGES_URL}storybook/"
+          echo "Storybook URL: $STORYBOOK_URL"
+          
           # Inject values into config.js in dist directory
           sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" dist/config.js
           sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" dist/config.js
+          sed -i "s|%%STORYBOOK_URL%%|${STORYBOOK_URL}|g" dist/config.js
           sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" dist/config.js
           sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" dist/config.js
           sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" dist/config.js

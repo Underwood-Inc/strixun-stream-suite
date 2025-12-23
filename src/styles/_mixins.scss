@@ -68,17 +68,25 @@
   }
   
   &::-webkit-scrollbar-track {
-    background: var(--bg-dark);
+    background: transparent;
   }
   
   &::-webkit-scrollbar-thumb {
     background: var(--border);
-    border-radius: 4px;
+    border-radius: 3px;
     
     &:hover {
-      background: var(--border-light);
+      background: var(--muted);
     }
   }
+  
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  
+  // Firefox scrollbar
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 // ============ Flexbox Utilities ============
@@ -158,4 +166,5 @@
     }
   }
 }
+
 

@@ -47,6 +47,7 @@
   background: var(--bg-dark);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
+  @include mixins.scrollbar(6px);
   
   .tab {
     padding: 8px 12px;
