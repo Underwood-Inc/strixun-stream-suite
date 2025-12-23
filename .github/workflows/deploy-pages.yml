@@ -51,6 +51,8 @@ jobs:
         run: pnpm install --frozen-lockfile
         
       - name: Build Svelte app
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: pnpm build
         
       - name: Setup Pages
@@ -61,6 +63,12 @@ jobs:
       
       - name: Copy config.js to dist
         run: cp config.js dist/config.js
+      
+      - name: Copy legacy assets
+        run: |
+          # Copy installer.js and any other legacy assets needed
+          mkdir -p dist/assets/js/modules
+          cp assets/js/modules/installer.js dist/assets/js/modules/installer.js || echo "installer.js not found, skipping"
       
       - name: Inject Auto-Configuration
         env:

@@ -1,8 +1,12 @@
-import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Base path for GitHub Pages deployment
+  // Set via VITE_BASE_PATH env var, defaults to '/' for local development
+  base: process.env.VITE_BASE_PATH || '/',
+  
   plugins: [svelte()],
   
   css: {
