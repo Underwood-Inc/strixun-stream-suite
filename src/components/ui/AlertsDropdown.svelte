@@ -64,32 +64,38 @@
   }
   
   function updateDropdownPosition(): void {
-    if (!dropdown || !button || !portalContainer) return;
-    
-    const buttonRect = button.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - buttonRect.bottom - 8;
-    const spaceAbove = buttonRect.top - 8;
-    
-    // Position dropdown below button by default
-    let top = buttonRect.bottom + 8;
-    let maxHeight = PANEL_MAX_HEIGHT;
-    
-    // If not enough space below, position above button
-    if (spaceBelow < PANEL_MAX_HEIGHT && spaceAbove > spaceBelow) {
-      top = buttonRect.top - PANEL_MAX_HEIGHT - 8;
-      maxHeight = Math.min(PANEL_MAX_HEIGHT, spaceAbove - 8);
-    } else {
-      maxHeight = Math.min(PANEL_MAX_HEIGHT, spaceBelow);
-    }
-    
-    dropdown.style.top = `${top}px`;
-    dropdown.style.right = `${window.innerWidth - buttonRect.right}px`;
-    dropdown.style.maxHeight = `${maxHeight}px`;
-    
-    // Recalculate available height for content
-    if (header) {
-      const headerHeight = header.offsetHeight;
-      availableHeight = maxHeight - headerHeight;
+    try {
+      if (!dropdown || !button || !portalContainer) return;
+      
+      const buttonRect = button.getBoundingClientRect();
+      if (!buttonRect) return;
+      
+      const spaceBelow = window.innerHeight - buttonRect.bottom - 8;
+      const spaceAbove = buttonRect.top - 8;
+      
+      // Position dropdown below button by default
+      let top = buttonRect.bottom + 8;
+      let maxHeight = PANEL_MAX_HEIGHT;
+      
+      // If not enough space below, position above button
+      if (spaceBelow < PANEL_MAX_HEIGHT && spaceAbove > spaceBelow) {
+        top = buttonRect.top - PANEL_MAX_HEIGHT - 8;
+        maxHeight = Math.min(PANEL_MAX_HEIGHT, spaceAbove - 8);
+      } else {
+        maxHeight = Math.min(PANEL_MAX_HEIGHT, spaceBelow);
+      }
+      
+      dropdown.style.top = `${top}px`;
+      dropdown.style.right = `${window.innerWidth - buttonRect.right}px`;
+      dropdown.style.maxHeight = `${maxHeight}px`;
+      
+      // Recalculate available height for content
+      if (header) {
+        const headerHeight = header.offsetHeight;
+        availableHeight = Math.max(100, maxHeight - headerHeight);
+      }
+    } catch (error) {
+      console.error('Error in updateDropdownPosition:', error);
     }
   }
   
@@ -124,12 +130,33 @@
   // Update position when dropdown opens
   $: if (open && dropdown && button) {
     tick().then(() => {
-      updateDropdownPosition();
+      try {
+        updateDropdownPosition();
+      } catch (error) {
+        console.error('Error updating dropdown position:', error);
+      }
     });
   }
   
-  $: unreadCount = $allToastsHistory.filter(t => t.visible).length;
-  $: totalCount = $allToastsHistory.length;
+  // Safely calculate counts with error handling
+  let unreadCount = 0;
+  let totalCount = 0;
+  
+  $: {
+    try {
+      if ($allToastsHistory) {
+        unreadCount = $allToastsHistory.filter(t => t && t.visible).length;
+        totalCount = $allToastsHistory.length;
+      } else {
+        unreadCount = 0;
+        totalCount = 0;
+      }
+    } catch (error) {
+      console.error('Error calculating alert counts:', error);
+      unreadCount = 0;
+      totalCount = 0;
+    }
+  }
 </script>
 
 <div class="alerts-dropdown">
@@ -163,32 +190,35 @@
         <span class="alerts-dropdown__count">{totalCount} total</span>
       </div>
       
-      {#if $allToastsHistory.length > 0}
+      {#if $allToastsHistory && $allToastsHistory.length > 0}
         <div class="alerts-dropdown__content" bind:this={content}>
           <VirtualList
-            items={$allToastsHistory}
+            items={$allToastsHistory.filter(item => item && item.id)}
             itemHeight={80}
             containerHeight={availableHeight}
             overscan={3}
           >
             <svelte:fragment let:item let:index>
-              <div class="alerts-dropdown__item" class:alerts-dropdown__item--dismissed={!item.visible}>
-                <div class="alerts-dropdown__item-header">
-                  <span class="alerts-dropdown__item-time">{formatTime(item.createdAt)}</span>
-                  {#if item.count && item.count > 1}
-                    <span class="alerts-dropdown__item-count">x{item.count}</span>
-                  {/if}
+              {#if item}
+                <div class="alerts-dropdown__item" class:alerts-dropdown__item--dismissed={!item.visible}>
+                  <div class="alerts-dropdown__item-header">
+                    <span class="alerts-dropdown__item-time">{formatTime(item.createdAt || Date.now())}</span>
+                    {#if item.count && item.count > 1}
+                      <span class="alerts-dropdown__item-count">x{item.count}</span>
+                    {/if}
+                  </div>
+                  <div class="alerts-dropdown__item-toast">
+                    <Toast
+                      toast={item}
+                      index={index}
+                      inOverflow={false}
+                      overflowIndex={0}
+                      showCloseButton={false}
+                      onDismiss={() => {}}
+                    />
+                  </div>
                 </div>
-                <div class="alerts-dropdown__item-toast">
-                  <Toast
-                    toast={item}
-                    index={index}
-                    inOverflow={false}
-                    overflowIndex={0}
-                    onDismiss={() => {}}
-                  />
-                </div>
-              </div>
+              {/if}
             </svelte:fragment>
           </VirtualList>
         </div>
@@ -349,10 +379,6 @@
         transform: none;
         opacity: 1;
         position: relative;
-      }
-      
-      :global(.toast__close) {
-        display: none; // Hide close button in alerts dropdown
       }
     }
   }

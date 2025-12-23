@@ -25,17 +25,32 @@
   let totalHeight = 0;
   let visibleStart = 0;
   
-  // Calculate visible items reactively
+  // Calculate visible items reactively with error handling
   $: {
-    const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
-    const end = Math.min(
-      items.length,
-      Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan
-    );
-    visibleItems = items.slice(start, end);
-    offsetY = start * itemHeight;
-    totalHeight = items.length * itemHeight;
-    visibleStart = start;
+    try {
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        visibleItems = [];
+        offsetY = 0;
+        totalHeight = 0;
+        visibleStart = 0;
+      } else {
+        const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+        const end = Math.min(
+          items.length,
+          Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan
+        );
+        visibleItems = items.slice(start, end).filter(item => item != null);
+        offsetY = start * itemHeight;
+        totalHeight = items.length * itemHeight;
+        visibleStart = start;
+      }
+    } catch (error) {
+      console.error('Error calculating virtual list items:', error);
+      visibleItems = [];
+      offsetY = 0;
+      totalHeight = 0;
+      visibleStart = 0;
+    }
   }
   
   function handleScroll(e: Event): void {

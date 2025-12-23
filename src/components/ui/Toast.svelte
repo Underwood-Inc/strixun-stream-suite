@@ -15,6 +15,7 @@
   export let index: number = 0;
   export let inOverflow: boolean = false;
   export let overflowIndex: number = 0;
+  export let showCloseButton: boolean = true; // Allow disabling close button (e.g., in alerts panel)
   
   let mounted = false;
   let visible = false;
@@ -26,9 +27,14 @@
   });
   
   function handleDismiss(): void {
+    // Prevent dismissal if close button is disabled
+    if (!showCloseButton) return;
+    
     visible = false;
     setTimeout(() => {
-      onDismiss(toast.id);
+      if (onDismiss) {
+        onDismiss(toast.id);
+      }
     }, 300);
   }
   
@@ -63,15 +69,17 @@
       {#if toast.title}
         <div class="toast__title">{toast.title}</div>
       {/if}
-      <Tooltip text="Dismiss" position="left">
-        <button 
-          class="toast__close" 
-          on:click={handleDismiss} 
-          aria-label="Dismiss"
-        >
-          ×
-        </button>
-      </Tooltip>
+      {#if showCloseButton}
+        <Tooltip text="Dismiss" position="left">
+          <button 
+            class="toast__close" 
+            on:click={handleDismiss} 
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </Tooltip>
+      {/if}
     </div>
     
     <!-- Body/Content Section -->

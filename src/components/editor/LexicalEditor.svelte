@@ -5,22 +5,20 @@
    * Wrapper component that bridges Lexical's framework-agnostic core to Svelte
    */
   
-  import { onMount, onDestroy } from 'svelte';
-  import { 
-    createEditor,
-    $getRoot as getRoot, 
-    $getSelection as getSelection,
-    $isRangeSelection as isRangeSelection,
-    $isTextNode as isTextNode,
-    $createParagraphNode as createParagraphNode,
-    $createTextNode as createTextNode
-  } from 'lexical';
-  import { HeadingNode, QuoteNode, $isHeadingNode as isHeadingNode } from '@lexical/rich-text';
-  import { ListNode, ListItemNode, $isListNode as isListNode, $isListItemNode as isListItemNode } from '@lexical/list';
-  import { LinkNode } from '@lexical/link';
   import { CodeNode } from '@lexical/code';
-  import { MermaidNode, $createMermaidNode as createMermaidNode } from './MermaidNode';
   import { $generateHtmlFromNodes as generateHtmlFromNodes, $generateNodesFromDOM as generateNodesFromDOM } from '@lexical/html';
+  import { LinkNode } from '@lexical/link';
+  import { ListItemNode, ListNode } from '@lexical/list';
+  import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+  import {
+    createEditor,
+    $createParagraphNode as createParagraphNode,
+    $getRoot as getRoot,
+    $getSelection as getSelection,
+    $isRangeSelection as isRangeSelection
+  } from 'lexical';
+  import { onDestroy, onMount } from 'svelte';
+  import { MermaidNode, $createMermaidNode as createMermaidNode } from './MermaidNode';
   
   export let initialContent: string | null = null;
   export let onChange: ((content: string) => void) | null = null;
@@ -77,7 +75,7 @@
       },
     });
     
-    // Mount editor to DOM
+    // Mount editor to DOM (this makes it contentEditable automatically)
     editor.setRootElement(editorContainer);
     
     // Initialize with empty paragraph if no content

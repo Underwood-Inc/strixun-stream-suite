@@ -42,6 +42,11 @@
   // Auto-save debounce (30 seconds) - saves to cloud only
   const AUTO_SAVE_DELAY = 30000;
   
+  // Update editor instance when component is ready
+  $: if (editorComponent) {
+    editorInstance = editorComponent.getEditor();
+  }
+  
   onMount(async () => {
     if ($isAuthenticated) {
       await loadNotebooks();
@@ -340,10 +345,6 @@
     showMermaidBuilder = false;
   }
   
-  // Get editor instance when component is ready
-  $: if (editorComponent) {
-    editorInstance = editorComponent.getEditor();
-  }
 </script>
 
 <div class="notes-page">
