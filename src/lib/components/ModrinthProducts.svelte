@@ -44,52 +44,70 @@
 </script>
 
 <div class="modrinth-products">
-  <Carousel autoRotate={true} interval={6000} showIndicators={true} showControls={true}>
-    {#each products as product}
-      <a
-        href={product.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="modrinth-product__link"
-      >
-        <Card clickable={false}>
-          <div class="modrinth-product">
-            <h3 class="modrinth-product__title">{product.title}</h3>
-            {#if product.status}
-              <span class="modrinth-product__status">{product.status}</span>
-            {/if}
-            <p class="modrinth-product__description">{product.description}</p>
-            <div class="modrinth-product__stats">
-              {#if product.downloads}
-                <span class="modrinth-product__stat">
-                  <strong>{product.downloads}</strong> downloads
-                </span>
+  <div class="modrinth-products__wrapper">
+    <Carousel autoRotate={true} interval={6000} showIndicators={true} showControls={true}>
+      {#each products as product}
+        <a
+          href={product.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="modrinth-product__link"
+        >
+          <Card clickable={false}>
+            <div class="modrinth-product">
+              <h3 class="modrinth-product__title">{product.title}</h3>
+              {#if product.status}
+                <span class="modrinth-product__status">{product.status}</span>
               {/if}
-              {#if product.followers}
-                <span class="modrinth-product__stat">
-                  <strong>{product.followers}</strong> {product.followers === '1' ? 'follower' : 'followers'}
-                </span>
-              {/if}
+              <p class="modrinth-product__description">{product.description}</p>
+              <div class="modrinth-product__stats">
+                {#if product.downloads}
+                  <span class="modrinth-product__stat">
+                    <strong>{product.downloads}</strong> downloads
+                  </span>
+                {/if}
+                {#if product.followers}
+                  <span class="modrinth-product__stat">
+                    <strong>{product.followers}</strong> {product.followers === '1' ? 'follower' : 'followers'}
+                  </span>
+                {/if}
+              </div>
             </div>
-          </div>
-        </Card>
-      </a>
-    {/each}
-  </Carousel>
+          </Card>
+        </a>
+      {/each}
+    </Carousel>
+  </div>
 </div>
 
 <style lang="scss">
+  @use '@styles/mixins' as *;
+
   .modrinth-products {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modrinth-products__wrapper {
+    width: 100%;
+    height: 350px;
+    max-height: 350px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .modrinth-product__link {
-    display: block;
+    display: flex;
+    flex-direction: column;
     text-decoration: none;
     color: inherit;
     width: 100%;
     height: 100%;
+    max-height: 100%;
     cursor: pointer;
+    overflow: hidden;
     
     &:hover,
     &:focus,
@@ -120,6 +138,9 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .modrinth-product__title {
@@ -142,6 +163,10 @@
     color: var(--text-secondary);
     line-height: 1.5;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    @include scrollbar(6px);
   }
 
   .modrinth-product__stats {

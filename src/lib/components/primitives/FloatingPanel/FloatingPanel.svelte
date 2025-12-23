@@ -906,6 +906,7 @@
   .floating-panel__header {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     padding: 8px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-dark);
@@ -914,7 +915,6 @@
 
   .floating-panel:not(.floating-panel--expanded) .floating-panel__header {
     padding: 4px;
-    justify-content: center;
   }
 
   .floating-panel__toggle {

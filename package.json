@@ -20,8 +20,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "embla-carousel": "^8.6.0",
-    "embla-carousel-autoplay": "^8.6.0"
+    "swiper": "^11.2.10"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.2",

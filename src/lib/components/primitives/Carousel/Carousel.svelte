@@ -2,13 +2,13 @@
   /**
    * Carousel Component
    * 
-   * A performant carousel component using Embla Carousel.
-   * Features 3D-style overlapping items with depth effects.
-   * Supports automatic rotation and manual navigation.
+   * A performant 3D carousel component using Swiper.
+   * Features true 3D rotation effects (cube/coverflow) with perspective transforms.
+   * Supports automatic rotation and manual navigation with smooth animations.
    * 
    * @example
    * ```svelte
-   * <Carousel autoRotate={true} interval={5000}>
+   * <Carousel autoRotate={true} interval={5000} effect="cube">
    *   <Card>Item 1</Card>
    *   <Card>Item 2</Card>
    *   <Card>Item 3</Card>
@@ -16,9 +16,14 @@
    * ```
    */
 
-  import { onMount, onDestroy } from 'svelte';
-  import EmblaCarousel from 'embla-carousel';
-  import Autoplay from 'embla-carousel-autoplay';
+  import { onDestroy, onMount } from 'svelte';
+  import Swiper from 'swiper';
+  import 'swiper/css';
+  import 'swiper/css/effect-coverflow';
+  import 'swiper/css/effect-cube';
+  import 'swiper/css/navigation';
+  import 'swiper/css/pagination';
+  import { Autoplay, EffectCoverflow, EffectCube, Navigation, Pagination } from 'swiper/modules';
 
   export let autoRotate: boolean = false;
   export let interval: number = 5000; // milliseconds
@@ -26,192 +31,265 @@
   export let showControls: boolean = true;
   export let className: string = '';
   export let loop: boolean = true;
-  export let align: 'start' | 'center' | 'end' = 'center';
-  export let slidesToScroll: number = 1;
+  export let effect: 'cube' | 'coverflow' | 'slide' = 'coverflow';
+  export let slidesPerView: number = 3;
+  export let spaceBetween: number = 30;
 
-  let emblaNode: HTMLElement;
-  let containerNode: HTMLElement;
-  let emblaApi: EmblaCarousel | null = null;
-  let selectedIndex = 0;
-  let autoplayPlugin: ReturnType<typeof Autoplay> | null = null;
-  let slides: HTMLElement[] = [];
+  let swiperContainer: HTMLElement;
+  let swiperWrapper: HTMLElement;
+  let swiper: Swiper | null = null;
+  let observer: MutationObserver | null = null;
+  let isInitializing = false;
 
-  function updateSlides(): void {
-    if (!containerNode) return;
-    slides = Array.from(containerNode.children) as HTMLElement[];
-    slides.forEach((slide) => {
-      slide.classList.add('carousel__slide');
-    });
-    updateSlideStyles();
-  }
-
-  function updateSlideStyles(): void {
-    if (!emblaApi || slides.length === 0) return;
+  function wrapChildrenInSlides(): boolean {
+    if (!swiperWrapper) return false;
     
-    const selected = emblaApi.selectedScrollSnap();
+    const children = Array.from(swiperWrapper.children);
+    let hasNewChildren = false;
     
-    slides.forEach((slide, index) => {
-      const distance = Math.abs(index - selected);
+    children.forEach((child) => {
+      // Skip if already a swiper-slide
+      if (child.classList.contains('swiper-slide')) return;
       
-      if (distance === 0) {
-        // Active slide
-        slide.style.opacity = '1';
-        slide.style.transform = 'scale(1)';
-        slide.style.filter = 'blur(0px)';
-        slide.style.zIndex = '10';
-      } else if (distance === 1) {
-        // Adjacent slides
-        slide.style.opacity = '0.6';
-        slide.style.transform = 'scale(0.9)';
-        slide.style.filter = 'blur(2px)';
-        slide.style.zIndex = '5';
-      } else {
-        // Far slides
-        slide.style.opacity = '0.3';
-        slide.style.transform = 'scale(0.85)';
-        slide.style.filter = 'blur(4px)';
-        slide.style.zIndex = '1';
+      // Skip if child is already inside a swiper-slide
+      let parent = child.parentElement;
+      while (parent && parent !== swiperWrapper) {
+        if (parent.classList.contains('swiper-slide')) {
+          return; // Already wrapped
+        }
+        parent = parent.parentElement;
       }
+      
+      hasNewChildren = true;
+      
+      // Create wrapper div
+      const slideWrapper = document.createElement('div');
+      slideWrapper.className = 'swiper-slide';
+      
+      // Insert wrapper before child, then move child into wrapper
+      swiperWrapper.insertBefore(slideWrapper, child);
+      slideWrapper.appendChild(child);
     });
+    
+    return hasNewChildren;
   }
 
   onMount(() => {
-    if (!emblaNode) return;
+    if (!swiperContainer || !swiperWrapper) return;
 
-    const plugins = [];
-    if (autoRotate) {
-      autoplayPlugin = Autoplay({ delay: interval, stopOnInteraction: true, stopOnMouseEnter: true });
-      plugins.push(autoplayPlugin);
-    }
-
-    emblaApi = EmblaCarousel(emblaNode, {
-      loop: loop,
-      align: align,
-      slidesToScroll: slidesToScroll,
-      containScroll: 'trimSnaps'
-    }, plugins);
-
-    emblaApi.on('select', () => {
-      selectedIndex = emblaApi.selectedScrollSnap();
-      updateSlideStyles();
-    });
-
-    emblaApi.on('reInit', () => {
-      updateSlides();
-      updateSlideStyles();
-    });
-
-    // Use MutationObserver to detect when slot content changes
-    const observer = new MutationObserver(() => {
-      updateSlides();
-    });
-
-    if (containerNode) {
-      observer.observe(containerNode, {
+    // Wait for slot content to render, then wrap children
+    const initSwiper = () => {
+      // Wrap children in swiper-slide divs BEFORE initializing Swiper
+      wrapChildrenInSlides();
+      
+      // Verify we have slides before initializing
+      const slides = swiperWrapper.querySelectorAll('.swiper-slide');
+      if (slides.length === 0) {
+        console.warn('Carousel: No slides found, retrying...');
+        setTimeout(initSwiper, 50);
+        return;
+      }
+      
+      isInitializing = true;
+      
+      // Watch for new children and wrap them (but don't interfere during init)
+      observer = new MutationObserver((mutations) => {
+        // Only process if Swiper is already initialized
+        if (!swiper || isInitializing) return;
+        
+        let shouldUpdate = false;
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE && 
+                !(node as Element).classList.contains('swiper-slide') &&
+                node.parentElement === swiperWrapper) {
+              shouldUpdate = true;
+            }
+          });
+        });
+        
+        if (shouldUpdate) {
+          const hadNewChildren = wrapChildrenInSlides();
+          if (hadNewChildren && swiper) {
+            swiper.update();
+          }
+        }
+      });
+      
+      observer.observe(swiperWrapper, {
         childList: true,
         subtree: false
       });
-    }
 
-    // Initial update after a short delay to ensure DOM is ready
-    setTimeout(() => {
-      updateSlides();
-    }, 0);
-
-    return () => {
-      observer.disconnect();
-      if (emblaApi) {
-        emblaApi.destroy();
+      const modules = [];
+      if (effect === 'cube') {
+        modules.push(EffectCube);
+      } else if (effect === 'coverflow') {
+        modules.push(EffectCoverflow);
       }
+      
+      if (showControls) {
+        modules.push(Navigation);
+      }
+      
+      if (showIndicators) {
+        modules.push(Pagination);
+      }
+      
+      if (autoRotate) {
+        modules.push(Autoplay);
+      }
+
+      swiper = new Swiper(swiperContainer, {
+        modules: modules,
+        effect: effect,
+        loop: loop,
+        slidesPerView: effect === 'coverflow' ? 'auto' : 1, // Use auto for coverflow to respect slide widths
+        spaceBetween: spaceBetween,
+        centeredSlides: true, // Center the active slide
+        watchOverflow: true, // Watch for overflow
+        autoplay: autoRotate ? {
+          delay: interval,
+          disableOnInteraction: false,
+          pauseOnMouseEnter: true,
+          enabled: true
+        } : false,
+        navigation: showControls ? {
+          nextEl: '.carousel__control--next',
+          prevEl: '.carousel__control--prev',
+          disabledClass: 'carousel__control--disabled'
+        } : false,
+        pagination: showIndicators ? {
+          el: '.carousel__pagination',
+          clickable: true,
+          type: 'bullets'
+        } : false,
+        cubeEffect: effect === 'cube' ? {
+          shadow: true,
+          slideShadows: true,
+          shadowOffset: 20,
+          shadowScale: 0.94
+        } : undefined,
+        coverflowEffect: effect === 'coverflow' ? {
+          rotate: 20, // Reduced from 50 to prevent flipping
+          stretch: 0,
+          depth: 50, // Reduced depth for better visibility
+          modifier: 1,
+          slideShadows: true
+        } : undefined,
+        speed: 800, // Animation speed - increased for smoother animation
+        allowTouchMove: true,
+        grabCursor: true,
+        on: {
+          init: () => {
+            isInitializing = false;
+            // Start autoplay if enabled
+            if (autoRotate && swiper?.autoplay) {
+              swiper.autoplay.start();
+            }
+          },
+          slideChange: () => {
+            // Slide changed - can add custom logic here if needed
+          }
+        }
+      });
+      
+      // Fallback in case init event doesn't fire
+      setTimeout(() => {
+        isInitializing = false;
+      }, 100);
     };
+
+    // Wait for next tick to ensure slot content is rendered
+    setTimeout(initSwiper, 0);
   });
 
   onDestroy(() => {
-    if (emblaApi) {
-      emblaApi.destroy();
+    if (observer) {
+      observer.disconnect();
+      observer = null;
     }
-    if (autoplayPlugin) {
-      autoplayPlugin.stop();
+    if (swiper) {
+      swiper.destroy(true, true);
+      swiper = null;
     }
   });
 
   function scrollPrev(): void {
-    emblaApi?.scrollPrev();
+    if (swiper) {
+      swiper.slidePrev();
+    }
   }
 
   function scrollNext(): void {
-    emblaApi?.scrollNext();
+    if (swiper) {
+      swiper.slideNext();
+    }
   }
 
   function scrollTo(index: number): void {
-    emblaApi?.scrollTo(index);
+    if (swiper) {
+      swiper.slideTo(index);
+    }
   }
 
-  $: if (emblaApi && autoRotate && autoplayPlugin) {
-    // Check if updateDelay method exists before calling it
-    // Some versions of embla-carousel-autoplay may not have this method
-    if (typeof autoplayPlugin.updateDelay === 'function') {
-      autoplayPlugin.updateDelay(interval);
+  // Update autoplay when interval changes
+  $: if (swiper && autoRotate && swiper.autoplay && !isInitializing) {
+    swiper.autoplay.stop();
+    swiper.params.autoplay = {
+      delay: interval,
+      disableOnInteraction: false,
+      pauseOnMouseEnter: true,
+      enabled: true
+    };
+    swiper.autoplay.start();
+  }
+
+  // Handle autoplay toggle
+  $: if (swiper && swiper.autoplay && !isInitializing) {
+    if (autoRotate) {
+      swiper.autoplay.start();
     } else {
-      // Fallback: stop and restart autoplay with new delay
-      // This is less efficient but works if updateDelay is not available
-      if (typeof autoplayPlugin.stop === 'function') {
-        autoplayPlugin.stop();
-      }
-      // Note: We can't easily recreate the plugin without reinitializing the carousel
-      // So we'll just log a warning and continue with the existing delay
-      console.warn('Carousel: updateDelay method not available on autoplay plugin. Interval change ignored.');
+      swiper.autoplay.stop();
     }
   }
 </script>
 
 <div class="carousel {className}">
-  <div class="carousel__viewport" bind:this={emblaNode}>
-    <div class="carousel__container" bind:this={containerNode}>
+  <div class="swiper carousel__swiper" bind:this={swiperContainer}>
+    <div class="swiper-wrapper carousel__wrapper" bind:this={swiperWrapper}>
       <slot />
     </div>
-  </div>
 
-  {#if showControls && emblaApi}
-    {#if emblaApi.canScrollPrev() || loop}
+    {#if showControls}
       <button
         class="carousel__control carousel__control--prev"
         on:click={scrollPrev}
         aria-label="Previous item"
         type="button"
+        disabled={!swiper}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-    {/if}
-    {#if emblaApi.canScrollNext() || loop}
       <button
         class="carousel__control carousel__control--next"
         on:click={scrollNext}
         aria-label="Next item"
         type="button"
+        disabled={!swiper}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 18l6-6-6-6"/>
         </svg>
       </button>
     {/if}
-  {/if}
 
-  {#if showIndicators && emblaApi}
-    <div class="carousel__indicators">
-      {#each Array(emblaApi.scrollSnapList().length) as _, index}
-        <button
-          class="carousel__indicator"
-          class:carousel__indicator--active={selectedIndex === index}
-          on:click={() => scrollTo(index)}
-          aria-label="Go to item {index + 1}"
-          type="button"
-        />
-      {/each}
-    </div>
-  {/if}
+    {#if showIndicators}
+      <div class="carousel__pagination"></div>
+    {/if}
+  </div>
 </div>
 
 <style lang="scss">
@@ -220,45 +298,60 @@
   .carousel {
     position: relative;
     width: 100%;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; // Clip to container but allow 3D transforms
   }
 
-  .carousel__viewport {
-    overflow: hidden;
+  .carousel__swiper {
     width: 100%;
+    height: 100%;
     padding: 20px 0;
+    overflow: hidden; // Clip overflow to prevent layout issues
+    position: relative;
+    
+    // Ensure proper perspective for 3D effects
+    :global(.swiper-wrapper) {
+      perspective: 1000px; // Reduced perspective for less extreme 3D
+      perspective-origin: center center;
+    }
     
     @media (max-width: 640px) {
       padding: 12px 0;
     }
   }
 
-  .carousel__container {
+  .carousel__wrapper {
     display: flex;
-    touch-action: pan-y pinch-zoom;
-    margin-left: -20px;
+    align-items: stretch;
+    height: 100%;
   }
 
-  .carousel__container > * {
-    flex: 0 0 calc(100% - 40px);
-    min-width: 0;
-    padding-left: 20px;
-    padding-right: 20px;
-    position: relative;
+  // Style Swiper slides - make them wider but constrained
+  :global(.swiper-slide) {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 60% !important; // Each slide takes 60% of viewport (wider but not too wide)
+    min-width: 350px; // Minimum width
+    max-width: 600px; // Maximum width to prevent overflow issues
+    flex-shrink: 0;
     
-    // 3D effect transitions
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-                filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    @include gpu-accelerated;
+    // Prevent text flipping on 3D transforms
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
     
-    @media (max-width: 640px) {
-      flex: 0 0 calc(100% - 24px);
-      padding-left: 12px;
-      padding-right: 12px;
-    }
-    
-    @media (min-width: 1024px) {
-      flex: 0 0 calc(85% - 40px);
+    > * {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      // Ensure content doesn't flip
+      transform: translateZ(0);
     }
   }
 
@@ -323,7 +416,8 @@
     right: clamp(8px, 2vw, 24px);
   }
 
-  .carousel__indicators {
+  .carousel__pagination {
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -338,14 +432,13 @@
     }
   }
 
-  .carousel__indicator {
+  // Style Swiper pagination bullets
+  :global(.swiper-pagination-bullet) {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     background: var(--border);
-    border: none;
-    cursor: pointer;
-    padding: 0;
+    opacity: 1;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     @include gpu-accelerated;
 
@@ -353,14 +446,9 @@
       background: var(--border-light);
       transform: scale(1.3);
     }
-
-    &:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
   }
 
-  .carousel__indicator--active {
+  :global(.swiper-pagination-bullet-active) {
     background: var(--accent);
     width: 28px;
     border-radius: 14px;
