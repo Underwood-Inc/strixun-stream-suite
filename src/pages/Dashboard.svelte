@@ -5,13 +5,13 @@
    * Main dashboard with system status and quick actions
    */
   
-  import { onMount, onDestroy } from 'svelte';
-  import { connected, currentScene } from '../stores/connection';
-  import { navigateTo } from '../stores/navigation';
-  import { Tooltip, ModrinthProducts } from '@components';
-  import type { SwapConfig } from '../types';
+  import { ModrinthProducts, Tooltip } from '@components';
+  import { onMount } from 'svelte';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';
+  import { connected } from '../stores/connection';
+  import { navigateTo } from '../stores/navigation';
+  import type { SwapConfig } from '../types';
   
   let hasRefreshedOnConnect = false;
   let swapConfigs: SwapConfig[] = [];
@@ -258,6 +258,7 @@
   .featured-products-card {
     padding: 0;
     overflow: hidden;
+    padding-top: 24px;
     margin-bottom: 24px;
     
     // Ensure carousel has proper height
