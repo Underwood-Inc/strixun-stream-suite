@@ -31,6 +31,13 @@ export async function initializeApp(): Promise<void> {
     await loadStorageCache();
     console.log('[Bootstrap] Storage system ready');
     
+    // Notes storage is cloud-only, no initialization needed
+    
+    // Load authentication state
+    const { loadAuthState } = await import('../stores/auth');
+    loadAuthState();
+    console.log('[Bootstrap] Authentication state loaded');
+    
     // Initialize modules in order
     await initializeModules();
     

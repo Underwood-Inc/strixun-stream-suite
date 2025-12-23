@@ -14,6 +14,7 @@
   import TextCycler from './pages/TextCycler.svelte';
   import Swaps from './pages/Swaps.svelte';
   import Layouts from './pages/Layouts.svelte';
+  import Notes from './pages/Notes.svelte';
   import Scripts from './pages/Scripts.svelte';
   import Install from './pages/Install.svelte';
   import Setup from './pages/Setup.svelte';
@@ -59,6 +60,8 @@
           <Swaps />
         {:else if $currentPage === 'layouts'}
           <Layouts />
+        {:else if $currentPage === 'notes'}
+          <Notes />
         {:else if $currentPage === 'scripts'}
           <Scripts />
         {:else if $currentPage === 'install'}

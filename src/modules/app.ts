@@ -175,6 +175,67 @@ export function copyBackupToClipboard(): void {
   });
 }
 
+/**
+ * Import backup data directly (for cloud saves)
+ */
+export function importBackupData(backup: StorageBackup): void {
+  if (!backup.version) {
+    log('Invalid backup file format', 'error');
+    return;
+  }
+  
+  // Build import summary
+  const categories: string[] = [];
+  if (backup.swapConfigs?.length) categories.push(`${backup.swapConfigs.length} swap configs`);
+  if (backup.layoutPresets?.length) categories.push(`${backup.layoutPresets.length} layout presets`);
+  if (backup.textCyclerConfigs?.length) categories.push(`${backup.textCyclerConfigs.length} text cycler configs`);
+  if (backup.ui_state) categories.push('UI preferences');
+  if (backup.connectionSettings) categories.push('connection settings');
+  
+  if (categories.length === 0) {
+    log('Backup file is empty!', 'error');
+    return;
+  }
+  
+  // Import all categories (cloud saves are trusted)
+  const imported: string[] = [];
+  
+  // Restore swaps
+  if (backup.swapConfigs && (window as any).SourceSwaps) {
+    (window as any).SourceSwaps.setConfigs(backup.swapConfigs);
+    imported.push(`${backup.swapConfigs.length} swaps`);
+  }
+  
+  // Restore layouts
+  if (backup.layoutPresets) {
+    (window as any).Layouts.layoutPresets = backup.layoutPresets;
+    storage.set('layoutPresets', backup.layoutPresets);
+    imported.push(`${backup.layoutPresets.length} layouts`);
+  }
+  
+  // Restore text cyclers
+  if (backup.textCyclerConfigs && (window as any).TextCycler) {
+    (window as any).TextCycler.setConfigs(backup.textCyclerConfigs);
+    imported.push(`${backup.textCyclerConfigs.length} text cyclers`);
+  }
+  
+  // Restore UI state
+  if (backup.ui_state) {
+    storage.set('ui_state', backup.ui_state);
+    imported.push('UI preferences');
+  }
+  
+  // Restore connection settings
+  if (backup.connectionSettings) {
+    if (backup.connectionSettings.host) storage.setRaw('obs_host', backup.connectionSettings.host);
+    if (backup.connectionSettings.port) storage.setRaw('obs_port', backup.connectionSettings.port);
+    imported.push('connection settings');
+  }
+  
+  log(`Imported: ${imported.join(', ')}`, 'success');
+  updateStorageStatus();
+}
+
 export function importDataWithOptions(): void {
   const input = document.createElement('input');
   input.type = 'file';

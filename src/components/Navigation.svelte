@@ -47,22 +47,29 @@
       disabledReason: 'Connect to OBS first to use this feature'
     },
     { 
-      id: 'scripts', 
+      id: 'notes', 
       numeral: 'VI', 
+      label: 'Notes', 
+      requiresConnection: false,
+      disabledReason: null
+    },
+    { 
+      id: 'scripts', 
+      numeral: 'VII', 
       label: 'Script Manager', 
       requiresConnection: false,
       disabledReason: null
     },
     { 
       id: 'install', 
-      numeral: 'VII', 
+      numeral: 'VIII', 
       label: 'Installer', 
       requiresConnection: false,
       disabledReason: null
     },
     { 
       id: 'setup', 
-      numeral: 'VIII', 
+      numeral: 'IX', 
       label: 'Setup', 
       requiresConnection: false,
       disabledReason: null

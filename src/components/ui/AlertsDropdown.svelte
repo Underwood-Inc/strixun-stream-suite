@@ -8,7 +8,7 @@
    * Part of the agnostic UI component library.
    */
   
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { allToastsHistory } from '../../stores/toast-queue';
   import VirtualList from '../VirtualList.svelte';
   import Toast from './Toast.svelte';
@@ -34,10 +34,16 @@
   
   export let open: boolean = false;
   export let onToggle: () => void;
-  
+
   let dropdown: HTMLDivElement;
   let button: HTMLButtonElement;
   let portalContainer: HTMLDivElement | null = null;
+  let header: HTMLDivElement;
+  let content: HTMLDivElement;
+  
+  // Calculate available height for VirtualList (max-height - header height)
+  const PANEL_MAX_HEIGHT = 500;
+  let availableHeight = 400; // Default, will be calculated
   
   function handleClickOutside(event: MouseEvent): void {
     if (dropdown && !dropdown.contains(event.target as Node) && !button?.contains(event.target as Node)) {
@@ -61,8 +67,30 @@
     if (!dropdown || !button || !portalContainer) return;
     
     const buttonRect = button.getBoundingClientRect();
-    dropdown.style.top = `${buttonRect.bottom + 8}px`;
+    const spaceBelow = window.innerHeight - buttonRect.bottom - 8;
+    const spaceAbove = buttonRect.top - 8;
+    
+    // Position dropdown below button by default
+    let top = buttonRect.bottom + 8;
+    let maxHeight = PANEL_MAX_HEIGHT;
+    
+    // If not enough space below, position above button
+    if (spaceBelow < PANEL_MAX_HEIGHT && spaceAbove > spaceBelow) {
+      top = buttonRect.top - PANEL_MAX_HEIGHT - 8;
+      maxHeight = Math.min(PANEL_MAX_HEIGHT, spaceAbove - 8);
+    } else {
+      maxHeight = Math.min(PANEL_MAX_HEIGHT, spaceBelow);
+    }
+    
+    dropdown.style.top = `${top}px`;
     dropdown.style.right = `${window.innerWidth - buttonRect.right}px`;
+    dropdown.style.maxHeight = `${maxHeight}px`;
+    
+    // Recalculate available height for content
+    if (header) {
+      const headerHeight = header.offsetHeight;
+      availableHeight = maxHeight - headerHeight;
+    }
   }
   
   onMount(() => {
@@ -95,7 +123,9 @@
   
   // Update position when dropdown opens
   $: if (open && dropdown && button) {
-    updateDropdownPosition();
+    tick().then(() => {
+      updateDropdownPosition();
+    });
   }
   
   $: unreadCount = $allToastsHistory.filter(t => t.visible).length;
@@ -128,17 +158,17 @@
       class="alerts-dropdown__panel"
       use:portal={portalContainer}
     >
-      <div class="alerts-dropdown__header">
+      <div class="alerts-dropdown__header" bind:this={header}>
         <h3 class="alerts-dropdown__title">Alerts</h3>
         <span class="alerts-dropdown__count">{totalCount} total</span>
       </div>
       
       {#if $allToastsHistory.length > 0}
-        <div class="alerts-dropdown__content">
+        <div class="alerts-dropdown__content" bind:this={content}>
           <VirtualList
             items={$allToastsHistory}
             itemHeight={80}
-            containerHeight={400}
+            containerHeight={availableHeight}
             overscan={3}
           >
             <svelte:fragment let:item let:index>
@@ -279,6 +309,8 @@
     flex: 1;
     overflow: hidden;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   
   .alerts-dropdown__item {

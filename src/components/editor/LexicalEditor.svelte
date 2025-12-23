@@ -1,0 +1,275 @@
+<script lang="ts">
+  /**
+   * Lexical Editor Component for Svelte
+   * 
+   * Wrapper component that bridges Lexical's framework-agnostic core to Svelte
+   */
+  
+  import { onMount, onDestroy } from 'svelte';
+  import { 
+    createEditor,
+    $getRoot as getRoot, 
+    $getSelection as getSelection,
+    $isRangeSelection as isRangeSelection
+  } from 'lexical';
+  import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+  import { ListNode, ListItemNode } from '@lexical/list';
+  import { LinkNode } from '@lexical/link';
+  import { CodeNode } from '@lexical/code';
+  import { MermaidNode, $createMermaidNode as createMermaidNode } from './MermaidNode';
+  import { $generateHtmlFromNodes as generateHtmlFromNodes, $generateNodesFromDOM as generateNodesFromDOM } from '@lexical/html';
+  
+  export let initialContent: string | null = null;
+  export let onChange: ((content: string) => void) | null = null;
+  export let placeholder: string = 'Start typing...';
+  
+  let editorContainer: HTMLDivElement;
+  let editor: ReturnType<typeof createEditor> | null = null;
+  let isReady = false;
+  
+  // Initialize Mermaid
+  onMount(async () => {
+    if (typeof window !== 'undefined') {
+      const mermaidModule = await import('mermaid');
+      mermaidModule.default.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose',
+      });
+    }
+    
+    // Create editor
+    editor = createEditor({
+      namespace: 'notes-editor',
+      nodes: [
+        HeadingNode,
+        ListNode,
+        ListItemNode,
+        QuoteNode,
+        CodeNode,
+        LinkNode,
+        MermaidNode,
+      ],
+      onError: (error) => {
+        console.error('[LexicalEditor] Error:', error);
+      },
+      theme: {
+        text: {
+          bold: 'editor-text-bold',
+          italic: 'editor-text-italic',
+          underline: 'editor-text-underline',
+          strikethrough: 'editor-text-strikethrough',
+          code: 'editor-text-code',
+        },
+        list: {
+          nested: {
+            listitem: 'editor-nested-listitem',
+          },
+          ol: 'editor-list-ol',
+          ul: 'editor-list-ul',
+          listitem: 'editor-listitem',
+        },
+        link: 'editor-link',
+        mermaid: 'editor-mermaid',
+      },
+    });
+    
+    // Mount editor to DOM
+    editor.setRootElement(editorContainer);
+    
+    // Register plugins (Lexical plugins are registered via editor configuration or update listener)
+    // RichTextPlugin, ListPlugin, LinkPlugin, MarkPlugin are handled via editor configuration
+    // HistoryPlugin needs to be registered separately if needed
+    
+    // Handle content changes
+    editor.registerUpdateListener(({ editorState, prevEditorState }) => {
+      editorState.read(() => {
+        if (onChange) {
+          try {
+            const html = generateHtmlFromNodes(editor, null);
+            onChange(html);
+          } catch (error) {
+            console.error('[LexicalEditor] Failed to generate HTML:', error);
+          }
+        }
+      });
+    });
+    
+    // Load initial content if provided
+    if (initialContent) {
+      editor.update(() => {
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(initialContent, 'text/html');
+        const nodes = generateNodesFromDOM(editor, dom);
+        const root = getRoot();
+        root.clear();
+        root.append(...nodes);
+      });
+    }
+    
+    isReady = true;
+  });
+  
+  onDestroy(() => {
+    if (editor) {
+      editor.setRootElement(null);
+      editor = null;
+    }
+  });
+  
+  /**
+   * Get current editor content as HTML
+   */
+  export function getContent(): Promise<string> {
+    return new Promise((resolve) => {
+      if (!editor) {
+        resolve('');
+        return;
+      }
+      
+      editor.getEditorState().read(() => {
+        const html = generateHtmlFromNodes(editor!, null);
+        resolve(html);
+      });
+    });
+  }
+  
+  /**
+   * Set editor content from HTML
+   */
+  export function setContent(html: string): void {
+    if (!editor) return;
+    
+    editor.update(() => {
+      const parser = new DOMParser();
+      const dom = parser.parseFromString(html, 'text/html');
+        const nodes = generateNodesFromDOM(editor!, dom);
+        const root = getRoot();
+      root.clear();
+      root.append(...nodes);
+    });
+  }
+  
+  /**
+   * Insert Mermaid diagram
+   */
+  export function insertMermaid(diagram: string): void {
+    if (!editor) return;
+    
+    editor.update(() => {
+      const mermaidNode = createMermaidNode(diagram);
+      const selection = getSelection();
+      if (selection && isRangeSelection(selection)) {
+        selection.insertNodes([mermaidNode]);
+      } else {
+        const root = getRoot();
+        root.append(mermaidNode);
+      }
+    });
+  }
+</script>
+
+<div class="lexical-editor-wrapper">
+  <div bind:this={editorContainer} class="lexical-editor" />
+  {#if !isReady}
+    <div class="editor-loading">Loading editor...</div>
+  {/if}
+</div>
+
+<style lang="scss">
+  @use '@styles/animations' as *;
+  
+  .lexical-editor-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+  }
+  
+  .lexical-editor {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    outline: none;
+    overflow-y: auto;
+    
+    // Text formatting
+    :global(.editor-text-bold) {
+      font-weight: bold;
+    }
+    
+    :global(.editor-text-italic) {
+      font-style: italic;
+    }
+    
+    :global(.editor-text-underline) {
+      text-decoration: underline;
+    }
+    
+    :global(.editor-text-strikethrough) {
+      text-decoration: line-through;
+    }
+    
+    :global(.editor-text-code) {
+      background: var(--bg-secondary);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+    
+    // Lists
+    :global(.editor-list-ol),
+    :global(.editor-list-ul) {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+    
+    :global(.editor-listitem) {
+      margin: 4px 0;
+    }
+    
+    // Links
+    :global(.editor-link) {
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    
+    :global(.editor-link:hover) {
+      color: var(--accent-hover);
+    }
+    
+    // Mermaid diagrams
+    :global(.editor-mermaid) {
+      margin: 16px 0;
+    }
+    
+    :global(.mermaid-diagram-container) {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    
+    :global(.mermaid) {
+      max-width: 100%;
+    }
+  }
+  
+  .editor-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-secondary);
+  }
+</style>
+

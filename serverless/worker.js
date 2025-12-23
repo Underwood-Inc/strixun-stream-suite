@@ -621,29 +621,29 @@ function isValidDeviceId(deviceId) {
 }
 
 /**
- * Handle cloud save upload
- * POST /cloud/save?slot=default
- * Headers: X-Device-ID
- * Body: { configs, metadata }
+ * Handle authenticated cloud save upload
+ * POST /cloud-save/save?slot=default
+ * Headers: Authorization: Bearer {token}
+ * Body: { backup: StorageBackup, metadata?: { name?: string, description?: string } }
  */
 async function handleCloudSave(request, env) {
     try {
-        const deviceId = request.headers.get('X-Device-ID');
-        if (!deviceId || !isValidDeviceId(deviceId)) {
-            return new Response(JSON.stringify({ 
-                error: 'Valid X-Device-ID header required (8-64 alphanumeric chars)' 
-            }), {
-                status: 400,
+        // Authenticate request
+        const authResult = await authenticateRequest(request, env);
+        if (!authResult.authenticated) {
+            return new Response(JSON.stringify({ error: authResult.error }), {
+                status: authResult.status,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
-
+        
+        const userId = authResult.userId;
         const url = new URL(request.url);
         const slot = url.searchParams.get('slot') || 'default';
         
         // Validate slot name
         if (!/^[a-zA-Z0-9_-]{1,32}$/.test(slot)) {
-            return new Response(JSON.stringify({ error: 'Invalid slot name' }), {
+            return new Response(JSON.stringify({ error: 'Invalid slot name (1-32 alphanumeric chars)' }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
@@ -651,15 +651,24 @@ async function handleCloudSave(request, env) {
 
         // Parse body
         const body = await request.json();
+        const backup = body.backup;
+        
+        if (!backup || !backup.version || !backup.timestamp) {
+            return new Response(JSON.stringify({ error: 'Invalid backup data format' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
         
         // Create save data with metadata
         const saveData = {
-            version: 2,
-            deviceId,
+            version: backup.version || 2,
+            userId,
             slot,
             timestamp: new Date().toISOString(),
+            backupTimestamp: backup.timestamp,
             userAgent: request.headers.get('User-Agent') || 'unknown',
-            configs: body.configs || {},
+            backup: backup, // Full StorageBackup object
             metadata: body.metadata || {},
         };
 
@@ -673,15 +682,15 @@ async function handleCloudSave(request, env) {
         }
 
         // Save to KV with TTL of 1 year (31536000 seconds)
-        const key = getCloudSaveKey(deviceId, slot);
+        const key = `cloudsave_${userId}_${slot}`;
         await env.TWITCH_CACHE.put(key, saveDataStr, { expirationTtl: 31536000 });
 
-        // Also update the slot list for this device
-        await updateSlotList(env, deviceId, slot);
+        // Also update the slot list for this user
+        await updateCloudSaveSlotList(env, userId, slot, saveData.metadata);
 
         return new Response(JSON.stringify({ 
             success: true,
-            deviceId,
+            userId,
             slot,
             timestamp: saveData.timestamp,
             size: saveDataStr.length,
@@ -700,32 +709,32 @@ async function handleCloudSave(request, env) {
 }
 
 /**
- * Handle cloud save download
- * GET /cloud/load?slot=default
- * Headers: X-Device-ID
+ * Handle authenticated cloud save download
+ * GET /cloud-save/load?slot=default
+ * Headers: Authorization: Bearer {token}
  */
 async function handleCloudLoad(request, env) {
     try {
-        const deviceId = request.headers.get('X-Device-ID');
-        if (!deviceId || !isValidDeviceId(deviceId)) {
-            return new Response(JSON.stringify({ 
-                error: 'Valid X-Device-ID header required' 
-            }), {
-                status: 400,
+        // Authenticate request
+        const authResult = await authenticateRequest(request, env);
+        if (!authResult.authenticated) {
+            return new Response(JSON.stringify({ error: authResult.error }), {
+                status: authResult.status,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
-
+        
+        const userId = authResult.userId;
         const url = new URL(request.url);
         const slot = url.searchParams.get('slot') || 'default';
 
-        const key = getCloudSaveKey(deviceId, slot);
+        const key = `cloudsave_${userId}_${slot}`;
         const saveDataStr = await env.TWITCH_CACHE.get(key);
 
         if (!saveDataStr) {
             return new Response(JSON.stringify({ 
                 error: 'Save not found',
-                deviceId,
+                userId,
                 slot 
             }), {
                 status: 404,
@@ -737,7 +746,9 @@ async function handleCloudLoad(request, env) {
 
         return new Response(JSON.stringify({ 
             success: true,
-            data: saveData,
+            backup: saveData.backup,
+            metadata: saveData.metadata,
+            timestamp: saveData.timestamp,
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -753,40 +764,43 @@ async function handleCloudLoad(request, env) {
 }
 
 /**
- * Handle listing all save slots for a device
- * GET /cloud/list
- * Headers: X-Device-ID
+ * Handle listing all save slots for authenticated user
+ * GET /cloud-save/list
+ * Headers: Authorization: Bearer {token}
  */
 async function handleCloudList(request, env) {
     try {
-        const deviceId = request.headers.get('X-Device-ID');
-        if (!deviceId || !isValidDeviceId(deviceId)) {
-            return new Response(JSON.stringify({ 
-                error: 'Valid X-Device-ID header required' 
-            }), {
-                status: 400,
+        // Authenticate request
+        const authResult = await authenticateRequest(request, env);
+        if (!authResult.authenticated) {
+            return new Response(JSON.stringify({ error: authResult.error }), {
+                status: authResult.status,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
-
-        const slotListKey = `cloudsave_${deviceId}_slots`;
+        
+        const userId = authResult.userId;
+        const slotListKey = `cloudsave_${userId}_slots`;
         const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
         const slots = slotsStr ? JSON.parse(slotsStr) : [];
 
         // Load metadata for each slot
         const saveList = [];
         for (const slot of slots) {
-            const key = getCloudSaveKey(deviceId, slot);
+            const key = `cloudsave_${userId}_${slot}`;
             const saveDataStr = await env.TWITCH_CACHE.get(key);
             if (saveDataStr) {
                 try {
                     const saveData = JSON.parse(saveDataStr);
+                    const backup = saveData.backup || {};
                     saveList.push({
                         slot: saveData.slot,
                         timestamp: saveData.timestamp,
+                        backupTimestamp: saveData.backupTimestamp,
                         version: saveData.version,
                         size: saveDataStr.length,
-                        configCount: Object.keys(saveData.configs || {}).length,
+                        metadata: saveData.metadata || {},
+                        exportedCategories: backup.exportedCategories || [],
                     });
                 } catch (e) {
                     // Skip corrupted saves
@@ -794,9 +808,12 @@ async function handleCloudList(request, env) {
             }
         }
 
+        // Sort by timestamp descending
+        saveList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
         return new Response(JSON.stringify({ 
             success: true,
-            deviceId,
+            userId,
             saves: saveList,
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -813,34 +830,61 @@ async function handleCloudList(request, env) {
 }
 
 /**
- * Handle deleting a save slot
- * DELETE /cloud/delete?slot=default
- * Headers: X-Device-ID
+ * Update slot list for user
+ */
+async function updateCloudSaveSlotList(env, userId, slot, metadata) {
+    const slotListKey = `cloudsave_${userId}_slots`;
+    const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
+    const slots = slotsStr ? JSON.parse(slotsStr) : [];
+    
+    // Add slot if not exists
+    if (!slots.includes(slot)) {
+        slots.push(slot);
+    }
+    
+    // Store updated list
+    await env.TWITCH_CACHE.put(slotListKey, JSON.stringify(slots), { expirationTtl: 31536000 });
+}
+
+/**
+ * Handle deleting an authenticated save slot
+ * DELETE /cloud-save/delete?slot=default
+ * Headers: Authorization: Bearer {token}
  */
 async function handleCloudDelete(request, env) {
     try {
-        const deviceId = request.headers.get('X-Device-ID');
-        if (!deviceId || !isValidDeviceId(deviceId)) {
-            return new Response(JSON.stringify({ 
-                error: 'Valid X-Device-ID header required' 
-            }), {
-                status: 400,
+        // Authenticate request
+        const authResult = await authenticateRequest(request, env);
+        if (!authResult.authenticated) {
+            return new Response(JSON.stringify({ error: authResult.error }), {
+                status: authResult.status,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
-
+        
+        const userId = authResult.userId;
         const url = new URL(request.url);
         const slot = url.searchParams.get('slot') || 'default';
 
-        const key = getCloudSaveKey(deviceId, slot);
+        const key = `cloudsave_${userId}_${slot}`;
         await env.TWITCH_CACHE.delete(key);
 
         // Remove from slot list
-        await removeFromSlotList(env, deviceId, slot);
+        const slotListKey = `cloudsave_${userId}_slots`;
+        const slotsStr = await env.TWITCH_CACHE.get(slotListKey);
+        if (slotsStr) {
+            const slots = JSON.parse(slotsStr);
+            const filtered = slots.filter(s => s !== slot);
+            if (filtered.length > 0) {
+                await env.TWITCH_CACHE.put(slotListKey, JSON.stringify(filtered), { expirationTtl: 31536000 });
+            } else {
+                await env.TWITCH_CACHE.delete(slotListKey);
+            }
+        }
 
         return new Response(JSON.stringify({ 
             success: true,
-            deviceId,
+            userId,
             slot,
             message: 'Save deleted',
         }), {
@@ -2034,6 +2078,13 @@ export default {
             if (path === '/user') return handleUser(request, env);
             
             // Cloud Storage endpoints
+            // Authenticated cloud save endpoints (replaces device-based /cloud/*)
+            if (path === '/cloud-save/save' && request.method === 'POST') return handleCloudSave(request, env);
+            if (path === '/cloud-save/load' && request.method === 'GET') return handleCloudLoad(request, env);
+            if (path === '/cloud-save/list' && request.method === 'GET') return handleCloudList(request, env);
+            if (path === '/cloud-save/delete' && request.method === 'DELETE') return handleCloudDelete(request, env);
+            
+            // Legacy device-based endpoints (kept for backward compatibility)
             if (path === '/cloud/save' && request.method === 'POST') return handleCloudSave(request, env);
             if (path === '/cloud/load' && request.method === 'GET') return handleCloudLoad(request, env);
             if (path === '/cloud/list' && request.method === 'GET') return handleCloudList(request, env);

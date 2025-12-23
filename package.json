@@ -13,18 +13,19 @@
     "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "eslint . --ext .ts,.js,.svelte",
     "version": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "generate-icons": "node scripts/generate-pwa-icons.js"
   },
   "dependencies": {
-    "lexical": "^0.15.0",
-    "@lexical/rich-text": "^0.15.0",
-    "@lexical/list": "^0.15.0",
-    "@lexical/link": "^0.15.0",
-    "@lexical/mark": "^0.15.0",
-    "@lexical/selection": "^0.15.0",
-    "@lexical/utils": "^0.15.0",
-    "@lexical/html": "^0.15.0",
-    "@lexical/plain-text": "^0.15.0",
+    "@lexical/code": "^0.38.0",
+    "@lexical/history": "^0.39.0",
+    "@lexical/html": "^0.38.0",
+    "@lexical/link": "^0.38.0",
+    "@lexical/list": "^0.38.0",
+    "@lexical/mark": "^0.39.0",
+    "@lexical/rich-text": "^0.38.0",
+    "@lexical/utils": "^0.38.0",
+    "lexical": "^0.38.0",
     "mermaid": "^10.6.0"
   },
   "devDependencies": {
@@ -34,6 +35,7 @@
     "@tsconfig/svelte": "^5.0.0",
     "@types/node": "^20.0.0",
     "sass": "^1.70.0",
+    "sharp": "^0.34.5",
     "svelte": "^4.0.0",
     "svelte-check": "^3.6.0",
     "terser": "^5.44.1",

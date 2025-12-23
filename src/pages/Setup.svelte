@@ -14,6 +14,10 @@
   import { checkForUpdates, openGitHubRepo } from '../modules/version';
   import { storage } from '../modules/storage';
   import Tooltip from '../components/Tooltip.svelte';
+  import LoginModal from '../components/auth/LoginModal.svelte';
+  import { isAuthenticated, user } from '../stores/auth';
+  import { saveToCloud, loadFromCloud, listCloudSaves, deleteCloudSave, type CloudSave } from '../modules/cloud-save';
+  import { showToast } from '../stores/toast-queue';
   
   let host = 'localhost';
   let port = '4455';
@@ -41,6 +45,14 @@
   let exportUIState = true;
   let exportCredentials = false;
   
+  // Cloud save state
+  let showLoginModal = false;
+  let cloudSaves: CloudSave[] = [];
+  let isLoadingCloudSaves = false;
+  let isSavingToCloud = false;
+  let saveSlotName = 'default';
+  let saveDescription = '';
+  
   onMount(async () => {
     // Set dock URL
     dockUrl = window.location.href;
@@ -48,6 +60,11 @@
     // Wait for DOM to be ready, then load credentials
     await new Promise(resolve => setTimeout(resolve, 50));
     await loadCredentials();
+    
+    // Load cloud saves if authenticated
+    if ($isAuthenticated) {
+      await loadCloudSavesList();
+    }
     
     // Sync loaded values back to Svelte variables
     const hostEl = document.getElementById('host') as HTMLInputElement;
@@ -191,6 +208,99 @@
     // Update security warning
     const warningEl = document.getElementById('securityWarning');
     if (warningEl) securityWarning = warningEl.textContent || '';
+    
+    // Reload cloud saves when authentication changes
+    if ($isAuthenticated && cloudSaves.length === 0) {
+      loadCloudSavesList();
+    }
+  }
+  
+  async function loadCloudSavesList(): Promise<void> {
+    if (!$isAuthenticated) return;
+    
+    try {
+      isLoadingCloudSaves = true;
+      cloudSaves = await listCloudSaves();
+    } catch (error) {
+      console.error('[Setup] Failed to load cloud saves:', error);
+      showToast({ message: 'Failed to load cloud saves', type: 'error' });
+    } finally {
+      isLoadingCloudSaves = false;
+    }
+  }
+  
+  async function handleSaveToCloud(): Promise<void> {
+    if (!$isAuthenticated) {
+      showLoginModal = true;
+      return;
+    }
+    
+    try {
+      isSavingToCloud = true;
+      const backup = App.getSelectedExportData();
+      
+      if (backup.exportedCategories.length === 0) {
+        showToast({ message: 'Select at least one category to save', type: 'error' });
+        return;
+      }
+      
+      await saveToCloud(backup, saveSlotName, {
+        name: saveDescription || undefined,
+        description: saveDescription || undefined,
+      });
+      
+      showToast({ message: 'Saved to cloud successfully', type: 'success' });
+      saveSlotName = 'default';
+      saveDescription = '';
+      await loadCloudSavesList();
+    } catch (error) {
+      console.error('[Setup] Failed to save to cloud:', error);
+      showToast({ message: error instanceof Error ? error.message : 'Failed to save to cloud', type: 'error' });
+    } finally {
+      isSavingToCloud = false;
+    }
+  }
+  
+  async function handleLoadFromCloud(slot: string): Promise<void> {
+    if (!$isAuthenticated) {
+      showLoginModal = true;
+      return;
+    }
+    
+    if (!confirm('This will import the cloud backup. Continue?')) {
+      return;
+    }
+    
+    try {
+      const backup = await loadFromCloud(slot);
+      App.importBackupData(backup);
+      showToast({ message: 'Loaded from cloud successfully', type: 'success' });
+    } catch (error) {
+      console.error('[Setup] Failed to load from cloud:', error);
+      showToast({ message: error instanceof Error ? error.message : 'Failed to load from cloud', type: 'error' });
+    }
+  }
+  
+  async function handleDeleteCloudSave(slot: string): Promise<void> {
+    if (!confirm(`Delete cloud save "${slot}"? This cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      await deleteCloudSave(slot);
+      showToast({ message: 'Cloud save deleted', type: 'success' });
+      await loadCloudSavesList();
+    } catch (error) {
+      console.error('[Setup] Failed to delete cloud save:', error);
+      showToast({ message: error instanceof Error ? error.message : 'Failed to delete cloud save', type: 'error' });
+    }
+  }
+  
+  function handleLoginClose(): void {
+    showLoginModal = false;
+    if ($isAuthenticated) {
+      loadCloudSavesList();
+    }
   }
 </script>
 
@@ -412,6 +522,113 @@
     <!-- Last backup info -->
     <div id="lastBackupInfo" style="margin-top:8px;font-size:0.75em;color:var(--muted);text-align:center"></div>
   </div>
+  
+  <!-- Cloud Backup Card -->
+  <div class="card">
+    <h3>☁️ Cloud Backup</h3>
+    
+    {#if !$isAuthenticated}
+      <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px">
+        Sign in to save and restore your app state from the cloud
+      </p>
+      <button 
+        class="btn-primary btn-block" 
+        on:click={() => showLoginModal = true}
+        style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500"
+      >
+        🔐 Sign In to Use Cloud Backup
+      </button>
+    {:else}
+      <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
+        Signed in as <strong>{$user?.email}</strong>
+      </p>
+      
+      <!-- Save to Cloud -->
+      <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:6px">
+        <div style="font-size:0.8em;color:var(--muted);margin-bottom:8px;font-weight:600">SAVE TO CLOUD:</div>
+        <div style="display:grid;gap:8px">
+          <input 
+            type="text" 
+            bind:value={saveSlotName}
+            placeholder="Save slot name (default)"
+            style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:0.9em"
+          />
+          <input 
+            type="text" 
+            bind:value={saveDescription}
+            placeholder="Optional description"
+            style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:0.9em"
+          />
+          <button 
+            class="btn-primary btn-block" 
+            on:click={handleSaveToCloud}
+            disabled={isSavingToCloud}
+            style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500;opacity:{isSavingToCloud ? 0.5 : 1}"
+          >
+            {isSavingToCloud ? 'Saving...' : '💾 Save to Cloud'}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Cloud Saves List -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:0.8em;color:var(--muted);margin-bottom:8px;font-weight:600">CLOUD SAVES:</div>
+        {#if isLoadingCloudSaves}
+          <div style="text-align:center;padding:16px;color:var(--muted)">Loading...</div>
+        {:else if cloudSaves.length === 0}
+          <div style="text-align:center;padding:16px;color:var(--muted);font-size:0.9em">No cloud saves yet</div>
+        {:else}
+          <div style="display:flex;flex-direction:column;gap:8px">
+            {#each cloudSaves as save}
+              <div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:6px;border:1px solid var(--border)">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+                  <div>
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px">
+                      {save.metadata.name || save.slot}
+                    </div>
+                    <div style="font-size:0.75em;color:var(--muted)">
+                      {new Date(save.timestamp).toLocaleString()}
+                    </div>
+                    {#if save.exportedCategories.length > 0}
+                      <div style="font-size:0.7em;color:var(--muted);margin-top:4px">
+                        {save.exportedCategories.join(', ')}
+                      </div>
+                    {/if}
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button 
+                      on:click={() => handleLoadFromCloud(save.slot)}
+                      style="padding:6px 12px;background:var(--accent);border:none;color:#000;border-radius:4px;cursor:pointer;font-size:0.8em;font-weight:500"
+                    >
+                      Load
+                    </button>
+                    <button 
+                      on:click={() => handleDeleteCloudSave(save.slot)}
+                      style="padding:6px 12px;background:var(--error);border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:0.8em"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+      
+      <button 
+        on:click={loadCloudSavesList}
+        disabled={isLoadingCloudSaves}
+        style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em;width:100%"
+      >
+        🔄 Refresh List
+      </button>
+    {/if}
+  </div>
+  
+  {#if showLoginModal}
+    <LoginModal onClose={handleLoginClose} />
+  {/if}
   
   <!-- Version Info Card -->
   <div class="card">
