@@ -7,8 +7,15 @@
  * - IndexedDB (PRIMARY) - Survives most OBS cache clears
  * - localStorage (BACKUP) - Synced on every write
  * - Recovery Snapshot - Separate key for emergency recovery
+ * - **AUTOMATIC OBS SYNC** - UI state keys (starting with 'ui_') automatically trigger OBS sync
  * 
- * @version 2.0.0 (TypeScript)
+ * UI STATE PERSISTENCE:
+ * - Keys starting with 'ui_' are automatically synced to OBS client
+ * - This includes resizable zone sizes, panel states, collapsed cards, etc.
+ * - When storage.set() is called with a 'ui_' key, it automatically schedules OBS sync
+ * - This ensures UI preferences persist across sessions and sync to remote clients
+ * 
+ * @version 2.1.0 (TypeScript)
  */
 
 // ============ Types ============
@@ -200,6 +207,9 @@ export const storage: StorageInterface = {
   
   /**
    * Set a value in storage (writes to IDB + localStorage)
+   * 
+   * CRITICAL: UI state keys (starting with 'ui_') automatically trigger OBS sync
+   * This ensures resizable zone sizes and other UI preferences are synced to OBS client
    */
   set(key: string, value: unknown): boolean {
     try {
@@ -221,6 +231,16 @@ export const storage: StorageInterface = {
         if (typeof createRecoverySnapshot === 'function') {
           clearTimeout(storage._snapshotDebounce as ReturnType<typeof setTimeout>);
           storage._snapshotDebounce = setTimeout(createRecoverySnapshot, 2000);
+        }
+      }
+      
+      // CRITICAL: Automatically trigger OBS sync for UI state keys
+      // This ensures resizable zone sizes and other UI preferences are synced to OBS
+      // Pattern: Any key starting with 'ui_' is considered UI state
+      if (key.startsWith('ui_')) {
+        // Schedule OBS sync (debounced, only if OBS dock)
+        if (typeof (window as any).StorageSync?.scheduleUISync === 'function') {
+          (window as any).StorageSync.scheduleUISync();
         }
       }
       

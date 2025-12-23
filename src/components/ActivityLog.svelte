@@ -22,6 +22,7 @@
   } from '../stores/activity-log';
   import ActivityLogFilterAside from './ActivityLogFilterAside.svelte';
   import LogEntry from './LogEntry.svelte';
+  import Tooltip from './Tooltip.svelte';
   import VirtualList from './VirtualList.svelte';
   
   let collapsed = writable(false);
@@ -247,22 +248,25 @@
 
 <div class="split-log" bind:this={splitLog}>
   <div class="split-log__header">
-    <button class="split-log__toggle" on:click={toggleCollapse} title="Toggle Log">
-      {$collapsed ? '▼' : '▲'}
-    </button>
+    <Tooltip text="Toggle Log" position="top">
+      <button class="split-log__toggle" on:click={toggleCollapse}>
+        {$collapsed ? '▼' : '▲'}
+      </button>
+    </Tooltip>
     <span class="split-log__title">Activity Log</span>
     
     {#if !$collapsed}
       <div class="split-log__actions">
         <button class="split-log__clear btn-link" on:click={clearLog}>Clear</button>
         <div class="split-log__actions-spacer"></div>
-        <button 
-          class="split-log__filter-toggle btn-link" 
-          on:click={toggleFilters}
-          title={filterExpanded ? 'Hide filters' : 'Show filters'}
-        >
-          Filters {filterExpanded ? '◀' : '▶'}
-        </button>
+        <Tooltip text={filterExpanded ? 'Hide filters' : 'Show filters'} position="top">
+          <button 
+            class="split-log__filter-toggle btn-link" 
+            on:click={toggleFilters}
+          >
+            Filters {filterExpanded ? '◀' : '▶'}
+          </button>
+        </Tooltip>
       </div>
     {/if}
   </div>
@@ -337,5 +341,10 @@
       color: var(--muted);
       font-style: italic;
     }
+  }
+  
+  // Disable transition during manual resize for instant response
+  :global(.filter-aside-resizing) .split-log__content {
+    transition: none;
   }
 </style>

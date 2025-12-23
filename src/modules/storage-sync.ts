@@ -7,8 +7,15 @@
  * - Auto-sync on connection (configurable)
  * - Manual sync operations
  * - Handles CustomEvent storage broadcasts
+ * - **CRITICAL**: Automatically syncs UI state (resizable zones, panel states) to OBS
  * 
- * @version 2.0.0 (TypeScript)
+ * UI STATE SYNC PATTERN:
+ * - Any storage key starting with 'ui_' is considered UI state
+ * - UI state is automatically included in OBS sync via broadcastStorage()
+ * - storage.set() automatically triggers OBS sync for 'ui_' keys
+ * - This ensures resizable zone sizes and other UI preferences sync to OBS client
+ * 
+ * @version 2.1.0 (TypeScript)
  */
 
 import { storage } from './storage';
@@ -39,6 +46,7 @@ interface StorageData {
   swapConfigs?: SwapConfig[];
   textCyclerConfigs?: TextCyclerConfig[];
   layoutPresets?: LayoutPreset[];
+  uiState?: Record<string, unknown>; // UI state (resizable zone sizes, panel states, etc.)
 }
 
 interface CustomEventData {
@@ -184,10 +192,32 @@ export async function broadcastStorage(): Promise<void> {
   const textCyclerConfigs = dependencies.getTextCyclerConfigs ? dependencies.getTextCyclerConfigs() : [];
   const layoutPresets = dependencies.getLayoutPresets ? dependencies.getLayoutPresets() : [];
   
+  // Collect UI state from storage (resizable zones, panel states, etc.)
+  // Keys that start with 'ui_' are UI state that should be synced
+  const uiState: Record<string, unknown> = {};
+  // Known UI state keys that should be synced to OBS
+  // CRITICAL: When adding new UI state keys, add them here to ensure OBS sync
+  const knownUIKeys = [
+    'ui_filter_aside_width',
+    'ui_collapsed_cards',
+    'ui_split_panel'
+  ];
+  // Collect all known UI state keys
+  for (const key of knownUIKeys) {
+    const value = storage.get(key);
+    if (value !== null) {
+      uiState[key] = value;
+    }
+  }
+  // Note: Resizable zone sizes are stored with their storageKey prop value
+  // If storageKey starts with 'ui_', it will be automatically included
+  // For custom storage keys, add them to knownUIKeys above
+  
   const storageData: StorageData = {
     swapConfigs: swapConfigs || [],
     textCyclerConfigs: textCyclerConfigs || [],
-    layoutPresets: layoutPresets || []
+    layoutPresets: layoutPresets || [],
+    uiState: Object.keys(uiState).length > 0 ? uiState : undefined
   };
   
   // Create hash to avoid duplicate writes
@@ -211,7 +241,8 @@ export async function broadcastStorage(): Promise<void> {
     console.log('[Storage Sync] ✅ Saved to OBS persistent data', {
       swaps: storageData.swapConfigs?.length || 0,
       texts: storageData.textCyclerConfigs?.length || 0,
-      layouts: storageData.layoutPresets?.length || 0
+      layouts: storageData.layoutPresets?.length || 0,
+      uiStateKeys: storageData.uiState ? Object.keys(storageData.uiState).length : 0
     });
   } catch (e) {
     console.warn('[Storage Sync] ⚠️ Failed to write:', e);
@@ -281,6 +312,14 @@ export function applyIncomingStorage(data: StorageData): void {
     if (dependencies.renderSavedLayouts) dependencies.renderSavedLayouts();
   }
   
+  // Apply UI state (resizable zone sizes, panel states, etc.)
+  if (data.uiState) {
+    for (const [key, value] of Object.entries(data.uiState)) {
+      storage.set(key, value);
+    }
+    console.log('[Storage Sync] Applied UI state:', Object.keys(data.uiState));
+  }
+  
   // Update storage status display
   if (dependencies.updateStorageStatus) dependencies.updateStorageStatus();
 }
@@ -303,6 +342,24 @@ export function manualStorageSync(): void {
 export function scheduleBroadcast(delay: number = STORAGE_SYNC_DEBOUNCE): void {
   if (storageSyncTimer) clearTimeout(storageSyncTimer);
   storageSyncTimer = setTimeout(() => broadcastStorage(), delay);
+}
+
+/**
+ * Schedule a debounced UI state sync to OBS
+ * Call this when UI state (resizable zones, panel states, etc.) changes
+ * This ensures UI state is automatically synced to OBS client
+ * 
+ * CRITICAL: This must be called whenever UI state is saved to ensure
+ * resizable zone sizes and other UI preferences are synced to OBS
+ */
+export function scheduleUISync(delay: number = STORAGE_SYNC_DEBOUNCE): void {
+  // Only sync if we're the OBS dock (source of truth)
+  if (!dependencies.isOBSDock()) {
+    return;
+  }
+  
+  // Schedule a broadcast which will include UI state
+  scheduleBroadcast(delay);
 }
 
 /**

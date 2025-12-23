@@ -11,6 +11,7 @@ import { connected } from '../stores/connection';
 import { request } from './websocket';
 import { get } from 'svelte/store';
 import { navigateTo } from '../stores/navigation';
+import { showWarning, showSuccess, dismissToast } from '../stores/toast-queue';
 
 // ============ Types ============
 interface ScriptInfo {
@@ -53,10 +54,18 @@ const scriptStatus: ScriptStatus = {
   }
 };
 
+// Track the current connection toast ID to dismiss it when state changes
+let currentConnectionToastId: string | null = null;
+
 // Sync scriptStatus.connected with Svelte store and update UI reactively
 connected.subscribe((isConnected) => {
   scriptStatus.connected = isConnected;
-  // Update banner when connection state changes
+  // Dismiss previous connection toast if it exists
+  if (currentConnectionToastId) {
+    dismissToast(currentConnectionToastId);
+    currentConnectionToastId = null;
+  }
+  // Show new toast when connection state changes
   renderStartupBanner();
   updateDashboardStatus();
   updateTabStates();
@@ -216,24 +225,12 @@ export function updateFeatureAvailability(): void {
 
 /**
  * Update tab visual states based on feature availability
+ * NOTE: Tab states are now handled reactively by Navigation.svelte component
+ * This function only updates dashboard status
  */
 export function updateTabStates(): void {
-  const tabs = document.querySelectorAll('.tab');
-  const tabFeatures: Record<number, string> = {
-    1: 'sources',   // Sources tab (index 1)
-    2: 'text',      // Text tab (index 2)
-    4: 'swap'       // Swaps tab (index 4)
-  };
-  
-  tabs.forEach((tab, index) => {
-    const feature = tabFeatures[index];
-    if (feature && !scriptStatus.connected) {
-      tab.classList.add('disabled');
-      (tab as HTMLElement).title = 'Connect to OBS first';
-    } else {
-      tab.classList.remove('disabled');
-    }
-  });
+  // Tab states are handled reactively by Navigation.svelte based on $connected store
+  // No DOM manipulation needed - Svelte handles this reactively
   
   // Update dashboard status card
   updateDashboardStatus();
@@ -299,60 +296,37 @@ export function updateDashboardStatus(): void {
 
 /**
  * Render startup banner based on current state
+ * Now uses toast notifications instead of DOM banner
  */
 export function renderStartupBanner(): void {
-  // Remove existing banner
-  const existingBanner = document.getElementById('startupBanner');
-  if (existingBanner) existingBanner.remove();
-  
   // Determine banner state - use Svelte store directly
   const isConnected = get(connected);
-  let bannerHTML = '';
   
   if (!isConnected) {
-    bannerHTML = `
-      <div id="startupBanner" class="startup-banner">
-        <span class="startup-banner__icon">🔌</span>
-        <div class="startup-banner__content">
-          <div class="startup-banner__title">Not Connected to OBS</div>
-          <div class="startup-banner__text">Connect to OBS WebSocket to enable all features. Some features require Lua scripts to be installed.</div>
-        </div>
-        <button class="startup-banner__action" onclick="window.showPage?.('setup')">⚙️ Setup</button>
-      </div>
-    `;
-  } else {
-    // Connected - show success briefly then fade
-    bannerHTML = `
-      <div id="startupBanner" class="startup-banner success">
-        <span class="startup-banner__icon">✅</span>
-        <div class="startup-banner__content">
-          <div class="startup-banner__title">Connected to OBS</div>
-          <div class="startup-banner__text">All features are available. Scripts detected and ready.</div>
-        </div>
-      </div>
-    `;
-  }
-  
-  // Insert banner at top of content area
-  const content = document.querySelector('.content');
-  if (content && bannerHTML) {
-    content.insertAdjacentHTML('afterbegin', bannerHTML);
-    
-    // Auto-hide success banner after 5 seconds
-    if (isConnected) {
-      setTimeout(() => {
-        const banner = document.getElementById('startupBanner');
-        if (banner) {
-          banner.style.transition = 'opacity 0.3s, height 0.3s, margin 0.3s, padding 0.3s';
-          banner.style.opacity = '0';
-          banner.style.height = '0';
-          banner.style.margin = '0';
-          banner.style.padding = '0';
-          banner.style.overflow = 'hidden';
-          setTimeout(() => banner.remove(), 300);
+    // Show persistent warning toast (manual dismiss required)
+    currentConnectionToastId = showWarning(
+      'Connect to OBS WebSocket to enable all features. Some features require Lua scripts to be installed.',
+      {
+        title: 'Not Connected to OBS',
+        persistent: true,
+        action: {
+          label: 'Setup',
+          handler: () => {
+            navigateTo('setup', false);
+          }
         }
-      }, 5000);
-    }
+      }
+    );
+  } else {
+    // Connected - show success toast (auto-dismiss after 5 seconds)
+    currentConnectionToastId = showSuccess(
+      'All features are available. Scripts detected and ready.',
+      {
+        title: 'Connected to OBS',
+        duration: 5000,
+        persistent: false
+      }
+    );
   }
 }
 

@@ -7,6 +7,7 @@
   
   import type { LogEntry } from '../stores/activity-log';
   import { logFilters } from '../stores/activity-log';
+  import Tooltip from './Tooltip.svelte';
   
   export let entry: LogEntry;
   export let index: number = 0;
@@ -99,9 +100,11 @@
   </div>
   
   <div class="log-entry__content">
-    <span class="log-entry__time" title={entry.timestamp.toISOString()}>
-      {formatTime(entry.timestamp)}
-    </span>
+    <Tooltip text={entry.timestamp.toISOString()} position="top">
+      <span class="log-entry__time">
+        {formatTime(entry.timestamp)}
+      </span>
+    </Tooltip>
     {#if entry.flair}
       <span class="log-entry__flair log-entry__flair--{entry.type}">
         {@html highlightedFlair}
@@ -111,18 +114,21 @@
       {@html highlightedMessage}
     </span>
     {#if entry.count && entry.count > 1}
-      <span class="log-entry__count" title="This message appeared {entry.count} times">
-        x{entry.count}
-      </span>
+      <Tooltip text="This message appeared {entry.count} times" position="top">
+        <span class="log-entry__count">
+          x{entry.count}
+        </span>
+      </Tooltip>
     {/if}
-    <button 
-      class="log-entry__copy"
-      on:click={copyMessage}
-      title="Copy message"
-      aria-label="Copy message"
-    >
-      📋
-    </button>
+    <Tooltip text="Copy message" position="top">
+      <button 
+        class="log-entry__copy"
+        on:click={copyMessage}
+        aria-label="Copy message"
+      >
+        📋
+      </button>
+    </Tooltip>
   </div>
 </div>
 

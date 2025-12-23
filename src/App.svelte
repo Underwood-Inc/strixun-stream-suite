@@ -17,7 +17,7 @@
   import Install from './pages/Install.svelte';
   import Setup from './pages/Setup.svelte';
   import ActivityLog from './components/ActivityLog.svelte';
-  import ToastContainer from './components/ToastContainer.svelte';
+  import ToastContainer from './components/ui/ToastContainer.svelte';
   
   import { currentPage } from './stores/navigation';
   import { initializeApp } from './modules/bootstrap';

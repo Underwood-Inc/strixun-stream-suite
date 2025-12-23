@@ -8,25 +8,56 @@
   import { onMount } from 'svelte';
   import { connected, currentScene } from '../stores/connection';
   import { navigateTo } from '../stores/navigation';
+  import Tooltip from '../components/Tooltip.svelte';
+  import type { SwapConfig } from '../types';
   
   let hasRefreshedOnConnect = false;
+  let swapConfigs: SwapConfig[] = [];
+  
+  // Function to refresh swap configs
+  function refreshSwapConfigs(): void {
+    if ((window as any).SourceSwaps?.getConfigs) {
+      swapConfigs = (window as any).SourceSwaps.getConfigs();
+    } else {
+      swapConfigs = [];
+    }
+  }
+  
+  // Reactive statement to refresh configs when connection changes
+  $: if ($connected !== undefined) {
+    refreshSwapConfigs();
+  }
   
   onMount(() => {
-    // Update dashboard status and quick swaps when page loads
+    // Update dashboard status when page loads
     updateDashboardStatus();
-    renderDashSwaps();
+    
+    // Load swap configs
+    if ((window as any).SourceSwaps?.loadConfigs) {
+      (window as any).SourceSwaps.loadConfigs();
+    }
+    refreshSwapConfigs();
     
     // Refresh scenes to get current scene if already connected
     if ($connected && !hasRefreshedOnConnect) {
       handleRefreshScenes();
       hasRefreshedOnConnect = true;
     }
+    
+    // Listen for custom event when swap configs change (fired by SourceSwaps module)
+    const handleSwapConfigsChange = () => {
+      refreshSwapConfigs();
+    };
+    window.addEventListener('swapConfigsChanged', handleSwapConfigsChange);
+    
+    return () => {
+      window.removeEventListener('swapConfigsChanged', handleSwapConfigsChange);
+    };
   });
   
   // Update dashboard when connection state changes
   $: if ($connected) {
     updateDashboardStatus();
-    renderDashSwaps();
     
     // Refresh scenes to get current scene when connection is established (only once)
     if (!hasRefreshedOnConnect) {
@@ -45,12 +76,9 @@
     }
   }
   
-  function renderDashSwaps(): void {
-    // Render quick swap buttons
-    if ((window as any).SourceSwaps?.renderDashSwaps) {
-      (window as any).SourceSwaps.renderDashSwaps();
-    } else if ((window as any).App?.renderDashSwaps) {
-      (window as any).App.renderDashSwaps();
+  function handleLoadSwapConfig(index: number): void {
+    if ((window as any).SourceSwaps?.loadSwapConfig) {
+      (window as any).SourceSwaps.loadSwapConfig(index);
     }
   }
   
@@ -73,76 +101,114 @@
 </script>
 
 <div class="page dashboard-page">
-  <!-- Script Status Card -->
-  <div class="card" id="dashboardStatusCard">
-    <h3>📊 System Status</h3>
+  <!-- Status Card -->
+  <div class="card status-card" id="dashboardStatusCard">
     <div id="dashboardScriptStatus">
-      <div class="script-status-grid">
-        <div class="script-status-item" class:missing={!$connected}>
-          <span class="script-status-item__icon">🔌</span>
-          <div class="script-status-item__content">
-            <span class="script-status-item__name">OBS Connection</span>
-            <span class="script-status-item__badge" class:badge-online={$connected} class:badge-offline={!$connected}>
-              {$connected ? 'Online' : 'Offline'}
-            </span>
-          </div>
+      <div class="script-status-item" class:missing={!$connected}>
+        <span class="script-status-item__icon">🔌</span>
+        <div class="script-status-item__content">
+          <span class="script-status-item__name">OBS Connection</span>
+          <span class="script-status-item__badge" class:badge-online={$connected} class:badge-offline={!$connected}>
+            {$connected ? 'Online' : 'Offline'}
+          </span>
         </div>
       </div>
       {#if !$connected}
-        <p class="hint">
-          <button 
-            on:click={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('[Dashboard] Navigating to setup...');
-              navigateTo('setup');
-            }} 
-            class="btn-link"
+        <div class="status-actions">
+          <div class="status-action-item">
+            <button 
+              on:click={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Dashboard] Navigating to setup...');
+                navigateTo('setup');
+              }} 
+              class="btn-link"
+            >
+              ⚙️ Go to Setup
+            </button>
+            <span class="action-hint">to connect to OBS WebSocket</span>
+          </div>
+          <div class="status-action-item">
+            <button 
+              on:click={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Dashboard] Navigating to installer...');
+                navigateTo('install');
+              }} 
+              class="btn-link"
+            >
+              📥 Install Scripts
+            </button>
+            <span class="action-hint">if you haven't already</span>
+          </div>
+        </div>
+      {/if}
+    </div>
+  </div>
+  
+  <!-- Combined Actions and Swaps -->
+  <div class="card actions-card">
+    <div class="actions-layout">
+      <div class="actions-section">
+        <h3>Quick Actions</h3>
+        <div class="quick-actions-grid">
+          <Tooltip 
+            text={$connected ? 'Cycle aspect ratio override' : 'Connect to OBS first to use this feature'} 
+            position="bottom"
+            level={$connected ? 'log' : 'warning'}
           >
-            ⚙️ Go to Setup
-          </button>
-          to connect to OBS WebSocket
-        </p>
-      {/if}
-    </div>
-  </div>
-  
-  <div class="card">
-    <h3>Quick Actions</h3>
-    <div class="quick-actions-grid">
-      <button
-        class="source-btn requires-connection"
-        on:click={handleCycleAspect}
-        disabled={!$connected}
-      >
-        🔄 Cycle Aspect
-      </button>
-      <button
-        class="source-btn requires-connection"
-        on:click={handleRefreshScenes}
-        disabled={!$connected}
-      >
-        🔃 Refresh
-      </button>
-    </div>
-  </div>
-  
-  <div class="card">
-    <h3>Current Scene</h3>
-    <div id="currentScene" class="current-scene-display">
-      {#if $connected && $currentScene}
-        <span class="scene-name">{$currentScene}</span>
-      {:else}
-        <span class="empty-state">Connect to OBS first</span>
-      {/if}
-    </div>
-  </div>
-  
-  <div class="card">
-    <h3>Quick Swaps</h3>
-    <div class="quick-swaps-container">
-      <div class="grid" id="dashSwapGrid">
-        <div class="empty-state">No quick swaps configured</div>
+            <button
+              class="source-btn requires-connection"
+              on:click={handleCycleAspect}
+              disabled={!$connected}
+            >
+              🔄 Cycle Aspect
+            </button>
+          </Tooltip>
+          <Tooltip 
+            text={$connected ? 'Refresh scene sources' : 'Connect to OBS first to use this feature'} 
+            position="bottom"
+            level={$connected ? 'log' : 'warning'}
+          >
+            <button
+              class="source-btn requires-connection"
+              on:click={handleRefreshScenes}
+              disabled={!$connected}
+            >
+              🔃 Refresh
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+      
+      <div class="swaps-section">
+        <h3>Quick Swaps</h3>
+        <div class="quick-swaps-container">
+          <div class="grid">
+            {#if swapConfigs.length === 0}
+              <div class="empty-state">No quick swaps configured</div>
+            {:else}
+              {#each swapConfigs as config, index}
+                <Tooltip 
+                  text={$connected ? `Load swap config: ${config.name}` : 'Connect to OBS first to use quick swaps'} 
+                  position="bottom"
+                  level={$connected ? 'log' : 'warning'}
+                >
+                  <button
+                    class="source-btn"
+                    class:requires-connection={!$connected}
+                    on:click={() => handleLoadSwapConfig(index)}
+                    disabled={!$connected}
+                  >
+                    {config.name}
+                  </button>
+                </Tooltip>
+              {/each}
+            {/if}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -162,23 +228,23 @@
     }
   }
   
-  .script-status-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  .status-card {
+    padding: 16px;
+    
+    #dashboardScriptStatus {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
   }
   
   .script-status-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: var(--bg-dark);
-    border-radius: 6px;
-    border: 1px solid var(--border);
+    gap: 10px;
     
     &__icon {
-      font-size: 1.5em;
+      font-size: 1.3em;
       flex-shrink: 0;
     }
     
@@ -193,15 +259,17 @@
     &__name {
       font-weight: 500;
       color: var(--text);
+      font-size: 0.95em;
     }
     
     &__badge {
       padding: 4px 12px;
       border-radius: 12px;
-      font-size: 0.85em;
+      font-size: 0.8em;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      flex-shrink: 0;
       
       &.badge-online {
         background: rgba(40, 167, 69, 0.2);
@@ -221,64 +289,99 @@
     }
   }
   
-  .current-scene-display {
-    padding: 16px;
-    text-align: center;
-    min-height: 60px;
+  .status-actions {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    .scene-name {
-      font-size: 1.2em;
-      font-weight: 600;
-      color: var(--accent);
-    }
-    
-    .empty-state {
-      color: var(--muted);
-      font-style: italic;
-    }
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
   }
   
-  .hint {
-    margin-top: 12px;
-    font-size: 0.9em;
-    color: var(--text-secondary);
+  .status-action-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
     
     .btn-link {
       color: var(--accent);
       text-decoration: none;
       font-weight: 500;
+      font-size: 0.9em;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.2s;
+      white-space: nowrap;
       
       &:hover {
         text-decoration: underline;
       }
     }
+    
+    .action-hint {
+      color: var(--text-secondary);
+      font-size: 0.85em;
+    }
+  }
+  
+  .actions-card {
+    padding: 16px;
+  }
+  
+  .actions-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+  }
+  
+  .actions-section,
+  .swaps-section {
+    h3 {
+      margin: 0 0 12px 0;
+      font-size: 1em;
+      font-weight: 600;
+      color: var(--text);
+    }
   }
   
   .quick-actions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     @include staggered-grid(0.1s);
+    
+    > * {
+      flex: 0 1 auto;
+      min-width: 120px;
+      max-width: 200px;
+    }
   }
   
   .quick-swaps-container {
-    min-height: 100px;
-    
     .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 200px));
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
+      
+      > * {
+        flex: 0 1 auto;
+        min-width: 120px;
+        max-width: 200px;
+      }
     }
     
     .empty-state {
       margin: 0;
-      grid-column: 1 / -1;
       text-align: center;
-      padding: 20px;
+      padding: 12px;
       color: var(--muted);
+      font-size: 0.9em;
     }
   }
 </style>

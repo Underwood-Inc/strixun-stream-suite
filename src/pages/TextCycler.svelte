@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { connected } from '../stores/connection';
   import SearchBox from '../components/SearchBox.svelte';
+  import Tooltip from '../components/Tooltip.svelte';
   
   let showEditor = false;
   let showTextLines = false;
@@ -120,7 +121,13 @@
     />
     <div id="textCyclerConfigs" class="config-list" bind:this={configsContainer}></div>
     <div class="row" style="margin-top:8px">
-      <button on:click={handleNewConfig} disabled={!$connected}>➕ New Config</button>
+      <Tooltip 
+        text={$connected ? 'Create a new text cycler configuration' : 'Connect to OBS first to create configs'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button on:click={handleNewConfig} disabled={!$connected}>➕ New Config</button>
+      </Tooltip>
       <button on:click={handleExportConfigs}>📤 Export</button>
       <button on:click={handleImportConfigs}>📥 Import</button>
     </div>
@@ -308,18 +315,42 @@
   <!-- Controls -->
   <div id="textControls" style="display:none">
     <div class="row">
-      <button class="btn-success btn-lg" id="startCycleBtn" on:click={handleStartCycler} disabled={!$connected}>
-        ▶ Start
-      </button>
-      <button class="btn-danger btn-lg" id="stopCycleBtn" on:click={handleStopCycler} disabled={!$connected}>
-        ■ Stop
-      </button>
+      <Tooltip 
+        text={$connected ? 'Start cycling through text items' : 'Connect to OBS first to start text cycling'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button class="btn-success btn-lg" id="startCycleBtn" on:click={handleStartCycler} disabled={!$connected}>
+          ▶ Start
+        </button>
+      </Tooltip>
+      <Tooltip 
+        text={$connected ? 'Stop text cycling' : 'Connect to OBS first to control text cycling'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button class="btn-danger btn-lg" id="stopCycleBtn" on:click={handleStopCycler} disabled={!$connected}>
+          ■ Stop
+        </button>
+      </Tooltip>
     </div>
     <div class="row" style="margin-top:8px">
-      <button on:click={handleSaveConfig} disabled={!$connected}>💾 Save Config</button>
-      <button on:click={handleDeleteConfig} style="background:var(--danger);border-color:var(--danger)" disabled={!$connected}>
-        🗑️ Delete
-      </button>
+      <Tooltip 
+        text={$connected ? 'Save current configuration' : 'Connect to OBS first to save configs'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button on:click={handleSaveConfig} disabled={!$connected}>💾 Save Config</button>
+      </Tooltip>
+      <Tooltip 
+        text={$connected ? 'Delete current configuration' : 'Connect to OBS first to delete configs'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button on:click={handleDeleteConfig} style="background:var(--danger);border-color:var(--danger)" disabled={!$connected}>
+          🗑️ Delete
+        </button>
+      </Tooltip>
     </div>
   </div>
 </div>

@@ -4,6 +4,7 @@
    * 
    * Agnostic, reusable tooltip component that shows instantly on hover.
    * Handles positioning automatically based on available space.
+   * Supports multiple alert levels with distinct visual styling.
    * 
    * @example
    * <Tooltip text="Click me">
@@ -13,6 +14,11 @@
    * @example
    * <Tooltip text="Custom tooltip" position="bottom" delay={0}>
    *   <span>Hover target</span>
+   * </Tooltip>
+   * 
+   * @example
+   * <Tooltip text="Connection required" level="warning">
+   *   <button disabled>Disabled button</button>
    * </Tooltip>
    */
   
@@ -41,7 +47,8 @@
   export let position: 'top' | 'bottom' | 'left' | 'right' | 'auto' = 'auto';
   export let delay: number = 0; // Instant by default
   export let disabled: boolean = false;
-  export let maxWidth: string = '200px';
+  export let maxWidth: string | null = null; // null = auto-calculate based on viewport
+  export let level: 'log' | 'info' | 'warning' | 'error' = 'log';
   
   // Internal state
   let show = false;
@@ -54,6 +61,38 @@
   let mouseY = 0;
   let listenersActive = false;
   let portalContainer: HTMLDivElement | null = null;
+  
+  // Calculate reasonable max-width based on viewport
+  function calculateMaxWidth(): string {
+    if (maxWidth !== null) {
+      return maxWidth;
+    }
+    
+    const viewportWidth = window.innerWidth;
+    // Use 40% of viewport width, but clamp between 250px and 500px for better readability
+    const calculated = Math.max(250, Math.min(500, Math.floor(viewportWidth * 0.4)));
+    return `${calculated}px`;
+  }
+  
+  // Calculate minimum width to prevent text stacking
+  function calculateMinWidth(): string {
+    const viewportWidth = window.innerWidth;
+    // Minimum width should be at least 200px, or 15% of viewport if larger
+    const calculated = Math.max(200, Math.floor(viewportWidth * 0.15));
+    return `${calculated}px`;
+  }
+  
+  // Reactive calculated widths
+  $: calculatedMaxWidth = calculateMaxWidth();
+  $: calculatedMinWidth = calculateMinWidth();
+  
+  // Update calculated width on resize
+  function handleResize(): void {
+    if (tooltipElement) {
+      tooltipElement.style.maxWidth = calculateMaxWidth();
+      tooltipElement.style.minWidth = calculateMinWidth();
+    }
+  }
   
   // Calculate position based on available space
   function calculatePosition(): void {
@@ -160,14 +199,18 @@
     show = false;
   }
   
-  // Update position when tooltip becomes visible
+  // Update position and width when tooltip becomes visible
   $: if (show && tooltipElement && !listenersActive) {
     // Use requestAnimationFrame to ensure DOM is updated
     requestAnimationFrame(() => {
+      // Apply width constraints
+      tooltipElement.style.maxWidth = calculatedMaxWidth;
+      tooltipElement.style.minWidth = calculatedMinWidth;
       calculatePosition();
       // Also update on window resize and scroll
       if (!listenersActive) {
         window.addEventListener('resize', updateTooltipPosition);
+        window.addEventListener('resize', handleResize);
         window.addEventListener('scroll', updateTooltipPosition, true);
         listenersActive = true;
       }
@@ -177,6 +220,7 @@
   // Cleanup listeners when tooltip hides
   $: if (!show && listenersActive) {
     window.removeEventListener('resize', updateTooltipPosition);
+    window.removeEventListener('resize', handleResize);
     window.removeEventListener('scroll', updateTooltipPosition, true);
     listenersActive = false;
   }
@@ -197,7 +241,7 @@
     portalContainer.style.width = '0';
     portalContainer.style.height = '0';
     portalContainer.style.pointerEvents = 'none';
-    portalContainer.style.zIndex = '99999';
+    portalContainer.style.zIndex = '100002'; // Highest - above alerts (100001) and toasts (99999)
     document.body.appendChild(portalContainer);
     
     // Find the trigger element (first child)
@@ -221,6 +265,7 @@
     }
     if (listenersActive) {
       window.removeEventListener('resize', updateTooltipPosition);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', updateTooltipPosition, true);
       listenersActive = false;
     }
@@ -242,10 +287,14 @@
     class:tooltip--bottom={actualPosition === 'bottom'}
     class:tooltip--left={actualPosition === 'left'}
     class:tooltip--right={actualPosition === 'right'}
+    class:tooltip--log={level === 'log'}
+    class:tooltip--info={level === 'info'}
+    class:tooltip--warning={level === 'warning'}
+    class:tooltip--error={level === 'error'}
     id={tooltipId}
     role="tooltip"
     bind:this={tooltipElement}
-    style="max-width: {maxWidth};"
+    style="max-width: {calculatedMaxWidth}; min-width: {calculatedMinWidth};"
     use:portal={portalContainer}
   >
     {text}
@@ -262,19 +311,71 @@
   
   .tooltip {
     position: fixed;
-    z-index: 10000;
+    z-index: 100002; // Highest - above alerts (100001) and toasts (99999)
     padding: 6px 10px;
     background: var(--card);
     border: 1px solid var(--border);
     color: var(--text);
     font-size: 0.85em;
     line-height: 1.4;
-    white-space: nowrap;
     pointer-events: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     animation: fade-in 0.1s ease-out;
     @include gpu-accelerated;
     transform: none;
+    position: relative;
+    overflow: visible;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: center;
+    display: inline-block;
+    
+    // Log level (default) - no special styling
+    &.tooltip--log {
+      // Default styling already applied
+    }
+    
+    // Info level - blue border and angled line pattern
+    &.tooltip--info {
+      border-color: var(--info);
+      border-width: 2px;
+      background-image: repeating-linear-gradient(
+        45deg,
+        var(--card),
+        var(--card) 8px,
+        rgba(100, 149, 237, 0.08) 8px,
+        rgba(100, 149, 237, 0.08) 16px
+      );
+    }
+    
+    // Warning level - distinct orange/amber color to stand out from yellow/brown theme
+    &.tooltip--warning {
+      border-color: #ff8c00; // Dark orange - distinct from yellow/brown
+      border-width: 2px;
+      background: var(--card);
+      background-image: repeating-linear-gradient(
+        135deg,
+        rgba(255, 140, 0, 0.1),
+        rgba(255, 140, 0, 0.1) 4px,
+        rgba(255, 140, 0, 0.15) 4px,
+        rgba(255, 140, 0, 0.15) 8px
+      );
+    }
+    
+    // Error level - red border with diagonal stripe pattern
+    &.tooltip--error {
+      border-color: var(--danger);
+      border-width: 2px;
+      background: var(--card);
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(234, 43, 31, 0.1),
+        rgba(234, 43, 31, 0.1) 6px,
+        rgba(234, 43, 31, 0.15) 6px,
+        rgba(234, 43, 31, 0.15) 12px
+      );
+    }
     
     // Top position - arrow points down
     &.tooltip--top {
@@ -286,8 +387,10 @@
         transform: translateX(-50%);
         border: 5px solid transparent;
         border-top-color: var(--card);
+        z-index: 2;
       }
       
+      // Border arrow - adjust color based on level
       &::before {
         content: '';
         position: absolute;
@@ -295,8 +398,24 @@
         left: 50%;
         transform: translateX(-50%);
         border: 6px solid transparent;
-        border-top-color: var(--border);
         margin-top: -1px;
+        z-index: 1;
+      }
+      
+      &.tooltip--log::before {
+        border-top-color: var(--border);
+      }
+      
+      &.tooltip--info::before {
+        border-top-color: var(--info);
+      }
+      
+      &.tooltip--warning::before {
+        border-top-color: #ff8c00;
+      }
+      
+      &.tooltip--error::before {
+        border-top-color: var(--danger);
       }
     }
     
@@ -310,8 +429,10 @@
         transform: translateX(-50%);
         border: 5px solid transparent;
         border-bottom-color: var(--card);
+        z-index: 2;
       }
       
+      // Border arrow - adjust color based on level
       &::before {
         content: '';
         position: absolute;
@@ -319,8 +440,24 @@
         left: 50%;
         transform: translateX(-50%);
         border: 6px solid transparent;
-        border-bottom-color: var(--border);
         margin-bottom: -1px;
+        z-index: 1;
+      }
+      
+      &.tooltip--log::before {
+        border-bottom-color: var(--border);
+      }
+      
+      &.tooltip--info::before {
+        border-bottom-color: var(--info);
+      }
+      
+      &.tooltip--warning::before {
+        border-bottom-color: #ff8c00;
+      }
+      
+      &.tooltip--error::before {
+        border-bottom-color: var(--danger);
       }
     }
     
@@ -334,8 +471,10 @@
         transform: translateY(-50%);
         border: 5px solid transparent;
         border-left-color: var(--card);
+        z-index: 2;
       }
       
+      // Border arrow - adjust color based on level
       &::before {
         content: '';
         position: absolute;
@@ -343,8 +482,24 @@
         top: 50%;
         transform: translateY(-50%);
         border: 6px solid transparent;
-        border-left-color: var(--border);
         margin-left: -1px;
+        z-index: 1;
+      }
+      
+      &.tooltip--log::before {
+        border-left-color: var(--border);
+      }
+      
+      &.tooltip--info::before {
+        border-left-color: var(--info);
+      }
+      
+      &.tooltip--warning::before {
+        border-left-color: #ff8c00;
+      }
+      
+      &.tooltip--error::before {
+        border-left-color: var(--danger);
       }
     }
     
@@ -358,8 +513,10 @@
         transform: translateY(-50%);
         border: 5px solid transparent;
         border-right-color: var(--card);
+        z-index: 2;
       }
       
+      // Border arrow - adjust color based on level
       &::before {
         content: '';
         position: absolute;
@@ -367,15 +524,27 @@
         top: 50%;
         transform: translateY(-50%);
         border: 6px solid transparent;
-        border-right-color: var(--border);
         margin-right: -1px;
+        z-index: 1;
+      }
+      
+      &.tooltip--log::before {
+        border-right-color: var(--border);
+      }
+      
+      &.tooltip--info::before {
+        border-right-color: var(--info);
+      }
+      
+      &.tooltip--warning::before {
+        border-right-color: #ff8c00;
+      }
+      
+      &.tooltip--error::before {
+        border-right-color: var(--danger);
       }
     }
     
-    // Allow text wrapping for longer content
-    white-space: normal;
-    word-wrap: break-word;
-    text-align: center;
   }
 </style>
 

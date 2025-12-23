@@ -18,6 +18,7 @@
   
   import { onMount, onDestroy } from 'svelte';
   import { writable } from 'svelte/store';
+  import Tooltip from './Tooltip.svelte';
   
   // Props
   export let inputId: string;
@@ -213,14 +214,15 @@
     on:input={handleInput}
   />
   {#if $searchQuery}
-    <button
-      class="search-box__clear"
-      on:click={clearSearch}
-      title="Clear search"
-      type="button"
-    >
-      ✕
-    </button>
+    <Tooltip text="Clear search" position="bottom">
+      <button
+        class="search-box__clear"
+        on:click={clearSearch}
+        type="button"
+      >
+        ✕
+      </button>
+    </Tooltip>
   {/if}
 </div>
 

@@ -478,34 +478,30 @@ export function setupUIStatePersistence(): void {
 // ============ UI Functions ============
 export function showPage(id: string, save: boolean = true): void {
   // Check if tab is disabled (requires connection)
+  // Use the Svelte store which is the source of truth for connection state
   const featurePages = ['sources', 'text', 'swaps', 'layouts'];
-  const scriptStatus = (window as any).ScriptStatus ? (window as any).ScriptStatus.scriptStatus : { connected: false };
-  if (featurePages.includes(id) && !scriptStatus.connected) {
+  const isConnected = get(connected);
+  
+  if (featurePages.includes(id) && !isConnected) {
     // Don't switch to disabled page, redirect to setup
     log('Connect to OBS first to use this feature', 'error');
     navigateTo('setup', false);
     return;
   }
   
-  // Use Svelte navigation store
+  // Use Svelte navigation store - this handles all state management reactively
   navigateTo(id, save);
   
-  // Also update DOM for legacy HTML compatibility (if elements exist)
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  
+  // Legacy DOM manipulation for HTML pages (only if elements exist)
+  // Note: Svelte components handle their own state, so this is only for legacy HTML
   const pageElement = document.getElementById('page-' + id);
   if (pageElement) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     pageElement.classList.add('active');
   }
   
-  // Find and activate the corresponding tab - must match order in HTML nav.tabs
-  const tabs = document.querySelectorAll('.tab');
-  const tabIds = ['dashboard', 'sources', 'text', 'swaps', 'layouts', 'scripts', 'install', 'setup'];
-  const tabIndex = tabIds.indexOf(id);
-  if (tabIndex >= 0 && tabs[tabIndex]) {
-    tabs[tabIndex].classList.add('active');
-  }
+  // NOTE: Tab active states are now handled reactively by Navigation.svelte
+  // Do NOT manipulate .tab elements directly - let Svelte handle it
   
   // Render feature notices for pages that require scripts
   const pageFeatureMap: Record<string, { id: string; feature: string; script: string }> = {

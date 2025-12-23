@@ -2,14 +2,16 @@
   /**
    * Virtual List Component
    * 
-   * Efficiently renders only visible items for large lists
+   * Efficiently renders only visible items for large lists.
+   * Generic component that works with any item type that has an 'id' property.
    */
   
   import { onMount } from 'svelte';
   
-  import type { LogEntry } from '../stores/activity-log';
+  // Generic type constraint - items must have an id property
+  type ItemWithId = { id: string | number; [key: string]: any };
   
-  export let items: LogEntry[];
+  export let items: ItemWithId[] = [];
   export let itemHeight: number = 40;
   export let containerHeight: number = 400;
   export let overscan: number = 5; // Extra items to render above/below viewport
@@ -18,7 +20,7 @@
   let scrollTop = 0;
   
   // Reactive variables for virtual list calculations
-  let visibleItems: LogEntry[] = [];
+  let visibleItems: ItemWithId[] = [];
   let offsetY = 0;
   let totalHeight = 0;
   let visibleStart = 0;

@@ -6,6 +6,7 @@
    */
   
   import { onMount } from 'svelte';
+  import Tooltip from './Tooltip.svelte';
   
   export let message: string;
   export let type: 'success' | 'error' | 'info' | 'warning' = 'info';
@@ -58,7 +59,9 @@
         <button class="toast__action" on:click={handleAction}>{action.label}</button>
       {/if}
     </div>
-    <button class="toast__close" on:click={dismiss} aria-label="Dismiss">✕</button>
+    <Tooltip text="Dismiss" position="left">
+      <button class="toast__close" on:click={dismiss} aria-label="Dismiss">✕</button>
+    </Tooltip>
   </div>
 {/if}
 

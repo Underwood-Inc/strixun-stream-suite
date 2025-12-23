@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import SearchBox from '../components/SearchBox.svelte';
   import { connected, currentScene } from '../stores/connection';
+  import Tooltip from '../components/Tooltip.svelte';
   
   let layoutName = '';
   let layoutDuration = 500;
@@ -53,9 +54,15 @@
     </p>
     <label>Layout Name</label>
     <input type="text" id="layoutName" bind:value={layoutName} placeholder="e.g. Gaming Layout, Just Chatting">
-    <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleCaptureLayout} disabled={!$connected}>
-      📸 Capture Current Layout
-    </button>
+    <Tooltip 
+      text={$connected ? 'Save current scene source positions and sizes as a layout' : 'Connect to OBS first to capture layouts'} 
+      position="bottom"
+      level={$connected ? 'log' : 'warning'}
+    >
+      <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleCaptureLayout} disabled={!$connected}>
+        📸 Capture Current Layout
+      </button>
+    </Tooltip>
   </div>
   
   <!-- Saved Layouts -->
@@ -76,7 +83,13 @@
     />
     <div id="savedLayouts" class="config-list"></div>
     <div class="row" style="margin-top:8px">
-      <button on:click={handleRefreshLayouts} disabled={!$connected}>🔄 Refresh</button>
+      <Tooltip 
+        text={$connected ? 'Refresh saved layouts list' : 'Connect to OBS first to refresh layouts'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button on:click={handleRefreshLayouts} disabled={!$connected}>🔄 Refresh</button>
+      </Tooltip>
     </div>
   </div>
   

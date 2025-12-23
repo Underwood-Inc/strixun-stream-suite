@@ -99,7 +99,7 @@ The Svelte component provides a declarative API:
 ```svelte
 <ResizableZone 
   direction="vertical" 
-  storageKey="my-panel-height"
+  storageKey="ui_my-panel-height"
   defaultSize={300}
 >
   <div slot="content">
@@ -107,6 +107,12 @@ The Svelte component provides a declarative API:
   </div>
 </ResizableZone>
 ```
+
+**CRITICAL**: When using `storageKey` for resizable zones:
+- Use the `ui_` prefix (e.g., `ui_my-panel-height`) to enable automatic OBS sync
+- The component automatically uses the storage system (IndexedDB + localStorage)
+- Sizes are automatically synced to OBS client when changed
+- This ensures resizable zone sizes persist across sessions and sync to remote clients
 
 ### Programmatic Control
 

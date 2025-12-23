@@ -4,7 +4,7 @@
  * Agnostic, composable, reusable resizable zone system
  * Supports infinite nesting and both vertical and horizontal resizing
  * 
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 export type ResizeDirection = 'vertical' | 'horizontal';
@@ -29,6 +29,15 @@ export interface ResizeState {
 }
 
 /**
+ * Storage interface for ResizableZone
+ * Allows injection of storage system (for OBS sync support)
+ */
+export interface ResizableZoneStorage {
+  get(key: string): unknown | null;
+  set(key: string, value: unknown): boolean;
+}
+
+/**
  * ResizableZone Controller
  * Handles all resize logic without UI concerns
  */
@@ -38,9 +47,9 @@ export class ResizableZoneController {
   private rafId: number | null = null;
   private pendingSize: number | null = null;
   private element: HTMLElement | null = null;
-  private storage: Storage | null = null;
+  private storage: ResizableZoneStorage | null = null;
 
-  constructor(config: ResizableZoneConfig) {
+  constructor(config: ResizableZoneConfig, storage?: ResizableZoneStorage) {
     this.config = {
       direction: config.direction,
       minSize: config.minSize ?? 50,
@@ -59,22 +68,48 @@ export class ResizableZoneController {
       currentSize: this.config.defaultSize
     };
 
-    // Try to get storage if key is provided
-    if (this.config.storageKey && typeof window !== 'undefined') {
+    // Use provided storage system, or fall back to localStorage
+    if (storage) {
+      this.storage = storage;
+    } else if (this.config.storageKey && typeof window !== 'undefined') {
+      // Fallback to localStorage if no storage system provided
       try {
-        this.storage = window.localStorage;
-        const saved = this.storage.getItem(this.config.storageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (typeof parsed.size === 'number') {
-            this.state.currentSize = Math.max(
-              this.config.minSize,
-              Math.min(this.config.maxSize, parsed.size)
-            );
+        // Create a localStorage adapter
+        this.storage = {
+          get: (key: string) => {
+            try {
+              const item = window.localStorage.getItem(key);
+              return item ? JSON.parse(item) : null;
+            } catch {
+              return null;
+            }
+          },
+          set: (key: string, value: unknown) => {
+            try {
+              window.localStorage.setItem(key, JSON.stringify(value));
+              return true;
+            } catch {
+              return false;
+            }
           }
+        };
+      } catch (e) {
+        // Storage not available
+      }
+    }
+
+    // Load saved size if storage key is provided
+    if (this.config.storageKey && this.storage) {
+      try {
+        const saved = this.storage.get(this.config.storageKey) as { size?: number } | null;
+        if (saved && typeof saved.size === 'number') {
+          this.state.currentSize = Math.max(
+            this.config.minSize,
+            Math.min(this.config.maxSize, saved.size)
+          );
         }
       } catch (e) {
-        // Storage not available or invalid, use default
+        // Storage read failed, use default
       }
     }
   }
@@ -115,10 +150,7 @@ export class ResizableZoneController {
     
     if (save && this.config.storageKey && this.storage) {
       try {
-        this.storage.setItem(
-          this.config.storageKey,
-          JSON.stringify({ size: clamped })
-        );
+        this.storage.set(this.config.storageKey, { size: clamped });
       } catch (e) {
         // Storage write failed, ignore
       }
@@ -236,10 +268,7 @@ export class ResizableZoneController {
     // Save to storage
     if (this.config.storageKey && this.storage) {
       try {
-        this.storage.setItem(
-          this.config.storageKey,
-          JSON.stringify({ size: this.state.currentSize })
-        );
+        this.storage.set(this.config.storageKey, { size: this.state.currentSize });
       } catch (e) {
         // Storage write failed, ignore
       }

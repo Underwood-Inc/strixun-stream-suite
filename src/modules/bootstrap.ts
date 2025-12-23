@@ -127,7 +127,8 @@ async function initializeModules(): Promise<void> {
     ...storageSync,
     get storageSyncTimer() { return storageSync.getStorageSyncTimer(); },
     set storageSyncTimer(val) { storageSync.setStorageSyncTimer(val); },
-    get STORAGE_SYNC_DEBOUNCE() { return storageSync.STORAGE_SYNC_DEBOUNCE; }
+    get STORAGE_SYNC_DEBOUNCE() { return storageSync.STORAGE_SYNC_DEBOUNCE; },
+    scheduleUISync: storageSync.scheduleUISync
   };
   
   // Initialize UI Utils (TypeScript module)

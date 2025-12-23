@@ -13,6 +13,7 @@
   import { requestStorageFromOBS, manualStorageSync, saveAutoSyncPref } from '../modules/storage-sync';
   import { checkForUpdates, openGitHubRepo } from '../modules/version';
   import { storage } from '../modules/storage';
+  import Tooltip from '../components/Tooltip.svelte';
   
   let host = 'localhost';
   let port = '4455';
@@ -312,12 +313,24 @@
       Sync configs between OBS dock and remote browser panels via WebSocket.
     </p>
     <div style="display:grid;gap:8px">
-      <button class="btn-primary btn-block" class:requires-connection={true} disabled={!$connected} on:click={handleRequestStorageFromOBS}>
-        📥 Pull Storage from OBS Dock
-      </button>
-      <button class="btn-block" class:requires-connection={true} disabled={!$connected} style="background:var(--border)" on:click={handleManualStorageSync}>
-        📡 Push Storage to Other Clients
-      </button>
+      <Tooltip 
+        text={$connected ? 'Overwrite local storage with data from OBS dock' : 'Connect to OBS first to sync storage'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button class="btn-primary btn-block" class:requires-connection={true} disabled={!$connected} on:click={handleRequestStorageFromOBS}>
+          📥 Pull Storage from OBS Dock
+        </button>
+      </Tooltip>
+      <Tooltip 
+        text={$connected ? 'Send local storage to other connected clients' : 'Connect to OBS first to sync storage'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button class="btn-block" class:requires-connection={true} disabled={!$connected} style="background:var(--border)" on:click={handleManualStorageSync}>
+          📡 Push Storage to Other Clients
+        </button>
+      </Tooltip>
     </div>
     <p class="hint" style="margin-top:6px">
       <strong>Pull</strong> = Overwrite local with OBS dock's storage<br>

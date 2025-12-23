@@ -701,6 +701,7 @@ export function saveCurrentSwap(): void {
   swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
   storage.set('swapConfigs', swapConfigs);
   renderSavedSwaps();
+  window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
   dependencies.log(`Saved config: ${name}`, 'success');
   
   // OBS dock: debounced save to persistent storage
@@ -735,6 +736,7 @@ export function addSwapConfig(): void {
   swapConfigs.push({ name: configName, sourceA, sourceB });
   storage.set('swapConfigs', swapConfigs);
   renderSavedSwaps();
+  window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
   
   // Clear the form
   const nameInput = document.getElementById('swapConfigName') as HTMLInputElement;
@@ -749,6 +751,7 @@ export function deleteSwapConfig(index: number): void {
   swapConfigs.splice(index, 1);
   storage.set('swapConfigs', swapConfigs);
   renderSavedSwaps();
+  window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
   
   // OBS dock: debounced save to persistent storage
   if (dependencies.isOBSDock() && get(connected)) {
@@ -821,6 +824,7 @@ export function importConfigs(): void {
     
     storage.set('swapConfigs', swapConfigs);
     renderSavedSwaps();
+    window.dispatchEvent(new CustomEvent('swapConfigsChanged'));
     dependencies.log(`Imported ${imported.length} configs`, 'success');
   } catch (e) {
     const error = e as Error;
@@ -915,25 +919,36 @@ export function renderDashSwaps(): void {
     return;
   }
   
+  // Check connection state
+  const isConnected = get(connected);
+  
   // Render buttons with proper escaping
   grid.innerHTML = swapConfigs.map((c, i) => {
     const escapedName = c.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    return `<button class="source-btn" data-swap-name="${escapedName}" onclick="window.SourceSwaps?.loadSwapConfig(${i})">${escapedName}</button>`;
+    const disabledAttr = !isConnected ? 'disabled' : '';
+    const connectionClass = !isConnected ? 'requires-connection' : '';
+    return `<button class="source-btn ${connectionClass}" data-swap-name="${escapedName}" ${disabledAttr} onclick="window.SourceSwaps?.loadSwapConfig(${i})">${escapedName}</button>`;
   }).join('');
   
-  // Set tooltips only for truncated buttons
+  // Set tooltips for truncated buttons or connection state
   setTimeout(() => {
     const buttons = grid.querySelectorAll('.source-btn[data-swap-name]');
     buttons.forEach((btn) => {
-      const button = btn as HTMLElement;
+      const button = btn as HTMLButtonElement;
       const fullName = button.getAttribute('data-swap-name') || '';
+      const isDisabled = button.disabled;
       
-      // Check if text is truncated
-      if (button.scrollWidth > button.clientWidth) {
-        button.title = fullName;
+      // Always set tooltip if disabled (connection required)
+      if (isDisabled) {
+        button.title = 'Connect to OBS first to use quick swaps';
       } else {
-        // Remove title if not truncated to avoid unnecessary tooltips
-        button.removeAttribute('title');
+        // For enabled buttons, only show tooltip if text is truncated
+        if (button.scrollWidth > button.clientWidth) {
+          button.title = fullName;
+        } else {
+          // Remove title if not truncated to avoid unnecessary tooltips
+          button.removeAttribute('title');
+        }
       }
     });
   }, 0);

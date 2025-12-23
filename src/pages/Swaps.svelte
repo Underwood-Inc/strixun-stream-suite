@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { connected, sources } from '../stores/connection';
   import SearchBox from '../components/SearchBox.svelte';
+  import Tooltip from '../components/Tooltip.svelte';
   
   let swapSourceA = '';
   let swapSourceB = '';
@@ -87,9 +88,15 @@
     <label>Source B</label>
     <select id="swapSourceB" bind:value={swapSourceB}></select>
     <div class="row" style="margin-top:8px">
-      <button class="btn-primary btn-lg" on:click={handleExecuteSwap} disabled={!$connected}>
-        🔄 Swap Now
-      </button>
+      <Tooltip 
+        text={$connected ? 'Execute the swap between selected sources' : 'Connect to OBS first to execute swaps'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button class="btn-primary btn-lg" on:click={handleExecuteSwap} disabled={!$connected}>
+          🔄 Swap Now
+        </button>
+      </Tooltip>
     </div>
   </div>
   
@@ -164,9 +171,15 @@
         <select id="swapNewSourceB" bind:value={swapNewSourceB}></select>
       </div>
     </div>
-    <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleAddSwapConfig} disabled={!$connected}>
-      ➕ Add Config
-    </button>
+    <Tooltip 
+      text={$connected ? 'Save current swap settings as a reusable config' : 'Connect to OBS first to save swap configs'} 
+      position="bottom"
+      level={$connected ? 'log' : 'warning'}
+    >
+      <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleAddSwapConfig} disabled={!$connected}>
+        ➕ Add Config
+      </button>
+    </Tooltip>
   </div>
   
   <!-- Saved Configs -->
@@ -184,7 +197,13 @@
     />
     <div id="savedSwaps" bind:this={swapsContainer}></div>
     <div class="row" style="margin-top:8px">
-      <button on:click={handleRefreshSwapSources} disabled={!$connected}>🔄 Refresh Sources</button>
+      <Tooltip 
+        text={$connected ? 'Refresh source list from OBS' : 'Connect to OBS first to refresh sources'} 
+        position="bottom"
+        level={$connected ? 'log' : 'warning'}
+      >
+        <button on:click={handleRefreshSwapSources} disabled={!$connected}>🔄 Refresh Sources</button>
+      </Tooltip>
       <button on:click={handleExportConfigs}>📤 Export</button>
       <button on:click={handleImportConfigs}>📥 Import</button>
     </div>

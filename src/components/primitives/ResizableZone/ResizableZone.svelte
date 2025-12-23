@@ -15,6 +15,8 @@
 
   import { onMount, onDestroy } from 'svelte';
   import { ResizableZoneController, type ResizableZoneConfig } from './ResizableZone';
+  import { storage } from '../../modules/storage';
+  import { scheduleUISync } from '../../modules/storage-sync';
 
   export let direction: 'vertical' | 'horizontal' = 'vertical';
   export let minSize: number = 50;
@@ -41,8 +43,21 @@
     onResize
   };
 
+  // Create storage adapter that triggers OBS sync
+  const storageAdapter = {
+    get: (key: string) => storage.get(key),
+    set: (key: string, value: unknown) => {
+      const result = storage.set(key, value);
+      // Automatically trigger OBS sync for UI state changes
+      if (result && storageKey) {
+        scheduleUISync();
+      }
+      return result;
+    }
+  };
+
   onMount(() => {
-    controller = new ResizableZoneController(config);
+    controller = new ResizableZoneController(config, storageAdapter);
     if (container) {
       controller.attach(container);
     }

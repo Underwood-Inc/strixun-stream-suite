@@ -11,15 +11,90 @@
   import Tooltip from './Tooltip.svelte';
   
   const tabs = [
-    { id: 'dashboard', numeral: 'I', label: 'Dashboard', requiresConnection: false },
-    { id: 'sources', numeral: 'II', label: 'Sources', requiresConnection: true },
-    { id: 'text', numeral: 'III', label: 'Text Cycler', requiresConnection: true },
-    { id: 'swaps', numeral: 'IV', label: 'Swaps', requiresConnection: true },
-    { id: 'layouts', numeral: 'V', label: 'Layouts', requiresConnection: true },
-    { id: 'scripts', numeral: 'VI', label: 'Script Manager', requiresConnection: false },
-    { id: 'install', numeral: 'VII', label: 'Installer', requiresConnection: false },
-    { id: 'setup', numeral: 'VIII', label: 'Setup', requiresConnection: false }
+    { 
+      id: 'dashboard', 
+      numeral: 'I', 
+      label: 'Dashboard', 
+      requiresConnection: false,
+      disabledReason: null
+    },
+    { 
+      id: 'sources', 
+      numeral: 'II', 
+      label: 'Sources', 
+      requiresConnection: true,
+      disabledReason: 'Connect to OBS first to use this feature'
+    },
+    { 
+      id: 'text', 
+      numeral: 'III', 
+      label: 'Text Cycler', 
+      requiresConnection: true,
+      disabledReason: 'Connect to OBS first to use this feature'
+    },
+    { 
+      id: 'swaps', 
+      numeral: 'IV', 
+      label: 'Swaps', 
+      requiresConnection: true,
+      disabledReason: 'Connect to OBS first to use this feature'
+    },
+    { 
+      id: 'layouts', 
+      numeral: 'V', 
+      label: 'Layouts', 
+      requiresConnection: true,
+      disabledReason: 'Connect to OBS first to use this feature'
+    },
+    { 
+      id: 'scripts', 
+      numeral: 'VI', 
+      label: 'Script Manager', 
+      requiresConnection: false,
+      disabledReason: null
+    },
+    { 
+      id: 'install', 
+      numeral: 'VII', 
+      label: 'Installer', 
+      requiresConnection: false,
+      disabledReason: null
+    },
+    { 
+      id: 'setup', 
+      numeral: 'VIII', 
+      label: 'Setup', 
+      requiresConnection: false,
+      disabledReason: null
+    }
   ];
+  
+  function getTooltipText(tab: typeof tabs[0]): string {
+    return tab.label;
+  }
+  
+  function getTooltipLevel(tab: typeof tabs[0]): 'log' | 'info' | 'warning' | 'error' {
+    if (tab.requiresConnection && !$connected) {
+      return 'warning';
+    }
+    return 'log';
+  }
+  
+  function getTooltipContent(tab: typeof tabs[0]): string {
+    if (tab.requiresConnection && !$connected && tab.disabledReason) {
+      return `${tab.label}\n${tab.disabledReason}`;
+    }
+    return tab.label;
+  }
+  
+  // Redirect away from disabled pages when connection is lost
+  $: {
+    const currentTab = tabs.find(t => t.id === $currentPage);
+    if (currentTab && currentTab.requiresConnection && !$connected) {
+      // Redirect to setup if we're on a disabled page
+      currentPage.set('setup');
+    }
+  }
   
   function handleTabClick(e: MouseEvent, tabId: string, requiresConnection: boolean): void {
     e.preventDefault();
@@ -46,11 +121,18 @@
 
 <nav class="tabs">
   {#each tabs as tab}
-    <Tooltip text={tab.label} position="bottom" delay={0}>
+    {@const isDisabled = tab.requiresConnection && !$connected}
+    <!-- Debug: tab={tab.id}, requiresConnection={tab.requiresConnection}, connected={$connected}, isDisabled={isDisabled} -->
+    <Tooltip 
+      text={getTooltipContent(tab)} 
+      position="bottom" 
+      delay={0}
+      level={getTooltipLevel(tab)}
+    >
       <button
         class="tab"
-        class:active={$currentPage === tab.id}
-        class:disabled={tab.requiresConnection && !$connected}
+        class:active={$currentPage === tab.id && !isDisabled}
+        class:disabled={isDisabled}
         on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
       >
         <span class="tab__numeral">{tab.numeral}</span>
@@ -163,10 +245,28 @@
     opacity: 0.4;
     cursor: not-allowed;
     box-shadow: 0 1px 0 var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
   }
   
   .tabs .tab.disabled:hover {
     transform: none;
+    background: transparent;
+    border-color: var(--border);
+  }
+  
+  // Ensure disabled state overrides active state
+  .tabs .tab.disabled.active {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
+    box-shadow: 0 1px 0 var(--border);
+    font-weight: normal;
+  }
+  
+  .tabs .tab.disabled.active::after {
+    display: none;
   }
 </style>
 

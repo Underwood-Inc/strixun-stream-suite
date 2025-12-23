@@ -893,6 +893,125 @@ async function removeFromSlotList(env, deviceId, slot) {
 }
 
 /**
+ * Test email sending endpoint
+ * GET /test/email?to=your@email.com
+ */
+async function handleTestEmail(request, env) {
+    try {
+        const url = new URL(request.url);
+        const to = url.searchParams.get('to');
+        
+        if (!to) {
+            return new Response(JSON.stringify({ error: 'to parameter required' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Validate email format
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+            return new Response(JSON.stringify({ error: 'Invalid email format' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Check if RESEND_API_KEY is configured
+        if (!env.RESEND_API_KEY) {
+            return new Response(JSON.stringify({ 
+                error: 'RESEND_API_KEY not configured',
+                message: 'Please add RESEND_API_KEY secret using: wrangler secret put RESEND_API_KEY'
+            }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Send test email via Resend
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from: 'onboarding@resend.dev', // Use your verified domain if you have one
+                to: to,
+                subject: 'Test Email from Strixun Stream Suite',
+                html: `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                            .success { background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h1>✅ Test Email Successful!</h1>
+                            <div class="success">
+                                <p><strong>If you're reading this, Resend is working correctly!</strong></p>
+                                <p>This is a test email from your Cloudflare Worker.</p>
+                            </div>
+                            <p>Your email integration is set up and ready to use for OTP authentication.</p>
+                            <hr>
+                            <p style="font-size: 12px; color: #666;">
+                                Strixun Stream Suite - Email Test<br>
+                                Sent from Cloudflare Worker
+                            </p>
+                        </div>
+                    </body>
+                    </html>
+                `,
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                errorData = { message: errorText };
+            }
+            
+            return new Response(JSON.stringify({ 
+                error: 'Failed to send email',
+                status: response.status,
+                details: errorData
+            }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const data = await response.json();
+        
+        return new Response(JSON.stringify({ 
+            success: true,
+            message: 'Test email sent successfully!',
+            emailId: data.id,
+            to: to,
+            timestamp: new Date().toISOString()
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to send email',
+            message: error.message,
+            stack: error.stack
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
  * Main request handler
  */
 export default {
@@ -920,6 +1039,9 @@ export default {
             
             // CDN endpoints
             if (path === '/cdn/scrollbar-customizer.js' && request.method === 'GET') return handleScrollbarCustomizer();
+            
+            // Test endpoints
+            if (path === '/test/email' && request.method === 'GET') return handleTestEmail(request, env);
             
             // Health check
             if (path === '/health' || path === '/') return handleHealth(env);
