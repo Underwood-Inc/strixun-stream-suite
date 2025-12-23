@@ -329,20 +329,33 @@
     height: 100%;
   }
 
-  // Style Swiper slides - make them wider but constrained
+  // Style Swiper slides - make them wider but constrained and responsive
   :global(.swiper-slide) {
     height: auto;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     width: 60% !important; // Each slide takes 60% of viewport (wider but not too wide)
-    min-width: 350px; // Minimum width
+    min-width: 280px; // Reduced for narrow views
     max-width: 600px; // Maximum width to prevent overflow issues
     flex-shrink: 0;
     
     // Prevent text flipping on 3D transforms
     backface-visibility: hidden;
     transform-style: preserve-3d;
+    
+    // Responsive adjustments for narrow views
+    @media (max-width: 768px) {
+      width: 80% !important;
+      min-width: 250px;
+      max-width: 500px;
+    }
+    
+    @media (max-width: 480px) {
+      width: 90% !important;
+      min-width: 200px;
+      max-width: 100%;
+    }
     
     > * {
       width: 100%;

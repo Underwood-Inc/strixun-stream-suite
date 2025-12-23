@@ -3,43 +3,127 @@
    * ModrinthProducts Component
    * 
    * Displays a carousel of Modrinth products for promotion.
+   * Automatically fetches download counts and follower counts from Modrinth API.
    */
 
-  import { Carousel, Card } from '@components';
+  import { Card, Carousel } from '@components';
+  import { onMount } from 'svelte';
 
   interface ModrinthProduct {
     title: string;
     description: string;
     url: string;
-    downloads?: string;
-    followers?: string;
+    slug: string;
+    image?: string;
+    downloads?: number;
+    followers?: number;
     status?: string;
   }
 
-  const products: ModrinthProduct[] = [
+  interface ModrinthAPIProject {
+    id: string;
+    slug: string;
+    title: string;
+    description: string;
+    downloads: number;
+    followers: number;
+    project_type: string;
+    status: string;
+  }
+
+  const baseProducts: Omit<ModrinthProduct, 'downloads' | 'followers'>[] = [
     {
       title: 'Rituals',
       description: 'Introducing Rituals—a custom datapack/mod that brings mystical totems and ritual magic into your world. Craft totems, display items, and trigger powerful effects through immersive rituals.',
       url: 'https://modrinth.com/project/rituals',
-      downloads: '989',
-      followers: '8'
+      slug: 'rituals',
+      image: '/rituals-brand.png'
     },
     {
       title: 'strixun | Pack A',
       description: 'Dive into my personal mega-pack with a massive collection of mods, all carefully curated for balanced progression and immersive gameplay. My Rituals mod combined with the gamerules disable raids true and disable health regen true are advised.',
       url: 'https://modrinth.com/modpack/strixun-pack-a',
-      downloads: '158',
-      followers: '1'
+      slug: 'strixun-pack-a',
+      image: '/strixun-pack-a-brand.png'
     },
     {
       title: 'compressy',
       description: 'A Fabric mod to add automatic support for near infinite compression of any block that is placeable! Fancy tooltips and roman numerals included.',
       url: 'https://modrinth.com/mod/compressy',
-      downloads: '8',
-      followers: '1',
+      slug: 'compressy',
+      image: '/compressy-brand.png',
       status: 'Under review'
     }
   ];
+
+  let products: ModrinthProduct[] = baseProducts.map(p => ({
+    ...p,
+    downloads: undefined,
+    followers: undefined
+  }));
+
+  async function fetchModrinthData(): Promise<void> {
+    try {
+      // Fetch all projects in parallel
+      const promises = baseProducts.map(async (product) => {
+        try {
+          const response = await fetch(
+            `https://api.modrinth.com/v2/project/${product.slug}`,
+            {
+              headers: {
+                'User-Agent': 'StrixunStreamSuite/1.0 (https://github.com/strixun)'
+              }
+            }
+          );
+
+          if (!response.ok) {
+            console.warn(`[Modrinth] Failed to fetch ${product.slug}: ${response.status}`);
+            return null;
+          }
+
+          const data = await response.json() as ModrinthAPIProject;
+          return {
+            slug: product.slug,
+            downloads: data.downloads,
+            followers: data.followers,
+            status: data.status === 'approved' ? undefined : data.status
+          };
+        } catch (error) {
+          console.error(`[Modrinth] Error fetching ${product.slug}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(promises);
+
+      // Update products with fetched data
+      products = baseProducts.map((baseProduct, index) => {
+        const apiData = results[index];
+        return {
+          ...baseProduct,
+          downloads: apiData?.downloads ?? undefined,
+          followers: apiData?.followers ?? undefined,
+          status: apiData?.status ?? baseProduct.status
+        };
+      });
+    } catch (error) {
+      console.error('[Modrinth] Error fetching product data:', error);
+    }
+  }
+
+  function formatNumber(num: number): string {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  }
+
+  onMount(() => {
+    fetchModrinthData();
+  });
 
 </script>
 
@@ -55,22 +139,31 @@
         >
           <Card clickable={false}>
             <div class="modrinth-product">
-              <h3 class="modrinth-product__title">{product.title}</h3>
-              {#if product.status}
-                <span class="modrinth-product__status">{product.status}</span>
+              {#if product.image}
+                <img
+                  src={product.image}
+                  alt={`${product.title} brand image`}
+                  class="modrinth-product__image"
+                />
               {/if}
-              <p class="modrinth-product__description">{product.description}</p>
-              <div class="modrinth-product__stats">
-                {#if product.downloads}
-                  <span class="modrinth-product__stat">
-                    <strong>{product.downloads}</strong> downloads
-                  </span>
+              <div class="modrinth-product__content">
+                <h3 class="modrinth-product__title">{product.title}</h3>
+                {#if product.status}
+                  <span class="modrinth-product__status">{product.status}</span>
                 {/if}
-                {#if product.followers}
-                  <span class="modrinth-product__stat">
-                    <strong>{product.followers}</strong> {product.followers === '1' ? 'follower' : 'followers'}
-                  </span>
-                {/if}
+                <p class="modrinth-product__description">{product.description}</p>
+                <div class="modrinth-product__stats">
+                  {#if product.downloads !== undefined}
+                    <span class="modrinth-product__stat">
+                      <strong>{formatNumber(product.downloads)}</strong> downloads
+                    </span>
+                  {/if}
+                  {#if product.followers !== undefined}
+                    <span class="modrinth-product__stat">
+                      <strong>{formatNumber(product.followers)}</strong> {product.followers === 1 ? 'follower' : 'followers'}
+                    </span>
+                  {/if}
+                </div>
               </div>
             </div>
           </Card>
@@ -91,11 +184,28 @@
 
   .modrinth-products__wrapper {
     width: 100%;
-    height: 350px;
-    max-height: 350px;
+    height: 280px;
+    max-height: 280px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+
+  // Target carousel container to reduce padding
+  :global(.carousel__swiper) {
+    padding: 0 !important;
+    height: 100% !important;
+  }
+
+  // Target carousel slides directly
+  :global(.swiper-slide) {
+    height: 280px !important;
+    max-height: 280px !important;
+  }
+
+  :global(.swiper-slide > *) {
+    height: 100% !important;
+    max-height: 100% !important;
   }
 
   .modrinth-product__link {
@@ -136,11 +246,42 @@
 
   .modrinth-product {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
+  .modrinth-product__image {
+    width: 150px;
+    min-width: 150px;
+    height: 150px;
+    max-height: 150px;
+    object-fit: contain;
+    object-position: top left;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    flex-shrink: 0;
+    background: var(--bg-dark);
+    border-radius: 4px;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
+  .modrinth-product__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    height: 100%;
   }
 
   .modrinth-product__title {
@@ -167,6 +308,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     @include scrollbar(6px);
+    max-height: calc(100% - 80px); // Account for title, status, and stats
   }
 
   .modrinth-product__stats {

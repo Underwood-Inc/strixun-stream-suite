@@ -56,4 +56,5 @@ export { default as ComponentDocsButton } from './ComponentDocsButton.svelte';
 
 // Modrinth Products
 export { default as ModrinthProducts } from './ModrinthProducts.svelte';
+export { default as Sidebar } from './Sidebar.svelte';
 

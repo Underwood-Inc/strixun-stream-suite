@@ -8,7 +8,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { connected, currentScene } from '../stores/connection';
   import { navigateTo } from '../stores/navigation';
-  import { Tooltip } from '@components';
+  import { Tooltip, ModrinthProducts } from '@components';
   import type { SwapConfig } from '../types';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';
@@ -123,6 +123,11 @@
 </script>
 
 <div class="page dashboard-page" use:stagger={{ preset: 'fadeIn', stagger: 100, config: { duration: 300 } }}>
+  <!-- Featured Products Carousel - High Visibility -->
+  <div class="card featured-products-card">
+    <ModrinthProducts />
+  </div>
+  
   <!-- Status Card -->
   <div class="card status-card" id="dashboardStatusCard">
     <div id="dashboardScriptStatus">
@@ -247,6 +252,32 @@
     
     > .card {
       @include staggered-cards(0.1s);
+    }
+  }
+  
+  .featured-products-card {
+    padding: 0;
+    overflow: hidden;
+    margin-bottom: 24px;
+    
+    // Ensure carousel has proper height
+    :global(.modrinth-products) {
+      width: 100%;
+    }
+    
+    :global(.modrinth-products__wrapper) {
+      height: 280px;
+      max-height: 280px;
+      
+      @media (max-width: 768px) {
+        height: 280px;
+        max-height: 280px;
+      }
+      
+      @media (max-width: 480px) {
+        height: 280px;
+        max-height: 280px;
+      }
     }
   }
   
