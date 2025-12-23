@@ -7,11 +7,20 @@ export default defineConfig({
   // Base path for GitHub Pages deployment
   // Set via VITE_BASE_PATH env var, defaults to '/' for local development
   base: process.env.VITE_BASE_PATH || '/',
+  // Explicitly set public directory to ensure brand images are copied
+  publicDir: 'public',
   plugins: [svelte(),
   // @ts-expect-error - Type mismatch due to multiple Vite versions in node_modules, but build works correctly
   VitePWA({
     registerType: 'autoUpdate',
-    includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+    includeAssets: [
+      'favicon.ico',
+      'apple-touch-icon.png',
+      'mask-icon.svg',
+      'rituals-brand.png',
+      'strixun-pack-a-brand.png',
+      'compressy-brand.png'
+    ],
     manifest: {
       name: "Strixun's Stream Suite",
       short_name: 'Stream Suite',
