@@ -1,14 +1,23 @@
 ﻿{
   "name": "strixun-twitch-api",
   "version": "1.0.0",
-  "description": "Cloudflare Worker for Twitch API proxy - Strixun Stream Suite",
+  "description": "Cloudflare Workers serverless infrastructure - Twitch API proxy, OTP auth, URL shortener, chat signaling, and cloud storage - Strixun's Stream Suite",
   "private": true,
+  "packageManager": "pnpm@9.15.1",
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "tail": "wrangler tail"
+    "deploy:prod": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "tail:prod": "wrangler tail --env production",
+    "deploy:all": "node deploy-all.js",
+    "deploy:api": "wrangler deploy",
+    "deploy:url-shortener": "cd url-shortener && wrangler deploy",
+    "deploy:otp-auth": "cd otp-auth-service && wrangler deploy",
+    "deploy:chat-signaling": "cd chat-signaling && wrangler deploy"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.56.0"
   }
 }

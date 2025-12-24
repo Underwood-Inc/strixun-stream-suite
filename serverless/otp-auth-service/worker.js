@@ -11,6 +11,9 @@
  * @version 2.1.0 - Refactored to use modular architecture
  */
 
+// Import landing page HTML
+import landingHtml from './landing-html.js';
+
 // Import utility modules
 import { getCustomerCached as getCustomerCachedUtil, invalidateCustomerCache as invalidateCustomerCacheUtil } from './utils/cache.js';
 import { getCorsHeaders as getCorsHeadersUtil } from './utils/cors.js';
@@ -21,7 +24,8 @@ import {
     createJWT as createJWTUtil,
     verifyJWT as verifyJWTUtil,
     getJWTSecret as getJWTSecretUtil,
-    hashPassword as hashPasswordUtil
+    hashPassword as hashPasswordUtil,
+    constantTimeEquals as constantTimeEqualsUtil
 } from './utils/crypto.js';
 import {
     escapeHtml as escapeHtmlUtil,
@@ -39,7 +43,11 @@ import {
     createApiKeyForCustomer,
     verifyApiKey
 } from './services/api-key.js';
-import { checkOTPRateLimit as checkOTPRateLimitService } from './services/rate-limit.js';
+import { 
+    checkOTPRateLimit as checkOTPRateLimitService,
+    recordOTPRequest as recordOTPRequestService,
+    recordOTPFailure as recordOTPFailureService
+} from './services/rate-limit.js';
 import { 
     trackResponseTime, 
     trackError, 
@@ -116,10 +124,21 @@ const createJWT = createJWTUtil;
 const verifyJWT = verifyJWTUtil;
 const getJWTSecret = getJWTSecretUtil;
 const hashPassword = hashPasswordUtil;
+const constantTimeEquals = constantTimeEqualsUtil;
 
 // Rate limit wrapper
-async function checkOTPRateLimit(emailHash, customerId, env) {
-    return checkOTPRateLimitService(emailHash, customerId, (id) => getCustomerCached(id, env), env);
+async function checkOTPRateLimit(emailHash, customerId, ipAddress, env) {
+    return checkOTPRateLimitService(emailHash, customerId, ipAddress, (id) => getCustomerCached(id, env), env);
+}
+
+// Record OTP request for statistics
+async function recordOTPRequest(emailHash, ipAddress, customerId, env) {
+    return recordOTPRequestService(emailHash, ipAddress, customerId, env);
+}
+
+// Record OTP failure for statistics
+async function recordOTPFailure(emailHash, ipAddress, customerId, env) {
+    return recordOTPFailureService(emailHash, ipAddress, customerId, env);
 }
 
 // Email utility wrappers
@@ -872,22 +891,34 @@ function getPlanLimits(plan) {
     const limits = {
         free: {
             otpRequestsPerHour: 3,
-            otpRequestsPerDay: 50,
+            otpRequestsPerDay: 1000,      // Hard cap for free tier
+            otpRequestsPerMonth: 10000,    // Hard cap for free tier
+            ipRequestsPerHour: 10,
+            ipRequestsPerDay: 50,
             maxUsers: 100
         },
         starter: {
             otpRequestsPerHour: 10,
             otpRequestsPerDay: 500,
+            otpRequestsPerMonth: 5000,
+            ipRequestsPerHour: 20,
+            ipRequestsPerDay: 200,
             maxUsers: 1000
         },
         pro: {
             otpRequestsPerHour: 50,
             otpRequestsPerDay: 5000,
+            otpRequestsPerMonth: 100000,
+            ipRequestsPerHour: 200,
+            ipRequestsPerDay: 2000,
             maxUsers: 10000
         },
         enterprise: {
             otpRequestsPerHour: 1000,
             otpRequestsPerDay: 100000,
+            otpRequestsPerMonth: 1000000,
+            ipRequestsPerHour: 5000,
+            ipRequestsPerDay: 50000,
             maxUsers: 1000000
         }
     };
@@ -2152,9 +2183,13 @@ async function handleRequestOTP(request, env, customerId = null) {
         
         // Check rate limit
         const emailHash = await hashEmail(email);
-        const rateLimit = await checkOTPRateLimit(emailHash, customerId, env);
+        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        const rateLimit = await checkOTPRateLimit(emailHash, customerId, clientIP, env);
         
         if (!rateLimit.allowed) {
+            // Record failed rate limit attempt
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
             // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc6585#section-4',
@@ -2162,15 +2197,16 @@ async function handleRequestOTP(request, env, customerId = null) {
                 status: 429,
                 detail: 'Too many requests. Please try again later.',
                 instance: request.url,
-                retry_after: Math.ceil((rateLimit.resetAt - Date.now()) / 1000),
+                retry_after: Math.ceil((new Date(rateLimit.resetAt).getTime() - Date.now()) / 1000),
                 reset_at: rateLimit.resetAt,
                 remaining: rateLimit.remaining,
+                reason: rateLimit.reason || 'rate_limit_exceeded',
             }), {
                 status: 429,
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/problem+json',
-                    'Retry-After': Math.ceil((rateLimit.resetAt - Date.now()) / 1000).toString(),
+                    'Retry-After': Math.ceil((new Date(rateLimit.resetAt).getTime() - Date.now()) / 1000).toString(),
                 },
             });
         }
@@ -2208,6 +2244,9 @@ async function handleRequestOTP(request, env, customerId = null) {
                     expiresIn: 600
                 }, env);
             }
+            
+            // Record successful OTP request for statistics
+            await recordOTPRequest(emailHash, clientIP, customerId, env);
         } catch (error) {
             // Log the full error for debugging
             console.error('Failed to send OTP email:', {
@@ -2308,16 +2347,25 @@ async function handleVerifyOTP(request, env, customerId = null) {
         const latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
         const latestOtpKeyValue = await env.OTP_AUTH_KV.get(latestOtpKey);
         
+        // Get client IP for statistics
+        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        
+        // Generic error message to prevent email enumeration
+        const genericOTPError = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'Invalid or expired OTP code. Please request a new OTP code.',
+            instance: request.url,
+        };
+        
         if (!latestOtpKeyValue) {
-            // RFC 7807 Problem Details for HTTP APIs
-            return new Response(JSON.stringify({ 
-                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
-                title: 'Not Found',
-                status: 404,
-                detail: 'OTP not found or expired. Please request a new OTP code.',
-                instance: request.url,
-            }), {
-                status: 404,
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
+            // Use generic error to prevent email enumeration
+            return new Response(JSON.stringify(genericOTPError), {
+                status: 401,
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/problem+json',
@@ -2328,15 +2376,12 @@ async function handleVerifyOTP(request, env, customerId = null) {
         // Get OTP data
         const otpDataStr = await env.OTP_AUTH_KV.get(latestOtpKeyValue);
         if (!otpDataStr) {
-            // RFC 7807 Problem Details for HTTP APIs
-            return new Response(JSON.stringify({ 
-                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
-                title: 'Not Found',
-                status: 404,
-                detail: 'OTP not found or expired. Please request a new OTP code.',
-                instance: request.url,
-            }), {
-                status: 404,
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
+            // Use generic error to prevent email enumeration
+            return new Response(JSON.stringify(genericOTPError), {
+                status: 401,
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/problem+json',
@@ -2344,19 +2389,31 @@ async function handleVerifyOTP(request, env, customerId = null) {
             });
         }
         
-        const otpData = JSON.parse(otpDataStr);
+        let otpData;
+        try {
+            otpData = JSON.parse(otpDataStr);
+        } catch (e) {
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
+            // Use generic error to prevent email enumeration
+            return new Response(JSON.stringify(genericOTPError), {
+                status: 401,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
+            });
+        }
         
-        // Verify email matches
-        if (otpData.email !== emailLower) {
-            // RFC 7807 Problem Details for HTTP APIs
-            return new Response(JSON.stringify({ 
-                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
-                title: 'Bad Request',
-                status: 400,
-                detail: 'Email mismatch',
-                instance: request.url,
-            }), {
-                status: 400,
+        // Verify email matches (use constant-time comparison)
+        if (!constantTimeEquals(otpData.email || '', emailLower)) {
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
+            // Use generic error to prevent email enumeration
+            return new Response(JSON.stringify(genericOTPError), {
+                status: 401,
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/problem+json',
@@ -2368,15 +2425,13 @@ async function handleVerifyOTP(request, env, customerId = null) {
         if (new Date(otpData.expiresAt) < new Date()) {
             await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
             await env.OTP_AUTH_KV.delete(latestOtpKey);
-            // RFC 7807 Problem Details for HTTP APIs
-            return new Response(JSON.stringify({ 
-                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
-                title: 'Not Found',
-                status: 404,
-                detail: 'OTP expired. Please request a new OTP code.',
-                instance: request.url,
-            }), {
-                status: 404,
+            
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
+            // Use generic error to prevent email enumeration
+            return new Response(JSON.stringify(genericOTPError), {
+                status: 401,
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/problem+json',
@@ -2388,6 +2443,10 @@ async function handleVerifyOTP(request, env, customerId = null) {
         if (otpData.attempts >= 5) {
             await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
             await env.OTP_AUTH_KV.delete(latestOtpKey);
+            
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
             // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc6585#section-4',
@@ -2405,8 +2464,10 @@ async function handleVerifyOTP(request, env, customerId = null) {
             });
         }
         
-        // Verify OTP
-        if (otpData.otp !== otp) {
+        // Verify OTP using constant-time comparison to prevent timing attacks
+        const isValidOTP = constantTimeEquals(otpData.otp || '', otp);
+        
+        if (!isValidOTP) {
             otpData.attempts++;
             await env.OTP_AUTH_KV.put(latestOtpKeyValue, JSON.stringify(otpData), { expirationTtl: 600 });
             
@@ -2421,13 +2482,12 @@ async function handleVerifyOTP(request, env, customerId = null) {
                 }, env);
             }
             
-            // RFC 7807 Problem Details for HTTP APIs
-            return new Response(JSON.stringify({ 
-                type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
-                title: 'Unauthorized',
-                status: 401,
-                detail: 'Invalid OTP code',
-                instance: request.url,
+            // Record failure for statistics
+            await recordOTPFailure(emailHash, clientIP, customerId, env);
+            
+            // Use generic error to prevent email enumeration
+            return new Response(JSON.stringify({
+                ...genericOTPError,
                 remaining_attempts: 5 - otpData.attempts,
             }), {
                 status: 401,
@@ -2441,6 +2501,9 @@ async function handleVerifyOTP(request, env, customerId = null) {
         // OTP is valid! Delete it (single-use)
         await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
         await env.OTP_AUTH_KV.delete(latestOtpKey);
+        
+        // Record successful OTP verification for statistics
+        await recordOTPRequest(emailHash, clientIP, customerId, env);
         
         // Track usage
         if (customerId) {
@@ -2827,6 +2890,19 @@ async function authenticateRequest(request, env) {
 // logSecurityEvent is imported from services/security.js
 
 /**
+ * Handle landing page request
+ * Serves the landing page HTML at root path
+ */
+async function handleLandingPage(request, env) {
+    return new Response(landingHtml, {
+        headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600',
+        },
+    });
+}
+
+/**
  * Main request handler
  */
 export default {
@@ -2845,6 +2921,11 @@ export default {
         }
         
         try {
+            // Serve landing page at root
+            if ((path === '/' || path === '') && request.method === 'GET') {
+                return handleLandingPage(request, env);
+            }
+            
             // Public endpoints (no auth required)
             if (path === '/signup' && request.method === 'POST') {
                 return handlePublicSignup(request, env);

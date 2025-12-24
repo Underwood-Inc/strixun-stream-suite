@@ -2,6 +2,8 @@
   "name": "@otpauth/sdk",
   "version": "1.0.0",
   "description": "TypeScript/JavaScript SDK for OTP Auth Service",
+  "private": true,
+  "packageManager": "pnpm@9.15.1",
   "main": "index.ts",
   "types": "index.ts",
   "scripts": {

@@ -571,19 +571,39 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         :root {
-            --bg: #0f0f0f;
-            --card: #1a1a1a;
-            --border: #2a2a2a;
-            --text: #e0e0e0;
-            --text-muted: #888;
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --secondary: #3a3a3a;
-            --success: #10b981;
-            --error: #ef4444;
-            --warning: #f59e0b;
+            /* Strixun Stream Suite Design System */
+            --bg: #1a1611;
+            --bg-dark: #0f0e0b;
+            --card: #252017;
+            --border: #3d3627;
+            --border-light: #4a4336;
+            
+            /* Brand Colors */
+            --accent: #edae49;
+            --accent-light: #f9df74;
+            --accent-dark: #c68214;
+            --accent2: #6495ed;
+            
+            /* Status Colors */
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #ea2b1f;
+            --info: #6495ed;
+            
+            /* Text Colors */
+            --text: #f9f9f9;
+            --text-secondary: #b8b8b8;
+            --muted: #888;
+            
+            /* Legacy aliases for compatibility */
+            --primary: var(--accent);
+            --primary-hover: var(--accent-dark);
+            --secondary: var(--border);
+            --error: var(--danger);
+            --text-muted: var(--muted);
+            
             --radius: 8px;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         body {
@@ -593,6 +613,7 @@ const STANDALONE_HTML = `<!DOCTYPE html>
             line-height: 1.6;
             min-height: 100vh;
             padding: 20px;
+            margin: 0;
         }
 
         .container {
@@ -609,14 +630,14 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
         .header p {
-            color: var(--text-muted);
+            color: var(--muted);
             font-size: 1.1rem;
         }
 
@@ -627,6 +648,13 @@ const STANDALONE_HTML = `<!DOCTYPE html>
             padding: 30px;
             margin-bottom: 20px;
             box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .auth-section {
@@ -652,71 +680,113 @@ const STANDALONE_HTML = `<!DOCTYPE html>
 
         .form-group input {
             width: 100%;
-            padding: 12px 16px;
-            background: var(--bg);
+            padding: 8px 12px;
+            background: var(--bg-dark);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border-radius: 6px;
             color: var(--text);
-            font-size: 1rem;
-            transition: border-color 0.2s;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(237, 174, 73, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: var(--muted);
         }
 
         .form-group small {
             display: block;
             margin-top: 6px;
-            color: var(--text-muted);
+            color: var(--muted);
             font-size: 0.875rem;
         }
 
         .btn {
+            position: relative;
             padding: 12px 24px;
-            border: none;
-            border-radius: var(--radius);
+            border: 3px solid;
+            border-radius: 0;
             font-size: 1rem;
-            font-weight: 500;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
             display: inline-block;
             text-decoration: none;
+            overflow: hidden;
         }
 
         .btn-primary {
-            background: var(--primary);
-            color: white;
+            background: var(--accent);
+            border-color: var(--accent-dark);
+            color: #000;
+            box-shadow: 0 4px 0 var(--accent-dark);
         }
 
         .btn-primary:hover:not(:disabled) {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 var(--accent-dark);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--accent-dark);
         }
 
         .btn-secondary {
-            background: var(--secondary);
+            background: var(--border);
+            border-color: var(--border-light);
             color: var(--text);
+            box-shadow: 0 4px 0 var(--border-light);
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: #4a4a4a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 var(--border-light);
+            background: var(--border-light);
+        }
+
+        .btn-secondary:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--border-light);
         }
 
         .btn-danger {
-            background: var(--error);
+            background: var(--danger);
+            border-color: #c01f1f;
             color: white;
+            box-shadow: 0 4px 0 #c01f1f;
         }
 
         .btn-danger:hover:not(:disabled) {
-            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #c01f1f;
+        }
+
+        .btn-danger:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #c01f1f;
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn:disabled:hover {
+            transform: none;
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid var(--accent);
+            outline-offset: 2px;
         }
 
         .btn-group {
@@ -735,7 +805,7 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .user-info span {
-            color: var(--text-muted);
+            color: var(--muted);
         }
 
         .create-section h2 {
@@ -749,17 +819,19 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .url-card {
-            background: var(--bg);
+            background: var(--bg-dark);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 20px;
             margin-bottom: 15px;
             transition: transform 0.2s, box-shadow 0.2s;
+            animation: fadeIn 0.3s ease-out;
         }
 
         .url-card:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-color: var(--border-light);
         }
 
         .url-card-header {
@@ -777,24 +849,35 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .url-short strong {
-            color: var(--primary);
+            color: var(--accent);
             font-size: 1.1rem;
             word-break: break-all;
         }
 
         .btn-copy {
             padding: 6px 12px;
-            background: var(--secondary);
-            border: none;
-            border-radius: var(--radius);
+            background: var(--border);
+            border: 2px solid var(--border-light);
+            border-radius: 0;
             color: var(--text);
             cursor: pointer;
             font-size: 0.875rem;
-            transition: background 0.2s;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.1s;
+            box-shadow: 0 2px 0 var(--border-light);
         }
 
         .btn-copy:hover {
-            background: #4a4a4a;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 0 var(--border-light);
+            background: var(--border-light);
+        }
+
+        .btn-copy:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 0 var(--border-light);
         }
 
         .url-original {
@@ -802,21 +885,21 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .url-original a {
-            color: var(--text-muted);
+            color: var(--muted);
             text-decoration: none;
             font-size: 0.9rem;
             word-break: break-all;
         }
 
         .url-original a:hover {
-            color: var(--primary);
+            color: var(--accent);
             text-decoration: underline;
         }
 
         .url-meta {
             display: flex;
             gap: 15px;
-            color: var(--text-muted);
+            color: var(--muted);
             font-size: 0.875rem;
             flex-wrap: wrap;
         }
@@ -824,13 +907,17 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: var(--text-muted);
+            color: var(--muted);
+            font-style: italic;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            border: 1px dashed var(--border);
         }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: var(--text-muted);
+            color: var(--muted);
         }
 
         .toast {
@@ -852,7 +939,7 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .toast.error {
-            border-left: 4px solid var(--error);
+            border-left: 4px solid var(--danger);
         }
 
         .toast.warning {
@@ -866,6 +953,26 @@ const STANDALONE_HTML = `<!DOCTYPE html>
             }
             to {
                 transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
                 opacity: 1;
             }
         }
@@ -885,7 +992,7 @@ const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .otp-timer {
-            color: var(--text-muted);
+            color: var(--muted);
             font-size: 0.875rem;
             margin-top: 8px;
         }
@@ -1033,10 +1140,9 @@ const STANDALONE_HTML = `<!DOCTYPE html>
     </div>
 
     <script>
-        // Configuration - Update these with your actual API URLs
-        // Using workers.dev URLs as primary until custom domain DNS is configured
+        // Configuration - Using custom domain (s.idling.app)
         const OTP_AUTH_API_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
-        const URL_SHORTENER_API_URL = 'https://strixun-url-shortener.strixuns-script-suite.workers.dev';
+        const URL_SHORTENER_API_URL = 'https://s.idling.app';
 
         // State
         let authToken = null;

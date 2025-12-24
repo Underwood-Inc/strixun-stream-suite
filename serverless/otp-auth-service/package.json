@@ -1,7 +1,7 @@
 {
-  "name": "strixun-chat-signaling",
+  "name": "otp-auth-service",
   "version": "1.0.0",
-  "description": "Cloudflare Worker for WebRTC signaling server - P2P chat room management and offer/answer exchange - Strixun Stream Suite",
+  "description": "Multi-tenant OTP authentication service - Cloudflare Worker with email OTP, JWT tokens, API key management, and analytics - Strixun Stream Suite",
   "private": true,
   "packageManager": "pnpm@9.15.1",
   "scripts": {

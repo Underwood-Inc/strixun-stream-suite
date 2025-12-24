@@ -149,18 +149,17 @@ window.getUrlShortenerApiUrl = function() {
         return cachedUrlShortenerApiUrl;
     }
     
-    // Priority 3: Hardcoded fallback - try custom domain first, then workers.dev
-    // Try s.idling.app first (custom domain)
+    // Priority 3: Hardcoded fallback - use custom domain (s.idling.app)
     const CUSTOM_DOMAIN_URL = 'https://s.idling.app';
     const WORKERS_DEV_URL = 'https://strixun-url-shortener.strixuns-script-suite.workers.dev';
     
-    // Use workers.dev as fallback if custom domain isn't configured yet
-    const HARDCODED_URL_SHORTENER_URL = WORKERS_DEV_URL;
+    // Use custom domain as primary (s.idling.app)
+    const HARDCODED_URL_SHORTENER_URL = CUSTOM_DOMAIN_URL;
     
     if (HARDCODED_URL_SHORTENER_URL && !HARDCODED_URL_SHORTENER_URL.includes('UPDATE-ME')) {
         if (!urlShortenerApiUrlLogged) {
             console.log('[Config] Using hardcoded URL Shortener Worker URL:', HARDCODED_URL_SHORTENER_URL);
-            console.warn('[Config] ⚠️ Using workers.dev fallback. Custom domain (s.idling.app) will be used once DNS is configured.');
+            console.log('[Config] ✅ Using custom domain: s.idling.app');
             urlShortenerApiUrlLogged = true;
         }
         cachedUrlShortenerApiUrl = HARDCODED_URL_SHORTENER_URL;
