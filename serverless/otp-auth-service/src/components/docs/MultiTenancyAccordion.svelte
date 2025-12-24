@@ -5,9 +5,9 @@
 <h4>Customer Isolation</h4>
 <p>All data is completely isolated per customer using KV key prefixes:</p>
 <ul>
-  <li>OTP codes: <code>cust_{customerId}_otp_{emailHash}</code></li>
-  <li>User data: <code>cust_{customerId}_user_{userId}</code></li>
-  <li>Rate limits: <code>cust_{customerId}_ratelimit_{email}</code></li>
+  <li>OTP codes: <code>cust_{'{'}customerId{'}'}_otp_{'{'}emailHash{'}'}</code></li>
+  <li>User data: <code>cust_{'{'}customerId{'}'}_user_{'{'}userId{'}'}</code></li>
+  <li>Rate limits: <code>cust_{'{'}customerId{'}'}_ratelimit_{'{'}email{'}'}</code></li>
 </ul>
 
 <h4>API Key Authentication</h4>
