@@ -45,18 +45,16 @@ async function build() {
   }
 }
 
-const landingPageDir = path.join(__dirname, '..', 'landing-page');
-
 // Watch for changes
 const watcher = chokidar.watch([
   path.join(dashboardDir, 'src/**/*'),
   path.join(dashboardDir, 'index.html'),
   path.join(dashboardDir, 'vite.config.ts'),
   path.join(dashboardDir, 'tsconfig.json'),
-  path.join(landingPageDir, 'src/**/*'),
-  path.join(landingPageDir, 'index.html'),
-  path.join(landingPageDir, 'vite.config.ts'),
-  path.join(landingPageDir, 'tsconfig.json'),
+  path.join(rootDir, 'src/**/*'),
+  path.join(rootDir, 'index.html'),
+  path.join(rootDir, 'vite.config.ts'),
+  path.join(rootDir, 'tsconfig.json'),
   path.join(rootDir, 'worker.js')
 ], {
   ignored: [
@@ -82,7 +80,7 @@ watcher.on('change', (filePath) => {
   }
   
   rebuildTimeout = setTimeout(() => {
-    if (filePath.includes('dashboard') || filePath.includes('landing-page')) {
+    if (filePath.includes('dashboard') || (filePath.includes('src') && !filePath.includes('dashboard'))) {
       // Dashboard or landing page changed - rebuild both
       build();
     } else if (filePath.includes('worker.js')) {

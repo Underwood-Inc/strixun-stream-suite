@@ -16,6 +16,9 @@
 
   let codeElement: HTMLElement;
 
+  // Map svelte to markup for syntax highlighting
+  $: prismLanguage = language === 'svelte' ? 'markup' : language;
+
   onMount(() => {
     if (codeElement) {
       Prism.highlightElement(codeElement);
@@ -23,7 +26,7 @@
   });
 </script>
 
-<pre><code class="language-{language}" bind:this={codeElement}>{code}</code></pre>
+<pre><code class="language-{prismLanguage}" bind:this={codeElement}>{code}</code></pre>
 
 <style>
   pre {

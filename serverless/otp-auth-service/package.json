@@ -4,28 +4,42 @@
   "description": "Multi-tenant OTP authentication service - Cloudflare Worker with email OTP, JWT tokens, API key management, and analytics - Strixun Stream Suite",
   "private": true,
   "packageManager": "pnpm@9.15.1",
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "dev:app": "vite",
     "dev:dashboard": "cd dashboard && pnpm dev",
-    "dev:landing": "cd landing-page && pnpm dev",
-    "dev:all": "concurrently -n worker,dashboard,landing -c yellow,cyan,magenta \"pnpm dev\" \"pnpm dev:dashboard\" \"pnpm dev:landing\"",
+    "dev:all": "concurrently -n worker,app,dashboard -c yellow,cyan,magenta \"pnpm dev\" \"pnpm dev:app\" \"pnpm dev:dashboard\"",
     "build": "node scripts/build-dashboard.js",
+    "build:app": "tsc && vite build",
     "build:dashboard": "cd dashboard && pnpm build",
-    "build:landing": "cd landing-page && pnpm build",
     "preview": "pnpm build && wrangler dev --env production",
+    "preview:app": "vite preview",
     "preview:watch": "node scripts/watch-preview.js",
     "preview:local": "pnpm build && wrangler dev --local --env production",
     "deploy": "pnpm build && wrangler deploy",
     "deploy:prod": "pnpm build && wrangler deploy --env production",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
     "tail": "wrangler tail",
     "tail:prod": "wrangler tail --env production"
   },
-  "devDependencies": {
-    "chokidar": "^4.0.3",
-    "concurrently": "^9.1.2",
+  "dependencies": {
     "mermaid": "^11.12.2",
     "prismjs": "^1.30.0",
-    "swagger-ui-dist": "^5.31.0",
+    "svelte": "^5.46.0",
+    "swagger-ui": "^5.31.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tsconfig/svelte": "^5.0.6",
+    "@types/node": "^25.0.3",
+    "@types/prismjs": "^1.26.3",
+    "chokidar": "^4.0.3",
+    "concurrently": "^9.1.2",
+    "sass": "^1.97.1",
+    "svelte-check": "^4.3.5",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
     "wrangler": "^4.56.0"
   }
 }

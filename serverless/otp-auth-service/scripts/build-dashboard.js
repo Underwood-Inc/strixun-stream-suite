@@ -18,19 +18,16 @@ try {
   process.exit(1);
 }
 
-// Build the landing page
-const landingPageDir = path.join(rootDir, 'landing-page');
-process.chdir(landingPageDir);
+// Build the landing page (now at root)
+process.chdir(rootDir);
 
 try {
-  execSync('pnpm build', { stdio: 'inherit' });
+  execSync('pnpm build:app', { stdio: 'inherit' });
   console.log('✅ Landing page built successfully');
 } catch (error) {
   console.error('❌ Landing page build failed');
   process.exit(1);
 }
-
-process.chdir(rootDir);
 
 // Read built files and convert to base64 for embedding
 const distDir = path.join(dashboardDir, 'dist');
@@ -89,7 +86,7 @@ fs.writeFileSync(dashboardOutputPath, dashboardOutput);
 console.log(`✅ Generated dashboard-assets.js (${Object.keys(files).length} files)`);
 
 // Now build landing page assets
-const landingPageDistDir = path.join(landingPageDir, 'dist');
+const landingPageDistDir = path.join(rootDir, 'dist');
 const landingPageFiles = {};
 
 function readLandingPageDirectory(dir, basePath = '') {

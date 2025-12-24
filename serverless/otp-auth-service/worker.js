@@ -14,22 +14,38 @@
 // Import OpenAPI spec
 import openApiSpec from './openapi-json.js';
 
-// Import dashboard assets (built Svelte app) - loaded dynamically
+// Dashboard and landing page assets - loaded lazily to avoid Wrangler bundling issues
 let dashboardAssets = null;
-try {
-    const dashboardModule = await import('./dashboard-assets.js');
-    dashboardAssets = dashboardModule.default;
-} catch (e) {
-    // Dashboard not built yet - will proxy to dev server in dev mode
+let dashboardAssetsLoaded = false;
+let landingPageAssets = null;
+let landingPageAssetsLoaded = false;
+
+// Lazy load dashboard assets (only when needed, not at top level)
+async function loadDashboardAssets() {
+    if (dashboardAssetsLoaded) return dashboardAssets;
+    dashboardAssetsLoaded = true;
+    try {
+        const dashboardModule = await import('./dashboard-assets.js');
+        dashboardAssets = dashboardModule.default;
+    } catch (e) {
+        // Dashboard not built yet - will proxy to dev server in dev mode
+        dashboardAssets = null;
+    }
+    return dashboardAssets;
 }
 
-// Import landing page assets (built Svelte app) - loaded dynamically
-let landingPageAssets = null;
-try {
-    const landingPageModule = await import('./landing-page-assets.js');
-    landingPageAssets = landingPageModule.default;
-} catch (e) {
-    // Landing page not built yet - will proxy to dev server in dev mode
+// Lazy load landing page assets (only when needed, not at top level)
+async function loadLandingPageAssets() {
+    if (landingPageAssetsLoaded) return landingPageAssets;
+    landingPageAssetsLoaded = true;
+    try {
+        const landingPageModule = await import('./landing-page-assets.js');
+        landingPageAssets = landingPageModule.default;
+    } catch (e) {
+        // Landing page not built yet - will proxy to dev server in dev mode
+        landingPageAssets = null;
+    }
+    return landingPageAssets;
 }
 
 // Import utility modules
@@ -2994,25 +3010,38 @@ async function authenticateRequest(request, env) {
  * Serves the landing page SPA at root path
  */
 async function handleLandingPage(request, env) {
+    // In local dev (wrangler dev), always try Vite first
+    // ENVIRONMENT is not set by default in wrangler dev, so !env.ENVIRONMENT means local dev
     const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
     
-    if (isDev && !landingPageAssets) {
+    // In dev mode, always try Vite first (don't even try to load built assets)
+    if (isDev) {
         // Proxy to Vite dev server in development
         try {
             const viteUrl = new URL(request.url);
             viteUrl.hostname = 'localhost';
             viteUrl.port = '5175';
-            return fetch(viteUrl.toString(), request);
+            viteUrl.protocol = 'http:';
+            
+            // Create a new request with the updated URL
+            const proxiedRequest = new Request(viteUrl.toString(), {
+                method: request.method,
+                headers: request.headers,
+                body: request.body,
+            });
+            
+            return fetch(proxiedRequest);
         } catch (error) {
-            return new Response('Landing page dev server not running. Start with: pnpm dev:landing', {
+            return new Response(`Landing page dev server not running. Start with: pnpm dev:landing\n\nError: ${error.message}`, {
                 status: 503,
                 headers: { 'Content-Type': 'text/plain' },
             });
         }
     }
     
-    // Serve built landing page assets
-    if (!landingPageAssets) {
+    // Production mode: load and serve built assets
+    const assets = await loadLandingPageAssets();
+    if (!assets) {
         return new Response('Landing page not built. Run: pnpm build', {
             status: 503,
             headers: { 'Content-Type': 'text/plain' },
@@ -3022,26 +3051,80 @@ async function handleLandingPage(request, env) {
     const url = new URL(request.url);
     let filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
     
-    // SPA routing - all routes serve index.html
-    if (!landingPageAssets[filePath] && !filePath.includes('.')) {
+    // Remove leading slash if present (shouldn't be, but just in case)
+    if (filePath.startsWith('/')) {
+        filePath = filePath.slice(1);
+    }
+    
+    // SPA routing - all non-file routes serve index.html
+    if (!assets[filePath] && !filePath.includes('.')) {
         filePath = 'index.html';
     }
     
-    const file = landingPageAssets[filePath];
+    const file = assets[filePath];
     if (!file) {
-        return new Response('Not found', { status: 404 });
+        // If it's an asset request that's not found, return 404
+        if (filePath.includes('.')) {
+            return new Response('Asset not found: ' + filePath, { 
+                status: 404,
+                headers: { 'Content-Type': 'text/plain' }
+            });
+        }
+        // Otherwise fallback to index.html for SPA routing
+        filePath = 'index.html';
+        const indexFile = assets[filePath];
+        if (!indexFile) {
+            return new Response('Landing page index.html not found', { 
+                status: 404,
+                headers: { 'Content-Type': 'text/plain' }
+            });
+        }
+        return new Response(indexFile, {
+            headers: {
+                'Content-Type': 'text/html',
+                'Cache-Control': 'public, max-age=3600',
+            },
+        });
     }
     
-    // Determine content type
+    // Handle data URIs for binary files
+    let content = file;
     let contentType = 'text/html';
-    if (filePath.endsWith('.js')) contentType = 'application/javascript';
-    else if (filePath.endsWith('.css')) contentType = 'text/css';
-    else if (filePath.endsWith('.json')) contentType = 'application/json';
-    else if (filePath.endsWith('.png')) contentType = 'image/png';
-    else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) contentType = 'image/jpeg';
-    else if (filePath.endsWith('.svg')) contentType = 'image/svg+xml';
-    else if (filePath.endsWith('.woff')) contentType = 'font/woff';
-    else if (filePath.endsWith('.woff2')) contentType = 'font/woff2';
+    
+    if (filePath.endsWith('.js')) {
+        contentType = 'application/javascript';
+    } else if (filePath.endsWith('.css')) {
+        contentType = 'text/css';
+    } else if (filePath.endsWith('.json')) {
+        contentType = 'application/json';
+    } else if (filePath.endsWith('.png')) {
+        contentType = 'image/png';
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+    } else if (filePath.endsWith('.svg')) {
+        contentType = 'image/svg+xml';
+    } else if (filePath.endsWith('.woff')) {
+        contentType = 'font/woff';
+    } else if (filePath.endsWith('.woff2')) {
+        contentType = 'font/woff2';
+    } else if (filePath.endsWith('.ico')) {
+        contentType = 'image/x-icon';
+    }
+    
+    // If it's a data URI, extract the base64 content
+    if (typeof file === 'string' && file.startsWith('data:')) {
+        const base64Match = file.match(/^data:[^;]+;base64,(.+)$/);
+        if (base64Match) {
+            const base64Content = base64Match[1];
+            const binaryContent = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+            return new Response(binaryContent, {
+                headers: {
+                    'Content-Type': contentType,
+                    'Cache-Control': 'public, max-age=3600',
+                },
+            });
+        }
+    }
     
     return new Response(file, {
         headers: {
@@ -3070,8 +3153,11 @@ export default {
         }
         
         try {
-            // Serve landing page at root
-            if ((path === '/' || path === '') && request.method === 'GET') {
+            // Serve landing page at root and all asset paths
+            const isLandingPageRequest = (path === '/' || path === '') && request.method === 'GET';
+            const isLandingPageAsset = path.startsWith('/assets/') && request.method === 'GET';
+            
+            if (isLandingPageRequest || isLandingPageAsset) {
                 return handleLandingPage(request, env);
             }
             
@@ -3159,8 +3245,9 @@ pnpm dev</code></pre>
                     }
                 }
                 
-                // Production: serve built dashboard files
-                if (!dashboardAssets) {
+                // Production: serve built dashboard files - lazy load assets
+                const assets = await loadDashboardAssets();
+                if (!assets) {
                     return new Response('Dashboard not built. Run: pnpm build', {
                         status: 503,
                         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'text/plain' },
@@ -3172,17 +3259,17 @@ pnpm dev</code></pre>
                 if (filePath === '') filePath = 'index.html';
                 
                 // Handle SPA routing - all non-file routes serve index.html
-                if (!dashboardAssets[filePath] && !filePath.includes('.')) {
+                if (!assets[filePath] && !filePath.includes('.')) {
                     filePath = 'index.html';
                 }
                 
                 // Get file content
-                const fileContent = dashboardAssets[filePath];
+                const fileContent = assets[filePath];
                 if (!fileContent) {
                     // Fallback to index.html for SPA routing
-                    if (filePath !== 'index.html' && dashboardAssets['index.html']) {
+                    if (filePath !== 'index.html' && assets['index.html']) {
                         filePath = 'index.html';
-                        return serveDashboardFile(dashboardAssets[filePath], filePath, env, request);
+                        return serveDashboardFile(assets[filePath], filePath, env, request);
                     }
                     return new Response('File not found', {
                         status: 404,

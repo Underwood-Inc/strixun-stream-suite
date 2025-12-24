@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import path from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [svelte()],
@@ -18,7 +18,14 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html')
       }
+    },
+    commonjsOptions: {
+      include: [/swagger-ui/, /node_modules/]
     }
+  },
+  optimizeDeps: {
+    include: ['mermaid', 'prismjs'],
+    exclude: ['swagger-ui'] // Exclude from pre-bundling, will be loaded dynamically
   },
   server: {
     port: 5175,

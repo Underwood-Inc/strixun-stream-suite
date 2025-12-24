@@ -1,0 +1,277 @@
+<section class="self-hosting" id="self-hosting">
+  <div class="self-hosting-content">
+    <h2>Outgrown the Free Tier? We've Got You Covered 🐼</h2>
+    <p class="self-hosting-subtitle">
+      Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
+      Or sit tight—subscription tiers with enhanced limits are coming soon.
+    </p>
+    
+    <div class="self-hosting-grid">
+      <div class="self-hosting-card">
+        <h3>🔓 Self-Host on GitHub</h3>
+        <p>
+          The entire codebase is open-source and available on GitHub. Deploy it on your own infrastructure 
+          with complete control over rate limits, configuration, and data.
+        </p>
+        <ul>
+          <li>Unlimited rate limits</li>
+          <li>Full control over configuration</li>
+          <li>Complete data ownership</li>
+          <li>Custom email providers</li>
+          <li>Deploy anywhere (Cloudflare, AWS, GCP, etc.)</li>
+        </ul>
+        <div class="card-cta">
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+            <span>📦</span> View on GitHub
+          </a>
+        </div>
+      </div>
+
+      <div class="self-hosting-card">
+        <h3>⚡ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        <p>
+          Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
+          Get notified when they launch and keep using our managed service.
+        </p>
+        <ul>
+          <li>Enhanced rate limits</li>
+          <li>Priority support</li>
+          <li>Advanced analytics</li>
+          <li>Custom email templates</li>
+          <li>Dedicated infrastructure</li>
+        </ul>
+        <div class="card-cta">
+          <a href="#code-examples" class="btn btn-secondary">
+            Get Notified
+          </a>
+        </div>
+      </div>
+
+      <div class="self-hosting-card">
+        <h3>🚀 Why Choose Self-Hosting?</h3>
+        <p>
+          Self-hosting gives you complete freedom and control. Perfect for enterprises, high-traffic applications, 
+          or when you need custom configurations.
+        </p>
+        <ul>
+          <li>No usage limits</li>
+          <li>Full source code access</li>
+          <li>Custom modifications allowed</li>
+          <li>No vendor lock-in</li>
+          <li>Community-driven improvements</li>
+        </ul>
+        <div class="card-cta">
+          <a href="#docs" class="btn btn-secondary">
+            View Documentation
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="self-hosting-cta">
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+        <span>⭐</span> Star on GitHub
+      </a>
+      <a href="#code-examples" class="btn btn-secondary">
+        Continue with Free Tier
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .self-hosting {
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--card) 100%);
+    padding: var(--spacing-3xl) var(--spacing-xl);
+    margin: var(--spacing-3xl) 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .self-hosting-content {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .self-hosting h2 {
+    text-align: center;
+    font-size: clamp(2rem, 4vw, 3rem);
+    margin-bottom: var(--spacing-lg);
+    color: var(--accent);
+  }
+
+  .self-hosting-subtitle {
+    text-align: center;
+    font-size: clamp(1.1rem, 2vw, 1.25rem);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-2xl);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .self-hosting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .self-hosting-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xl);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .self-hosting-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    transform: scaleX(0);
+    transition: transform 0.3s;
+  }
+
+  .self-hosting-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent);
+  }
+
+  .self-hosting-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .self-hosting-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .self-hosting-card p {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .self-hosting-card ul {
+    list-style: none;
+    margin: var(--spacing-md) 0;
+    padding: 0;
+  }
+
+  .self-hosting-card li {
+    padding: var(--spacing-xs) 0;
+    color: var(--text-secondary);
+    padding-left: var(--spacing-lg);
+    position: relative;
+  }
+
+  .self-hosting-card li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--success);
+    font-weight: bold;
+  }
+
+  .card-cta {
+    margin-top: var(--spacing-lg);
+  }
+
+  .self-hosting-cta {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: var(--spacing-2xl);
+  }
+
+  .btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: 3px solid;
+    border-radius: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    display: inline-block;
+    background: transparent;
+    color: var(--text);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent-dark);
+    color: #000;
+    box-shadow: 0 4px 0 var(--accent-dark);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--accent-dark);
+  }
+
+  .btn-secondary {
+    border-color: var(--border-light);
+    color: var(--text);
+  }
+
+  .btn-secondary:hover {
+    background: var(--border);
+    border-color: var(--border-light);
+  }
+
+  .btn-github {
+    background: var(--bg-dark);
+    border-color: var(--border-light);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .btn-github:hover {
+    background: var(--card);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .coming-soon-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #000;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: var(--spacing-sm);
+  }
+
+  @media (max-width: 768px) {
+    .self-hosting {
+      padding: var(--spacing-2xl) var(--spacing-md);
+    }
+
+    .self-hosting-periods {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+    }
+  }
+</style>
+

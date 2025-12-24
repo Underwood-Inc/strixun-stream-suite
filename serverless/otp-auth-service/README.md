@@ -4,25 +4,34 @@ Multi-tenant OTP authentication service built on Cloudflare Workers.
 
 ## Quick Start
 
-### Development
+### 🚀 Local Development (Recommended)
 
-**Run both worker and dashboard together:**
+**The easiest way to develop locally - runs everything together:**
 ```bash
 pnpm install
 pnpm dev:all
 ```
 
-This starts:
-- **Worker API**: http://localhost:8787
-- **Dashboard**: http://localhost:5174
+This starts all services concurrently:
+- **Worker API**: http://localhost:8787 (proxies landing page to Vite)
+- **Landing Page**: http://localhost:5175 (Svelte app via Vite)
+- **Dashboard**: http://localhost:5174 (Svelte app via Vite)
 
-**Or run separately:**
+**Access points:**
+- Landing page: http://localhost:8787/ (proxied through worker) or http://localhost:5175/ (direct Vite)
+- Dashboard: http://localhost:5174/ (direct Vite) or http://localhost:8787/dashboard (proxied through worker)
+- API endpoints: http://localhost:8787/auth/*
+
+**Or run services separately:**
 ```bash
-# Terminal 1 - Worker
+# Terminal 1 - Worker (includes landing page proxy)
 pnpm dev
 
-# Terminal 2 - Dashboard
-pnpm dev:dashboard
+# Terminal 2 - Landing Page (standalone Svelte dev)
+pnpm dev:app
+
+# Terminal 3 - Dashboard (standalone Svelte dev)
+cd dashboard && pnpm dev
 ```
 
 ### Production
