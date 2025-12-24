@@ -1,18 +1,39 @@
 <script lang="ts">
+  import { createEventDispatcher, afterUpdate, tick } from 'svelte';
+  
   export let id: string;
   export let title: string;
   export let isActive: boolean = false;
+  
+  let accordionHeader: HTMLElement;
+  let previousActiveState = false;
   
   function handleClick() {
     dispatch('toggle', { id });
   }
   
-  import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
+  
+  // Scroll to accordion header when it expands
+  afterUpdate(async () => {
+    // Only scroll if accordion just became active (expanded)
+    if (isActive && !previousActiveState && accordionHeader) {
+      // Wait for the accordion content to start expanding
+      await tick();
+      // Small delay to ensure the DOM has updated
+      requestAnimationFrame(() => {
+        accordionHeader.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      });
+    }
+    previousActiveState = isActive;
+  });
 </script>
 
 <div class="accordion" class:active={isActive}>
-  <div class="accordion-header" on:click={handleClick}>
+  <div class="accordion-header" bind:this={accordionHeader} on:click={handleClick}>
     <h3>{title}</h3>
     <span class="accordion-icon">▼</span>
   </div>
