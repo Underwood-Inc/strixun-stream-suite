@@ -62,11 +62,24 @@
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.detail || 'Failed to sign up');
+        // Check if it's a "signup already in progress" error - if so, move to verify step
+        if (data.error && data.error.includes('Signup already in progress')) {
+          step = 'verify';
+          error = null; // Clear error since we're proceeding
+        } else {
+          throw new Error(data.error || data.detail || 'Failed to sign up');
+        }
+      } else {
+        // Success - move to verification step
+        // If alreadyInProgress is true, show a helpful message
+        if (data.alreadyInProgress) {
+          error = null; // Clear any previous errors
+          showOtpAlreadySent = true; // Show info message that OTP was already sent
+        } else {
+          showOtpAlreadySent = false;
+        }
+        step = 'verify';
       }
-
-      // Move to verification step
-      step = 'verify';
     } catch (err: any) {
       error = err.message || 'Failed to sign up. Please try again.';
     } finally {
@@ -136,6 +149,7 @@
     step = 'form';
     verificationCode = '';
     error = null;
+    showOtpAlreadySent = false;
   }
 
   function handleLoginAfterSignup() {
@@ -228,6 +242,12 @@
         </p>
       </form>
     {:else if step === 'verify'}
+      {#if showOtpAlreadySent}
+        <div class="signup-info">
+          <strong>OTP Already Sent</strong> - A verification code was already sent to your email. Enter it below to complete signup.
+        </div>
+      {/if}
+      
       <form class="signup-form" onsubmit={handleVerify}>
         <div class="signup-field">
           <label for="signup-code" class="signup-label">6-Digit Verification Code</label>

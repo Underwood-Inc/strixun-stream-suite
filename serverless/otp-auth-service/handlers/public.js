@@ -57,11 +57,31 @@ export async function handlePublicSignup(request, env) {
             // OTP already exists - check if it's still valid
             const otpData = await env.OTP_AUTH_KV.get(existingOtp, { type: 'json' });
             if (otpData && new Date(otpData.expiresAt) > new Date()) {
-                return new Response(JSON.stringify({ 
-                    error: 'Signup already in progress. Check your email for the OTP code.',
-                    expiresIn: Math.floor((new Date(otpData.expiresAt).getTime() - Date.now()) / 1000)
+                // Signup already in progress - update signup data and return success
+                // This allows user to proceed to verification step
+                const existingSignupData = await env.OTP_AUTH_KV.get(signupKey, { type: 'json' });
+                if (!existingSignupData) {
+                    // Store signup data if it doesn't exist
+                    const signupData = {
+                        email: emailLower,
+                        companyName: companyName.trim(),
+                        createdAt: new Date().toISOString(),
+                        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes
+                    };
+                    await env.OTP_AUTH_KV.put(signupKey, JSON.stringify(signupData), { expirationTtl: 600 });
+                } else {
+                    // Update company name if it changed
+                    existingSignupData.companyName = companyName.trim();
+                    await env.OTP_AUTH_KV.put(signupKey, JSON.stringify(existingSignupData), { expirationTtl: 600 });
+                }
+                
+                // Return success so user can proceed to verification
+                return new Response(JSON.stringify({
+                    success: true,
+                    message: 'Signup already in progress. Check your email for the OTP code.',
+                    expiresIn: Math.floor((new Date(otpData.expiresAt).getTime() - Date.now()) / 1000),
+                    alreadyInProgress: true
                 }), {
-                    status: 400,
                     headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                 });
             }
