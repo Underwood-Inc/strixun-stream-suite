@@ -277,7 +277,7 @@
         <p class="signup-success-message">{successData.message}</p>
         
         <div class="signup-api-key">
-          <label class="signup-api-key-label">Your API Key (save this - it won't be shown again):</label>
+          <label class="signup-api-key-label">Your API Key (also available in the API Keys tab):</label>
           <div class="signup-api-key-value">
             <code>{successData.apiKey}</code>
             <button

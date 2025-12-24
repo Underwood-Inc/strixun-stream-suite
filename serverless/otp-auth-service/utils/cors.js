@@ -45,7 +45,7 @@ export function getCorsHeaders(env, request, customer = null) {
     return {
         'Access-Control-Allow-Origin': allowOrigin || 'null',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-OTP-API-Key, X-Requested-With, X-CSRF-Token',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-OTP-API-Key, X-Requested-With, X-CSRF-Token, X-Dashboard-Request',
         'Access-Control-Allow-Credentials': allowOrigin !== '*' ? 'true' : 'false',
         'Access-Control-Max-Age': '86400',
         // Security headers

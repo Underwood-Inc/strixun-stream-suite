@@ -17,6 +17,8 @@ export interface OtpLoginConfig {
     requestOtp?: string;
     verifyOtp?: string;
   };
+  /** Optional: Custom headers to include in requests */
+  customHeaders?: Record<string, string>;
 }
 
 export interface LoginSuccessData {
@@ -117,9 +119,13 @@ export class OtpLoginCore {
       this.setState({ loading: true, error: null });
 
       const endpoint = this.config.endpoints?.requestOtp || `${this.config.apiUrl}/auth/request-otp`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (this.config.customHeaders) {
+        Object.assign(headers, this.config.customHeaders);
+      }
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ email }),
       });
 
@@ -165,9 +171,13 @@ export class OtpLoginCore {
       this.setState({ loading: true, error: null });
 
       const endpoint = this.config.endpoints?.verifyOtp || `${this.config.apiUrl}/auth/verify-otp`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (this.config.customHeaders) {
+        Object.assign(headers, this.config.customHeaders);
+      }
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           email: this.state.email,
           otp,

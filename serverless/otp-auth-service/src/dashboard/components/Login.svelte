@@ -135,6 +135,7 @@
       {apiUrl}
       onSuccess={handleLoginSuccess}
       onError={handleLoginError}
+      customHeaders={{ 'X-Dashboard-Request': 'true' }}
       title="Developer Dashboard"
       subtitle="Sign in with your email to access your dashboard"
     />

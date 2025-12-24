@@ -12,7 +12,7 @@ import {
     getJWTSecret,
     constantTimeEquals
 } from '../../utils/crypto.js';
-import { getCustomerKey } from '../../services/customer.js';
+import { getCustomerKey, generateCustomerId, storeCustomer, getCustomerByEmail } from '../../services/customer.js';
 import {
     checkOTPRateLimit as checkOTPRateLimitService,
     recordOTPFailure as recordOTPFailureService,
@@ -24,6 +24,7 @@ import { trackUsage } from '../../services/analytics.js';
 import { getCustomerCached } from '../../utils/cache.js';
 import { getCustomer } from '../../services/customer.js';
 import { getPlanLimits } from '../../utils/validation.js';
+import { createApiKeyForCustomer } from '../../services/api-key.js';
 
 // Wrapper for checkQuota to pass getPlanLimits
 async function checkQuota(customerId, env) {
@@ -416,12 +417,85 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
         await env.OTP_AUTH_KV.delete(latestOtpKey);
         
+        // If no customerId provided, check if customer exists by email, or create one
+        // BUT only auto-create if this is a dashboard request (not an API customer's end-user)
+        let resolvedCustomerId = customerId;
+        if (!resolvedCustomerId) {
+            const existingCustomer = await getCustomerByEmail(emailLower, env);
+            if (existingCustomer) {
+                resolvedCustomerId = existingCustomer.customerId;
+            } else {
+                // Only auto-create customer for dashboard requests
+                // Dashboard requests include X-Dashboard-Request header
+                // API customer requests will have an API key (customerId would be set)
+                const dashboardHeader = request.headers.get('X-Dashboard-Request');
+                const isDashboardRequest = dashboardHeader === 'true';
+                
+                if (isDashboardRequest) {
+                    // Auto-create customer account for dashboard access
+                    resolvedCustomerId = generateCustomerId();
+                    const emailDomain = emailLower.split('@')[1] || 'unknown';
+                    const companyName = emailDomain.split('.')[0] || 'My App';
+                    
+                    const customerData = {
+                        customerId: resolvedCustomerId,
+                        name: emailLower.split('@')[0], // Use email prefix as name
+                        email: emailLower,
+                        companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                        plan: 'free',
+                        status: 'active',
+                        createdAt: new Date().toISOString(),
+                        configVersion: 1,
+                        config: {
+                            emailConfig: {
+                                fromEmail: null,
+                                fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                                subjectTemplate: 'Your {{appName}} Verification Code',
+                                htmlTemplate: null,
+                                textTemplate: null,
+                                variables: {
+                                    appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                                    brandColor: '#007bff',
+                                    footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
+                                    supportUrl: null,
+                                    logoUrl: null
+                                }
+                            },
+                            rateLimits: {
+                                otpRequestsPerHour: 3,
+                                otpRequestsPerDay: 50,
+                                maxUsers: 100
+                            },
+                            webhookConfig: {
+                                url: null,
+                                secret: null,
+                                events: []
+                            },
+                            allowedOrigins: []
+                        },
+                        features: {
+                            customEmailTemplates: false,
+                            webhooks: false,
+                            analytics: false,
+                            sso: false
+                        }
+                    };
+                    
+                    await storeCustomer(resolvedCustomerId, customerData, env);
+                    
+                    // Generate initial API key for the customer
+                    await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
+                }
+                // If not a dashboard request, resolvedCustomerId stays null (API customer's end-user)
+            }
+        }
+        
         // Record successful OTP verification for statistics
-        await recordOTPRequestService(emailHash, clientIP, customerId, env);
+        await recordOTPRequestService(emailHash, clientIP, resolvedCustomerId, env);
         
         // Get or create user with customer isolation
         const userId = await generateUserId(emailLower);
-        const userKey = getCustomerKey(customerId, `user_${emailHash}`);
+        const userKey = getCustomerKey(resolvedCustomerId, `user_${emailHash}`);
         let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
         
         if (!user) {
@@ -440,12 +514,12 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         }
         
         // Track usage
-        if (customerId) {
-            await trackUsage(customerId, 'otpVerifications', 1, env);
-            await trackUsage(customerId, 'successfulLogins', 1, env);
+        if (resolvedCustomerId) {
+            await trackUsage(resolvedCustomerId, 'otpVerifications', 1, env);
+            await trackUsage(resolvedCustomerId, 'successfulLogins', 1, env);
             
             // Send webhooks
-            await sendWebhook(customerId, 'otp.verified', {
+            await sendWebhook(resolvedCustomerId, 'otp.verified', {
                 userId,
                 email: emailLower
             }, env);
@@ -455,13 +529,13 @@ export async function handleVerifyOTP(request, env, customerId = null) {
                 new Date(user.createdAt).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
             
             if (wasNewUser) {
-                await sendWebhook(customerId, 'user.created', {
+                await sendWebhook(resolvedCustomerId, 'user.created', {
                     userId,
                     email: emailLower
                 }, env);
             }
             
-            await sendWebhook(customerId, 'user.logged_in', {
+            await sendWebhook(resolvedCustomerId, 'user.logged_in', {
                 userId,
                 email: emailLower
             }, env);

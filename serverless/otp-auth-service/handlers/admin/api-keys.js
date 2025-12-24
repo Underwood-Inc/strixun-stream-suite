@@ -7,6 +7,7 @@ import { getCorsHeaders } from '../../utils/cors.js';
 import { getCustomer } from '../../services/customer.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
+import { decryptData, getJWTSecret } from '../../utils/crypto.js';
 
 /**
  * List customer API keys
@@ -17,18 +18,26 @@ export async function handleListApiKeys(request, env, customerId) {
         const customerApiKeysKey = `customer_${customerId}_apikeys`;
         const keys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
         
-        // Don't expose key hashes, just metadata
-        const keysMetadata = keys.map(k => ({
-            keyId: k.keyId,
-            name: k.name,
-            createdAt: k.createdAt,
-            lastUsed: k.lastUsed,
-            status: k.status
+        // Decrypt API keys for display
+        const jwtSecret = getJWTSecret(env);
+        const keysWithValues = await Promise.all(keys.map(async (k) => {
+            let apiKey = null;
+            if (k.encryptedKey) {
+                apiKey = await decryptData(k.encryptedKey, jwtSecret);
+            }
+            return {
+                keyId: k.keyId,
+                name: k.name,
+                createdAt: k.createdAt,
+                lastUsed: k.lastUsed,
+                status: k.status,
+                apiKey // Include the decrypted API key
+            };
         }));
         
         return new Response(JSON.stringify({
             success: true,
-            keys: keysMetadata
+            keys: keysWithValues
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
@@ -69,7 +78,7 @@ export async function handleCreateApiKey(request, env, customerId) {
             apiKey, // Only returned once!
             keyId,
             name,
-            message: 'API key created successfully. Save your API key - it will not be shown again.'
+            message: 'API key created successfully. Your API key is also available in the API Keys tab.'
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
@@ -126,7 +135,7 @@ export async function handleRotateApiKey(request, env, customerId, keyId) {
             apiKey: newApiKey, // Only returned once!
             keyId: newKeyId,
             oldKeyId: keyId,
-            message: 'API key rotated successfully. Old key will work for 7 days. Save your new API key - it will not be shown again.'
+            message: 'API key rotated successfully. Old key will work for 7 days. Your new API key is also available in the API Keys tab.'
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });

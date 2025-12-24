@@ -143,7 +143,7 @@
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Key ID</th>
+                <th>API Key</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th>Last Used</th>
@@ -154,7 +154,23 @@
               {#each apiKeys as key}
                 <tr>
                   <td>{key.name || 'Unnamed'}</td>
-                  <td class="api-keys__key-id">{key.keyId || 'N/A'}</td>
+                  <td class="api-keys__key-value">
+                    {#if key.apiKey}
+                      <code class="api-keys__key-code">{key.apiKey}</code>
+                      <button 
+                        class="api-keys__copy-btn" 
+                        onclick={() => {
+                          navigator.clipboard.writeText(key.apiKey);
+                          alert('API key copied to clipboard!');
+                        }}
+                        title="Copy API key"
+                      >
+                        📋
+                      </button>
+                    {:else}
+                      <span class="api-keys__key-missing">N/A</span>
+                    {/if}
+                  </td>
                   <td>
                     <span class="api-keys__status" class:status-active={key.status === 'active'} class:status-revoked={key.status === 'revoked'}>
                       {key.status || 'unknown'}
@@ -239,6 +255,26 @@
     font-size: 1.25rem;
     margin-bottom: var(--spacing-md);
     color: var(--accent);
+  }
+
+  .api-keys__info {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--info);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .api-keys__info-text {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .api-keys__info-text strong {
+    color: var(--text);
   }
 
   .api-keys__create {
@@ -338,10 +374,42 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .api-keys__key-id {
+  .api-keys__key-value {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .api-keys__key-code {
     font-family: monospace;
     font-size: 0.875rem;
+    color: var(--accent);
+    background: var(--bg-dark);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    word-break: break-all;
+    flex: 1;
+  }
+
+  .api-keys__copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .api-keys__copy-btn:hover {
+    background: var(--bg-dark);
+    border-color: var(--accent);
+  }
+
+  .api-keys__key-missing {
     color: var(--text-secondary);
+    font-style: italic;
   }
 
   .api-keys__status {

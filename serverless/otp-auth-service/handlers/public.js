@@ -274,7 +274,7 @@ export async function handleVerifySignup(request, env) {
             customerId,
             apiKey, // Only returned once!
             keyId,
-            message: 'Account verified and created successfully. Save your API key - it will not be shown again.',
+            message: 'Account verified and created successfully. Your API key is also available in the API Keys tab of your dashboard.',
             customer: {
                 customerId,
                 name: customerData.name,
@@ -408,7 +408,7 @@ export async function handleRegisterCustomer(request, env) {
             customerId,
             apiKey, // Only returned once!
             keyId,
-            message: 'Customer registered successfully. Save your API key - it will not be shown again.',
+            message: 'Customer registered successfully. Your API key is also available in the API Keys tab of your dashboard.',
             customer: {
                 customerId,
                 name,

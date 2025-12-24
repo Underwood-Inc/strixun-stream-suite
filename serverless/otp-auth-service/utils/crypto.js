@@ -208,3 +208,85 @@ export function constantTimeEquals(a, b) {
     return result === 0;
 }
 
+/**
+ * Encrypt data using AES-GCM
+ * @param {string} data - Data to encrypt
+ * @param {string} secret - Encryption secret (from JWT_SECRET)
+ * @returns {Promise<string>} Encrypted data (base64:iv:tag)
+ */
+export async function encryptData(data, secret) {
+    const encoder = new TextEncoder();
+    const dataBytes = encoder.encode(data);
+    
+    // Derive key from secret using SHA-256
+    const keyMaterial = await crypto.subtle.digest('SHA-256', encoder.encode(secret));
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt']
+    );
+    
+    // Generate IV
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    
+    // Encrypt
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        dataBytes
+    );
+    
+    // Combine IV and encrypted data
+    const encryptedArray = new Uint8Array(encrypted);
+    const combined = new Uint8Array(iv.length + encryptedArray.length);
+    combined.set(iv, 0);
+    combined.set(encryptedArray, iv.length);
+    
+    // Convert to base64
+    return btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Decrypt data using AES-GCM
+ * @param {string} encryptedData - Encrypted data (base64:iv:tag)
+ * @param {string} secret - Decryption secret (from JWT_SECRET)
+ * @returns {Promise<string>} Decrypted data
+ */
+export async function decryptData(encryptedData, secret) {
+    try {
+        const encoder = new TextEncoder();
+        
+        // Decode base64
+        const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+        
+        // Extract IV (first 12 bytes) and encrypted data
+        const iv = combined.slice(0, 12);
+        const encrypted = combined.slice(12);
+        
+        // Derive key from secret
+        const keyMaterial = await crypto.subtle.digest('SHA-256', encoder.encode(secret));
+        const key = await crypto.subtle.importKey(
+            'raw',
+            keyMaterial,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['decrypt']
+        );
+        
+        // Decrypt
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv },
+            key,
+            encrypted
+        );
+        
+        // Convert to string
+        const decoder = new TextDecoder();
+        return decoder.decode(decrypted);
+    } catch (error) {
+        return null;
+    }
+}
+

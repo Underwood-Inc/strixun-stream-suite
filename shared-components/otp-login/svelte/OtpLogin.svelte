@@ -13,6 +13,7 @@
   export let onSuccess: (data: LoginSuccessData) => void;
   export let onError: ((error: string) => void) | undefined = undefined;
   export let endpoints: OtpLoginConfig['endpoints'] | undefined = undefined;
+  export let customHeaders: OtpLoginConfig['customHeaders'] | undefined = undefined;
   export let title: string = 'Sign In';
   export let subtitle: string = 'Enter your email to receive a verification code';
   export let showAsModal: boolean = false;
@@ -68,6 +69,7 @@
       onSuccess,
       onError,
       endpoints,
+      customHeaders,
     });
 
     // Subscribe to state changes

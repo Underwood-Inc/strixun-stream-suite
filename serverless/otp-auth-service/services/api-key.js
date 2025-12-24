@@ -3,7 +3,7 @@
  * API key generation, hashing, verification, and management
  */
 
-import { generateApiKey as generateKey, hashApiKey as hashApiKeyUtil } from '../utils/crypto.js';
+import { generateApiKey as generateKey, hashApiKey as hashApiKeyUtil, encryptData, decryptData, getJWTSecret } from '../utils/crypto.js';
 import { getCustomer } from './customer.js';
 
 /**
@@ -48,20 +48,25 @@ export async function createApiKeyForCustomer(customerId, name, env) {
     // Generate key ID
     const keyId = `key_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    // Store API key hash
+    // Encrypt API key for storage (so we can retrieve it later)
+    const jwtSecret = getJWTSecret(env);
+    const encryptedKey = await encryptData(apiKey, jwtSecret);
+    
+    // Store API key hash (for verification) and encrypted key (for retrieval)
     const apiKeyData = {
         customerId,
         keyId,
         name: name || 'Default API Key',
         createdAt: new Date().toISOString(),
         lastUsed: null,
-        status: 'active'
+        status: 'active',
+        encryptedKey // Store encrypted key so we can decrypt and show it later
     };
     
     const apiKeyKey = `apikey_${apiKeyHash}`;
     await env.OTP_AUTH_KV.put(apiKeyKey, JSON.stringify(apiKeyData));
     
-    // Also store key ID to hash mapping for customer
+    // Also store key ID to hash mapping for customer (with encrypted key)
     const customerApiKeysKey = `customer_${customerId}_apikeys`;
     const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
     existingKeys.push({
@@ -69,7 +74,8 @@ export async function createApiKeyForCustomer(customerId, name, env) {
         name: apiKeyData.name,
         createdAt: apiKeyData.createdAt,
         lastUsed: null,
-        status: 'active'
+        status: 'active',
+        encryptedKey // Store encrypted key for retrieval
     });
     await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(existingKeys));
     
