@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   
-  // Dynamic import for swagger-ui (CommonJS package, loaded at runtime)
+  // Swagger UI loaded from CDN (UMD bundles)
   let SwaggerUIBundle: any;
   let SwaggerUIStandalonePreset: any;
 
@@ -10,21 +10,53 @@
   let container: HTMLElement;
   let initialized = false;
 
+  // Helper function to load scripts dynamically
+  function loadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if script already loaded
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve();
+        return;
+      }
+      
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
   onMount(async () => {
     if (initialized || !container) return;
     
     try {
-      // Dynamically import swagger-ui (CommonJS package)
+      // Load Swagger UI from CDN (same approach as landing page)
+      // This avoids Vite bundling issues with UMD modules
       if (!SwaggerUIBundle || !SwaggerUIStandalonePreset) {
-        // Use swagger-ui package (not swagger-ui-dist)
-        const swaggerUIModule = await import('swagger-ui');
-        SwaggerUIBundle = swaggerUIModule.default || swaggerUIModule;
-        
-        // Import CSS from swagger-ui package
-        await import('swagger-ui/dist/swagger-ui.css');
-        
-        // For standalone preset, we'll use the bundle's presets
-        SwaggerUIStandalonePreset = SwaggerUIBundle.presets?.standalone || SwaggerUIBundle;
+        // Check if already loaded globally
+        if ((window as any).SwaggerUIBundle && (window as any).SwaggerUIStandalonePreset) {
+          SwaggerUIBundle = (window as any).SwaggerUIBundle;
+          SwaggerUIStandalonePreset = (window as any).SwaggerUIStandalonePreset;
+        } else {
+          // Load CSS first
+          const cssLink = document.createElement('link');
+          cssLink.rel = 'stylesheet';
+          cssLink.href = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css';
+          if (!document.querySelector(`link[href="${cssLink.href}"]`)) {
+            document.head.appendChild(cssLink);
+          }
+          
+          // Load scripts and wait for them to be available
+          await Promise.all([
+            loadScript('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js'),
+            loadScript('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js')
+          ]);
+          
+          SwaggerUIBundle = (window as any).SwaggerUIBundle;
+          SwaggerUIStandalonePreset = (window as any).SwaggerUIStandalonePreset;
+        }
       }
       
       // Create unique ID for container
@@ -32,10 +64,15 @@
       container.id = containerId;
       
       // Use SwaggerUI according to official documentation
-      // swagger-ui v5 uses a simpler API
+      // swagger-ui-dist uses the standard API with presets
       SwaggerUIBundle({
         url,
         dom_id: `#${containerId}`,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: 'StandaloneLayout',
         deepLinking: true,
         defaultModelsExpandDepth: 1,
         defaultModelExpandDepth: 1,

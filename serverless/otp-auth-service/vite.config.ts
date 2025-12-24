@@ -20,12 +20,12 @@ export default defineConfig({
       }
     },
     commonjsOptions: {
-      include: [/swagger-ui/, /node_modules/]
+      include: [/swagger-ui-dist/, /node_modules/]
     }
   },
   optimizeDeps: {
     include: ['mermaid', 'prismjs'],
-    exclude: ['swagger-ui'] // Exclude from pre-bundling, will be loaded dynamically
+    exclude: ['swagger-ui-dist'] // Exclude from pre-bundling, will be loaded dynamically
   },
   server: {
     port: 5175,

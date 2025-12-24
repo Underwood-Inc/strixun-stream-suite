@@ -27,7 +27,7 @@
     "mermaid": "^11.12.2",
     "prismjs": "^1.30.0",
     "svelte": "^5.46.0",
-    "swagger-ui": "^5.31.0"
+    "swagger-ui-dist": "^5.17.14"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
