@@ -195,7 +195,7 @@ export async function handleVerifySignup(request, env) {
         }
         
         // Use the secure OTP system to verify the code
-        // Pass customerId=null since customer doesn't exist yet
+        // handleVerifyOTP will now ALWAYS create a customer account if one doesn't exist
         // Create a new request for the OTP endpoint
         const otpUrl = new URL(request.url);
         otpUrl.pathname = '/auth/verify-otp';
@@ -203,6 +203,7 @@ export async function handleVerifySignup(request, env) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Dashboard-Request': 'true', // Ensure customer account is created
                 ...Object.fromEntries(request.headers.entries())
             },
             body: JSON.stringify({ email: emailLower, otp })
@@ -215,73 +216,81 @@ export async function handleVerifySignup(request, env) {
             return otpResponse; // Return the OTP system's error response
         }
         
-        // OTP verified successfully! Now create the customer account
-        const customerId = generateCustomerId();
-        const customerData = {
-            customerId,
-            name: signupData.companyName,
-            email: emailLower,
-            companyName: signupData.companyName,
-            plan: 'free',
-            status: 'active',
-            createdAt: new Date().toISOString(),
-            configVersion: 1,
-            config: {
-                emailConfig: {
-                    fromEmail: null,
-                    fromName: signupData.companyName,
-                    subjectTemplate: 'Your {{appName}} Verification Code',
-                    htmlTemplate: null,
-                    textTemplate: null,
-                    variables: {
-                        appName: signupData.companyName,
-                        brandColor: '#007bff',
-                        footerText: `© ${new Date().getFullYear()} ${signupData.companyName}`,
-                        supportUrl: null,
-                        logoUrl: null
+        // OTP verified successfully! Customer account was already created by handleVerifyOTP
+        // Now we need to update it with the company name from signup data
+        const otpResponseData = await otpResponse.json();
+        const customerId = otpResponseData.customerId || otpResponseData.userId; // Fallback to userId if needed
+        
+        // Get the customer account that was just created by handleVerifyOTP
+        const { getCustomer, getCustomerByEmail, storeCustomer } = await import('../services/customer.js');
+        let customer = await getCustomerByEmail(emailLower, env);
+        
+        if (!customer) {
+            // Fallback: try to get by customerId from JWT token payload
+            // Parse the JWT to get customerId
+            try {
+                const token = otpResponseData.access_token || otpResponseData.token;
+                if (token) {
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1]));
+                        const jwtCustomerId = payload.customerId;
+                        if (jwtCustomerId) {
+                            customer = await getCustomer(jwtCustomerId, env);
+                        }
                     }
-                },
-                rateLimits: {
-                    otpRequestsPerHour: 3,
-                    otpRequestsPerDay: 50,
-                    maxUsers: 100
-                },
-                webhookConfig: {
-                    url: null,
-                    secret: null,
-                    events: []
-                },
-                allowedOrigins: []
-            },
-            features: {
-                customEmailTemplates: false,
-                webhooks: false,
-                analytics: false,
-                sso: false
+                }
+            } catch (e) {
+                console.error('Failed to parse JWT for customerId:', e);
             }
-        };
+        }
         
-        await storeCustomer(customerId, customerData, env);
+        // Update customer with company name from signup
+        if (customer && signupData.companyName) {
+            customer.companyName = signupData.companyName;
+            customer.name = signupData.companyName; // Use company name as the name
+            // Update email config with company name
+            if (customer.config && customer.config.emailConfig) {
+                customer.config.emailConfig.fromName = signupData.companyName;
+                if (customer.config.emailConfig.variables) {
+                    customer.config.emailConfig.variables.appName = signupData.companyName;
+                    customer.config.emailConfig.variables.footerText = `© ${new Date().getFullYear()} ${signupData.companyName}`;
+                }
+            }
+            await storeCustomer(customer.customerId, customer, env);
+        }
         
-        // Generate initial API key
-        const { apiKey, keyId } = await createApiKeyForCustomer(customerId, 'Initial API Key', env);
+        // Get API key (should already exist from handleVerifyOTP, but get it anyway)
+        const { getApiKeysForCustomer } = await import('../services/api-keys.js');
+        const finalCustomerId = customer?.customerId || customerId;
+        const apiKeys = finalCustomerId ? await getApiKeysForCustomer(finalCustomerId, env) : null;
+        const apiKey = apiKeys && apiKeys.length > 0 ? apiKeys[0].apiKey : null;
+        const keyId = apiKeys && apiKeys.length > 0 ? apiKeys[0].keyId : null;
         
         // Clean up signup data
         await env.OTP_AUTH_KV.delete(signupKey);
         
+        // Return success with JWT token for auto-login (saves API limits!)
         return new Response(JSON.stringify({
             success: true,
-            customerId,
-            apiKey, // Only returned once!
+            customerId: customer?.customerId || customerId,
+            apiKey, // API key (already created by handleVerifyOTP)
             keyId,
-            message: 'Account verified and created successfully. Your API key is also available in the API Keys tab of your dashboard.',
+            // Include JWT token for auto-login (from OTP verification)
+            access_token: otpResponseData.access_token || otpResponseData.token,
+            token: otpResponseData.access_token || otpResponseData.token, // Backward compatibility
+            token_type: 'Bearer',
+            expires_in: otpResponseData.expires_in || 25200, // 7 hours
+            userId: otpResponseData.userId || otpResponseData.sub,
+            email: emailLower,
+            message: 'Account verified and created successfully. You are now logged in! Your API key is also available in the API Keys tab of your dashboard.',
             customer: {
-                customerId,
-                name: customerData.name,
-                email: customerData.email,
-                companyName: customerData.companyName,
-                plan: customerData.plan,
-                status: customerData.status
+                customerId: customer?.customerId || customerId,
+                name: customer?.name || signupData.companyName,
+                email: customer?.email || emailLower,
+                companyName: customer?.companyName || signupData.companyName,
+                plan: customer?.plan || 'free',
+                status: customer?.status || 'active'
             }
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

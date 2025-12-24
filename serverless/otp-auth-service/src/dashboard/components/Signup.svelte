@@ -117,27 +117,28 @@
         message: data.message,
       };
 
-      // Now automatically log them in with OTP
-      // Request OTP for login
-      const otpResponse = await fetch(`${apiUrl}/auth/request-otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.toLowerCase().trim(),
-        }),
-      });
-
-      if (!otpResponse.ok) {
-        // If OTP request fails, still show success but they'll need to login manually
+      // Auto-login if JWT token is provided (saves API limits!)
+      if (data.access_token || data.token) {
+        const token = data.access_token || data.token;
+        apiClient.setToken(token);
+        
+        // Dispatch login event to auto-login the user
+        window.dispatchEvent(new CustomEvent('auth:login', {
+          detail: { 
+            user: {
+              userId: data.userId || data.sub,
+              email: data.email || email.toLowerCase().trim(),
+              token: token,
+            }
+          }
+        }));
+        
+        // Show success step briefly, then the app will handle the login
         step = 'success';
-        return;
+      } else {
+        // Fallback: if no token, show success and let them login manually
+        step = 'success';
       }
-
-      // Wait a moment for email to arrive, then show OTP input
-      // For now, just show success and let them login
-      step = 'success';
     } catch (err: any) {
       error = err.message || 'Failed to verify. Please try again.';
     } finally {

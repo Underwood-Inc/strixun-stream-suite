@@ -447,76 +447,82 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
         await env.OTP_AUTH_KV.delete(latestOtpKey);
         
-        // If no customerId provided, check if customer exists by email, or create one
-        // BUT only auto-create if this is a dashboard request (not an API customer's end-user)
+        // ALWAYS ensure user has a customer account (past, present, future)
+        // This is safe - customer accounts are just organizational data, not a security concern
         let resolvedCustomerId = customerId;
         if (!resolvedCustomerId) {
+            console.log(`[OTP Verify] No customerId provided, looking up customer by email: ${emailLower}`);
             const existingCustomer = await getCustomerByEmail(emailLower, env);
             if (existingCustomer) {
                 resolvedCustomerId = existingCustomer.customerId;
+                console.log(`[OTP Verify] Found existing customer: ${resolvedCustomerId}`);
             } else {
-                // Only auto-create customer for dashboard requests
-                // Dashboard requests include X-Dashboard-Request header
-                // API customer requests will have an API key (customerId would be set)
-                const dashboardHeader = request.headers.get('X-Dashboard-Request');
-                const isDashboardRequest = dashboardHeader === 'true';
+                // ALWAYS create customer account for ALL users (dashboard or API end-users)
+                // This ensures every user has a customer ID for consistent data organization
+                console.log(`[OTP Verify] No existing customer found, auto-creating customer account for: ${emailLower}`);
+                resolvedCustomerId = generateCustomerId();
+                const emailDomain = emailLower.split('@')[1] || 'unknown';
+                const companyName = emailDomain.split('.')[0] || 'My App';
                 
-                if (isDashboardRequest) {
-                    // Auto-create customer account for dashboard access
-                    resolvedCustomerId = generateCustomerId();
-                    const emailDomain = emailLower.split('@')[1] || 'unknown';
-                    const companyName = emailDomain.split('.')[0] || 'My App';
-                    
-                    const customerData = {
-                        customerId: resolvedCustomerId,
-                        name: emailLower.split('@')[0], // Use email prefix as name
-                        email: emailLower,
-                        companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-                        plan: 'free',
-                        status: 'active',
-                        createdAt: new Date().toISOString(),
-                        configVersion: 1,
-                        config: {
-                            emailConfig: {
-                                fromEmail: null,
-                                fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-                                subjectTemplate: 'Your {{appName}} Verification Code',
-                                htmlTemplate: null,
-                                textTemplate: null,
-                                variables: {
-                                    appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-                                    brandColor: '#007bff',
-                                    footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
-                                    supportUrl: null,
-                                    logoUrl: null
-                                }
-                            },
-                            rateLimits: {
-                                otpRequestsPerHour: 3,
-                                otpRequestsPerDay: 50,
-                                maxUsers: 100
-                            },
-                            webhookConfig: {
-                                url: null,
-                                secret: null,
-                                events: []
-                            },
-                            allowedOrigins: []
+                const customerData = {
+                    customerId: resolvedCustomerId,
+                    name: emailLower.split('@')[0], // Use email prefix as name
+                    email: emailLower,
+                    companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                    plan: 'free',
+                    status: 'active',
+                    createdAt: new Date().toISOString(),
+                    configVersion: 1,
+                    config: {
+                        emailConfig: {
+                            fromEmail: null,
+                            fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                            subjectTemplate: 'Your {{appName}} Verification Code',
+                            htmlTemplate: null,
+                            textTemplate: null,
+                            variables: {
+                                appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                                brandColor: '#007bff',
+                                footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
+                                supportUrl: null,
+                                logoUrl: null
+                            }
                         },
-                        features: {
-                            customEmailTemplates: false,
-                            webhooks: false,
-                            analytics: false,
-                            sso: false
-                        }
-                    };
-                    
-                    await storeCustomer(resolvedCustomerId, customerData, env);
-                    
-                    // Generate initial API key for the customer
-                    await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
+                        rateLimits: {
+                            otpRequestsPerHour: 3,
+                            otpRequestsPerDay: 50,
+                            maxUsers: 100
+                        },
+                        webhookConfig: {
+                            url: null,
+                            secret: null,
+                            events: []
+                        },
+                        allowedOrigins: []
+                    },
+                    features: {
+                        customEmailTemplates: false,
+                        webhooks: false,
+                        analytics: false,
+                        sso: false
+                    }
+                };
+                
+                // Store customer BEFORE creating JWT to ensure it exists
+                await storeCustomer(resolvedCustomerId, customerData, env);
+                console.log(`[OTP Verify] Customer account created and stored: ${resolvedCustomerId} for ${emailLower}`);
+                
+                // Verify the customer was stored correctly
+                const verifyCustomer = await getCustomerByEmail(emailLower, env);
+                if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
+                    console.error(`[OTP Verify] ERROR: Customer account verification failed! Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}`);
+                    throw new Error('Failed to create customer account. Please try again.');
                 }
-                // If not a dashboard request, resolvedCustomerId stays null (API customer's end-user)
+                
+                // Generate initial API key for the customer (only for dashboard users, but safe to do for all)
+                // This allows users to immediately use the API without additional signup steps
+                await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
+                console.log(`[OTP Verify] API key created for customer: ${resolvedCustomerId}`);
             }
         }
         
@@ -602,6 +608,13 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             customerId: resolvedCustomerId || null, // Multi-tenant customer ID
             csrf: csrfToken, // CSRF token included in JWT
         };
+        
+        // Log JWT creation for debugging
+        if (resolvedCustomerId) {
+            console.log(`[OTP Verify] Creating JWT with customerId: ${resolvedCustomerId} for user: ${emailLower}`);
+        } else {
+            console.log(`[OTP Verify] WARNING: Creating JWT WITHOUT customerId for user: ${emailLower}`);
+        }
         
         const jwtSecret = getJWTSecret(env);
         const accessToken = await createJWT(tokenPayload, jwtSecret);
