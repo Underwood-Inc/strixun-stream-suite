@@ -554,25 +554,6 @@ async function handleHealth() {
   });
 }
 
-/**
- * Serve standalone HTML page
- * GET /
- * 
- * Note: The HTML is embedded directly in the worker for simplicity.
- * For production, consider using Workers Assets or a separate static hosting solution.
- */
-function handleStandalonePage() {
-  // HTML content is embedded below - this is the standalone.html file content
-  const html = STANDALONE_HTML;
-  
-  return new Response(html, {
-    headers: { 
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
-    },
-  });
-}
-
 // Embedded standalone.html content
 // This is automatically generated from standalone.html - do not edit manually
 const STANDALONE_HTML = `<!DOCTYPE html>
@@ -1447,6 +1428,25 @@ const STANDALONE_HTML = `<!DOCTYPE html>
 </html>`;
 
 /**
+ * Serve standalone HTML page
+ * GET /
+ * 
+ * Note: The HTML is embedded directly in the worker for simplicity.
+ * For production, consider using Workers Assets or a separate static hosting solution.
+ */
+function handleStandalonePage() {
+  // HTML content is embedded above - this is the standalone.html file content
+  const html = STANDALONE_HTML;
+  
+  return new Response(html, {
+    headers: { 
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+}
+
+/**
  * Main request handler
  */
 export default {
@@ -1460,14 +1460,14 @@ export default {
     const path = url.pathname;
 
     try {
+      // Health check (moved before root to ensure it works)
+      if (path === '/health') {
+        return handleHealth();
+      }
+
       // Serve standalone HTML page at root
       if (path === '/' && request.method === 'GET') {
         return handleStandalonePage();
-      }
-
-      // Health check
-      if (path === '/health') {
-        return handleHealth();
       }
 
       // API endpoints (require authentication)
