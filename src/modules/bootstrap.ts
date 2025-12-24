@@ -79,17 +79,17 @@ function showAuthenticationBlocker(): void {
       
       // Wait for page to load, then trigger login modal
       setTimeout(() => {
-        const setupPage = document.querySelector('.setup-page');
-        if (setupPage) {
-          // Find and click the cloud backup login button
-          const cloudLoginBtn = setupPage.querySelector('button:has-text("Sign In to Use Cloud Backup")') as HTMLButtonElement;
-          if (cloudLoginBtn) {
-            cloudLoginBtn.click();
-          } else {
-            // Fallback: try to find any login button
-            const anyLoginBtn = setupPage.querySelector('[onclick*="showLoginModal"]') as HTMLElement;
-            if (anyLoginBtn) {
-              anyLoginBtn.click();
+        // Find and click the cloud backup login button by ID
+        const cloudLoginBtn = document.getElementById('cloud-backup-login-btn') as HTMLButtonElement;
+        if (cloudLoginBtn) {
+          cloudLoginBtn.click();
+        } else {
+          // Fallback: try to find button by text content
+          const buttons = document.querySelectorAll('.setup-page button');
+          for (const btn of buttons) {
+            if (btn.textContent?.includes('Sign In to Use Cloud Backup')) {
+              (btn as HTMLButtonElement).click();
+              break;
             }
           }
         }

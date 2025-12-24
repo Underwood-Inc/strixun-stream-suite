@@ -614,6 +614,7 @@
         Sign in to save and restore your app state from the cloud
       </p>
       <button 
+        id="cloud-backup-login-btn"
         class="btn-primary btn-block" 
         on:click={() => showLoginModal = true}
         style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500"
