@@ -2,6 +2,12 @@ name = "strixun-url-shortener"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
+# Custom domain configuration
+# Using idling.app domain
+routes = [
+  { pattern = "s.idling.app/*", zone_name = "idling.app" }
+]
+
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
@@ -32,12 +38,6 @@ preview_id = "b0e590fa55ce4513af3c5e07068372ef"
 #   wrangler secret put JWT_SECRET
 #   IMPORTANT: Use the SAME JWT_SECRET as your OTP auth service for compatibility
 #   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated)
-
-# Custom domain configuration
-# Using idling.app domain
-routes = [
-  { pattern = "s.idling.app/*", zone_name = "idling.app" }
-]
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-url-shortener
