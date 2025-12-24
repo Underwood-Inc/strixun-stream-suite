@@ -78,6 +78,7 @@ async function authenticateRequest(request, env) {
         // Return auth object in same format as API key auth
         return {
             customerId: resolvedCustomerId,
+            jwtToken: token, // Include JWT token for encryption
             // JWT auth doesn't have keyId, but that's okay for admin endpoints
         };
     } catch (error) {
@@ -87,7 +88,7 @@ async function authenticateRequest(request, env) {
 }
 
 /**
- * Helper to wrap admin route handlers with customerId tracking
+ * Helper to wrap admin route handlers with customerId tracking and encryption
  */
 async function handleAdminRoute(handler, request, env, auth) {
     if (!auth) {
@@ -121,7 +122,39 @@ async function handleAdminRoute(handler, request, env, auth) {
             customerId: null 
         };
     }
-    return { response: await handler(request, env, auth.customerId), customerId: auth.customerId };
+    
+    // Get handler response
+    const handlerResponse = await handler(request, env, auth.customerId);
+    
+    // If JWT token is present, encrypt the response (only for dashboard/JWT auth)
+    if (auth.jwtToken && handlerResponse.ok) {
+        try {
+            const { encryptWithJWT } = await import('../utils/jwt-encryption.js');
+            const responseData = await handlerResponse.json();
+            const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
+            
+            // Preserve original headers and add encryption flag
+            const headers = new Headers(handlerResponse.headers);
+            headers.set('Content-Type', 'application/json');
+            headers.set('X-Encrypted', 'true'); // Flag to indicate encrypted response
+            
+            return {
+                response: new Response(JSON.stringify(encrypted), {
+                    status: handlerResponse.status,
+                    statusText: handlerResponse.statusText,
+                    headers: headers,
+                }),
+                customerId: auth.customerId
+            };
+        } catch (error) {
+            console.error('Failed to encrypt response:', error);
+            // Return unencrypted response if encryption fails (shouldn't happen)
+            return { response: handlerResponse, customerId: auth.customerId };
+        }
+    }
+    
+    // For API key auth or non-OK responses, return as-is (no encryption)
+    return { response: handlerResponse, customerId: auth.customerId };
 }
 
 /**

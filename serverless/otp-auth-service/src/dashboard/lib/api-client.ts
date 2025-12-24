@@ -101,13 +101,26 @@ export class ApiClient {
     }
   }
 
+  private async decryptResponse<T>(response: Response): Promise<T> {
+    const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+    const data = await response.json();
+    
+    if (isEncrypted && this.token) {
+      // Decrypt the response using JWT token
+      const { decryptWithJWT } = await import('./jwt-decrypt.js');
+      return await decryptWithJWT(data as any, this.token) as T;
+    }
+    
+    return data as T;
+  }
+
   private async get<T>(endpoint: string): Promise<T> {
     const response = await this.request(endpoint, { method: 'GET' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
     }
-    return await response.json() as T;
+    return await this.decryptResponse<T>(response);
   }
 
   private async post<T>(endpoint: string, body?: unknown): Promise<T> {
@@ -119,7 +132,7 @@ export class ApiClient {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
     }
-    return await response.json() as T;
+    return await this.decryptResponse<T>(response);
   }
 
   private async put<T>(endpoint: string, body?: unknown): Promise<T> {
@@ -131,7 +144,7 @@ export class ApiClient {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
     }
-    return await response.json() as T;
+    return await this.decryptResponse<T>(response);
   }
 
   private async delete<T>(endpoint: string): Promise<T> {
@@ -140,7 +153,7 @@ export class ApiClient {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
     }
-    return await response.json() as T;
+    return await this.decryptResponse<T>(response);
   }
 
   // Authentication endpoints
