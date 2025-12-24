@@ -1,6 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 console.log('🔨 Building app (includes landing page and dashboard)...');
 
@@ -10,7 +15,8 @@ const rootDir = path.join(__dirname, '..');
 process.chdir(rootDir);
 
 try {
-  execSync('pnpm build:app', { stdio: 'inherit' });
+  // Run TypeScript compilation and Vite build directly (not build:app to avoid recursion)
+  execSync('pnpm exec tsc && pnpm exec vite build', { stdio: 'inherit' });
   console.log('✅ App built successfully');
 } catch (error) {
   console.error('❌ App build failed');
@@ -19,10 +25,27 @@ try {
 
 // Read built files and convert to base64 for embedding
 const distDir = path.join(rootDir, 'dist');
+
+// Verify dist directory exists
+if (!fs.existsSync(distDir)) {
+  console.error('❌ dist directory does not exist. Build may have failed.');
+  process.exit(1);
+}
+
 const files = {};
 
 function readDirectory(dir, basePath = '') {
+  if (!fs.existsSync(dir)) {
+    console.warn(`⚠️  Directory does not exist: ${dir}`);
+    return;
+  }
+  
   const entries = fs.readdirSync(dir, { withFileTypes: true });
+  
+  if (entries.length === 0) {
+    console.warn(`⚠️  Directory is empty: ${dir}`);
+    return;
+  }
   
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
@@ -31,15 +54,19 @@ function readDirectory(dir, basePath = '') {
     if (entry.isDirectory()) {
       readDirectory(fullPath, relativePath);
     } else {
-      const content = fs.readFileSync(fullPath);
-      // Convert binary files to base64, text files keep as string
-      const isBinary = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ico)$/i.test(relativePath);
-      const encoded = isBinary 
-        ? `data:${getMimeType(relativePath)};base64,${content.toString('base64')}`
-        : content.toString('utf8');
-      
-      files[relativePath] = encoded;
-      console.log(`  📄 ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
+      try {
+        const content = fs.readFileSync(fullPath);
+        // Convert binary files to base64, text files keep as string
+        const isBinary = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ico)$/i.test(relativePath);
+        const encoded = isBinary 
+          ? `data:${getMimeType(relativePath)};base64,${content.toString('base64')}`
+          : content.toString('utf8');
+        
+        files[relativePath] = encoded;
+        console.log(`  📄 ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
+      } catch (error) {
+        console.error(`❌ Failed to read file: ${fullPath}`, error.message);
+      }
     }
   }
 }
@@ -58,6 +85,18 @@ function getMimeType(filePath) {
 }
 
 readDirectory(distDir);
+
+// Verify we have files to embed
+if (Object.keys(files).length === 0) {
+  console.error('❌ No files found in dist directory. Build may have failed.');
+  process.exit(1);
+}
+
+// Verify index.html exists
+if (!files['index.html']) {
+  console.error('❌ index.html not found in dist directory. Build may have failed.');
+  process.exit(1);
+}
 
 // Generate landing-page-assets.js module (includes dashboard now)
 const output = `// App built files embedded as a module (includes landing page and dashboard)

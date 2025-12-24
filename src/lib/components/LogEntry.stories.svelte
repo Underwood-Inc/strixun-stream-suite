@@ -11,46 +11,41 @@
 
   const sampleEntry: LogEntryType = {
     id: '1',
-    timestamp: Date.now(),
-    type: 'log',
+    timestamp: new Date(),
+    type: 'debug',
     message: 'This is a sample log entry',
-    source: 'test',
     metadata: {}
   };
 
   const infoEntry: LogEntryType = {
     id: '2',
-    timestamp: Date.now(),
+    timestamp: new Date(),
     type: 'info',
     message: 'Information message',
-    source: 'test',
     metadata: {}
   };
 
   const warningEntry: LogEntryType = {
     id: '3',
-    timestamp: Date.now(),
+    timestamp: new Date(),
     type: 'warning',
     message: 'Warning message',
-    source: 'test',
     metadata: {}
   };
 
   const errorEntry: LogEntryType = {
     id: '4',
-    timestamp: Date.now(),
+    timestamp: new Date(),
     type: 'error',
     message: 'Error message',
-    source: 'test',
     metadata: {}
   };
 
   const successEntry: LogEntryType = {
     id: '5',
-    timestamp: Date.now(),
+    timestamp: new Date(),
     type: 'success',
     message: 'Success message',
-    source: 'test',
     metadata: {}
   };
 </script>

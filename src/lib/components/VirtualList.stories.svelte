@@ -49,12 +49,12 @@
       containerHeight={400}
       overscan={5}
     >
-      {#each visibleItems as { item, index } (item.id)}
+      <svelte:fragment let:item let:index>
         <div style="padding: 10px; border-bottom: 1px solid var(--border);">
           <strong>{item.text}</strong>
           <div style="font-size: 12px; color: var(--text-secondary);">{item.description}</div>
         </div>
-      {/each}
+      </svelte:fragment>
     </VirtualList>
   </div>
 </Story>
@@ -74,12 +74,12 @@
       containerHeight={400}
       overscan={3}
     >
-      {#each visibleItems as { item, index } (item.id)}
+      <svelte:fragment let:item let:index>
         <div style="padding: 20px; border-bottom: 1px solid var(--border);">
           <strong style="font-size: 18px;">{item.text}</strong>
           <div style="font-size: 14px; color: var(--text-secondary); margin-top: 8px;">{item.description}</div>
         </div>
-      {/each}
+      </svelte:fragment>
     </VirtualList>
   </div>
 </Story>
@@ -99,11 +99,11 @@
       containerHeight={200}
       overscan={2}
     >
-      {#each visibleItems as { item, index } (item.id)}
+      <svelte:fragment let:item let:index>
         <div style="padding: 10px; border-bottom: 1px solid var(--border);">
           <strong>{item.text}</strong>
         </div>
-      {/each}
+      </svelte:fragment>
     </VirtualList>
   </div>
 </Story>

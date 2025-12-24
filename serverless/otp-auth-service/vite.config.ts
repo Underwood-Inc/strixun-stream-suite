@@ -29,11 +29,24 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')
+      },
+      output: {
+        // Ensure consistent chunking for better caching
+        manualChunks: undefined,
+        // Use consistent naming for assets
+        assetFileNames: 'assets/[name].[ext]',
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js'
       }
     },
     commonjsOptions: {
-      include: [/swagger-ui-dist/, /node_modules/]
-    }
+      include: [/swagger-ui-dist/, /node_modules/],
+      transformMixedEsModules: true
+    },
+    // Use esbuild for faster builds (default)
+    minify: 'esbuild',
+    // Ensure source maps for debugging (can be disabled in production)
+    sourcemap: false
   },
   optimizeDeps: {
     include: ['mermaid', 'prismjs'],

@@ -79,10 +79,14 @@
 
     // Wait for slot content to render, then wrap children
     const initSwiper = () => {
+      // Check if component is still mounted
+      if (!swiperContainer || !swiperWrapper) return;
+      
       // Wrap children in swiper-slide divs BEFORE initializing Swiper
       wrapChildrenInSlides();
       
       // Verify we have slides before initializing
+      if (!swiperWrapper) return; // Double-check after wrapChildrenInSlides
       const slides = swiperWrapper.querySelectorAll('.swiper-slide');
       if (slides.length === 0) {
         console.warn('Carousel: No slides found, retrying...');

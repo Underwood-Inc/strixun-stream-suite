@@ -14,7 +14,11 @@
     message: 'Operation completed successfully',
     type: 'success',
     duration: 5000,
-    persistent: false
+    persistent: false,
+    createdAt: Date.now(),
+    visible: true,
+    inOverflow: false,
+    overflowIndex: 0
   };
 
   const errorToast: ToastType = {
@@ -22,7 +26,11 @@
     message: 'An error occurred',
     type: 'error',
     duration: 5000,
-    persistent: false
+    persistent: false,
+    createdAt: Date.now(),
+    visible: true,
+    inOverflow: false,
+    overflowIndex: 0
   };
 
   const warningToast: ToastType = {
@@ -30,7 +38,11 @@
     message: 'Warning: Please check your settings',
     type: 'warning',
     duration: 5000,
-    persistent: false
+    persistent: false,
+    createdAt: Date.now(),
+    visible: true,
+    inOverflow: false,
+    overflowIndex: 0
   };
 
   const infoToast: ToastType = {
@@ -38,7 +50,11 @@
     message: 'Information: This is an info message',
     type: 'info',
     duration: 5000,
-    persistent: false
+    persistent: false,
+    createdAt: Date.now(),
+    visible: true,
+    inOverflow: false,
+    overflowIndex: 0
   };
 
   const persistentToast: ToastType = {
@@ -46,7 +62,11 @@
     message: 'This toast will not auto-dismiss',
     type: 'info',
     duration: 0,
-    persistent: true
+    persistent: true,
+    createdAt: Date.now(),
+    visible: true,
+    inOverflow: false,
+    overflowIndex: 0
   };
 
   function handleDismiss(id: string) {

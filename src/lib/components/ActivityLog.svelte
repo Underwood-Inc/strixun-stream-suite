@@ -201,7 +201,7 @@
       const height = splitLog.offsetHeight;
       logContainerHeight = height - 34;
       storage.set('ui_split_panel', {
-        collapsed: $collapsed,
+        collapsed: collapsed,
         height: height
       });
     }
