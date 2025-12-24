@@ -6,12 +6,21 @@
   "packageManager": "pnpm@9.15.1",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "deploy:prod": "wrangler deploy --env production",
+    "dev:dashboard": "cd dashboard && pnpm dev",
+    "dev:all": "concurrently -n worker,dashboard -c yellow,cyan \"pnpm dev\" \"pnpm dev:dashboard\"",
+    "build": "node scripts/build-dashboard.js",
+    "build:dashboard": "cd dashboard && pnpm build",
+    "preview": "pnpm build && wrangler dev --env production",
+    "preview:watch": "node scripts/watch-preview.js",
+    "preview:local": "pnpm build && wrangler dev --local --env production",
+    "deploy": "pnpm build && wrangler deploy",
+    "deploy:prod": "pnpm build && wrangler deploy --env production",
     "tail": "wrangler tail",
     "tail:prod": "wrangler tail --env production"
   },
   "devDependencies": {
+    "chokidar": "^4.0.3",
+    "concurrently": "^9.1.2",
     "wrangler": "^4.56.0"
   }
 }

@@ -5,10 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OTP Authentication API - Passwordless Auth for Modern Apps</title>
     <meta name="description" content="Secure, passwordless OTP authentication API. Easy integration with React, Svelte, and vanilla JavaScript. Enterprise-grade security with multi-tenancy support.">
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" integrity="sha512-vswe+cgvic4Boqnsfz8dYw3lD3Rfivs//w7KJL0xW8cz5Zb6qblDPPaoZ5wvw8r9MTRy0c3+auFzlpN8y2v1yUg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Swagger UI -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css" />
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Prism.js script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" integrity="sha512-9khQRAUBYEJDCDVP2yw3LRUQvjJ0Pjx0EShmaQjcHa6AXiOv6qHQu9sCA/8OoydzcBUKI4k5K6t6Yk7yY+3WQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" integrity="sha512-SkmBfuA2hqjzEVpmnMt/LINrjop3GKWqsuLSSB3e7UgBmSwaHH/M3YUL3HkbuX7X03xZ3/3dQ4jHk6FT4Qo4wA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Swagger UI scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js"></script>
     <style>
         /**
          * OTP Auth Service Landing Page
-         * Matches Strixun Stream Suite Design System
+         * Matches Strixun's Stream Suite Design System
          */
         
         * {
@@ -361,10 +373,79 @@
             font-size: 0.875rem;
             line-height: 1.6;
             color: var(--text);
+            background: transparent !important;
+            padding: 0;
         }
 
         .code-block code {
             color: var(--text);
+            background: transparent !important;
+        }
+
+        /* Override Prism theme to match design system */
+        .code-block pre[class*="language-"] {
+            background: var(--bg-dark) !important;
+        }
+
+        .code-block code[class*="language-"] {
+            background: var(--bg-dark) !important;
+            color: var(--text) !important;
+        }
+
+        /* Custom syntax highlighting colors to match design system */
+        .code-block .token.comment,
+        .code-block .token.prolog,
+        .code-block .token.doctype,
+        .code-block .token.cdata {
+            color: var(--muted) !important;
+        }
+
+        .code-block .token.punctuation {
+            color: var(--text-secondary) !important;
+        }
+
+        .code-block .token.property,
+        .code-block .token.tag,
+        .code-block .token.boolean,
+        .code-block .token.number,
+        .code-block .token.constant,
+        .code-block .token.symbol,
+        .code-block .token.deleted {
+            color: var(--accent) !important;
+        }
+
+        .code-block .token.selector,
+        .code-block .token.attr-name,
+        .code-block .token.string,
+        .code-block .token.char,
+        .code-block .token.builtin,
+        .code-block .token.inserted {
+            color: var(--accent-light) !important;
+        }
+
+        .code-block .token.operator,
+        .code-block .token.entity,
+        .code-block .token.url,
+        .code-block .language-css .token.string,
+        .code-block .style .token.string {
+            color: var(--accent2) !important;
+        }
+
+        .code-block .token.atrule,
+        .code-block .token.attr-value,
+        .code-block .token.keyword {
+            color: var(--accent) !important;
+        }
+
+        .code-block .token.function,
+        .code-block .token.class-name {
+            color: var(--accent-light) !important;
+        }
+
+        .code-block .token.regex,
+        .code-block .token.important,
+        .code-block .token.variable {
+            color: var(--accent2) !important;
         }
 
         /* Accordion */
@@ -478,6 +559,148 @@
             margin-bottom: var(--spacing-xs);
         }
 
+        /* Self-Hosting Section */
+        .self-hosting {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--card) 100%);
+            padding: var(--spacing-3xl) var(--spacing-xl);
+            margin: var(--spacing-3xl) 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .self-hosting-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .self-hosting h2 {
+            text-align: center;
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: var(--spacing-lg);
+            color: var(--accent);
+        }
+
+        .self-hosting-subtitle {
+            text-align: center;
+            font-size: clamp(1.1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-2xl);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .self-hosting-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .self-hosting-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-xl);
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .self-hosting-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .self-hosting-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent);
+        }
+
+        .self-hosting-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .self-hosting-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: var(--spacing-md);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .self-hosting-card p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .self-hosting-card ul {
+            list-style: none;
+            margin: var(--spacing-md) 0;
+            padding: 0;
+        }
+
+        .self-hosting-card li {
+            padding: var(--spacing-xs) 0;
+            color: var(--text-secondary);
+            padding-left: var(--spacing-lg);
+            position: relative;
+        }
+
+        .self-hosting-card li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .self-hosting-cta {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: var(--spacing-2xl);
+        }
+
+        .btn-github {
+            background: var(--bg-dark);
+            border-color: var(--border-light);
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-github:hover {
+            background: var(--card);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .coming-soon-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: var(--spacing-sm);
+        }
+
         /* Footer */
         .footer {
             background: var(--bg-dark);
@@ -519,6 +742,187 @@
             margin: var(--spacing-lg) 0;
             overflow-x: auto;
         }
+
+        /* Enhanced Mermaid diagram styling */
+        .mermaid-container .mermaid {
+            background: transparent;
+        }
+
+        /* Mermaid node styling to match brand */
+        .mermaid-container .node rect,
+        .mermaid-container .node circle,
+        .mermaid-container .node ellipse,
+        .mermaid-container .node polygon {
+            fill: var(--card) !important;
+            stroke: var(--accent) !important;
+            stroke-width: 2px !important;
+        }
+
+        .mermaid-container .nodeLabel {
+            color: var(--text) !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif !important;
+        }
+
+        /* Mermaid edge/arrow styling */
+        .mermaid-container .edgePath .path {
+            stroke: var(--accent2) !important;
+            stroke-width: 2px !important;
+        }
+
+        .mermaid-container .edgeLabel {
+            background: var(--card) !important;
+            color: var(--text) !important;
+        }
+
+        .mermaid-container .arrowheadPath {
+            fill: var(--accent2) !important;
+        }
+
+        /* Mermaid cluster styling */
+        .mermaid-container .cluster rect {
+            fill: var(--bg-dark) !important;
+            stroke: var(--border) !important;
+            stroke-width: 2px !important;
+        }
+
+        /* API Usage Bar */
+        .api-usage-bar {
+            display: none;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin: var(--spacing-md) var(--spacing-xl);
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .api-usage-bar.visible {
+            display: block;
+        }
+
+        .api-usage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .api-usage-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .api-usage-stats {
+            display: flex;
+            gap: var(--spacing-lg);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .api-usage-stat {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .api-usage-stat-label {
+            color: var(--muted);
+        }
+
+        .api-usage-stat-value {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .api-usage-progress-container {
+            position: relative;
+            width: 100%;
+            height: 24px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-top: var(--spacing-sm);
+        }
+
+        .api-usage-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            border-radius: var(--radius-sm);
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: var(--spacing-xs);
+            min-width: 0;
+        }
+
+        .api-usage-progress-bar.warning {
+            background: linear-gradient(90deg, var(--warning), #ffd54f);
+        }
+
+        .api-usage-progress-bar.danger {
+            background: linear-gradient(90deg, var(--danger), #ff6b6b);
+        }
+
+        .api-usage-progress-text {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #000;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+        }
+
+        .api-usage-progress-bar:not(.has-text) .api-usage-progress-text {
+            display: none;
+        }
+
+        .api-usage-periods {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-sm);
+        }
+
+        .api-usage-period {
+            flex: 1;
+        }
+
+        .api-usage-period-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .api-usage-bar {
+                margin: var(--spacing-md);
+            }
+
+            .api-usage-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-sm);
+            }
+
+            .api-usage-stats {
+                flex-direction: column;
+                gap: var(--spacing-xs);
+                width: 100%;
+            }
+
+            .api-usage-periods {
+                flex-direction: column;
+                gap: var(--spacing-sm);
+            }
+        }
     </style>
 </head>
 <body>
@@ -527,11 +931,51 @@
         <div class="header-content">
             <a href="/" class="logo">🔐 OTP Auth API</a>
             <div class="header-actions">
+                <a href="/dashboard" class="btn btn-secondary">Developer Dashboard</a>
                 <a href="#code-examples" class="btn btn-secondary">Get Started</a>
                 <a href="#docs" class="btn btn-primary">Documentation</a>
             </div>
         </div>
     </header>
+
+    <!-- API Usage Bar (shown for authenticated users) -->
+    <div id="api-usage-bar" class="api-usage-bar">
+        <div class="api-usage-header">
+            <div class="api-usage-title">📊 API Usage</div>
+            <div class="api-usage-stats">
+                <div class="api-usage-stat">
+                    <span class="api-usage-stat-label">Daily:</span>
+                    <span class="api-usage-stat-value" id="daily-usage">-</span>
+                    <span class="api-usage-stat-label">/</span>
+                    <span class="api-usage-stat-value" id="daily-limit">-</span>
+                </div>
+                <div class="api-usage-stat">
+                    <span class="api-usage-stat-label">Monthly:</span>
+                    <span class="api-usage-stat-value" id="monthly-usage">-</span>
+                    <span class="api-usage-stat-label">/</span>
+                    <span class="api-usage-stat-value" id="monthly-limit">-</span>
+                </div>
+            </div>
+        </div>
+        <div class="api-usage-periods">
+            <div class="api-usage-period">
+                <div class="api-usage-period-label">Daily Usage</div>
+                <div class="api-usage-progress-container">
+                    <div class="api-usage-progress-bar" id="daily-progress">
+                        <span class="api-usage-progress-text" id="daily-progress-text"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="api-usage-period">
+                <div class="api-usage-period-label">Monthly Usage</div>
+                <div class="api-usage-progress-container">
+                    <div class="api-usage-progress-bar" id="monthly-progress">
+                        <span class="api-usage-progress-text" id="monthly-progress-text"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -539,10 +983,12 @@
         <p>
             Secure, scalable OTP authentication API built for modern applications. 
             No passwords, no complexity—just email verification that works.
+            <strong style="color: var(--accent);">Open-source and self-hostable.</strong> 🐼
         </p>
         <div class="hero-cta">
-            <a href="#code-examples" class="btn btn-primary">Start Integrating</a>
-            <a href="#security" class="btn btn-secondary">Learn About Security</a>
+            <a href="/dashboard" class="btn btn-primary">Developer Dashboard</a>
+            <a href="#code-examples" class="btn btn-secondary">Start Integrating</a>
+            <a href="#self-hosting" class="btn btn-secondary">Self-Host Option</a>
         </div>
     </section>
 
@@ -579,6 +1025,19 @@
                 <div class="feature-icon">🌍</div>
                 <h3>Global Scale</h3>
                 <p>Deployed on Cloudflare's edge network. Your users get the same fast experience anywhere in the world.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔓</div>
+                <h3>Open Source & Self-Hostable</h3>
+                <p>Completely open-source on GitHub. Self-host with unlimited rate limits or wait for subscription tiers. 🐼</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎛️</div>
+                <h3>Developer Dashboard</h3>
+                <p>Manage API keys, view audit logs, monitor analytics, and track usage—all from a beautiful, intuitive dashboard.</p>
+                <div style="margin-top: var(--spacing-md);">
+                    <a href="/dashboard" class="btn btn-secondary" style="font-size: 0.875rem; padding: var(--spacing-sm) var(--spacing-md);">Open Dashboard →</a>
+                </div>
             </div>
         </div>
     </section>
@@ -638,7 +1097,7 @@
         </div>
 
         <div id="vanilla" class="code-block active">
-            <pre><code>// Vanilla JavaScript/TypeScript Example
+            <pre><code class="language-javascript">// Vanilla JavaScript/TypeScript Example
 const API_URL = 'https://auth.idling.app';
 
 // Step 1: Request OTP
@@ -705,7 +1164,7 @@ async function login() {
         </div>
 
         <div id="react" class="code-block">
-            <pre><code>// React Example
+            <pre><code class="language-jsx">// React Example
 import React, { useState } from 'react';
 
 const API_URL = 'https://auth.idling.app';
@@ -799,7 +1258,7 @@ export default LoginForm;</code></pre>
         </div>
 
         <div id="svelte" class="code-block">
-            <pre><code>&lt;!-- Svelte Example --&gt;
+            <pre><code class="language-svelte">&lt;!-- Svelte Example --&gt;
 &lt;script&gt;
   let email = '';
   let otp = '';
@@ -912,7 +1371,93 @@ export default LoginForm;</code></pre>
                     <strong>Multi-Tenancy</strong>
                     <p>API key authentication required for multi-tenant features. Contact us for enterprise setup.</p>
                 </li>
+                <li>
+                    <strong>Exceeded Free Tier?</strong>
+                    <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon. 🐼</p>
+                </li>
             </ul>
+        </div>
+    </section>
+
+    <!-- Self-Hosting & Open Source Section -->
+    <section class="self-hosting" id="self-hosting">
+        <div class="self-hosting-content">
+            <h2>Outgrown the Free Tier? We've Got You Covered 🐼</h2>
+            <p class="self-hosting-subtitle">
+                Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
+                Or sit tight—subscription tiers with enhanced limits are coming soon.
+            </p>
+            
+            <div class="self-hosting-grid">
+                <div class="self-hosting-card">
+                    <h3>🔓 Self-Host on GitHub</h3>
+                    <p>
+                        The entire codebase is open-source and available on GitHub. Deploy it on your own infrastructure 
+                        with complete control over rate limits, configuration, and data.
+                    </p>
+                    <ul>
+                        <li>Unlimited rate limits</li>
+                        <li>Full control over configuration</li>
+                        <li>Complete data ownership</li>
+                        <li>Custom email providers</li>
+                        <li>Deploy anywhere (Cloudflare, AWS, GCP, etc.)</li>
+                    </ul>
+                    <div style="margin-top: var(--spacing-lg);">
+                        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+                            <span>📦</span> View on GitHub
+                        </a>
+                    </div>
+                </div>
+
+                <div class="self-hosting-card">
+                    <h3>⚡ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+                    <p>
+                        Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
+                        Get notified when they launch and keep using our managed service.
+                    </p>
+                    <ul>
+                        <li>Enhanced rate limits</li>
+                        <li>Priority support</li>
+                        <li>Advanced analytics</li>
+                        <li>Custom email templates</li>
+                        <li>Dedicated infrastructure</li>
+                    </ul>
+                    <div style="margin-top: var(--spacing-lg);">
+                        <a href="#code-examples" class="btn btn-secondary">
+                            Get Notified
+                        </a>
+                    </div>
+                </div>
+
+                <div class="self-hosting-card">
+                    <h3>🚀 Why Choose Self-Hosting?</h3>
+                    <p>
+                        Self-hosting gives you complete freedom and control. Perfect for enterprises, high-traffic applications, 
+                        or when you need custom configurations.
+                    </p>
+                    <ul>
+                        <li>No usage limits</li>
+                        <li>Full source code access</li>
+                        <li>Custom modifications allowed</li>
+                        <li>No vendor lock-in</li>
+                        <li>Community-driven improvements</li>
+                    </ul>
+                    <div style="margin-top: var(--spacing-lg);">
+                        <a href="#docs" class="btn btn-secondary">
+                            View Documentation
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="self-hosting-cta">
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                    <span>⭐</span> Star on GitHub
+                </a>
+                <a href="#code-examples" class="btn btn-secondary">
+                    Continue with Free Tier
+                </a>
+            </div>
         </div>
     </section>
 
@@ -949,7 +1494,7 @@ export default LoginForm;</code></pre>
                     </ul>
 
                     <h4>Request Example</h4>
-                    <pre><code>POST /auth/request-otp
+                    <pre><code class="language-http">POST /auth/request-otp
 Content-Type: application/json
 
 {
@@ -957,12 +1502,18 @@ Content-Type: application/json
 }</code></pre>
 
                     <h4>Response Example</h4>
-                    <pre><code>{
+                    <pre><code class="language-json">{
   "success": true,
   "message": "OTP sent to email",
   "expiresIn": 600,
   "remaining": 2
 }</code></pre>
+
+                    <h4>Interactive API Documentation (OpenAPI/Swagger)</h4>
+                    <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
+                        Explore and test all API endpoints with our interactive Swagger UI:
+                    </p>
+                    <div id="swagger-ui" style="margin-top: var(--spacing-lg);"></div>
                 </div>
             </div>
         </div>
@@ -976,18 +1527,30 @@ Content-Type: application/json
                 <div class="accordion-body">
                     <h4>System Architecture</h4>
                     <div class="mermaid-container">
-                        <pre class="mermaid">
+                        <div class="mermaid">
 graph TB
-    Client[Client Application] -->|1. Request OTP| API[Cloudflare Worker]
-    API -->|2. Generate OTP| KV[Cloudflare KV]
-    API -->|3. Send Email| Email[Resend/SendGrid]
-    Email -->|4. Deliver OTP| User[User Email]
-    User -->|5. Enter OTP| Client
-    Client -->|6. Verify OTP| API
-    API -->|7. Validate| KV
-    API -->|8. Issue JWT| Client
-    Client -->|9. Authenticated Requests| API
-                        </pre>
+    Client["`**Client Application**<br/>Web/Mobile App`"] -->|"`**1. Request OTP**`"| API["`**Cloudflare Worker**<br/>OTP Auth API`"]
+    API -->|"`**2. Generate OTP**`"| KV["`**Cloudflare KV**<br/>Secure Storage`"]
+    API -->|"`**3. Send Email**`"| Email["`**Email Service**<br/>Resend/SendGrid`"]
+    Email -->|"`**4. Deliver OTP**`"| User["`**User Email**<br/>Inbox`"]
+    User -->|"`**5. Enter OTP**`"| Client
+    Client -->|"`**6. Verify OTP**`"| API
+    API -->|"`**7. Validate**`"| KV
+    API -->|"`**8. Issue JWT**`"| Client
+    Client -->|"`**9. Authenticated Requests**`"| API
+    
+    classDef clientStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    classDef apiStyle fill:#1a1611,stroke:#6495ed,stroke-width:3px,color:#f9f9f9
+    classDef storageStyle fill:#252017,stroke:#28a745,stroke-width:3px,color:#f9f9f9
+    classDef emailStyle fill:#1a1611,stroke:#f9df74,stroke-width:3px,color:#f9f9f9
+    classDef userStyle fill:#252017,stroke:#edae49,stroke-width:3px,color:#f9f9f9
+    
+    class Client clientStyle
+    class API apiStyle
+    class KV storageStyle
+    class Email emailStyle
+    class User userStyle
+</div>
                     </div>
 
                     <h4>Data Flow</h4>
@@ -1022,7 +1585,7 @@ graph TB
                 <div class="accordion-body">
                     <h4>Error Response Format</h4>
                     <p>All errors follow RFC 7807 Problem Details format:</p>
-                    <pre><code>{
+                    <pre><code class="language-json">{
   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
   "title": "Bad Request",
   "status": 400,
@@ -1068,7 +1631,7 @@ graph TB
 
                     <h4>API Key Authentication</h4>
                     <p>Multi-tenant features require API key authentication:</p>
-                    <pre><code>Authorization: Bearer otp_live_sk_...</code></pre>
+                    <pre><code class="language-http">Authorization: Bearer otp_live_sk_...</code></pre>
 
                     <h4>Per-Customer Configuration</h4>
                     <ul>
@@ -1121,8 +1684,10 @@ graph TB
     </footer>
 
     <script>
-        // Tab switching
-        function switchTab(tabName) {
+        // Wait for DOM and scripts to be ready
+        (function() {
+            // Tab switching - can be called immediately
+            window.switchTab = function switchTab(tabName) {
             // Hide all code blocks
             document.querySelectorAll('.code-block').forEach(block => {
                 block.classList.remove('active');
@@ -1137,7 +1702,16 @@ graph TB
             document.getElementById(tabName).classList.add('active');
             
             // Add active class to clicked tab
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // Re-highlight code after tab switch
+            setTimeout(() => {
+                if (typeof Prism !== 'undefined') {
+                    Prism.highlightAll();
+                }
+            }, 50);
         }
 
         // Accordion toggle
@@ -1169,7 +1743,278 @@ graph TB
                 }
             });
         });
+
+
+        // API Usage Bar functionality
+        const API_URL = window.location.origin;
+        const usageBar = document.getElementById('api-usage-bar');
+        
+        async function loadApiUsage() {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                usageBar.classList.remove('visible');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/quota`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    // If unauthorized, hide the bar
+                    if (response.status === 401) {
+                        usageBar.classList.remove('visible');
+                        localStorage.removeItem('auth_token');
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                if (!data.success || !data.quota || !data.usage) {
+                    return;
+                }
+
+                // Show the bar
+                usageBar.classList.add('visible');
+
+                // Update daily stats
+                const dailyUsage = data.usage.daily || 0;
+                const dailyLimit = data.quota.otpRequestsPerDay || 1000;
+                const dailyRemaining = data.usage.remainingDaily || (dailyLimit - dailyUsage);
+                const dailyPercent = Math.min(100, (dailyUsage / dailyLimit) * 100);
+
+                document.getElementById('daily-usage').textContent = dailyUsage.toLocaleString();
+                document.getElementById('daily-limit').textContent = dailyLimit.toLocaleString();
+
+                const dailyProgress = document.getElementById('daily-progress');
+                dailyProgress.style.width = `${dailyPercent}%`;
+                dailyProgress.classList.remove('warning', 'danger', 'has-text');
+                
+                if (dailyPercent >= 90) {
+                    dailyProgress.classList.add('danger');
+                } else if (dailyPercent >= 75) {
+                    dailyProgress.classList.add('warning');
+                }
+                
+                if (dailyPercent > 10) {
+                    dailyProgress.classList.add('has-text');
+                    document.getElementById('daily-progress-text').textContent = 
+                        `${Math.round(dailyPercent)}%`;
+                }
+
+                // Update monthly stats
+                const monthlyUsage = data.usage.monthly || 0;
+                const monthlyLimit = data.quota.otpRequestsPerMonth || 10000;
+                const monthlyRemaining = data.usage.remainingMonthly || (monthlyLimit - monthlyUsage);
+                const monthlyPercent = Math.min(100, (monthlyUsage / monthlyLimit) * 100);
+
+                document.getElementById('monthly-usage').textContent = monthlyUsage.toLocaleString();
+                document.getElementById('monthly-limit').textContent = monthlyLimit.toLocaleString();
+
+                const monthlyProgress = document.getElementById('monthly-progress');
+                monthlyProgress.style.width = `${monthlyPercent}%`;
+                monthlyProgress.classList.remove('warning', 'danger', 'has-text');
+                
+                if (monthlyPercent >= 90) {
+                    monthlyProgress.classList.add('danger');
+                } else if (monthlyPercent >= 75) {
+                    monthlyProgress.classList.add('warning');
+                }
+                
+                if (monthlyPercent > 10) {
+                    monthlyProgress.classList.add('has-text');
+                    document.getElementById('monthly-progress-text').textContent = 
+                        `${Math.round(monthlyPercent)}%`;
+                }
+            } catch (error) {
+                console.error('Failed to load API usage:', error);
+                usageBar.classList.remove('visible');
+            }
+        }
+
+        // Load usage on page load
+        loadApiUsage();
+
+        // Refresh usage every 30 seconds if user is authenticated
+        setInterval(() => {
+            if (localStorage.getItem('auth_token')) {
+                loadApiUsage();
+            }
+        }, 30000);
+
+        // Initialize Swagger UI when API Endpoints accordion is opened
+        let swaggerInitialized = false;
+        function initSwagger() {
+            if (swaggerInitialized) return;
+            swaggerInitialized = true;
+            
+            if (typeof SwaggerUIBundle !== 'undefined') {
+                window.ui = SwaggerUIBundle({
+                    url: '/openapi.json',
+                    dom_id: '#swagger-ui',
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIStandalonePreset
+                    ],
+                    layout: 'StandaloneLayout',
+                    deepLinking: true,
+                    defaultModelsExpandDepth: 1,
+                    defaultModelExpandDepth: 1,
+                    docExpansion: 'list',
+                    filter: true,
+                    showExtensions: true,
+                    showCommonExtensions: true,
+                    tryItOutEnabled: true,
+                    requestSnippetsEnabled: true,
+                    onComplete: function() {
+                        // Customize Swagger UI to match design system
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            .swagger-ui .topbar { display: none; }
+                            .swagger-ui .info { margin: var(--spacing-lg) 0; color: var(--text); }
+                            .swagger-ui .scheme-container { background: var(--card); padding: var(--spacing-md); border-radius: var(--radius-md); margin: var(--spacing-md) 0; }
+                            .swagger-ui .opblock { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); margin: var(--spacing-md) 0; }
+                            .swagger-ui .opblock.opblock-post { border-left: 4px solid var(--accent); }
+                            .swagger-ui .opblock.opblock-get { border-left: 4px solid var(--info); }
+                            .swagger-ui .opblock.opblock-put { border-left: 4px solid var(--warning); }
+                            .swagger-ui .opblock.opblock-delete { border-left: 4px solid var(--danger); }
+                            .swagger-ui .opblock-tag { color: var(--accent); }
+                            .swagger-ui .opblock-summary { color: var(--text); }
+                            .swagger-ui .opblock-description-wrapper p { color: var(--text-secondary); }
+                            .swagger-ui input, .swagger-ui select, .swagger-ui textarea { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); }
+                            .swagger-ui .btn { background: var(--accent); color: #000; border: none; }
+                            .swagger-ui .btn:hover { background: var(--accent-light); }
+                            .swagger-ui .response-col_status { color: var(--text); }
+                            .swagger-ui code { background: var(--bg-dark); color: var(--accent); }
+                            .swagger-ui pre { background: var(--bg-dark); border: 1px solid var(--border); }
+                            .swagger-ui .model-box { background: var(--card); border: 1px solid var(--border); }
+                            .swagger-ui .model-title { color: var(--accent); }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                });
+            }
+        }
+
+        // Watch for API Endpoints accordion opening
+        function setupSwaggerWatcher() {
+            const apiEndpointsHeader = Array.from(document.querySelectorAll('.accordion-header')).find(
+                h => h.querySelector('h3')?.textContent?.includes('API Endpoints')
+            );
+            
+            if (apiEndpointsHeader) {
+                const originalToggle = window.toggleAccordion;
+                const checkAndInitSwagger = () => {
+                    if (typeof SwaggerUIBundle !== 'undefined' && typeof SwaggerUIStandalonePreset !== 'undefined') {
+                        initSwagger();
+                    } else {
+                        setTimeout(checkAndInitSwagger, 100);
+                    }
+                };
+                
+                window.toggleAccordion = function(header) {
+                    if (originalToggle) originalToggle(header);
+                    if (header === apiEndpointsHeader && header.parentElement.classList.contains('active')) {
+                        checkAndInitSwagger();
+                    }
+                };
+            }
+        }
+        
+        // Setup watcher when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupSwaggerWatcher);
+        } else {
+            setupSwaggerWatcher();
+        }
+        
+        // Initialize Prism syntax highlighting
+        function initPrismHighlighting() {
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightAll();
+                console.log('Prism.js initialized - syntax highlighting active');
+            } else {
+                setTimeout(initPrismHighlighting, 100);
+            }
+        }
+        
+        // Initialize Mermaid diagrams
+        function initMermaidDiagrams() {
+            if (typeof mermaid !== 'undefined') {
+                mermaid.initialize({
+                    startOnLoad: true,
+                    theme: 'dark',
+                    themeVariables: {
+                        primaryColor: '#edae49',
+                        primaryTextColor: '#1a1611',
+                        primaryBorderColor: '#c68214',
+                        secondaryColor: '#252017',
+                        secondaryTextColor: '#f9f9f9',
+                        secondaryBorderColor: '#3d3627',
+                        tertiaryColor: '#1a1611',
+                        tertiaryTextColor: '#f9f9f9',
+                        tertiaryBorderColor: '#4a4336',
+                        background: '#0f0e0b',
+                        mainBkg: '#252017',
+                        secondBkg: '#1a1611',
+                        tertiaryBkg: '#0f0e0b',
+                        textColor: '#f9f9f9',
+                        primaryTextColor: '#1a1611',
+                        secondaryTextColor: '#b8b8b8',
+                        tertiaryTextColor: '#888',
+                        border1: '#3d3627',
+                        border2: '#4a4336',
+                        border3: '#c68214',
+                        lineColor: '#6495ed',
+                        primaryBorderColor: '#c68214',
+                        secondaryBorderColor: '#3d3627',
+                        nodeBkg: '#252017',
+                        nodeBorder: '#edae49',
+                        clusterBkg: '#1a1611',
+                        clusterBorder: '#3d3627',
+                        defaultLinkColor: '#6495ed',
+                        titleColor: '#edae49',
+                        edgeLabelBackground: '#252017',
+                        edgeLabelTextColor: '#f9f9f9',
+                        arrowheadColor: '#6495ed',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+                        fontSize: '14px'
+                    },
+                    flowchart: {
+                        useMaxWidth: true,
+                        htmlLabels: true,
+                        curve: 'basis',
+                        padding: 20,
+                        nodeSpacing: 50,
+                        rankSpacing: 80,
+                        diagramPadding: 20
+                    }
+                });
+                mermaid.run();
+                console.log('Mermaid initialized - diagrams should render');
+            } else {
+                setTimeout(initMermaidDiagrams, 100);
+            }
+        }
+        
+        // Initialize everything when page is ready
+        function initAll() {
+            initPrismHighlighting();
+            initMermaidDiagrams();
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAll);
+        } else {
+            initAll();
+        }
+
     </script>
 </body>
 </html>
+
 

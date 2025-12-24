@@ -1,0 +1,23 @@
+# Generated build files (auto-generated, don't commit)
+dashboard-assets.js
+
+# Build output
+dashboard/dist/
+dashboard/.svelte-kit/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+

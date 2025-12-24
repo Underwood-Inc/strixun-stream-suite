@@ -14,6 +14,18 @@
 // Import landing page HTML
 import landingHtml from './landing-html.js';
 
+// Import OpenAPI spec
+import openApiSpec from './openapi-json.js';
+
+// Import dashboard assets (built Svelte app) - loaded dynamically
+let dashboardAssets = null;
+try {
+    const dashboardModule = await import('./dashboard-assets.js');
+    dashboardAssets = dashboardModule.default;
+} catch (e) {
+    // Dashboard not built yet - will proxy to dev server in dev mode
+}
+
 // Import utility modules
 import { getCustomerCached as getCustomerCachedUtil, invalidateCustomerCache as invalidateCustomerCacheUtil } from './utils/cache.js';
 import { getCorsHeaders as getCorsHeadersUtil } from './utils/cors.js';
@@ -2718,6 +2730,88 @@ async function handleGetMe(request, env) {
 }
 
 /**
+ * Get quota and usage information
+ * GET /auth/quota
+ */
+async function handleGetQuota(request, env) {
+    try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        const token = authHeader.substring(7);
+        const jwtSecret = getJWTSecret(env);
+        const payload = await verifyJWT(token, jwtSecret);
+        
+        if (!payload) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Get customer ID from token (for multi-tenant isolation)
+        const customerId = payload.customerId || null;
+        
+        // Get quota information
+        const quotaInfo = await checkQuota(customerId, env);
+        
+        if (!quotaInfo.allowed && !quotaInfo.quota) {
+            // If quota check failed but no quota info, return basic structure
+            return new Response(JSON.stringify({
+                success: true,
+                quota: {
+                    otpRequestsPerDay: 1000,
+                    otpRequestsPerMonth: 10000
+                },
+                usage: {
+                    daily: 0,
+                    monthly: 0,
+                    remainingDaily: 1000,
+                    remainingMonthly: 10000
+                }
+            }), {
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/json',
+                },
+            });
+        }
+        
+        return new Response(JSON.stringify({
+            success: true,
+            quota: quotaInfo.quota || {
+                otpRequestsPerDay: 1000,
+                otpRequestsPerMonth: 10000
+            },
+            usage: quotaInfo.usage || {
+                daily: 0,
+                monthly: 0,
+                remainingDaily: 1000,
+                remainingMonthly: 10000
+            }
+        }), {
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to get quota information',
+            message: error.message 
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+/**
  * Logout endpoint
  * POST /auth/logout
  */
@@ -2924,6 +3018,159 @@ export default {
             // Serve landing page at root
             if ((path === '/' || path === '') && request.method === 'GET') {
                 return handleLandingPage(request, env);
+            }
+            
+            // Serve OpenAPI spec
+            if (path === '/openapi.json' && request.method === 'GET') {
+                try {
+                    return new Response(JSON.stringify(openApiSpec, null, 2), {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'public, max-age=3600',
+                            ...getCorsHeaders(env, request),
+                        },
+                    });
+                } catch (error) {
+                    return new Response(JSON.stringify({ error: 'Failed to load OpenAPI spec' }), {
+                        status: 500,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    });
+                }
+            }
+            
+            // Serve dashboard (SPA - all routes serve index.html)
+            if (path.startsWith('/dashboard') && request.method === 'GET') {
+                // In development, proxy to Vite dev server
+                // In production, serve built files (TODO: embed after building)
+                const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
+                
+                if (isDev) {
+                    // Proxy to Vite dev server - wrangler dev runs locally so localhost is accessible
+                    try {
+                        const viteUrl = `http://localhost:5174${path}`;
+                        const viteRequest = new Request(viteUrl, {
+                            method: request.method,
+                            headers: request.headers,
+                            body: request.body,
+                        });
+                        
+                        const viteResponse = await fetch(viteRequest);
+                        
+                        // Clone response and update any absolute URLs in HTML to be relative
+                        const contentType = viteResponse.headers.get('content-type') || '';
+                        let body = await viteResponse.text();
+                        
+                        // If it's HTML, we might need to fix asset paths, but Vite handles this
+                        // For now, just proxy as-is since Vite dev server handles paths correctly
+                        
+                        return new Response(body, {
+                            status: viteResponse.status,
+                            statusText: viteResponse.statusText,
+                            headers: {
+                                ...Object.fromEntries(viteResponse.headers),
+                                ...getCorsHeaders(env, request),
+                            },
+                        });
+                    } catch (error) {
+                        // Vite server not running - show helpful message
+                        return new Response(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Dashboard - Dev Server Required</title>
+                                <style>
+                                    body { font-family: system-ui; background: #1a1611; color: #f9f9f9; padding: 2rem; }
+                                    .container { max-width: 600px; margin: 0 auto; text-align: center; }
+                                    code { background: #252017; padding: 0.25rem 0.5rem; border-radius: 4px; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="container">
+                                    <h1>🚀 Start Dev Server</h1>
+                                    <p>To view the dashboard in development, start the Vite dev server:</p>
+                                    <pre style="background: #252017; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left;"><code>pnpm dev:all</code></pre>
+                                    <p>Or separately:</p>
+                                    <pre style="background: #252017; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left;"><code>cd dashboard
+pnpm dev</code></pre>
+                                </div>
+                            </body>
+                            </html>
+                        `, {
+                            headers: {
+                                'Content-Type': 'text/html; charset=utf-8',
+                                ...getCorsHeaders(env, request),
+                            },
+                        });
+                    }
+                }
+                
+                // Production: serve built dashboard files
+                if (!dashboardAssets) {
+                    return new Response('Dashboard not built. Run: pnpm build', {
+                        status: 503,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'text/plain' },
+                    });
+                }
+                
+                // Remove /dashboard prefix to get file path
+                let filePath = path.replace(/^\/dashboard\/?/, '') || 'index.html';
+                if (filePath === '') filePath = 'index.html';
+                
+                // Handle SPA routing - all non-file routes serve index.html
+                if (!dashboardAssets[filePath] && !filePath.includes('.')) {
+                    filePath = 'index.html';
+                }
+                
+                // Get file content
+                const fileContent = dashboardAssets[filePath];
+                if (!fileContent) {
+                    // Fallback to index.html for SPA routing
+                    if (filePath !== 'index.html' && dashboardAssets['index.html']) {
+                        filePath = 'index.html';
+                        return serveDashboardFile(dashboardAssets[filePath], filePath, env, request);
+                    }
+                    return new Response('File not found', {
+                        status: 404,
+                        headers: getCorsHeaders(env, request),
+                    });
+                }
+                
+                return serveDashboardFile(fileContent, filePath, env, request);
+            }
+            
+            // Helper function to serve dashboard files
+            function serveDashboardFile(fileContent, filePath, env, request) {
+                // Determine content type
+                let contentType = 'text/plain';
+                if (filePath.endsWith('.html')) contentType = 'text/html; charset=utf-8';
+                else if (filePath.endsWith('.js')) contentType = 'application/javascript; charset=utf-8';
+                else if (filePath.endsWith('.css')) contentType = 'text/css; charset=utf-8';
+                else if (filePath.endsWith('.json')) contentType = 'application/json';
+                else if (filePath.endsWith('.png')) contentType = 'image/png';
+                else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) contentType = 'image/jpeg';
+                else if (filePath.endsWith('.svg')) contentType = 'image/svg+xml';
+                else if (filePath.endsWith('.woff')) contentType = 'font/woff';
+                else if (filePath.endsWith('.woff2')) contentType = 'font/woff2';
+                else if (filePath.endsWith('.ico')) contentType = 'image/x-icon';
+                
+                // Handle base64 encoded files (binary) vs text files
+                let content;
+                if (typeof fileContent === 'string' && fileContent.startsWith('data:')) {
+                    // Base64 encoded binary file
+                    const base64Data = fileContent.split(',')[1];
+                    content = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                } else {
+                    // Text file
+                    content = fileContent;
+                }
+                
+                return new Response(content, {
+                    headers: {
+                        'Content-Type': contentType,
+                        'Cache-Control': filePath === 'index.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
+                        ...getCorsHeaders(env, request),
+                    },
+                });
             }
             
             // Public endpoints (no auth required)
@@ -3410,6 +3657,9 @@ export default {
             }
             if (path === '/auth/me' && request.method === 'GET') {
                 return handleGetMe(request, env);
+            }
+            if (path === '/auth/quota' && request.method === 'GET') {
+                return handleGetQuota(request, env);
             }
             if (path === '/auth/logout' && request.method === 'POST') {
                 return handleLogout(request, env);

@@ -31,20 +31,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+          
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
           
-      - name: Install Wrangler
-        run: npm install -g wrangler
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
         
       - name: Deploy Worker
         working-directory: serverless
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: wrangler deploy
+        run: pnpm deploy
           
       - name: Set Worker Secrets
         working-directory: serverless
@@ -52,11 +58,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "${{ secrets.TWITCH_CLIENT_ID }}" | wrangler secret put TWITCH_CLIENT_ID
-          echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | wrangler secret put TWITCH_CLIENT_SECRET
-          echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY
-          echo "${{ secrets.RESEND_FROM_EMAIL }}" | wrangler secret put RESEND_FROM_EMAIL
-          echo "${{ secrets.JWT_SECRET }}" | wrangler secret put JWT_SECRET
+          echo "${{ secrets.TWITCH_CLIENT_ID }}" | pnpm exec wrangler secret put TWITCH_CLIENT_ID
+          echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | pnpm exec wrangler secret put TWITCH_CLIENT_SECRET
+          echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY
+          echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL
+          echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET
         continue-on-error: true  # Secrets may already exist
           
       - name: Deployment Summary
