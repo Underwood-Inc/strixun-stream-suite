@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-console.log('🔨 Building dashboard with Vite...');
+console.log('🔨 Building dashboard and landing page with Vite...');
+
+const rootDir = path.join(__dirname, '..');
 
 // Build the dashboard
-const dashboardDir = path.join(__dirname, '..', 'dashboard');
+const dashboardDir = path.join(rootDir, 'dashboard');
 process.chdir(dashboardDir);
 
 try {
@@ -15,6 +17,20 @@ try {
   console.error('❌ Dashboard build failed');
   process.exit(1);
 }
+
+// Build the landing page
+const landingPageDir = path.join(rootDir, 'landing-page');
+process.chdir(landingPageDir);
+
+try {
+  execSync('pnpm build', { stdio: 'inherit' });
+  console.log('✅ Landing page built successfully');
+} catch (error) {
+  console.error('❌ Landing page build failed');
+  process.exit(1);
+}
+
+process.chdir(rootDir);
 
 // Read built files and convert to base64 for embedding
 const distDir = path.join(dashboardDir, 'dist');
@@ -59,8 +75,7 @@ function getMimeType(filePath) {
 readDirectory(distDir);
 
 // Generate dashboard-assets.js module
-// Files are stored as strings (text) or base64 data URIs (binary)
-const output = `// Dashboard built files embedded as a module
+const dashboardOutput = `// Dashboard built files embedded as a module
 // This file is generated automatically when building the dashboard
 // Generated: ${new Date().toISOString()}
 // DO NOT EDIT - This file is auto-generated
@@ -68,9 +83,51 @@ const output = `// Dashboard built files embedded as a module
 export default ${JSON.stringify(files, null, 2)};
 `;
 
-const outputPath = path.join(__dirname, '..', 'dashboard-assets.js');
-fs.writeFileSync(outputPath, output);
+const dashboardOutputPath = path.join(__dirname, '..', 'dashboard-assets.js');
+fs.writeFileSync(dashboardOutputPath, dashboardOutput);
 
 console.log(`✅ Generated dashboard-assets.js (${Object.keys(files).length} files)`);
-console.log('🎉 Dashboard build complete!');
+
+// Now build landing page assets
+const landingPageDistDir = path.join(landingPageDir, 'dist');
+const landingPageFiles = {};
+
+function readLandingPageDirectory(dir, basePath = '') {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    const relativePath = path.join(basePath, entry.name).replace(/\\/g, '/');
+    
+    if (entry.isDirectory()) {
+      readLandingPageDirectory(fullPath, relativePath);
+    } else {
+      const content = fs.readFileSync(fullPath);
+      const isBinary = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ico)$/i.test(relativePath);
+      const encoded = isBinary 
+        ? `data:${getMimeType(relativePath)};base64,${content.toString('base64')}`
+        : content.toString('utf8');
+      
+      landingPageFiles[relativePath] = encoded;
+      console.log(`  📄 ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
+    }
+  }
+}
+
+readLandingPageDirectory(landingPageDistDir);
+
+// Generate landing-page-assets.js module
+const landingPageOutput = `// Landing page built files embedded as a module
+// This file is generated automatically when building the landing page
+// Generated: ${new Date().toISOString()}
+// DO NOT EDIT - This file is auto-generated
+
+export default ${JSON.stringify(landingPageFiles, null, 2)};
+`;
+
+const landingPageOutputPath = path.join(__dirname, '..', 'landing-page-assets.js');
+fs.writeFileSync(landingPageOutputPath, landingPageOutput);
+
+console.log(`✅ Generated landing-page-assets.js (${Object.keys(landingPageFiles).length} files)`);
+console.log('🎉 Build complete!');
 

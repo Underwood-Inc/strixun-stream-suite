@@ -1475,7 +1475,18 @@ export default LoginForm;</code></pre>
             </div>
             <div class="accordion-content">
                 <div class="accordion-body">
-                    <h4>Authentication Endpoints</h4>
+                    <h4>Interactive API Documentation (OpenAPI/Swagger)</h4>
+                    <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
+                        Explore and test all API endpoints with our interactive Swagger UI. You can try out requests directly from this interface:
+                    </p>
+                    <div id="swagger-ui" style="margin-top: var(--spacing-lg); min-height: 400px;"></div>
+                    
+                    <h4 style="margin-top: var(--spacing-2xl);">Quick Reference</h4>
+                    <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
+                        For a quick overview, here are the main endpoints:
+                    </p>
+                    
+                    <h5>Authentication Endpoints</h5>
                     <ul>
                         <li><strong>POST /auth/request-otp</strong> - Request OTP code via email</li>
                         <li><strong>POST /auth/verify-otp</strong> - Verify OTP and receive JWT token</li>
@@ -1484,7 +1495,7 @@ export default LoginForm;</code></pre>
                         <li><strong>POST /auth/refresh</strong> - Refresh expiring JWT token</li>
                     </ul>
 
-                    <h4>Public Endpoints</h4>
+                    <h5>Public Endpoints</h5>
                     <ul>
                         <li><strong>POST /signup</strong> - Public customer signup</li>
                         <li><strong>POST /signup/verify</strong> - Verify signup email</li>
@@ -1492,28 +1503,6 @@ export default LoginForm;</code></pre>
                         <li><strong>GET /health/ready</strong> - Readiness probe</li>
                         <li><strong>GET /health/live</strong> - Liveness probe</li>
                     </ul>
-
-                    <h4>Request Example</h4>
-                    <pre><code class="language-http">POST /auth/request-otp
-Content-Type: application/json
-
-{
-  "email": "user@example.com"
-}</code></pre>
-
-                    <h4>Response Example</h4>
-                    <pre><code class="language-json">{
-  "success": true,
-  "message": "OTP sent to email",
-  "expiresIn": 600,
-  "remaining": 2
-}</code></pre>
-
-                    <h4>Interactive API Documentation (OpenAPI/Swagger)</h4>
-                    <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
-                        Explore and test all API endpoints with our interactive Swagger UI:
-                    </p>
-                    <div id="swagger-ui" style="margin-top: var(--spacing-lg);"></div>
                 </div>
             </div>
         </div>
@@ -1727,6 +1716,20 @@ graph TB
             // Open clicked accordion if it wasn't active
             if (!isActive) {
                 accordion.classList.add('active');
+                
+                // Re-render Mermaid diagrams when Architecture accordion opens
+                const accordionTitle = header.querySelector('h3')?.textContent || '';
+                if (accordionTitle.includes('Architecture') && typeof mermaid !== 'undefined') {
+                    setTimeout(() => {
+                        const mermaidElements = accordion.querySelectorAll('.mermaid:not([data-processed])');
+                        if (mermaidElements.length > 0) {
+                            mermaidElements.forEach((el) => {
+                                el.dataset.processed = 'true';
+                            });
+                            mermaid.run();
+                        }
+                    }, 100);
+                }
             }
         }
 
@@ -1850,53 +1853,78 @@ graph TB
         let swaggerInitialized = false;
         function initSwagger() {
             if (swaggerInitialized) return;
-            swaggerInitialized = true;
             
-            if (typeof SwaggerUIBundle !== 'undefined') {
-                window.ui = SwaggerUIBundle({
-                    url: '/openapi.json',
-                    dom_id: '#swagger-ui',
-                    presets: [
-                        SwaggerUIBundle.presets.apis,
-                        SwaggerUIStandalonePreset
-                    ],
-                    layout: 'StandaloneLayout',
-                    deepLinking: true,
-                    defaultModelsExpandDepth: 1,
-                    defaultModelExpandDepth: 1,
-                    docExpansion: 'list',
-                    filter: true,
-                    showExtensions: true,
-                    showCommonExtensions: true,
-                    tryItOutEnabled: true,
-                    requestSnippetsEnabled: true,
-                    onComplete: function() {
-                        // Customize Swagger UI to match design system
-                        const style = document.createElement('style');
-                        style.textContent = `
-                            .swagger-ui .topbar { display: none; }
-                            .swagger-ui .info { margin: var(--spacing-lg) 0; color: var(--text); }
-                            .swagger-ui .scheme-container { background: var(--card); padding: var(--spacing-md); border-radius: var(--radius-md); margin: var(--spacing-md) 0; }
-                            .swagger-ui .opblock { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); margin: var(--spacing-md) 0; }
-                            .swagger-ui .opblock.opblock-post { border-left: 4px solid var(--accent); }
-                            .swagger-ui .opblock.opblock-get { border-left: 4px solid var(--info); }
-                            .swagger-ui .opblock.opblock-put { border-left: 4px solid var(--warning); }
-                            .swagger-ui .opblock.opblock-delete { border-left: 4px solid var(--danger); }
-                            .swagger-ui .opblock-tag { color: var(--accent); }
-                            .swagger-ui .opblock-summary { color: var(--text); }
-                            .swagger-ui .opblock-description-wrapper p { color: var(--text-secondary); }
-                            .swagger-ui input, .swagger-ui select, .swagger-ui textarea { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); }
-                            .swagger-ui .btn { background: var(--accent); color: #000; border: none; }
-                            .swagger-ui .btn:hover { background: var(--accent-light); }
-                            .swagger-ui .response-col_status { color: var(--text); }
-                            .swagger-ui code { background: var(--bg-dark); color: var(--accent); }
-                            .swagger-ui pre { background: var(--bg-dark); border: 1px solid var(--border); }
-                            .swagger-ui .model-box { background: var(--card); border: 1px solid var(--border); }
-                            .swagger-ui .model-title { color: var(--accent); }
-                        `;
-                        document.head.appendChild(style);
-                    }
-                });
+            const swaggerContainer = document.getElementById('swagger-ui');
+            if (!swaggerContainer) {
+                console.warn('Swagger UI container not found');
+                return;
+            }
+            
+            // Clear container in case of re-initialization
+            swaggerContainer.innerHTML = '';
+            
+            if (typeof SwaggerUIBundle !== 'undefined' && typeof SwaggerUIStandalonePreset !== 'undefined') {
+                swaggerInitialized = true;
+                try {
+                    window.ui = SwaggerUIBundle({
+                        url: '/openapi.json',
+                        dom_id: '#swagger-ui',
+                        presets: [
+                            SwaggerUIBundle.presets.apis,
+                            SwaggerUIStandalonePreset
+                        ],
+                        layout: 'StandaloneLayout',
+                        deepLinking: true,
+                        defaultModelsExpandDepth: 1,
+                        defaultModelExpandDepth: 1,
+                        docExpansion: 'list',
+                        filter: true,
+                        showExtensions: true,
+                        showCommonExtensions: true,
+                        tryItOutEnabled: true,
+                        requestSnippetsEnabled: true,
+                        onComplete: function() {
+                            // Customize Swagger UI to match design system
+                            const style = document.createElement('style');
+                            style.id = 'swagger-custom-styles';
+                            style.textContent = `
+                                .swagger-ui .topbar { display: none; }
+                                .swagger-ui .info { margin: var(--spacing-lg) 0; color: var(--text); }
+                                .swagger-ui .scheme-container { background: var(--card); padding: var(--spacing-md); border-radius: var(--radius-md); margin: var(--spacing-md) 0; }
+                                .swagger-ui .opblock { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); margin: var(--spacing-md) 0; }
+                                .swagger-ui .opblock.opblock-post { border-left: 4px solid var(--accent); }
+                                .swagger-ui .opblock.opblock-get { border-left: 4px solid var(--info); }
+                                .swagger-ui .opblock.opblock-put { border-left: 4px solid var(--warning); }
+                                .swagger-ui .opblock.opblock-delete { border-left: 4px solid var(--danger); }
+                                .swagger-ui .opblock-tag { color: var(--accent); }
+                                .swagger-ui .opblock-summary { color: var(--text); }
+                                .swagger-ui .opblock-description-wrapper p { color: var(--text-secondary); }
+                                .swagger-ui input, .swagger-ui select, .swagger-ui textarea { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); }
+                                .swagger-ui .btn { background: var(--accent); color: #000; border: none; }
+                                .swagger-ui .btn:hover { background: var(--accent-light); }
+                                .swagger-ui .response-col_status { color: var(--text); }
+                                .swagger-ui code { background: var(--bg-dark); color: var(--accent); }
+                                .swagger-ui pre { background: var(--bg-dark); border: 1px solid var(--border); }
+                                .swagger-ui .model-box { background: var(--card); border: 1px solid var(--border); }
+                                .swagger-ui .model-title { color: var(--accent); }
+                            `;
+                            // Remove old style if exists
+                            const oldStyle = document.getElementById('swagger-custom-styles');
+                            if (oldStyle) oldStyle.remove();
+                            document.head.appendChild(style);
+                            console.log('Swagger UI initialized successfully');
+                        },
+                        onFailure: function(error) {
+                            console.error('Swagger UI initialization failed:', error);
+                            swaggerInitialized = false;
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error initializing Swagger UI:', error);
+                    swaggerInitialized = false;
+                }
+            } else {
+                console.warn('SwaggerUIBundle or SwaggerUIStandalonePreset not loaded yet');
             }
         }
 
@@ -1908,18 +1936,21 @@ graph TB
             
             if (apiEndpointsHeader) {
                 const originalToggle = window.toggleAccordion;
-                const checkAndInitSwagger = () => {
-                    if (typeof SwaggerUIBundle !== 'undefined' && typeof SwaggerUIStandalonePreset !== 'undefined') {
-                        initSwagger();
-                    } else {
-                        setTimeout(checkAndInitSwagger, 100);
-                    }
-                };
                 
                 window.toggleAccordion = function(header) {
                     if (originalToggle) originalToggle(header);
                     if (header === apiEndpointsHeader && header.parentElement.classList.contains('active')) {
-                        checkAndInitSwagger();
+                        // Wait a bit for accordion animation, then initialize Swagger
+                        setTimeout(() => {
+                            const checkAndInitSwagger = () => {
+                                if (typeof SwaggerUIBundle !== 'undefined' && typeof SwaggerUIStandalonePreset !== 'undefined') {
+                                    initSwagger();
+                                } else {
+                                    setTimeout(checkAndInitSwagger, 100);
+                                }
+                            };
+                            checkAndInitSwagger();
+                        }, 200);
                     }
                 };
             }
@@ -1946,7 +1977,7 @@ graph TB
         function initMermaidDiagrams() {
             if (typeof mermaid !== 'undefined') {
                 mermaid.initialize({
-                    startOnLoad: true,
+                    startOnLoad: false, // We'll manually trigger rendering
                     theme: 'dark',
                     themeVariables: {
                         primaryColor: '#edae49',
@@ -1994,8 +2025,7 @@ graph TB
                         diagramPadding: 20
                     }
                 });
-                mermaid.run();
-                console.log('Mermaid initialized - diagrams should render');
+                console.log('Mermaid initialized - diagrams will render when accordions open');
             } else {
                 setTimeout(initMermaidDiagrams, 100);
             }

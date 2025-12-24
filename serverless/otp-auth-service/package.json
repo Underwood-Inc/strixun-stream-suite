@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "dev:dashboard": "cd dashboard && pnpm dev",
-    "dev:all": "concurrently -n worker,dashboard -c yellow,cyan \"pnpm dev\" \"pnpm dev:dashboard\"",
+    "dev:landing": "cd landing-page && pnpm dev",
+    "dev:all": "concurrently -n worker,dashboard,landing -c yellow,cyan,magenta \"pnpm dev\" \"pnpm dev:dashboard\" \"pnpm dev:landing\"",
     "build": "node scripts/build-dashboard.js",
     "build:dashboard": "cd dashboard && pnpm build",
+    "build:landing": "cd landing-page && pnpm build",
     "preview": "pnpm build && wrangler dev --env production",
     "preview:watch": "node scripts/watch-preview.js",
     "preview:local": "pnpm build && wrangler dev --local --env production",
@@ -21,7 +23,9 @@
   "devDependencies": {
     "chokidar": "^4.0.3",
     "concurrently": "^9.1.2",
+    "mermaid": "^11.12.2",
+    "prismjs": "^1.30.0",
+    "swagger-ui-dist": "^5.31.0",
     "wrangler": "^4.56.0"
   }
 }
-

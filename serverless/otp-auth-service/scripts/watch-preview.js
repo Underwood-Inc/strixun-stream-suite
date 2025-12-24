@@ -11,30 +11,6 @@ let wranglerProcess = null;
 let isBuilding = false;
 let buildQueue = [];
 
-// Regenerate landing-html.js
-function regenerateLandingHtml() {
-  try {
-    const landingHtmlPath = path.join(rootDir, 'landing.html');
-    const landingHtmlJsPath = path.join(rootDir, 'landing-html.js');
-    
-    const html = fs.readFileSync(landingHtmlPath, 'utf8');
-    const escaped = html
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\${/g, '\\${');
-    
-    const output = `// Landing page HTML embedded as a module
-// This file is generated from landing.html
-// To regenerate: run the build script or watch script
-
-export default \`${escaped}\`;`;
-    
-    fs.writeFileSync(landingHtmlJsPath, output);
-    console.log('✅ Regenerated landing-html.js');
-  } catch (error) {
-    console.error('❌ Failed to regenerate landing-html.js:', error.message);
-  }
-}
 
 // Build function
 async function build() {
@@ -69,13 +45,18 @@ async function build() {
   }
 }
 
+const landingPageDir = path.join(__dirname, '..', 'landing-page');
+
 // Watch for changes
 const watcher = chokidar.watch([
   path.join(dashboardDir, 'src/**/*'),
   path.join(dashboardDir, 'index.html'),
   path.join(dashboardDir, 'vite.config.ts'),
   path.join(dashboardDir, 'tsconfig.json'),
-  path.join(rootDir, 'landing.html'),
+  path.join(landingPageDir, 'src/**/*'),
+  path.join(landingPageDir, 'index.html'),
+  path.join(landingPageDir, 'vite.config.ts'),
+  path.join(landingPageDir, 'tsconfig.json'),
   path.join(rootDir, 'worker.js')
 ], {
   ignored: [
@@ -84,7 +65,7 @@ const watcher = chokidar.watch([
     /dist/,
     /\.svelte-kit/,
     /dashboard-assets\.js/,
-    /landing-html\.js/
+    /landing-page-assets\.js/
   ],
   persistent: true,
   ignoreInitial: true
@@ -101,14 +82,9 @@ watcher.on('change', (filePath) => {
   }
   
   rebuildTimeout = setTimeout(() => {
-    if (filePath.includes('dashboard')) {
-      // Dashboard file changed - rebuild
+    if (filePath.includes('dashboard') || filePath.includes('landing-page')) {
+      // Dashboard or landing page changed - rebuild both
       build();
-    } else if (filePath.includes('landing.html')) {
-      // Landing page changed - regenerate landing-html.js
-      console.log('📝 Landing page changed - regenerating landing-html.js...');
-      regenerateLandingHtml();
-      console.log('✅ Landing page updated - wrangler will auto-reload\n');
     } else if (filePath.includes('worker.js')) {
       // Worker changed - wrangler will auto-reload
       console.log('📝 Worker changed - wrangler will auto-reload');
@@ -142,12 +118,7 @@ function startWrangler() {
 }
 
 // Initial build
-console.log('🔨 Building dashboard for preview...\n');
-// Ensure landing-html.js exists
-if (!fs.existsSync(path.join(rootDir, 'landing-html.js'))) {
-  console.log('📝 Generating landing-html.js...');
-  regenerateLandingHtml();
-}
+console.log('🔨 Building dashboard and landing page for preview...\n');
 
 build().then(() => {
   console.log('👀 Watching for changes...\n');

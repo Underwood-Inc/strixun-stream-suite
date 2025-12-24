@@ -11,9 +11,6 @@
  * @version 2.1.0 - Refactored to use modular architecture
  */
 
-// Import landing page HTML
-import landingHtml from './landing-html.js';
-
 // Import OpenAPI spec
 import openApiSpec from './openapi-json.js';
 
@@ -24,6 +21,15 @@ try {
     dashboardAssets = dashboardModule.default;
 } catch (e) {
     // Dashboard not built yet - will proxy to dev server in dev mode
+}
+
+// Import landing page assets (built Svelte app) - loaded dynamically
+let landingPageAssets = null;
+try {
+    const landingPageModule = await import('./landing-page-assets.js');
+    landingPageAssets = landingPageModule.default;
+} catch (e) {
+    // Landing page not built yet - will proxy to dev server in dev mode
 }
 
 // Import utility modules
@@ -2985,12 +2991,61 @@ async function authenticateRequest(request, env) {
 
 /**
  * Handle landing page request
- * Serves the landing page HTML at root path
+ * Serves the landing page SPA at root path
  */
 async function handleLandingPage(request, env) {
-    return new Response(landingHtml, {
+    const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
+    
+    if (isDev && !landingPageAssets) {
+        // Proxy to Vite dev server in development
+        try {
+            const viteUrl = new URL(request.url);
+            viteUrl.hostname = 'localhost';
+            viteUrl.port = '5175';
+            return fetch(viteUrl.toString(), request);
+        } catch (error) {
+            return new Response('Landing page dev server not running. Start with: pnpm dev:landing', {
+                status: 503,
+                headers: { 'Content-Type': 'text/plain' },
+            });
+        }
+    }
+    
+    // Serve built landing page assets
+    if (!landingPageAssets) {
+        return new Response('Landing page not built. Run: pnpm build', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain' },
+        });
+    }
+    
+    const url = new URL(request.url);
+    let filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
+    
+    // SPA routing - all routes serve index.html
+    if (!landingPageAssets[filePath] && !filePath.includes('.')) {
+        filePath = 'index.html';
+    }
+    
+    const file = landingPageAssets[filePath];
+    if (!file) {
+        return new Response('Not found', { status: 404 });
+    }
+    
+    // Determine content type
+    let contentType = 'text/html';
+    if (filePath.endsWith('.js')) contentType = 'application/javascript';
+    else if (filePath.endsWith('.css')) contentType = 'text/css';
+    else if (filePath.endsWith('.json')) contentType = 'application/json';
+    else if (filePath.endsWith('.png')) contentType = 'image/png';
+    else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) contentType = 'image/jpeg';
+    else if (filePath.endsWith('.svg')) contentType = 'image/svg+xml';
+    else if (filePath.endsWith('.woff')) contentType = 'font/woff';
+    else if (filePath.endsWith('.woff2')) contentType = 'font/woff2';
+    
+    return new Response(file, {
         headers: {
-            'Content-Type': 'text/html; charset=utf-8',
+            'Content-Type': contentType,
             'Cache-Control': 'public, max-age=3600',
         },
     });
