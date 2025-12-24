@@ -13,6 +13,10 @@
   import ChatInput from './ChatInput.svelte';
   import RoomList from './RoomList.svelte';
   import RoomCreator from './RoomCreator.svelte';
+  import Tooltip from '../Tooltip.svelte';
+  
+  // Typing indicator - WIP feature
+  $: typingUsers = Array.from($chatState.isTyping);
 
   // Props
   export let signalingBaseUrl: string = '';
@@ -116,6 +120,7 @@
 
 <style lang="scss">
   @use '@styles/variables' as *;
+  @use '@styles/mixins' as *;
 
   .chat-client {
     display: flex;
@@ -139,6 +144,35 @@
     font-size: 1rem;
     font-weight: 600;
     color: var(--text);
+  }
+
+  .chat-header .chat-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chat-header .chat-header__action-btn {
+    padding: 4px 8px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 0;
+    color: var(--text);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 0 var(--border);
+    
+    &:hover:not(:disabled) {
+      background: var(--border);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 0 var(--border);
+    }
+    
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 var(--border);
+    }
   }
 
   .chat-header .chat-header__status {
@@ -186,6 +220,16 @@
     font-size: 0.9rem;
   }
 
+  .chat-messages .chat-messages__typing-indicator {
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    border: 2px solid var(--border);
+    border-radius: 0;
+  }
+
   .chat-error {
     padding: 12px 16px;
     background: var(--error-bg);
@@ -214,22 +258,36 @@
       <div class="chat-header__title">
         {$chatState.room?.customName || $chatState.room?.broadcasterName || 'Chat'}
       </div>
-      <div class="chat-header__status">
-        <div class="chat-header__status-dot chat-header__status-dot--{$connectionStatus}"></div>
-        <span>
-          {#if $isConnected}
-            Connected
-          {:else if $connectionStatus === 'connecting'}
-            Connecting...
-          {:else}
-            Disconnected
-          {/if}
-        </span>
+      <div class="chat-header__actions">
         {#if $chatState.room}
-          <button on:click={handleLeaveRoom} class="chat-header__leave-btn">
-            Leave
-          </button>
+          <Tooltip text="Message History | This feature is incomplete and still in progress" level="warning" position="bottom">
+            <button class="chat-header__action-btn wip" disabled>
+              📜 History
+            </button>
+          </Tooltip>
+          <Tooltip text="User Presence | This feature is incomplete and still in progress" level="warning" position="bottom">
+            <button class="chat-header__action-btn wip" disabled>
+              👥 Presence
+            </button>
+          </Tooltip>
         {/if}
+        <div class="chat-header__status">
+          <div class="chat-header__status-dot chat-header__status-dot--{$connectionStatus}"></div>
+          <span>
+            {#if $isConnected}
+              Connected
+            {:else if $connectionStatus === 'connecting'}
+              Connecting...
+            {:else}
+              Disconnected
+            {/if}
+          </span>
+          {#if $chatState.room}
+            <button on:click={handleLeaveRoom} class="chat-header__leave-btn">
+              Leave
+            </button>
+          {/if}
+        </div>
       </div>
     </div>
 
@@ -242,6 +300,15 @@
         {#each $messages as message (message.id)}
           <ChatMessage {message} />
         {/each}
+      {/if}
+      {#if typingUsers.length > 0}
+        <Tooltip text="Typing Indicators | This feature is incomplete and still in progress" level="warning" position="top">
+          <div class="chat-messages__typing-indicator wip">
+            {typingUsers.length === 1 
+              ? `${typingUsers[0]} is typing...`
+              : `${typingUsers.length} people are typing...`}
+          </div>
+        </Tooltip>
       {/if}
     </div>
 

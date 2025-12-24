@@ -240,6 +240,14 @@
     max-width: 1200px;
     margin: 0 auto;
     
+    > .card {
+      margin-bottom: 20px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
     .row {
       display: grid;
       grid-template-columns: 1fr 1fr;

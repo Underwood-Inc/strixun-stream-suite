@@ -24,70 +24,90 @@ import { currentPage } from '../../stores/navigation';
       numeral: 'I', 
       label: 'Dashboard', 
       requiresConnection: false,
-      disabledReason: null
+      disabledReason: null,
+      isWip: false,
+      inTesting: false
     },
     { 
       id: 'sources', 
       numeral: 'II', 
       label: 'Sources', 
       requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature'
+      disabledReason: 'Connect to OBS first to use this feature',
+      isWip: false,
+      inTesting: false
     },
     { 
       id: 'text', 
       numeral: 'III', 
       label: 'Text Cycler', 
       requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature'
+      disabledReason: 'Connect to OBS first to use this feature',
+      isWip: false,
+      inTesting: true
     },
     { 
       id: 'swaps', 
       numeral: 'IV', 
       label: 'Swaps', 
       requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature'
+      disabledReason: 'Connect to OBS first to use this feature',
+      isWip: false,
+      inTesting: false
     },
     { 
       id: 'layouts', 
       numeral: 'V', 
       label: 'Layouts', 
       requiresConnection: true,
-      disabledReason: 'Connect to OBS first to use this feature'
+      disabledReason: 'Connect to OBS first to use this feature',
+      isWip: false,
+      inTesting: false
     },
     { 
       id: 'notes', 
       numeral: 'VI', 
       label: 'Notes', 
       requiresConnection: false,
-      disabledReason: null
+      disabledReason: null,
+      isWip: true,
+      inTesting: false
     },
     { 
       id: 'chat', 
       numeral: 'VII', 
       label: 'Chat', 
       requiresConnection: false,
-      disabledReason: null
+      disabledReason: null,
+      isWip: true,
+      inTesting: false
     },
     { 
       id: 'scripts', 
       numeral: 'VIII', 
       label: 'Script Manager', 
       requiresConnection: false,
-      disabledReason: null
+      disabledReason: null,
+      isWip: false,
+      inTesting: true
     },
     { 
       id: 'install', 
       numeral: 'IX', 
       label: 'Installer', 
       requiresConnection: false,
-      disabledReason: null
+      disabledReason: null,
+      isWip: false,
+      inTesting: true
     },
     { 
       id: 'setup', 
       numeral: 'X', 
       label: 'Setup', 
       requiresConnection: false,
-      disabledReason: null
+      disabledReason: null,
+      isWip: false,
+      inTesting: false
     }
   ];
   
@@ -126,11 +146,21 @@ import { currentPage } from '../../stores/navigation';
 <nav class="tabs" use:stagger={{ preset: 'slideDown', stagger: 50, config: { duration: 250 } }}>
   {#each tabs as tab, index}
     {@const isDisabled = tab.requiresConnection && !$connected}
-    {@const tooltipLevel = tab.requiresConnection && !$connected ? 'warning' : 'log'}
-    {@const tooltipContent = tab.requiresConnection && !$connected && tab.disabledReason 
-      ? `${tab.label}\n${tab.disabledReason}` 
-      : tab.label}
-    {@const isActive = $currentPage === tab.id && !isDisabled}
+    {@const isWipDisabled = tab.isWip}
+    {@const isInTesting = tab.inTesting}
+    {@const tooltipLevel = tab.inTesting 
+      ? 'info' 
+      : (tab.requiresConnection && !$connected) || tab.isWip 
+        ? 'warning' 
+        : 'log'}
+    {@const tooltipContent = tab.inTesting
+      ? `${tab.label} | This feature is currently in testing`
+      : tab.isWip
+        ? `${tab.label} | This feature is incomplete and still in progress`
+        : tab.requiresConnection && !$connected && tab.disabledReason 
+          ? `${tab.label} | ${tab.disabledReason}` 
+          : tab.label}
+    {@const isActive = $currentPage === tab.id && !isDisabled && !isWipDisabled}
     <Tooltip 
       text={tooltipContent} 
       position="bottom" 
@@ -141,6 +171,8 @@ import { currentPage } from '../../stores/navigation';
         class="tab"
         class:active={isActive}
         class:disabled={isDisabled}
+        class:wip={isWipDisabled}
+        class:in-testing={isInTesting}
         use:animate={{
           preset: isActive ? 'scaleIn' : 'none',
           duration: 200,
@@ -277,6 +309,41 @@ import { currentPage } from '../../stores/navigation';
   
   .tabs .tab.disabled.active::after {
     display: none;
+  }
+
+  // WIP state - styled like warning toast
+  .tabs .tab.wip {
+    @include wip-state;
+  }
+
+  .tabs .tab.wip.active {
+    @include wip-state;
+  }
+
+  // IN TESTING state - blue/info color with unique diagonal pattern (NOT disabled)
+  .tabs .tab.in-testing {
+    @include in-testing-state;
+  }
+
+  .tabs .tab.in-testing.active {
+    @include in-testing-state;
+    // Keep active state styling but with testing pattern
+    background: var(--accent);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.15),
+      rgba(100, 149, 237, 0.15) 6px,
+      rgba(100, 149, 237, 0.2) 6px,
+      rgba(100, 149, 237, 0.2) 12px
+    );
+    border-color: var(--info);
+  }
+
+  .tabs .tab.in-testing:hover:not(.disabled):not(.active) {
+    @include in-testing-state;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 4px 0 var(--info);
+    border-color: var(--info);
   }
 </style>
 

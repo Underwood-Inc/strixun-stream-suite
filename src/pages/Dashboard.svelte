@@ -252,6 +252,11 @@
     
     > .card {
       @include staggered-cards(0.1s);
+      margin-bottom: 20px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
     }
   }
   

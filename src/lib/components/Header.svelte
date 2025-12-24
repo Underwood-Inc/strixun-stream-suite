@@ -96,8 +96,8 @@
   </h1>
   <div class="header-actions">
     <AlertsDropdown open={alertsOpen} onToggle={toggleAlerts} />
-    <Tooltip text="Test Toasts - Demonstrates toast system features" position="bottom">
-      <button class="btn-icon" on:click={handleTestToasts} title="Test Toasts">
+    <Tooltip text="Test Toasts | This feature is currently in testing" position="bottom" level="info">
+      <button class="btn-icon in-testing" on:click={handleTestToasts} title="Test Toasts">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/>
           <path d="M2 17l10 5 10-5"/>
@@ -119,6 +119,7 @@
 
 <style lang="scss">
   @use '@styles/animations' as *;
+  @use '@styles/mixins' as *;
   
   .header {
     padding: 12px 20px;
@@ -229,6 +230,24 @@
     
     &:hover svg {
       transform: rotate(90deg);
+    }
+
+    // IN TESTING state - override default styles
+    &.in-testing {
+      @include in-testing-state;
+      box-shadow: 0 2px 0 var(--info);
+      
+      &:hover {
+        border-color: var(--info);
+        box-shadow: 0 3px 0 var(--info);
+        background-image: repeating-linear-gradient(
+          45deg,
+          rgba(100, 149, 237, 0.12),
+          rgba(100, 149, 237, 0.12) 6px,
+          rgba(100, 149, 237, 0.16) 6px,
+          rgba(100, 149, 237, 0.16) 12px
+        );
+      }
     }
   }
   

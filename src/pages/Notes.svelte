@@ -7,7 +7,7 @@
    */
   
   import { onDestroy, onMount } from 'svelte';
-  import { SimpleTextEditor, LoginModal } from '@components';
+  import { SimpleTextEditor, LoginModal, Tooltip } from '@components';
   import { stagger } from '../core/animations';
   import {
     deleteNotebook,
@@ -321,6 +321,11 @@
 </script>
 
 <div class="notes-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
+  <Tooltip text="Notes & Notebooks | This feature is incomplete and still in progress" level="warning" position="bottom">
+    <div class="wip-banner wip">
+      ⚠️ Work in Progress - This feature is incomplete and still in progress
+    </div>
+  </Tooltip>
   {#if !$isAuthenticated}
     <div class="auth-required">
       <div class="auth-required-content">
@@ -446,12 +451,26 @@
 
 <style lang="scss">
   @use '@styles/animations' as *;
+  @use '@styles/mixins' as *;
   
   .notes-page {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
+    position: relative;
+  }
+
+  .wip-banner {
+    padding: 12px 16px;
+    margin: 16px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 0;
+    @include wip-state;
+    pointer-events: auto;
+    cursor: help;
   }
   
   .notebook-list {

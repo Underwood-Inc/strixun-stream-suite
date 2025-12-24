@@ -367,6 +367,7 @@
 </script>
 
 <div class="page setup-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
+  <div class="setup-cards-grid">
   <!-- Connection Card -->
   <div class="card connection-card">
     <h3>Connection</h3>
@@ -481,18 +482,21 @@
   </div>
   
   <!-- Keyboard Shortcuts Card -->
-  <div class="card">
-    <h3>Keyboard Shortcuts</h3>
+  <Tooltip text="Keyboard Shortcuts | This feature is currently in testing" level="info" position="top">
+    <div class="card in-testing">
+      <h3>Keyboard Shortcuts</h3>
     <p style="color:var(--muted);font-size:0.9em">When this panel is focused:</p>
     <ul style="color:var(--muted);padding-left:20px;font-size:0.9em;line-height:2">
       <li><strong>1-9</strong> - Trigger saved swap configs</li>
       <li><strong>Space</strong> - Start/stop text cycler</li>
     </ul>
-  </div>
+    </div>
+  </Tooltip>
   
   <!-- Cross-Client Sync Card -->
-  <div class="card">
-    <h3>🔄 Cross-Client Sync</h3>
+  <Tooltip text="Cross-Client Sync | This feature is currently in testing" level="info" position="top">
+    <div class="card in-testing">
+      <h3>🔄 Cross-Client Sync</h3>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
       Sync configs between OBS dock and remote browser panels via WebSocket.
     </p>
@@ -524,11 +528,13 @@
       <input type="checkbox" id="autoSyncOnConnect" bind:checked={autoSyncOnConnect} on:change={handleSaveAutoSyncPref}>
       <label for="autoSyncOnConnect">Auto-pull from OBS on connect</label>
     </div>
-  </div>
+    </div>
+  </Tooltip>
   
   <!-- Data & Backup Card -->
-  <div class="card">
-    <h3>💾 Data & Backup</h3>
+  <Tooltip text="Data & Backup | This feature is currently in testing" level="info" position="top">
+    <div class="card in-testing">
+      <h3>💾 Data & Backup</h3>
     
     <!-- Storage Engine Status -->
     <div id="storageEngineStatus" style="display:flex;gap:12px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.85em">
@@ -595,11 +601,13 @@
     
     <!-- Last backup info -->
     <div id="lastBackupInfo" style="margin-top:8px;font-size:0.75em;color:var(--muted);text-align:center"></div>
-  </div>
+    </div>
+  </Tooltip>
   
   <!-- Cloud Backup Card -->
-  <div class="card">
-    <h3>☁️ Cloud Backup</h3>
+  <Tooltip text="Cloud Backup | This feature is currently in testing" level="info" position="top">
+    <div class="card in-testing">
+      <h3>☁️ Cloud Backup</h3>
     
     {#if !$isAuthenticated}
       <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px">
@@ -698,7 +706,8 @@
         🔄 Refresh List
       </button>
     {/if}
-  </div>
+    </div>
+  </Tooltip>
   
   {#if showLoginModal}
     <LoginModal onClose={handleLoginClose} />
@@ -717,8 +726,9 @@
   {/if}
   
   <!-- Version Info Card -->
-  <div class="card">
-    <h3>📦 Version</h3>
+  <Tooltip text="Version | This feature is currently in testing" level="info" position="top">
+    <div class="card in-testing">
+      <h3>📦 Version</h3>
     <div id="versionInfo" style="font-size:0.9em">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
         <span style="color:var(--muted)">Local Version:</span>
@@ -743,16 +753,27 @@
     <div style="margin-top:10px;font-size:0.75em;color:var(--muted);text-align:center">
       <span id="lastVersionCheck">Never checked</span>
     </div>
+    </div>
+  </Tooltip>
   </div>
 </div>
 
 <style lang="scss">
   @use '@styles/components/cards';
   @use '@styles/components/forms';
+  @use '@styles/mixins' as *;
   
   .setup-page {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
+    padding: 20px;
+    
+    .setup-cards-grid {
+      column-count: auto;
+      column-width: 350px;
+      column-gap: 20px;
+      column-fill: balance;
+    }
     
     .row {
       display: grid;
@@ -907,6 +928,45 @@
     .requires-connection:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    // IN TESTING state for cards
+    .card.in-testing {
+      @include in-testing-state;
+      cursor: help;
+    }
+
+    // Ensure cards size naturally based on content and break properly in columns
+    .card {
+      display: flex;
+      flex-direction: column;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 20px;
+    }
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    .setup-page {
+      padding: 12px;
+      
+      .setup-cards-grid {
+        column-count: 1;
+        column-width: 100%;
+      }
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .setup-page .setup-cards-grid {
+      column-width: 380px;
+    }
+  }
+
+  @media (min-width: 1600px) {
+    .setup-page .setup-cards-grid {
+      column-width: 400px;
     }
   }
 </style>

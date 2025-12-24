@@ -213,6 +213,31 @@ export async function onSceneSelect(sceneName: string): Promise<void> {
   }
 }
 
+/**
+ * Switch to a scene (change program scene)
+ */
+export async function switchToScene(sceneName: string): Promise<void> {
+  const isConnected = get(connected);
+  if (!isConnected) {
+    log('Connect to OBS first', 'error');
+    return;
+  }
+  
+  if (!sceneName) {
+    log('Scene name required', 'error');
+    return;
+  }
+  
+  try {
+    await request('SetCurrentProgramScene', { sceneName });
+    log(`Switched to scene: ${sceneName}`, 'success');
+    // The scene change will trigger CurrentProgramSceneChanged event which updates the store
+  } catch (e) {
+    const error = e as Error;
+    log(`Error switching scene: ${error.message}`, 'error');
+  }
+}
+
 // ============ Source Management ============
 
 export async function refreshSources(): Promise<void> {
@@ -857,6 +882,7 @@ export const Sources = {
   refreshSceneList,
   renderScenesList,
   onSceneSelect,
+  switchToScene,
   updateSceneSelector,
   refreshSources,
   renderSources,

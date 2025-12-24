@@ -5,7 +5,7 @@
    * P2P chat interface page
    */
 
-  import { ChatClient } from '@components';
+  import { ChatClient, Tooltip } from '@components';
   import { isAuthenticated } from '../stores/auth';
 
   // Signaling server URL is set globally in main.ts
@@ -13,6 +13,11 @@
 </script>
 
 <div class="chat-page">
+  <Tooltip text="Chat | This feature is incomplete and still in progress" level="warning" position="bottom">
+    <div class="wip-banner wip">
+      ⚠️ Work in Progress - This feature is incomplete and still in progress
+    </div>
+  </Tooltip>
   {#if $isAuthenticated}
     <ChatClient 
       showRoomList={true}
@@ -28,12 +33,26 @@
 
 <style lang="scss">
   @use '../styles/animations' as *;
+  @use '../styles/mixins' as *;
   
   .chat-page {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
+    position: relative;
+  }
+
+  .wip-banner {
+    padding: 12px 16px;
+    margin: 16px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 0;
+    @include wip-state;
+    pointer-events: auto;
+    cursor: help;
   }
 
   .chat-page .chat-page__auth-required {
