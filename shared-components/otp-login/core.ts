@@ -41,12 +41,15 @@ export interface OtpLoginState {
   loading: boolean;
   error: string | null;
   countdown: number;
+  rateLimitResetAt: string | null; // ISO timestamp when rate limit resets
+  rateLimitCountdown: number; // Seconds until rate limit resets
 }
 
 export class OtpLoginCore {
   private config: OtpLoginConfig;
   private state: OtpLoginState;
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
+  private rateLimitCountdownInterval: ReturnType<typeof setInterval> | null = null;
   private stateListeners: Array<(state: OtpLoginState) => void> = [];
 
   constructor(config: OtpLoginConfig) {
@@ -58,6 +61,8 @@ export class OtpLoginCore {
       loading: false,
       error: null,
       countdown: 0,
+      rateLimitResetAt: null,
+      rateLimitCountdown: 0,
     };
   }
 
@@ -133,7 +138,32 @@ export class OtpLoginCore {
 
       if (!response.ok) {
         const errorMsg = data.detail || data.error || 'Failed to send OTP';
-        this.setState({ error: errorMsg, loading: false });
+        
+        // Check if this is a rate limit error (429)
+        if (response.status === 429 && data.reset_at) {
+          const resetAt = new Date(data.reset_at);
+          const now = new Date();
+          const secondsUntilReset = Math.max(0, Math.ceil((resetAt.getTime() - now.getTime()) / 1000));
+          
+          this.setState({ 
+            error: errorMsg, 
+            loading: false,
+            rateLimitResetAt: data.reset_at,
+            rateLimitCountdown: secondsUntilReset,
+          });
+          
+          // Start rate limit countdown
+          this.startRateLimitCountdown();
+        } else {
+          this.setState({ 
+            error: errorMsg, 
+            loading: false,
+            rateLimitResetAt: null,
+            rateLimitCountdown: 0,
+          });
+          this.stopRateLimitCountdown();
+        }
+        
         this.config.onError?.(errorMsg);
         return;
       }
@@ -222,7 +252,10 @@ export class OtpLoginCore {
       otp: '',
       error: null,
       countdown: 0,
+      rateLimitResetAt: null,
+      rateLimitCountdown: 0,
     });
+    this.stopRateLimitCountdown();
   }
 
   /**
@@ -230,6 +263,7 @@ export class OtpLoginCore {
    */
   reset(): void {
     this.stopCountdown();
+    this.stopRateLimitCountdown();
     this.setState({
       step: 'email',
       email: '',
@@ -237,6 +271,8 @@ export class OtpLoginCore {
       loading: false,
       error: null,
       countdown: 0,
+      rateLimitResetAt: null,
+      rateLimitCountdown: 0,
     });
   }
 
@@ -265,10 +301,54 @@ export class OtpLoginCore {
   }
 
   /**
+   * Start rate limit countdown timer
+   */
+  private startRateLimitCountdown(): void {
+    this.stopRateLimitCountdown();
+    
+    if (!this.state.rateLimitResetAt) {
+      return;
+    }
+    
+    this.rateLimitCountdownInterval = setInterval(() => {
+      if (this.state.rateLimitResetAt) {
+        const resetAt = new Date(this.state.rateLimitResetAt);
+        const now = new Date();
+        const secondsUntilReset = Math.max(0, Math.ceil((resetAt.getTime() - now.getTime()) / 1000));
+        
+        if (secondsUntilReset > 0) {
+          this.setState({ rateLimitCountdown: secondsUntilReset });
+        } else {
+          // Rate limit expired - clear error and countdown
+          this.setState({ 
+            error: null,
+            rateLimitResetAt: null,
+            rateLimitCountdown: 0,
+          });
+          this.stopRateLimitCountdown();
+        }
+      } else {
+        this.stopRateLimitCountdown();
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop rate limit countdown timer
+   */
+  private stopRateLimitCountdown(): void {
+    if (this.rateLimitCountdownInterval) {
+      clearInterval(this.rateLimitCountdownInterval);
+      this.rateLimitCountdownInterval = null;
+    }
+  }
+
+  /**
    * Cleanup
    */
   destroy(): void {
     this.stopCountdown();
+    this.stopRateLimitCountdown();
     this.stateListeners = [];
   }
 
@@ -279,6 +359,37 @@ export class OtpLoginCore {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Format rate limit countdown to human-readable string
+   */
+  static formatRateLimitCountdown(seconds: number): string {
+    if (seconds < 60) {
+      return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+    } else if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      if (secs > 0) {
+        return `${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''}`;
+      }
+      return `${mins} minute${mins !== 1 ? 's' : ''}`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      const parts: string[] = [];
+      if (hours > 0) {
+        parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+      }
+      if (mins > 0) {
+        parts.push(`${mins} minute${mins !== 1 ? 's' : ''}`);
+      }
+      if (secs > 0 && hours === 0) {
+        parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
+      }
+      return parts.join(' and ');
+    }
   }
 }
 

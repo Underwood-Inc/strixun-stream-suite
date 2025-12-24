@@ -101,15 +101,45 @@ export async function handleRequestOTP(request, env, customerId = null) {
             // Record failed rate limit attempt
             await recordOTPFailureService(emailHash, clientIP, customerId, env);
             
+            // Calculate time until reset
+            const resetTime = new Date(rateLimit.resetAt);
+            const now = new Date();
+            const secondsUntilReset = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+            
+            // Format human-readable reset time
+            let resetMessage = '';
+            if (secondsUntilReset < 60) {
+                resetMessage = `in ${secondsUntilReset} second${secondsUntilReset !== 1 ? 's' : ''}`;
+            } else if (secondsUntilReset < 3600) {
+                const minutes = Math.floor(secondsUntilReset / 60);
+                resetMessage = `in ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+            } else {
+                const hours = Math.floor(secondsUntilReset / 3600);
+                const minutes = Math.floor((secondsUntilReset % 3600) / 60);
+                if (minutes > 0) {
+                    resetMessage = `in ${hours} hour${hours !== 1 ? 's' : ''} and ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+                } else {
+                    resetMessage = `in ${hours} hour${hours !== 1 ? 's' : ''}`;
+                }
+            }
+            
+            // Format reset time for display
+            const resetTimeFormatted = resetTime.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            
             // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc6585#section-4',
                 title: 'Too Many Requests',
                 status: 429,
-                detail: 'Too many requests. Please try again later.',
+                detail: `Too many requests. Please try again ${resetMessage} (at ${resetTimeFormatted}).`,
                 instance: request.url,
-                retry_after: Math.ceil((new Date(rateLimit.resetAt).getTime() - Date.now()) / 1000),
+                retry_after: secondsUntilReset,
                 reset_at: rateLimit.resetAt,
+                reset_at_formatted: resetTimeFormatted,
                 remaining: rateLimit.remaining,
                 reason: rateLimit.reason || 'rate_limit_exceeded',
             }), {
@@ -117,7 +147,7 @@ export async function handleRequestOTP(request, env, customerId = null) {
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/problem+json',
-                    'Retry-After': Math.ceil((new Date(rateLimit.resetAt).getTime() - Date.now()) / 1000).toString(),
+                    'Retry-After': secondsUntilReset.toString(),
                 },
             });
         }

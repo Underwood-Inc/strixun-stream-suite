@@ -102,11 +102,6 @@ export async function handleAuthRoutes(request, path, env) {
         return { response: await authHandlers.handleRefresh(request, env), customerId };
     }
     
-    // Debug: Clear rate limit (for testing)
-    if (path === '/auth/request-otp/clear-rate-limit' && request.method === 'POST') {
-        return { response: await authHandlers.handleClearRateLimit(request, env, customerId), customerId };
-    }
-    
     return null; // Route not matched
 }
 

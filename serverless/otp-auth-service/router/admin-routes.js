@@ -12,6 +12,7 @@ import { requireSuperAdmin } from '../utils/super-admin.js';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
 import * as publicHandlers from '../handlers/public.js';
+import * as debugHandlers from '../handlers/auth/debug.js';
 
 /**
  * Authenticate request using API key or JWT token
@@ -467,6 +468,17 @@ export async function handleAdminRoutes(request, path, env) {
             }), customerId: auth.customerId };
         }
         return { response: await adminHandlers.handleUpdateCustomerStatus(request, env, pathCustomerId, status), customerId: auth.customerId };
+    }
+    
+    // Super-admin only: Clear rate limit endpoint
+    if (path === '/admin/debug/clear-rate-limit' && request.method === 'POST') {
+        const authError = requireSuperAdmin(request, env);
+        if (authError) {
+            return { response: authError, customerId: null };
+        }
+        // Super-admin authenticated, allow rate limit clearing
+        // Note: customerId is null for super-admin operations
+        return { response: await debugHandlers.handleClearRateLimit(request, env, null), customerId: null };
     }
     
     return null; // Route not matched

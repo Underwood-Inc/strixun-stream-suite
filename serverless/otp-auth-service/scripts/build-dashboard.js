@@ -7,21 +7,13 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-console.log('🔨 Building app (includes landing page and dashboard)...');
+console.log('🔨 Processing built files for embedding...');
 
 const rootDir = path.join(__dirname, '..');
 
-// Build the main app (includes both landing page and dashboard)
+// Note: Build should already be done by the parent script (tsc && vite build)
+// This script just processes the built files and generates the assets module
 process.chdir(rootDir);
-
-try {
-  // Run TypeScript compilation and Vite build directly (not build:app to avoid recursion)
-  execSync('pnpm exec tsc && pnpm exec vite build', { stdio: 'inherit' });
-  console.log('✅ App built successfully');
-} catch (error) {
-  console.error('❌ App build failed');
-  process.exit(1);
-}
 
 // Read built files and convert to base64 for embedding
 const distDir = path.join(rootDir, 'dist');
@@ -84,13 +76,17 @@ function getMimeType(filePath) {
   return 'application/octet-stream';
 }
 
+console.log('📂 Reading dist directory...');
 readDirectory(distDir);
 
 // Verify we have files to embed
-if (Object.keys(files).length === 0) {
+const fileCount = Object.keys(files).length;
+if (fileCount === 0) {
   console.error('❌ No files found in dist directory. Build may have failed.');
   process.exit(1);
 }
+
+console.log(`📊 Found ${fileCount} files to embed`);
 
 // Verify index.html exists
 if (!files['index.html']) {
@@ -99,6 +95,8 @@ if (!files['index.html']) {
 }
 
 // Generate landing-page-assets.js module (includes dashboard now)
+console.log('📝 Generating assets module...');
+const startTime = Date.now();
 const output = `// App built files embedded as a module (includes landing page and dashboard)
 // This file is generated automatically when building the app
 // Generated: ${new Date().toISOString()}
@@ -108,7 +106,10 @@ export default ${JSON.stringify(files, null, 2)};
 `;
 
 const outputPath = path.join(__dirname, '..', 'landing-page-assets.js');
+console.log('💾 Writing assets module to disk...');
 fs.writeFileSync(outputPath, output);
+const writeTime = Date.now() - startTime;
+console.log(`⏱️  Generated in ${writeTime}ms`);
 
 console.log(`✅ Generated landing-page-assets.js (${Object.keys(files).length} files)`);
 console.log('🎉 Build complete!');

@@ -3,7 +3,20 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte({
+    onwarn: (warning, handler) => {
+      // Suppress CSS selector warnings during build (they're just warnings, not errors)
+      if (warning.code === 'css-unused-selector') {
+        return;
+      }
+      // Suppress accessibility warnings during build (can be fixed later)
+      if (warning.code?.startsWith('a11y-')) {
+        return;
+      }
+      // Call default handler for other warnings
+      handler(warning);
+    },
+  })],
   css: {
     preprocessorOptions: {
       scss: {

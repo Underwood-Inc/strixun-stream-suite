@@ -201,7 +201,7 @@ async function updateUsageStats(emailHash, ipHash, customerId, success, env) {
  * @param {string} ip - IP address
  * @returns {Promise<string>} Hashed IP
  */
-async function hashIP(ip) {
+export async function hashIP(ip) {
     const encoder = new TextEncoder();
     const data = encoder.encode(ip);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);

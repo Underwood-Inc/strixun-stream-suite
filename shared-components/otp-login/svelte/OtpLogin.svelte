@@ -138,6 +138,10 @@
     return OtpLoginCore.formatCountdown(seconds);
   }
 
+  function formatRateLimitCountdown(seconds: number): string {
+    return OtpLoginCore.formatRateLimitCountdown(seconds);
+  }
+
   function handleKeyPress(e: KeyboardEvent, handler: () => void) {
     if (e.key === 'Enter' && !state.loading) {
       handler();
@@ -181,7 +185,17 @@
 <!-- Content Component -->
 {#snippet OtpLoginContent()}
   {#if state.error}
-    <div class="otp-login-error">{state.error}</div>
+    <div class="otp-login-error">
+      <div class="otp-login-error-message">{state.error}</div>
+      {#if state.rateLimitCountdown > 0}
+        <div class="otp-login-rate-limit-countdown">
+          <span class="otp-login-countdown-icon">⏱️</span>
+          <span class="otp-login-countdown-text">
+            Try again in: <strong>{formatRateLimitCountdown(state.rateLimitCountdown)}</strong>
+          </span>
+        </div>
+      {/if}
+    </div>
   {/if}
 
   {#if state.step === 'email'}
@@ -305,6 +319,48 @@
     color: var(--danger);
     margin-bottom: var(--spacing-lg);
     animation: slide-down 0.3s ease-out;
+  }
+
+  .otp-login-error-message {
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .otp-login-rate-limit-countdown {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid rgba(234, 43, 31, 0.2);
+    color: var(--text);
+    font-size: 0.875rem;
+  }
+
+  .otp-login-countdown-icon {
+    font-size: 1.25rem;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .otp-login-countdown-text {
+    flex: 1;
+  }
+
+  .otp-login-countdown-text strong {
+    color: var(--accent);
+    font-weight: 600;
+    font-family: monospace;
+    font-size: 1rem;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
   }
 
   .otp-login-form {
@@ -435,7 +491,7 @@
     text-align: left;
   }
 
-  .otp-login-modal .otp-login-title {
+  .otp-login-modal h2 {
     margin: 0;
     font-size: 24px;
     color: var(--text);
