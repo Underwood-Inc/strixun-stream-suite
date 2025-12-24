@@ -21,12 +21,12 @@
    * ```
    */
 
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { storage } from '../../../../modules/storage';
-  import { ResizableZoneController, type ResizableZoneConfig } from '../ResizableZone/ResizableZone';
+  import { ChevronButton } from '../ChevronButton';
 
   export let position: 'left' | 'right' = 'left';
-  export let collapsedWidth: number = 40;
+  export let collapsedWidth: number = 0;
   export let expandedWidth: number = 320;
   export let minWidth: number = 200;
   export let maxWidth: number = 600;
@@ -39,7 +39,7 @@
   let portalContainer: HTMLDivElement | null = null;
   
   let isExpanded = defaultExpanded;
-  let currentWidth = expandedWidth;
+  let currentWidth = defaultExpanded ? expandedWidth : collapsedWidth;
   let isResizing = false;
   let startX = 0;
   let startWidth = 0;
@@ -66,16 +66,25 @@
   let panelStyleObserver: MutationObserver | null = null;
   const BOUNDS_UPDATE_THROTTLE = 16; // ~60fps
 
-  // Load persisted state
-  $: if (storageKey) {
+  // Load persisted state on mount (not reactive to avoid conflicts)
+  function loadPersistedState(): void {
+    if (!storageKey) return;
+    
     const savedState = storage.get(storageKey);
     if (savedState && typeof savedState === 'object') {
       const state = savedState as { expanded?: boolean; width?: number };
       if (state.expanded !== undefined) {
         isExpanded = state.expanded;
       }
-      if (state.width !== undefined) {
+      // Set width based on expanded state
+      // When collapsed, always use collapsedWidth (never use saved width)
+      // When expanded, use saved width if available and valid, otherwise use expandedWidth
+      if (!isExpanded) {
+        currentWidth = 36;
+      } else if (state.width !== undefined) {
         currentWidth = Math.max(minWidth, Math.min(maxWidth, state.width));
+      } else {
+        currentWidth = expandedWidth;
       }
     }
   }
@@ -274,9 +283,10 @@
 
   function saveState(): void {
     if (storageKey) {
+      // Only save width when expanded - collapsed always uses collapsedWidth
       storage.set(storageKey, {
         expanded: isExpanded,
-        width: currentWidth
+        width: isExpanded ? currentWidth : undefined
       });
     }
   }
@@ -480,6 +490,9 @@
   }
 
   onMount(async () => {
+    // Load persisted state first, before DOM operations
+    loadPersistedState();
+    
     // Create portal container at body level
     portalContainer = document.createElement('div');
     portalContainer.id = `floating-panel-portal-${position}`;
@@ -820,26 +833,33 @@
     }
   });
 
-  // Update width when expanded state changes
-  $: if (!isExpanded) {
-    currentWidth = collapsedWidth;
-    // Update bounds after width change to ensure panel stays visible (only if not resizing or locked)
-    if (panel && !isResizing && panel.getAttribute('data-bounds-locked') !== 'true') {
-      requestAnimationFrame(() => {
-        if (!isResizing && panel && panel.getAttribute('data-bounds-locked') !== 'true') {
-          updatePanelBounds();
-        }
-      });
-    }
-  } else if (isExpanded && currentWidth === collapsedWidth) {
-    currentWidth = expandedWidth;
-    // Update bounds after width change to ensure panel stays visible (only if not resizing or locked)
-    if (panel && !isResizing && panel.getAttribute('data-bounds-locked') !== 'true') {
-      requestAnimationFrame(() => {
-        if (!isResizing && panel && panel.getAttribute('data-bounds-locked') !== 'true') {
-          updatePanelBounds();
-        }
-      });
+  // Update width when expanded state or collapsedWidth/expandedWidth changes
+  // The reactive block tracks all variables used inside, including collapsedWidth
+  $: {
+    // Force tracking of collapsedWidth by referencing it
+    const _ = collapsedWidth;
+    const __ = expandedWidth;
+    
+    if (!isExpanded) {
+      currentWidth = 36;
+      // Update bounds after width change to ensure panel stays visible (only if not resizing or locked)
+      if (panel && !isResizing && panel.getAttribute('data-bounds-locked') !== 'true') {
+        requestAnimationFrame(() => {
+          if (!isResizing && panel && panel.getAttribute('data-bounds-locked') !== 'true') {
+            updatePanelBounds();
+          }
+        });
+      }
+    } else if (isExpanded && currentWidth === collapsedWidth) {
+      currentWidth = expandedWidth;
+      // Update bounds after width change to ensure panel stays visible (only if not resizing or locked)
+      if (panel && !isResizing && panel.getAttribute('data-bounds-locked') !== 'true') {
+        requestAnimationFrame(() => {
+          if (!isResizing && panel && panel.getAttribute('data-bounds-locked') !== 'true') {
+            updatePanelBounds();
+          }
+        });
+      }
     }
   }
 </script>
@@ -852,18 +872,12 @@
   style="--panel-width: {currentWidth}px; {isResizing && savedTop > 0 && savedHeight > 0 ? `top: ${savedTop}px; height: ${savedHeight}px; display: block; visibility: visible; opacity: 1;` : ''}"
 >
   <div class="floating-panel__header">
-    <button
-      class="floating-panel__toggle"
-      on:click={toggleExpanded}
-      aria-label={isExpanded ? 'Collapse panel' : 'Expand panel'}
-      type="button"
-    >
-      {#if position === 'left'}
-        {isExpanded ? '‹' : '›'}
-      {:else}
-        {isExpanded ? '›' : '‹'}
-      {/if}
-    </button>
+    <ChevronButton
+      direction={position === 'left' ? (isExpanded ? 'left' : 'right') : (isExpanded ? 'right' : 'left')}
+      onClick={toggleExpanded}
+      ariaLabel={isExpanded ? 'Collapse panel' : 'Expand panel'}
+      size="small"
+    />
   </div>
   
   {#if isExpanded}
@@ -930,47 +944,14 @@
   }
 
   .floating-panel:not(.floating-panel--expanded) .floating-panel__header {
-    padding: 4px;
-  }
+    padding: 0;
+    margin-left: auto;
 
-  .floating-panel__toggle {
-    width: 32px;
-    height: 32px;
-    background: var(--border);
-    border: none;
-    border-radius: 4px;
-    color: var(--text);
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    @include gpu-accelerated;
-    flex-shrink: 0;
-
-    &:hover {
-      background: var(--accent);
-      color: #000;
-      transform: scale(1.1);
-    }
-
-    &:active {
-      transform: scale(0.95);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
+    button {
+      width: 100%;
     }
   }
 
-  .floating-panel:not(.floating-panel--expanded) .floating-panel__toggle {
-    width: 28px;
-    height: 28px;
-    font-size: 18px;
-  }
 
   .floating-panel__content {
     flex: 1;

@@ -24,6 +24,7 @@
   import LogEntry from './LogEntry.svelte';
   import Tooltip from './Tooltip.svelte';
   import VirtualList from './VirtualList.svelte';
+  import { ChevronButton } from './primitives/ChevronButton';
   
   let collapsed = writable(false);
   let filterExpanded = false;
@@ -249,9 +250,11 @@
 <div class="split-log" bind:this={splitLog}>
   <div class="split-log__header">
     <Tooltip text="Toggle Log" position="top">
-      <button class="split-log__toggle" on:click={toggleCollapse}>
-        {$collapsed ? '▼' : '▲'}
-      </button>
+      <ChevronButton
+        direction={$collapsed ? 'down' : 'up'}
+        onClick={toggleCollapse}
+        ariaLabel="Toggle Log"
+      />
     </Tooltip>
     <span class="split-log__title">Activity Log</span>
     

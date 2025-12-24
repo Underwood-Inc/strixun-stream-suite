@@ -6,6 +6,7 @@
 
 @use 'variables' as *;
 @use 'mixins' as *;
+@use 'animations' as *;
 
 // ============ Reset ============
 * {
@@ -91,6 +92,36 @@ button {
       background: rgba(237, 174, 73, 0.1);
       color: var(--accent-light);
       text-decoration: none;
+    }
+  }
+  
+  &.btn-icon {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 0 var(--border);
+    position: relative;
+    overflow: hidden;
+    
+    @include ripple-effect(rgba(255, 255, 255, 0.2));
+    
+    &:hover {
+      background: var(--border);
+      color: var(--text);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 0 var(--border);
+    }
+    
+    &:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 var(--border);
     }
   }
 }

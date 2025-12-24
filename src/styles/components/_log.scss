@@ -26,18 +26,7 @@
   }
   
   &__toggle {
-    background: transparent;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      background: var(--border);
-      color: var(--text);
-    }
+    // btn-icon styles handle all styling
   }
   
   &__search {
