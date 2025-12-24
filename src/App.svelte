@@ -5,7 +5,7 @@
    * Main application component that orchestrates all pages
    */
   
-  import { ActivityLog, AdCarousel, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchSupportCard } from '@components';
+  import { ActivityLog, AdCarousel, AuthScreen, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchSupportCard } from '@components';
   import { onMount } from 'svelte';
   import Chat from './pages/Chat.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -21,10 +21,12 @@
   
   import { animate } from './core/animations';
   import { initAnimationPreferences } from './core/animations/store';
-  import { initializeApp } from './modules/bootstrap';
+  import { initializeApp, completeInitializationAfterAuth } from './modules/bootstrap';
+  import { authRequired, isAuthenticated } from './stores/auth';
   import { currentPage } from './stores/navigation';
   
   let pageWrapper: HTMLDivElement;
+  let hasCompletedPostAuthInit = false;
   
   // Initialize app on mount
   onMount(async () => {
@@ -40,8 +42,30 @@
       // Still show the app even if initialization fails
     }
   });
+  
+  // Watch for auth state changes - complete initialization when user authenticates
+  $: {
+    // Only trigger if authenticated, not already completed, and auth is no longer required
+    if ($isAuthenticated && !hasCompletedPostAuthInit && !$authRequired) {
+      // Set flag immediately to prevent duplicate calls
+      hasCompletedPostAuthInit = true;
+      // Call asynchronously to avoid blocking reactive updates
+      Promise.resolve().then(() => {
+        completeInitializationAfterAuth().catch(error => {
+          // Reset flag on error so it can retry
+          hasCompletedPostAuthInit = false;
+          if (typeof window !== 'undefined' && (window as any).addLogEntry) {
+            (window as any).addLogEntry(`Failed to complete post-auth initialization: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
+          }
+        });
+      });
+    }
+  }
 </script>
 
+{#if $authRequired}
+  <AuthScreen />
+{:else}
 <div class="app">
   <Header />
   <InfoBar />
@@ -120,6 +144,7 @@
     <TwitchSupportCard channelUrl="https://www.twitch.tv/strixun" />
   </AdCarousel>
 </div>
+{/if}
 
 <style lang="scss">
   @use '@styles/main';

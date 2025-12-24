@@ -35,6 +35,7 @@ export { default as AdCarousel } from './primitives/AdCarousel';
 
 // Auth Components
 export { default as LoginModal } from './auth/LoginModal.svelte';
+export { default as AuthScreen } from './AuthScreen.svelte';
 
 // Simple Text Editor
 export { default as SimpleTextEditor } from './SimpleTextEditor.svelte';

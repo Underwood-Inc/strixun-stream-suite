@@ -20,93 +20,14 @@ import { TwitchAPI } from './twitch-api';
 import * as App from './app';
 
 /**
- * Show authentication blocker UI when encryption is enabled but user is not authenticated
+ * Set encryption enabled state in store
+ * This allows the App component to reactively check if auth is required
  */
-function showAuthenticationBlocker(): void {
-  // Create blocker overlay
-  const blocker = document.createElement('div');
-  blocker.id = 'auth-blocker';
-  blocker.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.95);
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  `;
-  
-  blocker.innerHTML = `
-    <div style="text-align: center; max-width: 500px; padding: 40px;">
-      <h1 style="font-size: 2em; margin-bottom: 20px; color: var(--error, #ff4444);">🔐 Authentication Required</h1>
-      <p style="font-size: 1.2em; margin-bottom: 30px; color: #ccc;">
-        Encryption is enabled for this application. You must authenticate via email OTP to access the app.
-      </p>
-      <p style="font-size: 1em; margin-bottom: 40px; color: #999;">
-        Please sign in using your email address to continue.
-      </p>
-      <button 
-        id="auth-blocker-login-btn"
-        style="
-          padding: 16px 32px;
-          font-size: 1.1em;
-          background: var(--primary, #007bff);
-          color: #fff;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 600;
-        "
-      >
-        Sign In with Email
-      </button>
-    </div>
-  `;
-  
-  document.body.appendChild(blocker);
-  
-  // Handle login button click - navigate to Setup page and trigger login modal
-  const loginBtn = blocker.querySelector('#auth-blocker-login-btn');
-  if (loginBtn) {
-    loginBtn.addEventListener('click', () => {
-      // Navigate to Setup page
-      navigateTo('setup');
-      
-      // Wait for page to load, then trigger login modal
-      setTimeout(() => {
-        // Find and click the cloud backup login button by ID
-        const cloudLoginBtn = document.getElementById('cloud-backup-login-btn') as HTMLButtonElement;
-        if (cloudLoginBtn) {
-          cloudLoginBtn.click();
-        } else {
-          // Fallback: try to find button by text content
-          const buttons = document.querySelectorAll('.setup-page button');
-          for (const btn of buttons) {
-            if (btn.textContent?.includes('Sign In to Use Cloud Backup')) {
-              (btn as HTMLButtonElement).click();
-              break;
-            }
-          }
-        }
-        
-        // Remove blocker after navigation
-        blocker.remove();
-      }, 500);
-    });
-  }
-  
-  // Prevent any interaction with the app
-  blocker.addEventListener('click', (e) => {
-    if (e.target === blocker) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  });
+async function setEncryptionState(): Promise<void> {
+  const { isEncryptionEnabled } = await import('../core/services/encryption');
+  const { encryptionEnabled } = await import('../stores/auth');
+  const enabled = await isEncryptionEnabled();
+  encryptionEnabled.set(enabled);
 }
 
 /**
@@ -137,39 +58,45 @@ export async function initializeApp(): Promise<void> {
     loadAuthState();
     addLogEntry('Authentication state loaded', 'info', 'AUTH');
     
-    // CRITICAL: If encryption is enabled but no auth token exists, BLOCK APP ACCESS
-    // Encryption requires JWT token (email OTP auth) - app cannot function without it
+    // Set encryption enabled state in store (for reactive auth checks)
+    await setEncryptionState();
+    
+    // CRITICAL: If encryption is enabled but no auth token exists, auth is required
+    // The App component will reactively show AuthScreen instead of the main app
     const { isEncryptionEnabled } = await import('../core/services/encryption');
     const encryptionEnabled = await isEncryptionEnabled();
     const authToken = getAuthToken();
     
     if (encryptionEnabled && !authToken) {
-      // Encryption is enabled but user is not authenticated - BLOCK ACCESS
-      addLogEntry('❌ BLOCKED: Encryption enabled but user not authenticated', 'error', 'AUTH');
-      addLogEntry('User must authenticate via email OTP to access the application', 'warning', 'AUTH');
-      console.error('[Bootstrap] ❌ BLOCKED: Encryption enabled but user not authenticated');
-      console.error('[Bootstrap] User must authenticate via email OTP to access the application');
+      // Encryption is enabled but user is not authenticated - auth required
+      addLogEntry('⚠️ AUTH REQUIRED: Encryption enabled but user not authenticated', 'warning', 'AUTH');
+      addLogEntry('User must authenticate via email OTP to access the application', 'info', 'AUTH');
+      console.warn('[Bootstrap] ⚠️ AUTH REQUIRED: Encryption enabled but user not authenticated');
+      console.warn('[Bootstrap] User must authenticate via email OTP to access the application');
       
-      // Show authentication blocker UI
-      showAuthenticationBlocker();
-      
-      // Stop initialization - app cannot proceed without auth when encryption is enabled
-      return;
+      // Continue initialization anyway - app will show AuthScreen instead of main app
+      // Once user authenticates, everything will be ready
     }
     
-    // Initialize modules in order
+    // Initialize modules in order (even if auth is required, so app is ready when user logs in)
     await initializeModules();
     
-    // Complete app initialization (rendering, UI state, etc.)
-    await completeAppInitialization();
-    
-    // Restore saved page
-    restorePage();
-    
-    // Load saved credentials and auto-connect
-    await loadCredentialsAndConnect();
-    
-    addLogEntry('Application initialized', 'success', 'INIT');
+    // Only complete app initialization if auth is not required
+    // When auth is required, the app will show AuthScreen and initialization will continue after login
+    if (!(encryptionEnabled && !authToken)) {
+      // Complete app initialization (rendering, UI state, etc.)
+      await completeAppInitialization();
+      
+      // Restore saved page
+      restorePage();
+      
+      // Load saved credentials and auto-connect
+      await loadCredentialsAndConnect();
+      
+      addLogEntry('Application initialized', 'success', 'INIT');
+    } else {
+      addLogEntry('Application ready - waiting for authentication', 'info', 'AUTH');
+    }
   } catch (error) {
     addLogEntry(`Initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
   }
@@ -312,15 +239,35 @@ async function initializeModules(): Promise<void> {
   // (Already done in app.ts, but ensure it's available)
 }
 
+// Track if app initialization has been completed to prevent duplicate execution
+let appInitializationCompleted = false;
+let appInitializationInProgress = false;
+
 /**
  * Complete application initialization
  * This runs after all modules are initialized
  */
 export async function completeAppInitialization(): Promise<void> {
-  const { addLogEntry } = await import('../stores/activity-log');
-  addLogEntry('Completing application initialization...', 'info', 'INIT');
+  // Prevent duplicate execution
+  if (appInitializationCompleted) {
+    return;
+  }
+  
+  // Prevent concurrent execution
+  if (appInitializationInProgress) {
+    // Wait for the in-progress initialization to complete
+    while (appInitializationInProgress) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return;
+  }
+  
+  appInitializationInProgress = true;
   
   try {
+    const { addLogEntry } = await import('../stores/activity-log');
+    addLogEntry('Completing application initialization...', 'info', 'INIT');
+    
     // Load source opacity configs
     Sources.loadSourceOpacityConfigs();
     
@@ -425,11 +372,38 @@ export async function completeAppInitialization(): Promise<void> {
       });
     }
     
-    const { addLogEntry } = await import('../stores/activity-log');
     addLogEntry('Application initialization complete', 'success', 'INIT');
+    appInitializationCompleted = true;
   } catch (error) {
     const { addLogEntry } = await import('../stores/activity-log');
     addLogEntry(`App initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
+    // Don't set completed flag on error so it can retry if needed
+  } finally {
+    appInitializationInProgress = false;
+  }
+}
+
+/**
+ * Complete app initialization after authentication
+ * This is called when user successfully authenticates
+ */
+export async function completeInitializationAfterAuth(): Promise<void> {
+  const { addLogEntry } = await import('../stores/activity-log');
+  try {
+    addLogEntry('Completing initialization after authentication...', 'info', 'AUTH');
+    
+    // Complete app initialization (rendering, UI state, etc.)
+    await completeAppInitialization();
+    
+    // Restore saved page
+    restorePage();
+    
+    // Load saved credentials and auto-connect
+    await loadCredentialsAndConnect();
+    
+    addLogEntry('Application initialized after authentication', 'success', 'INIT');
+  } catch (error) {
+    addLogEntry(`Post-auth initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
   }
 }
 

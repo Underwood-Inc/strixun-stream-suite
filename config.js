@@ -200,6 +200,15 @@ window.testWorkerApi = async function() {
     }
     
     try {
+        // Skip health check if API URL is a placeholder or non-existent domain
+        if (apiUrl.includes('%%') || apiUrl.includes('idling.app')) {
+            return {
+                success: false,
+                error: 'API not configured',
+                message: 'API server URL not configured for local development'
+            };
+        }
+        
         const response = await fetch(`${apiUrl}/health`, {
             method: 'GET',
             cache: 'no-store'

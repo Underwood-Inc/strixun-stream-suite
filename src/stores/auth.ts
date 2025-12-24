@@ -22,12 +22,24 @@ export const user: Writable<User | null> = writable(null);
 export const token: Writable<string | null> = writable(null);
 export const csrfToken: Writable<string | null> = writable(null);
 
+// Store for encryption enabled state (set by bootstrap)
+export const encryptionEnabled: Writable<boolean> = writable(false);
+
 // Derived store for checking if token is expired
 export const isTokenExpired: Readable<boolean> = derived(
   user,
   ($user) => {
     if (!$user) return true;
     return new Date($user.expiresAt) < new Date();
+  }
+);
+
+// Derived store for checking if authentication is required
+// Auth is required if encryption is enabled but user is not authenticated
+export const authRequired: Readable<boolean> = derived(
+  [encryptionEnabled, isAuthenticated],
+  ([$encryptionEnabled, $isAuthenticated]) => {
+    return $encryptionEnabled && !$isAuthenticated;
   }
 );
 
@@ -166,7 +178,7 @@ function decodeJWTPayload(jwt: string): { csrf?: string; [key: string]: unknown 
 /**
  * Get API base URL from config
  */
-function getApiUrl(): string {
+export function getApiUrl(): string {
   // Try to get from window config (injected during build)
   if (typeof window !== 'undefined' && (window as any).getWorkerApiUrl) {
     return (window as any).getWorkerApiUrl() || '';

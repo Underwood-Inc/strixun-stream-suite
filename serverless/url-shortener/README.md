@@ -13,6 +13,7 @@ A free, self-hosted URL shortener built with Cloudflare Workers and integrated w
 - ✅ **Secure** - JWT-based authentication, CORS support, security headers
 - ✅ **Fast** - Edge computing with Cloudflare Workers
 - ✅ **Free** - Uses Cloudflare's free tier (100,000 requests/day)
+- ✅ **Standalone Web Interface** - Full-featured HTML page with integrated OTP auth (no main app required)
 
 ## Setup
 
@@ -67,6 +68,84 @@ A free, self-hosted URL shortener built with Cloudflare Workers and integrated w
 2. Go to Settings → Triggers → Routes
 3. Add custom domain route (e.g., `s.yourdomain.com/*` or `short.yourdomain.com/*`)
 4. Update DNS records as instructed by Cloudflare
+
+## Standalone Web Interface
+
+A fully self-contained HTML page (`standalone.html`) is included that provides a complete URL shortener interface with integrated OTP authentication. Users can access this page directly without needing to load the main streaming suite application.
+
+### Features
+
+- ✅ **Complete OTP Authentication Flow** - Request and verify OTP codes directly in the page
+- ✅ **URL Management** - Create, list, and delete short URLs
+- ✅ **Modern UI** - Clean, responsive design with dark theme
+- ✅ **Token Persistence** - JWT tokens stored in localStorage for automatic sign-in
+- ✅ **Real-time Feedback** - Toast notifications for all actions
+- ✅ **Mobile Responsive** - Works on all device sizes
+
+### Deployment Options
+
+#### Option 1: Cloudflare Pages (Recommended)
+
+1. **Create a Cloudflare Pages project:**
+   ```bash
+   # In the url-shortener directory
+   mkdir pages
+   cp standalone.html pages/index.html
+   ```
+
+2. **Deploy to Cloudflare Pages:**
+   - Go to Cloudflare Dashboard → Pages
+   - Create a new project
+   - Connect your repository or upload the `pages` folder
+   - Set build command: (none needed, static HTML)
+   - Set output directory: `pages`
+
+3. **Configure custom domain:**
+   - In Pages settings, add custom domain (e.g., `short.yourdomain.com`)
+   - DNS will be automatically configured
+
+#### Option 2: Static Hosting
+
+Simply upload `standalone.html` to any static hosting service:
+- GitHub Pages
+- Netlify
+- Vercel
+- Your own web server
+
+#### Option 3: Serve from Worker (Advanced)
+
+You can modify the worker to serve the HTML file directly, but Cloudflare Pages is recommended for better performance.
+
+### Configuration
+
+Before using the standalone page, update the API URLs in `standalone.html`:
+
+```javascript
+// Update these constants at the top of the <script> section
+const OTP_AUTH_API_URL = 'https://auth.idling.app';  // Your OTP auth service URL
+const URL_SHORTENER_API_URL = 'https://s.idling.app'; // Your URL shortener service URL
+```
+
+### Usage
+
+1. **Open the standalone page** in a web browser
+2. **Enter your email address** and click "Send OTP Code"
+3. **Check your email** for the 6-digit OTP code
+4. **Enter the OTP code** and click "Verify & Sign In"
+5. **Start creating short URLs!**
+
+The page will automatically:
+- Store your authentication token in localStorage
+- Remember you for future visits
+- Load your existing short URLs
+- Handle token expiration gracefully
+
+### Accessing the Standalone Page
+
+Once deployed, users can access the URL shortener at:
+- `https://short.yourdomain.com` (if using Cloudflare Pages with custom domain)
+- `https://your-pages-project.pages.dev` (Cloudflare Pages default URL)
+- Or wherever you've hosted the HTML file
 
 ## API Reference
 

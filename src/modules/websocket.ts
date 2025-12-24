@@ -128,6 +128,17 @@ export async function loadCredentials(): Promise<boolean> {
     // Load password from cloud if authenticated
     if (get(isAuthenticated)) {
       try {
+        // Check if API URL is configured before attempting fetch
+        // Use window.getWorkerApiUrl to check if API is actually configured
+        const apiUrl = typeof window !== 'undefined' && (window as any).getWorkerApiUrl 
+          ? (window as any).getWorkerApiUrl() 
+          : null;
+        if (!apiUrl || apiUrl.includes('idling.app') || apiUrl.includes('%%')) {
+          // API not configured or using placeholder - skip cloud credential load
+          // This is expected in local development
+          return true; // Has host/port at least
+        }
+        
         const response = await authenticatedFetch('/obs-credentials/load');
         if (response.ok) {
           const data = await response.json();
@@ -148,10 +159,19 @@ export async function loadCredentials(): Promise<boolean> {
           log(`Failed to load credentials from cloud: ${errorData.error || 'Unknown error'}`, 'warning');
         }
       } catch (e: any) {
-        // Only log errors that aren't expected (404 is expected when no credentials exist)
-        if (e.message !== 'Not authenticated' && !e.message.includes('404')) {
-          log('Failed to load credentials from cloud: ' + e.message, 'error');
+        // Suppress expected errors for local development
+        const errorMsg = e.message || String(e);
+        const isExpectedError = 
+          errorMsg === 'Not authenticated' ||
+          errorMsg.includes('404') ||
+          errorMsg.includes('API URL not configured') ||
+          errorMsg.includes('ERR_NAME_NOT_RESOLVED') ||
+          errorMsg.includes('Failed to fetch');
+        
+        if (!isExpectedError) {
+          log('Failed to load credentials from cloud: ' + errorMsg, 'error');
         }
+        // Silently continue - local storage credentials are still available
       }
     }
     
