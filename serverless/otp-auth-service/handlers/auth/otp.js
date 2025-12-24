@@ -556,7 +556,7 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             // Standard JWT Claims
             sub: userId, // Subject (user identifier)
             iss: 'auth.idling.app', // Issuer
-            aud: customerId || 'default', // Audience (customer/tenant)
+            aud: resolvedCustomerId || 'default', // Audience (customer/tenant)
             exp: Math.floor(expiresAt.getTime() / 1000), // Expiration time
             iat: now, // Issued at
             jti: crypto.randomUUID ? crypto.randomUUID() : // JWT ID (unique token identifier)
@@ -569,7 +569,7 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             
             // Custom Claims
             userId, // Backward compatibility
-            customerId: customerId || null, // Multi-tenant customer ID
+            customerId: resolvedCustomerId || null, // Multi-tenant customer ID
             csrf: csrfToken, // CSRF token included in JWT
         };
         
@@ -577,7 +577,7 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         const accessToken = await createJWT(tokenPayload, jwtSecret);
         
         // Store session with customer isolation
-        const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+        const sessionKey = getCustomerKey(resolvedCustomerId, `session_${userId}`);
         await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify({
             userId,
             email: emailLower,
