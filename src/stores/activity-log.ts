@@ -46,10 +46,16 @@ export const visibleLogEntries = derived(
   ([entries, filters]) => {
     let filtered = entries;
     
-    // Filter by type - only filter if not all types are active
-    if (filters.activeFilters.size < filters.allFilters.size) {
+    // Filter by type - only filter if some (but not all) types are active
+    // If all are active OR all are inactive, show everything (no filtering)
+    const hasSomeFilters = filters.activeFilters.size > 0;
+    const hasAllFilters = filters.activeFilters.size === filters.allFilters.size;
+    
+    if (hasSomeFilters && !hasAllFilters) {
+      // Some filters are active but not all - filter by active filters
       filtered = filtered.filter(entry => filters.activeFilters.has(entry.type));
     }
+    // Otherwise: all active (show all) or none active (show all) - no filtering needed
     
     // Filter by search query with advanced syntax
     if (filters.searchQuery.trim()) {

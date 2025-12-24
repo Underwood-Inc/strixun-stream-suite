@@ -308,7 +308,7 @@ export function connect(): void {
     ws.onmessage = (e) => handleMessage(JSON.parse(e.data), password);
     ws.onerror = (e) => { 
       log('Connection error', 'error');
-      console.log('WebSocket error:', e);
+      // Error already logged via log() function
     };
     ws.onclose = (e) => { 
       const wasConnected = get(connected);
@@ -330,7 +330,7 @@ export function connect(): void {
       // Log close reason for debugging
       const reason = e.code === 1000 ? 'normal' : e.code === 1006 ? 'abnormal' : `code ${e.code}`;
       log(`Disconnected (${reason})`, wasConnected ? 'error' : 'info');
-      console.log('WebSocket closed:', e.code, e.reason);
+      // Close reason already logged via log() function
       
       // Only auto-reconnect on abnormal close, not if user disconnected
       if (wasConnected && e.code !== 1000 && storage.getRaw('obs_remember') === 'true') {
@@ -427,7 +427,7 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
   } else if (data.op === 5) { // Event
     // Log ALL CustomEvents before filtering
     if (data.d?.eventType === 'CustomEvent') {
-      console.log('[RAW CustomEvent]', JSON.stringify(data.d, null, 2));
+      // CustomEvent logging can be enabled via debug flag
     }
     handleEvent(data.d);
   }
@@ -439,7 +439,7 @@ async function handleMessage(data: OBSMessage, password: string): Promise<void> 
 function handleEvent(event: OBSEvent): void {
   // Debug: log all events to console (verbose mode)
   if (event.eventType !== 'SceneItemTransformChanged') { // Skip noisy events
-    console.log('[OBS Event]', event.eventType, event.eventData);
+    // Event logging can be enabled via debug flag
   }
   
   if (event.eventType === 'CurrentProgramSceneChanged') {
@@ -489,9 +489,9 @@ function handleEvent(event: OBSEvent): void {
               timestamp: timestamp
             };
             localStorage.setItem('text_cycler_msg_' + configId, JSON.stringify(messageData));
-            console.log('[Text Cycler] OBS dock forwarded to localStorage:', configId, message.type);
+            // Text Cycler forwarding logged via log() if needed
           } catch (e) {
-            console.warn('[Text Cycler] Failed to forward:', e);
+            log(`[Text Cycler] Failed to forward: ${e instanceof Error ? e.message : String(e)}`, 'warning');
           }
         }
       }
@@ -539,8 +539,11 @@ async function sha256(msg: string): Promise<string> {
 function log(msg: string, type: string = 'info'): void {
   if ((window as any).App?.log) {
     (window as any).App.log(msg, type);
-  } else {
-    console.log(`[${type}] ${msg}`);
+  } else if ((window as any).addLogEntry) {
+    const logType = (type === 'success' || type === 'error' || type === 'warning' || type === 'debug') 
+      ? type as 'info' | 'success' | 'error' | 'warning' | 'debug'
+      : 'info';
+    (window as any).addLogEntry(msg, logType);
   }
 }
 

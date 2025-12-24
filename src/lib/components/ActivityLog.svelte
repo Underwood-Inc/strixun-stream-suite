@@ -12,7 +12,6 @@
    */
   
   import { onDestroy, onMount, tick } from 'svelte';
-  import { writable } from 'svelte/store';
   import { storage } from '../../modules/storage';
   import {
     addLogEntry,
@@ -26,7 +25,7 @@
   import VirtualList from './VirtualList.svelte';
   import { ChevronButton } from './primitives/ChevronButton';
   
-  let collapsed = writable(false);
+  let collapsed = false;
   let filterExpanded = false;
   
   function toggleFilters(): void {
@@ -42,15 +41,51 @@
   let resizeObserver: ResizeObserver | null = null;
   
   // Helper to cast item to LogEntry (for slot typing)
-  function asLogEntry(item: unknown): import('../stores/activity-log').LogEntry {
-    return item as import('../stores/activity-log').LogEntry;
+  function asLogEntry(item: unknown): import('../../stores/activity-log').LogEntry {
+    return item as import('../../stores/activity-log').LogEntry;
   }
   
   onMount(async () => {
+    // Migrate any existing DOM-based log entries to the store
+    // This needs to happen BEFORE the component renders to avoid showing old entries
+    await tick();
+    const logElement = document.getElementById('log');
+    if (logElement) {
+      const domEntries = Array.from(logElement.querySelectorAll('.log-entry'));
+      if (domEntries.length > 0) {
+        // Parse existing DOM entries and add them to the store (in reverse order to maintain chronological order)
+        const entriesToMigrate: Array<{ message: string; type: 'info' | 'success' | 'error' | 'warning' | 'debug' }> = [];
+        
+        domEntries.forEach((entry) => {
+          const textEl = entry.querySelector('.log-entry__text');
+          if (textEl) {
+            const message = textEl.textContent || '';
+            const className = entry.className || '';
+            let type: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
+            if (className.includes('success')) type = 'success';
+            else if (className.includes('error')) type = 'error';
+            else if (className.includes('warning')) type = 'warning';
+            else if (className.includes('debug')) type = 'debug';
+            
+            entriesToMigrate.push({ message, type });
+          }
+        });
+        
+        // Add entries to store in reverse order (oldest first, so they appear at bottom)
+        for (let i = entriesToMigrate.length - 1; i >= 0; i--) {
+          const { message, type } = entriesToMigrate[i];
+          addLogEntry(message, type);
+        }
+        
+        // Clear the DOM entries after migration
+        logElement.innerHTML = '';
+      }
+    }
+    
     // Restore collapsed state
     const saved = storage.get('ui_split_panel') as { collapsed?: boolean; height?: number } | null;
     if (saved?.collapsed) {
-      collapsed.set(true);
+      collapsed = true;
       await tick();
       if (splitLog) {
         splitLog.classList.add('collapsed');
@@ -84,7 +119,7 @@
     
     // Update log container height when split log resizes
     resizeObserver = new ResizeObserver(entries => {
-      if (!$collapsed && entries[0]) {
+      if (!collapsed && entries[0]) {
         logContainerHeight = entries[0].contentRect.height - 34;
       }
     });
@@ -95,7 +130,7 @@
   });
   
   function handleResizeStart(e: MouseEvent): void {
-    if ($collapsed) return;
+    if (collapsed) return;
     e.preventDefault();
     e.stopPropagation();
     isResizing = true;
@@ -192,11 +227,11 @@
       handleResizeEnd();
     }
     
-    const currentCollapsed = $collapsed;
+    const currentCollapsed = collapsed;
     const newVal = !currentCollapsed;
     
     // Set state immediately for instant UI update
-    collapsed.set(newVal);
+    collapsed = newVal;
     
     let savedHeight = 200;
     if (splitLog && currentCollapsed === false) {
@@ -239,8 +274,13 @@
   }
   
   function clearLog(): void {
-    clearLogEntries();
-    addLogEntry('Log cleared', 'info', 'CLEARED');
+    try {
+      clearLogEntries();
+      addLogEntry('Log cleared', 'info', 'CLEARED');
+    } catch (error) {
+      // Error already handled, just log to console as fallback
+      console.error('[ActivityLog] Error clearing log:', error);
+    }
   }
   
   // Toggle filter is now handled by the reusable filter state system
@@ -251,14 +291,14 @@
   <div class="split-log__header">
     <Tooltip text="Toggle Log" position="top">
       <ChevronButton
-        direction={$collapsed ? 'down' : 'up'}
+        direction={collapsed ? 'down' : 'up'}
         onClick={toggleCollapse}
         ariaLabel="Toggle Log"
       />
     </Tooltip>
     <span class="split-log__title">Activity Log</span>
     
-    {#if !$collapsed}
+    {#if !collapsed}
       <div class="split-log__actions">
         <button class="split-log__clear btn-link" on:click={clearLog}>Clear</button>
         <div class="split-log__actions-spacer"></div>
@@ -274,7 +314,7 @@
     {/if}
   </div>
   
-  {#if !$collapsed}
+  {#if !collapsed}
     <div class="split-log__body">
       <ActivityLogFilterAside bind:expanded={filterExpanded} />
       <div class="split-log__content" id="log">

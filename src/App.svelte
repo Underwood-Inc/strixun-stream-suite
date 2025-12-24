@@ -32,7 +32,10 @@
       // Initialize animation preferences
       initAnimationPreferences();
     } catch (error) {
-      console.error('[App] Failed to initialize:', error);
+      // Log error - use store if available
+      if (typeof window !== 'undefined' && (window as any).addLogEntry) {
+        (window as any).addLogEntry(`Failed to initialize: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
+      }
       // Still show the app even if initialization fails
     }
   });

@@ -32,7 +32,10 @@ import './modules/websocket';
 
 // Initialize core architecture
 initializeCore().catch(error => {
-  console.error('[Main] Failed to initialize core:', error);
+  // Log error - use store if available
+  if (typeof window !== 'undefined' && (window as any).addLogEntry) {
+    (window as any).addLogEntry(`Failed to initialize core: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
+  }
 });
 
 // Initialize the app using Svelte 5 mount API

@@ -586,7 +586,8 @@ export function restoreActiveTab(): void {
 }
 
 export function log(msg: string, type: string = 'info', flair?: string, icon?: string): void {
-  // Use new store-based logging if available
+  // Always use new store-based logging
+  // If addLogEntry is not available yet, import it directly
   if (typeof window !== 'undefined' && (window as any).addLogEntry) {
     // Map old type strings to new LogType
     let logType: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
@@ -615,32 +616,52 @@ export function log(msg: string, type: string = 'info', flair?: string, icon?: s
     return;
   }
   
-  // Fallback to DOM-based logging for backward compatibility
-  const el = document.getElementById('log');
-  if (!el) return;
-  
-  const entry = document.createElement('div');
-  entry.className = 'log-entry ' + type;
-  
-  const time = document.createElement('span');
-  time.className = 'log-entry__time';
-  time.textContent = `[${new Date().toLocaleTimeString()}]`;
-  
-  const text = document.createElement('span');
-  text.className = 'log-entry__text';
-  text.textContent = msg;
-  
-  entry.appendChild(time);
-  entry.appendChild(text);
-  
-  el.insertBefore(entry, el.firstChild);
-  if (el.children.length > 100) el.removeChild(el.lastChild);
+  // If store not available yet, import it directly (shouldn't happen after bootstrap fix)
+  import('../stores/activity-log').then(({ addLogEntry }) => {
+    let logType: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
+    if (type === 'success' || type === 'error' || type === 'warning' || type === 'debug') {
+      logType = type as 'info' | 'success' | 'error' | 'warning' | 'debug';
+    }
+    
+    let detectedFlair = flair;
+    if (!detectedFlair) {
+      const upperMsg = msg.toUpperCase();
+      if (upperMsg.includes('CONNECTED') || upperMsg.includes('SUCCESS')) {
+        detectedFlair = 'CONNECTION';
+      } else if (upperMsg.includes('ERROR') || upperMsg.includes('FAILED')) {
+        detectedFlair = 'ERROR';
+      } else if (upperMsg.includes('WARNING') || upperMsg.includes('WARN')) {
+        detectedFlair = 'WARNING';
+      } else if (upperMsg.includes('IMPORTED') || upperMsg.includes('EXPORTED')) {
+        detectedFlair = 'DATA';
+      } else if (upperMsg.includes('REFRESHED') || upperMsg.includes('UPDATED')) {
+        detectedFlair = 'UPDATE';
+      }
+    }
+    
+    addLogEntry(msg, logType, detectedFlair, icon);
+  }).catch(err => {
+    // Fallback to console if store import fails (shouldn't happen)
+    console.error('[log] Failed to import activity-log store:', err);
+  });
 }
 
 export function clearLog(): void {
-  const el = document.getElementById('log');
-  if (el) el.innerHTML = '';
-  log('Log cleared', 'info');
+  // Use new store-based clearing if available
+  if (typeof window !== 'undefined' && (window as any).clearLogEntries) {
+    (window as any).clearLogEntries();
+    log('Log cleared', 'info');
+    return;
+  }
+  
+  // Fallback: import directly if not available yet
+  import('../stores/activity-log').then(({ clearLogEntries, addLogEntry }) => {
+    clearLogEntries();
+    addLogEntry('Log cleared', 'info', 'CLEARED');
+  }).catch(err => {
+    // Fallback to console if store import fails (shouldn't happen)
+    console.error('[clearLog] Failed to import activity-log store:', err);
+  });
 }
 
 export function copyUrl(): void {

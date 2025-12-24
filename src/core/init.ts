@@ -39,7 +39,10 @@ export async function initializeCore(): Promise<void> {
     services: ServiceRegistry.keys().map(k => String(k))
   });
 
-  console.log('[Core] Communication layer initialized');
+  // Log initialization - use store if available
+  if (typeof window !== 'undefined' && (window as any).addLogEntry) {
+    (window as any).addLogEntry('Communication layer initialized', 'success', 'CORE');
+  }
 }
 
 /**

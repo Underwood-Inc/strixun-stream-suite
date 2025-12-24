@@ -113,20 +113,29 @@ function showAuthenticationBlocker(): void {
  * Initialize the application
  */
 export async function initializeApp(): Promise<void> {
-  console.log('[Bootstrap] Starting application initialization...');
+  // CRITICAL: Initialize log store FIRST so all logging goes through the store
+  const { addLogEntry, clearLogEntries } = await import('../stores/activity-log');
+  (window as any).addLogEntry = addLogEntry;
+  (window as any).clearLogEntries = clearLogEntries;
+  
+  // Intercept all console calls to route through the store
+  const { interceptConsole } = await import('../utils/logger');
+  interceptConsole();
+  
+  addLogEntry('Starting application initialization...', 'info');
   
   try {
     // CRITICAL: Initialize storage system FIRST
     await initIndexedDB();
     await loadStorageCache();
-    console.log('[Bootstrap] Storage system ready');
+    addLogEntry('Storage system ready', 'success', 'STORAGE');
     
     // Notes storage is cloud-only, no initialization needed
     
     // Load authentication state
     const { loadAuthState, getAuthToken } = await import('../stores/auth');
     loadAuthState();
-    console.log('[Bootstrap] Authentication state loaded');
+    addLogEntry('Authentication state loaded', 'info', 'AUTH');
     
     // CRITICAL: If encryption is enabled but no auth token exists, BLOCK APP ACCESS
     // Encryption requires JWT token (email OTP auth) - app cannot function without it
@@ -136,6 +145,8 @@ export async function initializeApp(): Promise<void> {
     
     if (encryptionEnabled && !authToken) {
       // Encryption is enabled but user is not authenticated - BLOCK ACCESS
+      addLogEntry('❌ BLOCKED: Encryption enabled but user not authenticated', 'error', 'AUTH');
+      addLogEntry('User must authenticate via email OTP to access the application', 'warning', 'AUTH');
       console.error('[Bootstrap] ❌ BLOCKED: Encryption enabled but user not authenticated');
       console.error('[Bootstrap] User must authenticate via email OTP to access the application');
       
@@ -158,9 +169,9 @@ export async function initializeApp(): Promise<void> {
     // Load saved credentials and auto-connect
     await loadCredentialsAndConnect();
     
-    console.log('[Bootstrap] Application initialized');
+    addLogEntry('Application initialized', 'success', 'INIT');
   } catch (error) {
-    console.error('[Bootstrap] Initialization error:', error);
+    addLogEntry(`Initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
   }
 }
 
@@ -174,8 +185,11 @@ async function initializeModules(): Promise<void> {
       // Use logger module when available
       if (window.App?.log) {
         window.App.log(msg, type);
-      } else {
-        console.log(`[${type || 'info'}] ${msg}`);
+      } else if ((window as any).addLogEntry) {
+        const logType = (type === 'success' || type === 'error' || type === 'warning' || type === 'debug') 
+          ? type as 'info' | 'success' | 'error' | 'warning' | 'debug'
+          : 'info';
+        (window as any).addLogEntry(msg, logType);
       }
     },
     isOBSDock: window.isOBSDock || (() => false),
@@ -253,10 +267,7 @@ async function initializeModules(): Promise<void> {
   // Expose to window for legacy compatibility
   (window as any).UIUtils = UIUtils;
   
-  // Expose log store functions for backward compatibility
-  const { addLogEntry, clearLogEntries } = await import('../stores/activity-log');
-  (window as any).addLogEntry = addLogEntry;
-  (window as any).clearLogEntries = clearLogEntries;
+  // Log store functions are already exposed at the start of initializeApp()
   
   // Initialize Version (TypeScript module)
   Version.initVersionDisplay();
@@ -306,7 +317,8 @@ async function initializeModules(): Promise<void> {
  * This runs after all modules are initialized
  */
 export async function completeAppInitialization(): Promise<void> {
-  console.log('[Bootstrap] Completing application initialization...');
+  const { addLogEntry } = await import('../stores/activity-log');
+  addLogEntry('Completing application initialization...', 'info', 'INIT');
   
   try {
     // Load source opacity configs
@@ -316,16 +328,14 @@ export async function completeAppInitialization(): Promise<void> {
     const swapConfigsCount = (window as any).SourceSwaps ? (window as any).SourceSwaps.getConfigs().length : 0;
     const textCyclerConfigs = (window as any).TextCycler ? (window as any).TextCycler.getConfigs() : [];
     const sourceOpacityConfigs = Sources.sourceOpacityConfigs;
-    console.log('[Init] Loaded configs - Swaps:', swapConfigsCount, 
-                'TextCycler:', textCyclerConfigs.length, 
-                'Opacity:', Object.keys(sourceOpacityConfigs).length);
+    addLogEntry(`Loaded configs - Swaps: ${swapConfigsCount}, TextCycler: ${textCyclerConfigs.length}, Opacity: ${Object.keys(sourceOpacityConfigs).length}`, 'info', 'CONFIG');
     
     // Check for recovery if configs are empty
     const totalConfigs = swapConfigsCount + textCyclerConfigs.length;
     if (totalConfigs === 0) {
       const recovered = await App.offerRecovery();
       if (recovered) {
-        console.log('[Init] Configs restored from recovery snapshot');
+        addLogEntry('Configs restored from recovery snapshot', 'success', 'RECOVERY');
       }
     }
     
@@ -415,9 +425,11 @@ export async function completeAppInitialization(): Promise<void> {
       });
     }
     
-    console.log('[Bootstrap] Application initialization complete');
+    const { addLogEntry } = await import('../stores/activity-log');
+    addLogEntry('Application initialization complete', 'success', 'INIT');
   } catch (error) {
-    console.error('[Bootstrap] App initialization error:', error);
+    const { addLogEntry } = await import('../stores/activity-log');
+    addLogEntry(`App initialization error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
   }
 }
 
@@ -442,7 +454,8 @@ async function loadCredentialsAndConnect(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error('[Bootstrap] Credential load error:', error);
+    const { addLogEntry } = await import('../stores/activity-log');
+    addLogEntry(`Credential load error: ${error instanceof Error ? error.message : String(error)}`, 'error', 'ERROR');
   }
 }
 
