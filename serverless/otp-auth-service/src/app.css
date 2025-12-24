@@ -86,3 +86,19 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
+/* ============ Text Selection - Match Main App Style ============ */
+::selection {
+  background: rgba(237, 174, 73, 0.3);
+  color: var(--accent-light);
+}
+
+::-moz-selection {
+  background: rgba(237, 174, 73, 0.3);
+  color: var(--accent-light);
+}
+
+::-webkit-selection {
+  background: rgba(237, 174, 73, 0.3);
+  color: var(--accent-light);
+}
+

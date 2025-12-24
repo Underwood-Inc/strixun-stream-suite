@@ -11,7 +11,20 @@
   let error: string | null = null;
 
   onMount(async () => {
-    await loadData();
+    // Set timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Dashboard data load timed out');
+        loading = false;
+        error = 'Failed to load dashboard data: Request timed out';
+      }
+    }, 5000);
+
+    try {
+      await loadData();
+    } finally {
+      clearTimeout(timeout);
+    }
   });
 
   async function loadData() {
@@ -112,6 +125,9 @@
 <style>
   .dashboard {
     width: 100%;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
   }
 
   .dashboard__title {
@@ -125,6 +141,9 @@
     padding: var(--spacing-xl);
     text-align: center;
     color: var(--text-secondary);
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
   }
 
   .dashboard__error {

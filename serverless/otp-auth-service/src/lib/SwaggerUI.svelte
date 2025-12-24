@@ -85,10 +85,14 @@
         onComplete: () => {
           // Inject comprehensive custom styles to match design system with proper contrast
           const styleId = 'swagger-custom-styles';
-          if (document.getElementById(styleId)) return;
+          const existingStyle = document.getElementById(styleId);
+          if (existingStyle) {
+            existingStyle.remove();
+          }
           
           const style = document.createElement('style');
           style.id = styleId;
+          style.setAttribute('data-swagger-theme', 'strixun');
           style.textContent = `
             /* ============================================
                SWAGGER UI THEME - Strixun Stream Suite
@@ -105,58 +109,27 @@
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             }
             
-            /* ========== Text Selection - Brand Colors ========== */
+            /* ========== Text Selection - Match Global App Style ========== */
+            /* Use same semi-transparent orange as main app (rgba(237, 174, 73, 0.3)) */
+            .swagger-ui *::selection,
             .swagger-ui ::selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
+              background: rgba(237, 174, 73, 0.3) !important;
+              background-color: rgba(237, 174, 73, 0.3) !important;
+              color: var(--accent-light, #f9df74) !important;
             }
+            
+            .swagger-ui *::-moz-selection,
             .swagger-ui ::-moz-selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
+              background: rgba(237, 174, 73, 0.3) !important;
+              background-color: rgba(237, 174, 73, 0.3) !important;
+              color: var(--accent-light, #f9df74) !important;
             }
+            
+            .swagger-ui *::-webkit-selection,
             .swagger-ui ::-webkit-selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
-            }
-            
-            /* Selection in code blocks */
-            .swagger-ui pre ::selection,
-            .swagger-ui code ::selection,
-            .swagger-ui .microlight ::selection,
-            .swagger-ui .highlight-code ::selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
-            }
-            .swagger-ui pre ::-moz-selection,
-            .swagger-ui code ::-moz-selection,
-            .swagger-ui .microlight ::-moz-selection,
-            .swagger-ui .highlight-code ::-moz-selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
-            }
-            .swagger-ui pre ::-webkit-selection,
-            .swagger-ui code ::-webkit-selection,
-            .swagger-ui .microlight ::-webkit-selection,
-            .swagger-ui .highlight-code ::-webkit-selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
-            }
-            
-            /* Selection in textareas and inputs */
-            .swagger-ui textarea ::selection,
-            .swagger-ui input ::selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
-            }
-            .swagger-ui textarea ::-moz-selection,
-            .swagger-ui input ::-moz-selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
-            }
-            .swagger-ui textarea ::-webkit-selection,
-            .swagger-ui input ::-webkit-selection {
-              background: var(--accent, #edae49) !important;
-              color: #000 !important;
+              background: rgba(237, 174, 73, 0.3) !important;
+              background-color: rgba(237, 174, 73, 0.3) !important;
+              color: var(--accent-light, #f9df74) !important;
             }
             
             /* ========== Force Dark Theme - Override All Light Elements ========== */
@@ -1164,6 +1137,28 @@
             }
           `;
           document.head.appendChild(style);
+          
+          // Also inject a global style override for the entire document to catch any Swagger UI elements
+          const globalStyleId = 'swagger-global-selection-override';
+          const existingGlobalStyle = document.getElementById(globalStyleId);
+          if (existingGlobalStyle) {
+            existingGlobalStyle.remove();
+          }
+          
+          const globalStyle = document.createElement('style');
+          globalStyle.id = globalStyleId;
+          globalStyle.setAttribute('data-swagger-theme', 'strixun-global');
+          globalStyle.textContent = `
+            /* Global selection override for Swagger UI container - match main app style */
+            #${containerId} *::selection,
+            #${containerId} *::-moz-selection,
+            #${containerId} *::-webkit-selection {
+              background: rgba(237, 174, 73, 0.3) !important;
+              background-color: rgba(237, 174, 73, 0.3) !important;
+              color: var(--accent-light, #f9df74) !important;
+            }
+          `;
+          document.head.appendChild(globalStyle);
         }
       });
       initialized = true;

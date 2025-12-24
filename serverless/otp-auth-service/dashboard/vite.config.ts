@@ -7,7 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '$lib': path.resolve(__dirname, './src/lib'),
-      '$components': path.resolve(__dirname, './src/components')
+      '$components': path.resolve(__dirname, './src/components'),
+      '@shared-styles': path.resolve(__dirname, '../../shared-styles')
     }
   },
   build: {

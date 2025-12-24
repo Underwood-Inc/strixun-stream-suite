@@ -1,7 +1,11 @@
 /**
  * Dashboard App Styles
  * Strixun Stream Suite Design System
+ * 
+ * Note: CSS variables are defined here to match shared-styles/_variables.scss
+ * For SCSS components, import directly from shared-styles
  */
+
 
 * {
   margin: 0;
@@ -9,8 +13,9 @@
   box-sizing: border-box;
 }
 
+/* CSS Variables - synced with shared-styles/_variables.scss */
 :root {
-  /* Strixun Stream Suite Design System */
+  /* Backgrounds */
   --bg: #1a1611;
   --bg-dark: #0f0e0b;
   --card: #252017;
@@ -88,5 +93,34 @@ body {
 
 #app {
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* Ensure no global styles block interaction */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, button, textarea, select {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  cursor: text;
+}
+
+/* Force email input to be interactive */
+#login-email {
+  pointer-events: auto !important;
+  z-index: 10000 !important;
+  position: relative !important;
+  cursor: text !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 

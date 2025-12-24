@@ -17,23 +17,39 @@
   let loading = true;
 
   onMount(async () => {
-    // Check authentication
-    if (apiClient.getToken()) {
+    // Setup event listeners first
+    window.addEventListener('auth:login', handleLogin);
+    window.addEventListener('auth:logout', handleLogout);
+    
+    // Check authentication with timeout
+    const authCheck = async () => {
       try {
-        user = await apiClient.getMe();
-        isAuthenticated = true;
-        await loadCustomer();
+        if (apiClient.getToken()) {
+          user = await apiClient.getMe();
+          isAuthenticated = true;
+          await loadCustomer();
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         apiClient.setToken(null);
         isAuthenticated = false;
+      } finally {
+        loading = false;
       }
-    }
-    loading = false;
-
-    // Setup event listeners
-    window.addEventListener('auth:login', handleLogin);
-    window.addEventListener('auth:logout', handleLogout);
+    };
+    
+    // Set a timeout to ensure loading doesn't hang forever
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth check timed out, showing login');
+        loading = false;
+        isAuthenticated = false;
+      }
+    }, 3000);
+    
+    authCheck().finally(() => {
+      clearTimeout(timeout);
+    });
   });
 
   async function loadCustomer() {
@@ -110,10 +126,16 @@
     width: 100%;
     margin: 0 auto;
     padding: var(--spacing-xl);
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
   }
 
   .page-container {
     margin-top: var(--spacing-xl);
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
   }
 
   .loading {
@@ -123,6 +145,14 @@
     justify-content: center;
     min-height: 100vh;
     color: var(--text-secondary);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg);
+    z-index: 9999;
+    pointer-events: auto;
   }
 
   .loading .loading__spinner {
