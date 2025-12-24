@@ -26,7 +26,6 @@
   let step: SignupStep = 'form';
   let email = '';
   let companyName = '';
-  let password = '';
   let verificationCode = '';
   let loading = false;
   let error: string | null = null;
@@ -57,7 +56,6 @@
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
           companyName: companyName.trim(),
-          password: password,
         }),
       });
 
@@ -89,7 +87,7 @@
         },
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
-          code: verificationCode,
+          otp: verificationCode, // Use 'otp' to match OTP system
         }),
       });
 
@@ -214,27 +212,10 @@
           />
         </div>
 
-        <div class="signup-field">
-          <label for="signup-password" class="signup-label">Password</label>
-          <input
-            type="password"
-            id="signup-password"
-            class="signup-input"
-            required
-            autocomplete="new-password"
-            placeholder="At least 8 characters"
-            minlength="8"
-            bind:value={password}
-            disabled={loading}
-            onkeydown={(e) => handleKeyPress(e, handleSignup)}
-          />
-          <p class="signup-hint">Must be at least 8 characters</p>
-        </div>
-
         <button
           type="submit"
           class="signup-button signup-button--primary"
-          disabled={loading || !email || !companyName || password.length < 8}
+          disabled={loading || !email || !companyName}
         >
           {loading ? 'Creating Account...' : 'Create Account'}
         </button>

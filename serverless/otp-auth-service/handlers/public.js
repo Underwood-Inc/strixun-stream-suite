@@ -4,25 +4,31 @@
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
-import { hashEmail, generateOTP, hashPassword } from '../utils/crypto.js';
-import { generateVerificationToken } from '../utils/validation.js';
+import { hashEmail } from '../utils/crypto.js';
 import { generateCustomerId, storeCustomer } from '../services/customer.js';
 import { createApiKeyForCustomer } from '../services/api-key.js';
-import { getEmailProvider } from '../utils/email.js';
 import { validateSecrets } from '../utils/validation.js';
+import { handleRequestOTP, handleVerifyOTP } from './auth.js';
 
 /**
- * Public signup endpoint
+ * Public signup endpoint - Uses secure OTP system
  * POST /signup
+ * 
+ * This endpoint leverages the OTP auth system for maximum security:
+ * - Rate limiting (3 requests/hour per email)
+ * - Brute force protection (5 attempts max)
+ * - 10-minute expiration (vs 24 hours in old system)
+ * - Quota checks
+ * - Customer isolation ready
  */
 export async function handlePublicSignup(request, env) {
     try {
         const body = await request.json();
-        const { email, companyName, password } = body;
+        const { email, companyName } = body;
         
         // Validate input
-        if (!email || !companyName || !password) {
-            return new Response(JSON.stringify({ error: 'Email, company name, and password are required' }), {
+        if (!email || !companyName) {
+            return new Response(JSON.stringify({ error: 'Email and company name are required' }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
@@ -35,100 +41,77 @@ export async function handlePublicSignup(request, env) {
             });
         }
         
-        if (password.length < 8) {
-            return new Response(JSON.stringify({ error: 'Password must be at least 8 characters' }), {
-                status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-        
         const emailLower = email.toLowerCase().trim();
         const emailHash = await hashEmail(emailLower);
         
-        // Check if signup already exists
+        // Check if signup already in progress (store company name temporarily)
         const signupKey = `signup_${emailHash}`;
         const existingSignup = await env.OTP_AUTH_KV.get(signupKey, { type: 'json' });
         
-        if (existingSignup && new Date(existingSignup.expiresAt) > new Date()) {
-            return new Response(JSON.stringify({ 
-                error: 'Signup already in progress. Check your email for verification.',
-                expiresAt: existingSignup.expiresAt
-            }), {
-                status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
+        // Check if there's an active OTP for this email (from previous signup attempt)
+        // OTP system uses customerId=null for pre-signup, so we check that
+        const latestOtpKey = `otp_latest_${emailHash}`; // No customer prefix when customerId=null
+        const existingOtp = await env.OTP_AUTH_KV.get(latestOtpKey);
+        
+        if (existingOtp) {
+            // OTP already exists - check if it's still valid
+            const otpData = await env.OTP_AUTH_KV.get(existingOtp, { type: 'json' });
+            if (otpData && new Date(otpData.expiresAt) > new Date()) {
+                return new Response(JSON.stringify({ 
+                    error: 'Signup already in progress. Check your email for the OTP code.',
+                    expiresIn: Math.floor((new Date(otpData.expiresAt).getTime() - Date.now()) / 1000)
+                }), {
+                    status: 400,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
+            }
         }
         
-        // Generate verification token
-        const verificationToken = generateVerificationToken();
-        const verificationCode = generateOTP(); // 6-digit code
-        
-        // Hash password
-        const passwordHash = await hashPassword(password);
-        
-        // Store signup data
+        // Store signup data (company name) temporarily - expires in 10 minutes (matches OTP expiration)
         const signupData = {
             email: emailLower,
-            companyName,
-            passwordHash,
-            verificationToken,
-            verificationCode,
+            companyName: companyName.trim(),
             createdAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes (matches OTP)
         };
         
-        await env.OTP_AUTH_KV.put(signupKey, JSON.stringify(signupData), { expirationTtl: 86400 });
+        await env.OTP_AUTH_KV.put(signupKey, JSON.stringify(signupData), { expirationTtl: 600 }); // 10 minutes
         
-        // Send verification email
-        try {
-            const emailProvider = getEmailProvider(null, env);
-            await emailProvider.sendEmail({
-                from: env.RESEND_FROM_EMAIL || 'noreply@otpauth.com',
-                to: emailLower,
-                subject: 'Verify your OTP Auth Service account',
-                html: `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <style>
-                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                            .code { font-size: 32px; font-weight: bold; letter-spacing: 8px; text-align: center; background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0; font-family: monospace; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>Verify Your Account</h1>
-                            <p>Your verification code is:</p>
-                            <div class="code">${verificationCode}</div>
-                            <p>Or click this link to verify: <a href="https://otpauth.com/verify?token=${verificationToken}">Verify Account</a></p>
-                            <p>This code expires in 24 hours.</p>
-                        </div>
-                    </body>
-                    </html>
-                `,
-                text: `Your verification code is: ${verificationCode}\n\nOr visit: https://otpauth.com/verify?token=${verificationToken}\n\nThis code expires in 24 hours.`
-            });
-        } catch (error) {
-            console.error('Failed to send verification email:', error);
-            return new Response(JSON.stringify({ 
-                error: 'Failed to send verification email',
-                message: error.message
-            }), {
-                status: 500,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
+        // Use the secure OTP system to send verification code
+        // Pass customerId=null since customer doesn't exist yet
+        // Create a new request for the OTP endpoint
+        const otpUrl = new URL(request.url);
+        otpUrl.pathname = '/auth/request-otp';
+        const otpRequest = new Request(otpUrl.toString(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(request.headers.entries())
+            },
+            body: JSON.stringify({ email: emailLower })
+        });
+        
+        const otpResponse = await handleRequestOTP(otpRequest, env, null); // null = no customerId yet
+        
+        // If OTP request failed, return the error
+        if (!otpResponse.ok) {
+            // Clean up signup data if OTP request failed
+            await env.OTP_AUTH_KV.delete(signupKey);
+            return otpResponse; // Return the OTP system's error response (includes rate limiting, etc.)
         }
         
+        // OTP sent successfully - return success
+        const otpResponseData = await otpResponse.json();
         return new Response(JSON.stringify({
             success: true,
-            message: 'Signup successful. Check your email for verification code.',
-            expiresAt: signupData.expiresAt
+            message: 'Signup initiated. Check your email for the OTP verification code.',
+            expiresIn: otpResponseData.expiresIn || 600, // 10 minutes
+            remaining: otpResponseData.remaining
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        console.error('Signup error:', error);
         return new Response(JSON.stringify({
             error: 'Failed to sign up',
             message: error.message
@@ -140,13 +123,19 @@ export async function handlePublicSignup(request, env) {
 }
 
 /**
- * Verify signup
+ * Verify signup - Uses secure OTP system
  * POST /signup/verify
+ * 
+ * This endpoint leverages the OTP auth system for maximum security:
+ * - Brute force protection (5 attempts max)
+ * - Constant-time comparison
+ * - Single-use OTP codes
+ * - Automatic cleanup after verification
  */
 export async function handleVerifySignup(request, env) {
     try {
         const body = await request.json();
-        const { email, token, code } = body;
+        const { email, otp } = body;
         
         if (!email) {
             return new Response(JSON.stringify({ error: 'Email required' }), {
@@ -155,8 +144,8 @@ export async function handleVerifySignup(request, env) {
             });
         }
         
-        if (!token && !code) {
-            return new Response(JSON.stringify({ error: 'Token or code required' }), {
+        if (!otp) {
+            return new Response(JSON.stringify({ error: 'OTP code required' }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
@@ -164,37 +153,49 @@ export async function handleVerifySignup(request, env) {
         
         const emailLower = email.toLowerCase().trim();
         const emailHash = await hashEmail(emailLower);
+        
+        // Get signup data (company name)
         const signupKey = `signup_${emailHash}`;
         const signupData = await env.OTP_AUTH_KV.get(signupKey, { type: 'json' });
         
         if (!signupData) {
-            return new Response(JSON.stringify({ error: 'Signup not found or expired' }), {
+            return new Response(JSON.stringify({ error: 'Signup not found or expired. Please start the signup process again.' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // Check expiration
+        // Check if signup data expired
         if (new Date(signupData.expiresAt) < new Date()) {
             await env.OTP_AUTH_KV.delete(signupKey);
-            return new Response(JSON.stringify({ error: 'Verification expired' }), {
+            return new Response(JSON.stringify({ error: 'Signup expired. Please start the signup process again.' }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        // Verify token or code
-        const isValid = (token && signupData.verificationToken === token) || 
-                       (code && signupData.verificationCode === code);
+        // Use the secure OTP system to verify the code
+        // Pass customerId=null since customer doesn't exist yet
+        // Create a new request for the OTP endpoint
+        const otpUrl = new URL(request.url);
+        otpUrl.pathname = '/auth/verify-otp';
+        const otpVerifyRequest = new Request(otpUrl.toString(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(request.headers.entries())
+            },
+            body: JSON.stringify({ email: emailLower, otp })
+        });
         
-        if (!isValid) {
-            return new Response(JSON.stringify({ error: 'Invalid verification token or code' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
+        const otpResponse = await handleVerifyOTP(otpVerifyRequest, env, null); // null = no customerId yet
+        
+        // If OTP verification failed, return the error (includes brute force protection, etc.)
+        if (!otpResponse.ok) {
+            return otpResponse; // Return the OTP system's error response
         }
         
-        // Create customer account
+        // OTP verified successfully! Now create the customer account
         const customerId = generateCustomerId();
         const customerData = {
             customerId,
@@ -204,7 +205,6 @@ export async function handleVerifySignup(request, env) {
             plan: 'free',
             status: 'active',
             createdAt: new Date().toISOString(),
-            passwordHash: signupData.passwordHash,
             configVersion: 1,
             config: {
                 emailConfig: {
@@ -246,7 +246,7 @@ export async function handleVerifySignup(request, env) {
         // Generate initial API key
         const { apiKey, keyId } = await createApiKeyForCustomer(customerId, 'Initial API Key', env);
         
-        // Delete signup data
+        // Clean up signup data
         await env.OTP_AUTH_KV.delete(signupKey);
         
         return new Response(JSON.stringify({
@@ -267,6 +267,7 @@ export async function handleVerifySignup(request, env) {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        console.error('Signup verification error:', error);
         return new Response(JSON.stringify({
             error: 'Failed to verify signup',
             message: error.message
