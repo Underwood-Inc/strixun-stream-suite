@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Header from './components/Header.svelte';
   import Login from './components/Login.svelte';
+  import Signup from './components/Signup.svelte';
   import Navigation from './components/Navigation.svelte';
   import Analytics from './pages/Analytics.svelte';
   import ApiKeys from './pages/ApiKeys.svelte';
@@ -15,11 +16,15 @@
   let isAuthenticated = false;
   let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
   let loading = true;
+  let authView: 'login' | 'signup' = 'login';
 
   onMount(async () => {
     // Setup event listeners first
     window.addEventListener('auth:login', handleLogin as EventListener);
     window.addEventListener('auth:logout', handleLogout as EventListener);
+    window.addEventListener('auth:show-login', () => { authView = 'login'; });
+    window.addEventListener('auth:show-signup', () => { authView = 'signup'; });
+    window.addEventListener('auth:no-customer-account', handleNoCustomerAccount as EventListener);
     
     // Check authentication with timeout
     const authCheck = async () => {
@@ -55,9 +60,48 @@
   async function loadCustomer() {
     try {
       customer = await apiClient.getCustomer();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load customer:', error);
+      
+      // Check if error is "no customer account"
+      const errorMessage = error?.message || error?.toString() || '';
+      const errorCode = error?.code || '';
+      
+      if (errorCode === 'AUTHENTICATION_REQUIRED' || 
+          errorMessage.includes('No customer account') || 
+          errorMessage.includes('customer account found')) {
+        // No customer account - show signup prompt
+        window.dispatchEvent(new CustomEvent('auth:no-customer-account', {
+          detail: { 
+            email: user?.email,
+            message: 'You need to create a customer account to access the dashboard.'
+          }
+        }));
+        // Log them out so they can sign up
+        isAuthenticated = false;
+        user = null;
+        apiClient.setToken(null);
+      }
     }
+  }
+
+  function handleNoCustomerAccount(event: Event) {
+    const customEvent = event as CustomEvent;
+    const email = customEvent.detail?.email;
+    
+    // Automatically switch to signup view
+    authView = 'signup';
+    
+    // Pre-fill email if available
+    if (email) {
+      // Store email for signup component to use
+      sessionStorage.setItem('signup-email', email);
+    }
+    
+    // Clear any auth state
+    isAuthenticated = false;
+    user = null;
+    apiClient.setToken(null);
   }
 
   function handleLogin(event: Event) {
@@ -94,7 +138,11 @@
       <p>Loading...</p>
     </div>
   {:else if !isAuthenticated}
-    <Login />
+    {#if authView === 'login'}
+      <Login />
+    {:else}
+      <Signup />
+    {/if}
   {:else}
     <Header {user} on:logout={handleLogoutClick} />
     <main class="app-main">

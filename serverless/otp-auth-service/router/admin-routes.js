@@ -6,9 +6,11 @@
 import { getCorsHeaders } from '../utils/cors.js';
 import { verifyApiKey } from '../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../utils/crypto.js';
-import { getCustomerKey } from '../services/customer.js';
+import { getCustomerKey, getCustomerByEmail } from '../services/customer.js';
+import { requireSuperAdmin } from '../utils/super-admin.js';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
+import * as publicHandlers from '../handlers/public.js';
 
 /**
  * Authenticate request using API key or JWT token
@@ -57,14 +59,25 @@ async function authenticateRequest(request, env) {
             return null; // Token has been revoked
         }
         
+        // If customerId is null, try to look up customer by email
+        let resolvedCustomerId = customerId;
+        if (!resolvedCustomerId && payload.email) {
+            const customer = await getCustomerByEmail(payload.email, env);
+            if (customer) {
+                resolvedCustomerId = customer.customerId;
+            }
+        }
+        
         // Verify customer exists and is active
-        if (!customerId) {
+        if (!resolvedCustomerId) {
+            // Return null with a helpful message - but we can't include it in the return value
+            // The error will be handled by handleAdminRoute
             return null; // JWT must have customerId for admin endpoints
         }
         
         // Return auth object in same format as API key auth
         return {
-            customerId: customerId,
+            customerId: resolvedCustomerId,
             // JWT auth doesn't have keyId, but that's okay for admin endpoints
         };
     } catch (error) {
@@ -78,8 +91,30 @@ async function authenticateRequest(request, env) {
  */
 async function handleAdminRoute(handler, request, env, auth) {
     if (!auth) {
+        // Try to get more context from JWT token for better error message
+        const authHeader = request.headers.get('Authorization');
+        let errorMessage = 'Authentication required. Please log in to access the dashboard.';
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                const jwtSecret = getJWTSecret(env);
+                const payload = await verifyJWT(token, jwtSecret);
+                if (payload && !payload.customerId) {
+                    errorMessage = 'No customer account found for your email. Please sign up at /signup to create a customer account first.';
+                } else if (payload && payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+                    errorMessage = 'Your session has expired. Please log in again.';
+                }
+            } catch (e) {
+                // Invalid token, use default message
+            }
+        }
+        
         return { 
-            response: new Response(JSON.stringify({ error: 'Authentication required' }), {
+            response: new Response(JSON.stringify({ 
+                error: errorMessage,
+                code: 'AUTHENTICATION_REQUIRED'
+            }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             }), 
@@ -97,6 +132,16 @@ async function handleAdminRoute(handler, request, env, auth) {
  * @returns {Promise<{response: Response, customerId: string|null}>|null} Response and customerId if route matched, null otherwise
  */
 export async function handleAdminRoutes(request, path, env) {
+    // Super-admin endpoint: Create customer (requires super-admin API key)
+    if (path === '/admin/customers' && request.method === 'POST') {
+        const authError = requireSuperAdmin(request, env);
+        if (authError) {
+            return { response: authError, customerId: null };
+        }
+        // Super-admin authenticated, allow customer creation
+        return { response: await publicHandlers.handleRegisterCustomer(request, env), customerId: null };
+    }
+    
     // Customer admin endpoints (require API key auth)
     if (path === '/admin/customers/me' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);

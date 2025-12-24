@@ -51,5 +51,32 @@ export async function getCustomer(customerId, env) {
 export async function storeCustomer(customerId, customerData, env) {
     const customerKey = `customer_${customerId}`;
     await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData));
+    
+    // Store email -> customerId mapping for lookup
+    if (customerData.email) {
+        const { hashEmail } = await import('../utils/crypto.js');
+        const emailHash = await hashEmail(customerData.email.toLowerCase().trim());
+        const emailMappingKey = `email_to_customer_${emailHash}`;
+        await env.OTP_AUTH_KV.put(emailMappingKey, customerId);
+    }
+}
+
+/**
+ * Get customer by email
+ * @param {string} email - Customer email
+ * @param {*} env - Worker environment
+ * @returns {Promise<object|null>} Customer data or null
+ */
+export async function getCustomerByEmail(email, env) {
+    const { hashEmail } = await import('../utils/crypto.js');
+    const emailHash = await hashEmail(email.toLowerCase().trim());
+    const emailMappingKey = `email_to_customer_${emailHash}`;
+    const customerId = await env.OTP_AUTH_KV.get(emailMappingKey);
+    
+    if (!customerId) {
+        return null;
+    }
+    
+    return await getCustomer(customerId, env);
 }
 

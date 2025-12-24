@@ -56,9 +56,7 @@ export async function handlePublicRoutes(request, path, env) {
         return publicHandlers.handleVerifySignup(request, env);
     }
     
-    if (path === '/admin/customers' && request.method === 'POST') {
-        return publicHandlers.handleRegisterCustomer(request, env);
-    }
+    // Note: /admin/customers POST moved to admin routes - requires super-admin auth
     
     if (path === '/health' && request.method === 'GET') {
         return publicHandlers.handleHealth(request, env);
