@@ -143,7 +143,7 @@
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 0;
-    padding: 8px 12px;
+    padding: 8px 12px 8px 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
@@ -152,6 +152,7 @@
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.3s ease,
                 border-color 0.2s ease;
+    box-sizing: border-box;
     @include gpu-accelerated;
     
     &.visible {
@@ -231,6 +232,7 @@
     gap: 8px;
     margin-bottom: 12px;
     padding-bottom: 8px;
+    padding-right: 28px; /* Extra padding for close button to prevent border clipping */
     border-bottom: 1px solid var(--border);
     position: relative;
   }
@@ -241,6 +243,7 @@
     gap: 8px;
     flex: 1;
     min-width: 0;
+    padding-right: 4px; /* Small gap between content and close button */
   }
   
   .toast__icon {
@@ -280,11 +283,12 @@
   // Tooltip wrapper in header should not interfere with close button positioning
   .toast__header :global(.tooltip-wrapper) {
     position: absolute;
-    top: 8px;
-    right: 12px;
+    top: 0;
+    right: 0;
     display: block;
     margin: 0;
     padding: 0;
+    z-index: 1;
   }
   
   .toast__close {
@@ -303,7 +307,8 @@
     justify-content: center;
     transition: all 0.1s;
     flex-shrink: 0;
-    z-index: 10;
+    z-index: 2;
+    margin-top: -2px; /* Slight adjustment to align with title text */
     
     &:hover {
       color: var(--text);

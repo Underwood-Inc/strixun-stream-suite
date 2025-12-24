@@ -1,14 +1,14 @@
 <script lang="ts">
   import { apiClient } from '$lib/api-client';
   import type { Customer, User } from '$lib/types';
-  import { onMount } from 'svelte';
-  import Header from './components/Header.svelte';
-  import Login from './components/Login.svelte';
-  import Navigation from './components/Navigation.svelte';
-  import Analytics from './pages/Analytics.svelte';
-  import ApiKeys from './pages/ApiKeys.svelte';
-  import AuditLogs from './pages/AuditLogs.svelte';
-  import Dashboard from './pages/Dashboard.svelte';
+  import { onMount, tick } from 'svelte';
+  import DashboardHeader from '$components/Header.svelte';
+  import Login from '$components/Login.svelte';
+  import Navigation from '$components/Navigation.svelte';
+  import Analytics from '../dashboard/pages/Analytics.svelte';
+  import ApiKeys from '../dashboard/pages/ApiKeys.svelte';
+  import AuditLogs from '../dashboard/pages/AuditLogs.svelte';
+  import Dashboard from '../dashboard/pages/Dashboard.svelte';
 
   let user: User | null = null;
   let customer: Customer | null = null;
@@ -60,13 +60,25 @@
     }
   }
 
-  function handleLogin(event: Event) {
+  async function handleLogin(event: Event) {
     const customEvent = event as CustomEvent;
     const eventUser = customEvent.detail?.user;
     if (eventUser) {
-      user = eventUser;
+      // Map the event user data to User type
+      user = {
+        sub: eventUser.userId || eventUser.sub || '',
+        email: eventUser.email || '',
+        email_verified: true
+      };
     }
+    // Update state synchronously to trigger reactive update
     isAuthenticated = true;
+    loading = false;
+    
+    // Force a tick to ensure DOM updates
+    await tick();
+    
+    // Load customer data in background
     loadCustomer();
   }
 
@@ -96,7 +108,7 @@
   {:else if !isAuthenticated}
     <Login />
   {:else}
-    <Header {user} on:logout={handleLogoutClick} />
+    <DashboardHeader {user} on:logout={handleLogoutClick} />
     <main class="app-main">
       <Navigation {currentPage} on:navigate={e => navigateToPage(e.detail)} />
       <div class="page-container">

@@ -8,11 +8,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "dev:app": "vite",
-    "dev:dashboard": "cd dashboard && pnpm dev",
-    "dev:all": "concurrently -n worker,app,dashboard -c yellow,cyan,magenta \"pnpm dev\" \"pnpm dev:app\" \"pnpm dev:dashboard\"",
-    "build": "node scripts/build-dashboard.js",
+    "dev:all": "concurrently -n worker,app -c yellow,cyan \"pnpm dev\" \"pnpm dev:app\"",
+    "build": "tsc && vite build",
     "build:app": "tsc && vite build",
-    "build:dashboard": "cd dashboard && pnpm build",
     "preview": "pnpm build && wrangler dev --env production",
     "preview:app": "vite preview",
     "preview:watch": "node scripts/watch-preview.js",

@@ -3,7 +3,14 @@
   import type { LoginSuccessData } from '../../../../../shared-components/otp-login/core';
   import OtpLogin from '../../../../../shared-components/otp-login/svelte/OtpLogin.svelte';
 
+  // Get API URL - dashboard uses relative URLs via Vite proxy
+  // In production, this would be the same origin
+  // Compute once at component initialization
+  const apiUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
   function handleLoginSuccess(data: LoginSuccessData) {
+    console.log('[Login] Login successful:', data);
+    
     // Store token in apiClient
     apiClient.setToken(data.token);
     
@@ -19,17 +26,18 @@
     }));
   }
 
-  // Get API URL - dashboard uses relative URLs via Vite proxy
-  // In production, this would be the same origin
-  function getApiUrl(): string {
-    // Use current origin (works with Vite proxy in dev)
-    return typeof window !== 'undefined' ? window.location.origin : '';
+  function handleLoginError(error: string) {
+    // Error is already displayed by the component
+    console.error('[Login] Login error:', error);
   }
+
+  console.log('[Login] Initialized with API URL:', apiUrl);
 </script>
 
 <OtpLogin
-  apiUrl={getApiUrl()}
+  {apiUrl}
   onSuccess={handleLoginSuccess}
+  onError={handleLoginError}
   title="Developer Dashboard"
   subtitle="Sign in with your email to access your dashboard"
 />

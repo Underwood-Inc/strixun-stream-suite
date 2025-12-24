@@ -7,7 +7,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default {
   preprocess: vitePreprocess({
     scss: {
-      includePaths: [path.resolve(__dirname, '../../shared-styles')]
+      includePaths: [
+        path.resolve(__dirname, '../../shared-styles'),
+        path.resolve(__dirname, '../../shared-components')
+      ]
     }
   })
 };

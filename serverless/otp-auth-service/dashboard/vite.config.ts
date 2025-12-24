@@ -4,11 +4,19 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [svelte()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        includePaths: [path.resolve(__dirname, '../../shared-styles')]
+      }
+    }
+  },
   resolve: {
     alias: {
       '$lib': path.resolve(__dirname, './src/lib'),
       '$components': path.resolve(__dirname, './src/components'),
-      '@shared-styles': path.resolve(__dirname, '../../shared-styles')
+      '@shared-styles': path.resolve(__dirname, '../../shared-styles'),
+      '@shared-components': path.resolve(__dirname, '../../shared-components')
     }
   },
   build: {

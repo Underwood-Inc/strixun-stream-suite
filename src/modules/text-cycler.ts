@@ -446,8 +446,9 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
       dependencies.log(`Failed to send text cycler message: ${e}`, 'error');
     }
   } else if (!isConnected && !isDock) {
+    // Silently skip - connection is already validated in startTextCycler()
+    // Console warn only for debugging, not user-facing spam
     console.warn('[Text Cycler] Not connected to OBS - cannot send message via WebSocket');
-    dependencies.log('Not connected to OBS - text cycler messages will not be sent', 'warning');
   }
 }
 

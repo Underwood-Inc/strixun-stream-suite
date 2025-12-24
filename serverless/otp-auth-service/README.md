@@ -6,33 +6,46 @@ Multi-tenant OTP authentication service built on Cloudflare Workers.
 
 ### 🚀 Local Development (Recommended)
 
-**The easiest way to develop locally - runs everything together:**
+**1. Install dependencies:**
 ```bash
 pnpm install
+```
+
+**2. Configure email service (required for OTP to work):**
+```bash
+# Copy the example env file
+cp .dev.vars.example .dev.vars
+
+# Edit .dev.vars and add your Resend API key and from email
+# Get your API key from: https://resend.com/api-keys
+```
+
+**3. Start all services:**
+```bash
 pnpm dev:all
 ```
 
 This starts all services concurrently:
-- **Worker API**: http://localhost:8787 (proxies landing page to Vite)
-- **Landing Page**: http://localhost:5175 (Svelte app via Vite)
-- **Dashboard**: http://localhost:5174 (Svelte app via Vite)
+- **Worker API**: http://localhost:8787 (proxies landing page and dashboard to Vite)
+- **Landing Page & Dashboard**: http://localhost:5175 (Svelte app via Vite)
 
 **Access points:**
 - Landing page: http://localhost:8787/ (proxied through worker) or http://localhost:5175/ (direct Vite)
-- Dashboard: http://localhost:5174/ (direct Vite) or http://localhost:8787/dashboard (proxied through worker)
+- Dashboard: http://localhost:8787/dashboard (proxied through worker) or http://localhost:5175/dashboard (direct Vite)
 - API endpoints: http://localhost:8787/auth/*
+
+**Note:** The dashboard is now part of the main app and runs on the same Vite server as the landing page.
 
 **Or run services separately:**
 ```bash
-# Terminal 1 - Worker (includes landing page proxy)
+# Terminal 1 - Worker (includes landing page and dashboard proxy)
 pnpm dev
 
-# Terminal 2 - Landing Page (standalone Svelte dev)
+# Terminal 2 - Landing Page & Dashboard (standalone Svelte dev)
 pnpm dev:app
-
-# Terminal 3 - Dashboard (standalone Svelte dev)
-cd dashboard && pnpm dev
 ```
+
+**Important:** Make sure you have created `.dev.vars` with your `RESEND_API_KEY` and `RESEND_FROM_EMAIL` before starting the worker, otherwise OTP requests will fail with a 500 error.
 
 ### Production
 

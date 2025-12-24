@@ -1,19 +1,21 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Header from './components/Header.svelte';
-  import Hero from './components/Hero.svelte';
-  import Features from './components/Features.svelte';
-  import Security from './components/Security.svelte';
-  import CodeExamples from './components/CodeExamples.svelte';
-  import Limitations from './components/Limitations.svelte';
-  import SelfHosting from './components/SelfHosting.svelte';
-  import TechnicalDocs from './components/TechnicalDocs.svelte';
-  import ApiUsageBar from './components/ApiUsageBar.svelte';
-  import Footer from './components/Footer.svelte';
+  import LandingPage from './pages/LandingPage.svelte';
+  import DashboardApp from './pages/DashboardApp.svelte';
 
-  // Smooth scroll for anchor links
+  // Simple routing based on pathname
+  let currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
+  
   onMount(() => {
-    if (typeof window !== 'undefined') {
+    // Update path on navigation
+    const updatePath = () => {
+      currentPath = window.location.pathname;
+    };
+    
+    window.addEventListener('popstate', updatePath);
+    
+    // Smooth scroll for anchor links (only on landing page)
+    if (currentPath === '/' || currentPath === '') {
       document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
           e.preventDefault();
@@ -27,30 +29,18 @@
         });
       });
     }
+    
+    return () => {
+      window.removeEventListener('popstate', updatePath);
+    };
   });
 </script>
 
-<main>
-  <Header />
-
-  <ApiUsageBar />
-
-  <Hero />
-
-  <Features />
-
-  <Security />
-
-  <CodeExamples />
-
-  <Limitations />
-
-  <SelfHosting />
-
-  <TechnicalDocs />
-
-  <Footer />
-</main>
+{#if currentPath.startsWith('/dashboard')}
+  <DashboardApp />
+{:else}
+  <LandingPage />
+{/if}
 
 <style>
   main {

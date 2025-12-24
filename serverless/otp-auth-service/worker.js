@@ -50,48 +50,44 @@ async function loadLandingPageAssets() {
 
 // Import utility modules
 import { getCustomerCached as getCustomerCachedUtil, invalidateCustomerCache as invalidateCustomerCacheUtil } from './utils/cache.js';
-import { getCorsHeaders as getCorsHeadersUtil } from './utils/cors.js';
-import { 
-    generateOTP as generateOTPUtil, 
-    hashEmail as hashEmailUtil, 
-    generateUserId as generateUserIdUtil,
+import {
+    constantTimeEquals as constantTimeEqualsUtil,
     createJWT as createJWTUtil,
-    verifyJWT as verifyJWTUtil,
+    generateOTP as generateOTPUtil,
+    generateUserId as generateUserIdUtil,
     getJWTSecret as getJWTSecretUtil,
+    hashEmail as hashEmailUtil,
     hashPassword as hashPasswordUtil,
-    constantTimeEquals as constantTimeEqualsUtil
+    verifyJWT as verifyJWTUtil
 } from './utils/crypto.js';
 import {
     escapeHtml as escapeHtmlUtil,
-    renderEmailTemplate as renderEmailTemplateUtil,
     getDefaultEmailTemplate as getDefaultEmailTemplateUtil,
     getDefaultTextTemplate as getDefaultTextTemplateUtil,
-    getEmailProvider as getEmailProviderUtil
+    getEmailProvider as getEmailProviderUtil,
+    renderEmailTemplate as renderEmailTemplateUtil
 } from './utils/email.js';
 
 // Import service modules
-import { getCustomerKey, generateCustomerId, getCustomer, storeCustomer } from './services/customer.js';
-import { 
-    generateApiKey as generateApiKeyService, 
-    hashApiKey as hashApiKeyService,
+import {
+    checkQuota as checkQuotaService,
+    getUsage,
+    trackError,
+    trackResponseTime,
+    trackUsage
+} from './services/analytics.js';
+import {
     createApiKeyForCustomer,
     verifyApiKey
 } from './services/api-key.js';
-import { 
+import { generateCustomerId, getCustomer, getCustomerKey, storeCustomer } from './services/customer.js';
+import {
     checkOTPRateLimit as checkOTPRateLimitService,
-    recordOTPRequest as recordOTPRequestService,
-    recordOTPFailure as recordOTPFailureService
+    recordOTPFailure as recordOTPFailureService,
+    recordOTPRequest as recordOTPRequestService
 } from './services/rate-limit.js';
-import { 
-    trackResponseTime, 
-    trackError, 
-    trackUsage, 
-    getUsage, 
-    getMonthlyUsage, 
-    checkQuota as checkQuotaService
-} from './services/analytics.js';
-import { signWebhook, sendWebhook } from './services/webhooks.js';
-import { logSecurityEvent, checkIPAllowlist, isIPInCIDR } from './services/security.js';
+import { checkIPAllowlist, logSecurityEvent } from './services/security.js';
+import { sendWebhook } from './services/webhooks.js';
 
 // Wrapper functions for backward compatibility with existing handler code
 async function getCustomerCached(customerId, env) {
@@ -2290,9 +2286,12 @@ async function handleRequestOTP(request, env, customerId = null) {
                 hasResendKey: !!env.RESEND_API_KEY
             });
             // Return error so user knows email failed
+            // Show details in development/local mode for easier debugging
+            const isDev = !env.ENVIRONMENT || env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'local';
             return new Response(JSON.stringify({ 
                 error: 'Failed to send email. Please check your email address and try again.',
-                details: env.ENVIRONMENT === 'development' ? error.message : undefined
+                details: isDev ? error.message : undefined,
+                hint: isDev && !env.RESEND_API_KEY ? 'RESEND_API_KEY is not configured. Create a .dev.vars file with your Resend API key.' : undefined
             }), {
                 status: 500,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -2326,6 +2325,73 @@ async function handleRequestOTP(request, env, customerId = null) {
                 ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/problem+json',
             },
+        });
+    }
+}
+
+/**
+ * Clear rate limit endpoint (for testing/debugging)
+ * POST /auth/request-otp/clear-rate-limit
+ */
+async function handleClearRateLimit(request, env, customerId = null) {
+    try {
+        const body = await request.json();
+        const { email, ip } = body;
+        
+        if (!email) {
+            return new Response(JSON.stringify({ 
+                error: 'email required',
+                detail: 'Email address is required to clear rate limit'
+            }), {
+                status: 400,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Hash email
+        const emailHash = await hashEmail(email);
+        
+        // Clear email-based rate limit
+        const rateLimitKey = customerId 
+            ? `cust_${customerId}_ratelimit_otp_${emailHash}`
+            : `ratelimit_otp_${emailHash}`;
+        await env.OTP_AUTH_KV.delete(rateLimitKey);
+        
+        // Clear IP-based rate limit if IP provided
+        let clearedIp = false;
+        if (ip) {
+            // Hash IP (same logic as rate-limit service)
+            const encoder = new TextEncoder();
+            const data = encoder.encode(ip);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const ipHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+            
+            const ipRateLimitKey = customerId 
+                ? `cust_${customerId}_ratelimit_ip_${ipHash}`
+                : `ratelimit_ip_${ipHash}`;
+            await env.OTP_AUTH_KV.delete(ipRateLimitKey);
+            clearedIp = true;
+        }
+        
+        return new Response(JSON.stringify({ 
+            success: true, 
+            message: 'Rate limit cleared',
+            cleared: {
+                email: true,
+                ip: clearedIp
+            }
+        }), {
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        console.error('Clear rate limit error:', error);
+        return new Response(JSON.stringify({ 
+            error: 'Failed to clear rate limit',
+            detail: error.message
+        }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     }
 }
@@ -3180,15 +3246,16 @@ export default {
             }
             
             // Serve dashboard (SPA - all routes serve index.html)
+            // Dashboard is now part of the main app, so proxy to main Vite server
             if (path.startsWith('/dashboard') && request.method === 'GET') {
-                // In development, proxy to Vite dev server
-                // In production, serve built files (TODO: embed after building)
+                // In development, proxy to main Vite dev server (same as landing page)
+                // In production, serve built files from main app
                 const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
                 
                 if (isDev) {
-                    // Proxy to Vite dev server - wrangler dev runs locally so localhost is accessible
+                    // Proxy to main Vite dev server - dashboard is part of the main app now
                     try {
-                        const viteUrl = `http://localhost:5174${path}`;
+                        const viteUrl = `http://localhost:5175${path}`;
                         const viteRequest = new Request(viteUrl, {
                             method: request.method,
                             headers: request.headers,
@@ -3245,16 +3312,18 @@ pnpm dev</code></pre>
                     }
                 }
                 
-                // Production: serve built dashboard files - lazy load assets
-                const assets = await loadDashboardAssets();
+                // Production: dashboard is part of main app, serve from landing page assets
+                // The main app handles routing client-side, so /dashboard serves index.html
+                const assets = await loadLandingPageAssets();
                 if (!assets) {
-                    return new Response('Dashboard not built. Run: pnpm build', {
+                    return new Response('App not built. Run: pnpm build', {
                         status: 503,
                         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'text/plain' },
                     });
                 }
                 
-                // Remove /dashboard prefix to get file path
+                // For /dashboard routes, serve index.html (SPA routing handled client-side)
+                // For asset requests, remove /dashboard prefix
                 let filePath = path.replace(/^\/dashboard\/?/, '') || 'index.html';
                 if (filePath === '') filePath = 'index.html';
                 
@@ -3808,6 +3877,11 @@ pnpm dev</code></pre>
             }
             if (path === '/auth/refresh' && request.method === 'POST') {
                 return handleRefresh(request, env);
+            }
+            
+            // Debug: Clear rate limit (for testing)
+            if (path === '/auth/request-otp/clear-rate-limit' && request.method === 'POST') {
+                return handleClearRateLimit(request, env, customerId);
             }
             
             // 404 for unknown routes

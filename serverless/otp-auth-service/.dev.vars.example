@@ -1,0 +1,18 @@
+# Cloudflare Worker Development Environment Variables
+# Copy this file to .dev.vars and fill in your values
+# .dev.vars is gitignored and used by wrangler dev
+
+# Email Service Configuration (Required for OTP to work)
+# Get your API key from: https://resend.com/api-keys
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# From email address (must be verified in Resend)
+# For development, you can use a test email or your verified domain
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+
+# Optional: Environment identifier
+ENVIRONMENT=development
+
+# Optional: Allowed CORS origins (comma-separated)
+# ALLOWED_ORIGINS=http://localhost:5175,http://localhost:8787
+

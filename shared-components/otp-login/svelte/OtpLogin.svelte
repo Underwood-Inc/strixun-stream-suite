@@ -5,9 +5,9 @@
    * Reusable email OTP authentication component for Svelte
    */
   
-  import { onMount, onDestroy } from 'svelte';
-  import { OtpLoginCore, type OtpLoginConfig, type LoginSuccessData } from '../core';
+  import { onDestroy, onMount, tick } from 'svelte';
   import type { OtpLoginState } from '../core';
+  import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig } from '../core';
 
   export let apiUrl: string;
   export let onSuccess: (data: LoginSuccessData) => void;
@@ -28,7 +28,41 @@
     countdown: 0,
   };
 
-  onMount(() => {
+  // Portal rendering for modal
+  let portalContainer: HTMLDivElement | null = null;
+  let portalContainerId: string = '';
+  
+  // Store unsubscribe function for cleanup
+  let unsubscribe: (() => void) | null = null;
+  
+  // Generate unique portal container ID
+  function generatePortalId(): string {
+    const prefix = 'otp-login-modal-portal';
+    const unique = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    return `${prefix}-${unique}`;
+  }
+
+  // Portal action to render modal at body level
+  function portal(node: HTMLElement, target: HTMLElement) {
+    target.appendChild(node);
+    return {
+      update(newTarget: HTMLElement) {
+        if (newTarget !== target) {
+          newTarget.appendChild(node);
+          target = newTarget;
+        }
+      },
+      destroy() {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      }
+    };
+  }
+
+  onMount(async () => {
     core = new OtpLoginCore({
       apiUrl,
       onSuccess,
@@ -37,14 +71,43 @@
     });
 
     // Subscribe to state changes
-    const unsubscribe = core.subscribe((newState) => {
+    unsubscribe = core.subscribe((newState) => {
       state = newState;
     });
 
-    onDestroy(() => {
+    // Setup portal for modal rendering
+    if (showAsModal) {
+      await tick();
+      
+      // Generate unique ID for this instance
+      portalContainerId = generatePortalId();
+      
+      // Create portal container at body level
+      portalContainer = document.createElement('div');
+      portalContainer.id = portalContainerId;
+      portalContainer.style.position = 'fixed';
+      portalContainer.style.top = '0';
+      portalContainer.style.left = '0';
+      portalContainer.style.width = '0';
+      portalContainer.style.height = '0';
+      portalContainer.style.pointerEvents = 'none';
+      portalContainer.style.zIndex = '1000000'; // Must be higher than auth screen (999999)
+      document.body.appendChild(portalContainer);
+    }
+  });
+
+  onDestroy(() => {
+    if (unsubscribe) {
       unsubscribe();
+    }
+    if (core) {
       core.destroy();
-    });
+    }
+    
+    // Clean up portal container
+    if (portalContainer && portalContainer.parentNode) {
+      portalContainer.parentNode.removeChild(portalContainer);
+    }
   });
 
   function handleEmailChange(e: Event) {
@@ -80,17 +143,24 @@
   }
 </script>
 
-{#if showAsModal}
-  <div class="otp-login-modal-overlay" on:click={onClose} role="button" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onClose?.()}>
-    <div class="otp-login-modal" on:click|stopPropagation role="dialog" aria-labelledby="otp-login-title">
+{#if showAsModal && portalContainer}
+  <div 
+    class="otp-login-modal-overlay" 
+    onclick={onClose} 
+    role="button" 
+    tabindex="0" 
+    onkeydown={(e) => e.key === 'Escape' && onClose?.()}
+    use:portal={portalContainer}
+  >
+    <div class="otp-login-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-labelledby="otp-login-title" tabindex="-1">
       <div class="otp-login-header">
         <h2 id="otp-login-title">{title}</h2>
         {#if onClose}
-          <button class="otp-login-close" on:click={onClose} aria-label="Close">×</button>
+          <button class="otp-login-close" onclick={onClose} aria-label="Close">×</button>
         {/if}
       </div>
       <div class="otp-login-content">
-        <OtpLoginContent />
+        {@render OtpLoginContent()}
       </div>
     </div>
   </div>
@@ -101,7 +171,7 @@
         <h1 class="otp-login-title">{title}</h1>
         <p class="otp-login-subtitle">{subtitle}</p>
       </div>
-      <OtpLoginContent />
+      {@render OtpLoginContent()}
     </div>
   </div>
 {/if}
@@ -126,8 +196,8 @@
           value={state.email}
           disabled={state.loading}
           autofocus
-          on:input={handleEmailChange}
-          on:keydown={(e) => handleKeyPress(e, handleRequestOtp)}
+          oninput={handleEmailChange}
+          onkeydown={(e) => handleKeyPress(e, handleRequestOtp)}
         />
       </div>
       <button
@@ -139,24 +209,23 @@
       </button>
     </form>
   {:else}
-    <form class="otp-login-form" onsubmit={(e) => { e.preventDefault(); handleVerifyOtp(); }}>
+    <form class="otp-login-form" novalidate onsubmit={(e) => { e.preventDefault(); handleVerifyOtp(); }}>
       <div class="otp-login-field">
         <label for="otp-login-otp" class="otp-login-label">6-Digit OTP Code</label>
         <input
-          type="text"
+          type="tel"
           id="otp-login-otp"
           class="otp-login-input otp-login-input--otp"
           required
           autocomplete="one-time-code"
           inputmode="numeric"
-          pattern="[0-9]{6}"
           maxlength="6"
           placeholder="123456"
           value={state.otp}
           disabled={state.loading}
           autofocus
-          on:input={handleOtpChange}
-          on:keydown={(e) => handleKeyPress(e, handleVerifyOtp)}
+          oninput={handleOtpChange}
+          onkeydown={(e) => handleKeyPress(e, handleVerifyOtp)}
         />
         <p class="otp-login-hint">Check your email ({state.email}) for the code</p>
         {#if state.countdown > 0}
@@ -170,7 +239,7 @@
           type="button"
           class="otp-login-button otp-login-button--secondary"
           disabled={state.loading}
-          on:click={handleGoBack}
+          onclick={handleGoBack}
         >
           Back
         </button>
@@ -187,8 +256,8 @@
 {/snippet}
 
 <style lang="scss">
-  @use '../../shared-styles/animations' as *;
-  @use '../../shared-styles/mixins' as *;
+  @use '../../../shared-styles/animations' as *;
+  @use '../../../shared-styles/mixins' as *;
 
   /* Standalone Login Form */
   .otp-login {
@@ -269,8 +338,8 @@
     box-sizing: border-box;
     position: relative;
     z-index: 10000;
-    pointer-events: auto !important;
-    cursor: text !important;
+    pointer-events: auto;
+    cursor: text;
     user-select: text;
     -webkit-user-select: text;
     -moz-user-select: text;
@@ -295,10 +364,10 @@
     font-size: 0.75rem;
     color: var(--text-secondary);
     text-align: center;
+  }
 
-    &--expired {
-      color: var(--warning);
-    }
+  .otp-login-countdown--expired {
+    color: var(--warning);
   }
 
   .otp-login-actions {
@@ -338,7 +407,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000000;
+    z-index: 1000000; /* Must be higher than auth screen (999999) */
     animation: fade-in 0.3s ease-out;
   }
 
