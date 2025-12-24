@@ -206,21 +206,21 @@
     flex-direction: column;
   }
 
-  // Target carousel container to reduce padding
-  :global(.carousel__swiper) {
-    padding: 0 !important;
-    height: 100% !important;
+  // Target carousel container to reduce padding - scoped to this component
+  .modrinth-products__wrapper :global(.carousel__swiper) {
+    padding: 0;
+    height: 100%;
   }
 
-  // Target carousel slides directly
-  :global(.swiper-slide) {
-    height: 280px !important;
-    max-height: 280px !important;
+  // Target carousel slides directly - scoped to this component only
+  .modrinth-products__wrapper :global(.swiper-slide) {
+    height: 280px;
+    max-height: 280px;
   }
 
-  :global(.swiper-slide > *) {
-    height: 100% !important;
-    max-height: 100% !important;
+  .modrinth-products__wrapper :global(.swiper-slide > *) {
+    height: 100%;
+    max-height: 100%;
   }
 
   .modrinth-product__link {

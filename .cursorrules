@@ -233,3 +233,48 @@
 - Avoid side effects in component initialization
 - Use dependency injection for services
 - Mock external dependencies in tests
+
+## HTML/Anchor Tag Rules - CRITICAL
+
+### NEVER Add href to Non-Anchor Elements
+- **ABSOLUTE PROHIBITION**: Never add `href` attribute to any element other than `<a>` (anchor tag)
+- **Why**: `href` is only valid on anchor tags. Using it on other elements (div, button, span, etc.) is invalid HTML and breaks accessibility
+- **Solution**: Use proper semantic HTML - if you need a link, use an `<a>` tag
+- **Exception**: None. This rule has no exceptions.
+
+### ❌ WRONG - href on non-anchor elements (DO NOT USE):
+```svelte
+<!-- WRONG: href on a div -->
+<div href="https://example.com">Link</div>
+
+<!-- WRONG: href on a button -->
+<button href="https://example.com">Link</button>
+
+<!-- WRONG: href on a span -->
+<span href="https://example.com">Link</span>
+
+<!-- WRONG: href on a Card component -->
+<Card href="https://example.com">Link</Card>
+```
+
+### ✅ CORRECT - Use anchor tags for links (ALWAYS USE):
+```svelte
+<!-- CORRECT: href on an anchor tag -->
+<a href="https://example.com" target="_blank" rel="noopener noreferrer">Link</a>
+
+<!-- CORRECT: Anchor tag styled as a card -->
+<a href="https://example.com" class="card-link" target="_blank" rel="noopener noreferrer">
+  <div class="card-content">Link Content</div>
+</a>
+
+<!-- CORRECT: Anchor tag with proper styling -->
+<a href="https://example.com" class="button-link" target="_blank" rel="noopener noreferrer">
+  Click Me
+</a>
+```
+
+### External Link Best Practices
+- Always use `target="_blank"` for external links
+- Always include `rel="noopener noreferrer"` for security when using `target="_blank"`
+- Use semantic HTML: `<a>` for links, `<button>` for actions, `<div>` for containers
+- Style anchor tags with CSS to look like buttons/cards if needed, but keep the semantic HTML

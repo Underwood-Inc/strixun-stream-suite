@@ -20,6 +20,7 @@ export interface User {
 export const isAuthenticated: Writable<boolean> = writable(false);
 export const user: Writable<User | null> = writable(null);
 export const token: Writable<string | null> = writable(null);
+export const csrfToken: Writable<string | null> = writable(null);
 
 // Derived store for checking if token is expired
 export const isTokenExpired: Readable<boolean> = derived(

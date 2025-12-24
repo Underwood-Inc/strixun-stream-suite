@@ -139,9 +139,17 @@ export async function loadCredentials(): Promise<boolean> {
             updateSecurityWarning();
             return true;
           }
+        } else if (response.status === 404) {
+          // 404 is expected when no credentials are saved - not an error
+          // Just silently continue without password (host/port are still loaded from local storage)
+        } else {
+          // Other errors (500, etc.) - log but don't fail
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          log(`Failed to load credentials from cloud: ${errorData.error || 'Unknown error'}`, 'warning');
         }
       } catch (e: any) {
-        if (e.message !== 'Not authenticated') {
+        // Only log errors that aren't expected (404 is expected when no credentials exist)
+        if (e.message !== 'Not authenticated' && !e.message.includes('404')) {
           log('Failed to load credentials from cloud: ' + e.message, 'error');
         }
       }

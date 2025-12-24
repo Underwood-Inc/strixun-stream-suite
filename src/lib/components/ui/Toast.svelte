@@ -49,6 +49,25 @@
   }
   
   $: hasAction = !!toast.action;
+  
+  // Default icons for each toast type
+  const defaultIcons = {
+    success: '✓',
+    error: '✕',
+    info: 'ℹ',
+    warning: '⚠'
+  };
+  
+  // Default labels for each toast type
+  const defaultLabels = {
+    success: 'Success',
+    error: 'Error',
+    info: 'Information',
+    warning: 'Warning'
+  };
+  
+  $: icon = toast.icon || defaultIcons[toast.type || 'info'];
+  $: label = toast.title || defaultLabels[toast.type || 'info'];
 </script>
 
 {#if mounted}
@@ -67,9 +86,10 @@
   >
     <!-- Header Section -->
     <div class="toast__header">
-      {#if toast.title}
-        <div class="toast__title">{toast.title}</div>
-      {/if}
+      <div class="toast__header-content">
+        <div class="toast__icon">{icon}</div>
+        <div class="toast__title">{label}</div>
+      </div>
       {#if showCloseButton}
         <Tooltip text="Dismiss" position="left">
           <button 
@@ -207,13 +227,46 @@
   .toast__header {
     display: flex;
     align-items: flex-start;
-    justify-content: flex-start;
+    justify-content: space-between;
     gap: 8px;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
     padding-right: 24px;
     border-bottom: 1px solid var(--border);
     position: relative;
+  }
+  
+  .toast__header-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .toast__icon {
+    font-size: 1.3em;
+    line-height: 1;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .toast--success .toast__icon {
+    color: var(--success);
+  }
+  
+  .toast--error .toast__icon {
+    color: var(--danger);
+  }
+  
+  .toast--warning .toast__icon {
+    color: #ff8c00;
+  }
+  
+  .toast--info .toast__icon {
+    color: var(--info);
   }
   
   .toast__title {

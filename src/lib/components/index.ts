@@ -31,6 +31,7 @@ export * from './primitives/ResizableZone';
 export { default as Card } from './primitives/Card';
 export { default as Carousel } from './primitives/Carousel';
 export { default as FloatingPanel } from './primitives/FloatingPanel';
+export { default as AdCarousel } from './primitives/AdCarousel';
 
 // Auth Components
 export { default as LoginModal } from './auth/LoginModal.svelte';
@@ -46,9 +47,7 @@ export { default as RoomList } from './chat/RoomList.svelte';
 export { default as RoomCreator } from './chat/RoomCreator.svelte';
 export { default as EmotePicker } from './chat/EmotePicker.svelte';
 
-// Legacy Toast (keeping for backward compatibility)
-export { default as Toast } from './Toast.svelte';
-export { default as ToastContainer } from './ToastContainer.svelte';
+// Toast components are exported from './ui' (see line 27)
 
 // Documentation Components
 export { default as StorybookViewer } from './StorybookViewer.svelte';
@@ -57,4 +56,7 @@ export { default as ComponentDocsButton } from './ComponentDocsButton.svelte';
 // Modrinth Products
 export { default as ModrinthProducts } from './ModrinthProducts.svelte';
 export { default as Sidebar } from './Sidebar.svelte';
+
+// Support Cards
+export { default as TwitchSupportCard } from './TwitchSupportCard.svelte';
 

@@ -1,0 +1,48 @@
+name = "strixun-url-shortener"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# KV Namespace for storing URL mappings
+# Created via: wrangler kv namespace create "URL_SHORTENER_KV"
+[[kv_namespaces]]
+binding = "URL_KV"
+id = "aed413a5133e445fbe4d91c1a080369e"
+preview_id = "7bebce133d884ffda2f34e4398acd660"
+
+# Analytics KV Namespace (optional, for tracking clicks)
+# Created via: wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "486b241817f34f76b0cbb44d81205ce3"
+preview_id = "b0e590fa55ce4513af3c5e07068372ef"
+
+# Note: Create KV namespaces with:
+# wrangler kv namespace create "URL_SHORTENER_KV"
+# wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
+# Then update the IDs above
+
+# Environment variables (secrets should be set via wrangler secret put)
+# DO NOT put actual secrets here - use wrangler CLI:
+#   wrangler secret put JWT_SECRET
+#   IMPORTANT: Use the SAME JWT_SECRET as your OTP auth service for compatibility
+#   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated)
+
+# Custom domain configuration
+# Using idling.app domain
+routes = [
+  { pattern = "s.idling.app/*", zone_name = "idling.app" }
+]
+
+# Alternative: Configure in Cloudflare Dashboard (recommended for production):
+# 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-url-shortener
+# 2. Go to Settings → Triggers → Routes
+# 3. Add custom domain route: s.idling.app/*
+# 4. DNS records are automatically managed by Cloudflare
+#
+# Note: Routes configured in the dashboard take precedence over wrangler.toml

@@ -10,6 +10,10 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     // Format: https://strixun-twitch-api.YOUR_SUBDOMAIN.workers.dev
     WORKER_API_URL: '%%WORKER_API_URL%%',
     
+    // URL Shortener API URL (auto-injected during deployment)
+    // Format: https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev
+    URL_SHORTENER_API_URL: '%%URL_SHORTENER_API_URL%%',
+    
     // GitHub Pages base URL (auto-injected during deployment)
     GITHUB_PAGES_URL: '%%GITHUB_PAGES_URL%%',
     
@@ -74,8 +78,8 @@ window.getWorkerApiUrl = function() {
     }
     
     // Priority 3: Hardcoded fallback for local development
-    // Actual Worker URL from Cloudflare dashboard
-    const HARDCODED_WORKER_URL = 'https://strixun-twitch-api.strixuns-script-suite.workers.dev';
+    // Using custom domain: api.idling.app
+    const HARDCODED_WORKER_URL = 'https://api.idling.app';
     if (HARDCODED_WORKER_URL && !HARDCODED_WORKER_URL.includes('UPDATE-ME')) {
         if (!apiUrlLogged) {
             console.log('[Config] Using hardcoded Worker URL:', HARDCODED_WORKER_URL);
@@ -96,6 +100,74 @@ window.getWorkerApiUrl = function() {
         apiUrlLogged = true;
     }
     cachedApiUrl = null;
+    return null;
+};
+
+/**
+ * Get URL Shortener API URL
+ * Priority:
+ * 1. Manual override from localStorage (url_shortener_api_server)
+ * 2. Auto-injected config from deployment
+ * 3. Hardcoded fallback (for development/testing)
+ * 4. Null (user must configure)
+ */
+// Cache the URL shortener API URL to prevent repeated logging
+let cachedUrlShortenerApiUrl = null;
+let urlShortenerApiUrlLogged = false;
+
+window.getUrlShortenerApiUrl = function() {
+    // Return cached value if available
+    if (cachedUrlShortenerApiUrl !== null) {
+        return cachedUrlShortenerApiUrl;
+    }
+    
+    // Priority 1: Manual override from storage
+    if (typeof storage !== 'undefined') {
+        const manualOverride = storage.get('url_shortener_api_server');
+        if (manualOverride && manualOverride.trim() !== '') {
+            if (!urlShortenerApiUrlLogged) {
+                console.log('[Config] Using manual URL shortener API server override:', manualOverride);
+                urlShortenerApiUrlLogged = true;
+            }
+            cachedUrlShortenerApiUrl = manualOverride;
+            return cachedUrlShortenerApiUrl;
+        }
+    }
+    
+    // Priority 2: Auto-injected during deployment
+    const injected = window.STRIXUN_CONFIG.URL_SHORTENER_API_URL;
+    if (injected && !injected.startsWith('%%')) {
+        if (!urlShortenerApiUrlLogged) {
+            console.log('[Config] Using auto-injected URL shortener API server:', injected);
+            urlShortenerApiUrlLogged = true;
+        }
+        cachedUrlShortenerApiUrl = injected;
+        return cachedUrlShortenerApiUrl;
+    }
+    
+    // Priority 3: Hardcoded fallback for local development
+    // Using custom domain: s.idling.app
+    const HARDCODED_URL_SHORTENER_URL = 'https://s.idling.app';
+    if (HARDCODED_URL_SHORTENER_URL && !HARDCODED_URL_SHORTENER_URL.includes('UPDATE-ME')) {
+        if (!urlShortenerApiUrlLogged) {
+            console.log('[Config] Using hardcoded URL Shortener Worker URL:', HARDCODED_URL_SHORTENER_URL);
+            console.warn('[Config] ⚠️ Using hardcoded fallback. For production, add URL_SHORTENER_API_URL to GitHub Actions.');
+            urlShortenerApiUrlLogged = true;
+        }
+        cachedUrlShortenerApiUrl = HARDCODED_URL_SHORTENER_URL;
+        return cachedUrlShortenerApiUrl;
+    }
+    
+    // Priority 4: No configuration available
+    if (!urlShortenerApiUrlLogged) {
+        console.error('[Config] ❌ No URL shortener API server configured!');
+        console.log('[Config] Solutions:');
+        console.log('  1. Update HARDCODED_URL_SHORTENER_URL in config.js with your actual Worker URL');
+        console.log('  2. OR manually configure in localStorage (url_shortener_api_server)');
+        console.log('  3. OR add URL_SHORTENER_API_URL to GitHub Secrets for auto-injection');
+        urlShortenerApiUrlLogged = true;
+    }
+    cachedUrlShortenerApiUrl = null;
     return null;
 };
 
@@ -163,6 +235,7 @@ window.testWorkerApi = async function() {
 window.initStrixunConfig = async function() {
     console.group('🎬 Strixun Stream Suite - Configuration');
     console.log('Worker API URL:', window.getWorkerApiUrl() || '❌ Not configured');
+    console.log('URL Shortener API URL:', window.getUrlShortenerApiUrl() || '❌ Not configured');
     console.log('GitHub Pages URL:', window.getGitHubPagesUrl());
     console.log('Deployed At:', window.STRIXUN_CONFIG.DEPLOYED_AT);
     console.log('Environment:', window.STRIXUN_CONFIG.DEPLOYMENT_ENV);

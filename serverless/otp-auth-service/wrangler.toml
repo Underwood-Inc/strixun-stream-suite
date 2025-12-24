@@ -3,14 +3,14 @@
 
 name = "otp-auth-service"
 main = "worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-12-22"
 
 # KV Namespace for OTP auth data
 # Created via: wrangler kv namespace create "OTP_AUTH_KV"
 # Note: You'll need to create this namespace and update the ID below
 [[kv_namespaces]]
 binding = "OTP_AUTH_KV"
-id = "your-kv-namespace-id-here"
+id = "680c9dbe86854c369dd23e278abb41f9"
 # To create: cd serverless/otp-auth-service && wrangler kv namespace create "OTP_AUTH_KV"
 
 # Environment variables (secrets should be set via wrangler secret put)
@@ -23,20 +23,17 @@ id = "your-kv-namespace-id-here"
 [vars]
 ENVIRONMENT = "production"
 
-# Optional: Custom domain configuration
-# 
-# To use a custom domain, you have two options:
-#
-# Option 1: Configure routes in wrangler.toml (uncomment and update):
-# routes = [
-#   { pattern = "auth.yourdomain.com/*", zone_name = "yourdomain.com" }
-# ]
-#
-# Option 2: Configure in Cloudflare Dashboard (recommended):
+# Custom domain configuration
+# Using idling.app domain
+routes = [
+  { pattern = "auth.idling.app/*", zone_name = "idling.app" }
+]
+
+# Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → otp-auth-service
 # 2. Go to Settings → Triggers → Routes
-# 3. Add custom domain route
-# 4. Update DNS records as instructed by Cloudflare
+# 3. Add custom domain route: auth.idling.app/*
+# 4. DNS records are automatically managed by Cloudflare
 #
 # Note: Routes configured in the dashboard take precedence over wrangler.toml
 

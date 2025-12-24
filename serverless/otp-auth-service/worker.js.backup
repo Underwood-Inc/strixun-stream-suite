@@ -8,59 +8,51 @@
  * - API key management
  * - JWT token generation and validation
  * 
- * @version 2.1.0 - Refactored to use modular architecture
+ * @version 2.0.0
  */
 
-// Import utility modules
-import { getCustomerCached as getCustomerCachedUtil, invalidateCustomerCache as invalidateCustomerCacheUtil } from './utils/cache.js';
-import { getCorsHeaders as getCorsHeadersUtil } from './utils/cors.js';
-import { 
-    generateOTP as generateOTPUtil, 
-    hashEmail as hashEmailUtil, 
-    generateUserId as generateUserIdUtil,
-    createJWT as createJWTUtil,
-    verifyJWT as verifyJWTUtil,
-    getJWTSecret as getJWTSecretUtil,
-    hashPassword as hashPasswordUtil
-} from './utils/crypto.js';
-import {
-    escapeHtml as escapeHtmlUtil,
-    renderEmailTemplate as renderEmailTemplateUtil,
-    getDefaultEmailTemplate as getDefaultEmailTemplateUtil,
-    getDefaultTextTemplate as getDefaultTextTemplateUtil,
-    getEmailProvider as getEmailProviderUtil
-} from './utils/email.js';
+// In-memory cache for customer data (5-minute TTL)
+const customerCache = new Map();
+const cacheTTL = 5 * 60 * 1000; // 5 minutes
 
-// Import service modules
-import { getCustomerKey, generateCustomerId, getCustomer, storeCustomer } from './services/customer.js';
-import { 
-    generateApiKey as generateApiKeyService, 
-    hashApiKey as hashApiKeyService,
-    createApiKeyForCustomer,
-    verifyApiKey
-} from './services/api-key.js';
-import { checkOTPRateLimit as checkOTPRateLimitService } from './services/rate-limit.js';
-import { 
-    trackResponseTime, 
-    trackError, 
-    trackUsage, 
-    getUsage, 
-    getMonthlyUsage, 
-    checkQuota as checkQuotaService
-} from './services/analytics.js';
-import { signWebhook, sendWebhook } from './services/webhooks.js';
-import { logSecurityEvent, checkIPAllowlist, isIPInCIDR } from './services/security.js';
-
-// Wrapper functions for backward compatibility with existing handler code
+/**
+ * Get customer from cache or KV
+ * @param {string} customerId - Customer ID
+ * @param {*} env - Worker environment
+ * @returns {Promise<object|null>} Customer data
+ */
 async function getCustomerCached(customerId, env) {
     if (!customerId) return null;
-    return getCustomerCachedUtil(customerId, async (id) => await getCustomer(id, env));
+    
+    const cacheKey = `customer_${customerId}`;
+    const cached = customerCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < cacheTTL) {
+        return cached.data;
+    }
+    
+    const customer = await getCustomer(customerId, env);
+    if (customer) {
+        customerCache.set(cacheKey, {
+            data: customer,
+            timestamp: Date.now()
+        });
+    }
+    
+    return customer;
 }
 
+/**
+ * Invalidate customer cache
+ * @param {string} customerId - Customer ID
+ */
 function invalidateCustomerCache(customerId) {
-    return invalidateCustomerCacheUtil(customerId);
+    if (customerId) {
+        customerCache.delete(`customer_${customerId}`);
+    }
 }
 
+// CORS headers for cross-origin requests
 function getCorsHeaders(env, request, customer = null) {
     const origin = request.headers.get('Origin');
     
@@ -108,25 +100,436 @@ function getCorsHeaders(env, request, customer = null) {
     };
 }
 
-// Crypto utility wrappers
-const generateOTP = generateOTPUtil;
-const hashEmail = hashEmailUtil;
-const generateUserId = generateUserIdUtil;
-const createJWT = createJWTUtil;
-const verifyJWT = verifyJWTUtil;
-const getJWTSecret = getJWTSecretUtil;
-const hashPassword = hashPasswordUtil;
-
-// Rate limit wrapper
-async function checkOTPRateLimit(emailHash, customerId, env) {
-    return checkOTPRateLimitService(emailHash, customerId, (id) => getCustomerCached(id, env), env);
+/**
+ * Generate 6-digit OTP code
+ * Uses cryptographically secure random number generation
+ * @returns {string} 6-digit OTP code
+ */
+function generateOTP() {
+    // Use 2 Uint32 values to get 64 bits, eliminating modulo bias
+    const array = new Uint32Array(2);
+    crypto.getRandomValues(array);
+    // Combine two 32-bit values for 64-bit range (0 to 2^64-1)
+    // Then modulo 1,000,000 for 6-digit code
+    // This eliminates modulo bias since 2^64 is much larger than 1,000,000
+    const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % 1000000;
+    return value.toString().padStart(6, '0');
 }
 
-// Email utility wrappers
-const escapeHtml = escapeHtmlUtil;
-const renderEmailTemplate = renderEmailTemplateUtil;
-const getDefaultEmailTemplate = getDefaultEmailTemplateUtil;
-const getDefaultTextTemplate = getDefaultTextTemplateUtil;
+/**
+ * Hash email for storage key (SHA-256)
+ * @param {string} email - Email address
+ * @returns {Promise<string>} Hex-encoded hash
+ */
+async function hashEmail(email) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(email.toLowerCase().trim());
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Generate user ID from email
+ * @param {string} email - Email address
+ * @returns {Promise<string>} User ID
+ */
+async function generateUserId(email) {
+    const hash = await hashEmail(email);
+    return `user_${hash.substring(0, 12)}`;
+}
+
+/**
+ * Create JWT token
+ * @param {object} payload - Token payload
+ * @param {string} secret - Secret key for signing
+ * @returns {Promise<string>} JWT token
+ */
+async function createJWT(payload, secret) {
+    const header = {
+        alg: 'HS256',
+        typ: 'JWT'
+    };
+    
+    const encoder = new TextEncoder();
+    const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    
+    const signatureInput = `${headerB64}.${payloadB64}`;
+    const keyData = encoder.encode(secret);
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signatureInput));
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/_/g, '/');
+    
+    return `${signatureInput}.${signatureB64}`;
+}
+
+/**
+ * Verify JWT token
+ * @param {string} token - JWT token
+ * @param {string} secret - Secret key for verification
+ * @returns {Promise<object|null>} Decoded payload or null if invalid
+ */
+async function verifyJWT(token, secret) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        
+        const [headerB64, payloadB64, signatureB64] = parts;
+        
+        // Verify signature
+        const encoder = new TextEncoder();
+        const signatureInput = `${headerB64}.${payloadB64}`;
+        const keyData = encoder.encode(secret);
+        const key = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['verify']
+        );
+        
+        // Decode signature
+        const signature = Uint8Array.from(
+            atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')),
+            c => c.charCodeAt(0)
+        );
+        
+        const isValid = await crypto.subtle.verify(
+            'HMAC',
+            key,
+            signature,
+            encoder.encode(signatureInput)
+        );
+        
+        if (!isValid) return null;
+        
+        // Decode payload
+        const payload = JSON.parse(
+            atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+        );
+        
+        // Check expiration
+        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+            return null;
+        }
+        
+        return payload;
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Get JWT secret from environment
+ * @param {*} env - Worker environment
+ * @returns {string} JWT secret
+ * @throws {Error} If JWT_SECRET is not set
+ */
+function getJWTSecret(env) {
+    if (!env.JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is required. Set it via: wrangler secret put JWT_SECRET');
+    }
+    return env.JWT_SECRET;
+}
+
+/**
+ * Check rate limit for OTP requests
+ * @param {string} emailHash - Hashed email
+ * @param {string} customerId - Customer ID (for multi-tenant isolation)
+ * @param {*} env - Worker environment
+ * @returns {Promise<{allowed: boolean, remaining: number, resetAt: string}>}
+ */
+async function checkOTPRateLimit(emailHash, customerId, env) {
+    try {
+        // Get customer configuration for rate limits
+        let rateLimitPerHour = 3; // Default
+        if (customerId) {
+            const customer = await getCustomerCached(customerId, env);
+            if (customer && customer.config && customer.config.rateLimits) {
+                rateLimitPerHour = customer.config.rateLimits.otpRequestsPerHour || 3;
+            }
+        }
+        
+        // Use customer-prefixed key for isolation
+        const rateLimitKey = customerId 
+            ? `cust_${customerId}_ratelimit_otp_${emailHash}`
+            : `ratelimit_otp_${emailHash}`;
+        
+        const rateLimitData = await env.OTP_AUTH_KV.get(rateLimitKey);
+        let rateLimit = null;
+        
+        if (rateLimitData) {
+            try {
+                rateLimit = typeof rateLimitData === 'string' ? JSON.parse(rateLimitData) : rateLimitData;
+            } catch (e) {
+                // Invalid JSON, treat as no rate limit
+                rateLimit = null;
+            }
+        }
+        
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        // Check if rate limit exists and is still valid
+        if (rateLimit && rateLimit.resetAt && now <= new Date(rateLimit.resetAt).getTime()) {
+            // Rate limit exists and is valid
+            if (rateLimit.otpRequests >= rateLimitPerHour) {
+                return { allowed: false, remaining: 0, resetAt: rateLimit.resetAt };
+            }
+            
+            // Increment counter (this request counts)
+            rateLimit.otpRequests = (rateLimit.otpRequests || 0) + 1;
+            await env.OTP_AUTH_KV.put(rateLimitKey, JSON.stringify(rateLimit), { expirationTtl: 3600 });
+            
+            return { allowed: true, remaining: rateLimitPerHour - rateLimit.otpRequests, resetAt: rateLimit.resetAt };
+        }
+        
+        // No rate limit or expired - create new one (this request counts as 1)
+        const resetAt = new Date(now + oneHour).toISOString();
+        const newRateLimit = {
+            otpRequests: 1,
+            failedAttempts: 0,
+            resetAt: resetAt
+        };
+        await env.OTP_AUTH_KV.put(rateLimitKey, JSON.stringify(newRateLimit), { expirationTtl: 3600 });
+        
+        return { allowed: true, remaining: rateLimitPerHour - 1, resetAt: resetAt };
+    } catch (error) {
+        console.error('Rate limit check error:', error);
+        // On error, allow the request (fail open for availability)
+        return { allowed: true, remaining: 3, resetAt: new Date(Date.now() + 3600000).toISOString() };
+    }
+}
+
+/**
+ * Escape HTML entities
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(str).replace(/[&<>"']/g, m => map[m]);
+}
+
+/**
+ * Render email template with variables
+ * @param {string} template - Template string
+ * @param {object} variables - Variables to substitute
+ * @param {boolean} isHtml - Whether this is an HTML template (escape variables)
+ * @returns {string} Rendered template
+ */
+function renderEmailTemplate(template, variables, isHtml = false) {
+    if (!template) return '';
+    
+    let rendered = template;
+    
+    // Replace all variables (case-insensitive)
+    for (const [key, value] of Object.entries(variables)) {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+        // For HTML templates, escape variables to prevent XSS (except for otp which is safe)
+        // For text templates, use as-is
+        const replacement = isHtml && key !== 'otp' ? escapeHtml(value || '') : (value || '');
+        rendered = rendered.replace(regex, replacement);
+    }
+    
+    return rendered;
+}
+
+/**
+ * Get default email template
+ * @returns {string} Default HTML template
+ */
+function getDefaultEmailTemplate() {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .otp-code { 
+                    font-size: 32px; 
+                    font-weight: bold; 
+                    letter-spacing: 8px; 
+                    text-align: center;
+                    background: #f4f4f4;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin: 20px 0;
+                    font-family: monospace;
+                }
+                .footer { 
+                    margin-top: 30px; 
+                    font-size: 12px; 
+                    color: #666; 
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Your Verification Code</h1>
+                <p>Use this code to verify your email address:</p>
+                <div class="otp-code">{{otp}}</div>
+                <p>This code will expire in <strong>{{expiresIn}} minutes</strong>.</p>
+                <p>If you didn't request this code, please ignore this email.</p>
+                <div class="footer">
+                    <p>{{appName}}</p>
+                    <p>This is an automated message, please do not reply.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+/**
+ * Get default text email template
+ * @returns {string} Default text template
+ */
+function getDefaultTextTemplate() {
+    return `Your Verification Code
+
+Use this code to verify your email address: {{otp}}
+
+This code will expire in {{expiresIn}} minutes.
+
+If you didn't request this code, please ignore this email.
+
+{{appName}}
+This is an automated message, please do not reply.`;
+}
+
+/**
+ * Resend email provider
+ */
+class ResendProvider {
+    constructor(apiKey) {
+        this.apiKey = apiKey;
+        this.baseUrl = 'https://api.resend.com';
+    }
+    
+    async sendEmail({ from, to, subject, html, text }) {
+        const response = await fetch(`${this.baseUrl}/emails`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from,
+                to,
+                subject,
+                html,
+                text,
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                errorData = { message: errorText };
+            }
+            
+            throw new Error(`Resend API error: ${response.status} - ${errorData.message || errorText}`);
+        }
+        
+        return await response.json();
+    }
+}
+
+/**
+ * SendGrid email provider
+ */
+class SendGridProvider {
+    constructor(apiKey) {
+        this.apiKey = apiKey;
+        this.baseUrl = 'https://api.sendgrid.com/v3';
+    }
+    
+    async sendEmail({ from, to, subject, html, text }) {
+        const response = await fetch(`${this.baseUrl}/mail/send`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                personalizations: [{
+                    to: [{ email: to }]
+                }],
+                from: { email: from },
+                subject: subject,
+                content: [
+                    { type: 'text/plain', value: text },
+                    { type: 'text/html', value: html }
+                ]
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`SendGrid API error: ${response.status} - ${errorText}`);
+        }
+        
+        return { success: true };
+    }
+}
+
+/**
+ * AWS SES email provider
+ */
+class SESProvider {
+    constructor(accessKeyId, secretAccessKey, region = 'us-east-1') {
+        this.accessKeyId = accessKeyId;
+        this.secretAccessKey = secretAccessKey;
+        this.region = region;
+    }
+    
+    async sendEmail({ from, to, subject, html, text }) {
+        // Note: AWS SES requires AWS SDK or manual signature generation
+        // For now, this is a placeholder - would need AWS SDK or manual signing
+        throw new Error('AWS SES provider not yet implemented. Use Resend or SendGrid.');
+    }
+}
+
+/**
+ * SMTP email provider (generic)
+ */
+class SMTPProvider {
+    constructor(config) {
+        this.host = config.host;
+        this.port = config.port;
+        this.secure = config.secure || false;
+        this.auth = config.auth;
+    }
+    
+    async sendEmail({ from, to, subject, html, text }) {
+        // Note: SMTP requires a library like nodemailer
+        // Cloudflare Workers don't support SMTP directly
+        // Would need to use a third-party service or Durable Objects
+        throw new Error('SMTP provider not supported in Cloudflare Workers. Use Resend or SendGrid.');
+    }
+}
 
 /**
  * Check for high error rate and alert
@@ -167,8 +570,45 @@ async function checkErrorRateAlert(customerId, env) {
     }
 }
 
-// Email provider wrapper
-const getEmailProvider = getEmailProviderUtil;
+/**
+ * Get email provider for customer
+ * @param {object} customer - Customer object
+ * @param {*} env - Worker environment
+ * @returns {object} Email provider instance
+ */
+function getEmailProvider(customer, env) {
+    // Check if customer has custom email provider config
+    if (customer && customer.config && customer.config.emailProvider) {
+        const providerConfig = customer.config.emailProvider;
+        
+        if (providerConfig.type === 'resend' && providerConfig.apiKey) {
+            return new ResendProvider(providerConfig.apiKey);
+        }
+        
+        if (providerConfig.type === 'sendgrid' && providerConfig.apiKey) {
+            return new SendGridProvider(providerConfig.apiKey);
+        }
+        
+        if (providerConfig.type === 'ses') {
+            return new SESProvider(
+                providerConfig.accessKeyId,
+                providerConfig.secretAccessKey,
+                providerConfig.region
+            );
+        }
+        
+        if (providerConfig.type === 'smtp') {
+            return new SMTPProvider(providerConfig);
+        }
+    }
+    
+    // Default to Resend using environment variables
+    if (!env.RESEND_API_KEY) {
+        throw new Error('RESEND_API_KEY not configured and no customer email provider set');
+    }
+    
+    return new ResendProvider(env.RESEND_API_KEY);
+}
 
 /**
  * Send OTP email
@@ -277,10 +717,186 @@ async function sendOTPEmail(email, otp, customerId, env) {
     }
 }
 
-// Service function wrappers - these are already imported, just use them directly
-// getCustomerKey, generateCustomerId, getCustomer, storeCustomer are from services/customer.js
-// generateApiKey, hashApiKey, createApiKeyForCustomer, verifyApiKey are from services/api-key.js
-// hashPassword is from utils/crypto.js
+/**
+ * Get customer key with prefix for isolation
+ * @param {string} customerId - Customer ID (optional for backward compatibility)
+ * @param {string} key - Base key
+ * @returns {string} Prefixed key
+ */
+function getCustomerKey(customerId, key) {
+    return customerId ? `cust_${customerId}_${key}` : key;
+}
+
+/**
+ * Generate cryptographically secure API key
+ * @param {string} prefix - Key prefix (e.g., 'otp_live_sk_')
+ * @returns {Promise<string>} API key
+ */
+async function generateApiKey(prefix = 'otp_live_sk_') {
+    // Generate 32 random bytes (256 bits)
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    
+    // Convert to base64url (URL-safe base64)
+    const base64 = btoa(String.fromCharCode(...array))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    
+    return `${prefix}${base64}`;
+}
+
+/**
+ * Hash API key for storage (SHA-256)
+ * @param {string} apiKey - API key
+ * @returns {Promise<string>} Hex-encoded hash
+ */
+async function hashApiKey(apiKey) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(apiKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Generate customer ID
+ * @returns {string} Customer ID
+ */
+function generateCustomerId() {
+    // Generate 12 random hex characters
+    const array = new Uint8Array(6);
+    crypto.getRandomValues(array);
+    const hex = Array.from(array)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    return `cust_${hex}`;
+}
+
+/**
+ * Get customer by ID
+ * @param {string} customerId - Customer ID
+ * @param {*} env - Worker environment
+ * @returns {Promise<object|null>} Customer data or null
+ */
+async function getCustomer(customerId, env) {
+    const customerKey = `customer_${customerId}`;
+    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' });
+    return customer;
+}
+
+/**
+ * Store customer
+ * @param {string} customerId - Customer ID
+ * @param {object} customerData - Customer data
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function storeCustomer(customerId, customerData, env) {
+    const customerKey = `customer_${customerId}`;
+    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData));
+}
+
+/**
+ * Create API key for customer
+ * @param {string} customerId - Customer ID
+ * @param {string} name - API key name
+ * @param {string} env - Worker environment
+ * @returns {Promise<{apiKey: string, keyId: string}>} API key and key ID
+ */
+async function createApiKeyForCustomer(customerId, name, env) {
+    // Generate API key
+    const apiKey = await generateApiKey('otp_live_sk_');
+    const apiKeyHash = await hashApiKey(apiKey);
+    
+    // Generate key ID
+    const keyId = `key_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Store API key hash
+    const apiKeyData = {
+        customerId,
+        keyId,
+        name: name || 'Default API Key',
+        createdAt: new Date().toISOString(),
+        lastUsed: null,
+        status: 'active'
+    };
+    
+    const apiKeyKey = `apikey_${apiKeyHash}`;
+    await env.OTP_AUTH_KV.put(apiKeyKey, JSON.stringify(apiKeyData));
+    
+    // Also store key ID to hash mapping for customer
+    const customerApiKeysKey = `customer_${customerId}_apikeys`;
+    const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+    existingKeys.push({
+        keyId,
+        name: apiKeyData.name,
+        createdAt: apiKeyData.createdAt,
+        lastUsed: null,
+        status: 'active'
+    });
+    await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(existingKeys));
+    
+    return { apiKey, keyId };
+}
+
+/**
+ * Verify API key and get customer ID
+ * @param {string} apiKey - API key
+ * @param {*} env - Worker environment
+ * @returns {Promise<{customerId: string, keyId: string}|null>} Customer ID and key ID or null
+ */
+async function verifyApiKey(apiKey, env) {
+    const apiKeyHash = await hashApiKey(apiKey);
+    const apiKeyKey = `apikey_${apiKeyHash}`;
+    const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' });
+    
+    if (!keyData || keyData.status !== 'active') {
+        return null;
+    }
+    
+    // Update last used timestamp
+    keyData.lastUsed = new Date().toISOString();
+    await env.OTP_AUTH_KV.put(apiKeyKey, JSON.stringify(keyData));
+    
+    // Also update in customer's key list
+    const customerApiKeysKey = `customer_${keyData.customerId}_apikeys`;
+    const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+    const keyIndex = customerKeys.findIndex(k => k.keyId === keyData.keyId);
+    if (keyIndex >= 0) {
+        customerKeys[keyIndex].lastUsed = keyData.lastUsed;
+        await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(customerKeys));
+    }
+    
+    // Check if customer exists and is active
+    const customer = await getCustomer(keyData.customerId, env);
+    if (!customer) {
+        return null;
+    }
+    
+    // Only allow active customers
+    if (customer.status !== 'active') {
+        return null;
+    }
+    
+    return {
+        customerId: keyData.customerId,
+        keyId: keyData.keyId
+    };
+}
+
+/**
+ * Hash password (simple SHA-256 for now - in production use bcrypt/argon2)
+ * @param {string} password - Password
+ * @returns {Promise<string>} Hashed password
+ */
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * Public signup endpoint
@@ -1464,10 +2080,284 @@ async function handleVerifyDomain(request, env, customerId, domain) {
     }
 }
 
-// Analytics functions are imported from services/analytics.js
-// Wrapper for checkQuota to pass getPlanLimits
+/**
+ * Track response time
+ * @param {string} customerId - Customer ID
+ * @param {string} endpoint - Endpoint name
+ * @param {number} responseTime - Response time in milliseconds
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function trackResponseTime(customerId, endpoint, responseTime, env) {
+    if (!customerId) return;
+    
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const metricsKey = `metrics_${customerId}_${today}_${endpoint}`;
+        
+        const existing = await env.OTP_AUTH_KV.get(metricsKey, { type: 'json' }) || {
+            endpoint,
+            date: today,
+            responseTimes: [],
+            count: 0,
+            sum: 0
+        };
+        
+        existing.responseTimes.push(responseTime);
+        existing.count++;
+        existing.sum += responseTime;
+        
+        // Keep only last 1000 samples
+        if (existing.responseTimes.length > 1000) {
+            existing.responseTimes = existing.responseTimes.slice(-1000);
+        }
+        
+        // Calculate percentiles
+        const sorted = [...existing.responseTimes].sort((a, b) => a - b);
+        existing.avgResponseTime = existing.sum / existing.count;
+        existing.p50ResponseTime = sorted[Math.floor(sorted.length * 0.5)] || 0;
+        existing.p95ResponseTime = sorted[Math.floor(sorted.length * 0.95)] || 0;
+        existing.p99ResponseTime = sorted[Math.floor(sorted.length * 0.99)] || 0;
+        
+        await env.OTP_AUTH_KV.put(metricsKey, JSON.stringify(existing), { expirationTtl: 2592000 });
+    } catch (error) {
+        console.error('Response time tracking error:', error);
+    }
+}
+
+/**
+ * Track error
+ * @param {string} customerId - Customer ID
+ * @param {string} category - Error category
+ * @param {string} message - Error message
+ * @param {string} endpoint - Endpoint where error occurred
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function trackError(customerId, category, message, endpoint, env) {
+    if (!customerId) return;
+    
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const errorKey = `errors_${customerId}_${today}`;
+        
+        const existing = await env.OTP_AUTH_KV.get(errorKey, { type: 'json' }) || {
+            customerId,
+            date: today,
+            errors: [],
+            byCategory: {},
+            byEndpoint: {},
+            total: 0
+        };
+        
+        existing.errors.push({
+            category,
+            message,
+            endpoint,
+            timestamp: new Date().toISOString()
+        });
+        
+        existing.byCategory[category] = (existing.byCategory[category] || 0) + 1;
+        existing.byEndpoint[endpoint] = (existing.byEndpoint[endpoint] || 0) + 1;
+        existing.total++;
+        
+        // Keep only last 1000 errors
+        if (existing.errors.length > 1000) {
+            existing.errors = existing.errors.slice(-1000);
+        }
+        
+        await env.OTP_AUTH_KV.put(errorKey, JSON.stringify(existing), { expirationTtl: 2592000 });
+    } catch (error) {
+        console.error('Error tracking error:', error);
+    }
+}
+
+/**
+ * Track usage metric
+ * @param {string} customerId - Customer ID
+ * @param {string} metric - Metric name (otpRequests, otpVerifications, etc.)
+ * @param {number} increment - Amount to increment (default 1)
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function trackUsage(customerId, metric, increment = 1, env) {
+    if (!customerId) return; // Skip tracking for non-authenticated requests
+    
+    try {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const usageKey = `usage_${customerId}_${today}`;
+        
+        // Get existing usage
+        const existingUsage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' }) || {
+            customerId,
+            date: today,
+            otpRequests: 0,
+            otpVerifications: 0,
+            successfulLogins: 0,
+            failedAttempts: 0,
+            emailsSent: 0,
+            apiCalls: 0,
+            storageUsed: 0,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        // Increment metric
+        if (existingUsage[metric] !== undefined) {
+            existingUsage[metric] = (existingUsage[metric] || 0) + increment;
+        } else {
+            existingUsage[metric] = increment;
+        }
+        
+        existingUsage.lastUpdated = new Date().toISOString();
+        
+        // Store with 30-day TTL
+        await env.OTP_AUTH_KV.put(usageKey, JSON.stringify(existingUsage), { expirationTtl: 2592000 });
+    } catch (error) {
+        console.error('Usage tracking error:', error);
+        // Don't throw - usage tracking shouldn't break the request
+    }
+}
+
+/**
+ * Get usage for date range
+ * @param {string} customerId - Customer ID
+ * @param {string} startDate - Start date (YYYY-MM-DD)
+ * @param {string} endDate - End date (YYYY-MM-DD)
+ * @param {*} env - Worker environment
+ * @returns {Promise<object>} Aggregated usage data
+ */
+async function getUsage(customerId, startDate, endDate, env) {
+    const usage = {
+        customerId,
+        period: { start: startDate, end: endDate },
+        otpRequests: 0,
+        otpVerifications: 0,
+        successfulLogins: 0,
+        failedAttempts: 0,
+        emailsSent: 0,
+        apiCalls: 0,
+        storageUsed: 0,
+        dailyBreakdown: []
+    };
+    
+    // Iterate through date range
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const usageKey = `usage_${customerId}_${dateStr}`;
+        const dayUsage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' });
+        
+        if (dayUsage) {
+            usage.otpRequests += dayUsage.otpRequests || 0;
+            usage.otpVerifications += dayUsage.otpVerifications || 0;
+            usage.successfulLogins += dayUsage.successfulLogins || 0;
+            usage.failedAttempts += dayUsage.failedAttempts || 0;
+            usage.emailsSent += dayUsage.emailsSent || 0;
+            usage.apiCalls += dayUsage.apiCalls || 0;
+            usage.storageUsed += dayUsage.storageUsed || 0;
+            
+            usage.dailyBreakdown.push({
+                date: dateStr,
+                otpRequests: dayUsage.otpRequests || 0,
+                otpVerifications: dayUsage.otpVerifications || 0,
+                successfulLogins: dayUsage.successfulLogins || 0,
+                failedAttempts: dayUsage.failedAttempts || 0,
+                emailsSent: dayUsage.emailsSent || 0
+            });
+        }
+    }
+    
+    // Calculate success rate
+    usage.successRate = usage.otpRequests > 0 
+        ? ((usage.otpVerifications / usage.otpRequests) * 100).toFixed(2)
+        : 0;
+    
+    return usage;
+}
+
+/**
+ * Get current month usage
+ * @param {string} customerId - Customer ID
+ * @param {*} env - Worker environment
+ * @returns {Promise<object>} Monthly usage
+ */
+async function getMonthlyUsage(customerId, env) {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const endDate = now.toISOString().split('T')[0];
+    
+    return getUsage(customerId, startDate, endDate, env);
+}
+
+/**
+ * Check quota for customer
+ * @param {string} customerId - Customer ID
+ * @param {*} env - Worker environment
+ * @returns {Promise<{allowed: boolean, reason?: string, quota?: object, usage?: object}>}
+ */
 async function checkQuota(customerId, env) {
-    return checkQuotaService(customerId, async (id) => await getCustomerCached(id, env), getPlanLimits, env);
+    if (!customerId) {
+        return { allowed: true }; // No quota check for non-authenticated (backward compat)
+    }
+    
+    try {
+        const customer = await getCustomerCached(customerId, env);
+        if (!customer) {
+            return { allowed: false, reason: 'customer_not_found' };
+        }
+        
+        const planLimits = getPlanLimits(customer.plan);
+        const customerLimits = customer.config?.rateLimits || {};
+        
+        // Use customer limits if set, otherwise plan limits
+        const quota = {
+            otpRequestsPerDay: customerLimits.otpRequestsPerDay ?? planLimits.otpRequestsPerDay,
+            otpRequestsPerMonth: customerLimits.otpRequestsPerMonth ?? planLimits.otpRequestsPerMonth,
+            maxUsers: customerLimits.maxUsers ?? planLimits.maxUsers
+        };
+        
+        // Check daily quota
+        const today = new Date().toISOString().split('T')[0];
+        const todayUsage = await env.OTP_AUTH_KV.get(`usage_${customerId}_${today}`, { type: 'json' });
+        const dailyRequests = todayUsage?.otpRequests || 0;
+        
+        if (dailyRequests >= quota.otpRequestsPerDay) {
+            return {
+                allowed: false,
+                reason: 'daily_quota_exceeded',
+                quota,
+                usage: { daily: dailyRequests, monthly: null }
+            };
+        }
+        
+        // Check monthly quota
+        const monthlyUsage = await getMonthlyUsage(customerId, env);
+        if (monthlyUsage.otpRequests >= quota.otpRequestsPerMonth) {
+            return {
+                allowed: false,
+                reason: 'monthly_quota_exceeded',
+                quota,
+                usage: { daily: dailyRequests, monthly: monthlyUsage.otpRequests }
+            };
+        }
+        
+        return {
+            allowed: true,
+            quota,
+            usage: {
+                daily: dailyRequests,
+                monthly: monthlyUsage.otpRequests,
+                remainingDaily: quota.otpRequestsPerDay - dailyRequests,
+                remainingMonthly: quota.otpRequestsPerMonth - monthlyUsage.otpRequests
+            }
+        };
+    } catch (error) {
+        console.error('Quota check error:', error);
+        // Fail open for availability
+        return { allowed: true };
+    }
 }
 
 /**
@@ -1659,7 +2549,110 @@ async function handleGetErrorAnalytics(request, env, customerId) {
     }
 }
 
-// Webhook functions are imported from services/webhooks.js
+/**
+ * Sign webhook payload
+ * @param {object} payload - Webhook payload
+ * @param {string} secret - Webhook secret
+ * @returns {Promise<string>} HMAC-SHA256 signature
+ */
+async function signWebhook(payload, secret) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(JSON.stringify(payload));
+    const keyData = encoder.encode(secret);
+    
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', key, data);
+    const hashArray = Array.from(new Uint8Array(signature));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Send webhook event
+ * @param {string} customerId - Customer ID
+ * @param {string} event - Event type
+ * @param {object} data - Event data
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function sendWebhook(customerId, event, data, env) {
+    try {
+        const customer = await getCustomer(customerId, env);
+        if (!customer || !customer.config || !customer.config.webhookConfig) {
+            return; // No webhook configured
+        }
+        
+        const webhookConfig = customer.config.webhookConfig;
+        if (!webhookConfig.url) {
+            return; // No webhook URL
+        }
+        
+        // Check if event is subscribed
+        if (webhookConfig.events && webhookConfig.events.length > 0) {
+            if (!webhookConfig.events.includes(event) && !webhookConfig.events.includes('*')) {
+                return; // Event not subscribed
+            }
+        }
+        
+        // Build payload
+        const payload = {
+            event,
+            timestamp: new Date().toISOString(),
+            customerId,
+            data
+        };
+        
+        // Sign payload
+        const signature = webhookConfig.secret 
+            ? await signWebhook(payload, webhookConfig.secret)
+            : null;
+        
+        // Send webhook
+        const response = await fetch(webhookConfig.url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-OTP-Event': event,
+                'X-OTP-Timestamp': payload.timestamp,
+                ...(signature && { 'X-OTP-Signature': signature })
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        // Log result
+        if (!response.ok) {
+            console.error('Webhook delivery failed:', {
+                customerId,
+                event,
+                url: webhookConfig.url,
+                status: response.status,
+                statusText: response.statusText
+            });
+            
+            // Store failed webhook for retry (simplified - would use queue in production)
+            const retryKey = `webhook_retry_${customerId}_${Date.now()}`;
+            await env.OTP_AUTH_KV.put(retryKey, JSON.stringify({
+                customerId,
+                event,
+                data,
+                url: webhookConfig.url,
+                attempts: 1,
+                nextRetry: new Date(Date.now() + 60000).toISOString() // 1 minute
+            }), { expirationTtl: 86400 }); // 24 hours
+        } else {
+            console.log('Webhook delivered successfully:', { customerId, event });
+        }
+    } catch (error) {
+        console.error('Webhook error:', error);
+        // Don't throw - webhooks shouldn't break the main flow
+    }
+}
 
 /**
  * Rotate API key
@@ -1853,7 +2846,79 @@ async function handleTestOTP(request, env, customerId) {
     }
 }
 
-// Security functions are imported from services/security.js
+/**
+ * Check IP allowlist
+ * @param {string} customerId - Customer ID
+ * @param {string} ip - IP address
+ * @param {*} env - Worker environment
+ * @returns {Promise<boolean>} True if IP is allowed
+ */
+async function checkIPAllowlist(customerId, ip, env) {
+    if (!customerId || !ip) return true; // Allow if no customer or IP
+    
+    try {
+        const customer = await getCustomer(customerId, env);
+        if (!customer || !customer.config || !customer.config.allowedIPs) {
+            return true; // No IP restrictions
+        }
+        
+        const allowedIPs = customer.config.allowedIPs;
+        
+        // Check for wildcard (allow all)
+        if (allowedIPs.includes('*')) {
+            return true;
+        }
+        
+        // Check exact match
+        if (allowedIPs.includes(ip)) {
+            return true;
+        }
+        
+        // Check CIDR ranges
+        for (const allowed of allowedIPs) {
+            if (allowed.includes('/')) {
+                // Simple CIDR check (for IPv4)
+                if (isIPInCIDR(ip, allowed)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('IP allowlist check error:', error);
+        return true; // Fail open
+    }
+}
+
+/**
+ * Check if IP is in CIDR range (simplified IPv4)
+ * @param {string} ip - IP address
+ * @param {string} cidr - CIDR notation (e.g., "192.168.1.0/24")
+ * @returns {boolean} True if IP is in range
+ */
+function isIPInCIDR(ip, cidr) {
+    try {
+        const [network, prefixLength] = cidr.split('/');
+        const prefix = parseInt(prefixLength, 10);
+        
+        const ipParts = ip.split('.').map(Number);
+        const networkParts = network.split('.').map(Number);
+        
+        if (ipParts.length !== 4 || networkParts.length !== 4) {
+            return false;
+        }
+        
+        // Convert to 32-bit integers
+        const ipNum = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
+        const networkNum = (networkParts[0] << 24) + (networkParts[1] << 16) + (networkParts[2] << 8) + networkParts[3];
+        const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+        
+        return (ipNum & mask) === (networkNum & mask);
+    } catch (error) {
+        return false;
+    }
+}
 
 /**
  * Export user data (GDPR)
@@ -2626,7 +3691,41 @@ async function authenticateRequest(request, env) {
     return authResult;
 }
 
-// logSecurityEvent is imported from services/security.js
+/**
+ * Log security event
+ * @param {string} customerId - Customer ID
+ * @param {string} eventType - Event type
+ * @param {object} details - Event details
+ * @param {*} env - Worker environment
+ * @returns {Promise<void>}
+ */
+async function logSecurityEvent(customerId, eventType, details, env) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const auditKey = `audit_${customerId}_${today}`;
+        
+        const existing = await env.OTP_AUTH_KV.get(auditKey, { type: 'json' }) || {
+            customerId,
+            date: today,
+            events: []
+        };
+        
+        existing.events.push({
+            eventType,
+            timestamp: new Date().toISOString(),
+            ...details
+        });
+        
+        // Keep only last 1000 events
+        if (existing.events.length > 1000) {
+            existing.events = existing.events.slice(-1000);
+        }
+        
+        await env.OTP_AUTH_KV.put(auditKey, JSON.stringify(existing), { expirationTtl: 7776000 }); // 90 days
+    } catch (error) {
+        console.error('Security logging error:', error);
+    }
+}
 
 /**
  * Main request handler

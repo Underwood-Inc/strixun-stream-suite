@@ -319,7 +319,7 @@ async function handleUser(request, env) {
 /**
  * Health check endpoint
  */
-async function handleHealth(env) {
+async function handleHealth(env, request) {
     try {
         // Test token generation
         await getAppAccessToken(env);
@@ -3246,7 +3246,7 @@ export default {
             }
             
             // Health check
-            if (path === '/health' || path === '/') return handleHealth(env);
+            if (path === '/health' || path === '/') return handleHealth(env, request);
             
             // Not found
             return new Response(JSON.stringify({ error: 'Not found' }), {

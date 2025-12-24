@@ -101,8 +101,17 @@ import { currentPage } from '../../stores/navigation';
       inTesting: true
     },
     { 
-      id: 'setup', 
+      id: 'url-shortener', 
       numeral: 'X', 
+      label: 'URL Shortener', 
+      requiresConnection: false,
+      disabledReason: null,
+      isWip: false,
+      inTesting: true
+    },
+    { 
+      id: 'setup', 
+      numeral: 'XI', 
       label: 'Setup', 
       requiresConnection: false,
       disabledReason: null,

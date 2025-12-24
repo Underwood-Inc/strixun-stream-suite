@@ -5,7 +5,7 @@
    * Main application component that orchestrates all pages
    */
   
-  import { ActivityLog, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer } from '@components';
+  import { ActivityLog, AdCarousel, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchSupportCard } from '@components';
   import { onMount } from 'svelte';
   import Chat from './pages/Chat.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -17,6 +17,7 @@
   import Sources from './pages/Sources.svelte';
   import Swaps from './pages/Swaps.svelte';
   import TextCycler from './pages/TextCycler.svelte';
+  import UrlShortener from './pages/UrlShortener.svelte';
   
   import { animate } from './core/animations';
   import { initAnimationPreferences } from './core/animations/store';
@@ -78,6 +79,8 @@
             <Scripts />
           {:else if $currentPage === 'install'}
             <Install />
+          {:else if $currentPage === 'url-shortener'}
+            <UrlShortener />
           {:else if $currentPage === 'setup'}
             <Setup />
           {/if}
@@ -102,6 +105,20 @@
   </FloatingPanel>
   
   <ToastContainer />
+  
+  <AdCarousel
+    position="bottom-right"
+    autoRotate={true}
+    interval={8000}
+    showIndicators={true}
+    showControls={false}
+    width={320}
+    maxHeight={200}
+    storageKey="ui_ad_carousel_state"
+    defaultDimmed={false}
+  >
+    <TwitchSupportCard channelUrl="https://www.twitch.tv/strixun" />
+  </AdCarousel>
 </div>
 
 <style lang="scss">

@@ -19,19 +19,16 @@ id = "66b9a4425cb7492fbae8f690780cd0ae"
 [vars]
 ENVIRONMENT = "production"
 
-# Optional: Custom domain configuration
-# 
-# To use a custom domain, you have two options:
-#
-# Option 1: Configure routes in wrangler.toml (uncomment and update):
-# routes = [
-#   { pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }
-# ]
-#
-# Option 2: Configure in Cloudflare Dashboard (recommended):
+# Custom domain configuration
+# Using idling.app domain
+routes = [
+  { pattern = "api.idling.app/*", zone_name = "idling.app" }
+]
+
+# Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-twitch-api
 # 2. Go to Settings → Triggers → Routes
-# 3. Add custom domain route
-# 4. Update DNS records as instructed by Cloudflare
+# 3. Add custom domain route: api.idling.app/*
+# 4. DNS records are automatically managed by Cloudflare
 #
 # Note: Routes configured in the dashboard take precedence over wrangler.toml
