@@ -231,7 +231,6 @@
     gap: 8px;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    padding-right: 24px;
     border-bottom: 1px solid var(--border);
     position: relative;
   }
@@ -278,10 +277,18 @@
     flex: 1;
   }
   
-  .toast__close {
+  // Tooltip wrapper in header should not interfere with close button positioning
+  .toast__header :global(.tooltip-wrapper) {
     position: absolute;
-    top: 0;
-    right: 0;
+    top: 8px;
+    right: 12px;
+    display: block;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .toast__close {
+    position: relative;
     background: transparent;
     border: none;
     color: var(--text-secondary);

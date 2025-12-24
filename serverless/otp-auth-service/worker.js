@@ -129,6 +129,38 @@ const getDefaultEmailTemplate = getDefaultEmailTemplateUtil;
 const getDefaultTextTemplate = getDefaultTextTemplateUtil;
 
 /**
+ * Validate required secrets are configured
+ * @param {*} env - Worker environment
+ * @returns {object} Validation result with missing secrets
+ */
+function validateSecrets(env) {
+    const missing = [];
+    const warnings = [];
+    
+    // Required secrets
+    if (!env.JWT_SECRET) {
+        missing.push('JWT_SECRET');
+    }
+    if (!env.RESEND_API_KEY) {
+        missing.push('RESEND_API_KEY');
+    }
+    if (!env.RESEND_FROM_EMAIL) {
+        missing.push('RESEND_FROM_EMAIL');
+    }
+    
+    // Optional but recommended
+    if (!env.ALLOWED_ORIGINS && env.ENVIRONMENT === 'production') {
+        warnings.push('ALLOWED_ORIGINS (recommended for production)');
+    }
+    
+    return {
+        valid: missing.length === 0,
+        missing,
+        warnings
+    };
+}
+
+/**
  * Check for high error rate and alert
  * @param {string} customerId - Customer ID
  * @param {*} env - Worker environment
@@ -2662,20 +2694,41 @@ export default {
             
             if (path === '/health' && request.method === 'GET') {
                 try {
+                    // Check KV access
                     await env.OTP_AUTH_KV.get('health_check', { type: 'text' });
-                    return new Response(JSON.stringify({ 
-                        status: 'healthy',
+                    
+                    // Validate secrets (but don't fail health check, just warn)
+                    const secretValidation = validateSecrets(env);
+                    
+                    const healthStatus = {
+                        status: secretValidation.valid ? 'healthy' : 'degraded',
                         service: 'otp-auth-service',
                         version: '2.0.0',
                         timestamp: new Date().toISOString()
-                    }), {
+                    };
+                    
+                    if (!secretValidation.valid) {
+                        healthStatus.warnings = {
+                            missing_secrets: secretValidation.missing,
+                            message: `Required secrets not configured: ${secretValidation.missing.join(', ')}. Set them via: wrangler secret put <SECRET_NAME>`
+                        };
+                    }
+                    
+                    if (secretValidation.warnings.length > 0) {
+                        healthStatus.warnings = healthStatus.warnings || {};
+                        healthStatus.warnings.recommended = secretValidation.warnings;
+                    }
+                    
+                    return new Response(JSON.stringify(healthStatus), {
+                        status: secretValidation.valid ? 200 : 503,
                         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                     });
                 } catch (error) {
                     return new Response(JSON.stringify({ 
                         status: 'unhealthy',
                         service: 'otp-auth-service',
-                        error: 'KV check failed'
+                        error: 'KV check failed',
+                        details: env.ENVIRONMENT === 'development' ? error.message : undefined
                     }), {
                         status: 503,
                         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -2685,12 +2738,37 @@ export default {
             
             if (path === '/health/ready' && request.method === 'GET') {
                 try {
+                    // Check KV access
                     await env.OTP_AUTH_KV.get('health_check', { type: 'text' });
-                    return new Response(JSON.stringify({ status: 'ready' }), {
+                    
+                    // Validate required secrets
+                    const secretValidation = validateSecrets(env);
+                    
+                    if (!secretValidation.valid) {
+                        return new Response(JSON.stringify({ 
+                            status: 'not_ready',
+                            reason: 'missing_secrets',
+                            missing: secretValidation.missing,
+                            warnings: secretValidation.warnings,
+                            message: `Required secrets not configured: ${secretValidation.missing.join(', ')}. Set them via: wrangler secret put <SECRET_NAME>`
+                        }), {
+                            status: 503,
+                            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                        });
+                    }
+                    
+                    return new Response(JSON.stringify({ 
+                        status: 'ready',
+                        warnings: secretValidation.warnings.length > 0 ? secretValidation.warnings : undefined
+                    }), {
                         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                     });
                 } catch (error) {
-                    return new Response(JSON.stringify({ status: 'not_ready' }), {
+                    return new Response(JSON.stringify({ 
+                        status: 'not_ready',
+                        reason: 'kv_check_failed',
+                        error: env.ENVIRONMENT === 'development' ? error.message : undefined
+                    }), {
                         status: 503,
                         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
                     });

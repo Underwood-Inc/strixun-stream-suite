@@ -15,10 +15,14 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
-#   wrangler secret put JWT_SECRET
-#   wrangler secret put RESEND_API_KEY
-#   wrangler secret put RESEND_FROM_EMAIL
-#   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated)
+#   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (use: openssl rand -hex 32)
+#   wrangler secret put RESEND_API_KEY       # REQUIRED: Resend API key from https://resend.com/api-keys
+#   wrangler secret put RESEND_FROM_EMAIL    # REQUIRED: Verified email address (e.g., noreply@yourdomain.com)
+#   wrangler secret put ALLOWED_ORIGINS      # OPTIONAL: Comma-separated CORS origins (recommended for production)
+#
+# IMPORTANT: The service will fail health checks if required secrets are missing.
+# Check secrets: wrangler secret list
+# Verify health: curl https://otp-auth-service.strixuns-script-suite.workers.dev/health/ready
 
 [vars]
 ENVIRONMENT = "production"
