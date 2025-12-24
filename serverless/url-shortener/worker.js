@@ -120,9 +120,10 @@ async function authenticateRequest(request, env) {
 
   return {
     authenticated: true,
-    userId: payload.userId,
+    // Support both old format (userId) and OIDC format (sub)
+    userId: payload.userId || payload.sub,
     email: payload.email,
-    customerId: payload.customerId || null,
+    customerId: payload.customerId || payload.aud || null,
   };
 }
 
@@ -1033,8 +1034,9 @@ const STANDALONE_HTML = `<!DOCTYPE html>
 
     <script>
         // Configuration - Update these with your actual API URLs
-        const OTP_AUTH_API_URL = 'https://auth.idling.app';
-        const URL_SHORTENER_API_URL = 'https://s.idling.app';
+        // Using workers.dev URLs as primary until custom domain DNS is configured
+        const OTP_AUTH_API_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+        const URL_SHORTENER_API_URL = 'https://strixun-url-shortener.strixuns-script-suite.workers.dev';
 
         // State
         let authToken = null;
@@ -1089,7 +1091,9 @@ const STANDALONE_HTML = `<!DOCTYPE html>
                     // Start OTP timer (10 minutes)
                     startOTPTimer();
                 } else {
-                    showToast(data.error || 'Failed to send OTP', 'error');
+                    // Handle both old format (data.error) and RFC 7807 format (data.detail)
+                    const errorMessage = data.detail || data.error || 'Failed to send OTP';
+                    showToast(errorMessage, 'error');
                     resendBtn.disabled = false;
                 }
             } catch (error) {
@@ -1122,9 +1126,10 @@ const STANDALONE_HTML = `<!DOCTYPE html>
 
                 const data = await response.json();
 
-                if (response.ok && data.token) {
-                    authToken = data.token;
-                    userEmail = email;
+                if (response.ok && (data.token || data.access_token)) {
+                    // Support both old format (token) and OAuth 2.0 format (access_token)
+                    authToken = data.access_token || data.token;
+                    userEmail = data.email || email;
                     
                     // Store token
                     localStorage.setItem('urlShortenerToken', authToken);
@@ -1134,12 +1139,16 @@ const STANDALONE_HTML = `<!DOCTYPE html>
                     stopOTPTimer();
                     showApp();
                 } else {
-                    showToast(data.error || 'Invalid OTP code', 'error');
+                    // Handle both old format (data.error) and RFC 7807 format (data.detail)
+                    const errorMessage = data.detail || data.error || 'Invalid OTP code';
+                    showToast(errorMessage, 'error');
                     verifyBtn.disabled = false;
                     verifyBtn.textContent = 'Verify & Sign In';
                     
-                    if (data.remainingAttempts !== undefined) {
-                        showToast(\`Remaining attempts: \${data.remainingAttempts}\`, 'warning');
+                    // Support both old and new format for remaining attempts
+                    const remainingAttempts = data.remaining_attempts || data.remainingAttempts;
+                    if (remainingAttempts !== undefined) {
+                        showToast(\`Remaining attempts: \${remainingAttempts}\`, 'warning');
                     }
                 }
             } catch (error) {

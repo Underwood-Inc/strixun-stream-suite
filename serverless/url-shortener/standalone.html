@@ -475,8 +475,9 @@
 
     <script>
         // Configuration - Update these with your actual API URLs
-        const OTP_AUTH_API_URL = 'https://auth.idling.app';
-        const URL_SHORTENER_API_URL = 'https://s.idling.app';
+        // Using workers.dev URLs as primary until custom domain DNS is configured
+        const OTP_AUTH_API_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+        const URL_SHORTENER_API_URL = 'https://strixun-url-shortener.strixuns-script-suite.workers.dev';
 
         // State
         let authToken = null;

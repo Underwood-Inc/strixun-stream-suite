@@ -14,6 +14,10 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
     // Format: https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev
     URL_SHORTENER_API_URL: '%%URL_SHORTENER_API_URL%%',
     
+    // OTP Auth Service API URL (auto-injected during deployment)
+    // Format: https://otp-auth-service.YOUR_SUBDOMAIN.workers.dev
+    OTP_AUTH_API_URL: '%%OTP_AUTH_API_URL%%',
+    
     // GitHub Pages base URL (auto-injected during deployment)
     GITHUB_PAGES_URL: '%%GITHUB_PAGES_URL%%',
     
@@ -177,6 +181,79 @@ window.getUrlShortenerApiUrl = function() {
 };
 
 /**
+ * Get OTP Auth Service API URL
+ * Priority:
+ * 1. Manual override from localStorage (otp_auth_api_server)
+ * 2. Auto-injected config from deployment
+ * 3. Hardcoded fallback (for development/testing)
+ * 4. Null (user must configure)
+ */
+// Cache the OTP auth API URL to prevent repeated logging
+let cachedOtpAuthApiUrl = null;
+let otpAuthApiUrlLogged = false;
+
+window.getOtpAuthApiUrl = function() {
+    // Return cached value if available
+    if (cachedOtpAuthApiUrl !== null) {
+        return cachedOtpAuthApiUrl;
+    }
+    
+    // Priority 1: Manual override from storage
+    if (typeof storage !== 'undefined') {
+        const manualOverride = storage.get('otp_auth_api_server');
+        if (manualOverride && manualOverride.trim() !== '') {
+            if (!otpAuthApiUrlLogged) {
+                console.log('[Config] Using manual OTP auth API server override:', manualOverride);
+                otpAuthApiUrlLogged = true;
+            }
+            cachedOtpAuthApiUrl = manualOverride;
+            return cachedOtpAuthApiUrl;
+        }
+    }
+    
+    // Priority 2: Auto-injected during deployment
+    const injected = window.STRIXUN_CONFIG.OTP_AUTH_API_URL;
+    if (injected && !injected.startsWith('%%')) {
+        if (!otpAuthApiUrlLogged) {
+            console.log('[Config] Using auto-injected OTP auth API server:', injected);
+            otpAuthApiUrlLogged = true;
+        }
+        cachedOtpAuthApiUrl = injected;
+        return cachedOtpAuthApiUrl;
+    }
+    
+    // Priority 3: Hardcoded fallback - try workers.dev first (more reliable), then custom domain
+    // Use workers.dev as primary since custom domain DNS might not be resolving
+    const WORKERS_DEV_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+    const CUSTOM_DOMAIN_URL = 'https://auth.idling.app';
+    
+    // Use workers.dev as primary fallback (more reliable until DNS is configured)
+    const HARDCODED_OTP_AUTH_URL = WORKERS_DEV_URL;
+    
+    if (HARDCODED_OTP_AUTH_URL && !HARDCODED_OTP_AUTH_URL.includes('UPDATE-ME')) {
+        if (!otpAuthApiUrlLogged) {
+            console.log('[Config] Using hardcoded OTP Auth Worker URL:', HARDCODED_OTP_AUTH_URL);
+            console.warn('[Config] ⚠️ Using workers.dev URL. Custom domain (auth.idling.app) will be used once DNS is configured.');
+            otpAuthApiUrlLogged = true;
+        }
+        cachedOtpAuthApiUrl = HARDCODED_OTP_AUTH_URL;
+        return cachedOtpAuthApiUrl;
+    }
+    
+    // Priority 4: No configuration available
+    if (!otpAuthApiUrlLogged) {
+        console.error('[Config] ❌ No OTP auth API server configured!');
+        console.log('[Config] Solutions:');
+        console.log('  1. Update HARDCODED_OTP_AUTH_URL in config.js with your actual Worker URL');
+        console.log('  2. OR manually configure in localStorage (otp_auth_api_server)');
+        console.log('  3. OR add OTP_AUTH_API_URL to GitHub Secrets for auto-injection');
+        otpAuthApiUrlLogged = true;
+    }
+    cachedOtpAuthApiUrl = null;
+    return null;
+};
+
+/**
  * Get GitHub Pages base URL
  */
 window.getGitHubPagesUrl = function() {
@@ -250,6 +327,7 @@ window.initStrixunConfig = async function() {
     console.group('🎬 Strixun Stream Suite - Configuration');
     console.log('Worker API URL:', window.getWorkerApiUrl() || '❌ Not configured');
     console.log('URL Shortener API URL:', window.getUrlShortenerApiUrl() || '❌ Not configured');
+    console.log('OTP Auth API URL:', window.getOtpAuthApiUrl() || '❌ Not configured');
     console.log('GitHub Pages URL:', window.getGitHubPagesUrl());
     console.log('Deployed At:', window.STRIXUN_CONFIG.DEPLOYED_AT);
     console.log('Environment:', window.STRIXUN_CONFIG.DEPLOYMENT_ENV);

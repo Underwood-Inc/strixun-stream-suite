@@ -23,13 +23,14 @@
   let modalOverlay: HTMLDivElement | null = null;
   
   /**
-   * Get API URL
+   * Get OTP Auth API URL
    */
-  function getApiUrl(): string {
-    if (typeof window !== 'undefined' && (window as any).getWorkerApiUrl) {
-      return (window as any).getWorkerApiUrl() || '';
+  function getOtpAuthApiUrl(): string {
+    if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
+      return (window as any).getOtpAuthApiUrl() || '';
     }
-    return '';
+    // Fallback to workers.dev URL if function doesn't exist (more reliable than custom domain)
+    return 'https://otp-auth-service.strixuns-script-suite.workers.dev';
   }
   
   /**
@@ -45,9 +46,9 @@
       isLoading = true;
       error = '';
       
-      const apiUrl = getApiUrl();
+      const apiUrl = getOtpAuthApiUrl();
       if (!apiUrl) {
-        error = 'API URL not configured';
+        error = 'OTP Auth API URL not configured';
         return;
       }
       
@@ -60,7 +61,8 @@
       const data = await response.json();
       
       if (!response.ok) {
-        error = data.error || 'Failed to send OTP';
+        // Handle both old format (data.error) and RFC 7807 format (data.detail)
+        error = data.detail || data.error || 'Failed to send OTP';
         return;
       }
       
@@ -103,9 +105,9 @@
       isLoading = true;
       error = '';
       
-      const apiUrl = getApiUrl();
+      const apiUrl = getOtpAuthApiUrl();
       if (!apiUrl) {
-        error = 'API URL not configured';
+        error = 'OTP Auth API URL not configured';
         return;
       }
       
@@ -118,15 +120,16 @@
       const data = await response.json();
       
       if (!response.ok) {
-        error = data.error || 'Invalid OTP';
+        // Handle both old format (data.error) and RFC 7807 format (data.detail)
+        error = data.detail || data.error || 'Invalid OTP';
         return;
       }
       
-      // Set authentication
+      // Set authentication - support both old format and OAuth 2.0 format
       setAuth({
-        userId: data.userId,
+        userId: data.userId || data.sub, // Support both old format and OIDC sub claim
         email: data.email || email,
-        token: data.token,
+        token: data.access_token || data.token, // Support both OAuth 2.0 and old format
         expiresAt: data.expiresAt,
       });
       

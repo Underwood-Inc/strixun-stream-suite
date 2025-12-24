@@ -2100,9 +2100,19 @@ async function handleRequestOTP(request, env, customerId = null) {
         
         // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return new Response(JSON.stringify({ error: 'Valid email address required' }), {
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
+                title: 'Bad Request',
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                detail: 'Valid email address required',
+                instance: request.url,
+            }), {
+                status: 400,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2118,18 +2128,24 @@ async function handleRequestOTP(request, env, customerId = null) {
                 }, env);
             }
             
+            // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
-                error: 'Quota exceeded',
+                type: 'https://tools.ietf.org/html/rfc6585#section-4',
+                title: 'Too Many Requests',
+                status: 429,
+                detail: 'Quota exceeded',
+                instance: request.url,
                 reason: quotaCheck.reason,
                 quota: quotaCheck.quota,
-                usage: quotaCheck.usage
+                usage: quotaCheck.usage,
             }), {
                 status: 429,
                 headers: { 
                     ...getCorsHeaders(env, request), 
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/problem+json',
                     'X-Quota-Limit': quotaCheck.quota?.otpRequestsPerDay?.toString() || '',
-                    'X-Quota-Remaining': quotaCheck.usage?.remainingDaily?.toString() || '0'
+                    'X-Quota-Remaining': quotaCheck.usage?.remainingDaily?.toString() || '0',
+                    'Retry-After': '3600', // Retry after 1 hour
                 },
             });
         }
@@ -2139,13 +2155,23 @@ async function handleRequestOTP(request, env, customerId = null) {
         const rateLimit = await checkOTPRateLimit(emailHash, customerId, env);
         
         if (!rateLimit.allowed) {
+            // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
-                error: 'Too many requests. Please try again later.',
-                resetAt: rateLimit.resetAt,
-                remaining: rateLimit.remaining
+                type: 'https://tools.ietf.org/html/rfc6585#section-4',
+                title: 'Too Many Requests',
+                status: 429,
+                detail: 'Too many requests. Please try again later.',
+                instance: request.url,
+                retry_after: Math.ceil((rateLimit.resetAt - Date.now()) / 1000),
+                reset_at: rateLimit.resetAt,
+                remaining: rateLimit.remaining,
             }), {
                 status: 429,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                    'Retry-After': Math.ceil((rateLimit.resetAt - Date.now()) / 1000).toString(),
+                },
             });
         }
         
@@ -2214,13 +2240,19 @@ async function handleRequestOTP(request, env, customerId = null) {
             stack: error.stack,
             name: error.name
         });
+        // RFC 7807 Problem Details for HTTP APIs
         return new Response(JSON.stringify({ 
-            error: 'Failed to request OTP',
-            message: error.message,
-            details: env.ENVIRONMENT === 'development' ? error.stack : undefined
+            type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
+            title: 'Internal Server Error',
+            status: 500,
+            detail: 'Failed to request OTP',
+            instance: request.url,
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/problem+json',
+            },
         });
     }
 }
@@ -2236,16 +2268,36 @@ async function handleVerifyOTP(request, env, customerId = null) {
         
         // Validate input
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return new Response(JSON.stringify({ error: 'Valid email address required' }), {
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
+                title: 'Bad Request',
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                detail: 'Valid email address required',
+                instance: request.url,
+            }), {
+                status: 400,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
         if (!otp || !/^\d{6}$/.test(otp)) {
-            return new Response(JSON.stringify({ error: 'Valid 6-digit OTP required' }), {
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
+                title: 'Bad Request',
                 status: 400,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                detail: 'Valid 6-digit OTP required',
+                instance: request.url,
+            }), {
+                status: 400,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2257,18 +2309,38 @@ async function handleVerifyOTP(request, env, customerId = null) {
         const latestOtpKeyValue = await env.OTP_AUTH_KV.get(latestOtpKey);
         
         if (!latestOtpKeyValue) {
-            return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
+                title: 'Not Found',
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                detail: 'OTP not found or expired. Please request a new OTP code.',
+                instance: request.url,
+            }), {
+                status: 404,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
         // Get OTP data
         const otpDataStr = await env.OTP_AUTH_KV.get(latestOtpKeyValue);
         if (!otpDataStr) {
-            return new Response(JSON.stringify({ error: 'OTP not found or expired' }), {
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
+                title: 'Not Found',
                 status: 404,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                detail: 'OTP not found or expired. Please request a new OTP code.',
+                instance: request.url,
+            }), {
+                status: 404,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2276,9 +2348,19 @@ async function handleVerifyOTP(request, env, customerId = null) {
         
         // Verify email matches
         if (otpData.email !== emailLower) {
-            return new Response(JSON.stringify({ error: 'Invalid OTP' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
+                title: 'Bad Request',
+                status: 400,
+                detail: 'Email mismatch',
+                instance: request.url,
+            }), {
+                status: 400,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2286,9 +2368,19 @@ async function handleVerifyOTP(request, env, customerId = null) {
         if (new Date(otpData.expiresAt) < new Date()) {
             await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
             await env.OTP_AUTH_KV.delete(latestOtpKey);
-            return new Response(JSON.stringify({ error: 'OTP expired' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.5.4',
+                title: 'Not Found',
+                status: 404,
+                detail: 'OTP expired. Please request a new OTP code.',
+                instance: request.url,
+            }), {
+                status: 404,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2296,9 +2388,20 @@ async function handleVerifyOTP(request, env, customerId = null) {
         if (otpData.attempts >= 5) {
             await env.OTP_AUTH_KV.delete(latestOtpKeyValue);
             await env.OTP_AUTH_KV.delete(latestOtpKey);
-            return new Response(JSON.stringify({ error: 'Too many failed attempts' }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            // RFC 7807 Problem Details for HTTP APIs
+            return new Response(JSON.stringify({ 
+                type: 'https://tools.ietf.org/html/rfc6585#section-4',
+                title: 'Too Many Requests',
+                status: 429,
+                detail: 'Too many attempts. Please request a new OTP.',
+                instance: request.url,
+                remaining_attempts: 0,
+            }), {
+                status: 429,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2318,12 +2421,20 @@ async function handleVerifyOTP(request, env, customerId = null) {
                 }, env);
             }
             
+            // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
-                error: 'Invalid OTP',
-                remainingAttempts: 5 - otpData.attempts
+                type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+                title: 'Unauthorized',
+                status: 401,
+                detail: 'Invalid OTP code',
+                instance: request.url,
+                remaining_attempts: 5 - otpData.attempts,
             }), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -2386,36 +2497,70 @@ async function handleVerifyOTP(request, env, customerId = null) {
         
         // Generate JWT token (7 hours expiration for security)
         const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
+        const expiresIn = 7 * 60 * 60; // 7 hours in seconds
+        const now = Math.floor(Date.now() / 1000);
+        
+        // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
         const tokenPayload = {
-            userId,
+            // Standard JWT Claims
+            sub: userId, // Subject (user identifier)
+            iss: 'auth.idling.app', // Issuer
+            aud: customerId || 'default', // Audience (customer/tenant)
+            exp: Math.floor(expiresAt.getTime() / 1000), // Expiration time
+            iat: now, // Issued at
+            jti: crypto.randomUUID ? crypto.randomUUID() : // JWT ID (unique token identifier)
+                Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                    .map(b => b.toString(16).padStart(2, '0')).join(''),
+            
+            // OAuth 2.0 / OpenID Connect Claims
             email: emailLower,
-            customerId: customerId, // Include customer ID in token
+            email_verified: true, // OTP verification confirms email
+            
+            // Custom Claims
+            userId, // Backward compatibility
+            customerId: customerId || null, // Multi-tenant customer ID
             csrf: csrfToken, // CSRF token included in JWT
-            exp: Math.floor(expiresAt.getTime() / 1000),
-            iat: Math.floor(Date.now() / 1000),
         };
         
         const jwtSecret = getJWTSecret(env);
-        const token = await createJWT(tokenPayload, jwtSecret);
+        const accessToken = await createJWT(tokenPayload, jwtSecret);
         
         // Store session with customer isolation
         const sessionKey = getCustomerKey(customerId, `session_${userId}`);
         await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify({
             userId,
             email: emailLower,
-            token: await hashEmail(token), // Store hash of token
+            token: await hashEmail(accessToken), // Store hash of token
             expiresAt: expiresAt.toISOString(),
             createdAt: new Date().toISOString(),
         }), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
         
+        // OAuth 2.0 Token Response (RFC 6749 Section 5.1)
         return new Response(JSON.stringify({ 
-            success: true,
-            token,
-            userId,
+            // OAuth 2.0 Standard Fields
+            access_token: accessToken,
+            token_type: 'Bearer',
+            expires_in: expiresIn,
+            
+            // Additional Standard Fields
+            scope: 'openid email profile', // OIDC scopes
+            
+            // User Information (OIDC UserInfo)
+            sub: userId, // Subject identifier
             email: emailLower,
+            email_verified: true,
+            
+            // Backward Compatibility (deprecated, use access_token)
+            token: accessToken,
+            userId,
             expiresAt: expiresAt.toISOString(),
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store', // OAuth 2.0 requirement
+                'Pragma': 'no-cache',
+            },
         });
     } catch (error) {
         return new Response(JSON.stringify({ 
@@ -2468,22 +2613,43 @@ async function handleGetMe(request, env) {
             });
         }
         
+        // OpenID Connect UserInfo Response (RFC 7662)
         return new Response(JSON.stringify({ 
-            success: true,
-            userId: user.userId,
+            // Standard OIDC Claims
+            sub: user.userId, // Subject identifier (required)
             email: user.email,
+            email_verified: true,
+            
+            // Additional Standard Claims
+            iss: 'auth.idling.app', // Issuer
+            aud: customerId || 'default', // Audience
+            
+            // Custom Claims (backward compatibility)
+            userId: user.userId,
             createdAt: user.createdAt,
             lastLogin: user.lastLogin,
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store', // OAuth 2.0 requirement
+                'Pragma': 'no-cache',
+            },
         });
     } catch (error) {
+        // RFC 7807 Problem Details for HTTP APIs
         return new Response(JSON.stringify({ 
-            error: 'Failed to get user info',
-            message: error.message 
+            type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
+            title: 'Internal Server Error',
+            status: 500,
+            detail: 'Failed to get user info',
+            instance: request.url,
         }), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/problem+json',
+            },
         });
     }
 }
