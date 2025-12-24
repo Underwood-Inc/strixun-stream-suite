@@ -5,7 +5,7 @@
    * Email OTP authentication flow
    */
   
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { isAuthenticated, setAuth, user } from '../../../stores/auth';
   import { showToast } from '../../../stores/toast-queue';
   import { animate } from '../../../core/animations';
@@ -19,6 +19,8 @@
   let error = '';
   let countdown = 0;
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
+  let portalContainer: HTMLDivElement | null = null;
+  let modalOverlay: HTMLDivElement | null = null;
   
   /**
    * Get API URL
@@ -160,16 +162,37 @@
     countdown = 0;
   }
   
-  onMount(() => {
-    return () => {
-      if (countdownInterval) {
-        clearInterval(countdownInterval);
-      }
-    };
+  onMount(async () => {
+    // Wait for DOM to settle first
+    await tick();
+    
+    // Create portal container at body level
+    portalContainer = document.createElement('div');
+    portalContainer.id = 'login-modal-portal';
+    portalContainer.style.cssText = 'position: fixed; z-index: 1000000; pointer-events: none;';
+    document.body.appendChild(portalContainer);
+    
+    // Move modal overlay to portal
+    if (modalOverlay && portalContainer) {
+      portalContainer.appendChild(modalOverlay);
+      modalOverlay.style.pointerEvents = 'auto';
+    }
+  });
+  
+  onDestroy(() => {
+    // Clean up countdown interval
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+    }
+    
+    // Clean up portal container
+    if (portalContainer && portalContainer.parentNode) {
+      portalContainer.parentNode.removeChild(portalContainer);
+    }
   });
 </script>
 
-<div class="login-modal-overlay" on:click={onClose} role="button" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onClose()}>
+<div bind:this={modalOverlay} class="login-modal-overlay" on:click={onClose} role="button" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onClose()}>
   <div 
     class="login-modal" 
     on:click|stopPropagation 
@@ -284,7 +307,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 99999;
+    z-index: 1000000;
     animation: fade-in 0.3s ease-out;
   }
   
