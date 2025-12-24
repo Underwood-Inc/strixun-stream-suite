@@ -1,6 +1,6 @@
 name = "strixun-chat-signaling"
 main = "worker.js"
-compatibility_date = "2025-12-23"
+compatibility_date = "2024-01-01"
 
 [env.production]
 vars = { ENVIRONMENT = "production" }
@@ -16,6 +16,13 @@ preview_id = "78a1bd4cd5dc468780de442aacc9d1ee"
 # Note: Create KV namespace with:
 # wrangler kv namespace create "CHAT_KV"
 # Then update the IDs above
+
+# Environment variables (secrets should be set via wrangler secret put)
+# DO NOT put actual secrets here - use wrangler CLI:
+#   wrangler secret put JWT_SECRET
+#   IMPORTANT: Use the SAME JWT_SECRET as your OTP auth service for compatibility
+#   This service validates JWT tokens created by the OTP auth service
+#   wrangler secret put ALLOWED_ORIGINS (optional, comma-separated CORS origins)
 
 # Custom domain configuration
 # Using idling.app domain
