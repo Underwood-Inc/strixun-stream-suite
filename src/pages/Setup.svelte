@@ -839,19 +839,23 @@
       
       .connection-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         margin-top: 8px;
         
         .btn-connect {
           flex: 1;
+          min-width: 120px;
           padding: 10px 16px;
           background: var(--primary, var(--accent));
           border: none;
-          color: #fff;
+          color: #000;
           border-radius: 6px;
           cursor: pointer;
           font-weight: 500;
           transition: all 0.2s;
+          word-wrap: break-word;
+          white-space: normal;
           
           &:hover {
             background: var(--primary-dark, var(--accent-dark));
@@ -859,16 +863,19 @@
         }
         
         .btn-clear-credentials {
+          flex: 1;
+          min-width: 140px;
           padding: 10px 16px;
           background: var(--danger);
           border: none;
-          color: #fff;
+          color: #000;
           border-radius: 6px;
           cursor: pointer;
           font-weight: 500;
           font-size: 0.9em;
           transition: all 0.2s;
-          white-space: nowrap;
+          word-wrap: break-word;
+          white-space: normal;
           
           &:hover {
             background: var(--danger-dark, rgba(var(--danger-rgb, 255, 0, 0), 0.8));
@@ -930,6 +937,17 @@
       cursor: not-allowed;
     }
 
+    // Make tooltip wrapper full width when containing btn-block buttons
+    :global(.tooltip-wrapper:has(button.btn-block)) {
+      width: 100%;
+      display: flex;
+    }
+    
+    // Ensure btn-block buttons inside tooltip wrappers are full width
+    :global(.tooltip-wrapper:has(button.btn-block) button.btn-block) {
+      width: 100%;
+    }
+
     // IN TESTING state for cards
     .card.in-testing {
       @include in-testing-state;
@@ -959,6 +977,30 @@
       
       .card {
         width: 100%;
+      }
+      
+      .connection-card .connection-actions {
+        flex-direction: column;
+        
+        .btn-connect,
+        .btn-clear-credentials {
+          flex: 1;
+          width: 100%;
+          min-width: unset;
+        }
+      }
+    }
+  }
+  
+  // Very small screens - stack buttons vertically
+  @media (max-width: 400px) {
+    .setup-page .connection-card .connection-actions {
+      flex-direction: column;
+      
+      .btn-connect,
+      .btn-clear-credentials {
+        width: 100%;
+        min-width: unset;
       }
     }
   }

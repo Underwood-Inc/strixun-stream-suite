@@ -7,11 +7,11 @@
    * with independent scrolling
    */
   
-  import { onMount, onDestroy, tick } from 'svelte';
-  import { visibleToasts, overflowToasts, dismissToast } from '../../stores/toast-queue';
-  import Toast from './Toast.svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { getToastConfig } from '../../config/toast.config';
+  import { dismissToast, visibleToasts } from '../../stores/toast-queue';
   import { getScrollbarCompensation } from '../utils/scrollbar-compensation';
+  import Toast from './Toast.svelte';
   
   let container: HTMLDivElement;
   let portalContainer: HTMLDivElement | null = null;
@@ -22,10 +22,38 @@
   let contentLeft = 0;
   let contentRight = 0;
   
-  // Scrollbar compensation instance
+  // Scrollbar compensation instance with faster transitions for toast container
   const scrollbarComp = getScrollbarCompensation({
-    cssVariable: '--toast-scrollbar-width'
+    cssVariable: '--toast-scrollbar-width',
+    transitionDuration: '0.1s' // Faster transition to reduce jank
   });
+  
+  /**
+   * Get current scrollbar width from CSS variable or calculate it
+   */
+  function getScrollbarWidth(): number {
+    if (!container) return 0;
+    
+    // First, check if scrollbar is actually present
+    if (!scrollbarComp.hasScrollbar(container)) {
+      return 0;
+    }
+    
+    // Try to get width from CSS variable (set by scrollbar compensation utility)
+    const cssValue = container.style.getPropertyValue('--toast-scrollbar-width');
+    if (cssValue) {
+      const match = cssValue.match(/(\d+(?:\.\d+)?)px/);
+      if (match) {
+        const width = parseFloat(match[1]);
+        if (!isNaN(width) && width > 0) {
+          return width;
+        }
+      }
+    }
+    
+    // Fallback: calculate scrollbar width directly
+    return scrollbarComp.getScrollbarWidth();
+  }
   
   function updateContentBounds(): void {
     const navigation = document.querySelector('nav.tabs');
@@ -56,6 +84,14 @@
     const spacing = 20;
     const availableHeight = contentBottom - contentTop - (spacing * 2);
     
+    // Get main content's scrollbar width (if present)
+    const mainContentScrollbarWidth = scrollbarComp.hasScrollbar(contentArea as HTMLElement)
+      ? scrollbarComp.getScrollbarWidth()
+      : 0;
+    
+    // Get toast container's scrollbar width
+    const toastScrollbarWidth = getScrollbarWidth();
+    
     // Update container positioning based on config position
     if (config.position.includes('top')) {
       container.style.top = `${contentTop + spacing}px`;
@@ -66,7 +102,24 @@
     }
     
     if (config.position.includes('right')) {
-      container.style.right = `${window.innerWidth - contentRight + 20}px`;
+      // Position relative to viewport right edge
+      // Account for main content scrollbar to prevent overlap
+      const gap = 12;
+      let rightOffset = gap;
+      
+      // If main content has scrollbar, position toasts to the left of it
+      if (mainContentScrollbarWidth > 0) {
+        rightOffset = mainContentScrollbarWidth + gap;
+      }
+      
+      // Account for scrollbar compensation's negative margin-right
+      // The compensation applies margin-right: -scrollbarWidth, which pushes container right
+      // So we need to subtract that from our right offset
+      if (toastScrollbarWidth > 0) {
+        rightOffset -= toastScrollbarWidth;
+      }
+      
+      container.style.right = `${rightOffset}px`;
       container.style.left = 'auto';
       container.style.transform = '';
     } else if (config.position.includes('left')) {
@@ -115,8 +168,17 @@
     
     // Use ResizeObserver to watch for layout changes
     const resizeObserver = new ResizeObserver(() => {
+      // Update scrollbar compensation first, then update bounds
+      if (container) {
+        scrollbarComp.update(container);
+      }
       updateContentBounds();
     });
+    
+    // Also observe the container itself for scrollbar changes
+    if (container) {
+      resizeObserver.observe(container);
+    }
     
     const navigation = document.querySelector('nav.tabs');
     const contentArea = document.querySelector('.split-main.content');
@@ -144,8 +206,11 @@
   
   // Watch for toast changes and update scrollbar compensation
   $: if ($visibleToasts && container) {
+    // Update immediately without waiting for animation frame to prevent jank
+    scrollbarComp.update(container);
+    // Update bounds after scrollbar compensation to adjust positioning
     requestAnimationFrame(() => {
-      scrollbarComp.update(container);
+      updateContentBounds();
     });
   }
 </script>
