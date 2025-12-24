@@ -6,7 +6,8 @@
 import { getCorsHeaders } from '../utils/cors.js';
 import { verifyApiKey } from '../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../utils/crypto.js';
-import { getCustomerKey, getCustomerByEmail } from '../services/customer.js';
+import { getCustomerKey, getCustomerByEmail, generateCustomerId, storeCustomer } from '../services/customer.js';
+import { createApiKeyForCustomer } from '../services/api-key.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
@@ -65,6 +66,71 @@ async function authenticateRequest(request, env) {
             const customer = await getCustomerByEmail(payload.email, env);
             if (customer) {
                 resolvedCustomerId = customer.customerId;
+            } else {
+                // No customer account found - auto-create one for dashboard access
+                // This handles the case where existing users logged in before customer accounts were required
+                const emailLower = payload.email.toLowerCase().trim();
+                resolvedCustomerId = generateCustomerId();
+                const emailDomain = emailLower.split('@')[1] || 'unknown';
+                const companyName = emailDomain.split('.')[0] || 'My App';
+                
+                const customerData = {
+                    customerId: resolvedCustomerId,
+                    name: emailLower.split('@')[0], // Use email prefix as name
+                    email: emailLower,
+                    companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                    plan: 'free',
+                    status: 'active',
+                    createdAt: new Date().toISOString(),
+                    configVersion: 1,
+                    config: {
+                        emailConfig: {
+                            fromEmail: null,
+                            fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                            subjectTemplate: 'Your {{appName}} Verification Code',
+                            htmlTemplate: null,
+                            textTemplate: null,
+                            variables: {
+                                appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                                brandColor: '#007bff',
+                                footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
+                                supportUrl: null,
+                                logoUrl: null
+                            }
+                        },
+                        rateLimits: {
+                            otpRequestsPerHour: 3,
+                            otpRequestsPerDay: 50,
+                            maxUsers: 100
+                        },
+                        webhookConfig: {
+                            url: null,
+                            secret: null,
+                            events: []
+                        },
+                        allowedOrigins: []
+                    },
+                    features: {
+                        customEmailTemplates: false,
+                        webhooks: false,
+                        analytics: false,
+                        sso: false
+                    }
+                };
+                
+                await storeCustomer(resolvedCustomerId, customerData, env);
+                
+                // Generate initial API key for the customer if they don't have one
+                try {
+                    const customerApiKeysKey = `customer_${resolvedCustomerId}_apikeys`;
+                    const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' });
+                    if (!existingKeys || existingKeys.length === 0) {
+                        await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
+                    }
+                } catch (error) {
+                    console.error('Failed to create initial API key:', error);
+                    // Continue anyway - API key creation is not critical for authentication
+                }
             }
         }
         
