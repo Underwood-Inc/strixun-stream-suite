@@ -1,31 +1,76 @@
 /**
  * Admin Routes
- * Handles admin endpoints (require API key authentication)
+ * Handles admin endpoints (require API key or JWT token authentication)
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
 import { verifyApiKey } from '../services/api-key.js';
+import { verifyJWT, getJWTSecret, hashEmail } from '../utils/crypto.js';
+import { getCustomerKey } from '../services/customer.js';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
 
 /**
- * Authenticate request using API key
+ * Authenticate request using API key or JWT token
+ * Supports both authentication methods for backward compatibility and dashboard access
  */
 async function authenticateRequest(request, env) {
     const authHeader = request.headers.get('Authorization');
-    let apiKey = null;
+    let token = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        apiKey = authHeader.substring(7);
+        token = authHeader.substring(7);
     } else {
-        apiKey = request.headers.get('X-OTP-API-Key');
-    }
-    
-    if (!apiKey) {
+        // Try X-OTP-API-Key header for API key authentication
+        const apiKey = request.headers.get('X-OTP-API-Key');
+        if (apiKey) {
+            return await verifyApiKey(apiKey, env);
+        }
         return null;
     }
     
-    return await verifyApiKey(apiKey, env);
+    if (!token) {
+        return null;
+    }
+    
+    // First, try API key verification (for backward compatibility)
+    const apiKeyAuth = await verifyApiKey(token, env);
+    if (apiKeyAuth) {
+        return apiKeyAuth;
+    }
+    
+    // If API key verification fails, try JWT token verification (for dashboard access)
+    try {
+        const jwtSecret = getJWTSecret(env);
+        const payload = await verifyJWT(token, jwtSecret);
+        
+        if (!payload) {
+            return null;
+        }
+        
+        // Check if token is blacklisted (for security)
+        const customerId = payload.customerId || null;
+        const tokenHash = await hashEmail(token);
+        const blacklistKey = getCustomerKey(customerId, `blacklist_${tokenHash}`);
+        const blacklisted = await env.OTP_AUTH_KV.get(blacklistKey);
+        if (blacklisted) {
+            return null; // Token has been revoked
+        }
+        
+        // Verify customer exists and is active
+        if (!customerId) {
+            return null; // JWT must have customerId for admin endpoints
+        }
+        
+        // Return auth object in same format as API key auth
+        return {
+            customerId: customerId,
+            // JWT auth doesn't have keyId, but that's okay for admin endpoints
+        };
+    } catch (error) {
+        // JWT verification failed
+        return null;
+    }
 }
 
 /**

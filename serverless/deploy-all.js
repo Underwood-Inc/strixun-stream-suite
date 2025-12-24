@@ -14,10 +14,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const services = [
-  { name: 'Twitch API', path: '.', worker: 'strixun-twitch-api' },
-  { name: 'OTP Auth Service', path: 'otp-auth-service', worker: 'otp-auth-service' },
-  { name: 'URL Shortener', path: 'url-shortener', worker: 'strixun-url-shortener' },
-  { name: 'Chat Signaling', path: 'chat-signaling', worker: 'strixun-chat-signaling' },
+  { name: 'Twitch API', path: '.', worker: 'strixun-twitch-api', command: 'wrangler deploy' },
+  { name: 'OTP Auth Service', path: 'otp-auth-service', worker: 'otp-auth-service', command: 'pnpm run deploy' },
+  { name: 'URL Shortener', path: 'url-shortener', worker: 'strixun-url-shortener', command: 'wrangler deploy' },
+  { name: 'Chat Signaling', path: 'chat-signaling', worker: 'strixun-chat-signaling', command: 'wrangler deploy' },
 ];
 
 console.log('🚀 Deploying All Cloudflare Workers\n');
@@ -39,7 +39,7 @@ for (const service of services) {
   console.log(`   Worker: ${service.worker}`);
   
   try {
-    execSync('wrangler deploy', {
+    execSync(service.command || 'wrangler deploy', {
       cwd: servicePath,
       stdio: 'inherit',
       encoding: 'utf-8',
