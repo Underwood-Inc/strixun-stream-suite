@@ -27,6 +27,8 @@
   
   let collapsed = false;
   let filterExpanded = false;
+  let selectionMode = false;
+  let selectedEntries = new Set<string>(); // Set of log entry IDs
   
   function toggleFilters(): void {
     filterExpanded = !filterExpanded;
@@ -276,11 +278,73 @@
   function clearLog(): void {
     try {
       clearLogEntries();
+      selectedEntries.clear();
       addLogEntry('Log cleared', 'info', 'CLEARED');
     } catch (error) {
       // Error already handled, just log to console as fallback
       console.error('[ActivityLog] Error clearing log:', error);
     }
+  }
+  
+  function toggleSelectionMode(): void {
+    if (selectionMode) {
+      // Exiting selection mode - clear all selections
+      selectedEntries.clear();
+      selectedEntries = selectedEntries; // Trigger reactivity
+    }
+    selectionMode = !selectionMode;
+  }
+  
+  function toggleEntrySelection(entryId: string): void {
+    if (selectedEntries.has(entryId)) {
+      selectedEntries.delete(entryId);
+    } else {
+      selectedEntries.add(entryId);
+    }
+    selectedEntries = selectedEntries; // Trigger reactivity
+  }
+  
+  function selectAll(): void {
+    $visibleLogEntries.forEach(entry => {
+      selectedEntries.add(entry.id);
+    });
+    selectedEntries = selectedEntries; // Trigger reactivity
+  }
+  
+  function deselectAll(): void {
+    selectedEntries.clear();
+    selectedEntries = selectedEntries; // Trigger reactivity
+  }
+  
+  function copySelected(): void {
+    if (selectedEntries.size === 0) {
+      addLogEntry('No entries selected', 'warning', 'COPY');
+      return;
+    }
+    
+    // Get selected entries in order (newest first, matching display order)
+    const selected = $visibleLogEntries
+      .filter(entry => selectedEntries.has(entry.id))
+      .map(entry => {
+        const timestamp = entry.timestamp instanceof Date 
+          ? entry.timestamp.toLocaleString()
+          : new Date(entry.timestamp).toLocaleString();
+        const type = entry.type.toUpperCase().padEnd(7);
+        const flair = entry.flair ? ` [${entry.flair}]` : '';
+        const count = entry.count && entry.count > 1 ? ` (${entry.count})` : '';
+        return `[${timestamp}] [${type}]${flair} ${entry.message}${count}`;
+      })
+      .join('\n');
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(selected).then(() => {
+      addLogEntry(`Copied ${selectedEntries.size} log entr${selectedEntries.size === 1 ? 'y' : 'ies'} to clipboard`, 'success', 'COPY');
+      // Optionally exit selection mode after copying
+      // selectionMode = false;
+      // selectedEntries.clear();
+    }).catch(err => {
+      addLogEntry(`Failed to copy: ${err instanceof Error ? err.message : String(err)}`, 'error', 'COPY');
+    });
   }
   
   // Toggle filter is now handled by the reusable filter state system
@@ -300,16 +364,38 @@
     
     {#if !collapsed}
       <div class="split-log__actions">
-        <button class="split-log__clear btn-link" on:click={clearLog}>Clear</button>
-        <div class="split-log__actions-spacer"></div>
-        <Tooltip text={filterExpanded ? 'Hide filters' : 'Show filters'} position="top">
-          <button 
-            class="split-log__filter-toggle btn-link" 
-            on:click={toggleFilters}
-          >
-            Filters {filterExpanded ? '◀' : '▶'}
+        {#if selectionMode}
+          <button class="split-log__select-all btn-link" on:click={selectAll}>
+            Select All
           </button>
-        </Tooltip>
+          <button class="split-log__deselect-all btn-link" on:click={deselectAll}>
+            Deselect All
+          </button>
+          <button 
+            class="split-log__copy btn-link" 
+            on:click={copySelected}
+            disabled={selectedEntries.size === 0}
+          >
+            Copy ({selectedEntries.size})
+          </button>
+          <button class="split-log__cancel-select btn-link" on:click={toggleSelectionMode}>
+            Cancel
+          </button>
+        {:else}
+          <button class="split-log__clear btn-link" on:click={clearLog}>Clear</button>
+          <button class="split-log__select-mode btn-link" on:click={toggleSelectionMode}>
+            Select
+          </button>
+          <div class="split-log__actions-spacer"></div>
+          <Tooltip text={filterExpanded ? 'Hide filters' : 'Show filters'} position="top">
+            <button 
+              class="split-log__filter-toggle btn-link" 
+              on:click={toggleFilters}
+            >
+              Filters {filterExpanded ? '◀' : '▶'}
+            </button>
+          </Tooltip>
+        {/if}
       </div>
     {/if}
   </div>
@@ -319,14 +405,20 @@
       <ActivityLogFilterAside bind:expanded={filterExpanded} />
       <div class="split-log__content" id="log">
         {#if $visibleLogEntries.length > 0}
-        <VirtualList
+          <VirtualList
           items={$visibleLogEntries}
           itemHeight={28}
           containerHeight={logContainerHeight}
           overscan={3}
         >
             <svelte:fragment let:item let:index>
-              <LogEntry entry={asLogEntry(item)} index={index} />
+              <LogEntry 
+                entry={asLogEntry(item)} 
+                index={index}
+                selectionMode={selectionMode}
+                selected={selectedEntries.has(item.id)}
+                onToggleSelect={() => toggleEntrySelection(item.id)}
+              />
             </svelte:fragment>
           </VirtualList>
         {:else}

@@ -95,7 +95,7 @@
     expandedWidth={320}
     minWidth={200}
     maxWidth={500}
-    defaultExpanded={true}
+    defaultExpanded={false}
     storageKey="ui_sidebar_panel"
   >
     <Sidebar />

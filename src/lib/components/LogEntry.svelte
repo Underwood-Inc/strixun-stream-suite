@@ -9,6 +9,9 @@
   
   export let entry: LogEntryType;
   export let index: number;
+  export let selectionMode = false;
+  export let selected = false;
+  export let onToggleSelect: () => void = () => {};
   
   // Format timestamp
   $: timestamp = entry.timestamp instanceof Date 
@@ -27,9 +30,41 @@
   
   // Alternating background colors (dark blue and dark green)
   $: isEven = index % 2 === 0;
+  
+  function handleClick(e: MouseEvent): void {
+    if (selectionMode) {
+      e.preventDefault();
+      onToggleSelect();
+    }
+  }
 </script>
 
-<div class="log-entry log-entry--{entry.type}" class:log-entry--even={isEven} class:log-entry--odd={!isEven}>
+<div 
+  class="log-entry log-entry--{entry.type}" 
+  class:log-entry--even={isEven} 
+  class:log-entry--odd={!isEven}
+  class:log-entry--selection-mode={selectionMode}
+  class:log-entry--selected={selected}
+  on:click={handleClick}
+  role={selectionMode ? 'checkbox' : undefined}
+  aria-checked={selectionMode ? selected : undefined}
+  tabindex={selectionMode ? 0 : undefined}
+  on:keydown={(e) => {
+    if (selectionMode && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onToggleSelect();
+    }
+  }}
+>
+  {#if selectionMode}
+    <input
+      type="checkbox"
+      class="log-entry__checkbox"
+      checked={selected}
+      on:change={onToggleSelect}
+      on:click|stopPropagation
+    />
+  {/if}
   <span class="log-entry__time">[{timestamp}]</span>
   {#if entry.icon}
     <span class="log-entry__icon">{entry.icon}</span>
@@ -55,7 +90,30 @@
     border-radius: 4px;
     margin-bottom: 2px;
     min-height: 28px;
-    transition: background-color 0.1s ease;
+    transition: background-color 0.1s ease, border-color 0.1s ease;
+    
+    &--selection-mode {
+      cursor: pointer;
+      user-select: none;
+      
+      &:hover {
+        background: rgba(237, 174, 73, 0.15);
+      }
+    }
+    
+    &--selected {
+      border: 2px solid var(--accent);
+      background: rgba(237, 174, 73, 0.2);
+    }
+    
+    &__checkbox {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
     
     &__time {
       color: var(--muted);

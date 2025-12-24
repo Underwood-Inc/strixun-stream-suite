@@ -269,6 +269,8 @@
     // Ensure carousel has proper height
     :global(.modrinth-products) {
       width: 100%;
+      height: 300px;
+      margin-block-end: 1rem;
     }
     
     :global(.modrinth-products__wrapper) {

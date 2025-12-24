@@ -5,20 +5,20 @@
    * OBS WebSocket connection, Twitch API settings, storage backup, and version info
    */
   
-  import { onMount, onDestroy } from 'svelte';
-  import { connected } from '../stores/connection';
-  import { connect, disconnect, toggleConnection, loadCredentials, clearSavedCredentials, updateSecurityWarning, updateConnectionState } from '../modules/websocket';
-  import { openUrlOrCopy } from '../modules/script-status';
-  import * as App from '../modules/app';
-  import { requestStorageFromOBS, manualStorageSync, saveAutoSyncPref } from '../modules/storage-sync';
-  import { checkForUpdates, openGitHubRepo } from '../modules/version';
-  import { storage } from '../modules/storage';
-  import { Tooltip, LoginModal, ConfirmationModal } from '@components';
-  import { isAuthenticated, user } from '../stores/auth';
-  import { saveToCloud, loadFromCloud, listCloudSaves, deleteCloudSave, type CloudSave } from '../modules/cloud-save';
-  import { showToast } from '../stores/toast-queue';
+  import { ConfirmationModal, LoginModal, Tooltip } from '@components';
+  import { onMount } from 'svelte';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';
+  import * as App from '../modules/app';
+  import { deleteCloudSave, listCloudSaves, loadFromCloud, saveToCloud, type CloudSave } from '../modules/cloud-save';
+  import { openUrlOrCopy } from '../modules/script-status';
+  import { storage } from '../modules/storage';
+  import { manualStorageSync, requestStorageFromOBS, saveAutoSyncPref } from '../modules/storage-sync';
+  import { checkForUpdates, openGitHubRepo } from '../modules/version';
+  import { clearSavedCredentials, loadCredentials, toggleConnection, updateConnectionState, updateSecurityWarning } from '../modules/websocket';
+  import { isAuthenticated, user } from '../stores/auth';
+  import { connected } from '../stores/connection';
+  import { showToast } from '../stores/toast-queue';
   
   let host = 'localhost';
   let port = '4455';
@@ -943,6 +943,7 @@
       break-inside: avoid;
       page-break-inside: avoid;
       margin-bottom: 20px;
+      width: 350px;
     }
   }
 
@@ -955,6 +956,10 @@
         column-count: 1;
         column-width: 100%;
       }
+      
+      .card {
+        width: 100%;
+      }
     }
   }
 
@@ -962,11 +967,19 @@
     .setup-page .setup-cards-grid {
       column-width: 380px;
     }
+    
+    .setup-page .card {
+      width: 380px;
+    }
   }
 
   @media (min-width: 1600px) {
     .setup-page .setup-cards-grid {
-      column-width: 400px;
+      column-width: 440px;
+    }
+    
+    .setup-page .card {
+      width: 440px;
     }
   }
 </style>

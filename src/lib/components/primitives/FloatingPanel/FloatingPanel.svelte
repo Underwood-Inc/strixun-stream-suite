@@ -873,7 +873,7 @@
 >
   <div class="floating-panel__header">
     <ChevronButton
-      direction={position === 'left' ? (isExpanded ? 'left' : 'right') : (isExpanded ? 'right' : 'left')}
+      direction={position === 'left' ? (isExpanded ? 'right' : 'left') : (isExpanded ? 'left' : 'right')}
       onClick={toggleExpanded}
       ariaLabel={isExpanded ? 'Collapse panel' : 'Expand panel'}
       size="small"

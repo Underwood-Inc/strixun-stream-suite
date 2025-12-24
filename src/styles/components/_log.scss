@@ -113,7 +113,12 @@
     align-items: center;
   }
   
-  &__clear {
+  &__clear,
+  &__select-mode,
+  &__select-all,
+  &__deselect-all,
+  &__copy,
+  &__cancel-select {
     background: transparent;
     border: none;
     color: var(--text-secondary);
@@ -123,6 +128,19 @@
     
     &:hover {
       color: var(--text);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  
+  &__copy {
+    color: var(--accent);
+    
+    &:hover:not(:disabled) {
+      color: var(--accent-light);
     }
   }
   
