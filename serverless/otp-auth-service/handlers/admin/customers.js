@@ -4,7 +4,9 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomer, storeCustomer } from '../../services/customer.js';
+import { getCustomer, storeCustomer, getCustomerByEmail } from '../../services/customer.js';
+import { ensureCustomerAccount } from '../auth/customer-creation.js';
+import { hashEmail } from '../../utils/crypto.js';
 
 /**
  * Get current customer info
@@ -12,7 +14,36 @@ import { getCustomer, storeCustomer } from '../../services/customer.js';
  */
 export async function handleAdminGetMe(request, env, customerId) {
     try {
-        const customer = await getCustomer(customerId, env);
+        // If customerId is provided but customer doesn't exist, try to ensure it exists
+        let customer = customerId ? await getCustomer(customerId, env) : null;
+        
+        // If customer not found, try to get email from JWT token and ensure customer account exists
+        if (!customer && customerId) {
+            // Try to get email from JWT token in Authorization header
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                const token = authHeader.substring(7);
+                try {
+                    const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
+                    const jwtSecret = getJWTSecret(env);
+                    const payload = await verifyJWT(token, jwtSecret);
+                    
+                    if (payload && payload.email) {
+                        const emailLower = payload.email.toLowerCase().trim();
+                        // Ensure customer account exists (backwards compatibility)
+                        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+                        if (resolvedCustomerId) {
+                            customer = await getCustomer(resolvedCustomerId, env);
+                        }
+                    }
+                } catch (jwtError) {
+                    // JWT verification failed, continue with error handling below
+                    console.warn('[Admin GetMe] Failed to verify JWT for customer lookup:', jwtError);
+                }
+            }
+        }
+        
+        // If still no customer found, return error
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,

@@ -6,6 +6,7 @@
 import { getCorsHeaders } from '../../utils/cors.js';
 import { hashEmail, verifyJWT, createJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
+import { ensureCustomerAccount } from './customer-creation.js';
 
 /**
  * Get current user endpoint
@@ -33,18 +34,40 @@ export async function handleGetMe(request, env) {
         }
         
         // Get customer ID from token (for multi-tenant isolation)
-        const customerId = payload.customerId || null;
+        let customerId = payload.customerId || null;
+        
+        // Ensure customer account exists (backwards compatibility for users without customer accounts)
+        const emailLower = payload.email.toLowerCase().trim();
+        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+        customerId = resolvedCustomerId || customerId;
         
         // Get user data with customer isolation
         const emailHash = await hashEmail(payload.email);
-        const userKey = getCustomerKey(customerId, `user_${emailHash}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        let userKey = getCustomerKey(customerId, `user_${emailHash}`);
+        let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        
+        // If user not found with customerId, try without customerId (backwards compatibility)
+        if (!user && customerId) {
+            const legacyUserKey = `user_${emailHash}`;
+            user = await env.OTP_AUTH_KV.get(legacyUserKey, { type: 'json' });
+            // If found, migrate user to customer-scoped key and update customerId
+            if (user) {
+                user.customerId = customerId;
+                await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+            }
+        }
         
         if (!user) {
             return new Response(JSON.stringify({ error: 'User not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
+        }
+        
+        // Ensure user has customerId set (update if missing)
+        if (!user.customerId && customerId) {
+            user.customerId = customerId;
+            await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
         // OpenID Connect UserInfo Response (RFC 7662)

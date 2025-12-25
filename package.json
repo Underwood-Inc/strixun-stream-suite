@@ -17,8 +17,8 @@
     "release": "changeset publish",
     "generate-icons": "node scripts/generate-pwa-icons.js",
     "update-badge": "node scripts/update-version-badge.js",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "storybook": "cd shared-components && pnpm storybook",
+    "build-storybook": "cd shared-components && pnpm build-storybook"
   },
   "dependencies": {
     "swiper": "^11.2.10"

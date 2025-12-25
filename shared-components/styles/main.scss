@@ -1,0 +1,22 @@
+/**
+ * Shared Components - Main Stylesheet
+ * 
+ * Entry point for Storybook styles
+ */
+
+@use '../../shared-styles/variables' as *;
+@use '../../shared-styles/mixins' as *;
+@use '../../shared-styles/animations' as *;
+
+// Basic reset and typography
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+

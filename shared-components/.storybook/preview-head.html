@@ -1,0 +1,46 @@
+<style>
+  /* Storybook UI Theme Overrides */
+  /* Apply Strixun Stream Suite theme to Storybook interface */
+  
+  :root {
+    /* Override Storybook's default colors with our theme */
+    --sb-color-bg: #1a1611;
+    --sb-color-bg-secondary: #0f0e0b;
+    --sb-color-bg-tertiary: #252017;
+    --sb-color-border: #3d3627;
+    --sb-color-text: #f9f9f9;
+    --sb-color-text-secondary: #b8b8b8;
+    --sb-color-accent: #edae49;
+  }
+  
+  /* Storybook sidebar */
+  .sidebar-container {
+    background: var(--sb-color-bg-secondary) !important;
+    border-right: 1px solid var(--sb-color-border) !important;
+  }
+  
+  /* Storybook toolbar */
+  .os-host {
+    background: var(--sb-color-bg-secondary) !important;
+  }
+  
+  /* Storybook canvas area */
+  .os-host-overflow {
+    background: var(--sb-color-bg) !important;
+  }
+  
+  /* Storybook panels */
+  .os-padding {
+    background: var(--sb-color-bg-tertiary) !important;
+  }
+  
+  /* Links and buttons in Storybook */
+  a, button {
+    color: var(--sb-color-accent) !important;
+  }
+  
+  a:hover, button:hover {
+    color: #f9df74 !important;
+  }
+</style>
+
