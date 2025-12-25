@@ -183,7 +183,11 @@
   }
 
   // Target carousel slides directly - scoped to this component only
+  // Override base Carousel slide width to use full width in constrained container
   .product-carousel__wrapper :global(.swiper-slide) {
+    width: 100% !important;
+    min-width: 100%;
+    max-width: 100%;
     height: 280px;
     max-height: 280px;
   }
@@ -242,10 +246,10 @@
   }
 
   .product-carousel__image {
-    width: 150px;
-    min-width: 150px;
-    height: 150px;
-    max-height: 150px;
+    width: 100px;
+    min-width: 100px;
+    height: 100px;
+    max-height: 100px;
     object-fit: contain;
     object-position: top left;
     image-rendering: pixelated;

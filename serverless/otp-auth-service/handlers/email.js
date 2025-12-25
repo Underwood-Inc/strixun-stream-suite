@@ -34,7 +34,7 @@ export async function sendOTPEmail(email, otp, customerId, env) {
     let textTemplate = null;
     let templateVariables = {
         appName: 'OTP Auth Service',
-        brandColor: '#007bff',
+        brandColor: '#edae49', // Strixun Stream Suite brand accent color
         footerText: 'This is an automated message, please do not reply.',
         supportUrl: null,
         logoUrl: null

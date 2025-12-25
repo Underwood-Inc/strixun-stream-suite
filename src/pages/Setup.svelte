@@ -6,7 +6,7 @@
    */
   
   import { ConfirmationModal, LoginModal, Tooltip } from '@components';
-  import { StatusFlair } from '../lib/components/primitives/StatusFlair';
+  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
   import { onMount } from 'svelte';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';
@@ -607,7 +607,8 @@
     
     <!-- Last backup info -->
     <div id="lastBackupInfo" style="margin-top:8px;font-size:0.75em;color:var(--muted);text-align:center"></div>
-    </div>
+      </div>
+    </StatusFlair>
   </Tooltip>
   
   <!-- Cloud Backup Card -->
@@ -957,9 +958,6 @@
     // Ensure btn-block buttons inside tooltip wrappers are full width
     :global(.tooltip-wrapper:has(button.btn-block) button.btn-block) {
       width: 100%;
-    }
-
-    // Status flairs are now handled by StatusFlair component
     }
 
     // Ensure cards size naturally based on content and break properly in columns

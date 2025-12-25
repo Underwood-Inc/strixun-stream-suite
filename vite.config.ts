@@ -89,6 +89,9 @@ export default defineConfig({
       scss: {
         // Variables are explicitly imported in each file that needs them
         // No auto-import needed to avoid path resolution issues
+        includePaths: [
+          resolve(__dirname, './shared-styles')
+        ]
       }
     }
   },
@@ -99,7 +102,8 @@ export default defineConfig({
       '@modules': resolve(__dirname, './src/modules'),
       '@stores': resolve(__dirname, './src/stores'),
       '@styles': resolve(__dirname, './src/styles'),
-      '@shared-components': resolve(__dirname, './shared-components')
+      '@shared-components': resolve(__dirname, './shared-components'),
+      '@shared-styles': resolve(__dirname, './shared-styles')
     }
   },
   build: {

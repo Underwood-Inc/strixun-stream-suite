@@ -17,7 +17,7 @@ import { currentPage } from '../../stores/navigation';
   import { celebrateClick } from '../../utils/particles';
   import Tooltip from './Tooltip.svelte';
   import { animate, stagger } from '../../core/animations';
-  import { StatusFlair } from './primitives/StatusFlair';
+  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
   
   const tabs = [
     { 
