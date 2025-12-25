@@ -7,8 +7,8 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomerKey, hashEmail } from '../../services/customer.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
+import { getCustomerKey } from '../../services/customer.js';
+import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 
 interface CloudflareEnv {
   OTP_AUTH_KV: KVNamespace;

@@ -1,6 +1,6 @@
 // App built files embedded as a module (includes landing page and dashboard)
 // This file is generated automatically when building the app
-// Generated: 2025-12-25T04:33:08.398Z
+// Generated: 2025-12-25T04:37:00.103Z
 // DO NOT EDIT - This file is auto-generated
 
 export default {

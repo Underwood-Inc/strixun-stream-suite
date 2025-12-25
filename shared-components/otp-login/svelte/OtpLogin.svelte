@@ -8,8 +8,10 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import type { OtpLoginState } from '../core';
   import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig } from '../core';
-  import Tooltip from '../../tooltip/Tooltip.svelte';
-  import { getErrorInfo, generateRateLimitTooltip } from '../../error-mapping/error-legend';
+  import EmailForm from './components/EmailForm.svelte';
+  import ErrorDisplay from './components/ErrorDisplay.svelte';
+  import OtpForm from './components/OtpForm.svelte';
+  import { generatePortalId, portal } from './utils';
 
   export let apiUrl: string;
   export let onSuccess: (data: LoginSuccessData) => void;
@@ -29,6 +31,8 @@
     loading: false,
     error: null,
     countdown: 0,
+    rateLimitResetAt: null,
+    rateLimitCountdown: 0,
   };
 
   // Portal rendering for modal
@@ -37,33 +41,6 @@
   
   // Store unsubscribe function for cleanup
   let unsubscribe: (() => void) | null = null;
-  
-  // Generate unique portal container ID
-  function generatePortalId(): string {
-    const prefix = 'otp-login-modal-portal';
-    const unique = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    return `${prefix}-${unique}`;
-  }
-
-  // Portal action to render modal at body level
-  function portal(node: HTMLElement, target: HTMLElement) {
-    target.appendChild(node);
-    return {
-      update(newTarget: HTMLElement) {
-        if (newTarget !== target) {
-          newTarget.appendChild(node);
-          target = newTarget;
-        }
-      },
-      destroy() {
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
-        }
-      }
-    };
-  }
 
   onMount(async () => {
     core = new OtpLoginCore({
@@ -143,14 +120,6 @@
     }
   }
 
-  function formatCountdown(seconds: number): string {
-    return OtpLoginCore.formatCountdown(seconds);
-  }
-
-  function formatRateLimitCountdown(seconds: number): string {
-    return OtpLoginCore.formatRateLimitCountdown(seconds);
-  }
-
   function handleKeyPress(e: KeyboardEvent, handler: () => void) {
     if (e.key === 'Enter' && !state.loading) {
       handler();
@@ -180,7 +149,23 @@
         {/if}
       </div>
       <div class="otp-login-content">
-        {@render OtpLoginContent()}
+        <ErrorDisplay {state} />
+        {#if state.step === 'email'}
+          <EmailForm 
+            {state}
+            onEmailChange={handleEmailChange}
+            onRequestOtp={handleRequestOtp}
+            onKeyPress={handleKeyPress}
+          />
+        {:else}
+          <OtpForm 
+            {state}
+            onOtpChange={handleOtpChange}
+            onVerifyOtp={handleVerifyOtp}
+            onGoBack={handleGoBack}
+            onKeyPress={handleKeyPress}
+          />
+        {/if}
       </div>
     </div>
   </div>
@@ -191,116 +176,26 @@
         <h1 class="otp-login-title">{title}</h1>
         <p class="otp-login-subtitle">{subtitle}</p>
       </div>
-      {@render OtpLoginContent()}
+      <ErrorDisplay {state} />
+      {#if state.step === 'email'}
+        <EmailForm 
+          {state}
+          onEmailChange={handleEmailChange}
+          onRequestOtp={handleRequestOtp}
+          onKeyPress={handleKeyPress}
+        />
+      {:else}
+        <OtpForm 
+          {state}
+          onOtpChange={handleOtpChange}
+          onVerifyOtp={handleVerifyOtp}
+          onGoBack={handleGoBack}
+          onKeyPress={handleKeyPress}
+        />
+      {/if}
     </div>
   </div>
 {/if}
-
-<!-- Content Component -->
-{#snippet OtpLoginContent()}
-  {#if state.error}
-    {@const errorInfo = getErrorInfo(state.errorCode || 'rate_limit_exceeded')}
-    {@const resetTime = state.rateLimitResetAt ? new Date(state.rateLimitResetAt).toLocaleString(navigator.language || 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : null}
-    {@const tooltipContent = generateRateLimitTooltip(errorInfo, state.errorDetails)}
-    <div class="otp-login-error">
-      <div class="otp-login-error-message">
-        {state.error}
-        <Tooltip 
-          content={tooltipContent} 
-          position="top" 
-          interactive={true}
-          maxWidth="420px"
-          maxHeight="400px"
-        >
-          <span class="otp-login-error-info-icon" aria-label="Error details">ℹ️</span>
-        </Tooltip>
-      </div>
-      {#if state.rateLimitCountdown > 0}
-        <div class="otp-login-rate-limit-countdown">
-          <span class="otp-login-countdown-icon">⏱️</span>
-          <span class="otp-login-countdown-text">
-            Try again in: <strong>{formatRateLimitCountdown(state.rateLimitCountdown)}</strong>
-            {#if resetTime}
-              <span class="otp-login-reset-time">(at {resetTime})</span>
-            {/if}
-          </span>
-        </div>
-      {/if}
-    </div>
-  {/if}
-
-  {#if state.step === 'email'}
-    <form class="otp-login-form" onsubmit={(e) => { e.preventDefault(); handleRequestOtp(); }}>
-      <div class="otp-login-field">
-        <label for="otp-login-email" class="otp-login-label">Email Address</label>
-        <input
-          type="email"
-          id="otp-login-email"
-          class="otp-login-input"
-          required
-          autocomplete="email"
-          placeholder="your@email.com"
-          value={state.email}
-          disabled={state.loading}
-          autofocus
-          oninput={handleEmailChange}
-          onkeydown={(e) => handleKeyPress(e, handleRequestOtp)}
-        />
-      </div>
-      <button
-        type="submit"
-        class="otp-login-button otp-login-button--primary"
-        disabled={state.loading || !state.email}
-      >
-        {state.loading ? 'Sending...' : 'Send OTP Code'}
-      </button>
-    </form>
-  {:else}
-    <form class="otp-login-form" novalidate onsubmit={(e) => { e.preventDefault(); handleVerifyOtp(); }}>
-      <div class="otp-login-field">
-        <label for="otp-login-otp" class="otp-login-label">6-Digit OTP Code</label>
-        <input
-          type="tel"
-          id="otp-login-otp"
-          class="otp-login-input otp-login-input--otp"
-          required
-          autocomplete="one-time-code"
-          inputmode="numeric"
-          maxlength="6"
-          placeholder="123456"
-          value={state.otp}
-          disabled={state.loading}
-          autofocus
-          oninput={handleOtpChange}
-          onkeydown={(e) => handleKeyPress(e, handleVerifyOtp)}
-        />
-        <p class="otp-login-hint">Check your email ({state.email}) for the code</p>
-        {#if state.countdown > 0}
-          <p class="otp-login-countdown">Code expires in: {formatCountdown(state.countdown)}</p>
-        {:else if state.countdown === 0 && state.step === 'otp'}
-          <p class="otp-login-countdown otp-login-countdown--expired">Code expired. Request a new one.</p>
-        {/if}
-      </div>
-      <div class="otp-login-actions">
-        <button
-          type="button"
-          class="otp-login-button otp-login-button--secondary"
-          disabled={state.loading}
-          onclick={handleGoBack}
-        >
-          Back
-        </button>
-        <button
-          type="submit"
-          class="otp-login-button otp-login-button--primary"
-          disabled={state.loading || state.otp.length !== 6}
-        >
-          {state.loading ? 'Verifying...' : 'Verify & Login'}
-        </button>
-      </div>
-    </form>
-  {/if}
-{/snippet}
 
 <style lang="scss">
   @use '../../../shared-styles/animations' as *;
@@ -339,184 +234,6 @@
 
   .otp-login-subtitle {
     color: var(--text-secondary);
-  }
-
-  .otp-login-error {
-    background: var(--card);
-    border: 1px solid var(--danger);
-    border-left: 4px solid var(--danger);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-lg);
-    color: var(--danger);
-    margin-bottom: var(--spacing-lg);
-    animation: slide-down 0.3s ease-out;
-  }
-
-  .otp-login-error-message {
-    margin-bottom: var(--spacing-sm);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    position: relative;
-    
-    :global(.tooltip-wrapper) {
-      pointer-events: auto;
-      z-index: 10;
-      position: relative;
-    }
-  }
-  
-  .otp-login-error-info-icon {
-    cursor: help;
-    font-size: 1rem;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 10;
-    pointer-events: auto;
-    user-select: none;
-    
-    &:hover {
-      opacity: 1;
-    }
-  }
-  
-  .otp-login-reset-time {
-    font-size: 0.875rem;
-    opacity: 0.8;
-    margin-left: var(--spacing-xs);
-  }
-
-  .otp-login-rate-limit-countdown {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-md);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid rgba(234, 43, 31, 0.2);
-    color: var(--text);
-    font-size: 0.875rem;
-  }
-
-  .otp-login-countdown-icon {
-    font-size: 1.25rem;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  .otp-login-countdown-text {
-    flex: 1;
-  }
-
-  .otp-login-countdown-text strong {
-    color: var(--accent);
-    font-weight: 600;
-    font-family: monospace;
-    font-size: 1rem;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.7;
-      transform: scale(1.1);
-    }
-  }
-
-  .otp-login-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-    position: relative;
-    z-index: 1;
-    pointer-events: auto;
-  }
-
-  .otp-login-field {
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    z-index: 1;
-    pointer-events: auto;
-  }
-
-  .otp-login-label {
-    display: block;
-    margin-bottom: var(--spacing-sm);
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    pointer-events: none;
-  }
-
-  .otp-login-input {
-    @include input;
-    width: 100%;
-    padding: var(--spacing-md);
-    font-size: 1rem;
-    box-sizing: border-box;
-    position: relative;
-    z-index: 10000;
-    pointer-events: auto;
-    cursor: text;
-    user-select: text;
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    touch-action: manipulation;
-  }
-
-  .otp-login-input--otp {
-    font-size: 1.5rem;
-    text-align: center;
-    letter-spacing: 0.5rem;
-    font-family: monospace;
-  }
-
-  .otp-login-hint {
-    margin-top: var(--spacing-sm);
-    font-size: 0.875rem;
-    color: var(--muted);
-  }
-
-  .otp-login-countdown {
-    margin-top: var(--spacing-xs);
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-align: center;
-  }
-
-  .otp-login-countdown--expired {
-    color: var(--warning);
-  }
-
-  .otp-login-actions {
-    display: flex;
-    gap: var(--spacing-md);
-  }
-
-  .otp-login-button {
-    flex: 1;
-    padding: var(--spacing-md);
-    font-size: 0.875rem;
-  }
-
-  .otp-login-button--primary {
-    @include arcade-button(var(--accent), var(--accent-dark));
-  }
-
-  .otp-login-button--secondary {
-    @include arcade-button(var(--border), var(--border-light));
-    background: transparent;
-    color: var(--text);
-    
-    &:hover:not(:disabled) {
-      background: var(--bg-dark);
-      color: var(--text);
-    }
   }
 
   /* Modal Variant */
@@ -596,4 +313,3 @@
     padding: 24px;
   }
 </style>
-

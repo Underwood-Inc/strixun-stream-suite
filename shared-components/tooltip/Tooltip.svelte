@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import type { ComponentType } from 'svelte';
   
-  export let content: string;
+  export let content: string = '';
+  export let component: ComponentType<any> | null = null;
+  export let componentProps: Record<string, any> = {};
   export let position: 'top' | 'bottom' | 'left' | 'right' = 'top';
   export let delay: number = 200;
   export let maxWidth: string | null = null; // Optional override, null = use dynamic calculation
@@ -267,7 +270,11 @@
     onmouseleave={handleTooltipMouseLeave}
   >
     <div class="tooltip-content">
-      {@html content}
+      {#if component}
+        <svelte:component this={component} {...componentProps} />
+      {:else if content}
+        {@html content}
+      {/if}
     </div>
     <div class="tooltip-arrow"></div>
   </div>
