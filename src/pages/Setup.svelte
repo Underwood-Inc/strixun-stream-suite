@@ -6,6 +6,7 @@
    */
   
   import { ConfirmationModal, LoginModal, Tooltip } from '@components';
+  import { StatusFlair } from '../lib/components/primitives/StatusFlair';
   import { onMount } from 'svelte';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';
@@ -483,19 +484,22 @@
   
   <!-- Keyboard Shortcuts Card -->
   <Tooltip text="Keyboard Shortcuts | This feature is currently in testing" level="info" position="top">
-    <div class="card in-testing">
+    <StatusFlair status="in-testing">
+      <div class="card">
       <h3>Keyboard Shortcuts</h3>
     <p style="color:var(--muted);font-size:0.9em">When this panel is focused:</p>
     <ul style="color:var(--muted);padding-left:20px;font-size:0.9em;line-height:2">
       <li><strong>1-9</strong> - Trigger saved swap configs</li>
       <li><strong>Space</strong> - Start/stop text cycler</li>
     </ul>
-    </div>
+      </div>
+    </StatusFlair>
   </Tooltip>
   
   <!-- Cross-Client Sync Card -->
   <Tooltip text="Cross-Client Sync | This feature is currently in testing" level="info" position="top">
-    <div class="card in-testing">
+    <StatusFlair status="in-testing">
+      <div class="card">
       <h3>🔄 Cross-Client Sync</h3>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
       Sync configs between OBS dock and remote browser panels via WebSocket.
@@ -528,12 +532,14 @@
       <input type="checkbox" id="autoSyncOnConnect" bind:checked={autoSyncOnConnect} on:change={handleSaveAutoSyncPref}>
       <label for="autoSyncOnConnect">Auto-pull from OBS on connect</label>
     </div>
-    </div>
+      </div>
+    </StatusFlair>
   </Tooltip>
   
   <!-- Data & Backup Card -->
   <Tooltip text="Data & Backup | This feature is currently in testing" level="info" position="top">
-    <div class="card in-testing">
+    <StatusFlair status="in-testing">
+      <div class="card">
       <h3>💾 Data & Backup</h3>
     
     <!-- Storage Engine Status -->
@@ -606,7 +612,8 @@
   
   <!-- Cloud Backup Card -->
   <Tooltip text="Cloud Backup | This feature is currently in testing" level="info" position="top">
-    <div class="card in-testing">
+    <StatusFlair status="in-testing">
+      <div class="card">
       <h3>☁️ Cloud Backup</h3>
     
     {#if !$isAuthenticated}
@@ -707,7 +714,8 @@
         🔄 Refresh List
       </button>
     {/if}
-    </div>
+      </div>
+    </StatusFlair>
   </Tooltip>
   
   {#if showLoginModal}
@@ -728,7 +736,8 @@
   
   <!-- Version Info Card -->
   <Tooltip text="Version | This feature is currently in testing" level="info" position="top">
-    <div class="card in-testing">
+    <StatusFlair status="in-testing">
+      <div class="card">
       <h3>📦 Version</h3>
     <div id="versionInfo" style="font-size:0.9em">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
@@ -754,7 +763,8 @@
     <div style="margin-top:10px;font-size:0.75em;color:var(--muted);text-align:center">
       <span id="lastVersionCheck">Never checked</span>
     </div>
-    </div>
+      </div>
+    </StatusFlair>
   </Tooltip>
   </div>
 </div>
@@ -949,10 +959,7 @@
       width: 100%;
     }
 
-    // IN TESTING state for cards
-    .card.in-testing {
-      @include in-testing-state;
-      cursor: help;
+    // Status flairs are now handled by StatusFlair component
     }
 
     // Ensure cards size naturally based on content and break properly in columns

@@ -5,7 +5,7 @@
    * Main application component that orchestrates all pages
    */
   
-  import { ActivityLog, AdCarousel, AuthScreen, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchSupportCard } from '@components';
+  import { ActivityLog, AuthScreen, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchAdCarousel } from '@components';
   import { onMount } from 'svelte';
   import Chat from './pages/Chat.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -130,19 +130,10 @@
   
   <ToastContainer />
   
-  <AdCarousel
+  <TwitchAdCarousel
     position="bottom-right"
-    autoRotate={true}
-    interval={8000}
-    showIndicators={true}
-    showControls={false}
-    width={320}
-    maxHeight={200}
-    storageKey="ui_ad_carousel_state"
-    defaultDimmed={false}
-  >
-    <TwitchSupportCard channelUrl="https://www.twitch.tv/strixun" />
-  </AdCarousel>
+    channelUrl="https://www.twitch.tv/strixun"
+  />
 </div>
 {/if}
 

@@ -9,12 +9,20 @@ import type { Writable, Readable } from 'svelte/store';
 import type { ChatMessage, RoomMetadata, ChatConnectionState } from '../types/chat';
 import { user } from './auth';
 
+export interface UserPresence {
+  userId: string;
+  userName: string;
+  status: 'online' | 'offline' | 'away';
+  lastSeen?: string;
+}
+
 export interface ChatState {
   messages: ChatMessage[];
   room: RoomMetadata | null;
   connectionState: ChatConnectionState;
   participants: string[];
   isTyping: Set<string>;
+  presence: Map<string, UserPresence>; // userId -> presence data
 }
 
 // Main chat store
@@ -28,6 +36,7 @@ export const chatState: Writable<ChatState> = writable({
   },
   participants: [],
   isTyping: new Set(),
+  presence: new Map(),
 });
 
 // Derived stores
@@ -106,14 +115,22 @@ export function removeParticipant(userId: string): void {
   }));
 }
 
-export function setTyping(userId: string, typing: boolean): void {
+export function setTyping(userId: string, userName: string): void {
   chatState.update((state) => {
     const isTyping = new Set(state.isTyping);
-    if (typing) {
-      isTyping.add(userId);
-    } else {
-      isTyping.delete(userId);
-    }
+    isTyping.add(userId);
+
+    return {
+      ...state,
+      isTyping,
+    };
+  });
+}
+
+export function removeTyping(userId: string): void {
+  chatState.update((state) => {
+    const isTyping = new Set(state.isTyping);
+    isTyping.delete(userId);
 
     return {
       ...state,
@@ -129,6 +146,33 @@ export function clearMessages(): void {
   }));
 }
 
+export function setPresence(userId: string, userName: string, status: 'online' | 'offline' | 'away'): void {
+  chatState.update((state) => {
+    const presence = new Map(state.presence);
+    presence.set(userId, {
+      userId,
+      userName,
+      status,
+      lastSeen: status === 'offline' ? new Date().toISOString() : undefined,
+    });
+
+    return {
+      ...state,
+      presence,
+    };
+  });
+}
+
+export function getPresence(userId: string): UserPresence | undefined {
+  const state = get(chatState);
+  return state.presence.get(userId);
+}
+
+export function getAllPresence(): UserPresence[] {
+  const state = get(chatState);
+  return Array.from(state.presence.values());
+}
+
 export function resetChat(): void {
   chatState.set({
     messages: [],
@@ -140,6 +184,7 @@ export function resetChat(): void {
     },
     participants: [],
     isTyping: new Set(),
+    presence: new Map(),
   });
 }
 
@@ -152,6 +197,7 @@ export function getCurrentUserId(): string | null {
 // Get current user name from auth store
 export function getCurrentUserName(): string | null {
   const currentUser = get(user);
-  return currentUser?.email || null; // Using email as display name for now
+  // Prefer displayName, fallback to email for backward compatibility
+  return currentUser?.displayName || currentUser?.email || null;
 }
 

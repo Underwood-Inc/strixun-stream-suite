@@ -60,6 +60,8 @@ export async function handleGetMe(request, env) {
             
             // Custom Claims (backward compatibility)
             userId: user.userId,
+            displayName: user.displayName || null, // Anonymized display name
+            customerId: user.customerId || customerId || null,
             createdAt: user.createdAt,
             lastLogin: user.lastLogin,
         }), {

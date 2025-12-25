@@ -8,17 +8,25 @@
  * - API key management
  * - JWT token generation and validation
  * 
- * @version 2.1.0 - Refactored to use modular architecture
+ * @version 2.2.0 - Enhanced with API framework features
  */
 
 import { route } from './router.js';
+import { createEnhancedRouter } from '../shared/enhanced-router.js';
+import { initializeServiceTypes } from '../shared/types.js';
+
+// Initialize service types
+initializeServiceTypes();
+
+// Create enhanced router
+const enhancedRoute = createEnhancedRouter(route);
 
 /**
  * Main request handler
- * Delegates to router for all routing logic
+ * Delegates to enhanced router for all routing logic
  */
 export default {
     async fetch(request, env, ctx) {
-        return route(request, env);
+        return enhancedRoute(request, env, ctx);
     }
 };

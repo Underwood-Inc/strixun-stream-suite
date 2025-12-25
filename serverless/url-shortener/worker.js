@@ -4,8 +4,11 @@
  * Cloudflare Worker for URL shortening with OTP authentication integration
  * Provides free URL shortening service with user authentication
  * 
- * @version 1.0.0
+ * @version 1.1.0 - Enhanced with API framework
  */
+
+import { createEnhancedRouter } from '../shared/enhanced-router.js';
+import { initializeServiceTypes } from '../shared/types.js';
 
 /**
  * Get CORS headers with dynamic origin whitelist
@@ -1562,66 +1565,79 @@ function handleStandalonePage() {
 }
 
 /**
+ * Original request handler
+ */
+async function originalFetch(request, env, ctx) {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: getCorsHeaders(env, request) });
+  }
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  try {
+    // Health check (moved before root to ensure it works)
+    if (path === '/health') {
+      return handleHealth();
+    }
+
+    // Serve standalone HTML page at root
+    if (path === '/' && request.method === 'GET') {
+      return handleStandalonePage();
+    }
+
+    // API endpoints (require authentication)
+    if (path === '/api/create' && request.method === 'POST') {
+      return handleCreateShortUrl(request, env);
+    }
+
+    if (path.startsWith('/api/info/') && request.method === 'GET') {
+      return handleGetUrlInfo(request, env);
+    }
+
+    if (path === '/api/list' && request.method === 'GET') {
+      return handleListUrls(request, env);
+    }
+
+    if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
+      return handleDeleteUrl(request, env);
+    }
+
+    // Redirect endpoint (public, no auth required)
+    // This must be last to catch all other paths
+    if (request.method === 'GET' && path !== '/api' && !path.startsWith('/api/')) {
+      return handleRedirect(request, env);
+    }
+
+    // Not found
+    return new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Initialize service types
+initializeServiceTypes();
+
+// Create enhanced router
+const enhancedFetch = createEnhancedRouter(originalFetch);
+
+/**
  * Main request handler
  */
 export default {
   async fetch(request, env, ctx) {
-    // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: getCorsHeaders(env, request) });
-    }
-
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    try {
-      // Health check (moved before root to ensure it works)
-      if (path === '/health') {
-        return handleHealth();
-      }
-
-      // Serve standalone HTML page at root
-      if (path === '/' && request.method === 'GET') {
-        return handleStandalonePage();
-      }
-
-      // API endpoints (require authentication)
-      if (path === '/api/create' && request.method === 'POST') {
-        return handleCreateShortUrl(request, env);
-      }
-
-      if (path.startsWith('/api/info/') && request.method === 'GET') {
-        return handleGetUrlInfo(request, env);
-      }
-
-      if (path === '/api/list' && request.method === 'GET') {
-        return handleListUrls(request, env);
-      }
-
-      if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
-        return handleDeleteUrl(request, env);
-      }
-
-      // Redirect endpoint (public, no auth required)
-      // This must be last to catch all other paths
-      if (request.method === 'GET' && path !== '/api' && !path.startsWith('/api/')) {
-        return handleRedirect(request, env);
-      }
-
-      // Not found
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({
-        error: 'Internal server error',
-        message: error.message,
-      }), {
-        status: 500,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-      });
-    }
+    return enhancedFetch(request, env, ctx);
   },
 };
 

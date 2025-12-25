@@ -56,7 +56,16 @@ export { default as ComponentDocsButton } from './ComponentDocsButton.svelte';
 
 // Modrinth Products
 export { default as ModrinthProducts } from './ModrinthProducts.svelte';
+export { default as ModrinthProductCarousel } from './ModrinthProductCarousel.svelte';
+export type { ModrinthProduct, ModrinthAPIProject } from './ModrinthProductCarousel.svelte';
 export { default as Sidebar } from './Sidebar.svelte';
+
+// Product Carousel (reusable)
+export { default as ProductCarousel } from './ProductCarousel.svelte';
+export type { Product, ProductStats } from './ProductCarousel.svelte';
+
+// Ad Carousels (reusable)
+export { default as TwitchAdCarousel } from './TwitchAdCarousel.svelte';
 
 // Support Cards
 export { default as TwitchSupportCard } from './TwitchSupportCard.svelte';

@@ -18,13 +18,37 @@ export interface ChatMessage {
   id: string;
   roomId: string;
   senderId: string;
-  senderName: string;
+  senderName: string; // Display name (anonymized)
+  senderDisplayName?: string; // Optional: explicit display name field
   timestamp: string;
   content: string;
   encrypted: boolean;
   emoteIds?: string[];
   customEmojiIds?: string[];
-  type?: 'message' | 'system' | 'join' | 'leave';
+  type?: 'message' | 'system' | 'join' | 'leave' | 'typing' | 'typing_stop' | 'presence';
+}
+
+/**
+ * Typing indicator event
+ */
+export interface TypingEvent {
+  type: 'typing' | 'typing_stop';
+  userId: string;
+  userName: string;
+  roomId: string;
+  timestamp: string;
+}
+
+/**
+ * User presence event
+ */
+export interface PresenceEvent {
+  type: 'presence';
+  userId: string;
+  userName: string;
+  roomId: string;
+  status: 'online' | 'offline' | 'away';
+  timestamp: string;
 }
 
 export interface EncryptedChatMessage {
@@ -107,5 +131,30 @@ export interface RoomInfo {
   metadata: RoomMetadata;
   participants: string[];
   messageCount: number;
+}
+
+/**
+ * User profile information for chat
+ */
+export interface ChatUserProfile {
+  userId: string;
+  displayName: string;
+  email?: string; // Optional, for internal use only
+  customerId?: string;
+  twitchAccount?: {
+    userId: string;
+    username: string;
+    attachedAt: string;
+  };
+}
+
+/**
+ * Party room metadata (for opt-in room splitting)
+ */
+export interface PartyRoomMetadata extends RoomMetadata {
+  parentRoomId?: string; // If this is a split/party room
+  isPartyRoom: boolean;
+  createdBy: string; // User ID who created the party room
+  invitedUsers?: string[]; // User IDs invited to this party room
 }
 

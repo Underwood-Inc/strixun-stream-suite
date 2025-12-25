@@ -10,6 +10,7 @@ import { getPlanLimits } from './utils/validation.js';
 import { handlePublicRoutes } from './router/public-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
+import { handleUserRoutes } from './router/user-routes.js';
 
 /**
  * Check for high error rate and alert
@@ -101,6 +102,20 @@ export async function route(request, env) {
             }
             
             return authResult.response;
+        }
+        
+        // Try user routes
+        const userResult = await handleUserRoutes(request, path, env);
+        if (userResult) {
+            customerId = userResult.customerId;
+            
+            // Track response time
+            const responseTime = performance.now() - startTime;
+            if (customerId && path.startsWith('/user/')) {
+                await trackResponseTime(customerId, endpoint, responseTime, env);
+            }
+            
+            return userResult.response;
         }
         
         // 404 for unknown routes

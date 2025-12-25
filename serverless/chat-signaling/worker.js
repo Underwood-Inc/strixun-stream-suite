@@ -4,8 +4,11 @@
  * Minimal Cloudflare Worker for WebRTC signaling
  * Handles only initial connection setup - all messages go P2P after that
  * 
- * @version 1.0.0
+ * @version 1.1.0 - Enhanced with API framework
  */
+
+import { createEnhancedRouter } from '../shared/enhanced-router.js';
+import { initializeServiceTypes } from '../shared/types.js';
 
 /**
  * Get CORS headers with dynamic origin whitelist
@@ -610,89 +613,318 @@ async function handleLeaveRoom(request, env) {
 }
 
 /**
+ * Create party room (opt-in room splitting)
+ * POST /signaling/create-party-room
+ */
+async function handleCreatePartyRoom(request, env) {
+  try {
+    const auth = await authenticateRequest(request, env);
+    if (!auth.authenticated) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await request.json();
+    const { broadcasterId, broadcasterName, customName, parentRoomId, invitedUsers } = body;
+
+    if (!broadcasterId || !broadcasterName) {
+      return new Response(JSON.stringify({ error: 'broadcasterId and broadcasterName required' }), {
+        status: 400,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const roomId = generateRoomId();
+    const room = {
+      roomId,
+      broadcasterId,
+      broadcasterName,
+      createdAt: new Date().toISOString(),
+      participantCount: 1,
+      isPublic: true,
+      isPartyRoom: true,
+      parentRoomId: parentRoomId || null,
+      createdBy: broadcasterId,
+      invitedUsers: invitedUsers || [],
+      customName: customName || null,
+      lastActivity: Date.now(),
+    };
+
+    // Store party room in KV
+    const roomKey = `chat_room_${roomId}`;
+    await env.CHAT_KV.put(roomKey, JSON.stringify(room), { expirationTtl: 3600 }); // 1 hour TTL
+
+    // If parent room exists, add to parent's party rooms list
+    if (parentRoomId) {
+      const parentPartyRoomsKey = `chat_party_rooms_${parentRoomId}`;
+      const partyRooms = await env.CHAT_KV.get(parentPartyRoomsKey, { type: 'json' }) || [];
+      partyRooms.push(roomId);
+      await env.CHAT_KV.put(parentPartyRoomsKey, JSON.stringify(partyRooms), { expirationTtl: 3600 });
+    }
+
+    // Add to active rooms list
+    const activeRoomsKey = 'chat_active_rooms';
+    const activeRooms = await env.CHAT_KV.get(activeRoomsKey, { type: 'json' }) || [];
+    activeRooms.push(roomId);
+    await env.CHAT_KV.put(activeRoomsKey, JSON.stringify(activeRooms), { expirationTtl: 3600 });
+
+    return new Response(JSON.stringify({
+      success: true,
+      room,
+    }), {
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Failed to create party room',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
+ * Get party rooms for a parent room
+ * GET /signaling/party-rooms/:parentRoomId
+ */
+async function handleGetPartyRooms(request, env) {
+  try {
+    const url = new URL(request.url);
+    const parentRoomId = url.pathname.split('/').pop();
+
+    if (!parentRoomId) {
+      return new Response(JSON.stringify({ error: 'parentRoomId required' }), {
+        status: 400,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const parentPartyRoomsKey = `chat_party_rooms_${parentRoomId}`;
+    const partyRoomIds = await env.CHAT_KV.get(parentPartyRoomsKey, { type: 'json' }) || [];
+
+    const rooms = [];
+    for (const roomId of partyRoomIds) {
+      const roomKey = `chat_room_${roomId}`;
+      const roomStr = await env.CHAT_KV.get(roomKey);
+      if (roomStr) {
+        const room = JSON.parse(roomStr);
+        if (room.isPartyRoom && Date.now() - room.lastActivity < 300000) { // 5 minutes
+          rooms.push(room);
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      rooms: rooms.sort((a, b) => b.lastActivity - a.lastActivity),
+    }), {
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Failed to get party rooms',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
+ * Invite users to party room
+ * POST /signaling/party-room/:roomId/invite
+ */
+async function handleInviteToPartyRoom(request, env) {
+  try {
+    const auth = await authenticateRequest(request, env);
+    if (!auth.authenticated) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const url = new URL(request.url);
+    const roomId = url.pathname.split('/')[3]; // /signaling/party-room/{roomId}/invite
+
+    if (!roomId) {
+      return new Response(JSON.stringify({ error: 'roomId required' }), {
+        status: 400,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await request.json();
+    const { userIds } = body;
+
+    if (!userIds || !Array.isArray(userIds)) {
+      return new Response(JSON.stringify({ error: 'userIds array required' }), {
+        status: 400,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get room
+    const roomKey = `chat_room_${roomId}`;
+    const roomStr = await env.CHAT_KV.get(roomKey);
+
+    if (!roomStr) {
+      return new Response(JSON.stringify({ error: 'Room not found' }), {
+        status: 404,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const room = JSON.parse(roomStr);
+
+    // Verify user is room creator
+    if (room.createdBy !== auth.userId && room.broadcasterId !== auth.userId) {
+      return new Response(JSON.stringify({ error: 'Only room creator can invite users' }), {
+        status: 403,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update invited users list
+    const existingInvites = room.invitedUsers || [];
+    const newInvites = [...new Set([...existingInvites, ...userIds])];
+    room.invitedUsers = newInvites;
+    room.lastActivity = Date.now();
+
+    await env.CHAT_KV.put(roomKey, JSON.stringify(room), { expirationTtl: 3600 });
+
+    return new Response(JSON.stringify({
+      success: true,
+      invitedUsers: newInvites,
+    }), {
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Failed to invite users',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
  * Health check
  * GET /health
  */
-async function handleHealth() {
+async function handleHealth(request, env) {
   return new Response(JSON.stringify({
     status: 'ok',
     service: 'chat-signaling',
     timestamp: new Date().toISOString(),
   }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
   });
 }
+
+/**
+ * Original request handler
+ */
+async function originalFetch(request, env, ctx) {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: getCorsHeaders(env, request) });
+  }
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  try {
+    // Health check
+    if (path === '/health' || path === '/') {
+      return handleHealth(request, env);
+    }
+
+    // Signaling endpoints
+    if (path === '/signaling/create-room' && request.method === 'POST') {
+      return handleCreateRoom(request, env);
+    }
+
+    if (path === '/signaling/join-room' && request.method === 'POST') {
+      return handleJoinRoom(request, env);
+    }
+
+    if (path === '/signaling/offer' && request.method === 'POST') {
+      return handleSendOffer(request, env);
+    }
+
+    if (path.startsWith('/signaling/offer/') && request.method === 'GET') {
+      return handleGetOffer(request, env);
+    }
+
+    if (path === '/signaling/answer' && request.method === 'POST') {
+      return handleSendAnswer(request, env);
+    }
+
+    if (path.startsWith('/signaling/answer/') && request.method === 'GET') {
+      return handleGetAnswer(request, env);
+    }
+
+    if (path === '/signaling/heartbeat' && request.method === 'POST') {
+      return handleHeartbeat(request, env);
+    }
+
+    if (path === '/signaling/rooms' && request.method === 'GET') {
+      return handleGetRooms(request, env);
+    }
+
+    if (path === '/signaling/leave' && request.method === 'POST') {
+      return handleLeaveRoom(request, env);
+    }
+
+    // Party room endpoints (opt-in room splitting)
+    if (path === '/signaling/create-party-room' && request.method === 'POST') {
+      return handleCreatePartyRoom(request, env);
+    }
+
+    if (path.startsWith('/signaling/party-rooms/') && request.method === 'GET') {
+      return handleGetPartyRooms(request, env);
+    }
+
+    if (path.startsWith('/signaling/party-room/') && path.endsWith('/invite') && request.method === 'POST') {
+      return handleInviteToPartyRoom(request, env);
+    }
+
+    // Not found
+    return new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Initialize service types
+initializeServiceTypes();
+
+// Create enhanced router
+const enhancedFetch = createEnhancedRouter(originalFetch);
 
 /**
  * Main request handler
  */
 export default {
   async fetch(request, env, ctx) {
-    // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: getCorsHeaders(env, request) });
-    }
-
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    try {
-      // Health check
-      if (path === '/health' || path === '/') {
-        return handleHealth();
-      }
-
-      // Signaling endpoints
-      if (path === '/signaling/create-room' && request.method === 'POST') {
-        return handleCreateRoom(request, env);
-      }
-
-      if (path === '/signaling/join-room' && request.method === 'POST') {
-        return handleJoinRoom(request, env);
-      }
-
-      if (path === '/signaling/offer' && request.method === 'POST') {
-        return handleSendOffer(request, env);
-      }
-
-      if (path.startsWith('/signaling/offer/') && request.method === 'GET') {
-        return handleGetOffer(request, env);
-      }
-
-      if (path === '/signaling/answer' && request.method === 'POST') {
-        return handleSendAnswer(request, env);
-      }
-
-      if (path.startsWith('/signaling/answer/') && request.method === 'GET') {
-        return handleGetAnswer(request, env);
-      }
-
-      if (path === '/signaling/heartbeat' && request.method === 'POST') {
-        return handleHeartbeat(request, env);
-      }
-
-      if (path === '/signaling/rooms' && request.method === 'GET') {
-        return handleGetRooms(request, env);
-      }
-
-      if (path === '/signaling/leave' && request.method === 'POST') {
-        return handleLeaveRoom(request, env);
-      }
-
-      // Not found
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({
-        error: 'Internal server error',
-        message: error.message,
-      }), {
-        status: 500,
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-      });
-    }
+    return enhancedFetch(request, env, ctx);
   },
 };
 

@@ -3,6 +3,7 @@
   import { apiClient } from '$lib/api-client';
   import type { Customer, AuditLog } from '$lib/types';
   import Card from '$components/Card.svelte';
+  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
 
   export let customer: Customer | null = null;
 
@@ -42,7 +43,8 @@
 <div class="audit-logs">
   <h1 class="audit-logs__title">Audit Logs</h1>
 
-  <Card>
+  <StatusFlair status="in-testing">
+    <Card>
     <h2 class="audit-logs__section-title">Filters</h2>
     <div class="audit-logs__filters">
       <div class="audit-logs__filter">
@@ -123,7 +125,8 @@
         </table>
       </div>
     {/if}
-  </Card>
+    </Card>
+  </StatusFlair>
 </div>
 
 <style>

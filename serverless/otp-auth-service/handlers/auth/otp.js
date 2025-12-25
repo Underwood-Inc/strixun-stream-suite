@@ -104,23 +104,36 @@ export async function handleRequestOTP(request, env, customerId = null) {
             // Calculate time until reset
             const resetTime = new Date(rateLimit.resetAt);
             const now = new Date();
-            const secondsUntilReset = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+            const secondsUntilReset = Math.max(0, Math.ceil((resetTime.getTime() - now.getTime()) / 1000));
             
-            // Format human-readable reset time
+            // Format reset time message to match client-side formatting for consistency
+            // This matches the formatRateLimitCountdown logic used on the client
             let resetMessage = '';
             if (secondsUntilReset < 60) {
                 resetMessage = `in ${secondsUntilReset} second${secondsUntilReset !== 1 ? 's' : ''}`;
             } else if (secondsUntilReset < 3600) {
-                const minutes = Math.floor(secondsUntilReset / 60);
-                resetMessage = `in ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+                const mins = Math.floor(secondsUntilReset / 60);
+                const secs = secondsUntilReset % 60;
+                if (secs > 0) {
+                    resetMessage = `in ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''}`;
+                } else {
+                    resetMessage = `in ${mins} minute${mins !== 1 ? 's' : ''}`;
+                }
             } else {
                 const hours = Math.floor(secondsUntilReset / 3600);
-                const minutes = Math.floor((secondsUntilReset % 3600) / 60);
-                if (minutes > 0) {
-                    resetMessage = `in ${hours} hour${hours !== 1 ? 's' : ''} and ${minutes} minute${minutes !== 1 ? 's' : ''}`;
-                } else {
-                    resetMessage = `in ${hours} hour${hours !== 1 ? 's' : ''}`;
+                const mins = Math.floor((secondsUntilReset % 3600) / 60);
+                const secs = secondsUntilReset % 60;
+                const parts = [];
+                if (hours > 0) {
+                    parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
                 }
+                if (mins > 0) {
+                    parts.push(`${mins} minute${mins !== 1 ? 's' : ''}`);
+                }
+                if (secs > 0 && hours === 0) {
+                    parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
+                }
+                resetMessage = `in ${parts.join(' and ')}`;
             }
             
             // Format reset time for display using browser locale (will be localized on client)
@@ -559,15 +572,45 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
         
         if (!user) {
+            // Generate unique display name for new user
+            const { generateUniqueDisplayName, reserveDisplayName } = await import('../services/nameGenerator.js');
+            const displayName = await generateUniqueDisplayName({
+                customerId: resolvedCustomerId,
+                maxAttempts: 10,
+                includeNumber: true
+            }, env);
+            
+            // Reserve the display name
+            await reserveDisplayName(displayName, userId, resolvedCustomerId, env);
+            
             // Create new user
             user = {
                 userId,
                 email: emailLower,
+                displayName, // Anonymized display name
+                customerId: resolvedCustomerId || null,
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toISOString(),
             };
             await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 }); // 1 year
         } else {
+            // Ensure displayName exists (for users created before this feature)
+            if (!user.displayName) {
+                const { generateUniqueDisplayName, reserveDisplayName } = await import('../services/nameGenerator.js');
+                const displayName = await generateUniqueDisplayName({
+                    customerId: resolvedCustomerId,
+                    maxAttempts: 10,
+                    includeNumber: true
+                }, env);
+                await reserveDisplayName(displayName, userId, resolvedCustomerId, env);
+                user.displayName = displayName;
+            }
+            
+            // Ensure customerId is set (for users created before customer isolation)
+            if (!user.customerId && resolvedCustomerId) {
+                user.customerId = resolvedCustomerId;
+            }
+            
             // Update last login
             user.lastLogin = new Date().toISOString();
             await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
@@ -662,6 +705,9 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             
             // Additional Standard Fields
             scope: 'openid email profile', // OIDC scopes
+            
+            // User Information
+            displayName: user.displayName || null, // Anonymized display name
             
             // User Information (OIDC UserInfo)
             sub: userId, // Subject identifier

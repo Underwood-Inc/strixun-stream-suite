@@ -26,6 +26,8 @@ export interface LoginSuccessData {
   userId?: string;
   /** User email */
   email: string;
+  /** Display name (anonymized) */
+  displayName?: string | null;
   /** Access token */
   token: string;
   /** Token expiration timestamp */
@@ -168,9 +170,15 @@ export class OtpLoginCore {
         
         // Check if this is a rate limit error (429)
         if (response.status === 429 && data.reset_at) {
-          const resetAt = new Date(data.reset_at);
-          const now = new Date();
-          const secondsUntilReset = Math.max(0, Math.ceil((resetAt.getTime() - now.getTime()) / 1000));
+          // Use server's authoritative retry_after value if available, otherwise calculate from reset_at
+          // The server's retry_after is the source of truth and accounts for server clock time
+          const secondsUntilReset = data.retry_after !== undefined 
+            ? Math.max(0, Math.ceil(data.retry_after))
+            : (() => {
+                const resetAt = new Date(data.reset_at);
+                const now = new Date();
+                return Math.max(0, Math.ceil((resetAt.getTime() - now.getTime()) / 1000));
+              })();
           
           this.setState({ 
             error: errorMsg, 
@@ -258,6 +266,7 @@ export class OtpLoginCore {
       const successData: LoginSuccessData = {
         userId: data.userId || data.sub,
         email: data.email || this.state.email,
+        displayName: data.displayName || null, // Include display name
         token: data.access_token || data.token,
         expiresAt: data.expiresAt,
         data,
@@ -333,32 +342,30 @@ export class OtpLoginCore {
 
   /**
    * Start rate limit countdown timer
+   * Counts down from the server's authoritative retry_after value
+   * to avoid clock skew issues between server and client
    */
   private startRateLimitCountdown(): void {
     this.stopRateLimitCountdown();
     
-    if (!this.state.rateLimitResetAt) {
+    if (!this.state.rateLimitResetAt || this.state.rateLimitCountdown <= 0) {
       return;
     }
     
     this.rateLimitCountdownInterval = setInterval(() => {
-      if (this.state.rateLimitResetAt) {
-        const resetAt = new Date(this.state.rateLimitResetAt);
-        const now = new Date();
-        const secondsUntilReset = Math.max(0, Math.ceil((resetAt.getTime() - now.getTime()) / 1000));
-        
-        if (secondsUntilReset > 0) {
-          this.setState({ rateLimitCountdown: secondsUntilReset });
-        } else {
-          // Rate limit expired - clear error and countdown
-          this.setState({ 
-            error: null,
-            rateLimitResetAt: null,
-            rateLimitCountdown: 0,
-          });
-          this.stopRateLimitCountdown();
-        }
+      const currentCountdown = this.state.rateLimitCountdown;
+      
+      if (currentCountdown > 1) {
+        // Decrement the countdown - don't recalculate from timestamp
+        // This preserves the server's authoritative time calculation
+        this.setState({ rateLimitCountdown: currentCountdown - 1 });
       } else {
+        // Rate limit expired - clear error and countdown
+        this.setState({ 
+          error: null,
+          rateLimitResetAt: null,
+          rateLimitCountdown: 0,
+        });
         this.stopRateLimitCountdown();
       }
     }, 1000);

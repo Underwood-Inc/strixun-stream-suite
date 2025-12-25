@@ -345,10 +345,35 @@
             window.copyToken = copyToken;
             window.toggleTokenVisibility = toggleTokenVisibility;
             
+            // Send token to parent window (for OAuth popup flow)
+            function sendToParent(accessToken, state) {
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({
+                        type: 'twitch_oauth_callback',
+                        accessToken: accessToken,
+                        state: state,
+                    }, window.location.origin);
+                    window.close();
+                    return true;
+                }
+                return false;
+            }
+            
             // Main initialization
             function init() {
                 const data = parseFragment();
                 
+                // Try to send to parent window first (OAuth popup flow)
+                if (data.accessToken && !data.error) {
+                    const urlParams = new URLSearchParams(window.location.hash.substring(1));
+                    const state = urlParams.get('state');
+                    
+                    if (sendToParent(data.accessToken, state)) {
+                        return; // Successfully sent to parent, close popup
+                    }
+                }
+                
+                // Fallback to manual copy flow (for direct access)
                 if (data.error) {
                     renderError(data.error, data.errorDescription);
                 } else if (data.accessToken) {

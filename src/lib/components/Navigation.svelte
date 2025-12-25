@@ -17,6 +17,7 @@ import { currentPage } from '../../stores/navigation';
   import { celebrateClick } from '../../utils/particles';
   import Tooltip from './Tooltip.svelte';
   import { animate, stagger } from '../../core/animations';
+  import { StatusFlair } from './primitives/StatusFlair';
   
   const tabs = [
     { 
@@ -170,30 +171,31 @@ import { currentPage } from '../../stores/navigation';
           ? `${tab.label} | ${tab.disabledReason}` 
           : tab.label}
     {@const isActive = $currentPage === tab.id && !isDisabled && !isWipDisabled}
+    {@const statusFlair = isWipDisabled ? 'wip' : (isInTesting ? 'in-testing' : null)}
     <Tooltip 
       text={tooltipContent} 
       position="bottom" 
       delay={0}
       level={tooltipLevel}
     >
-      <button
-        class="tab"
-        class:active={isActive}
-        class:disabled={isDisabled}
-        class:wip={isWipDisabled}
-        class:in-testing={isInTesting}
-        use:animate={{
-          preset: isActive ? 'scaleIn' : 'none',
-          duration: 200,
-          trigger: 'change',
-          id: `nav-tab-${tab.id}`,
-          enabled: isActive
-        }}
-        on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
-      >
-        <span class="tab__numeral">{tab.numeral}</span>
-        <span class="tab__label">{tab.label}</span>
-      </button>
+      <StatusFlair status={statusFlair}>
+        <button
+          class="tab"
+          class:active={isActive}
+          class:disabled={isDisabled}
+          use:animate={{
+            preset: isActive ? 'scaleIn' : 'none',
+            duration: 200,
+            trigger: 'change',
+            id: `nav-tab-${tab.id}`,
+            enabled: isActive
+          }}
+          on:click={(e) => handleTabClick(e, tab.id, tab.requiresConnection)}
+        >
+          <span class="tab__numeral">{tab.numeral}</span>
+          <span class="tab__label">{tab.label}</span>
+        </button>
+      </StatusFlair>
     </Tooltip>
   {/each}
 </nav>
@@ -320,39 +322,30 @@ import { currentPage } from '../../stores/navigation';
     display: none;
   }
 
-  // WIP state - styled like warning toast
-  .tabs .tab.wip {
-    @include wip-state;
+  // Status flairs are now handled by StatusFlair component
+  // Active state overrides for in-testing status
+  .tabs .tab.active {
+    // When active and in-testing, keep active styling with testing pattern
+    :global(.status-flair--in-testing > *) {
+      background: var(--accent);
+      background-image: repeating-linear-gradient(
+        45deg,
+        rgba(100, 149, 237, 0.15),
+        rgba(100, 149, 237, 0.15) 6px,
+        rgba(100, 149, 237, 0.2) 6px,
+        rgba(100, 149, 237, 0.2) 12px
+      );
+      border-color: var(--info);
+    }
   }
 
-  .tabs .tab.wip.active {
-    @include wip-state;
-  }
-
-  // IN TESTING state - blue/info color with unique diagonal pattern (NOT disabled)
-  .tabs .tab.in-testing {
-    @include in-testing-state;
-  }
-
-  .tabs .tab.in-testing.active {
-    @include in-testing-state;
-    // Keep active state styling but with testing pattern
-    background: var(--accent);
-    background-image: repeating-linear-gradient(
-      45deg,
-      rgba(100, 149, 237, 0.15),
-      rgba(100, 149, 237, 0.15) 6px,
-      rgba(100, 149, 237, 0.2) 6px,
-      rgba(100, 149, 237, 0.2) 12px
-    );
-    border-color: var(--info);
-  }
-
-  .tabs .tab.in-testing:hover:not(.disabled):not(.active) {
-    @include in-testing-state;
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 4px 0 var(--info);
-    border-color: var(--info);
+  // Hover state for in-testing tabs
+  .tabs .tab:hover:not(.disabled):not(.active) {
+    :global(.status-flair--in-testing > *) {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 4px 0 var(--info);
+      border-color: var(--info);
+    }
   }
 </style>
 

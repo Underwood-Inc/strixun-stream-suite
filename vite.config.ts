@@ -98,7 +98,8 @@ export default defineConfig({
       '@components': resolve(__dirname, './src/lib/components'),
       '@modules': resolve(__dirname, './src/modules'),
       '@stores': resolve(__dirname, './src/stores'),
-      '@styles': resolve(__dirname, './src/styles')
+      '@styles': resolve(__dirname, './src/styles'),
+      '@shared-components': resolve(__dirname, './shared-components')
     }
   },
   build: {

@@ -3,6 +3,7 @@
   import { apiClient } from '$lib/api-client';
   import type { Customer, Analytics, RealtimeAnalytics, ErrorAnalytics } from '$lib/types';
   import Card from '$components/Card.svelte';
+  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
 
   export let customer: Customer | null = null;
 
@@ -46,6 +47,8 @@
 <div class="analytics">
   <h1 class="analytics__title">Analytics</h1>
 
+  <StatusFlair status="in-testing">
+    <div class="analytics__content">
   {#if loading}
     <div class="analytics__loading">Loading analytics...</div>
   {:else if error}
@@ -159,6 +162,8 @@
       </Card>
     {/if}
   {/if}
+    </div>
+  </StatusFlair>
 </div>
 
 <style>
@@ -328,6 +333,10 @@
     margin-top: var(--spacing-sm);
     font-size: 0.875rem;
     color: var(--muted);
+  }
+
+  .analytics__content {
+    width: 100%;
   }
 </style>
 

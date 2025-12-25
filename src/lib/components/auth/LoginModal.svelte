@@ -26,10 +26,11 @@
   function handleLoginSuccess(data: LoginSuccessData) {
     // Set authentication - support both old format and OAuth 2.0 format
     setAuth({
-      userId: data.userId,
+      userId: data.userId || '',
       email: data.email,
+      displayName: data.displayName || undefined,
       token: data.token,
-      expiresAt: data.expiresAt,
+      expiresAt: data.expiresAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
     });
     
     showToast({ message: 'Login successful', type: 'success' });

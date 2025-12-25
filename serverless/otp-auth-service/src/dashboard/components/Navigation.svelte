@@ -1,15 +1,16 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
 
   export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
 
   const dispatch = createEventDispatcher();
 
   const pages = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'api-keys', label: 'API Keys' },
-    { id: 'audit-logs', label: 'Audit Logs' },
-    { id: 'analytics', label: 'Analytics' }
+    { id: 'dashboard', label: 'Dashboard', status: null as 'wip' | 'in-testing' | null },
+    { id: 'api-keys', label: 'API Keys', status: null as 'wip' | 'in-testing' | null },
+    { id: 'audit-logs', label: 'Audit Logs', status: 'in-testing' as 'wip' | 'in-testing' | null },
+    { id: 'analytics', label: 'Analytics', status: 'in-testing' as 'wip' | 'in-testing' | null }
   ] as const;
 
   function handleClick(page: typeof currentPage) {
@@ -21,13 +22,15 @@
   <ul class="app-nav__list">
     {#each pages as page}
       <li class="app-nav__item">
-        <button
-          class="app-nav__link"
-          class:active={currentPage === page.id}
-          onclick={() => handleClick(page.id)}
-        >
-          {page.label}
-        </button>
+        <StatusFlair status={page.status}>
+          <button
+            class="app-nav__link"
+            class:active={currentPage === page.id}
+            onclick={() => handleClick(page.id)}
+          >
+            {page.label}
+          </button>
+        </StatusFlair>
       </li>
     {/each}
   </ul>

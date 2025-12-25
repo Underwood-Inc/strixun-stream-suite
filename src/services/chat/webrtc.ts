@@ -11,6 +11,8 @@ export interface WebRTCConfig {
   onMessage: (message: ChatMessage) => void;
   onConnectionStateChange: (state: RTCPeerConnectionState) => void;
   onError: (error: Error) => void;
+  onTyping?: (userId: string, userName: string, isTyping: boolean) => void;
+  onPresence?: (userId: string, userName: string, status: 'online' | 'offline' | 'away') => void;
 }
 
 export class WebRTCService {
@@ -93,8 +95,32 @@ export class WebRTCService {
 
     channel.addEventListener('message', (event) => {
       try {
-        const message = JSON.parse(event.data) as ChatMessage;
-        this.config.onMessage(message);
+        const data = JSON.parse(event.data);
+        
+        // Handle different message types
+        if (data.type === 'typing' || data.type === 'typing_stop') {
+          // Typing indicator event
+          if (this.config.onTyping) {
+            this.config.onTyping(
+              data.userId,
+              data.userName,
+              data.type === 'typing'
+            );
+          }
+        } else if (data.type === 'presence') {
+          // Presence event
+          if (this.config.onPresence) {
+            this.config.onPresence(
+              data.userId,
+              data.userName,
+              data.status
+            );
+          }
+        } else {
+          // Regular chat message
+          const message = data as ChatMessage;
+          this.config.onMessage(message);
+        }
       } catch (error) {
         console.error('[WebRTC] Failed to parse message:', error);
       }
@@ -173,6 +199,49 @@ export class WebRTCService {
     }
 
     this.dataChannel.send(JSON.stringify(message));
+  }
+
+  /**
+   * Send typing indicator
+   */
+  sendTypingIndicator(isTyping: boolean, userName: string): void {
+    if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return; // Silently fail if not connected
+    }
+
+    if (!this.roomId) return;
+
+    const event = {
+      type: isTyping ? 'typing' : 'typing_stop',
+      userId: this.localUserId,
+      userName,
+      roomId: this.roomId,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.dataChannel.send(JSON.stringify(event));
+  }
+
+  /**
+   * Send presence update
+   */
+  sendPresence(status: 'online' | 'offline' | 'away', userName: string): void {
+    if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return; // Silently fail if not connected
+    }
+
+    if (!this.roomId) return;
+
+    const event = {
+      type: 'presence',
+      userId: this.localUserId,
+      userName,
+      roomId: this.roomId,
+      status,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.dataChannel.send(JSON.stringify(event));
   }
 
   /**

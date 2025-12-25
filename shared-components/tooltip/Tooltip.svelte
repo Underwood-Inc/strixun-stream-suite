@@ -1,15 +1,43 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  
   export let content: string;
   export let position: 'top' | 'bottom' | 'left' | 'right' = 'top';
   export let delay: number = 200;
+  export let maxWidth: string | null = null; // Optional override, null = use dynamic calculation
   
   let showTooltip = false;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let tooltipWidth = '250px';
+  
+  // Calculate dynamic width based on viewport, max 45%
+  function calculateTooltipWidth(): string {
+    // Use override if provided
+    if (maxWidth !== null) {
+      return maxWidth;
+    }
+    
+    if (typeof window === 'undefined') return '250px';
+    const viewportWidth = window.innerWidth;
+    const maxWidth = Math.floor(viewportWidth * 0.45);
+    const minWidth = 250;
+    return `${Math.max(minWidth, maxWidth)}px`;
+  }
+  
+  function updateTooltipWidth() {
+    tooltipWidth = calculateTooltipWidth();
+  }
+  
+  // Update width when maxWidth prop changes
+  $: if (maxWidth !== null || typeof window !== 'undefined') {
+    tooltipWidth = calculateTooltipWidth();
+  }
   
   function handleMouseEnter() {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
       showTooltip = true;
+      updateTooltipWidth();
     }, delay);
   }
   
@@ -18,6 +46,25 @@
     timeoutId = null;
     showTooltip = false;
   }
+  
+  function handleResize() {
+    // Only update if using dynamic width (maxWidth is null)
+    if (maxWidth === null) {
+      updateTooltipWidth();
+    }
+  }
+  
+  onMount(() => {
+    tooltipWidth = calculateTooltipWidth();
+    window.addEventListener('resize', handleResize);
+  });
+  
+  onDestroy(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', handleResize);
+    }
+  });
 </script>
 
 <div 
@@ -27,7 +74,7 @@
 >
   <slot />
   {#if showTooltip}
-    <div class="tooltip tooltip--{position}" role="tooltip">
+    <div class="tooltip tooltip--{position}" role="tooltip" style="max-width: {tooltipWidth};">
       <div class="tooltip-content">
         {@html content}
       </div>
@@ -53,7 +100,7 @@
     border-radius: var(--radius-sm, 4px);
     font-size: 0.875rem;
     line-height: 1.5;
-    max-width: 300px;
+    min-width: 250px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     pointer-events: none;
     white-space: normal;

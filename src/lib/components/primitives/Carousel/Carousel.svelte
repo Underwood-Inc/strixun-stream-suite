@@ -94,6 +94,14 @@
         return;
       }
       
+      // Swiper requires at least 2 slides for loop mode
+      // Disable loop if we only have 1 slide
+      const slideCount = slides.length;
+      const effectiveLoop = loop && slideCount >= 2;
+      if (loop && slideCount < 2) {
+        console.warn(`Carousel: Loop mode requires at least 2 slides, but only ${slideCount} slide(s) found. Disabling loop mode.`);
+      }
+      
       isInitializing = true;
       
       // Watch for new children and wrap them (but don't interfere during init)
@@ -147,7 +155,7 @@
       swiper = new Swiper(swiperContainer, {
         modules: modules,
         effect: effect,
-        loop: loop,
+        loop: effectiveLoop, // Use effectiveLoop which accounts for minimum slide count
         slidesPerView: effect === 'coverflow' ? 'auto' : 1, // Use auto for coverflow to respect slide widths
         spaceBetween: spaceBetween,
         centeredSlides: true, // Center the active slide

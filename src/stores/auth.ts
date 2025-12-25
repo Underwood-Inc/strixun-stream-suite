@@ -9,9 +9,19 @@ import type { Writable, Readable } from 'svelte/store';
 import { storage } from '../modules/storage';
 import { secureFetch } from '../core/services/encryption';
 
+export interface TwitchAccount {
+  twitchUserId: string;
+  twitchUsername: string;
+  displayName?: string;
+  attachedAt: string;
+}
+
 export interface User {
   userId: string;
   email: string;
+  displayName?: string; // Anonymized display name
+  customerId?: string; // Customer ID for subscription tiers
+  twitchAccount?: TwitchAccount; // Attached Twitch account
   token: string;
   expiresAt: string;
 }
