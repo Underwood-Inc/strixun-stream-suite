@@ -32,9 +32,9 @@ export function renderEmailTemplate(template: string, variables: Record<string, 
     // Replace all variables (case-insensitive)
     for (const [key, value] of Object.entries(variables)) {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-        // For HTML templates, escape variables to prevent XSS (except for otp which is safe)
+        // For HTML templates, escape variables to prevent XSS (except for otp and trackingPixel which contain safe HTML)
         // For text templates, use as-is
-        const replacement = isHtml && key !== 'otp' ? escapeHtml(String(value || '')) : String(value || '');
+        const replacement = isHtml && key !== 'otp' && key !== 'trackingPixel' ? escapeHtml(String(value || '')) : String(value || '');
         rendered = rendered.replace(regex, replacement);
     }
     
