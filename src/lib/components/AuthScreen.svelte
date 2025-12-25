@@ -80,7 +80,7 @@
   
   .auth-screen__content {
     text-align: center;
-    max-width: 500px;
+    max-width: 650px;
     padding: 40px;
     @include gpu-accelerated;
     z-index: 1;
