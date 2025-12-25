@@ -18,5 +18,8 @@
     "deploy:game-api": "cd game-api && wrangler deploy",
     "deploy:chat-signaling": "cd chat-signaling && wrangler deploy"
   },
+  "dependencies": {
+    "@strixun/api-framework": "workspace:*"
+  },
   "devDependencies": {}
 }

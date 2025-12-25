@@ -70,7 +70,18 @@ export {
   createErrorLegendMiddleware,
 } from './errors';
 
-// Workers
+// Workers - CORS utilities
+export {
+  createCORSMiddleware,
+  createCORSHeaders,
+  handleCORSPreflight,
+} from './workers/cors';
+
+export type {
+  CORSOptions,
+} from './workers/cors';
+
+// Workers - Handler utilities
 export {
   detectPlatform,
   isCloudflareWorker,
@@ -79,9 +90,6 @@ export {
   getStorageAdapter,
   KVCache,
   createKVCache,
-  createCORSMiddleware,
-  createCORSHeaders,
-  handleCORSPreflight,
   WorkerAdapter,
   createWorkerAdapter,
   createWorkerHandler,
@@ -91,7 +99,6 @@ export {
 } from './workers/handler';
 
 export type {
-  CORSOptions,
   KVCacheOptions,
   HandlerOptions,
   HandlerContext,
