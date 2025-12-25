@@ -1,7 +1,7 @@
 <script lang="ts">
   import { apiClient } from '$lib/api-client';
-  import type { LoginSuccessData } from '../../../../../shared-components/otp-login/core';
-  import OtpLogin from '../../../../../shared-components/otp-login/svelte/OtpLogin.svelte';
+  import type { LoginSuccessData } from '@shared-components/otp-login/core';
+  import OtpLogin from '@shared-components/otp-login/svelte/OtpLogin.svelte';
 
   // Get API URL - dashboard uses relative URLs via Vite proxy
   // In production, this would be the same origin
