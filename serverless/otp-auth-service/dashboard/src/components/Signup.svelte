@@ -306,8 +306,8 @@
 </div>
 
 <style lang="scss">
-  @use '../../../shared-styles/animations' as *;
-  @use '../../../shared-styles/mixins' as *;
+  @use 'animations' as *;
+  @use 'mixins' as *;
 
   .signup {
     display: flex;
