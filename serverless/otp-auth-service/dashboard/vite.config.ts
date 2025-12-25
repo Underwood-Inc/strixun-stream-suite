@@ -7,7 +7,7 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        includePaths: [path.resolve(__dirname, '../../../../shared-styles')]
+        includePaths: [path.resolve(__dirname, '../../../shared-styles')]
       }
     }
   },

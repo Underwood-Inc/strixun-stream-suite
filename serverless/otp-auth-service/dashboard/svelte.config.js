@@ -8,8 +8,8 @@ export default {
   preprocess: vitePreprocess({
     scss: {
       includePaths: [
-        path.resolve(__dirname, '../../shared-styles'),
-        path.resolve(__dirname, '../../shared-components')
+        path.resolve(__dirname, '../../../shared-styles'),
+        path.resolve(__dirname, '../../../shared-components')
       ]
     }
   })
