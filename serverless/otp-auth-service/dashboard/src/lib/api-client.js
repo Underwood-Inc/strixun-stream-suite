@@ -77,13 +77,23 @@ export class ApiClient {
             throw error;
         }
     }
+    async decryptResponse(response) {
+        const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+        const data = await response.json();
+        if (isEncrypted && this.token) {
+            // Decrypt the response using JWT token
+            const { decryptWithJWT } = await import('./jwt-decrypt.js');
+            return await decryptWithJWT(data, this.token);
+        }
+        return data;
+    }
     async get(endpoint) {
         const response = await this.request(endpoint, { method: 'GET' });
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Request failed' }));
             throw new Error(error.detail || error.error || 'Request failed');
         }
-        return await response.json();
+        return await this.decryptResponse(response);
     }
     async post(endpoint, body) {
         const response = await this.request(endpoint, {
@@ -94,7 +104,7 @@ export class ApiClient {
             const error = await response.json().catch(() => ({ error: 'Request failed' }));
             throw new Error(error.detail || error.error || 'Request failed');
         }
-        return await response.json();
+        return await this.decryptResponse(response);
     }
     async put(endpoint, body) {
         const response = await this.request(endpoint, {
@@ -105,7 +115,7 @@ export class ApiClient {
             const error = await response.json().catch(() => ({ error: 'Request failed' }));
             throw new Error(error.detail || error.error || 'Request failed');
         }
-        return await response.json();
+        return await this.decryptResponse(response);
     }
     async delete(endpoint) {
         const response = await this.request(endpoint, { method: 'DELETE' });
@@ -113,7 +123,7 @@ export class ApiClient {
             const error = await response.json().catch(() => ({ error: 'Request failed' }));
             throw new Error(error.detail || error.error || 'Request failed');
         }
-        return await response.json();
+        return await this.decryptResponse(response);
     }
     // Authentication endpoints
     async requestOTP(email) {
