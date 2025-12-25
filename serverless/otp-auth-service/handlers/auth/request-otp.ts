@@ -173,9 +173,6 @@ export async function handleRequestOTP(
         // Generate OTP
         const otp = generateOTP();
         
-        // Get email hash for tracking
-        const emailHash = await hashEmail(email);
-        
         // Store OTP in KV with customer isolation
         const { otpKey } = await storeOTP(email, otp, customerId, env);
         
