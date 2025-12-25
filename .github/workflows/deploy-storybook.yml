@@ -1,19 +1,15 @@
-# Strixun Stream Suite - Deploy Storybook to GitHub Pages
+# Strixun Stream Suite - Deploy Storybook to Cloudflare Pages
 #
-# This workflow deploys Storybook to a subdirectory alongside the main app.
-# Storybook will be available at:
-#   https://<username>.github.io/<repo-name>/storybook/
-#
-# The main app and Storybook are deployed independently but share the same GitHub Pages site.
+# This workflow deploys Storybook to Cloudflare Pages at design.idling.app
 
-name: Deploy Storybook to GitHub Pages
+name: Deploy Storybook to Cloudflare Pages
 
 on:
   push:
     branches: [main, master]
     paths:
-      - 'src/lib/components/**'
-      - '.storybook/**'
+      - 'shared-components/**'
+      - 'shared-styles/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
   workflow_dispatch:
@@ -26,8 +22,6 @@ concurrency:
 # Sets permissions for GITHUB_TOKEN
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -51,69 +45,23 @@ jobs:
         run: pnpm install --frozen-lockfile
         
       - name: Build Storybook
-        env:
-          # Set base path for Storybook to work in subdirectory
-          STORYBOOK_BASE_PATH: /${{ github.event.repository.name }}/storybook/
+        working-directory: shared-components
         run: pnpm build-storybook
         
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Download existing Pages artifact
-        id: download
-        uses: actions/download-artifact@v4
-        with:
-          name: github-pages
-          path: existing-pages
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-      
-      - name: Prepare Storybook for deployment
-        run: |
-          # Create deployment directory structure
-          mkdir -p storybook-deploy
-          
-          # If existing pages exist, copy them (excluding storybook if it exists)
-          if [ -d "existing-pages" ]; then
-            echo "Merging with existing pages..."
-            find existing-pages -mindepth 1 -maxdepth 1 ! -name storybook -exec cp -r {} storybook-deploy/ \;
-          fi
-          
-          # Copy Storybook build output to storybook subdirectory
-          mkdir -p storybook-deploy/storybook
-          cp -r storybook-static/* storybook-deploy/storybook/
-          
-          # Create .nojekyll in root and storybook directory
-          touch storybook-deploy/.nojekyll
-          touch storybook-deploy/storybook/.nojekyll
-          
-          echo "✅ Storybook prepared for deployment to /storybook/ subdirectory"
-      
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: storybook-deploy
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to Cloudflare Pages
+        working-directory: shared-components
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler pages deploy storybook-static --project-name=storybook --branch=main
         
       - name: Deployment Summary
         run: |
           echo "## 📚 Storybook Deployed!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Storybook URL:** ${{ steps.deployment.outputs.page_url }}storybook/" >> $GITHUB_STEP_SUMMARY
+          echo "**Storybook URL:** https://design.idling.app" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📖 Access:" >> $GITHUB_STEP_SUMMARY
-          echo "- Storybook: \`${{ steps.deployment.outputs.page_url }}storybook/\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Main App: \`${{ steps.deployment.outputs.page_url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Storybook: \`https://design.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> 💡 Storybook is deployed independently and won't affect your main application." >> $GITHUB_STEP_SUMMARY
-
+          echo "> 💡 Storybook is deployed to Cloudflare Pages." >> $GITHUB_STEP_SUMMARY

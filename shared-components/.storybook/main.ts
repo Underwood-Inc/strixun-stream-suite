@@ -42,12 +42,45 @@ const config: StorybookConfig = {
       config.base = basePath;
     }
     
+    // Resolve root node_modules for workspace dependencies
+    const rootDir = resolve(__dirname, '../..');
+    const rootNodeModules = resolve(rootDir, 'node_modules');
+    
+    // Ensure server.fs.allow exists
+    if (!config.server) {
+      config.server = {};
+    }
+    if (!config.server.fs) {
+      config.server.fs = {};
+    }
+    if (!config.server.fs.allow) {
+      config.server.fs.allow = [];
+    }
+    
+    // Allow access to root workspace and node_modules
+    config.server.fs.allow.push(
+      rootDir,
+      rootNodeModules,
+      resolve(__dirname, '..'),
+    );
+    
     return mergeConfig(config, {
       resolve: {
         alias: {
           '@shared-components': resolve(__dirname, '..'),
           '@shared-styles': resolve(__dirname, '../../shared-styles'),
         },
+        // Ensure Vite can find dependencies in workspace root
+        dedupe: ['svelte', '@storybook/svelte'],
+      },
+      // Add root node_modules to resolve paths
+      optimizeDeps: {
+        include: [
+          '@storybook/svelte',
+          '@storybook/svelte-vite',
+          '@storybook/addon-svelte-csf',
+          'svelte',
+        ],
       },
       css: {
         preprocessorOptions: {
