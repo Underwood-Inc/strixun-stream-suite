@@ -73,7 +73,7 @@
 
 <TwitchAdCarousel
   position="bottom-left"
-  channelUrl="https://www.twitch.tv/strixun"
+  supportUrl="https://www.twitch.tv/strixun"
   storageKey="ui_auth_ad_carousel_state"
 />
 

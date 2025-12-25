@@ -132,7 +132,7 @@
   
   <TwitchAdCarousel
     position="bottom-right"
-    channelUrl="https://www.twitch.tv/strixun"
+    supportUrl="https://www.twitch.tv/strixun"
   />
 </div>
 {/if}

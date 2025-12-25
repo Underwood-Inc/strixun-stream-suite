@@ -178,7 +178,7 @@
 {#if isAuthenticated}
   <TwitchAdCarousel
     position="bottom-right"
-    channelUrl="https://www.twitch.tv/strixun"
+    supportUrl="https://www.twitch.tv/strixun"
     storageKey="ui_otp_auth_ad_carousel_state"
   />
 {/if}

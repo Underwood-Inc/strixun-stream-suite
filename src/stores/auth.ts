@@ -33,7 +33,12 @@ export const token: Writable<string | null> = writable(null);
 export const csrfToken: Writable<string | null> = writable(null);
 
 // Store for encryption enabled state (set by bootstrap)
-export const encryptionEnabled: Writable<boolean> = writable(false);
+// Default to true since encryption is enabled by default (secure default)
+export const encryptionEnabled: Writable<boolean> = writable(true);
+
+// Store to track if auth check has completed
+// Starts as false - we show auth screen by default until we know auth state
+export const authCheckComplete: Writable<boolean> = writable(false);
 
 // Derived store for checking if token is expired
 export const isTokenExpired: Readable<boolean> = derived(
@@ -45,10 +50,19 @@ export const isTokenExpired: Readable<boolean> = derived(
 );
 
 // Derived store for checking if authentication is required
-// Auth is required if encryption is enabled but user is not authenticated
+// CRITICAL: Default to true (show auth screen) until auth check completes
+// This prevents flash of app content before auth state is determined
+// Auth is required if:
+// 1. Auth check hasn't completed yet (default to showing auth screen), OR
+// 2. Encryption is enabled but user is not authenticated
 export const authRequired: Readable<boolean> = derived(
-  [encryptionEnabled, isAuthenticated],
-  ([$encryptionEnabled, $isAuthenticated]) => {
+  [encryptionEnabled, isAuthenticated, authCheckComplete],
+  ([$encryptionEnabled, $isAuthenticated, $authCheckComplete]) => {
+    // If auth check hasn't completed, show auth screen by default (secure default)
+    if (!$authCheckComplete) {
+      return true;
+    }
+    // After check completes, auth is required if encryption enabled but not authenticated
     return $encryptionEnabled && !$isAuthenticated;
   }
 );
@@ -149,6 +163,26 @@ export function setAuth(userData: User): void {
  */
 export function clearAuth(): void {
   saveAuthState(null);
+}
+
+/**
+ * Logout user - calls API endpoint and clears local auth state
+ * Continues with logout even if API call fails (graceful degradation)
+ */
+export async function logout(): Promise<void> {
+  try {
+    // Try to call logout endpoint to invalidate token on server
+    await authenticatedFetch('/auth/logout', {
+      method: 'POST',
+    });
+  } catch (error) {
+    // Continue with logout even if API call fails
+    // This ensures user can always logout locally
+    console.warn('[Auth] Logout API call failed, continuing with local logout:', error);
+  } finally {
+    // Always clear local auth state
+    clearAuth();
+  }
 }
 
 /**

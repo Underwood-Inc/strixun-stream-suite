@@ -240,14 +240,71 @@ export function formatRateLimitDetails(details: RateLimitDetails): string {
 
 /**
  * Generate tooltip content for rate limit errors
+ * Includes current error info and legend of all possible rate limit reasons
  */
 export function generateRateLimitTooltip(errorInfo: ErrorInfo, details?: RateLimitDetails): string {
+  let content = `<div style="margin-bottom: 12px;"><strong style="font-size: 1em; color: #fff;">${errorInfo.title}</strong></div>`;
+  content += `<div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">${errorInfo.description}</div>`;
+  
+  if (errorInfo.details) {
+    content += `<div style="margin-bottom: 12px; color: rgba(255,255,255,0.8); line-height: 1.6;">${errorInfo.details}</div>`;
+  }
+  
+  if (details) {
+    const formattedDetails = formatRateLimitDetails(details);
+    if (formattedDetails) {
+      content += `<div style="margin-top: 16px; margin-bottom: 12px;"><strong style="color: rgba(255,255,255,0.95);">Current Limits:</strong></div>`;
+      content += `<div style="margin-bottom: 12px; color: rgba(255,255,255,0.8); line-height: 1.8;">${formattedDetails}</div>`;
+    }
+  }
+  
+  if (errorInfo.suggestion) {
+    content += `<div style="margin-top: 12px; margin-bottom: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15);"><em style="color: rgba(255,255,255,0.85); font-style: italic;">${errorInfo.suggestion}</em></div>`;
+  }
+  
+  // Add legend of all possible rate limit error reasons
+  content += `<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.25);">`;
+  content += `<div style="margin-bottom: 12px;"><strong style="color: rgba(255,255,255,0.95); font-size: 0.95em;">Possible Rate Limit Reasons:</strong></div>`;
+  content += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+  
+  // Get all rate limit related errors
+  const rateLimitErrors = [
+    'rate_limit_exceeded',
+    'email_rate_limit_exceeded',
+    'ip_rate_limit_exceeded',
+    'daily_quota_exceeded',
+    'monthly_quota_exceeded',
+    'rate_limit_error'
+  ];
+  
+  rateLimitErrors.forEach((code) => {
+    const info = ERROR_LEGEND[code];
+    if (info) {
+      content += `<div style="padding: 6px 0; line-height: 1.5;">`;
+      content += `<span style="color: rgba(255,255,255,0.7); margin-right: 6px;">•</span>`;
+      content += `<strong style="color: rgba(255,255,255,0.95);">${info.title}</strong>: `;
+      content += `<span style="color: rgba(255,255,255,0.8);">${info.description}</span>`;
+      content += `</div>`;
+    }
+  });
+  
+  content += `</div></div>`;
+  
+  return content;
+}
+
+/**
+ * Generate comprehensive error tooltip with current error and legend of all possible errors
+ */
+export function generateErrorTooltip(errorInfo: ErrorInfo, details?: RateLimitDetails): string {
+  // Start with current error information
   let content = `<strong>${errorInfo.title}</strong><br><br>${errorInfo.description}`;
   
   if (errorInfo.details) {
     content += `<br><br>${errorInfo.details}`;
   }
   
+  // Add rate limit details if available
   if (details) {
     const formattedDetails = formatRateLimitDetails(details);
     if (formattedDetails) {
@@ -257,6 +314,69 @@ export function generateRateLimitTooltip(errorInfo: ErrorInfo, details?: RateLim
   
   if (errorInfo.suggestion) {
     content += `<br><br><em>${errorInfo.suggestion}</em>`;
+  }
+  
+  // Add comprehensive error legend
+  content += `<br><br><hr style="margin: 12px 0; border: none; border-top: 1px solid rgba(255,255,255,0.2);">`;
+  content += `<strong>All Possible Errors:</strong><br><br>`;
+  
+  // Group errors by category
+  const rateLimitErrors = Object.entries(ERROR_LEGEND).filter(([code]) => 
+    code.includes('rate_limit') || code.includes('quota')
+  );
+  const otpErrors = Object.entries(ERROR_LEGEND).filter(([code]) => 
+    code.includes('otp') || code.includes('attempts')
+  );
+  const emailErrors = Object.entries(ERROR_LEGEND).filter(([code]) => 
+    code.includes('email')
+  );
+  const authErrors = Object.entries(ERROR_LEGEND).filter(([code]) => 
+    code.includes('token') || code.includes('authentication')
+  );
+  const systemErrors = Object.entries(ERROR_LEGEND).filter(([code]) => 
+    !rateLimitErrors.some(([c]) => c === code) &&
+    !otpErrors.some(([c]) => c === code) &&
+    !emailErrors.some(([c]) => c === code) &&
+    !authErrors.some(([c]) => c === code)
+  );
+  
+  if (rateLimitErrors.length > 0) {
+    content += `<strong>Rate Limit & Quota:</strong><br>`;
+    rateLimitErrors.forEach(([code, info]) => {
+      content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
+    });
+    content += `<br>`;
+  }
+  
+  if (otpErrors.length > 0) {
+    content += `<strong>OTP Verification:</strong><br>`;
+    otpErrors.forEach(([code, info]) => {
+      content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
+    });
+    content += `<br>`;
+  }
+  
+  if (emailErrors.length > 0) {
+    content += `<strong>Email Issues:</strong><br>`;
+    emailErrors.forEach(([code, info]) => {
+      content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
+    });
+    content += `<br>`;
+  }
+  
+  if (authErrors.length > 0) {
+    content += `<strong>Authentication:</strong><br>`;
+    authErrors.forEach(([code, info]) => {
+      content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
+    });
+    content += `<br>`;
+  }
+  
+  if (systemErrors.length > 0) {
+    content += `<strong>System & Network:</strong><br>`;
+    systemErrors.forEach(([code, info]) => {
+      content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
+    });
   }
   
   return content;

@@ -205,11 +205,15 @@
     <div class="otp-login-error">
       <div class="otp-login-error-message">
         {state.error}
-        {#if state.errorCode}
-          <Tooltip content={tooltipContent} position="top">
-            <span class="otp-login-error-info-icon" aria-label="Error details">ℹ️</span>
-          </Tooltip>
-        {/if}
+        <Tooltip 
+          content={tooltipContent} 
+          position="top" 
+          interactive={true}
+          maxWidth="420px"
+          maxHeight="400px"
+        >
+          <span class="otp-login-error-info-icon" aria-label="Error details">ℹ️</span>
+        </Tooltip>
       </div>
       {#if state.rateLimitCountdown > 0}
         <div class="otp-login-rate-limit-countdown">
@@ -353,6 +357,13 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
+    position: relative;
+    
+    :global(.tooltip-wrapper) {
+      pointer-events: auto;
+      z-index: 10;
+      position: relative;
+    }
   }
   
   .otp-login-error-info-icon {
@@ -360,6 +371,13 @@
     font-size: 1rem;
     opacity: 0.7;
     transition: opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+    user-select: none;
     
     &:hover {
       opacity: 1;

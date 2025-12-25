@@ -61,6 +61,11 @@ export async function initializeApp(): Promise<void> {
     // Set encryption enabled state in store (for reactive auth checks)
     await setEncryptionState();
     
+    // CRITICAL: Mark auth check as complete AFTER determining encryption state
+    // This allows the App component to show the correct screen (auth or app)
+    const { authCheckComplete } = await import('../stores/auth');
+    authCheckComplete.set(true);
+    
     // CRITICAL: If encryption is enabled but no auth token exists, auth is required
     // The App component will reactively show AuthScreen instead of the main app
     const { isEncryptionEnabled } = await import('../core/services/encryption');
@@ -76,6 +81,10 @@ export async function initializeApp(): Promise<void> {
       
       // Continue initialization anyway - app will show AuthScreen instead of main app
       // Once user authenticates, everything will be ready
+    } else if (!encryptionEnabled) {
+      addLogEntry('Encryption disabled - authentication not required', 'info', 'AUTH');
+    } else if (authToken) {
+      addLogEntry('User authenticated - encryption enabled', 'success', 'AUTH');
     }
     
     // Initialize modules in order (even if auth is required, so app is ready when user logs in)

@@ -11,6 +11,7 @@ import { handlePublicRoutes } from './router/public-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
+import { handleGameRoutes } from './router/game-routes.js';
 
 /**
  * Check for high error rate and alert
@@ -116,6 +117,20 @@ export async function route(request, env) {
             }
             
             return userResult.response;
+        }
+        
+        // Try game routes
+        const gameResult = await handleGameRoutes(request, path, env);
+        if (gameResult) {
+            customerId = gameResult.customerId;
+            
+            // Track response time
+            const responseTime = performance.now() - startTime;
+            if (customerId && path.startsWith('/game/')) {
+                await trackResponseTime(customerId, endpoint, responseTime, env);
+            }
+            
+            return gameResult.response;
         }
         
         // 404 for unknown routes

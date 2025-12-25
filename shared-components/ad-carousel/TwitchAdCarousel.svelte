@@ -9,7 +9,7 @@
    * ```svelte
    * <TwitchAdCarousel 
    *   position="bottom-right"
-   *   channelUrl="https://www.twitch.tv/strixun"
+   *   supportUrl="https://www.twitch.tv/strixun"
    * />
    * ```
    */
@@ -27,7 +27,7 @@
   export let maxHeight: number = 200;
   export let storageKey: string = 'ui_ad_carousel_state';
   export let defaultDimmed: boolean = false;
-  export let channelUrl: string = 'https://www.twitch.tv/strixun';
+  export let supportUrl: string = 'https://www.twitch.tv/strixun';
   export let className: string = '';
   export let storage: StorageAdapter = localStorageAdapter; // Allow custom storage adapter
 </script>
@@ -45,6 +45,6 @@
   {className}
   {storage}
 >
-  <TwitchSupportCard {channelUrl} />
+  <TwitchSupportCard supportUrl={supportUrl} />
 </AdCarousel>
 

@@ -1,44 +1,44 @@
 <script lang="ts">
   /**
-   * TwitchSupportCard Component
+   * SupportCard Component
    * 
-   * A card that meeksly but convincingly asks viewers to support the streamer
-   * by following/subscribing on Twitch. Designed to be friendly and non-intrusive.
-   * Uses a proper anchor tag for semantic HTML and accessibility.
+   * A generic support card that encourages users to support the services.
+   * Designed to be friendly and non-intrusive. Uses a proper anchor tag for 
+   * semantic HTML and accessibility.
    * 
    * @example
    * ```svelte
-   * <TwitchSupportCard channelUrl="https://www.twitch.tv/strixun" />
+   * <SupportCard supportUrl="https://example.com/support" />
    * ```
    */
 
-  export let channelUrl: string = 'https://www.twitch.tv/strixun';
+  export let supportUrl: string = 'https://www.twitch.tv/strixun';
   export let className: string = '';
 </script>
 
 <a
-  href={channelUrl}
+  href={supportUrl}
   target="_blank"
   rel="noopener noreferrer"
-  class="twitch-support-card {className}"
+  class="support-card {className}"
 >
-  <div class="twitch-support-card__content">
-    <div class="twitch-support-card__text">
-      <h3 class="twitch-support-card__title">
-        <span class="twitch-support-card__icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+  <div class="support-card__content">
+    <div class="support-card__text">
+      <h3 class="support-card__title">
+        <span class="support-card__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
         </span>
-        Support the Stream! 🎮
+        Support the Services! 💙
       </h3>
-      <p class="twitch-support-card__message">
-        Help keep these services alive and free! Follow or subscribe on Twitch to show your support.
+      <p class="support-card__message">
+        Help keep these services running with generous free tiers! Your support helps maintain and improve the platform.
       </p>
     </div>
     
-    <div class="twitch-support-card__action">
-      <span class="twitch-support-card__link">Visit Channel →</span>
+    <div class="support-card__action">
+      <span class="support-card__link">Show Support →</span>
     </div>
   </div>
 </a>
@@ -47,7 +47,7 @@
   @use '@styles/animations' as *;
   @use '@styles/mixins' as *;
 
-  .twitch-support-card {
+  .support-card {
     height: 100%;
     max-height: 100%;
     display: flex;
@@ -78,7 +78,7 @@
     }
   }
 
-  .twitch-support-card__content {
+  .support-card__content {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -87,15 +87,15 @@
     overflow: hidden;
   }
 
-  .twitch-support-card__icon {
+  .support-card__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 24px;
     height: 24px;
-    background: rgba(145, 70, 255, 0.2);
+    background: rgba(237, 174, 73, 0.15);
     border-radius: 6px;
-    color: #9146ff;
+    color: var(--accent);
     flex-shrink: 0;
     vertical-align: middle;
     margin-right: 8px;
@@ -106,14 +106,14 @@
     }
   }
 
-  .twitch-support-card__text {
+  .support-card__text {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
 
-  .twitch-support-card__title {
+  .support-card__title {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text);
@@ -123,14 +123,14 @@
     align-items: center;
   }
 
-  .twitch-support-card__message {
+  .support-card__message {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin: 0;
     line-height: 1.4;
   }
 
-  .twitch-support-card__action {
+  .support-card__action {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -139,13 +139,13 @@
     margin-top: auto;
   }
 
-  .twitch-support-card__link {
+  .support-card__link {
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--accent);
     transition: all 0.2s ease;
 
-    .twitch-support-card:hover & {
+    .support-card:hover & {
       color: var(--accent-light);
       transform: translateX(4px);
     }
@@ -153,18 +153,17 @@
 
   // Responsive adjustments
   @media (max-width: 480px) {
-    .twitch-support-card__content {
+    .support-card__content {
       padding: 12px;
       gap: 10px;
     }
 
-    .twitch-support-card__title {
+    .support-card__title {
       font-size: 1rem;
     }
 
-    .twitch-support-card__message {
+    .support-card__message {
       font-size: 0.8rem;
     }
   }
 </style>
-

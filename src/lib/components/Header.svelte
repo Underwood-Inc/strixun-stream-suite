@@ -17,6 +17,7 @@
   import { navigateTo } from '../../stores/navigation';
   import { celebrateClick, celebrateConnection } from '../../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../../stores/toast-queue';
+  import { isAuthenticated, logout as logoutUser } from '../../stores/auth';
   import Tooltip from './Tooltip.svelte';
   import TruncatedText from './TruncatedText.svelte';
   import AlertsDropdown from './ui/AlertsDropdown.svelte';
@@ -79,6 +80,19 @@
     setTimeout(() => showWarning('Duplicate test message', { title: 'Test' }), 1300);
     setTimeout(() => showWarning('Duplicate test message', { title: 'Test' }), 1400);
   }
+  
+  async function handleLogout(e: MouseEvent): Promise<void> {
+    celebrateClick(e.currentTarget as HTMLElement);
+    try {
+      await logoutUser();
+      showSuccess('Logged out successfully', { title: 'Logout' });
+      // Small delay before reload to show the toast
+      setTimeout(() => location.reload(), 300);
+    } catch (error) {
+      showError('Failed to logout. Please try again.', { title: 'Error' });
+      console.error('[Header] Logout error:', error);
+    }
+  }
 </script>
 
 <header class="header">
@@ -96,6 +110,17 @@
   </h1>
   <div class="header-actions">
     <AlertsDropdown open={alertsOpen} onToggle={toggleAlerts} />
+    {#if $isAuthenticated}
+      <Tooltip text="Sign Out" position="bottom">
+        <button class="btn-icon" on:click={handleLogout} title="Sign Out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </Tooltip>
+    {/if}
     <Tooltip text="Test Toasts | This feature is currently in testing" position="bottom" level="info">
       <button class="btn-icon in-testing" on:click={handleTestToasts} title="Test Toasts">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
