@@ -4,9 +4,10 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomer, storeCustomer, getCustomerByEmail } from '../../services/customer.js';
+import { getCustomer, storeCustomer, getCustomerByEmail, getCustomerKey } from '../../services/customer.js';
 import { ensureCustomerAccount } from '../auth/customer-creation.js';
-import { hashEmail } from '../../utils/crypto.js';
+import { hashEmail, verifyJWT, getJWTSecret } from '../../utils/crypto.js';
+import { buildResponseWithEncryption } from '../../utils/response-builder.js';
 
 /**
  * Get current customer info
@@ -51,17 +52,68 @@ export async function handleAdminGetMe(request, env, customerId) {
             });
         }
         
-        // Return customer directly (not wrapped) to match API client expectations
-        return new Response(JSON.stringify({
-            customerId: customer.customerId,
-            name: customer.name,
-            email: customer.email,
-            companyName: customer.companyName,
-            plan: customer.plan,
-            status: customer.status,
-            createdAt: customer.createdAt,
-            features: customer.features
-        }), {
+        // Extract userId from JWT token for root config (always include id and customerId per API architecture)
+        let userId = null;
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
+                const jwtSecret = getJWTSecret(env);
+                const payload = await verifyJWT(token, jwtSecret);
+                if (payload) {
+                    userId = payload.userId || payload.sub || null;
+                }
+            } catch (jwtError) {
+                // JWT verification failed, continue without userId
+            }
+        }
+        
+        // Generate request ID if userId not available
+        const requestId = userId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Get owner's JWT token for encryption (if available)
+        // For customer data, we need to get the customer's user token
+        // For now, we'll use the requester's token as a fallback
+        // In Phase 2, we'll properly retrieve the owner's token
+        let ownerToken = token;
+        let ownerUserId = userId;
+        
+        // Try to get customer's user ID from email
+        if (customer.email) {
+            const { hashEmail } = await import('../../utils/crypto.js');
+            const emailHash = await hashEmail(customer.email);
+            const userKey = getCustomerKey(customerId, `user_${emailHash}`);
+            const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+            if (user && user.userId) {
+                ownerUserId = user.userId;
+                // Note: In Phase 2, we'll retrieve the owner's actual JWT token
+                // For now, we'll use a placeholder - this will need proper implementation
+            }
+        }
+        
+        // Build response with proper encryption
+        const responseData = await buildResponseWithEncryption(
+            {
+                id: requestId,
+                customerId: customer.customerId,
+                name: customer.name,
+                email: customer.email,
+                userId: customer.email, // Use email as userId
+                companyName: customer.companyName,
+                plan: customer.plan,
+                status: customer.status,
+                createdAt: customer.createdAt,
+                features: customer.features
+            },
+            ownerUserId || customer.email, // Owner user ID
+            ownerToken, // Owner's JWT token
+            customerId,
+            env
+        );
+        
+        // Return customer with root config (id and customerId always included per API architecture)
+        return new Response(JSON.stringify(responseData), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {

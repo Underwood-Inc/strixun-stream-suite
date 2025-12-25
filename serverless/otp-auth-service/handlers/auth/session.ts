@@ -7,12 +7,37 @@ import { getCorsHeaders } from '../../utils/cors.js';
 import { hashEmail, verifyJWT, createJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
 import { ensureCustomerAccount } from './customer-creation.js';
+import { buildCurrentUserResponse } from '../../utils/response-builder.js';
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    JWT_SECRET?: string;
+    [key: string]: any;
+}
+
+interface User {
+    userId: string;
+    email: string;
+    displayName?: string | null;
+    customerId?: string | null;
+    createdAt?: string;
+    lastLogin?: string;
+    [key: string]: any;
+}
+
+interface JWTPayload {
+    userId?: string;
+    sub?: string;
+    email?: string;
+    customerId?: string | null;
+    [key: string]: any;
+}
 
 /**
  * Get current user endpoint
  * GET /auth/me
  */
-export async function handleGetMe(request, env) {
+export async function handleGetMe(request: Request, env: Env): Promise<Response> {
     try {
         const authHeader = request.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -24,7 +49,7 @@ export async function handleGetMe(request, env) {
         
         const token = authHeader.substring(7);
         const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
+        const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
@@ -37,6 +62,13 @@ export async function handleGetMe(request, env) {
         let customerId = payload.customerId || null;
         
         // Ensure customer account exists (backwards compatibility for users without customer accounts)
+        if (!payload.email) {
+            return new Response(JSON.stringify({ error: 'Email not found in token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+
         const emailLower = payload.email.toLowerCase().trim();
         const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
         customerId = resolvedCustomerId || customerId;
@@ -44,12 +76,12 @@ export async function handleGetMe(request, env) {
         // Get user data with customer isolation
         const emailHash = await hashEmail(payload.email);
         let userKey = getCustomerKey(customerId, `user_${emailHash}`);
-        let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+        let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
         
         // If user not found with customerId, try without customerId (backwards compatibility)
         if (!user && customerId) {
             const legacyUserKey = `user_${emailHash}`;
-            user = await env.OTP_AUTH_KV.get(legacyUserKey, { type: 'json' });
+            user = await env.OTP_AUTH_KV.get(legacyUserKey, { type: 'json' }) as User | null;
             // If found, migrate user to customer-scoped key and update customerId
             if (user) {
                 user.customerId = customerId;
@@ -70,24 +102,35 @@ export async function handleGetMe(request, env) {
             await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
+        // Generate request ID for root config
+        const requestId = user.userId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Build response with proper encryption based on user preferences
+        const responseData = await buildCurrentUserResponse(
+            {
+                id: requestId,
+                customerId: user.customerId || customerId || null,
+                // Standard OIDC Claims
+                sub: user.userId, // Subject identifier (required)
+                email: user.email,
+                email_verified: true,
+                // Additional Standard Claims
+                iss: 'auth.idling.app', // Issuer
+                aud: customerId || 'default', // Audience
+                // Custom Claims (backward compatibility)
+                userId: user.userId,
+                displayName: user.displayName || null, // Anonymized display name
+                createdAt: user.createdAt,
+                lastLogin: user.lastLogin,
+            },
+            user.userId,
+            token,
+            customerId,
+            env
+        );
+        
         // OpenID Connect UserInfo Response (RFC 7662)
-        return new Response(JSON.stringify({ 
-            // Standard OIDC Claims
-            sub: user.userId, // Subject identifier (required)
-            email: user.email,
-            email_verified: true,
-            
-            // Additional Standard Claims
-            iss: 'auth.idling.app', // Issuer
-            aud: customerId || 'default', // Audience
-            
-            // Custom Claims (backward compatibility)
-            userId: user.userId,
-            displayName: user.displayName || null, // Anonymized display name
-            customerId: user.customerId || customerId || null,
-            createdAt: user.createdAt,
-            lastLogin: user.lastLogin,
-        }), {
+        return new Response(JSON.stringify(responseData), {
             headers: { 
                 ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/json',
@@ -95,7 +138,7 @@ export async function handleGetMe(request, env) {
                 'Pragma': 'no-cache',
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         // RFC 7807 Problem Details for HTTP APIs
         return new Response(JSON.stringify({ 
             type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
@@ -117,7 +160,7 @@ export async function handleGetMe(request, env) {
  * Logout endpoint
  * POST /auth/logout
  */
-export async function handleLogout(request, env) {
+export async function handleLogout(request: Request, env: Env): Promise<Response> {
     try {
         const authHeader = request.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -129,7 +172,7 @@ export async function handleLogout(request, env) {
         
         const token = authHeader.substring(7);
         const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
+        const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
@@ -150,8 +193,11 @@ export async function handleLogout(request, env) {
         }), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
         
         // Delete session with customer isolation
-        const sessionKey = getCustomerKey(customerId, `session_${payload.userId}`);
-        await env.OTP_AUTH_KV.delete(sessionKey);
+        const userId = payload.userId || payload.sub;
+        if (userId) {
+            const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+            await env.OTP_AUTH_KV.delete(sessionKey);
+        }
         
         return new Response(JSON.stringify({ 
             success: true,
@@ -159,7 +205,7 @@ export async function handleLogout(request, env) {
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
-    } catch (error) {
+    } catch (error: any) {
         return new Response(JSON.stringify({ 
             error: 'Failed to logout',
             message: error.message 
@@ -174,9 +220,9 @@ export async function handleLogout(request, env) {
  * Refresh token endpoint
  * POST /auth/refresh
  */
-export async function handleRefresh(request, env) {
+export async function handleRefresh(request: Request, env: Env): Promise<Response> {
     try {
-        const body = await request.json();
+        const body = await request.json() as { token?: string };
         const { token } = body;
         
         if (!token) {
@@ -187,7 +233,7 @@ export async function handleRefresh(request, env) {
         }
         
         const jwtSecret = getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
+        const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
         if (!payload) {
             return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
@@ -200,6 +246,13 @@ export async function handleRefresh(request, env) {
         let customerId = payload.customerId || null;
         
         // Ensure customer account exists (backwards compatibility for users without customer accounts)
+        if (!payload.email) {
+            return new Response(JSON.stringify({ error: 'Email not found in token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+
         const emailLower = payload.email.toLowerCase().trim();
         const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
         customerId = resolvedCustomerId || customerId;
@@ -222,8 +275,9 @@ export async function handleRefresh(request, env) {
         
         // Generate new token (7 hours expiration)
         const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
+        const userId = payload.userId || payload.sub;
         const newTokenPayload = {
-            userId: payload.userId,
+            userId: userId,
             email: payload.email,
             customerId: customerId, // Preserve customer ID
             csrf: newCsrfToken, // New CSRF token for refreshed session
@@ -234,14 +288,16 @@ export async function handleRefresh(request, env) {
         const newToken = await createJWT(newTokenPayload, jwtSecret);
         
         // Update session with customer isolation
-        const sessionKey = getCustomerKey(customerId, `session_${payload.userId}`);
-        await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify({
-            userId: payload.userId,
-            email: payload.email,
-            token: await hashEmail(newToken),
-            expiresAt: expiresAt.toISOString(),
-            createdAt: new Date().toISOString(),
-        }), { expirationTtl: 25200 }); // 7 hours
+        if (userId) {
+            const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+            await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify({
+                userId: userId,
+                email: payload.email,
+                token: await hashEmail(newToken),
+                expiresAt: expiresAt.toISOString(),
+                createdAt: new Date().toISOString(),
+            }), { expirationTtl: 25200 }); // 7 hours
+        }
         
         return new Response(JSON.stringify({ 
             success: true,
@@ -250,7 +306,7 @@ export async function handleRefresh(request, env) {
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
-    } catch (error) {
+    } catch (error: any) {
         return new Response(JSON.stringify({ 
             error: 'Failed to refresh token',
             message: error.message 

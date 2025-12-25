@@ -1,8 +1,6 @@
 /**
  * User Routes
  * Handles user profile endpoints (require JWT authentication)
- * 
- * @module router/user-routes
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
@@ -10,11 +8,32 @@ import { verifyJWT, getJWTSecret } from '../utils/crypto.js';
 import * as userHandlers from '../handlers/user/displayName.js';
 import * as twitchHandlers from '../handlers/user/twitch.js';
 import * as profilePictureHandlers from '../handlers/user/profilePicture.js';
+import * as preferencesHandlers from '../handlers/user/preferences.js';
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    JWT_SECRET?: string;
+    [key: string]: any;
+}
+
+interface AuthResult {
+    authenticated: boolean;
+    status?: number;
+    error?: string;
+    userId?: string;
+    email?: string;
+    customerId?: string | null;
+}
+
+interface RouteResult {
+    response: Response;
+    customerId: string | null;
+}
 
 /**
  * Authenticate request using JWT token
  */
-async function authenticateRequest(request, env) {
+async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return { authenticated: false, status: 401, error: 'Authorization header required' };
@@ -38,12 +57,16 @@ async function authenticateRequest(request, env) {
 
 /**
  * Handle user routes
- * @param {Request} request - HTTP request
- * @param {string} path - Request path
- * @param {*} env - Worker environment
- * @returns {Promise<{response: Response, customerId: string|null}>|null} Response and customerId if route matched, null otherwise
+ * @param request - HTTP request
+ * @param path - Request path
+ * @param env - Worker environment
+ * @returns Response and customerId if route matched, null otherwise
  */
-export async function handleUserRoutes(request, path, env) {
+export async function handleUserRoutes(
+    request: Request,
+    path: string,
+    env: Env
+): Promise<RouteResult | null> {
     // User profile endpoints (require JWT authentication)
     if (path === '/user/display-name' && request.method === 'GET') {
         return { 
@@ -100,6 +123,21 @@ export async function handleUserRoutes(request, path, env) {
         return { 
             response: await profilePictureHandlers.handleDeleteProfilePicture(request, env), 
             customerId: null
+        };
+    }
+    
+    // User preferences endpoints
+    if (path === '/user/me/preferences' && request.method === 'GET') {
+        return { 
+            response: await preferencesHandlers.handleGetPreferences(request, env), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
+    if (path === '/user/me/preferences' && request.method === 'PUT') {
+        return { 
+            response: await preferencesHandlers.handleUpdatePreferences(request, env), 
+            customerId: null // Will be extracted from JWT in handler
         };
     }
     
