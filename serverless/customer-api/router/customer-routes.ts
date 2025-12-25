@@ -1,0 +1,153 @@
+/**
+ * Customer Routes
+ * Handles all customer API endpoints
+ * Uses reusable API architecture with automatic end-to-end encryption
+ */
+
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from '../utils/errors.js';
+import { authenticateRequest } from '../utils/auth.js';
+import { encryptWithJWT } from '../utils/jwt-encryption.js';
+import { handleGetCustomer, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
+
+interface Env {
+    CUSTOMER_KV: KVNamespace;
+    JWT_SECRET?: string;
+    ALLOWED_ORIGINS?: string;
+    [key: string]: any;
+}
+
+interface RouteResult {
+    response: Response;
+    customerId: string | null;
+}
+
+/**
+ * Helper to wrap customer route handlers with authentication and automatic encryption
+ */
+async function handleCustomerRoute(
+    handler: (request: Request, env: Env, auth: any) => Promise<Response>,
+    request: Request,
+    env: Env,
+    auth: any
+): Promise<RouteResult> {
+    if (!auth) {
+        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token.');
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        });
+        return {
+            response: new Response(JSON.stringify(rfcError), {
+                status: 401,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            }),
+            customerId: null
+        };
+    }
+
+    // Get handler response
+    const handlerResponse = await handler(request, env, auth);
+
+    // If JWT token is present, encrypt the response (automatic E2E encryption)
+    if (auth.jwtToken && handlerResponse.ok) {
+        try {
+            const responseData = await handlerResponse.json();
+            const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
+
+            // Preserve original headers and add encryption flag
+            const headers = new Headers(handlerResponse.headers);
+            headers.set('Content-Type', 'application/json');
+            headers.set('X-Encrypted', 'true'); // Flag to indicate encrypted response
+
+            return {
+                response: new Response(JSON.stringify(encrypted), {
+                    status: handlerResponse.status,
+                    statusText: handlerResponse.statusText,
+                    headers: headers,
+                }),
+                customerId: auth.customerId
+            };
+        } catch (error) {
+            console.error('Failed to encrypt response:', error);
+            // Return unencrypted response if encryption fails (shouldn't happen)
+            return { response: handlerResponse, customerId: auth.customerId };
+        }
+    }
+
+    // For non-OK responses, return as-is (no encryption)
+    return { response: handlerResponse, customerId: auth.customerId };
+}
+
+/**
+ * Handle customer routes
+ * Uses reusable API architecture with automatic encryption
+ */
+export async function handleCustomerRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
+    // Only handle /customer/* routes (or root if this is dedicated customer worker)
+    if (!path.startsWith('/customer/') && path !== '/') {
+        return null;
+    }
+
+    // Normalize path - if root, treat as /customer/ for dedicated worker
+    const normalizedPath = path === '/' ? '/customer/' : path;
+
+    // Authenticate request (returns null if not authenticated)
+    const auth = await authenticateRequest(request, env);
+
+    // Route to appropriate handler with automatic encryption wrapper
+    try {
+        // Get customer
+        if (normalizedPath === '/customer/me' && request.method === 'GET') {
+            return await handleCustomerRoute(handleGetCustomer, request, env, auth);
+        }
+
+        // Create customer
+        if (normalizedPath === '/customer' && request.method === 'POST') {
+            return await handleCustomerRoute(handleCreateCustomer, request, env, auth);
+        }
+
+        // Update customer
+        if (normalizedPath === '/customer/me' && request.method === 'PUT') {
+            return await handleCustomerRoute(handleUpdateCustomer, request, env, auth);
+        }
+
+        // Get customer by ID (for admin/super-admin)
+        const customerIdMatch = normalizedPath.match(/^\/customer\/([^\/]+)$/);
+        if (customerIdMatch && request.method === 'GET') {
+            const customerId = customerIdMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleGetCustomer(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
+        }
+
+        return null; // Route not matched
+    } catch (error: any) {
+        console.error('Customer route error:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        });
+        return {
+            response: new Response(JSON.stringify(rfcError), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            }),
+            customerId: null
+        };
+    }
+}
+

@@ -1,12 +1,14 @@
 /**
  * Customer service
  * Customer management, storage, and retrieval
+ * 
+ * This service uses the dedicated CUSTOMER_KV namespace
  */
 
 import { hashEmail } from '../utils/crypto.js';
 
 interface Env {
-    OTP_AUTH_KV: KVNamespace;
+    CUSTOMER_KV: KVNamespace;
     [key: string]: any;
 }
 
@@ -45,8 +47,6 @@ export type CustomerTier = 'free' | 'basic' | 'premium' | 'enterprise';
 
 /**
  * Customer data structure
- * 
- * Enhanced with subscriptions, tiers, and flairs for comprehensive customer management
  */
 export interface CustomerData {
     customerId: string;
@@ -62,7 +62,7 @@ export interface CustomerData {
     // Enhanced fields
     subscriptions?: Subscription[]; // Array of subscription history
     flairs?: Flair[]; // Array of earned flairs/badges
-    displayName?: string; // Randomly generated display name (for customer account)
+    displayName?: string; // Randomly generated display name
     
     // Configuration
     config?: {
@@ -73,15 +73,11 @@ export interface CustomerData {
         [key: string]: any;
     };
     
-    // Allow additional fields for extensibility
     [key: string]: any;
 }
 
 /**
  * Get customer key with prefix for isolation
- * @param customerId - Customer ID (optional for backward compatibility)
- * @param key - Base key
- * @returns Prefixed key
  */
 export function getCustomerKey(customerId: string | null, key: string): string {
     return customerId ? `cust_${customerId}_${key}` : key;
@@ -89,10 +85,8 @@ export function getCustomerKey(customerId: string | null, key: string): string {
 
 /**
  * Generate customer ID
- * @returns Customer ID
  */
 export function generateCustomerId(): string {
-    // Generate 12 random hex characters
     const array = new Uint8Array(6);
     crypto.getRandomValues(array);
     const hex = Array.from(array)
@@ -103,23 +97,16 @@ export function generateCustomerId(): string {
 
 /**
  * Get customer by ID
- * @param customerId - Customer ID
- * @param env - Worker environment
- * @returns Customer data or null
  */
 export async function getCustomer(customerId: string, env: Env): Promise<CustomerData | null> {
     const customerKey = `customer_${customerId}`;
-    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerData | null;
+    const customer = await env.CUSTOMER_KV.get(customerKey, { type: 'json' }) as CustomerData | null;
     return customer;
 }
 
 /**
  * Store customer
- * @param customerId - Customer ID
- * @param customerData - Customer data
- * @param env - Worker environment
- * @param expirationTtl - Optional TTL in seconds (default: no expiration - customer accounts persist indefinitely)
- * @returns Promise that resolves when customer is stored
+ * Customer accounts persist indefinitely (no TTL) to allow account recovery
  */
 export async function storeCustomer(
     customerId: string, 
@@ -130,28 +117,24 @@ export async function storeCustomer(
     const customerKey = `customer_${customerId}`;
     
     // Customer accounts persist indefinitely (no TTL) to allow account recovery
-    // Only set TTL if explicitly provided (for testing or special cases)
     const putOptions = expirationTtl ? { expirationTtl } : undefined;
-    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData), putOptions);
+    await env.CUSTOMER_KV.put(customerKey, JSON.stringify(customerData), putOptions);
     
     // Store email -> customerId mapping for lookup (also persists indefinitely)
     if (customerData.email) {
         const emailHash = await hashEmail(customerData.email.toLowerCase().trim());
         const emailMappingKey = `email_to_customer_${emailHash}`;
-        await env.OTP_AUTH_KV.put(emailMappingKey, customerId, putOptions);
+        await env.CUSTOMER_KV.put(emailMappingKey, customerId, putOptions);
     }
 }
 
 /**
  * Get customer by email
- * @param email - Customer email
- * @param env - Worker environment
- * @returns Customer data or null
  */
 export async function getCustomerByEmail(email: string, env: Env): Promise<CustomerData | null> {
     const emailHash = await hashEmail(email.toLowerCase().trim());
     const emailMappingKey = `email_to_customer_${emailHash}`;
-    const customerId = await env.OTP_AUTH_KV.get(emailMappingKey);
+    const customerId = await env.CUSTOMER_KV.get(emailMappingKey);
     
     if (!customerId) {
         return null;

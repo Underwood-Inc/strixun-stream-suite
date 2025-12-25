@@ -72,13 +72,39 @@ export async function ensureCustomerAccount(
         const emailDomain = emailLower.split('@')[1] || 'unknown';
         const companyName = emailDomain.split('.')[0] || 'My App';
         
-        const customerData = {
+        // Generate random display name for customer account
+        const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
+        const customerDisplayName = await generateUniqueDisplayName({
+            customerId: resolvedCustomerId,
+            maxAttempts: 10,
+            includeNumber: true
+        }, env);
+        
+        // Reserve the display name for the customer account
+        // Note: Customer accounts use customerId as userId for display name reservation
+        await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+        
+        // Initialize default subscription (free tier)
+        const defaultSubscription: import('../../services/customer.js').Subscription = {
+            planId: 'free',
+            status: 'active',
+            startDate: new Date().toISOString(),
+            endDate: null,
+            planName: 'Free',
+            billingCycle: 'monthly',
+        };
+        
+        const customerData: import('../../services/customer.js').CustomerData = {
             customerId: resolvedCustomerId,
             name: emailLower.split('@')[0], // Use email prefix as name
             email: emailLower,
             companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-            plan: 'free',
+            plan: 'free', // Legacy field
+            tier: 'free', // Current tier level
             status: 'active',
+            displayName: customerDisplayName, // Randomly generated display name
+            subscriptions: [defaultSubscription], // Initialize with free subscription
+            flairs: [], // Initialize empty flairs array
             createdAt: new Date().toISOString(),
             configVersion: 1,
             config: {

@@ -1,0 +1,56 @@
+# Customer API Service - Cloudflare Worker Configuration
+# Dedicated worker for customer data management
+
+name = "strixun-customer-api"
+main = "worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV Namespace for customer data
+# Created via: wrangler kv namespace create "CUSTOMER_API_KV"
+[[kv_namespaces]]
+binding = "CUSTOMER_KV"
+id = "PLACEHOLDER_ID"  # TODO: Create namespace and update this ID
+# To create: cd serverless/customer-api && wrangler kv namespace create "CUSTOMER_API_KV"
+
+# Environment variables (secrets should be set via wrangler secret put)
+# DO NOT put actual secrets here - use wrangler CLI:
+#   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (must match OTP auth service)
+#   wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: Comma-separated CORS origins (recommended for production)
+#
+# IMPORTANT: JWT_SECRET must match the OTP auth service secret for authentication to work
+
+[vars]
+ENVIRONMENT = "production"
+
+# Custom domain configuration
+# Using idling.app domain
+routes = [
+  { pattern = "customer.idling.app/*", zone_name = "idling.app" }
+]
+
+# Alternative: Configure in Cloudflare Dashboard (recommended for production):
+# 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-customer-api
+# 2. Go to Settings → Triggers → Routes
+# 3. Add custom domain route: customer.idling.app/*
+# 4. DNS records are automatically managed by Cloudflare
+#
+# Note: Routes configured in the dashboard take precedence over wrangler.toml
+
+# Observability Configuration
+# Enables logging and tracing for the worker
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
