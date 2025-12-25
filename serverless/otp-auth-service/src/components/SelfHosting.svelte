@@ -70,7 +70,10 @@
 
     <div class="self-hosting-cta">
       <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-        <span>⭐</span> Star on GitHub
+        <svg class="star-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Star on GitHub
       </a>
       <a href="#code-examples" class="btn btn-secondary">
         Continue with Free Tier
@@ -223,6 +226,20 @@
   .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 6px 0 var(--accent-dark);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+
+  .star-icon {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    stroke: currentColor;
+    flex-shrink: 0;
   }
 
   .btn-secondary {
