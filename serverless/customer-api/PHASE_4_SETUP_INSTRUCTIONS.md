@@ -13,12 +13,15 @@ The Customer API worker has been created and is ready for deployment. This docum
 3. **Services** - Customer service using dedicated CUSTOMER_KV namespace
 4. **Utilities** - Auth, encryption, CORS, error handling
 5. **Configuration** - wrangler.toml, package.json, tsconfig.json
+6. **GitHub Workflow** - Automated deployment with KV namespace creation (`.github/workflows/deploy-customer-api.yml`)
 
 ---
 
 ## 📋 Setup Steps
 
 ### Step 1: Create KV Namespace
+
+**Option A: Manual Creation (Recommended for First Time)**
 
 Navigate to the customer-api directory and create the KV namespace:
 
@@ -36,6 +39,10 @@ Add the following to your configuration file in your kv_namespaces array:
 ```
 
 **⚠️ IMPORTANT:** Copy the `id` value - you'll need it in the next step!
+
+**Option B: Automatic Creation via GitHub Workflow**
+
+The GitHub workflow will automatically create the KV namespace if it doesn't exist when you deploy. However, you still need to update `wrangler.toml` with the namespace ID after the first deployment (the workflow will output the ID in the deployment summary).
 
 ---
 
@@ -68,7 +75,13 @@ wrangler secret put JWT_SECRET
 
 # Optional: Set allowed CORS origins (recommended for production)
 wrangler secret put ALLOWED_ORIGINS
-# When prompted, enter: https://auth.idling.app,https://dashboard.idling.app
+# When prompted, enter (production):
+# https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://mods.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app
+#
+# For development, also include:
+# ,http://localhost:5173,http://localhost:3000,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
+#
+# See CORS_ORIGINS_AUDIT.md for complete list and details
 ```
 
 **⚠️ CRITICAL:** The JWT_SECRET must be **identical** to the one in the OTP auth service, otherwise authentication will fail!
@@ -88,9 +101,13 @@ pnpm install
 
 ### Step 5: Deploy the Worker
 
+**Option A: Manual Deployment**
+
 Deploy the customer API worker:
 
 ```bash
+cd serverless/customer-api
+pnpm install
 wrangler deploy
 ```
 
@@ -101,6 +118,21 @@ wrangler deploy
 Published strixun-customer-api (X.XX sec)
   https://strixun-customer-api.YOUR_SUBDOMAIN.workers.dev
 ```
+
+**Option B: Automated Deployment via GitHub (Recommended)**
+
+The GitHub workflow will automatically:
+- ✅ Create KV namespace if it doesn't exist
+- ✅ Deploy the worker
+- ✅ Set secrets from GitHub repository secrets
+- ✅ Show deployment summary with KV namespace ID
+
+**To use automated deployment:**
+1. Ensure GitHub secrets are set (see `GITHUB_WORKFLOW_SETUP.md`)
+2. Push changes to `main` branch (or trigger manually via Actions tab)
+3. Workflow will automatically deploy
+
+**Note:** After first automated deployment, update `wrangler.toml` with the KV namespace ID (workflow summary will show it).
 
 ---
 

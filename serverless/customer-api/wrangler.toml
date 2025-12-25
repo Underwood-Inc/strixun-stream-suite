@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 # Created via: wrangler kv namespace create "CUSTOMER_API_KV"
 [[kv_namespaces]]
 binding = "CUSTOMER_KV"
-id = "PLACEHOLDER_ID"  # TODO: Create namespace and update this ID
+id = "86ef5ab4419b40eab3fe65b75f052789"
 # To create: cd serverless/customer-api && wrangler kv namespace create "CUSTOMER_API_KV"
 
 # Environment variables (secrets should be set via wrangler secret put)
