@@ -92,18 +92,17 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         }
         
         // Ensure customer account exists (handles backwards compatibility)
+        // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
         let resolvedCustomerId = customerId;
         if (payload.email) {
-            // Import ensureCustomerAccount function
-            const { ensureCustomerAccount } = await import('../handlers/auth/customer-creation.js');
-            resolvedCustomerId = await ensureCustomerAccount(payload.email, customerId, env);
-            
-            // If customerId was in JWT but customer doesn't exist, use the newly created one
-            if (!resolvedCustomerId && customerId) {
-                const customer = await getCustomerByEmail(payload.email, env);
-                if (customer) {
-                    resolvedCustomerId = customer.customerId;
-                }
+            try {
+                // Import ensureCustomerAccount function
+                const { ensureCustomerAccount } = await import('../handlers/auth/customer-creation.js');
+                resolvedCustomerId = await ensureCustomerAccount(payload.email, customerId, env);
+            } catch (error) {
+                console.error(`[Admin Routes] Failed to ensure customer account for ${payload.email}:`, error);
+                // If customer account creation fails, authentication fails
+                return null;
             }
         }
         

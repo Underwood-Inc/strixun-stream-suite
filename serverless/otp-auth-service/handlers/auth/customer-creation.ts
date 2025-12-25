@@ -24,101 +24,124 @@ interface Env {
  * Ensure customer account exists for a verified user
  * Creates account if it doesn't exist, returns existing customerId if it does
  * 
+ * BUSINESS RULE: Customer account MUST ALWAYS be created for users on login.
+ * This function will retry on failures and throw an error if it cannot create
+ * the account after retries, rather than returning null.
+ * 
  * This function implements smart account recovery:
  * - If user account was deleted (expired TTL), customer account is recovered by email
  * - Customer accounts persist indefinitely to allow recovery
  * - When recovered, customer account status is reactivated if it was inactive
  * 
- * @returns Resolved customerId (may be null if creation failed)
+ * @returns Resolved customerId (never null - throws error if cannot create)
+ * @throws Error if customer account cannot be created after retries
  */
-export async function ensureCustomerAccount(
+/**
+ * Retry helper with exponential backoff
+ */
+async function retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 100
+): Promise<T> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error as Error;
+            if (attempt < maxRetries - 1) {
+                const delay = baseDelay * Math.pow(2, attempt);
+                console.warn(`[Customer Creation] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms:`, error);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    throw lastError || new Error('Retry failed after all attempts');
+}
+
+/**
+ * UPSERT customer account - update existing or create new
+ * Ensures all required fields are present and account is active
+ */
+async function upsertCustomerAccount(
     email: string,
     customerId: string | null,
     env: Env
-): Promise<string | null> {
-    // If customerId is already provided, verify it exists
+): Promise<string> {
+    const emailLower = email.toLowerCase().trim();
+    const emailDomain = emailLower.split('@')[1] || 'unknown';
+    const companyName = emailDomain.split('.')[0] || 'My App';
+    
+    // Try to get existing customer by ID or email
+    let existingCustomer: import('../../services/customer.js').CustomerData | null = null;
+    
     if (customerId) {
         try {
-            const existing = await getCustomerService(customerId, env);
-            if (existing) {
-                // Customer exists, but check if we need to reactivate it
-                if (existing.status === 'suspended' || existing.status === 'cancelled') {
-                    console.log(`[Customer Creation] Reactivating customer account: ${customerId}`);
-                    existing.status = 'active';
-                    existing.updatedAt = new Date().toISOString();
-                    await updateCustomerService(customerId, existing, env);
-                }
-                return customerId;
-            }
+            existingCustomer = await getCustomerService(customerId, env);
         } catch (error) {
-            console.warn(`[Customer Creation] Error checking customer ${customerId}:`, error);
+            console.warn(`[Customer Creation] Error fetching customer by ID ${customerId}:`, error);
         }
-        // CustomerId in JWT but doesn't exist - try to recover by email
-        console.warn(`[Customer Creation] CustomerId ${customerId} in JWT but not found, attempting recovery by email`);
     }
     
-    try {
-        const emailLower = email.toLowerCase().trim();
-        console.log(`[Customer Creation] Looking up customer by email: ${emailLower}`);
+    if (!existingCustomer) {
+        try {
+            existingCustomer = await getCustomerByEmailService(emailLower, env);
+        } catch (error) {
+            console.warn(`[Customer Creation] Error fetching customer by email ${emailLower}:`, error);
+        }
+    }
+    
+    // If customer exists, UPSERT (update if needed)
+    if (existingCustomer) {
+        const resolvedCustomerId = existingCustomer.customerId;
+        let needsUpdate = false;
+        const updates: Partial<import('../../services/customer.js').CustomerData> = {};
         
-        // Check for existing customer by email (smart recovery for reactivated accounts)
-        const existingCustomer = await getCustomerByEmailService(emailLower, env);
-        if (existingCustomer) {
-            console.log(`[Customer Creation] Found existing customer account: ${existingCustomer.customerId} (recovered)`);
-            
-            // Reactivate customer account if it was suspended/cancelled
-            if (existingCustomer.status === 'suspended' || existingCustomer.status === 'cancelled') {
-                console.log(`[Customer Creation] Reactivating customer account: ${existingCustomer.customerId}`);
-                existingCustomer.status = 'active';
-                existingCustomer.updatedAt = new Date().toISOString();
-                await updateCustomerService(existingCustomer.customerId, existingCustomer, env);
-            }
-            
-            return existingCustomer.customerId;
+        // Ensure status is active (reactivate if suspended/cancelled)
+        if (existingCustomer.status === 'suspended' || existingCustomer.status === 'cancelled') {
+            console.log(`[Customer Creation] Reactivating customer account: ${resolvedCustomerId}`);
+            updates.status = 'active';
+            needsUpdate = true;
         }
         
-        // Create new customer account
-        console.log(`[Customer Creation] No existing customer found, auto-creating customer account for: ${emailLower}`);
-        const resolvedCustomerId = generateCustomerId();
-        const emailDomain = emailLower.split('@')[1] || 'unknown';
-        const companyName = emailDomain.split('.')[0] || 'My App';
+        // Ensure email matches (in case of email change)
+        if (existingCustomer.email !== emailLower) {
+            updates.email = emailLower;
+            needsUpdate = true;
+        }
         
-        // Generate random display name for customer account
-        const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
-        const customerDisplayName = await generateUniqueDisplayName({
-            customerId: resolvedCustomerId,
-            maxAttempts: 10,
-            includeNumber: true
-        }, env);
+        // Ensure required fields exist
+        if (!existingCustomer.displayName) {
+            const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
+            const customerDisplayName = await generateUniqueDisplayName({
+                customerId: resolvedCustomerId,
+                maxAttempts: 10,
+                includeNumber: true
+            }, env);
+            await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+            updates.displayName = customerDisplayName;
+            needsUpdate = true;
+        }
         
-        // Reserve the display name for the customer account
-        // Note: Customer accounts use customerId as userId for display name reservation
-        await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+        // Ensure subscriptions exist
+        if (!existingCustomer.subscriptions || existingCustomer.subscriptions.length === 0) {
+            updates.subscriptions = [{
+                planId: 'free',
+                status: 'active',
+                startDate: new Date().toISOString(),
+                endDate: null,
+                planName: 'Free',
+                billingCycle: 'monthly',
+            }];
+            needsUpdate = true;
+        }
         
-        // Initialize default subscription (free tier)
-        const defaultSubscription: import('../../services/customer.js').Subscription = {
-            planId: 'free',
-            status: 'active',
-            startDate: new Date().toISOString(),
-            endDate: null,
-            planName: 'Free',
-            billingCycle: 'monthly',
-        };
-        
-        const customerData: import('../../services/customer.js').CustomerData = {
-            customerId: resolvedCustomerId,
-            name: emailLower.split('@')[0], // Use email prefix as name
-            email: emailLower,
-            companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-            plan: 'free', // Legacy field
-            tier: 'free', // Current tier level
-            status: 'active',
-            displayName: customerDisplayName, // Randomly generated display name
-            subscriptions: [defaultSubscription], // Initialize with free subscription
-            flairs: [], // Initialize empty flairs array
-            createdAt: new Date().toISOString(),
-            configVersion: 1,
-            config: {
+        // Ensure config exists
+        if (!existingCustomer.config) {
+            updates.config = {
                 emailConfig: {
                     fromEmail: null,
                     fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
@@ -144,49 +167,148 @@ export async function ensureCustomerAccount(
                     events: []
                 },
                 allowedOrigins: []
-            },
-            features: {
-                customEmailTemplates: false,
-                webhooks: false,
-                analytics: false,
-                sso: false
-            }
-        };
-        
-        // Create customer via customer-api (service-to-service call)
-        await createCustomerService(customerData, env);
-        console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
-        
-        // Verify the customer was stored correctly (with retry for eventual consistency)
-        let verifyCustomer = await getCustomerByEmailService(emailLower, env);
-        if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
-            // Wait a bit and retry (KV eventual consistency)
-            await new Promise(resolve => setTimeout(resolve, 100));
-            verifyCustomer = await getCustomerByEmailService(emailLower, env);
+            };
+            needsUpdate = true;
         }
         
-        if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
-            console.warn(`[Customer Creation] WARNING: Customer account verification failed! Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}. Continuing anyway.`);
-            // Don't throw - continue with OTP verification even if customer creation had issues
-        }
-        
-        // Generate initial API key for the customer
-        // This allows users to immediately use the API without additional signup steps
-        // Wrap in try-catch to prevent API key creation failures from blocking OTP verification
-        try {
-            await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
-            console.log(`[Customer Creation] API key created for customer: ${resolvedCustomerId}`);
-        } catch (apiKeyError) {
-            console.error(`[Customer Creation] WARNING: Failed to create API key for customer ${resolvedCustomerId}:`, apiKeyError.message);
-            // Don't throw - continue with OTP verification even if API key creation failed
+        // Update if needed
+        if (needsUpdate) {
+            updates.updatedAt = new Date().toISOString();
+            console.log(`[Customer Creation] Updating customer account: ${resolvedCustomerId}`);
+            await retryWithBackoff(async () => {
+                await updateCustomerService(resolvedCustomerId, { ...existingCustomer, ...updates }, env);
+            });
         }
         
         return resolvedCustomerId;
-    } catch (customerError) {
-        console.error(`[Customer Creation] ERROR: Customer account creation/lookup failed:`, customerError);
-        // Don't throw - continue with OTP verification using null customerId
-        // The user can still authenticate, they just won't have a customer account
-        return null;
+    }
+    
+    // Create new customer account
+    console.log(`[Customer Creation] Creating new customer account for: ${emailLower}`);
+    const resolvedCustomerId = generateCustomerId();
+    
+    // Generate random display name for customer account
+    const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
+    const customerDisplayName = await generateUniqueDisplayName({
+        customerId: resolvedCustomerId,
+        maxAttempts: 10,
+        includeNumber: true
+    }, env);
+    
+    // Reserve the display name for the customer account
+    await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+    
+    // Initialize default subscription (free tier)
+    const defaultSubscription: import('../../services/customer.js').Subscription = {
+        planId: 'free',
+        status: 'active',
+        startDate: new Date().toISOString(),
+        endDate: null,
+        planName: 'Free',
+        billingCycle: 'monthly',
+    };
+    
+    const customerData: import('../../services/customer.js').CustomerData = {
+        customerId: resolvedCustomerId,
+        name: emailLower.split('@')[0], // Use email prefix as name
+        email: emailLower,
+        companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+        plan: 'free', // Legacy field
+        tier: 'free', // Current tier level
+        status: 'active',
+        displayName: customerDisplayName, // Randomly generated display name
+        subscriptions: [defaultSubscription], // Initialize with free subscription
+        flairs: [], // Initialize empty flairs array
+        createdAt: new Date().toISOString(),
+        configVersion: 1,
+        config: {
+            emailConfig: {
+                fromEmail: null,
+                fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                subjectTemplate: 'Your {{appName}} Verification Code',
+                htmlTemplate: null,
+                textTemplate: null,
+                variables: {
+                    appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                    brandColor: '#007bff',
+                    footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
+                    supportUrl: null,
+                    logoUrl: null
+                }
+            },
+            rateLimits: {
+                otpRequestsPerHour: 3,
+                otpRequestsPerDay: 50,
+                maxUsers: 100
+            },
+            webhookConfig: {
+                url: null,
+                secret: null,
+                events: []
+            },
+            allowedOrigins: []
+        },
+        features: {
+            customEmailTemplates: false,
+            webhooks: false,
+            analytics: false,
+            sso: false
+        }
+    };
+    
+    // Create customer via customer-api with retry
+    await retryWithBackoff(async () => {
+        await createCustomerService(customerData, env);
+    });
+    console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
+    
+    // Verify the customer was stored correctly (with retry for eventual consistency)
+    let verifyCustomer = await retryWithBackoff(async () => {
+        const customer = await getCustomerByEmailService(emailLower, env);
+        if (!customer || customer.customerId !== resolvedCustomerId) {
+            throw new Error(`Customer verification failed: expected ${resolvedCustomerId}, got ${customer?.customerId || 'null'}`);
+        }
+        return customer;
+    }, 5, 200); // More retries for verification due to eventual consistency
+    
+    if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
+        throw new Error(`Customer account verification failed after retries. Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}`);
+    }
+    
+    // Generate initial API key for the customer (non-blocking)
+    try {
+        await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
+        console.log(`[Customer Creation] API key created for customer: ${resolvedCustomerId}`);
+    } catch (apiKeyError) {
+        console.error(`[Customer Creation] WARNING: Failed to create API key for customer ${resolvedCustomerId}:`, apiKeyError);
+        // Don't throw - API key creation is not critical for login
+    }
+    
+    return resolvedCustomerId;
+}
+
+export async function ensureCustomerAccount(
+    email: string,
+    customerId: string | null,
+    env: Env
+): Promise<string> {
+    const emailLower = email.toLowerCase().trim();
+    
+    try {
+        // UPSERT customer account with retry logic
+        const resolvedCustomerId = await retryWithBackoff(async () => {
+            return await upsertCustomerAccount(emailLower, customerId, env);
+        }, 3, 100);
+        
+        if (!resolvedCustomerId) {
+            throw new Error(`Failed to create or retrieve customer account for ${emailLower}`);
+        }
+        
+        return resolvedCustomerId;
+    } catch (error) {
+        console.error(`[Customer Creation] CRITICAL ERROR: Customer account creation/lookup failed after retries for ${emailLower}:`, error);
+        // BUSINESS RULE: Customer account MUST ALWAYS be created - throw error instead of returning null
+        throw new Error(`Failed to ensure customer account exists for ${emailLower}. This is required for login. Error: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 

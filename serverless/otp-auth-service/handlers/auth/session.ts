@@ -70,8 +70,22 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         }
 
         const emailLower = payload.email.toLowerCase().trim();
-        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-        customerId = resolvedCustomerId || customerId;
+        // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
+        let resolvedCustomerId: string;
+        try {
+            resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+            customerId = resolvedCustomerId;
+        } catch (error) {
+            console.error(`[Session] Failed to ensure customer account for ${emailLower}:`, error);
+            // If customer account creation fails, return error response
+            return new Response(JSON.stringify({ 
+                error: 'Failed to verify customer account. Please try again.',
+                detail: env.ENVIRONMENT === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+            }), {
+                status: 500,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
         
         // Get user data with customer isolation
         const emailHash = await hashEmail(payload.email);
@@ -259,8 +273,22 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         }
 
         const emailLower = payload.email.toLowerCase().trim();
-        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-        customerId = resolvedCustomerId || customerId;
+        // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
+        let resolvedCustomerId: string;
+        try {
+            resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+            customerId = resolvedCustomerId;
+        } catch (error) {
+            console.error(`[Session] Failed to ensure customer account for ${emailLower}:`, error);
+            // If customer account creation fails, return error response
+            return new Response(JSON.stringify({ 
+                error: 'Failed to verify customer account. Please try again.',
+                detail: env.ENVIRONMENT === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+            }), {
+                status: 500,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
         
         // Check if token is blacklisted with customer isolation
         const tokenHash = await hashEmail(token);

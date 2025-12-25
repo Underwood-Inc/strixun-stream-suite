@@ -31,10 +31,13 @@ export async function handleAdminGetMe(request, env, customerId) {
                     
                     if (payload && payload.email) {
                         const emailLower = payload.email.toLowerCase().trim();
-                        // Ensure customer account exists (backwards compatibility)
-                        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-                        if (resolvedCustomerId) {
+                        // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
+                        try {
+                            const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
                             customer = await getCustomer(resolvedCustomerId, env);
+                        } catch (error) {
+                            console.error(`[Admin GetMe] Failed to ensure customer account for ${emailLower}:`, error);
+                            // Continue without customer - will return error below
                         }
                     }
                 } catch (jwtError) {

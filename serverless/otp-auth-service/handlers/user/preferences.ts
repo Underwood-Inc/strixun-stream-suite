@@ -52,12 +52,23 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
       });
     }
 
-    // Ensure customer account exists
+    // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
     const emailLower = payload.email?.toLowerCase().trim();
     let customerId = payload.customerId || null;
     if (emailLower) {
-      const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-      customerId = resolvedCustomerId || customerId;
+      try {
+        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+        customerId = resolvedCustomerId;
+      } catch (error) {
+        console.error(`[Preferences] Failed to ensure customer account for ${emailLower}:`, error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to verify customer account. Please try again.',
+          detail: env.ENVIRONMENT === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+        }), {
+          status: 500,
+          headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const preferences = await getUserPreferences(userId, customerId, env);
@@ -122,12 +133,23 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
       });
     }
 
-    // Ensure customer account exists
+    // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
     const emailLower = payload.email?.toLowerCase().trim();
     let customerId = payload.customerId || null;
     if (emailLower) {
-      const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-      customerId = resolvedCustomerId || customerId;
+      try {
+        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+        customerId = resolvedCustomerId;
+      } catch (error) {
+        console.error(`[Preferences] Failed to ensure customer account for ${emailLower}:`, error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to verify customer account. Please try again.',
+          detail: env.ENVIRONMENT === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+        }), {
+          status: 500,
+          headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const body = await request.json();

@@ -265,8 +265,28 @@ export async function handleVerifyOTP(
         // OTP is valid! Delete it (single-use)
         await deleteOTP(otpKey, latestOtpKey, env);
         
-        // Ensure customer account exists
-        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+        // BUSINESS RULE: Customer account MUST ALWAYS be created for users on login
+        // ensureCustomerAccount will throw if it cannot create the account after retries
+        let resolvedCustomerId: string;
+        try {
+            resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+        } catch (customerError) {
+            console.error(`[OTP Verify] CRITICAL: Failed to ensure customer account for ${emailLower}:`, customerError);
+            // Return error response - customer account creation is required
+            return new Response(JSON.stringify({
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
+                title: 'Internal Server Error',
+                status: 500,
+                detail: 'Failed to create customer account. Please try again or contact support.',
+                instance: request.url,
+            }), {
+                status: 500,
+                headers: {
+                    ...getCorsHeaders(env, request),
+                    'Content-Type': 'application/problem+json',
+                },
+            });
+        }
         
         // Record successful OTP verification for statistics
         await recordOTPRequestService(emailHash, clientIP, resolvedCustomerId, env);
