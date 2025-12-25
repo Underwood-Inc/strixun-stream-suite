@@ -227,6 +227,15 @@ export class ApiClient {
   async getErrorAnalytics(): Promise<ErrorAnalytics> {
     return await this.get<ErrorAnalytics>('/admin/analytics/errors');
   }
+
+  async getEmailAnalytics(params?: { startDate?: string; endDate?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.set('startDate', params.startDate);
+    if (params?.endDate) queryParams.set('endDate', params.endDate);
+    
+    const query = queryParams.toString();
+    return await this.get<any>(`/admin/analytics/email${query ? `?${query}` : ''}`);
+  }
 }
 
 // Export singleton instance

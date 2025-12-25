@@ -1,5 +1,6 @@
 import '../styles/main.scss';
 import './preview.scss';
+import { strixunTheme } from './theme.js';
 
 /**
  * Storybook Preview Configuration
@@ -17,6 +18,7 @@ const preview = {
     },
     docs: {
       toc: true,
+      theme: strixunTheme,
     },
     backgrounds: {
       default: 'dark',
@@ -72,7 +74,7 @@ const preview = {
   tags: ['autodocs'],
   // Apply app theme to Storybook UI
   decorators: [
-    (story) => {
+    (story: any) => {
       return {
         Component: story,
         props: story.props || {},

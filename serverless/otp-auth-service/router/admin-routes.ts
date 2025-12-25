@@ -1,26 +1,55 @@
 /**
  * Admin Routes
- * Handles admin endpoints (require API key or JWT token authentication)
+ * Handles admin endpoints (require super-admin authentication)
+ * 
+ * All admin endpoints require super-admin authentication via:
+ * - API key: SUPER_ADMIN_API_KEY
+ * - Email-based: SUPER_ADMIN_EMAILS (comma-separated list)
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
 import { verifyApiKey } from '../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../utils/crypto.js';
-import { getCustomerKey, getCustomerByEmail, generateCustomerId, storeCustomer } from '../services/customer.js';
-import { createApiKeyForCustomer } from '../services/api-key.js';
+import { getCustomerKey, getCustomerByEmail } from '../services/customer.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
 import * as publicHandlers from '../handlers/public.js';
 import * as debugHandlers from '../handlers/auth/debug.js';
 
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    SUPER_ADMIN_API_KEY?: string;
+    SUPER_ADMIN_EMAILS?: string;
+    JWT_SECRET?: string;
+    [key: string]: any;
+}
+
+interface ApiKeyAuth {
+    customerId: string;
+    keyId: string;
+}
+
+interface JwtAuth {
+    customerId: string | null;
+    jwtToken: string;
+}
+
+type AuthResult = ApiKeyAuth | JwtAuth | null;
+
+interface RouteResult {
+    response: Response;
+    customerId: string | null;
+}
+
 /**
  * Authenticate request using API key or JWT token
  * Supports both authentication methods for backward compatibility and dashboard access
+ * For admin routes, this also checks super-admin status
  */
-async function authenticateRequest(request, env) {
+async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
     const authHeader = request.headers.get('Authorization');
-    let token = null;
+    let token: string | null = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.substring(7);
@@ -62,7 +91,6 @@ async function authenticateRequest(request, env) {
         }
         
         // Ensure customer account exists (handles backwards compatibility)
-        // This will create a customer account if it doesn't exist, or return existing one
         let resolvedCustomerId = customerId;
         if (payload.email) {
             // Import ensureCustomerAccount function
@@ -71,8 +99,6 @@ async function authenticateRequest(request, env) {
             
             // If customerId was in JWT but customer doesn't exist, use the newly created one
             if (!resolvedCustomerId && customerId) {
-                // Customer ID in JWT doesn't exist, but ensureCustomerAccount should have created one
-                // Try to get it by email
                 const customer = await getCustomerByEmail(payload.email, env);
                 if (customer) {
                     resolvedCustomerId = customer.customerId;
@@ -82,8 +108,6 @@ async function authenticateRequest(request, env) {
         
         // Verify customer exists and is active
         if (!resolvedCustomerId) {
-            // Return null with a helpful message - but we can't include it in the return value
-            // The error will be handled by handleAdminRoute
             return null; // JWT must have customerId for admin endpoints
         }
         
@@ -91,7 +115,6 @@ async function authenticateRequest(request, env) {
         return {
             customerId: resolvedCustomerId,
             jwtToken: token, // Include JWT token for encryption
-            // JWT auth doesn't have keyId, but that's okay for admin endpoints
         };
     } catch (error) {
         // JWT verification failed
@@ -100,9 +123,23 @@ async function authenticateRequest(request, env) {
 }
 
 /**
- * Helper to wrap admin route handlers with customerId tracking and encryption
+ * Helper to wrap admin route handlers with super-admin check, customerId tracking and encryption
  */
-async function handleAdminRoute(handler, request, env, auth) {
+async function handleAdminRoute(
+    handler: (request: Request, env: Env, customerId: string | null) => Promise<Response>,
+    request: Request,
+    env: Env,
+    auth: AuthResult
+): Promise<RouteResult> {
+    // First, check super-admin authentication
+    const superAdminError = await requireSuperAdmin(request, env);
+    if (superAdminError) {
+        return { 
+            response: superAdminError, 
+            customerId: null 
+        };
+    }
+    
     if (!auth) {
         // Try to get more context from JWT token for better error message
         const authHeader = request.headers.get('Authorization');
@@ -139,7 +176,7 @@ async function handleAdminRoute(handler, request, env, auth) {
     const handlerResponse = await handler(request, env, auth.customerId);
     
     // If JWT token is present, encrypt the response (only for dashboard/JWT auth)
-    if (auth.jwtToken && handlerResponse.ok) {
+    if ('jwtToken' in auth && auth.jwtToken && handlerResponse.ok) {
         try {
             const { encryptWithJWT } = await import('../utils/jwt-encryption.js');
             const responseData = await handlerResponse.json();
@@ -171,15 +208,12 @@ async function handleAdminRoute(handler, request, env, auth) {
 
 /**
  * Handle admin routes
- * @param {Request} request - HTTP request
- * @param {string} path - Request path
- * @param {*} env - Worker environment
- * @returns {Promise<{response: Response, customerId: string|null}>|null} Response and customerId if route matched, null otherwise
+ * All admin routes require super-admin authentication
  */
-export async function handleAdminRoutes(request, path, env) {
+export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     // Super-admin endpoint: Create customer (requires super-admin API key)
     if (path === '/admin/customers' && request.method === 'POST') {
-        const authError = requireSuperAdmin(request, env);
+        const authError = await requireSuperAdmin(request, env);
         if (authError) {
             return { response: authError, customerId: null };
         }
@@ -187,7 +221,8 @@ export async function handleAdminRoutes(request, path, env) {
         return { response: await publicHandlers.handleRegisterCustomer(request, env), customerId: null };
     }
     
-    // Customer admin endpoints (require API key auth)
+    // All other admin endpoints require super-admin + regular auth
+    // Customer admin endpoints
     if (path === '/admin/customers/me' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
         return handleAdminRoute(adminHandlers.handleAdminGetMe, request, env, auth);
@@ -198,7 +233,7 @@ export async function handleAdminRoutes(request, path, env) {
         return handleAdminRoute(adminHandlers.handleUpdateMe, request, env, auth);
     }
     
-    // Domain verification endpoints (require API key auth)
+    // Domain verification endpoints
     if (path === '/admin/domains/verify' && request.method === 'POST') {
         const auth = await authenticateRequest(request, env);
         return handleAdminRoute(domainHandlers.handleRequestDomainVerification, request, env, auth);
@@ -224,7 +259,7 @@ export async function handleAdminRoutes(request, path, env) {
         return handleAdminRoute((req, e, cid) => domainHandlers.handleVerifyDomain(req, e, cid, domain), request, env, auth);
     }
     
-    // Analytics endpoints (require API key auth)
+    // Analytics endpoints (all require super-admin)
     if (path === '/admin/analytics' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
         return handleAdminRoute(adminHandlers.handleGetAnalytics, request, env, auth);
@@ -240,7 +275,12 @@ export async function handleAdminRoutes(request, path, env) {
         return handleAdminRoute(adminHandlers.handleGetErrorAnalytics, request, env, auth);
     }
     
-    // Onboarding endpoints (require API key auth)
+    if (path === '/admin/analytics/email' && request.method === 'GET') {
+        const auth = await authenticateRequest(request, env);
+        return handleAdminRoute(adminHandlers.handleGetEmailAnalytics, request, env, auth);
+    }
+    
+    // Onboarding endpoints
     if (path === '/admin/onboarding' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
         return handleAdminRoute(adminHandlers.handleGetOnboarding, request, env, auth);
@@ -256,7 +296,7 @@ export async function handleAdminRoutes(request, path, env) {
         return handleAdminRoute(adminHandlers.handleTestOTP, request, env, auth);
     }
     
-    // GDPR endpoints (require API key auth)
+    // GDPR endpoints
     const exportUserMatch = path.match(/^\/admin\/users\/([^\/]+)\/export$/);
     if (exportUserMatch && request.method === 'GET') {
         const userId = exportUserMatch[1];
@@ -271,13 +311,13 @@ export async function handleAdminRoutes(request, path, env) {
         return handleAdminRoute((req, e, cid) => adminHandlers.handleDeleteUserData(req, e, cid, userId), request, env, auth);
     }
     
-    // Audit logs endpoint (require API key auth)
+    // Audit logs endpoint
     if (path === '/admin/audit-logs' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
         return handleAdminRoute(adminHandlers.handleGetAuditLogs, request, env, auth);
     }
     
-    // Configuration endpoints (require API key auth)
+    // Configuration endpoints
     if (path === '/admin/config' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
         return handleAdminRoute(adminHandlers.handleGetConfig, request, env, auth);
@@ -293,7 +333,7 @@ export async function handleAdminRoutes(request, path, env) {
         return handleAdminRoute(adminHandlers.handleUpdateEmailConfig, request, env, auth);
     }
     
-    // API key management endpoints (require API key auth)
+    // API key management endpoints
     const customerApiKeysMatch = path.match(/^\/admin\/customers\/([^\/]+)\/api-keys$/);
     if (customerApiKeysMatch) {
         const pathCustomerId = customerApiKeysMatch[1];
@@ -367,7 +407,7 @@ export async function handleAdminRoutes(request, path, env) {
         return { response: await adminHandlers.handleRotateApiKey(request, env, auth.customerId, keyId), customerId: auth.customerId };
     }
     
-    // Customer status management endpoints (require API key auth)
+    // Customer status management endpoints
     const suspendCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)\/suspend$/);
     if (suspendCustomerMatch && request.method === 'POST') {
         const pathCustomerId = suspendCustomerMatch[1];
@@ -404,7 +444,7 @@ export async function handleAdminRoutes(request, path, env) {
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             }), customerId: null };
         }
-        const body = await request.json();
+        const body = await request.json() as { status?: string };
         const { status } = body;
         if (!status) {
             return { response: new Response(JSON.stringify({ error: 'Status required' }), {
@@ -417,12 +457,11 @@ export async function handleAdminRoutes(request, path, env) {
     
     // Super-admin only: Clear rate limit endpoint
     if (path === '/admin/debug/clear-rate-limit' && request.method === 'POST') {
-        const authError = requireSuperAdmin(request, env);
+        const authError = await requireSuperAdmin(request, env);
         if (authError) {
             return { response: authError, customerId: null };
         }
         // Super-admin authenticated, allow rate limit clearing
-        // Note: customerId is null for super-admin operations
         return { response: await debugHandlers.handleClearRateLimit(request, env, null), customerId: null };
     }
     

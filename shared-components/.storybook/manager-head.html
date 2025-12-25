@@ -1,52 +1,137 @@
 <style>
-  /* Force Storybook UI to use our dark theme */
-  body {
-    background: #1a1611 !important;
-    color: #f9f9f9 !important;
-  }
+  /**
+   * Storybook Manager UI Theme Overrides
+   * 
+   * Additional CSS to ensure all Storybook UI elements match
+   * the Strixun Stream Suite brand color palette.
+   * The main theming is handled by theme.ts, but some elements
+   * need additional overrides for full coverage.
+   */
   
-  /* Sidebar */
+  /* Storybook sidebar navigation */
   [data-side="left"] {
-    background: #0f0e0b !important;
-    border-right: 1px solid #3d3627 !important;
+    background: #0f0e0b;
+    border-right: 1px solid #3d3627;
   }
   
-  /* Toolbar */
+  /* Storybook sidebar items */
+  [data-side="left"] [role="treeitem"] {
+    color: #b8b8b8;
+  }
+  
+  [data-side="left"] [role="treeitem"]:hover {
+    background: #252017;
+    color: #f9f9f9;
+  }
+  
+  [data-side="left"] [role="treeitem"][aria-selected="true"] {
+    background: #252017;
+    color: #edae49;
+  }
+  
+  /* Storybook toolbar */
   [role="toolbar"] {
-    background: #0f0e0b !important;
-    border-bottom: 1px solid #3d3627 !important;
+    background: #0f0e0b;
+    border-bottom: 1px solid #3d3627;
   }
   
-  /* Canvas area */
+  /* Canvas area background */
   .os-host {
-    background: #1a1611 !important;
+    background: #1a1611;
   }
   
-  /* Panels */
+  /* Panel backgrounds */
   [role="tabpanel"] {
-    background: #252017 !important;
-    color: #f9f9f9 !important;
+    background: #252017;
+    color: #f9f9f9;
+  }
+  
+  /* Tab buttons */
+  [role="tab"] {
+    color: #b8b8b8;
+  }
+  
+  [role="tab"][aria-selected="true"] {
+    color: #edae49;
+    border-bottom-color: #edae49;
   }
   
   /* Links */
   a {
-    color: #edae49 !important;
+    color: #edae49;
   }
   
   a:hover {
-    color: #f9df74 !important;
+    color: #f9df74;
   }
   
   /* Buttons */
   button {
-    color: #f9f9f9 !important;
+    color: #f9f9f9;
+  }
+  
+  button:hover {
+    background: #252017;
   }
   
   /* Inputs */
   input, select, textarea {
-    background: #0f0e0b !important;
-    border-color: #3d3627 !important;
-    color: #f9f9f9 !important;
+    background: #0f0e0b;
+    border-color: #3d3627;
+    color: #f9f9f9;
+  }
+  
+  input:focus, select:focus, textarea:focus {
+    border-color: #edae49;
+    outline-color: #edae49;
+  }
+  
+  /* Search input */
+  input[type="search"] {
+    background: #0f0e0b;
+    border-color: #3d3627;
+    color: #f9f9f9;
+  }
+  
+  /* Dropdown menus */
+  [role="menu"] {
+    background: #252017;
+    border: 1px solid #3d3627;
+  }
+  
+  [role="menuitem"] {
+    color: #f9f9f9;
+  }
+  
+  [role="menuitem"]:hover {
+    background: #3d3627;
+    color: #edae49;
+  }
+  
+  /* Code blocks in panels */
+  pre, code {
+    background: #0f0e0b;
+    border-color: #3d3627;
+    color: #f9f9f9;
+  }
+  
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #0f0e0b;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #3d3627;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4a4336;
   }
 </style>
 

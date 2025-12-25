@@ -173,13 +173,24 @@ export async function handleRequestOTP(
         // Generate OTP
         const otp = generateOTP();
         
-        // Store OTP in KV with customer isolation
-        await storeOTP(email, otp, customerId, env);
+        // Get email hash for tracking
+        const emailHash = await hashEmail(email);
         
-        // Send email
+        // Store OTP in KV with customer isolation
+        const { otpKey } = await storeOTP(email, otp, customerId, env);
+        
+        // Get base URL from request for tracking pixel
+        const url = new URL(request.url);
+        const baseUrl = `${url.protocol}//${url.host}`;
+        
+        // Send email with tracking data
         try {
             const { sendOTPEmail } = await import('../email.js');
-            const emailResult = await sendOTPEmail(email, otp, customerId, env);
+            const emailResult = await sendOTPEmail(email, otp, customerId, env, {
+                emailHash,
+                otpKey,
+                baseUrl
+            });
             console.log('OTP email sent successfully:', emailResult);
             
             // Track usage

@@ -10,6 +10,7 @@
   let analytics: Analytics | null = null;
   let realtime: RealtimeAnalytics | null = null;
   let errors: ErrorAnalytics | null = null;
+  let emailAnalytics: any = null;
   let loading = true;
   let error: string | null = null;
 
@@ -26,15 +27,17 @@
     error = null;
 
     try {
-      const [analyticsData, realtimeData, errorsData] = await Promise.all([
+      const [analyticsData, realtimeData, errorsData, emailData] = await Promise.all([
         apiClient.getAnalytics().catch(() => null),
         apiClient.getRealtimeAnalytics().catch(() => null),
-        apiClient.getErrorAnalytics().catch(() => null)
+        apiClient.getErrorAnalytics().catch(() => null),
+        apiClient.getEmailAnalytics().catch(() => null)
       ]);
 
       analytics = analyticsData;
       realtime = realtimeData;
       errors = errorsData;
+      emailAnalytics = emailData;
     } catch (err) {
       console.error('Failed to load analytics:', err);
       error = err instanceof Error ? err.message : 'Failed to load analytics';
@@ -143,6 +146,42 @@
                   <div class="analytics__errors-item">
                     <div class="analytics__errors-category">{category}</div>
                     <div class="analytics__errors-count">{count}</div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+        </div>
+      </Card>
+    {/if}
+
+    {#if emailAnalytics?.summary}
+      <Card>
+        <h2 class="analytics__section-title">Email Tracking Analytics</h2>
+        <div class="analytics__email">
+          <div class="analytics__email-summary">
+            <div class="analytics__email-metric">
+              <div class="analytics__email-label">Total Opens</div>
+              <div class="analytics__email-value">{emailAnalytics.summary.totalOpens || 0}</div>
+            </div>
+            <div class="analytics__email-metric">
+              <div class="analytics__email-label">Unique Countries</div>
+              <div class="analytics__email-value">{emailAnalytics.summary.uniqueCountries || 0}</div>
+            </div>
+            <div class="analytics__email-metric">
+              <div class="analytics__email-label">Avg Opens/Day</div>
+              <div class="analytics__email-value">{emailAnalytics.summary.averageOpensPerDay || '0'}</div>
+            </div>
+          </div>
+          
+          {#if emailAnalytics.countryStats && Object.keys(emailAnalytics.countryStats).length > 0}
+            <div class="analytics__email-countries">
+              <h3 class="analytics__email-subtitle">Opens by Country</h3>
+              <div class="analytics__email-countries-grid">
+                {#each Object.entries(emailAnalytics.countryStats).sort(([,a], [,b]) => (b as number) - (a as number)).slice(0, 10) as [country, count]}
+                  <div class="analytics__email-country-item">
+                    <div class="analytics__email-country-code">{country}</div>
+                    <div class="analytics__email-country-count">{count}</div>
                   </div>
                 {/each}
               </div>
@@ -337,6 +376,74 @@
 
   .analytics__content {
     width: 100%;
+  }
+
+  .analytics__email {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .analytics__email-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+  }
+
+  .analytics__email-metric {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .analytics__email-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .analytics__email-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .analytics__email-subtitle {
+    font-size: 1rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-secondary);
+  }
+
+  .analytics__email-countries {
+    margin-top: var(--spacing-md);
+  }
+
+  .analytics__email-countries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-md);
+  }
+
+  .analytics__email-country-item {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .analytics__email-country-code {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .analytics__email-country-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
   }
 </style>
 

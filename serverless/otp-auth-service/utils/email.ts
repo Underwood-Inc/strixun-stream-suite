@@ -141,6 +141,19 @@ function getInlineEmailTemplate(): string {
         .brand-name {
             color: #edae49;
             font-weight: 600;
+            text-decoration: none;
+        }
+        .brand-name:hover {
+            color: #c68214;
+            text-decoration: underline;
+        }
+        .footer a {
+            color: #edae49;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            color: #c68214;
+            text-decoration: underline;
         }
         @media only screen and (max-width: 600px) {
             .container {
@@ -170,10 +183,11 @@ function getInlineEmailTemplate(): string {
                 <p>If you didn't request this code, please ignore this email.</p>
             </div>
             <div class="footer">
-                <p><span class="brand-name">{{appName}}</span></p>
+                <p><a href="https://auth.idling.app" class="brand-name">{{appName}}</a></p>
                 <p>{{footerText}}</p>
             </div>
         </div>
+        {{trackingPixel}}
     </div>
 </body>
 </html>`;

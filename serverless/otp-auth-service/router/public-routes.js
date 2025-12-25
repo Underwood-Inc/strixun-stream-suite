@@ -5,6 +5,7 @@
 
 import * as publicHandlers from '../handlers/public.js';
 import * as assetHandlers from '../handlers/assets.js';
+import { handleEmailTracking } from '../handlers/tracking.js';
 import openApiSpec from '../openapi-json.js';
 import { getCorsHeaders } from '../utils/cors.js';
 
@@ -83,6 +84,11 @@ export async function handlePublicRoutes(request, path, env) {
     
     if (path === '/health/live' && request.method === 'GET') {
         return publicHandlers.handleHealthLive(request, env);
+    }
+    
+    // Email tracking endpoint (for email open tracking)
+    if (path === '/track/email-open' && request.method === 'GET') {
+        return handleEmailTracking(request, env);
     }
     
     return null; // Route not matched

@@ -10,6 +10,7 @@ import {
     getDefaultTextTemplate,
     getEmailProvider
 } from '../utils/email.js';
+import { generateTrackingToken, generateTrackingPixel } from '../utils/tracking.js';
 
 interface Customer {
     config?: {
@@ -33,8 +34,23 @@ interface Env {
 
 /**
  * Send OTP email to user
+ * @param email - Recipient email address
+ * @param otp - OTP code to send
+ * @param customerId - Customer ID (optional, for multi-tenant)
+ * @param env - Worker environment
+ * @param trackingData - Optional tracking data (emailHash, otpKey, baseUrl)
  */
-export async function sendOTPEmail(email: string, otp: string, customerId: string | null, env: Env): Promise<any> {
+export async function sendOTPEmail(
+    email: string, 
+    otp: string, 
+    customerId: string | null, 
+    env: Env,
+    trackingData?: {
+        emailHash: string;
+        otpKey: string;
+        baseUrl: string;
+    }
+): Promise<any> {
     if (!env.RESEND_API_KEY) {
         throw new Error('RESEND_API_KEY not configured');
     }
@@ -96,6 +112,18 @@ export async function sendOTPEmail(email: string, otp: string, customerId: strin
         userEmail: email,
         appName: templateVariables.appName || customer?.companyName || 'OTP Auth Service'
     };
+    
+    // Generate tracking pixel if tracking data is provided
+    let trackingPixel = '';
+    if (trackingData) {
+        const trackingToken = generateTrackingToken(
+            trackingData.emailHash,
+            customerId,
+            trackingData.otpKey
+        );
+        trackingPixel = generateTrackingPixel(trackingData.baseUrl, trackingToken);
+    }
+    variables.trackingPixel = trackingPixel;
     
     // Render templates (HTML template escapes variables for security, text does not)
     const html = renderEmailTemplate(htmlTemplate || getDefaultEmailTemplate(), variables, true);

@@ -22,7 +22,7 @@ export {
 
 // Analytics
 export {
-    handleGetAnalytics, handleGetErrorAnalytics, handleGetRealtimeAnalytics
+    handleGetAnalytics, handleGetErrorAnalytics, handleGetRealtimeAnalytics, handleGetEmailAnalytics
 } from './admin/analytics.js';
 
 // Onboarding

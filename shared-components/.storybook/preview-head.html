@@ -1,9 +1,13 @@
 <style>
-  /* Storybook UI Theme Overrides */
-  /* Apply Strixun Stream Suite theme to Storybook interface */
+  /**
+   * Storybook Preview Theme Overrides
+   * 
+   * Additional CSS for preview area to ensure full theme coverage.
+   * The main theming is handled by theme.ts in preview.ts.
+   */
   
   :root {
-    /* Override Storybook's default colors with our theme */
+    /* Brand color CSS variables for reference */
     --sb-color-bg: #1a1611;
     --sb-color-bg-secondary: #0f0e0b;
     --sb-color-bg-tertiary: #252017;
@@ -11,36 +15,59 @@
     --sb-color-text: #f9f9f9;
     --sb-color-text-secondary: #b8b8b8;
     --sb-color-accent: #edae49;
+    --sb-color-accent-light: #f9df74;
   }
   
-  /* Storybook sidebar */
-  .sidebar-container {
-    background: var(--sb-color-bg-secondary) !important;
-    border-right: 1px solid var(--sb-color-border) !important;
-  }
-  
-  /* Storybook toolbar */
-  .os-host {
-    background: var(--sb-color-bg-secondary) !important;
-  }
-  
-  /* Storybook canvas area */
+  /* Storybook canvas/preview area */
   .os-host-overflow {
-    background: var(--sb-color-bg) !important;
+    background: var(--sb-color-bg);
   }
   
-  /* Storybook panels */
+  /* Storybook panels in preview */
   .os-padding {
-    background: var(--sb-color-bg-tertiary) !important;
+    background: var(--sb-color-bg-tertiary);
   }
   
-  /* Links and buttons in Storybook */
+  /* Control panels */
+  .docblock-argstable {
+    background: var(--sb-color-bg-tertiary);
+    border-color: var(--sb-color-border);
+  }
+  
+  .docblock-argstable th {
+    background: var(--sb-color-bg-secondary);
+    color: var(--sb-color-text);
+    border-color: var(--sb-color-border);
+  }
+  
+  .docblock-argstable td {
+    border-color: var(--sb-color-border);
+    color: var(--sb-color-text);
+  }
+  
+  /* Control inputs */
+  .docblock-argstable input,
+  .docblock-argstable select,
+  .docblock-argstable textarea {
+    background: var(--sb-color-bg-secondary);
+    border-color: var(--sb-color-border);
+    color: var(--sb-color-text);
+  }
+  
+  .docblock-argstable input:focus,
+  .docblock-argstable select:focus,
+  .docblock-argstable textarea:focus {
+    border-color: var(--sb-color-accent);
+    outline-color: var(--sb-color-accent);
+  }
+  
+  /* Links and buttons in preview */
   a, button {
-    color: var(--sb-color-accent) !important;
+    color: var(--sb-color-accent);
   }
   
   a:hover, button:hover {
-    color: #f9df74 !important;
+    color: var(--sb-color-accent-light);
   }
 </style>
 
