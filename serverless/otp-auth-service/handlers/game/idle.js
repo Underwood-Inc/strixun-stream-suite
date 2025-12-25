@@ -2,57 +2,19 @@
  * Idle Mechanics Handler
  * 
  * Handles idle progress, activity management, and reward claims
+ * Authentication is handled by the route wrapper with automatic encryption
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-
-/**
- * Authenticate request
- */
-async function authenticateRequest(request, env) {
-    try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return { authenticated: false, error: 'Missing authorization header' };
-        }
-
-        const token = authHeader.substring(7);
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
-        if (!payload || !payload.sub) {
-            return { authenticated: false, error: 'Invalid token' };
-        }
-
-        return {
-            authenticated: true,
-            userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null
-        };
-    } catch (error) {
-        return { authenticated: false, error: error.message };
-    }
-}
 
 /**
  * Get idle progress
  * GET /game/idle/progress
+ * Authentication handled by route wrapper
  */
 async function handleGetIdleProgress(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         // Get character's last active time
         const characterKey = getCustomerKey(customerId, `character_${userId}_active`);
@@ -111,19 +73,10 @@ async function handleGetIdleProgress(request, env, userId, customerId) {
 /**
  * Claim idle rewards
  * POST /game/idle/claim
+ * Authentication handled by route wrapper
  */
 async function handleClaimIdleRewards(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { slotIndex } = body; // Optional: claim specific slot, or all if not provided
@@ -170,19 +123,10 @@ async function handleClaimIdleRewards(request, env, userId, customerId) {
 /**
  * Start idle activity
  * POST /game/idle/activity/start
+ * Authentication handled by route wrapper
  */
 async function handleStartIdleActivity(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { activityId, slotIndex } = body;
@@ -249,19 +193,10 @@ async function handleStartIdleActivity(request, env, userId, customerId) {
 /**
  * Stop idle activity
  * POST /game/idle/activity/stop
+ * Authentication handled by route wrapper
  */
 async function handleStopIdleActivity(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { slotIndex } = body;

@@ -4,16 +4,16 @@
  * Uses reusable API architecture with automatic end-to-end encryption
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../utils/crypto.js';
-import { handleGameSaveState } from '../handlers/game/save-state.js';
-import { handleGameLootBox } from '../handlers/game/loot-box.js';
-import { handleGameIdle } from '../handlers/game/idle.js';
+import { handleGameCharacter } from '../handlers/game/character.js';
 import { handleGameCrafting } from '../handlers/game/crafting.js';
 import { handleGameDungeons } from '../handlers/game/dungeons.js';
+import { handleGameIdle } from '../handlers/game/idle.js';
 import { handleGameInventory } from '../handlers/game/inventory.js';
-import { handleGameCharacter } from '../handlers/game/character.js';
+import { handleGameLootBox } from '../handlers/game/loot-box.js';
 import { handleGameLoot } from '../handlers/game/loot.js';
+import { handleGameSaveState } from '../handlers/game/save-state.js';
+import { getCorsHeaders } from '../utils/cors.js';
+import { getJWTSecret, verifyJWT } from '../utils/crypto.js';
 
 /**
  * Authenticate request and extract user info
@@ -100,6 +100,7 @@ async function handleGameRoute(handler, request, env, auth) {
 
 /**
  * Handle game routes
+ * Uses reusable API architecture with automatic encryption
  */
 export async function handleGameRoutes(request, path, env) {
     // Only handle /game/* routes
@@ -107,184 +108,169 @@ export async function handleGameRoutes(request, path, env) {
         return null;
     }
 
-    // Authenticate request
+    // Authenticate request (returns null if not authenticated)
     const auth = await authenticateRequest(request, env);
-    if (!auth.authenticated) {
-        return {
-            response: new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error || 'Authentication required'
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            }),
-            customerId: null
-        };
-    }
 
-    const userId = auth.userId;
-    const customerId = auth.customerId;
-
-    // Route to appropriate handler
+    // Route to appropriate handler with automatic encryption wrapper
     try {
         // Save State
         if (path === '/game/save-state' && request.method === 'POST') {
-            return {
-                response: await handleGameSaveState(request, env, userId, customerId, 'save'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameSaveState(req, e, userId, customerId, 'save'),
+                request, env, auth
+            );
         }
         if (path === '/game/save-state' && request.method === 'GET') {
-            return {
-                response: await handleGameSaveState(request, env, userId, customerId, 'load'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameSaveState(req, e, userId, customerId, 'load'),
+                request, env, auth
+            );
         }
 
         // Loot Boxes
         if (path === '/game/loot-box/claim' && request.method === 'POST') {
-            return {
-                response: await handleGameLootBox(request, env, userId, customerId, 'claim'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameLootBox(req, e, userId, customerId, 'claim'),
+                request, env, auth
+            );
         }
         if (path === '/game/loot-box/status' && request.method === 'GET') {
-            return {
-                response: await handleGameLootBox(request, env, userId, customerId, 'status'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameLootBox(req, e, userId, customerId, 'status'),
+                request, env, auth
+            );
         }
 
         // Idle Mechanics
         if (path === '/game/idle/claim' && request.method === 'POST') {
-            return {
-                response: await handleGameIdle(request, env, userId, customerId, 'claim'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameIdle(req, e, userId, customerId, 'claim'),
+                request, env, auth
+            );
         }
         if (path === '/game/idle/progress' && request.method === 'GET') {
-            return {
-                response: await handleGameIdle(request, env, userId, customerId, 'progress'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameIdle(req, e, userId, customerId, 'progress'),
+                request, env, auth
+            );
         }
         if (path === '/game/idle/activity/start' && request.method === 'POST') {
-            return {
-                response: await handleGameIdle(request, env, userId, customerId, 'start'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameIdle(req, e, userId, customerId, 'start'),
+                request, env, auth
+            );
         }
         if (path === '/game/idle/activity/stop' && request.method === 'POST') {
-            return {
-                response: await handleGameIdle(request, env, userId, customerId, 'stop'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameIdle(req, e, userId, customerId, 'stop'),
+                request, env, auth
+            );
         }
 
         // Crafting
         if (path === '/game/crafting/start' && request.method === 'POST') {
-            return {
-                response: await handleGameCrafting(request, env, userId, customerId, 'start'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameCrafting(req, e, userId, customerId, 'start'),
+                request, env, auth
+            );
         }
         if (path === '/game/crafting/collect' && request.method === 'POST') {
-            return {
-                response: await handleGameCrafting(request, env, userId, customerId, 'collect'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameCrafting(req, e, userId, customerId, 'collect'),
+                request, env, auth
+            );
         }
         if (path === '/game/crafting/sessions' && request.method === 'GET') {
-            return {
-                response: await handleGameCrafting(request, env, userId, customerId, 'sessions'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameCrafting(req, e, userId, customerId, 'sessions'),
+                request, env, auth
+            );
         }
 
         // Dungeons
         if (path === '/game/dungeons/start' && request.method === 'POST') {
-            return {
-                response: await handleGameDungeons(request, env, userId, customerId, 'start'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameDungeons(req, e, userId, customerId, 'start'),
+                request, env, auth
+            );
         }
         if (path === '/game/dungeons/complete-room' && request.method === 'POST') {
-            return {
-                response: await handleGameDungeons(request, env, userId, customerId, 'complete-room'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameDungeons(req, e, userId, customerId, 'complete-room'),
+                request, env, auth
+            );
         }
         if (path === '/game/dungeons/complete' && request.method === 'POST') {
-            return {
-                response: await handleGameDungeons(request, env, userId, customerId, 'complete'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameDungeons(req, e, userId, customerId, 'complete'),
+                request, env, auth
+            );
         }
         if (path === '/game/dungeons/instances' && request.method === 'GET') {
-            return {
-                response: await handleGameDungeons(request, env, userId, customerId, 'instances'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameDungeons(req, e, userId, customerId, 'instances'),
+                request, env, auth
+            );
         }
 
         // Inventory
         if (path === '/game/inventory' && request.method === 'GET') {
-            return {
-                response: await handleGameInventory(request, env, userId, customerId, 'get'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameInventory(req, e, userId, customerId, 'get'),
+                request, env, auth
+            );
         }
         if (path === '/game/inventory/item' && request.method === 'POST') {
-            return {
-                response: await handleGameInventory(request, env, userId, customerId, 'add'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameInventory(req, e, userId, customerId, 'add'),
+                request, env, auth
+            );
         }
         if (path === '/game/inventory/item' && request.method === 'DELETE') {
-            return {
-                response: await handleGameInventory(request, env, userId, customerId, 'remove'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameInventory(req, e, userId, customerId, 'remove'),
+                request, env, auth
+            );
         }
         if (path === '/game/inventory/equip' && request.method === 'POST') {
-            return {
-                response: await handleGameInventory(request, env, userId, customerId, 'equip'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameInventory(req, e, userId, customerId, 'equip'),
+                request, env, auth
+            );
         }
 
         // Character
         if (path === '/game/character' && request.method === 'GET') {
-            return {
-                response: await handleGameCharacter(request, env, userId, customerId, 'get'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameCharacter(req, e, userId, customerId, 'get'),
+                request, env, auth
+            );
         }
         if (path === '/game/character' && request.method === 'POST') {
-            return {
-                response: await handleGameCharacter(request, env, userId, customerId, 'create'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameCharacter(req, e, userId, customerId, 'create'),
+                request, env, auth
+            );
         }
         if (path === '/game/character/appearance' && request.method === 'PUT') {
-            return {
-                response: await handleGameCharacter(request, env, userId, customerId, 'update-appearance'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameCharacter(req, e, userId, customerId, 'update-appearance'),
+                request, env, auth
+            );
         }
 
         // Loot Generation
         if (path === '/game/loot/generate' && request.method === 'POST') {
-            return {
-                response: await handleGameLoot(request, env, userId, customerId, 'generate'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameLoot(req, e, userId, customerId, 'generate'),
+                request, env, auth
+            );
         }
         if (path === '/game/loot/tables' && request.method === 'GET') {
-            return {
-                response: await handleGameLoot(request, env, userId, customerId, 'tables'),
-                customerId
-            };
+            return await handleGameRoute(
+                (req, e, userId, customerId) => handleGameLoot(req, e, userId, customerId, 'tables'),
+                request, env, auth
+            );
         }
 
         // 404 for unknown game routes
@@ -293,7 +279,7 @@ export async function handleGameRoutes(request, path, env) {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             }),
-            customerId
+            customerId: auth?.customerId || null
         };
     } catch (error) {
         console.error('Game route handler error:', error);
@@ -305,7 +291,7 @@ export async function handleGameRoutes(request, path, env) {
                 status: 500,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             }),
-            customerId
+            customerId: auth?.customerId || null
         };
     }
 }

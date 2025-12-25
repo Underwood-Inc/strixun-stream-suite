@@ -2,40 +2,11 @@
  * Game Save State Handler
  * 
  * Handles saving and loading game state with OTP auth integration
+ * Authentication is handled by the route wrapper with automatic encryption
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-
-/**
- * Authenticate request
- */
-async function authenticateRequest(request, env) {
-    try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return { authenticated: false, error: 'Missing authorization header' };
-        }
-
-        const token = authHeader.substring(7);
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
-        if (!payload || !payload.sub) {
-            return { authenticated: false, error: 'Invalid token' };
-        }
-
-        return {
-            authenticated: true,
-            userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null
-        };
-    } catch (error) {
-        return { authenticated: false, error: error.message };
-    }
-}
 
 /**
  * Main handler dispatcher
@@ -59,20 +30,10 @@ export async function handleGameSaveState(request, env, userId, customerId, acti
 /**
  * Save game state
  * POST /game/save-state
+ * Authentication handled by route wrapper
  */
 async function handleSaveGameState(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-
         const body = await request.json();
         const { characterId, saveData, version } = body;
 
@@ -89,7 +50,7 @@ async function handleSaveGameState(request, env, userId, customerId) {
         // Store save state in KV
         const saveKey = getCustomerKey(customerId, `game_save_${userId}_${characterId}`);
         const saveState = {
-            userId: auth.userId,
+            userId,
             characterId,
             saveData,
             version: version || '1.0.0',
@@ -123,20 +84,10 @@ async function handleSaveGameState(request, env, userId, customerId) {
 /**
  * Load game state
  * GET /game/save-state?characterId=123
+ * Authentication handled by route wrapper
  */
-export async function handleGameLoadState(request, env, userId, customerId) {
+async function handleLoadGameState(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-
         const url = new URL(request.url);
         const characterId = url.searchParams.get('characterId');
 

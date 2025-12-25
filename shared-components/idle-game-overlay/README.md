@@ -55,36 +55,92 @@
   - Item name generation
   - Seeded random (deterministic)
 
----
+- **Pixel Editor** (`core/pixel-editor.ts`)
+  - Canvas-based pixel art editor
+  - Layer management
+  - Undo/redo support
+  - Export/import functionality
+  - Tool system (pencil, eraser, fill, etc.)
 
-## 🚧 In Progress
+- **Tooltip System** (`core/tooltip-system.ts`)
+  - High fantasy themed tooltips
+  - Smart z-index management
+  - Nested tooltip support
+  - Portal rendering
+  - User-customizable tooltips
 
-- End-game crafting system implementation
-- Pixel editor component
-- Dungeon system implementation
-- Idle mechanics calculation
-- Daily loot box system
+### ✅ API Integration
 
----
+- **Game API Service** (`services/game-api.ts`)
+  - Full API client for all game endpoints
+  - Automatic response decryption using existing utilities
+  - Integrated with OTP auth system
+  - Type-safe API calls
 
-## 📋 Next Steps
+- **Game State Store** (`stores/game-state.ts`)
+  - Current character management
+  - Loading/error states
+  - Reactive state updates
 
-1. **Components**
-   - Pixel editor canvas component
-   - Character customization UI
-   - Inventory management screens
-   - Loot box claim interface
-   - Dungeon instance UI
+### ✅ UI Components
 
-2. **Services**
-   - OTP save state integration
-   - Game state management
-   - API client for backend
+- **GameOverlay** (`components/GameOverlay.svelte`)
+  - Main overlay component with navigation
+  - Screen routing
+  - Auth integration
+  - Keyboard shortcuts (Escape to close)
 
-3. **Integration**
-   - Main overlay component
-   - OTP auth integration
-   - Marketplace integration
+- **DailyLootBox** (`components/DailyLootBox.svelte`)
+  - Daily reward claim interface
+  - Streak tracking and bonuses
+  - Reward display
+
+- **InventoryScreen** (`components/InventoryScreen.svelte`)
+  - Equipment slots display
+  - Inventory grid management
+  - Item tooltips on hover
+  - Rarity-based styling
+
+- **CharacterScreen** (`components/CharacterScreen.svelte`)
+  - Character stats display
+  - Pixel editor integration
+  - Appearance customization
+  - Layer selection (head, torso, arms, legs)
+
+- **IdleProgress** (`components/IdleProgress.svelte`)
+  - Offline progress calculation
+  - Reward display and claiming
+  - Active activities list
+  - Auto-refresh every 30 seconds
+
+- **CraftingScreen** (`components/CraftingScreen.svelte`)
+  - Active crafting sessions
+  - Progress tracking
+  - Result collection
+  - Time remaining display
+
+- **DungeonScreen** (`components/DungeonScreen.svelte`)
+  - Active dungeon instances
+  - Room completion tracking
+  - Dungeon completion
+  - Status indicators
+
+- **PixelEditor** (`components/PixelEditor.svelte`)
+  - Canvas-based pixel art editor
+  - Tool palette
+  - Color picker
+  - Layer management UI
+
+- **ItemTooltip** (`components/ItemTooltip.svelte`)
+  - High fantasy styled tooltips
+  - Rarity-based colors
+  - Stat display
+  - Modifier information
+
+- **Tooltip** (`components/Tooltip.svelte`)
+  - Generic tooltip component
+  - Portal rendering
+  - Smart positioning
 
 ---
 
@@ -94,5 +150,53 @@ See `docs/IDLE_GAME_SYSTEM_ARCHITECTURE.md` for full architecture documentation.
 
 ---
 
-**Status**: Core type system and loot generator complete. Ready for component implementation.
+## 🚀 Usage
+
+```svelte
+<script>
+  import { GameOverlay } from '@/shared-components/idle-game-overlay';
+  import { loadCharacter } from '@/shared-components/idle-game-overlay/stores/game-state';
+
+  let showOverlay = false;
+
+  // Load character when user logs in
+  async function handleLogin() {
+    await loadCharacter('character-id-here');
+    showOverlay = true;
+  }
+</script>
+
+<GameOverlay 
+  visible={showOverlay} 
+  onClose={() => showOverlay = false} 
+/>
+```
+
+---
+
+## 🔐 Security
+
+- **End-to-End Encryption**: All API responses automatically encrypted using existing JWT-based encryption
+- **OTP Integration**: Passwordless save states using existing OTP auth system
+- **Customer Isolation**: All data isolated by customer ID
+- **No New Encryption Libraries**: Uses existing `decryptWithJWT` from `src/core/api/enhanced/encryption/jwt-encryption.js`
+
+---
+
+## 📋 API Endpoints
+
+All endpoints are documented in `docs/API_ENDPOINTS_REFERENCE.md`:
+
+- Save State: `POST/GET /game/save-state`
+- Daily Loot Box: `GET /game/loot-box/status`, `POST /game/loot-box/claim`
+- Idle Mechanics: `GET /game/idle/progress`, `POST /game/idle/claim`, etc.
+- Crafting: `POST /game/crafting/start`, `POST /game/crafting/collect`, etc.
+- Dungeons: `POST /game/dungeons/start`, `POST /game/dungeons/complete-room`, etc.
+- Inventory: `GET /game/inventory`, `POST /game/inventory/item`, etc.
+- Character: `GET /game/character`, `POST /game/character`, `PUT /game/character/appearance`
+- Loot Generation: `POST /game/loot/generate`, `GET /game/loot/tables`
+
+---
+
+**Status**: ✅ **Complete** - All core systems, API integration, and UI components implemented. Ready for integration into applications.
 

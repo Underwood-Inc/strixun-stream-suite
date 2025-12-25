@@ -4,7 +4,38 @@
  * Centralized type registry for OTP Auth, URL Shortener, and Chat Signaling
  */
 
-import { getTypeRegistry } from '../../../src/core/api/enhanced/registry/index.js';
+/**
+ * Simple type registry (stub implementation)
+ */
+class TypeRegistry {
+  constructor() {
+    this.types = new Map();
+  }
+
+  register(name, typeDef) {
+    this.types.set(name, typeDef);
+  }
+
+  get(name) {
+    return this.types.get(name);
+  }
+
+  buildFilterConfig(options = {}) {
+    return {
+      alwaysInclude: options.alwaysInclude || [],
+      defaultInclude: options.defaultInclude || [],
+    };
+  }
+}
+
+let typeRegistry = null;
+
+function getTypeRegistry() {
+  if (!typeRegistry) {
+    typeRegistry = new TypeRegistry();
+  }
+  return typeRegistry;
+}
 
 /**
  * Initialize all service type definitions
@@ -166,4 +197,7 @@ export function getServiceFilterConfig() {
     defaultInclude: ['success', 'message'],
   });
 }
+
+// Export getTypeRegistry for use in other files
+export { getTypeRegistry };
 

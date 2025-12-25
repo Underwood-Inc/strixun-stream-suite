@@ -2,57 +2,19 @@
  * Dungeon Handler
  * 
  * Handles dungeon instances, room completion, and rewards
+ * Authentication is handled by the route wrapper with automatic encryption
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-
-/**
- * Authenticate request
- */
-async function authenticateRequest(request, env) {
-    try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return { authenticated: false, error: 'Missing authorization header' };
-        }
-
-        const token = authHeader.substring(7);
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
-        if (!payload || !payload.sub) {
-            return { authenticated: false, error: 'Invalid token' };
-        }
-
-        return {
-            authenticated: true,
-            userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null
-        };
-    } catch (error) {
-        return { authenticated: false, error: error.message };
-    }
-}
 
 /**
  * Start dungeon instance
  * POST /game/dungeons/start
+ * Authentication handled by route wrapper
  */
 async function handleStartDungeon(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { characterId, dungeonId, difficulty = 'normal', instanceType = 'solo' } = body;
@@ -127,18 +89,13 @@ async function handleStartDungeon(request, env, userId, customerId) {
  * Complete dungeon room
  * POST /game/dungeons/complete-room
  */
+/**
+ * Complete dungeon room
+ * POST /game/dungeons/complete-room
+ * Authentication handled by route wrapper
+ */
 async function handleCompleteRoom(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { instanceId, roomId, result = 'victory' } = body;
@@ -214,19 +171,10 @@ async function handleCompleteRoom(request, env, userId, customerId) {
 /**
  * Complete dungeon
  * POST /game/dungeons/complete
+ * Authentication handled by route wrapper
  */
 async function handleCompleteDungeon(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { instanceId } = body;
@@ -294,19 +242,10 @@ async function handleCompleteDungeon(request, env, userId, customerId) {
 /**
  * Get dungeon instances
  * GET /game/dungeons/instances?characterId=123
+ * Authentication handled by route wrapper
  */
 async function handleGetDungeonInstances(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const url = new URL(request.url);
         const characterId = url.searchParams.get('characterId');

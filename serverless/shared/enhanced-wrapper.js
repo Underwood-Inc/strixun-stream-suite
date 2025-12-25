@@ -5,9 +5,54 @@
  * Maintains backward compatibility while adding enhanced features
  */
 
-import { createEnhancedHandler, createRFC7807Response } from '../../../src/core/api/enhanced/index.js';
-import { getTypeRegistry } from '../../../src/core/api/enhanced/registry/index.js';
-import { initializeServiceTypes, getServiceFilterConfig } from './types.js';
+import { initializeServiceTypes, getServiceFilterConfig, getTypeRegistry } from './types.js';
+
+/**
+ * Create enhanced handler (stub - returns handler as-is)
+ */
+function createEnhancedHandler(handler, options = {}) {
+  return async (request, context) => {
+    return await handler(request, context);
+  };
+}
+
+/**
+ * Create RFC 7807 error response
+ */
+function createRFC7807Response(request, error, headers) {
+  let url;
+  try {
+    url = new URL(request.url || 'http://localhost/');
+  } catch (e) {
+    url = new URL('http://localhost/');
+  }
+  
+  const problem = {
+    type: 'about:blank',
+    title: error.message || 'Internal Server Error',
+    status: error.status || 500,
+    detail: error.message || 'An error occurred',
+    instance: url.pathname,
+  };
+
+  if (error.data) {
+    Object.assign(problem, error.data);
+  }
+
+  const responseHeaders = new Headers();
+  responseHeaders.set('Content-Type', 'application/problem+json');
+  
+  if (headers && headers.entries) {
+    for (const [key, value] of headers.entries()) {
+      responseHeaders.set(key, value);
+    }
+  }
+
+  return new Response(JSON.stringify(problem), {
+    status: error.status || 500,
+    headers: responseHeaders,
+  });
+}
 
 // Initialize types on import
 let typesInitialized = false;

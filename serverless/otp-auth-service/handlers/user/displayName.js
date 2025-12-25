@@ -27,8 +27,8 @@ async function authenticateRequest(request, env) {
 
     const token = authHeader.substring(7);
     
-    // Import JWT utilities
-    const { verifyJWT, getJWTSecret } = await import('../../utils/jwt.js');
+    // Import JWT utilities from crypto.js
+    const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 

@@ -5,7 +5,6 @@
  */
 
 import { createErrorResponse, createEnhancedResponse, extractUserFromRequest } from './enhanced-wrapper.js';
-import { createRFC7807Response } from '../../../src/core/api/enhanced/index.js';
 
 /**
  * Wrap router response with enhanced features

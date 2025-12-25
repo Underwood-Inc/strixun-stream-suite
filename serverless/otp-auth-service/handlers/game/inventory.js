@@ -2,57 +2,19 @@
  * Inventory Handler
  * 
  * Handles inventory management, item operations, and equipment
+ * Authentication is handled by the route wrapper with automatic encryption
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-
-/**
- * Authenticate request
- */
-async function authenticateRequest(request, env) {
-    try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return { authenticated: false, error: 'Missing authorization header' };
-        }
-
-        const token = authHeader.substring(7);
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
-        if (!payload || !payload.sub) {
-            return { authenticated: false, error: 'Invalid token' };
-        }
-
-        return {
-            authenticated: true,
-            userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null
-        };
-    } catch (error) {
-        return { authenticated: false, error: error.message };
-    }
-}
 
 /**
  * Get inventory
  * GET /game/inventory?characterId=123
+ * Authentication handled by route wrapper
  */
 async function handleGetInventory(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const url = new URL(request.url);
         const characterId = url.searchParams.get('characterId');
@@ -107,19 +69,10 @@ async function handleGetInventory(request, env, userId, customerId) {
 /**
  * Add item to inventory
  * POST /game/inventory/item
+ * Authentication handled by route wrapper
  */
 async function handleAddItem(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { characterId, item } = body;
@@ -208,19 +161,10 @@ async function handleAddItem(request, env, userId, customerId) {
 /**
  * Remove item from inventory
  * DELETE /game/inventory/item?itemId=123
+ * Authentication handled by route wrapper
  */
 async function handleRemoveItem(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const url = new URL(request.url);
         const itemId = url.searchParams.get('itemId');
@@ -302,19 +246,10 @@ async function handleRemoveItem(request, env, userId, customerId) {
 /**
  * Equip item
  * POST /game/inventory/equip
+ * Authentication handled by route wrapper
  */
 async function handleEquipItem(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { characterId, itemId, slot } = body;

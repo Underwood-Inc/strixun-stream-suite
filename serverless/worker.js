@@ -13,12 +13,12 @@
  * @version 2.1.0
  */
 
-import { handleScrollbar, handleScrollbarCustomizer, handleScrollbarCompensation } from './handlers/scrollbar.js';
-import { handleClips, handleFollowing, handleGame, handleUser, getAppAccessToken } from './handlers/twitch.js';
-import { handleCloudSave, handleCloudLoad, handleCloudList, handleCloudDelete } from './handlers/cloud-storage.js';
-import { handleNotesSave, handleNotesLoad, handleNotesList, handleNotesDelete } from './handlers/notes.js';
-import { handleOBSCredentialsSave, handleOBSCredentialsLoad, handleOBSCredentialsDelete } from './handlers/obs.js';
-import { authenticateRequest, hashEmail, verifyJWT, getJWTSecret } from './utils/auth.js';
+import { handleCloudDelete, handleCloudList, handleCloudLoad, handleCloudSave } from './handlers/cloud-storage.js';
+import { handleNotesDelete, handleNotesList, handleNotesLoad, handleNotesSave } from './handlers/notes.js';
+import { handleOBSCredentialsDelete, handleOBSCredentialsLoad, handleOBSCredentialsSave } from './handlers/obs.js';
+import { handleScrollbar, handleScrollbarCompensation, handleScrollbarCustomizer } from './handlers/scrollbar.js';
+import { getAppAccessToken, handleClips, handleFollowing, handleGame, handleUser } from './handlers/twitch.js';
+import { authenticateRequest, getJWTSecret, hashEmail, verifyJWT } from './utils/auth.js';
 import { getCorsHeaders } from './utils/cors.js';
 
 // All handlers and utilities are now imported from their respective modules
@@ -316,9 +316,21 @@ async function createJWT(payload, secret) {
 // All OBS handlers are imported from serverless/handlers/obs.js
 
 /**
- * Main request handler
+ * Generate user ID from email
+ * @param {string} email - Email address
+ * @returns {Promise<string>} User ID
  */
-export default {
+async function generateUserId(email) {
+    const hash = await hashEmail(email);
+    return `user_${hash.substring(0, 12)}`;
+}
+
+/**
+ * Handle OTP verification endpoint
+ * POST /auth/verify-otp
+ * Body: { email: string, otp: string }
+ */
+async function handleVerifyOTP(request, env) {
     try {
         const body = await request.json();
         const { email, otp } = body;
@@ -679,54 +691,7 @@ async function handleRefresh(request, env) {
 
 // ============ Notes/Notebook System ============
 
-/**
- * Authenticate request and get user info
- * @param {Request} request - HTTP request
- * @param {*} env - Worker environment
- * @returns {Promise<{userId: string, email: string}|null>} User info or null if not authenticated
- */
-/**
- * Authenticate request and validate CSRF token for state-changing operations
- * @param {Request} request - HTTP request
- * @param {*} env - Worker environment
- * @param {boolean} requireCsrf - Whether to require CSRF token (for POST/PUT/DELETE)
- * @returns {Promise<{userId: string, email: string}|null>} User info or null if not authenticated
- */
-async function authenticateRequest(request, env, requireCsrf = false) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-    
-    const token = authHeader.substring(7);
-    const jwtSecret = getJWTSecret(env);
-    const payload = await verifyJWT(token, jwtSecret);
-    
-    if (!payload) {
-        return null;
-    }
-    
-    // Check if token is blacklisted
-    const tokenHash = await hashEmail(token);
-    const blacklistKey = `blacklist_${tokenHash}`;
-    const blacklisted = await env.TWITCH_CACHE.get(blacklistKey);
-    if (blacklisted) {
-        return null;
-    }
-    
-    // Validate CSRF token for state-changing operations
-    if (requireCsrf) {
-        const csrfHeader = request.headers.get('X-CSRF-Token');
-        if (!csrfHeader || csrfHeader !== payload.csrf) {
-            return null; // CSRF token mismatch
-        }
-    }
-    
-    return {
-        userId: payload.userId,
-        email: payload.email
-    };
-}
+// authenticateRequest is imported from ./utils/auth.js
 
 /**
  * Compress content using gzip (client-side compression, but we can also compress server-side)

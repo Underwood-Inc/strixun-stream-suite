@@ -2,57 +2,19 @@
  * Character Handler
  * 
  * Handles character creation, appearance customization, and pixel editor saves
+ * Authentication is handled by the route wrapper with automatic encryption
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-
-/**
- * Authenticate request
- */
-async function authenticateRequest(request, env) {
-    try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return { authenticated: false, error: 'Missing authorization header' };
-        }
-
-        const token = authHeader.substring(7);
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
-        if (!payload || !payload.sub) {
-            return { authenticated: false, error: 'Invalid token' };
-        }
-
-        return {
-            authenticated: true,
-            userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null
-        };
-    } catch (error) {
-        return { authenticated: false, error: error.message };
-    }
-}
 
 /**
  * Get character
  * GET /game/character?characterId=123
+ * Authentication handled by route wrapper
  */
 async function handleGetCharacter(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const url = new URL(request.url);
         const characterId = url.searchParams.get('characterId');
@@ -103,19 +65,10 @@ async function handleGetCharacter(request, env, userId, customerId) {
 /**
  * Create character
  * POST /game/character
+ * Authentication handled by route wrapper
  */
 async function handleCreateCharacter(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { name, appearance } = body;
@@ -136,7 +89,7 @@ async function handleCreateCharacter(request, env, userId, customerId) {
         const characterId = `char_${userId}_${Date.now()}`;
         const character = {
             id: characterId,
-            userId: auth.userId,
+            userId,
             name,
             level: 1,
             experience: 0,
@@ -203,19 +156,10 @@ async function handleCreateCharacter(request, env, userId, customerId) {
 /**
  * Update character appearance (pixel editor saves)
  * PUT /game/character/appearance
+ * Authentication handled by route wrapper
  */
 async function handleUpdateAppearance(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         const body = await request.json();
         const { characterId, appearance, customTextures } = body;

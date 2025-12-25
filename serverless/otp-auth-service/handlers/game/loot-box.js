@@ -2,57 +2,19 @@
  * Daily Loot Box Handler
  * 
  * Handles daily loot box claims and status
+ * Authentication is handled by the route wrapper with automatic encryption
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-
-/**
- * Authenticate request
- */
-async function authenticateRequest(request, env) {
-    try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return { authenticated: false, error: 'Missing authorization header' };
-        }
-
-        const token = authHeader.substring(7);
-        const jwtSecret = await getJWTSecret(env);
-        const payload = await verifyJWT(token, jwtSecret);
-
-        if (!payload || !payload.sub) {
-            return { authenticated: false, error: 'Invalid token' };
-        }
-
-        return {
-            authenticated: true,
-            userId: payload.sub,
-            email: payload.email,
-            customerId: payload.customerId || null
-        };
-    } catch (error) {
-        return { authenticated: false, error: error.message };
-    }
-}
 
 /**
  * Get loot box status
  * GET /game/loot-box/status
+ * Authentication handled by route wrapper
  */
 async function handleGetLootBoxStatus(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         // Get streak data
         const streakKey = getCustomerKey(customerId, `loot_box_streak_${userId}`);
@@ -113,19 +75,10 @@ async function handleGetLootBoxStatus(request, env, userId, customerId) {
 /**
  * Claim daily loot box
  * POST /game/loot-box/claim
+ * Authentication handled by route wrapper
  */
 async function handleClaimLootBox(request, env, userId, customerId) {
     try {
-        const auth = await authenticateRequest(request, env);
-        if (!auth.authenticated) {
-            return new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: auth.error
-            }), {
-                status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
 
         // Get streak data
         const streakKey = getCustomerKey(customerId, `loot_box_streak_${userId}`);
@@ -192,7 +145,7 @@ async function handleClaimLootBox(request, env, userId, customerId) {
         // Store claim record
         const claimKey = getCustomerKey(customerId, `loot_box_claim_${userId}_${today}`);
         await env.OTP_AUTH_KV.put(claimKey, JSON.stringify({
-            userId: auth.userId,
+            userId,
             claimedAt: new Date().toISOString(),
             rewards,
             streak: newStreak,

@@ -106,38 +106,10 @@ export async function handleRequestOTP(request, env, customerId = null) {
             const now = new Date();
             const secondsUntilReset = Math.max(0, Math.ceil((resetTime.getTime() - now.getTime()) / 1000));
             
-            // Format reset time message to match client-side formatting for consistency
-            // This matches the formatRateLimitCountdown logic used on the client
-            let resetMessage = '';
-            if (secondsUntilReset < 60) {
-                resetMessage = `in ${secondsUntilReset} second${secondsUntilReset !== 1 ? 's' : ''}`;
-            } else if (secondsUntilReset < 3600) {
-                const mins = Math.floor(secondsUntilReset / 60);
-                const secs = secondsUntilReset % 60;
-                if (secs > 0) {
-                    resetMessage = `in ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''}`;
-                } else {
-                    resetMessage = `in ${mins} minute${mins !== 1 ? 's' : ''}`;
-                }
-            } else {
-                const hours = Math.floor(secondsUntilReset / 3600);
-                const mins = Math.floor((secondsUntilReset % 3600) / 60);
-                const secs = secondsUntilReset % 60;
-                const parts = [];
-                if (hours > 0) {
-                    parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
-                }
-                if (mins > 0) {
-                    parts.push(`${mins} minute${mins !== 1 ? 's' : ''}`);
-                }
-                if (secs > 0 && hours === 0) {
-                    parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
-                }
-                resetMessage = `in ${parts.join(' and ')}`;
-            }
-            
             // Format reset time for display using browser locale (will be localized on client)
             // Use ISO string and let client format it with their locale
+            // Note: We don't include time in the error message - the client will display
+            // a real-time countdown that's more accurate and updates dynamically
             const resetTimeFormatted = resetTime.toISOString();
             
             // Get detailed rate limit information for the error response
@@ -171,7 +143,7 @@ export async function handleRequestOTP(request, env, customerId = null) {
                 type: 'https://tools.ietf.org/html/rfc6585#section-4',
                 title: 'Too Many Requests',
                 status: 429,
-                detail: `Too many requests. Please try again ${resetMessage}.`,
+                detail: 'Too many requests. Please try again later.',
                 instance: request.url,
                 retry_after: secondsUntilReset,
                 reset_at: rateLimit.resetAt,
