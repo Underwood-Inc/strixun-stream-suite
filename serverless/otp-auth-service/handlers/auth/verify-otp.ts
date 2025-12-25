@@ -36,6 +36,12 @@ interface User {
 
 /**
  * Get or create user with customer isolation
+ * 
+ * Implements smart account recovery:
+ * - If user account was deleted (expired TTL) but customer account exists,
+ *   the user account is recreated with the recovered customerId
+ * - This allows retaining customer information indefinitely while still
+ *   having automated cleanup of user accounts
  */
 async function getOrCreateUser(
     email: string,
@@ -48,6 +54,12 @@ async function getOrCreateUser(
     const userKey = getCustomerKey(customerId, `user_${emailHash}`);
     
     let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+    
+    // If user doesn't exist but we have a customerId, this is account recovery
+    // The customer account was recovered by email in ensureCustomerAccount
+    if (!user && customerId) {
+        console.log(`[User Recovery] Recreating user account for ${emailLower} with recovered customerId: ${customerId}`);
+    }
     
     if (!user) {
         // Generate unique display name for new user
@@ -71,17 +83,6 @@ async function getOrCreateUser(
             lastLogin: new Date().toISOString(),
         };
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 }); // 1 year
-        
-        // Initialize user preferences with default values and display name
-        const preferences = getDefaultPreferences();
-        preferences.displayName.current = displayName;
-        preferences.displayName.previousNames.push({
-            name: displayName,
-            changedAt: new Date().toISOString(),
-            reason: 'auto-generated',
-        });
-        preferences.displayName.lastChangedAt = new Date().toISOString();
-        await storeUserPreferences(userId, customerId, preferences, env);
         
         // Initialize user preferences with default values and display name
         const preferences = getDefaultPreferences();

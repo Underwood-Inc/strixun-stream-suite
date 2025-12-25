@@ -70,17 +70,27 @@ export async function getCustomer(customerId: string, env: Env): Promise<Custome
  * @param customerId - Customer ID
  * @param customerData - Customer data
  * @param env - Worker environment
+ * @param expirationTtl - Optional TTL in seconds (default: no expiration - customer accounts persist indefinitely)
  * @returns Promise that resolves when customer is stored
  */
-export async function storeCustomer(customerId: string, customerData: CustomerData, env: Env): Promise<void> {
+export async function storeCustomer(
+    customerId: string, 
+    customerData: CustomerData, 
+    env: Env,
+    expirationTtl?: number
+): Promise<void> {
     const customerKey = `customer_${customerId}`;
-    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData));
     
-    // Store email -> customerId mapping for lookup
+    // Customer accounts persist indefinitely (no TTL) to allow account recovery
+    // Only set TTL if explicitly provided (for testing or special cases)
+    const putOptions = expirationTtl ? { expirationTtl } : undefined;
+    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData), putOptions);
+    
+    // Store email -> customerId mapping for lookup (also persists indefinitely)
     if (customerData.email) {
         const emailHash = await hashEmail(customerData.email.toLowerCase().trim());
         const emailMappingKey = `email_to_customer_${emailHash}`;
-        await env.OTP_AUTH_KV.put(emailMappingKey, customerId);
+        await env.OTP_AUTH_KV.put(emailMappingKey, customerId, putOptions);
     }
 }
 

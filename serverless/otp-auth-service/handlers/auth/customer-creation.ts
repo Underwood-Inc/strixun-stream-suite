@@ -16,6 +16,11 @@ interface Env {
  * Ensure customer account exists for a verified user
  * Creates account if it doesn't exist, returns existing customerId if it does
  * 
+ * This function implements smart account recovery:
+ * - If user account was deleted (expired TTL), customer account is recovered by email
+ * - Customer accounts persist indefinitely to allow recovery
+ * - When recovered, customer account status is reactivated if it was inactive
+ * 
  * @returns Resolved customerId (may be null if creation failed)
  */
 export async function ensureCustomerAccount(
@@ -28,20 +33,36 @@ export async function ensureCustomerAccount(
         const { getCustomer } = await import('../../services/customer.js');
         const existing = await getCustomer(customerId, env);
         if (existing) {
+            // Customer exists, but check if we need to reactivate it
+            if (existing.status === 'suspended' || existing.status === 'cancelled') {
+                console.log(`[Customer Creation] Reactivating customer account: ${customerId}`);
+                existing.status = 'active';
+                existing.updatedAt = new Date().toISOString();
+                await storeCustomer(customerId, existing, env);
+            }
             return customerId;
         }
-        // CustomerId in JWT but doesn't exist - this is a data inconsistency
-        console.warn(`[Customer Creation] CustomerId ${customerId} in JWT but not found in KV, creating new customer`);
+        // CustomerId in JWT but doesn't exist - try to recover by email
+        console.warn(`[Customer Creation] CustomerId ${customerId} in JWT but not found in KV, attempting recovery by email`);
     }
     
     try {
         const emailLower = email.toLowerCase().trim();
-        console.log(`[Customer Creation] No customerId provided, looking up customer by email: ${emailLower}`);
+        console.log(`[Customer Creation] Looking up customer by email: ${emailLower}`);
         
-        // Check for existing customer
+        // Check for existing customer by email (smart recovery for reactivated accounts)
         const existingCustomer = await getCustomerByEmail(emailLower, env);
         if (existingCustomer) {
-            console.log(`[Customer Creation] Found existing customer: ${existingCustomer.customerId}`);
+            console.log(`[Customer Creation] Found existing customer account: ${existingCustomer.customerId} (recovered)`);
+            
+            // Reactivate customer account if it was suspended/cancelled
+            if (existingCustomer.status === 'suspended' || existingCustomer.status === 'cancelled') {
+                console.log(`[Customer Creation] Reactivating customer account: ${existingCustomer.customerId}`);
+                existingCustomer.status = 'active';
+                existingCustomer.updatedAt = new Date().toISOString();
+                await storeCustomer(existingCustomer.customerId, existingCustomer, env);
+            }
+            
             return existingCustomer.customerId;
         }
         
