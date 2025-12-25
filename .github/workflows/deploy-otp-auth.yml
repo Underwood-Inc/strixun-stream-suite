@@ -29,26 +29,18 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       
-      - name: Install root dependencies
+      - name: Install dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
       
-      - name: Install dashboard dependencies
-        working-directory: serverless/otp-auth-service/dashboard
-        run: pnpm install --frozen-lockfile
-      
-      - name: Build dashboard with Vite
-        working-directory: serverless/otp-auth-service
-        run: pnpm build
-      
-      - name: Deploy to Cloudflare Workers
+      - name: Build and Deploy to Cloudflare Workers
         working-directory: serverless/otp-auth-service
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: pnpm deploy
       
-      - name: Set Worker Secrets (if needed)
+      - name: Set Worker Secrets
         working-directory: serverless/otp-auth-service
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -62,6 +54,9 @@ jobs:
           fi
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
             echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS
           fi
         continue-on-error: true
       
