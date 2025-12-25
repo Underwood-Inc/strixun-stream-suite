@@ -53,7 +53,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler pages deploy storybook-static --project-name=storybook --branch=main
+        run: |
+          # Create project if it doesn't exist, then deploy
+          pnpm exec wrangler pages project create storybook || true
+          pnpm exec wrangler pages deploy storybook-static --project-name=storybook --branch=main
         
       - name: Deployment Summary
         run: |
