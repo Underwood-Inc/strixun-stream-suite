@@ -6,41 +6,71 @@
 import { generateApiKey as generateKey, hashApiKey as hashApiKeyUtil, encryptData, decryptData, getJWTSecret } from '../utils/crypto.js';
 import { getCustomer } from './customer.js';
 
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    JWT_SECRET?: string;
+    [key: string]: any;
+}
+
+interface ApiKeyData {
+    customerId: string;
+    keyId: string;
+    name: string;
+    createdAt: string;
+    lastUsed: string | null;
+    status: 'active' | 'inactive' | 'revoked';
+    encryptedKey: string;
+}
+
+interface ApiKeyResult {
+    apiKey: string;
+    keyId: string;
+}
+
+interface ApiKeyVerification {
+    customerId: string;
+    keyId: string;
+}
+
 /**
  * Generate cryptographically secure API key
- * @param {string} prefix - Key prefix (e.g., 'otp_live_sk_')
- * @returns {Promise<string>} API key
+ * @param prefix - Key prefix (e.g., 'otp_live_sk_')
+ * @returns API key
  */
-export async function generateApiKey(prefix = 'otp_live_sk_') {
+export async function generateApiKey(prefix: string = 'otp_live_sk_'): Promise<string> {
     return await generateKey(prefix);
 }
 
 /**
  * Hash API key for storage (SHA-256)
- * @param {string} apiKey - API key
- * @returns {Promise<string>} Hex-encoded hash
+ * @param apiKey - API key
+ * @returns Hex-encoded hash
  */
-export async function hashApiKeyForStorage(apiKey) {
+export async function hashApiKeyForStorage(apiKey: string): Promise<string> {
     return await hashApiKeyUtil(apiKey);
 }
 
 /**
  * Hash API key (re-exported for convenience)
- * @param {string} apiKey - API key
- * @returns {Promise<string>} Hex-encoded hash
+ * @param apiKey - API key
+ * @returns Hex-encoded hash
  */
-export async function hashApiKey(apiKey) {
+export async function hashApiKey(apiKey: string): Promise<string> {
     return await hashApiKeyUtil(apiKey);
 }
 
 /**
  * Create API key for customer
- * @param {string} customerId - Customer ID
- * @param {string} name - API key name
- * @param {*} env - Worker environment
- * @returns {Promise<{apiKey: string, keyId: string}>} API key and key ID
+ * @param customerId - Customer ID
+ * @param name - API key name
+ * @param env - Worker environment
+ * @returns API key and key ID
  */
-export async function createApiKeyForCustomer(customerId, name, env) {
+export async function createApiKeyForCustomer(
+    customerId: string,
+    name: string,
+    env: Env
+): Promise<ApiKeyResult> {
     // Generate API key
     const apiKey = await generateApiKey('otp_live_sk_');
     const apiKeyHash = await hashApiKeyUtil(apiKey);
@@ -53,7 +83,7 @@ export async function createApiKeyForCustomer(customerId, name, env) {
     const encryptedKey = await encryptData(apiKey, jwtSecret);
     
     // Store API key hash (for verification) and encrypted key (for retrieval)
-    const apiKeyData = {
+    const apiKeyData: ApiKeyData = {
         customerId,
         keyId,
         name: name || 'Default API Key',
@@ -68,7 +98,7 @@ export async function createApiKeyForCustomer(customerId, name, env) {
     
     // Also store key ID to hash mapping for customer (with encrypted key)
     const customerApiKeysKey = `customer_${customerId}_apikeys`;
-    const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+    const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) as ApiKeyData[] | null || [];
     existingKeys.push({
         keyId,
         name: apiKeyData.name,
@@ -84,14 +114,14 @@ export async function createApiKeyForCustomer(customerId, name, env) {
 
 /**
  * Verify API key and get customer ID
- * @param {string} apiKey - API key
- * @param {*} env - Worker environment
- * @returns {Promise<{customerId: string, keyId: string}|null>} Customer ID and key ID or null
+ * @param apiKey - API key
+ * @param env - Worker environment
+ * @returns Customer ID and key ID or null
  */
-export async function verifyApiKey(apiKey, env) {
+export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVerification | null> {
     const apiKeyHash = await hashApiKeyUtil(apiKey);
     const apiKeyKey = `apikey_${apiKeyHash}`;
-    const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' });
+    const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
     
     if (!keyData || keyData.status !== 'active') {
         return null;
@@ -103,7 +133,7 @@ export async function verifyApiKey(apiKey, env) {
     
     // Also update in customer's key list
     const customerApiKeysKey = `customer_${keyData.customerId}_apikeys`;
-    const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+    const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) as ApiKeyData[] | null || [];
     const keyIndex = customerKeys.findIndex(k => k.keyId === keyData.keyId);
     if (keyIndex >= 0) {
         customerKeys[keyIndex].lastUsed = keyData.lastUsed;

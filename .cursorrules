@@ -184,18 +184,69 @@
 - One component per file
 - Co-locate styles with components (Svelte `<style>` blocks)
 
-## TypeScript Rules
+## TypeScript Rules - CRITICAL
 
-### Type Safety
-- Always use TypeScript types, never `any`
-- Use interfaces for object shapes
-- Use type unions for limited value sets: `'top' | 'bottom' | 'left' | 'right'`
-- Export types from component files
+### ABSOLUTE PROHIBITION: JavaScript Files
+- **NEVER** create new `.js` files in the codebase
+- **NEVER** use JavaScript - ALWAYS use TypeScript (`.ts` extension)
+- **ALL** worker files, handlers, routers, services, and utilities MUST be TypeScript
+- **Exception**: Only build scripts, config files (svelte.config.js, etc.), and auto-generated files may be `.js`
+- **Action Required**: Convert ALL existing `.js` files to `.ts` with proper types
+
+### Type Safety - STRICT REQUIREMENTS
+- **NEVER** use `any` type - always use specific types or `unknown` with type guards
+- **ALWAYS** define interfaces for object shapes - no inline object types
+- **ALWAYS** use type unions for limited value sets: `'top' | 'bottom' | 'left' | 'right'`
+- **ALWAYS** export types from files - never use implicit types
+- **ALWAYS** type function parameters and return values explicitly
+- **ALWAYS** use proper Cloudflare Workers types: `Request`, `Response`, `ExecutionContext`, `KVNamespace`, etc.
+
+### Type Definitions Required
+- **ALL** handler functions must have typed parameters: `(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response>`
+- **ALL** environment variables must be typed in an `Env` interface
+- **ALL** service functions must have typed inputs and outputs
+- **ALL** utility functions must have typed parameters and return types
+- **ALL** router functions must have proper request/response types
+
+### Example - Correct TypeScript Usage:
+```typescript
+// ✅ CORRECT - Properly typed handler
+interface Env {
+  OTP_AUTH_KV: KVNamespace;
+  RESEND_API_KEY?: string;
+  ENVIRONMENT?: string;
+  [key: string]: any;
+}
+
+export async function handleRequest(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext
+): Promise<Response> {
+  // Implementation
+}
+```
+
+### ❌ WRONG - JavaScript or Weak Types:
+```javascript
+// ❌ WRONG - JavaScript file
+export async function handleRequest(request, env) {
+  // No types!
+}
+```
+
+```typescript
+// ❌ WRONG - Using 'any'
+export async function handleRequest(request: any, env: any): Promise<any> {
+  // Weak types!
+}
+```
 
 ### Import Organization
 - Group imports: Svelte → stores → modules → types → utils
 - Use absolute imports with path aliases: `@/components`, `@/stores`
 - Never import business logic into UI components
+- **ALWAYS** use `.js` extension in TypeScript imports (required for ES modules): `import { x } from './file.js'`
 
 ## General Code Quality
 

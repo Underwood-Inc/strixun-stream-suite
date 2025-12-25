@@ -13,7 +13,7 @@ import { getCorsHeaders } from './utils/cors.js';
 /**
  * Health check endpoint
  */
-async function handleHealth(env, request) {
+async function handleHealth(env: any, request: Request): Promise<Response> {
     return new Response(JSON.stringify({ 
         status: 'ok', 
         message: 'Game API is running',
@@ -29,7 +29,7 @@ async function handleHealth(env, request) {
  * Main request handler
  */
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: getCorsHeaders(env, request) });
@@ -55,7 +55,7 @@ export default {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Request handler error:', error);
             
             // Check if it's a JWT secret error (configuration issue)

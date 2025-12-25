@@ -11,9 +11,15 @@
  * @version 2.2.0 - Enhanced with API framework features
  */
 
-import { route } from './router.js';
 import { createEnhancedRouter } from '../shared/enhanced-router.js';
-import { initializeServiceTypes } from '../shared/types.js';
+import { initializeServiceTypes, type ExecutionContext } from '../shared/types.js';
+import { route } from './router.js';
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    ENVIRONMENT?: string;
+    [key: string]: unknown;
+}
 
 // Initialize service types
 initializeServiceTypes();
@@ -26,7 +32,8 @@ const enhancedRoute = createEnhancedRouter(route);
  * Delegates to enhanced router for all routing logic
  */
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         return enhancedRoute(request, env, ctx);
     }
 };
+

@@ -3,11 +3,13 @@
  * Re-exports all auth handlers from sub-modules
  */
 
-// OTP handlers
+// OTP handlers - now split into modular TypeScript files
 export {
-    handleRequestOTP,
+    handleRequestOTP
+} from './auth/request-otp.js';
+export {
     handleVerifyOTP
-} from './auth/otp.js';
+} from './auth/verify-otp.js';
 
 // Session handlers
 export {

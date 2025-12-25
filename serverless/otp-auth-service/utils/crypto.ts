@@ -3,12 +3,32 @@
  * OTP generation, hashing, JWT creation and verification
  */
 
+interface JWTPayload {
+    sub?: string;
+    iss?: string;
+    aud?: string;
+    exp?: number;
+    iat?: number;
+    jti?: string;
+    email?: string;
+    email_verified?: boolean;
+    userId?: string;
+    customerId?: string | null;
+    csrf?: string;
+    [key: string]: any;
+}
+
+interface Env {
+    JWT_SECRET?: string;
+    [key: string]: any;
+}
+
 /**
  * Generate 6-digit OTP code
  * Uses cryptographically secure random number generation
- * @returns {string} 6-digit OTP code
+ * @returns 6-digit OTP code
  */
-export function generateOTP() {
+export function generateOTP(): string {
     // Use 2 Uint32 values to get 64 bits, eliminating modulo bias
     const array = new Uint32Array(2);
     crypto.getRandomValues(array);
@@ -21,10 +41,10 @@ export function generateOTP() {
 
 /**
  * Hash email for storage key (SHA-256)
- * @param {string} email - Email address
- * @returns {Promise<string>} Hex-encoded hash
+ * @param email - Email address
+ * @returns Hex-encoded hash
  */
-export async function hashEmail(email) {
+export async function hashEmail(email: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(email.toLowerCase().trim());
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -34,21 +54,21 @@ export async function hashEmail(email) {
 
 /**
  * Generate user ID from email
- * @param {string} email - Email address
- * @returns {Promise<string>} User ID
+ * @param email - Email address
+ * @returns User ID
  */
-export async function generateUserId(email) {
+export async function generateUserId(email: string): Promise<string> {
     const hash = await hashEmail(email);
     return `user_${hash.substring(0, 12)}`;
 }
 
 /**
  * Create JWT token
- * @param {object} payload - Token payload
- * @param {string} secret - Secret key for signing
- * @returns {Promise<string>} JWT token
+ * @param payload - Token payload
+ * @param secret - Secret key for signing
+ * @returns JWT token
  */
-export async function createJWT(payload, secret) {
+export async function createJWT(payload: JWTPayload, secret: string): Promise<string> {
     const header = {
         alg: 'HS256',
         typ: 'JWT'
@@ -77,11 +97,11 @@ export async function createJWT(payload, secret) {
 
 /**
  * Verify JWT token
- * @param {string} token - JWT token
- * @param {string} secret - Secret key for verification
- * @returns {Promise<object|null>} Decoded payload or null if invalid
+ * @param token - JWT token
+ * @param secret - Secret key for verification
+ * @returns Decoded payload or null if invalid
  */
-export async function verifyJWT(token, secret) {
+export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
     try {
         const parts = token.split('.');
         if (parts.length !== 3) return null;
@@ -118,7 +138,7 @@ export async function verifyJWT(token, secret) {
         // Decode payload
         const payload = JSON.parse(
             atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-        );
+        ) as JWTPayload;
         
         // Check expiration
         if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
@@ -133,11 +153,11 @@ export async function verifyJWT(token, secret) {
 
 /**
  * Get JWT secret from environment
- * @param {*} env - Worker environment
- * @returns {string} JWT secret
- * @throws {Error} If JWT_SECRET is not set
+ * @param env - Worker environment
+ * @returns JWT secret
+ * @throws Error if JWT_SECRET is not set
  */
-export function getJWTSecret(env) {
+export function getJWTSecret(env: Env): string {
     if (!env.JWT_SECRET) {
         throw new Error('JWT_SECRET environment variable is required. Set it via: wrangler secret put JWT_SECRET');
     }
@@ -146,10 +166,10 @@ export function getJWTSecret(env) {
 
 /**
  * Hash password using PBKDF2
- * @param {string} password - Plain text password
- * @returns {Promise<string>} Hashed password (hex-encoded)
+ * @param password - Plain text password
+ * @returns Hashed password (hex-encoded)
  */
-export async function hashPassword(password) {
+export async function hashPassword(password: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -159,10 +179,10 @@ export async function hashPassword(password) {
 
 /**
  * Generate cryptographically secure API key
- * @param {string} prefix - Key prefix (e.g., 'otp_live_sk_')
- * @returns {Promise<string>} API key
+ * @param prefix - Key prefix (e.g., 'otp_live_sk_')
+ * @returns API key
  */
-export async function generateApiKey(prefix = 'otp_live_sk_') {
+export async function generateApiKey(prefix: string = 'otp_live_sk_'): Promise<string> {
     // Generate 32 random bytes (256 bits)
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
@@ -178,10 +198,10 @@ export async function generateApiKey(prefix = 'otp_live_sk_') {
 
 /**
  * Hash API key for storage (SHA-256)
- * @param {string} apiKey - API key
- * @returns {Promise<string>} Hex-encoded hash
+ * @param apiKey - API key
+ * @returns Hex-encoded hash
  */
-export async function hashApiKey(apiKey) {
+export async function hashApiKey(apiKey: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(apiKey);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -191,11 +211,11 @@ export async function hashApiKey(apiKey) {
 
 /**
  * Constant-time string comparison to prevent timing attacks
- * @param {string} a - First string
- * @param {string} b - Second string
- * @returns {boolean} True if strings are equal
+ * @param a - First string
+ * @param b - Second string
+ * @returns True if strings are equal
  */
-export function constantTimeEquals(a, b) {
+export function constantTimeEquals(a: string, b: string): boolean {
     if (a.length !== b.length) {
         return false;
     }
@@ -210,11 +230,11 @@ export function constantTimeEquals(a, b) {
 
 /**
  * Encrypt data using AES-GCM
- * @param {string} data - Data to encrypt
- * @param {string} secret - Encryption secret (from JWT_SECRET)
- * @returns {Promise<string>} Encrypted data (base64:iv:tag)
+ * @param data - Data to encrypt
+ * @param secret - Encryption secret (from JWT_SECRET)
+ * @returns Encrypted data (base64:iv:tag)
  */
-export async function encryptData(data, secret) {
+export async function encryptData(data: string, secret: string): Promise<string> {
     const encoder = new TextEncoder();
     const dataBytes = encoder.encode(data);
     
@@ -250,11 +270,11 @@ export async function encryptData(data, secret) {
 
 /**
  * Decrypt data using AES-GCM
- * @param {string} encryptedData - Encrypted data (base64:iv:tag)
- * @param {string} secret - Decryption secret (from JWT_SECRET)
- * @returns {Promise<string>} Decrypted data
+ * @param encryptedData - Encrypted data (base64:iv:tag)
+ * @param secret - Decryption secret (from JWT_SECRET)
+ * @returns Decrypted data
  */
-export async function decryptData(encryptedData, secret) {
+export async function decryptData(encryptedData: string, secret: string): Promise<string | null> {
     try {
         const encoder = new TextEncoder();
         

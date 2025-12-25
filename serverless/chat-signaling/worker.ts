@@ -15,7 +15,7 @@ import { route } from './router/routes.js';
 /**
  * Original request handler
  */
-async function originalFetch(request, env, ctx) {
+async function originalFetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: getCorsHeaders(env, request) });
@@ -34,7 +34,8 @@ const enhancedFetch = createEnhancedRouter(originalFetch);
  * Main request handler
  */
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     return enhancedFetch(request, env, ctx);
   },
 };
+

@@ -2,7 +2,7 @@
 # Standalone multi-tenant OTP authentication service
 
 name = "otp-auth-service"
-main = "worker.js"
+main = "worker.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 

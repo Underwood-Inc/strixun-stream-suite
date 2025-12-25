@@ -3,24 +3,109 @@
  * Usage tracking, metrics, and analytics endpoints
  */
 
-import { getCustomer } from './customer.js';
+import type { CustomerData } from './customer.js';
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    [key: string]: any;
+}
+
+interface MetricsData {
+    endpoint: string;
+    date: string;
+    responseTimes: number[];
+    count: number;
+    sum: number;
+    avgResponseTime?: number;
+    p50ResponseTime?: number;
+    p95ResponseTime?: number;
+    p99ResponseTime?: number;
+}
+
+interface ErrorData {
+    customerId: string;
+    date: string;
+    errors: Array<{
+        category: string;
+        message: string;
+        endpoint: string;
+        timestamp: string;
+    }>;
+    byCategory: Record<string, number>;
+    byEndpoint: Record<string, number>;
+    total: number;
+}
+
+interface UsageData {
+    customerId: string;
+    date: string;
+    otpRequests: number;
+    otpVerifications: number;
+    successfulLogins: number;
+    failedAttempts: number;
+    emailsSent: number;
+    apiCalls: number;
+    storageUsed: number;
+    lastUpdated: string;
+}
+
+interface AggregatedUsage {
+    customerId: string;
+    period: { start: string; end: string };
+    otpRequests: number;
+    otpVerifications: number;
+    successfulLogins: number;
+    failedAttempts: number;
+    emailsSent: number;
+    apiCalls: number;
+    storageUsed: number;
+    dailyBreakdown: Array<{
+        date: string;
+        otpRequests: number;
+        otpVerifications: number;
+        successfulLogins: number;
+        failedAttempts: number;
+        emailsSent: number;
+    }>;
+    successRate?: string;
+}
+
+interface PlanLimits {
+    otpRequestsPerDay: number;
+    otpRequestsPerMonth: number;
+    maxUsers: number;
+}
+
+interface QuotaResult {
+    allowed: boolean;
+    reason?: string;
+    quota?: PlanLimits;
+    usage?: {
+        daily: number;
+        monthly: number | null;
+        remainingDaily?: number;
+        remainingMonthly?: number;
+    };
+}
+
+type GetCustomerFn = (customerId: string) => Promise<CustomerData | null>;
+type GetPlanLimitsFn = (plan: string) => PlanLimits;
 
 /**
  * Track response time
- * @param {string} customerId - Customer ID
- * @param {string} endpoint - Endpoint name
- * @param {number} responseTime - Response time in ms
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
+ * @param customerId - Customer ID
+ * @param endpoint - Endpoint name
+ * @param responseTime - Response time in ms
+ * @param env - Worker environment
  */
-export async function trackResponseTime(customerId, endpoint, responseTime, env) {
+export async function trackResponseTime(customerId: string | null, endpoint: string, responseTime: number, env: Env): Promise<void> {
     if (!customerId) return;
     
     try {
         const today = new Date().toISOString().split('T')[0];
         const metricsKey = `metrics_${customerId}_${today}_${endpoint}`;
         
-        const existing = await env.OTP_AUTH_KV.get(metricsKey, { type: 'json' }) || {
+        const existing = await env.OTP_AUTH_KV.get(metricsKey, { type: 'json' }) as MetricsData | null || {
             endpoint,
             date: today,
             responseTimes: [],
@@ -52,21 +137,20 @@ export async function trackResponseTime(customerId, endpoint, responseTime, env)
 
 /**
  * Track error
- * @param {string} customerId - Customer ID
- * @param {string} category - Error category
- * @param {string} message - Error message
- * @param {string} endpoint - Endpoint where error occurred
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
+ * @param customerId - Customer ID
+ * @param category - Error category
+ * @param message - Error message
+ * @param endpoint - Endpoint where error occurred
+ * @param env - Worker environment
  */
-export async function trackError(customerId, category, message, endpoint, env) {
+export async function trackError(customerId: string | null, category: string, message: string, endpoint: string, env: Env): Promise<void> {
     if (!customerId) return;
     
     try {
         const today = new Date().toISOString().split('T')[0];
         const errorKey = `errors_${customerId}_${today}`;
         
-        const existing = await env.OTP_AUTH_KV.get(errorKey, { type: 'json' }) || {
+        const existing = await env.OTP_AUTH_KV.get(errorKey, { type: 'json' }) as ErrorData | null || {
             customerId,
             date: today,
             errors: [],
@@ -99,13 +183,12 @@ export async function trackError(customerId, category, message, endpoint, env) {
 
 /**
  * Track usage metric
- * @param {string} customerId - Customer ID
- * @param {string} metric - Metric name (otpRequests, otpVerifications, etc.)
- * @param {number} increment - Amount to increment (default 1)
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
+ * @param customerId - Customer ID
+ * @param metric - Metric name (otpRequests, otpVerifications, etc.)
+ * @param increment - Amount to increment (default 1)
+ * @param env - Worker environment
  */
-export async function trackUsage(customerId, metric, increment = 1, env) {
+export async function trackUsage(customerId: string | null, metric: string, increment: number = 1, env: Env): Promise<void> {
     if (!customerId) return; // Skip tracking for non-authenticated requests
     
     try {
@@ -113,7 +196,7 @@ export async function trackUsage(customerId, metric, increment = 1, env) {
         const usageKey = `usage_${customerId}_${today}`;
         
         // Get existing usage
-        const existingUsage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' }) || {
+        const existingUsage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' }) as UsageData | null || {
             customerId,
             date: today,
             otpRequests: 0,
@@ -127,10 +210,10 @@ export async function trackUsage(customerId, metric, increment = 1, env) {
         };
         
         // Increment metric
-        if (existingUsage[metric] !== undefined) {
-            existingUsage[metric] = (existingUsage[metric] || 0) + increment;
+        if ((existingUsage as any)[metric] !== undefined) {
+            (existingUsage as any)[metric] = ((existingUsage as any)[metric] || 0) + increment;
         } else {
-            existingUsage[metric] = increment;
+            (existingUsage as any)[metric] = increment;
         }
         
         existingUsage.lastUpdated = new Date().toISOString();
@@ -145,14 +228,14 @@ export async function trackUsage(customerId, metric, increment = 1, env) {
 
 /**
  * Get usage for date range
- * @param {string} customerId - Customer ID
- * @param {string} startDate - Start date (YYYY-MM-DD)
- * @param {string} endDate - End date (YYYY-MM-DD)
- * @param {*} env - Worker environment
- * @returns {Promise<object>} Aggregated usage data
+ * @param customerId - Customer ID
+ * @param startDate - Start date (YYYY-MM-DD)
+ * @param endDate - End date (YYYY-MM-DD)
+ * @param env - Worker environment
+ * @returns Aggregated usage data
  */
-export async function getUsage(customerId, startDate, endDate, env) {
-    const usage = {
+export async function getUsage(customerId: string, startDate: string, endDate: string, env: Env): Promise<AggregatedUsage> {
+    const usage: AggregatedUsage = {
         customerId,
         period: { start: startDate, end: endDate },
         otpRequests: 0,
@@ -172,7 +255,7 @@ export async function getUsage(customerId, startDate, endDate, env) {
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const dateStr = d.toISOString().split('T')[0];
         const usageKey = `usage_${customerId}_${dateStr}`;
-        const dayUsage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' });
+        const dayUsage = await env.OTP_AUTH_KV.get(usageKey, { type: 'json' }) as UsageData | null;
         
         if (dayUsage) {
             usage.otpRequests += dayUsage.otpRequests || 0;
@@ -197,18 +280,18 @@ export async function getUsage(customerId, startDate, endDate, env) {
     // Calculate success rate
     usage.successRate = usage.otpRequests > 0 
         ? ((usage.otpVerifications / usage.otpRequests) * 100).toFixed(2)
-        : 0;
+        : '0';
     
     return usage;
 }
 
 /**
  * Get current month usage
- * @param {string} customerId - Customer ID
- * @param {*} env - Worker environment
- * @returns {Promise<object>} Monthly usage
+ * @param customerId - Customer ID
+ * @param env - Worker environment
+ * @returns Monthly usage
  */
-export async function getMonthlyUsage(customerId, env) {
+export async function getMonthlyUsage(customerId: string, env: Env): Promise<AggregatedUsage> {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const endDate = now.toISOString().split('T')[0];
@@ -218,13 +301,18 @@ export async function getMonthlyUsage(customerId, env) {
 
 /**
  * Check quota for customer
- * @param {string} customerId - Customer ID
- * @param {Function} getCustomerCachedFn - Function to get cached customer
- * @param {Function} getPlanLimitsFn - Function to get plan limits
- * @param {*} env - Worker environment
- * @returns {Promise<{allowed: boolean, reason?: string, quota?: object, usage?: object}>}
+ * @param customerId - Customer ID
+ * @param getCustomerCachedFn - Function to get cached customer
+ * @param getPlanLimitsFn - Function to get plan limits
+ * @param env - Worker environment
+ * @returns Quota check result
  */
-export async function checkQuota(customerId, getCustomerCachedFn, getPlanLimitsFn, env) {
+export async function checkQuota(
+    customerId: string | null,
+    getCustomerCachedFn: GetCustomerFn,
+    getPlanLimitsFn: GetPlanLimitsFn,
+    env: Env
+): Promise<QuotaResult> {
     if (!customerId) {
         return { allowed: true }; // No quota check for non-authenticated (backward compat)
     }
@@ -235,11 +323,11 @@ export async function checkQuota(customerId, getCustomerCachedFn, getPlanLimitsF
             return { allowed: false, reason: 'customer_not_found' };
         }
         
-        const planLimits = getPlanLimitsFn(customer.plan);
-        const customerLimits = customer.config?.rateLimits || {};
+        const planLimits = getPlanLimitsFn(customer.plan || 'free');
+        const customerLimits = (customer.config?.rateLimits as PlanLimits | undefined) || {};
         
         // Use customer limits if set, otherwise plan limits
-        const quota = {
+        const quota: PlanLimits = {
             otpRequestsPerDay: customerLimits.otpRequestsPerDay ?? planLimits.otpRequestsPerDay,
             otpRequestsPerMonth: customerLimits.otpRequestsPerMonth ?? planLimits.otpRequestsPerMonth,
             maxUsers: customerLimits.maxUsers ?? planLimits.maxUsers
@@ -247,7 +335,7 @@ export async function checkQuota(customerId, getCustomerCachedFn, getPlanLimitsF
         
         // Check daily quota
         const today = new Date().toISOString().split('T')[0];
-        const todayUsage = await env.OTP_AUTH_KV.get(`usage_${customerId}_${today}`, { type: 'json' });
+        const todayUsage = await env.OTP_AUTH_KV.get(`usage_${customerId}_${today}`, { type: 'json' }) as UsageData | null;
         const dailyRequests = todayUsage?.otpRequests || 0;
         
         if (dailyRequests >= quota.otpRequestsPerDay) {

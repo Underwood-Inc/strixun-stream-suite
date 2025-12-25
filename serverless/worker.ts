@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Strixun Stream Suite - Twitch API Worker
  * Cloudflare Worker for Twitch API proxy + Cloud Storage
  * 
@@ -20,7 +20,7 @@ import { getCorsHeaders } from './twitch-api/utils/cors.js';
  * Main request handler
  */
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: getCorsHeaders(env, request) });
@@ -30,3 +30,4 @@ export default {
         return await route(request, env);
     },
 };
+

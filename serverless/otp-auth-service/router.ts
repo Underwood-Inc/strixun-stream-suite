@@ -12,14 +12,12 @@ import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
+import type { ExecutionContext } from '../../shared/types.js';
 
 /**
  * Check for high error rate and alert
- * @param {string} customerId - Customer ID
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
  */
-async function checkErrorRateAlert(customerId, env) {
+async function checkErrorRateAlert(customerId: string, env: any): Promise<void> {
     try {
         const today = new Date().toISOString().split('T')[0];
         const usageKey = `usage_${customerId}_${today}`;
@@ -56,11 +54,11 @@ async function checkErrorRateAlert(customerId, env) {
  * Main router function
  * Routes requests to appropriate handlers
  */
-export async function route(request, env) {
+export async function route(request: Request, env: any, ctx?: ExecutionContext): Promise<Response> {
     const startTime = performance.now();
     const url = new URL(request.url);
     const path = url.pathname;
-    let customerId = null;
+    let customerId: string | null = null;
     let endpoint = path.split('/').pop() || 'unknown';
     
     // Handle CORS preflight
@@ -138,7 +136,7 @@ export async function route(request, env) {
             status: 404,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Request handler error:', error);
         
         // Track error
@@ -171,3 +169,4 @@ export async function route(request, env) {
         }
     }
 }
+

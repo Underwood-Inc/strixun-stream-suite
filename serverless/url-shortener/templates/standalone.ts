@@ -1,20 +1,14 @@
 /**
- * Strixun URL Shortener Service
+ * Standalone HTML Template
  * 
- * Cloudflare Worker for URL shortening with OTP authentication integration
- * Provides free URL shortening service with user authentication
+ * This file contains the embedded HTML for the URL Shortener standalone page.
+ * The HTML is embedded as a string constant for use in Cloudflare Workers.
  * 
- * @version 2.0.0 - Modular architecture
+ * Source: standalone.html
+ * Note: This file should be kept in sync with standalone.html
  */
 
-import { createEnhancedRouter } from '../shared/enhanced-router.js';
-import { initializeServiceTypes } from '../shared/types.js';
-import { getCorsHeaders } from './utils/cors.js';
-import { createRouter } from './router/routes.js';
-
-// Embedded standalone.html content
-// This is automatically generated from standalone.html - do not edit manually
-const STANDALONE_HTML = `<!DOCTYPE html>
+export const STANDALONE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -885,31 +879,3 @@ const STANDALONE_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-/**
- * Original request handler
- */
-async function originalFetch(request, env, ctx) {
-  // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(env, request) });
-  }
-
-  // Create router with embedded HTML
-  const router = createRouter(STANDALONE_HTML);
-  return router(request, env);
-}
-
-// Initialize service types
-initializeServiceTypes();
-
-// Create enhanced router
-const enhancedFetch = createEnhancedRouter(originalFetch);
-
-/**
- * Main request handler
- */
-export default {
-  async fetch(request, env, ctx) {
-    return enhancedFetch(request, env, ctx);
-  },
-};

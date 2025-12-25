@@ -9,13 +9,30 @@ import { getCustomer } from '../services/customer.js';
 import { verifyApiKey } from '../services/api-key.js';
 import { checkIPAllowlist, logSecurityEvent } from '../services/security.js';
 import * as authHandlers from '../handlers/auth.js';
+import { handleRequestOTP } from '../handlers/auth/request-otp.js';
+import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    [key: string]: any;
+}
+
+interface ApiKeyAuth {
+    customerId: string;
+    keyId: string;
+}
+
+interface RouteResult {
+    response: Response;
+    customerId: string | null;
+}
 
 /**
  * Authenticate request using API key
  */
-async function authenticateRequest(request, env) {
+async function authenticateRequest(request: Request, env: Env): Promise<ApiKeyAuth | null> {
     const authHeader = request.headers.get('Authorization');
-    let apiKey = null;
+    let apiKey: string | null = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
         apiKey = authHeader.substring(7);
@@ -32,15 +49,19 @@ async function authenticateRequest(request, env) {
 
 /**
  * Handle auth routes
- * @param {Request} request - HTTP request
- * @param {string} path - Request path
- * @param {*} env - Worker environment
- * @returns {Promise<{response: Response, customerId: string|null}>|null} Response and customerId if route matched, null otherwise
+ * @param request - HTTP request
+ * @param path - Request path
+ * @param env - Worker environment
+ * @returns Response and customerId if route matched, null otherwise
  */
-export async function handleAuthRoutes(request, path, env) {
+export async function handleAuthRoutes(
+    request: Request,
+    path: string,
+    env: Env
+): Promise<RouteResult | null> {
     // Authentication endpoints (require API key for multi-tenant)
     // For backward compatibility, allow requests without API key (customerId will be null)
-    let customerId = null;
+    let customerId: string | null = null;
     let customer = null;
     const auth = await authenticateRequest(request, env);
     
@@ -59,10 +80,13 @@ export async function handleAuthRoutes(request, path, env) {
                 method: request.method
             }, env);
             
-            return { response: new Response(JSON.stringify({ error: 'IP address not allowed' }), {
-                status: 403,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            }), customerId };
+            return { 
+                response: new Response(JSON.stringify({ error: 'IP address not allowed' }), {
+                    status: 403,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }), 
+                customerId 
+            };
         }
         
         // Log API key authentication
@@ -84,10 +108,10 @@ export async function handleAuthRoutes(request, path, env) {
     
     // Attach customerId to request context by wrapping handlers
     if (path === '/auth/request-otp' && request.method === 'POST') {
-        return { response: await authHandlers.handleRequestOTP(request, env, customerId), customerId };
+        return { response: await handleRequestOTP(request, env, customerId), customerId };
     }
     if (path === '/auth/verify-otp' && request.method === 'POST') {
-        return { response: await authHandlers.handleVerifyOTP(request, env, customerId), customerId };
+        return { response: await handleVerifyOTP(request, env, customerId), customerId };
     }
     if (path === '/auth/me' && request.method === 'GET') {
         return { response: await authHandlers.handleGetMe(request, env), customerId };

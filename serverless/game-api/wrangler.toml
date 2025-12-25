@@ -2,7 +2,7 @@
 # Dedicated worker for idle game API endpoints
 
 name = "strixun-game-api"
-main = "worker.js"
+main = "worker.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 

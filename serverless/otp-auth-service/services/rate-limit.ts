@@ -4,13 +4,63 @@
  * Includes IP-based rate limiting, dynamic throttling, and free tier hard caps
  */
 
+import type { CustomerData } from './customer.js';
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    [key: string]: any;
+}
+
+interface PlanLimits {
+    otpRequestsPerHour: number;
+    otpRequestsPerDay: number;
+    otpRequestsPerMonth: number;
+    ipRequestsPerHour: number;
+    ipRequestsPerDay: number;
+    maxUsers: number;
+}
+
+interface EmailStats {
+    totalRequests: number;
+    requestsLast24h: number;
+    failedAttempts: number;
+    lastSuccessfulLogin: string | null;
+    requestTimestamps: number[];
+}
+
+interface IPStats {
+    requestsLast24h: number;
+    failedAttempts: number;
+    requestTimestamps: number[];
+}
+
+interface RateLimitResult {
+    allowed: boolean;
+    remaining: number;
+    resetAt: string;
+    reason?: string;
+    emailLimit?: {
+        current: number;
+        max: number;
+        resetAt: string;
+    };
+    ipLimit?: {
+        current: number;
+        max: number;
+        resetAt: string;
+    };
+    failedAttempts?: number;
+}
+
+type GetCustomerFn = (customerId: string) => Promise<CustomerData | null>;
+
 /**
  * Get plan limits for customer
- * @param {string} plan - Plan name ('free', 'pro', 'enterprise')
- * @returns {object} Plan limits
+ * @param plan - Plan name ('free', 'pro', 'enterprise')
+ * @returns Plan limits
  */
-function getPlanLimits(plan = 'free') {
-    const plans = {
+function getPlanLimits(plan: string = 'free'): PlanLimits {
+    const plans: Record<string, PlanLimits> = {
         free: {
             otpRequestsPerHour: 3,
             otpRequestsPerDay: 1000,      // Hard cap for free tier
@@ -41,11 +91,11 @@ function getPlanLimits(plan = 'free') {
 
 /**
  * Calculate dynamic rate limit adjustment based on usage patterns
- * @param {object} emailStats - Email usage statistics
- * @param {object} ipStats - IP usage statistics
- * @returns {number} Adjustment factor (-2 to +2)
+ * @param emailStats - Email usage statistics
+ * @param ipStats - IP usage statistics
+ * @returns Adjustment factor (-2 to +2)
  */
-function calculateDynamicAdjustment(emailStats, ipStats) {
+function calculateDynamicAdjustment(emailStats: EmailStats, ipStats: IPStats): number {
     let adjustment = 0;
     
     // New email bonus (< 3 requests in last 24h)
@@ -84,13 +134,13 @@ function calculateDynamicAdjustment(emailStats, ipStats) {
 
 /**
  * Get usage statistics for email and IP
- * @param {string} emailHash - Hashed email
- * @param {string} ipHash - Hashed IP address
- * @param {string} customerId - Customer ID
- * @param {*} env - Worker environment
- * @returns {Promise<{emailStats: object, ipStats: object}>}
+ * @param emailHash - Hashed email
+ * @param ipHash - Hashed IP address
+ * @param customerId - Customer ID
+ * @param env - Worker environment
+ * @returns Usage statistics
  */
-async function getUsageStats(emailHash, ipHash, customerId, env) {
+async function getUsageStats(emailHash: string, ipHash: string, customerId: string | null, env: Env): Promise<{emailStats: EmailStats, ipStats: IPStats}> {
     const now = Date.now();
     const oneDayAgo = now - (24 * 60 * 60 * 1000);
     
@@ -98,7 +148,7 @@ async function getUsageStats(emailHash, ipHash, customerId, env) {
     const emailStatsKey = customerId 
         ? `cust_${customerId}_stats_email_${emailHash}`
         : `stats_email_${emailHash}`;
-    const emailStatsData = await env.OTP_AUTH_KV.get(emailStatsKey, { type: 'json' }) || {
+    const emailStatsData = await env.OTP_AUTH_KV.get(emailStatsKey, { type: 'json' }) as EmailStats | null || {
         totalRequests: 0,
         requestsLast24h: 0,
         failedAttempts: 0,
@@ -114,7 +164,7 @@ async function getUsageStats(emailHash, ipHash, customerId, env) {
     const ipStatsKey = customerId 
         ? `cust_${customerId}_stats_ip_${ipHash}`
         : `stats_ip_${ipHash}`;
-    const ipStatsData = await env.OTP_AUTH_KV.get(ipStatsKey, { type: 'json' }) || {
+    const ipStatsData = await env.OTP_AUTH_KV.get(ipStatsKey, { type: 'json' }) as IPStats | null || {
         requestsLast24h: 0,
         failedAttempts: 0,
         requestTimestamps: []
@@ -132,21 +182,20 @@ async function getUsageStats(emailHash, ipHash, customerId, env) {
 
 /**
  * Update usage statistics
- * @param {string} emailHash - Hashed email
- * @param {string} ipHash - Hashed IP address
- * @param {string} customerId - Customer ID
- * @param {boolean} success - Whether request was successful
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
+ * @param emailHash - Hashed email
+ * @param ipHash - Hashed IP address
+ * @param customerId - Customer ID
+ * @param success - Whether request was successful
+ * @param env - Worker environment
  */
-async function updateUsageStats(emailHash, ipHash, customerId, success, env) {
+async function updateUsageStats(emailHash: string, ipHash: string, customerId: string | null, success: boolean, env: Env): Promise<void> {
     const now = Date.now();
     
     // Update email stats
     const emailStatsKey = customerId 
         ? `cust_${customerId}_stats_email_${emailHash}`
         : `stats_email_${emailHash}`;
-    const emailStats = await env.OTP_AUTH_KV.get(emailStatsKey, { type: 'json' }) || {
+    const emailStats = await env.OTP_AUTH_KV.get(emailStatsKey, { type: 'json' }) as EmailStats | null || {
         totalRequests: 0,
         requestsLast24h: 0,
         failedAttempts: 0,
@@ -175,7 +224,7 @@ async function updateUsageStats(emailHash, ipHash, customerId, success, env) {
     const ipStatsKey = customerId 
         ? `cust_${customerId}_stats_ip_${ipHash}`
         : `stats_ip_${ipHash}`;
-    const ipStats = await env.OTP_AUTH_KV.get(ipStatsKey, { type: 'json' }) || {
+    const ipStats = await env.OTP_AUTH_KV.get(ipStatsKey, { type: 'json' }) as IPStats | null || {
         requestsLast24h: 0,
         failedAttempts: 0,
         requestTimestamps: []
@@ -198,10 +247,10 @@ async function updateUsageStats(emailHash, ipHash, customerId, success, env) {
 
 /**
  * Hash IP address for storage
- * @param {string} ip - IP address
- * @returns {Promise<string>} Hashed IP
+ * @param ip - IP address
+ * @returns Hashed IP
  */
-export async function hashIP(ip) {
+export async function hashIP(ip: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(ip);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -211,17 +260,23 @@ export async function hashIP(ip) {
 
 /**
  * Check rate limit for OTP requests with IP-based and dynamic throttling
- * @param {string} emailHash - Hashed email
- * @param {string} customerId - Customer ID (for multi-tenant isolation)
- * @param {string} ipAddress - Client IP address
- * @param {Function} getCustomerCachedFn - Function to get cached customer
- * @param {*} env - Worker environment
- * @returns {Promise<{allowed: boolean, remaining: number, resetAt: string, reason?: string}>}
+ * @param emailHash - Hashed email
+ * @param customerId - Customer ID (for multi-tenant isolation)
+ * @param ipAddress - Client IP address
+ * @param getCustomerCachedFn - Function to get cached customer
+ * @param env - Worker environment
+ * @returns Rate limit check result
  */
-export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCustomerCachedFn, env) {
+export async function checkOTPRateLimit(
+    emailHash: string,
+    customerId: string | null,
+    ipAddress: string,
+    getCustomerCachedFn: GetCustomerFn,
+    env: Env
+): Promise<RateLimitResult> {
     try {
         // Get customer configuration and plan
-        let customer = null;
+        let customer: CustomerData | null = null;
         let plan = 'free';
         let rateLimitPerHour = 3; // Default
         
@@ -230,7 +285,7 @@ export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCus
             if (customer) {
                 plan = customer.plan || 'free';
                 if (customer.config && customer.config.rateLimits) {
-                    rateLimitPerHour = customer.config.rateLimits.otpRequestsPerHour || 3;
+                    rateLimitPerHour = (customer.config.rateLimits as { otpRequestsPerHour?: number }).otpRequestsPerHour || 3;
                 }
             }
         }
@@ -253,11 +308,11 @@ export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCus
             : `ratelimit_ip_${ipHash}`;
         
         const ipRateLimitData = await env.OTP_AUTH_KV.get(ipRateLimitKey);
-        let ipRateLimit = null;
+        let ipRateLimit: { requests: number; resetAt: string } | null = null;
         
         if (ipRateLimitData) {
             try {
-                ipRateLimit = typeof ipRateLimitData === 'string' ? JSON.parse(ipRateLimitData) : ipRateLimitData;
+                ipRateLimit = typeof ipRateLimitData === 'string' ? JSON.parse(ipRateLimitData) : ipRateLimitData as { requests: number; resetAt: string };
             } catch (e) {
                 ipRateLimit = null;
             }
@@ -298,11 +353,11 @@ export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCus
             : `ratelimit_otp_${emailHash}`;
         
         const rateLimitData = await env.OTP_AUTH_KV.get(rateLimitKey);
-        let rateLimit = null;
+        let rateLimit: { otpRequests: number; failedAttempts?: number; resetAt: string } | null = null;
         
         if (rateLimitData) {
             try {
-                rateLimit = typeof rateLimitData === 'string' ? JSON.parse(rateLimitData) : rateLimitData;
+                rateLimit = typeof rateLimitData === 'string' ? JSON.parse(rateLimitData) : rateLimitData as { otpRequests: number; failedAttempts?: number; resetAt: string };
             } catch (e) {
                 rateLimit = null;
             }
@@ -372,13 +427,12 @@ export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCus
 
 /**
  * Record successful OTP request for statistics
- * @param {string} emailHash - Hashed email
- * @param {string} ipAddress - Client IP address
- * @param {string} customerId - Customer ID
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
+ * @param emailHash - Hashed email
+ * @param ipAddress - Client IP address
+ * @param customerId - Customer ID
+ * @param env - Worker environment
  */
-export async function recordOTPRequest(emailHash, ipAddress, customerId, env) {
+export async function recordOTPRequest(emailHash: string, ipAddress: string, customerId: string | null, env: Env): Promise<void> {
     try {
         const ipHash = await hashIP(ipAddress || 'unknown');
         await updateUsageStats(emailHash, ipHash, customerId, true, env);
@@ -390,13 +444,12 @@ export async function recordOTPRequest(emailHash, ipAddress, customerId, env) {
 
 /**
  * Record failed OTP attempt for statistics
- * @param {string} emailHash - Hashed email
- * @param {string} ipAddress - Client IP address
- * @param {string} customerId - Customer ID
- * @param {*} env - Worker environment
- * @returns {Promise<void>}
+ * @param emailHash - Hashed email
+ * @param ipAddress - Client IP address
+ * @param customerId - Customer ID
+ * @param env - Worker environment
  */
-export async function recordOTPFailure(emailHash, ipAddress, customerId, env) {
+export async function recordOTPFailure(emailHash: string, ipAddress: string, customerId: string | null, env: Env): Promise<void> {
     try {
         const ipHash = await hashIP(ipAddress || 'unknown');
         await updateUsageStats(emailHash, ipHash, customerId, false, env);
