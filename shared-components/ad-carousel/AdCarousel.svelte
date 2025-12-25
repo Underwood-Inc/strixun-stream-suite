@@ -190,21 +190,52 @@
     // Wait for DOM to be ready
     await tick();
     
-    // Create portal container at body level with unique ID based on storageKey
-    portalContainer = document.createElement('div');
-    portalContainer.id = `ad-carousel-portal-${storageKey.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    portalContainer.style.cssText = 'position: fixed; z-index: 99999; pointer-events: none;';
-    document.body.appendChild(portalContainer);
-    
-    // Wait for next tick to ensure carouselContainer is bound
-    await tick();
-    
-    // Move carousel to portal
-    if (carouselContainer && portalContainer) {
-      portalContainer.appendChild(carouselContainer);
-      carouselContainer.style.pointerEvents = 'auto';
+    // Ensure document.body exists before creating portal
+    if (!document.body) {
+      console.error('[AdCarousel] document.body not available, retrying...');
+      // Retry after a short delay
+      setTimeout(() => {
+        if (document.body && !portalContainer) {
+          initializePortal();
+        }
+      }, 100);
+      return;
     }
+    
+    initializePortal();
   });
+
+  async function initializePortal(): Promise<void> {
+    try {
+      // Check if portal already exists (e.g., from a previous mount)
+      const existingPortal = document.getElementById(`ad-carousel-portal-${storageKey.replace(/[^a-zA-Z0-9]/g, '-')}`);
+      if (existingPortal) {
+        portalContainer = existingPortal as HTMLDivElement;
+      } else {
+        // Create portal container at body level with unique ID based on storageKey
+        portalContainer = document.createElement('div');
+        portalContainer.id = `ad-carousel-portal-${storageKey.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        portalContainer.style.cssText = 'position: fixed; z-index: 99999; pointer-events: none;';
+        document.body.appendChild(portalContainer);
+      }
+      
+      // Wait for next tick to ensure carouselContainer is bound
+      await tick();
+      
+      // Move carousel to portal
+      if (carouselContainer && portalContainer) {
+        // Only move if not already in portal
+        if (carouselContainer.parentNode !== portalContainer) {
+          portalContainer.appendChild(carouselContainer);
+        }
+        carouselContainer.style.pointerEvents = 'auto';
+      } else {
+        console.warn('[AdCarousel] carouselContainer or portalContainer not available');
+      }
+    } catch (error) {
+      console.error('[AdCarousel] Failed to initialize portal:', error);
+    }
+  }
 
   onDestroy(() => {
     // Clean up portal container

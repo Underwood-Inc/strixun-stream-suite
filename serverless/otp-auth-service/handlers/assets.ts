@@ -5,21 +5,31 @@
 
 import { getCorsHeaders } from '../utils/cors.js';
 
+interface Env {
+    ENVIRONMENT?: string;
+    [key: string]: any;
+}
+
+/**
+ * Asset map type - file paths to file contents (string or data URI)
+ */
+type AssetMap = Record<string, string> | null;
+
 // Dashboard and landing page assets - loaded lazily to avoid Wrangler bundling issues
-let dashboardAssets = null;
+let dashboardAssets: AssetMap = null;
 let dashboardAssetsLoaded = false;
-let landingPageAssets = null;
+let landingPageAssets: AssetMap = null;
 let landingPageAssetsLoaded = false;
 
 /**
  * Lazy load dashboard assets (only when needed, not at top level)
  */
-export async function loadDashboardAssets() {
+export async function loadDashboardAssets(): Promise<AssetMap> {
     if (dashboardAssetsLoaded) return dashboardAssets;
     dashboardAssetsLoaded = true;
     try {
         const dashboardModule = await import('../dashboard-assets.js');
-        dashboardAssets = dashboardModule.default;
+        dashboardAssets = dashboardModule.default as AssetMap;
     } catch (e) {
         // Dashboard not built yet - will proxy to dev server in dev mode
         dashboardAssets = null;
@@ -30,12 +40,12 @@ export async function loadDashboardAssets() {
 /**
  * Lazy load landing page assets (only when needed, not at top level)
  */
-export async function loadLandingPageAssets() {
+export async function loadLandingPageAssets(): Promise<AssetMap> {
     if (landingPageAssetsLoaded) return landingPageAssets;
     landingPageAssetsLoaded = true;
     try {
         const landingPageModule = await import('../landing-page-assets.js');
-        landingPageAssets = landingPageModule.default;
+        landingPageAssets = landingPageModule.default as AssetMap;
     } catch (e) {
         // Landing page not built yet - will proxy to dev server in dev mode
         landingPageAssets = null;
@@ -47,7 +57,7 @@ export async function loadLandingPageAssets() {
  * Handle landing page request
  * Serves the landing page SPA at root path
  */
-export async function handleLandingPage(request, env) {
+export async function handleLandingPage(request: Request, env: Env): Promise<Response> {
     // In local dev (wrangler dev), always try Vite first
     // ENVIRONMENT is not set by default in wrangler dev, so !env.ENVIRONMENT means local dev
     const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
@@ -70,7 +80,8 @@ export async function handleLandingPage(request, env) {
             
             return fetch(proxiedRequest);
         } catch (error) {
-            return new Response(`Landing page dev server not running. Start with: pnpm dev:landing\n\nError: ${error.message}`, {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return new Response(`Landing page dev server not running. Start with: pnpm dev:landing\n\nError: ${errorMessage}`, {
                 status: 503,
                 headers: { 'Content-Type': 'text/plain' },
             });
@@ -102,13 +113,15 @@ export async function handleLandingPage(request, env) {
     const file = assets[filePath];
     if (!file) {
         // If it's an asset request that's not found, return 404
-        if (filePath.includes('.')) {
+        // Check if it has a file extension (and is not index.html)
+        const hasFileExtension = filePath.includes('.') && filePath !== 'index.html';
+        if (hasFileExtension) {
             return new Response('Asset not found: ' + filePath, { 
                 status: 404,
                 headers: { 'Content-Type': 'text/plain' }
             });
         }
-        // Otherwise fallback to index.html for SPA routing
+        // Otherwise fallback to index.html for SPA routing (no file extension)
         filePath = 'index.html';
         const indexFile = assets[filePath];
         if (!indexFile) {
@@ -126,7 +139,7 @@ export async function handleLandingPage(request, env) {
     }
     
     // Handle data URIs for binary files
-    let content = file;
+    let content: string | Uint8Array = file;
     let contentType = 'text/html';
     
     if (filePath.endsWith('.js')) {
@@ -154,8 +167,8 @@ export async function handleLandingPage(request, env) {
         const base64Match = file.match(/^data:[^;]+;base64,(.+)$/);
         if (base64Match) {
             const base64Content = base64Match[1];
-            const binaryContent = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
-            return new Response(binaryContent, {
+            content = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+            return new Response(content, {
                 headers: {
                     'Content-Type': contentType,
                     'Cache-Control': 'public, max-age=3600',
@@ -175,7 +188,12 @@ export async function handleLandingPage(request, env) {
 /**
  * Helper function to serve dashboard files
  */
-function serveDashboardFile(fileContent, filePath, env, request) {
+function serveDashboardFile(
+    fileContent: string,
+    filePath: string,
+    env: Env,
+    request: Request
+): Response {
     // Determine content type
     let contentType = 'text/plain';
     if (filePath.endsWith('.html')) contentType = 'text/html; charset=utf-8';
@@ -190,10 +208,13 @@ function serveDashboardFile(fileContent, filePath, env, request) {
     else if (filePath.endsWith('.ico')) contentType = 'image/x-icon';
     
     // Handle base64 encoded files (binary) vs text files
-    let content;
+    let content: string | Uint8Array;
     if (typeof fileContent === 'string' && fileContent.startsWith('data:')) {
         // Base64 encoded binary file
         const base64Data = fileContent.split(',')[1];
+        if (!base64Data) {
+            throw new Error('Invalid data URI: missing base64 data');
+        }
         content = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     } else {
         // Text file
@@ -213,7 +234,7 @@ function serveDashboardFile(fileContent, filePath, env, request) {
  * Handle dashboard request
  * Serves the dashboard SPA at /dashboard path
  */
-export async function handleDashboard(request, env) {
+export async function handleDashboard(request: Request, env: Env): Promise<Response> {
     // In development, proxy to main Vite dev server (same as landing page)
     // In production, serve built files from main app
     const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
@@ -232,8 +253,7 @@ export async function handleDashboard(request, env) {
             const viteResponse = await fetch(viteRequest);
             
             // Clone response and update any absolute URLs in HTML to be relative
-            const contentType = viteResponse.headers.get('content-type') || '';
-            let body = await viteResponse.text();
+            const body = await viteResponse.text();
             
             // If it's HTML, we might need to fix asset paths, but Vite handles this
             // For now, just proxy as-is since Vite dev server handles paths correctly
@@ -315,10 +335,19 @@ pnpm dev</code></pre>
     // Get file content
     const fileContent = assets[filePath];
     if (!fileContent) {
-        // Fallback to index.html for SPA routing
-        if (filePath !== 'index.html' && assets['index.html']) {
+        // Only fallback to index.html for SPA routes (no file extension)
+        // Asset requests (with file extensions) should return 404
+        const hasFileExtension = filePath.includes('.') && filePath !== 'index.html';
+        if (!hasFileExtension && filePath !== 'index.html' && assets['index.html']) {
             filePath = 'index.html';
-            return serveDashboardFile(assets[filePath], filePath, env, request);
+            const indexContent = assets[filePath];
+            if (!indexContent) {
+                return new Response('Dashboard index.html not found', {
+                    status: 404,
+                    headers: getCorsHeaders(env, request),
+                });
+            }
+            return serveDashboardFile(indexContent, filePath, env, request);
         }
         return new Response('File not found', {
             status: 404,

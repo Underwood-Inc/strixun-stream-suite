@@ -129,13 +129,14 @@
   </FloatingPanel>
   
   <ToastContainer />
-  
-  <TwitchAdCarousel
-    position="bottom-right"
-    supportUrl="https://www.twitch.tv/strixun"
-  />
 </div>
 {/if}
+
+<TwitchAdCarousel
+  position="bottom-right"
+  supportUrl="https://www.twitch.tv/strixun"
+  storageKey="ui_main_ad_carousel_state"
+/>
 
 <style lang="scss">
   @use '@styles/main';
