@@ -65,13 +65,22 @@ export function getCorsHeaders(env: Env, request: Request, customer: Customer | 
         });
         allowOrigin = matchedOrigin === '*' ? '*' : (matchedOrigin || null);
     } else {
-        // No origins configured - throw error in production
+        // No origins configured
         const isProduction = env.ENVIRONMENT === 'production';
         if (isProduction) {
-            throw new Error('ALLOWED_ORIGINS must be configured in production. Set it via: wrangler secret put ALLOWED_ORIGINS');
+            // Production: deny cross-origin requests (return 'null' which means no CORS)
+            // This allows same-origin requests and requests without Origin header to succeed
+            // but blocks cross-origin requests (secure default)
+            allowOrigin = null;
+            // Log warning for visibility (but don't fail the request)
+            if (origin) {
+                console.warn(`CORS: No ALLOWED_ORIGINS configured in production. Cross-origin request from ${origin} will be blocked. Set ALLOWED_ORIGINS via: wrangler secret put ALLOWED_ORIGINS`);
+            }
+        } else {
+            // Development: allow all (but warn)
+            console.warn('CORS: No ALLOWED_ORIGINS configured. Allowing all origins in development mode.');
+            allowOrigin = '*';
         }
-        // Development: allow all (but warn)
-        allowOrigin = '*';
     }
     
     return {
