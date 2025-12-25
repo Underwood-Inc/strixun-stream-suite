@@ -132,6 +132,16 @@ export function createEnhancedResponse(data, context, typeName) {
  * Create error response with RFC 7807 format
  */
 export function createErrorResponse(request, error, status = 500) {
+  // Log error details for debugging
+  console.error('[Error Response]', {
+    status: error.status || status,
+    message: error.message || 'Internal Server Error',
+    stack: error.stack,
+    url: request.url,
+    method: request.method,
+    path: new URL(request.url).pathname,
+  });
+  
   const apiRequest = {
     id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     method: request.method,

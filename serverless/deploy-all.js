@@ -14,8 +14,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const services = [
-  { name: 'Twitch API', path: '.', worker: 'strixun-twitch-api', command: 'wrangler deploy' },
+  { name: 'Twitch API', path: 'twitch-api', worker: 'strixun-twitch-api', command: 'wrangler deploy' },
   { name: 'OTP Auth Service', path: 'otp-auth-service', worker: 'otp-auth-service', command: 'pnpm run deploy' },
+  { name: 'Game API', path: 'game-api', worker: 'strixun-game-api', command: 'wrangler deploy' },
   { name: 'URL Shortener', path: 'url-shortener', worker: 'strixun-url-shortener', command: 'wrangler deploy' },
   { name: 'Chat Signaling', path: 'chat-signaling', worker: 'strixun-chat-signaling', command: 'wrangler deploy' },
 ];

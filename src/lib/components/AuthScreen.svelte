@@ -10,11 +10,19 @@
   
   let showLoginModal = false;
   
+  // Reactive statement to track modal state changes
+  $: {
+    console.log('[AuthScreen] showLoginModal changed to:', showLoginModal);
+  }
+  
   function handleLoginClick(): void {
+    console.log('[AuthScreen] Button clicked, setting showLoginModal to true');
     showLoginModal = true;
+    console.log('[AuthScreen] showLoginModal is now:', showLoginModal);
   }
   
   function handleLoginClose(): void {
+    console.log('[AuthScreen] Closing login modal');
     showLoginModal = false;
   }
 </script>
@@ -30,8 +38,9 @@
       Please sign in using your email address to continue.
     </p>
     <button 
+      type="button"
       class="auth-screen__button"
-      on:click={handleLoginClick}
+      on:click|stopPropagation={handleLoginClick}
     >
       Sign In with Email
     </button>

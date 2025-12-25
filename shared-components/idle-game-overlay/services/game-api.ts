@@ -6,7 +6,7 @@
  */
 
 import { decryptWithJWT } from '../../../src/core/api/enhanced/encryption/jwt-encryption.js';
-import { authenticatedFetch, getApiUrl, getAuthToken } from '../../../src/stores/auth.js';
+import { authenticatedFetch, getAuthToken } from '../../../src/stores/auth.js';
 import type {
     CharacterAppearance,
     CraftingResult,
@@ -36,6 +36,42 @@ interface GameCharacter {
 }
 
 /**
+ * Get Game API URL
+ * Priority: manual override > auto-injected > hardcoded fallback
+ */
+function getGameApiUrl(): string {
+  // Priority 1: Manual override from storage (if available)
+  if (typeof window !== 'undefined' && (window as any).localStorage) {
+    const manualOverride = localStorage.getItem('game_api_server');
+    if (manualOverride && manualOverride.trim() !== '') {
+      return manualOverride.trim();
+    }
+  }
+
+  // Priority 2: Auto-injected during deployment
+  if (typeof window !== 'undefined' && (window as any).STRIXUN_CONFIG?.GAME_API_URL) {
+    const injected = (window as any).STRIXUN_CONFIG.GAME_API_URL;
+    if (injected && !injected.startsWith('%%')) {
+      return injected;
+    }
+  }
+
+  // Priority 3: Hardcoded fallback - use custom domain (game.idling.app)
+  const CUSTOM_DOMAIN_URL = 'https://game.idling.app';
+  const WORKERS_DEV_URL = 'https://strixun-game-api.strixuns-script-suite.workers.dev';
+  
+  // Use custom domain as primary (game.idling.app)
+  const HARDCODED_GAME_API_URL = CUSTOM_DOMAIN_URL;
+  
+  if (HARDCODED_GAME_API_URL && !HARDCODED_GAME_API_URL.includes('UPDATE-ME')) {
+    return HARDCODED_GAME_API_URL;
+  }
+
+  // Priority 4: Fallback to workers.dev URL
+  return WORKERS_DEV_URL;
+}
+
+/**
  * Game API Service
  * Handles all game API calls with automatic decryption
  */
@@ -43,7 +79,7 @@ export class GameApiService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = getApiUrl();
+    this.baseUrl = getGameApiUrl();
   }
 
   /**

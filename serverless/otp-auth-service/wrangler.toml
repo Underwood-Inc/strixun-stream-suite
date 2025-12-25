@@ -3,7 +3,8 @@
 
 name = "otp-auth-service"
 main = "worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
 
 # KV Namespace for OTP auth data
 # Created via: wrangler kv namespace create "OTP_AUTH_KV"
@@ -40,4 +41,21 @@ routes = [
 # 4. DNS records are automatically managed by Cloudflare
 #
 # Note: Routes configured in the dashboard take precedence over wrangler.toml
+
+# Observability Configuration
+# Enables logging and tracing for the worker
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
 

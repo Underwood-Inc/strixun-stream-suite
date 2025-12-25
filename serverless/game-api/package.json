@@ -1,0 +1,19 @@
+{
+  "name": "strixun-game-api",
+  "version": "1.0.0",
+  "description": "Dedicated Cloudflare Worker for idle game API endpoints",
+  "private": true,
+  "packageManager": "pnpm@9.15.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "tail:prod": "wrangler tail --env production"
+  },
+  "devDependencies": {
+    "wrangler": "^4.56.0"
+  }
+}
+

@@ -225,6 +225,16 @@
     font-size: 1rem;
   }
 
+  .otp-login-countdown-text strong::selection {
+    background: var(--accent);
+    color: var(--bg-dark);
+  }
+
+  .otp-login-rate-limit-summary-scenario::selection {
+    background: var(--accent);
+    color: var(--bg-dark);
+  }
+
   @keyframes pulse {
     0%, 100% {
       opacity: 1;

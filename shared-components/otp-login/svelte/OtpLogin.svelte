@@ -5,13 +5,12 @@
    * Reusable email OTP authentication component for Svelte
    */
   
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import type { OtpLoginState } from '../core';
   import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig } from '../core';
   import EmailForm from './components/EmailForm.svelte';
   import ErrorDisplay from './components/ErrorDisplay.svelte';
   import OtpForm from './components/OtpForm.svelte';
-  import { generatePortalId, portal } from './utils';
 
   export let apiUrl: string;
   export let onSuccess: (data: LoginSuccessData) => void;
@@ -35,45 +34,30 @@
     rateLimitCountdown: 0,
   };
 
-  // Portal rendering for modal
-  let portalContainer: HTMLDivElement | null = null;
-  let portalContainerId: string = '';
-  
   // Store unsubscribe function for cleanup
   let unsubscribe: (() => void) | null = null;
 
   onMount(async () => {
-    core = new OtpLoginCore({
-      apiUrl,
-      onSuccess,
-      onError,
-      endpoints,
-      customHeaders,
-    });
+    console.log('[OtpLogin] onMount - showAsModal:', showAsModal);
+    
+    try {
+      core = new OtpLoginCore({
+        apiUrl,
+        onSuccess,
+        onError,
+        endpoints,
+        customHeaders,
+      });
 
-    // Subscribe to state changes
-    unsubscribe = core.subscribe((newState) => {
-      state = newState;
-    });
-
-    // Setup portal for modal rendering
-    if (showAsModal) {
-      await tick();
+      // Subscribe to state changes
+      unsubscribe = core.subscribe((newState) => {
+        state = newState;
+      });
       
-      // Generate unique ID for this instance
-      portalContainerId = generatePortalId();
-      
-      // Create portal container at body level
-      portalContainer = document.createElement('div');
-      portalContainer.id = portalContainerId;
-      portalContainer.style.position = 'fixed';
-      portalContainer.style.top = '0';
-      portalContainer.style.left = '0';
-      portalContainer.style.width = '0';
-      portalContainer.style.height = '0';
-      portalContainer.style.pointerEvents = 'none';
-      portalContainer.style.zIndex = '1000000'; // Must be higher than auth screen (999999)
-      document.body.appendChild(portalContainer);
+      console.log('[OtpLogin] Initialization complete');
+    } catch (error) {
+      console.error('[OtpLogin] Failed to initialize:', error);
+      onError?.(error instanceof Error ? error.message : 'Failed to initialize login');
     }
   });
 
@@ -84,32 +68,32 @@
     if (core) {
       core.destroy();
     }
-    
-    // Clean up portal container
-    if (portalContainer && portalContainer.parentNode) {
-      portalContainer.parentNode.removeChild(portalContainer);
-    }
   });
 
   function handleEmailChange(e: Event) {
+    if (!core) return;
     const target = e.target as HTMLInputElement;
     core.setEmail(target.value);
   }
 
   function handleOtpChange(e: Event) {
+    if (!core) return;
     const target = e.target as HTMLInputElement;
     core.setOtp(target.value);
   }
 
   function handleRequestOtp() {
+    if (!core) return;
     core.requestOtp();
   }
 
   function handleVerifyOtp() {
+    if (!core) return;
     core.verifyOtp();
   }
 
   function handleGoBack() {
+    if (!core) return;
     core.goBack();
   }
 
@@ -127,14 +111,14 @@
   }
 </script>
 
-{#if showAsModal && portalContainer}
+{#if showAsModal}
+  <!-- Modal rendered inline with fixed positioning to escape parent containers -->
   <div 
     class="otp-login-modal-overlay" 
-    onclick={onClose} 
+    onclick={() => onClose?.()} 
     role="button" 
     tabindex="0" 
     onkeydown={(e) => e.key === 'Escape' && onClose?.()}
-    use:portal={portalContainer}
   >
     <div class="otp-login-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-labelledby="otp-login-title" tabindex="-1">
       <div class="otp-login-header">
@@ -249,6 +233,7 @@
     justify-content: center;
     z-index: 1000000; /* Must be higher than auth screen (999999) */
     animation: fade-in 0.3s ease-out;
+    pointer-events: auto;
   }
 
   .otp-login-modal {

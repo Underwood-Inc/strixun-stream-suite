@@ -279,11 +279,11 @@ pnpm dev</code></pre>
         }
     }
     
-    // Production: dashboard is part of main app, serve from landing page assets
-    // The main app handles routing client-side, so /dashboard serves index.html
-    const assets = await loadLandingPageAssets();
+    // Production: serve dashboard assets from dashboard-assets.js
+    // The dashboard handles routing client-side, so /dashboard serves index.html
+    const assets = await loadDashboardAssets();
     if (!assets) {
-        return new Response('App not built. Run: pnpm build', {
+        return new Response('Dashboard not built. Run: pnpm build', {
             status: 503,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'text/plain' },
         });

@@ -65,6 +65,15 @@ export function createEnhancedRouter(originalRouter) {
       // Enhance response
       return await enhanceRouterResponse(response, request, env);
     } catch (error) {
+      // Log error for debugging
+      console.error('[Enhanced Router] Unhandled error:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        url: request.url,
+        method: request.method,
+      });
+      
       // Enhance error
       return enhanceRouterError(error, request, env);
     }

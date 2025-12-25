@@ -113,23 +113,23 @@
             /* Use same semi-transparent orange as main app (rgba(237, 174, 73, 0.3)) */
             .swagger-ui *::selection,
             .swagger-ui ::selection {
-              background: rgba(237, 174, 73, 0.3) !important;
-              background-color: rgba(237, 174, 73, 0.3) !important;
-              color: var(--accent-light, #f9df74) !important;
+              background: var(--accent, #edae49) !important;
+              background-color: var(--accent, #edae49) !important;
+              color: var(--bg-dark, #0f0e0b) !important;
             }
             
             .swagger-ui *::-moz-selection,
             .swagger-ui ::-moz-selection {
-              background: rgba(237, 174, 73, 0.3) !important;
-              background-color: rgba(237, 174, 73, 0.3) !important;
-              color: var(--accent-light, #f9df74) !important;
+              background: var(--accent, #edae49) !important;
+              background-color: var(--accent, #edae49) !important;
+              color: var(--bg-dark, #0f0e0b) !important;
             }
             
             .swagger-ui *::-webkit-selection,
             .swagger-ui ::-webkit-selection {
-              background: rgba(237, 174, 73, 0.3) !important;
-              background-color: rgba(237, 174, 73, 0.3) !important;
-              color: var(--accent-light, #f9df74) !important;
+              background: var(--accent, #edae49) !important;
+              background-color: var(--accent, #edae49) !important;
+              color: var(--bg-dark, #0f0e0b) !important;
             }
             
             /* ========== Force Dark Theme - Override All Light Elements ========== */
@@ -1153,9 +1153,9 @@
             #${containerId} *::selection,
             #${containerId} *::-moz-selection,
             #${containerId} *::-webkit-selection {
-              background: rgba(237, 174, 73, 0.3) !important;
-              background-color: rgba(237, 174, 73, 0.3) !important;
-              color: var(--accent-light, #f9df74) !important;
+              background: var(--accent, #edae49) !important;
+              background-color: var(--accent, #edae49) !important;
+              color: var(--bg-dark, #0f0e0b) !important;
             }
           `;
           document.head.appendChild(globalStyle);

@@ -26,13 +26,13 @@ body {
 
 // ============ Text Selection ============
 ::selection {
-  background: rgba(237, 174, 73, 0.3);
-  color: var(--accent-light);
+  background: var(--accent);
+  color: var(--bg-dark);
 }
 
 ::-moz-selection {
-  background: rgba(237, 174, 73, 0.3);
-  color: var(--accent-light);
+  background: var(--accent);
+  color: var(--bg-dark);
 }
 
 // ============ Typography ============
