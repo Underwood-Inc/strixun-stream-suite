@@ -209,6 +209,9 @@ export interface EmailProvider {
 
 /**
  * Resend email provider
+ * 
+ * NOTE: This class must be exported as a named export to work correctly with Cloudflare Workers bundling.
+ * Do not change to default export as it will break the constructor in the bundled output.
  */
 export class ResendProvider implements EmailProvider {
     private apiKey: string;
@@ -345,11 +348,22 @@ interface Env {
  * Get email provider based on customer config or environment
  */
 export function getEmailProvider(customer: Customer | null, env: Env): EmailProvider {
+    // Runtime check to ensure ResendProvider is a constructor
+    // This helps debug bundling issues where the class might be transformed incorrectly
+    if (typeof ResendProvider !== 'function') {
+        const errorMsg = `ResendProvider is not a constructor. Type: ${typeof ResendProvider}, Value: ${String(ResendProvider)}`;
+        console.error('ResendProvider bundling error:', errorMsg);
+        throw new Error(`Email provider initialization failed: ${errorMsg}`);
+    }
+    
     // Check customer-specific email provider config
     if (customer?.config?.emailProvider) {
         const providerConfig = customer.config.emailProvider;
         
         if (providerConfig.type === 'sendgrid' && providerConfig.apiKey) {
+            if (typeof SendGridProvider !== 'function') {
+                throw new Error('SendGridProvider is not a constructor. This is a bundling issue.');
+            }
             return new SendGridProvider(providerConfig.apiKey);
         }
         
