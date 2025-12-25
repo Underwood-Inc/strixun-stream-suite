@@ -48,9 +48,15 @@
 
   /**
    * Determine if background is light or dark and set appropriate text color
+   * Does not update color when input is focused to prevent unreadable text
    */
   function updateTextColor() {
     if (!emailInput) return;
+    
+    // Don't update color when input is focused - keep the current readable color
+    if (document.activeElement === emailInput) {
+      return;
+    }
 
     const computedStyle = window.getComputedStyle(emailInput);
     let bgColor = computedStyle.backgroundColor;
@@ -100,13 +106,32 @@
     // Initial color update
     updateTextColor();
 
+    // Ensure text color remains readable when input is focused
+    // Always use the default text color when focused to prevent unreadable colors
+    const handleFocus = () => {
+      // The input background is var(--bg-dark) from the mixin, so use var(--text) for readability
+      emailInput.style.color = 'var(--text)';
+    };
+
+    // Ensure text color remains readable when input loses focus
+    const handleBlur = () => {
+      // Update color when not focused
+      updateTextColor();
+    };
+
+    emailInput.addEventListener('focus', handleFocus);
+    emailInput.addEventListener('blur', handleBlur);
+
     // Watch for parent/ancestor style changes (e.g., theme changes) but not self
     // CRITICAL: Don't watch the input element itself to avoid infinite loops
     // when we set its style.color property
     const parentElement = emailInput.parentElement;
     if (parentElement) {
       observer = new MutationObserver(() => {
-        updateTextColor();
+        // Only update if not focused
+        if (document.activeElement !== emailInput) {
+          updateTextColor();
+        }
       });
 
       observer.observe(parentElement, {
@@ -118,16 +143,25 @@
 
     // Watch for size changes that might affect computed styles
     resizeObserver = new ResizeObserver(() => {
-      updateTextColor();
+      // Only update if not focused
+      if (document.activeElement !== emailInput) {
+        updateTextColor();
+      }
     });
 
     resizeObserver.observe(emailInput);
 
     // Also update on window resize (in case of media query changes)
-    const handleResize = () => updateTextColor();
+    const handleResize = () => {
+      if (document.activeElement !== emailInput) {
+        updateTextColor();
+      }
+    };
     window.addEventListener('resize', handleResize);
 
     return () => {
+      emailInput.removeEventListener('focus', handleFocus);
+      emailInput.removeEventListener('blur', handleBlur);
       window.removeEventListener('resize', handleResize);
     };
   });
@@ -217,6 +251,12 @@
   .otp-login-input#otp-login-email {
     /* Color is set dynamically via JavaScript based on background contrast */
     font-weight: 500;
+    
+    /* Ensure text color remains readable when focused/active */
+    &:focus,
+    &:active {
+      color: var(--text);
+    }
   }
 
   .otp-login-input#otp-login-email::selection {

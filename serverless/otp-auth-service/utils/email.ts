@@ -3,14 +3,19 @@
  * Template rendering, email providers, and sending logic
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /**
  * Escape HTML entities
- * @param {string} str - String to escape
- * @returns {string} Escaped string
  */
-export function escapeHtml(str) {
+export function escapeHtml(str: string): string {
     if (!str) return '';
-    const map = {
+    const map: Record<string, string> = {
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
@@ -22,12 +27,8 @@ export function escapeHtml(str) {
 
 /**
  * Render email template with variables
- * @param {string} template - Template string
- * @param {object} variables - Variables to substitute
- * @param {boolean} isHtml - Whether this is an HTML template (escape variables)
- * @returns {string} Rendered template
  */
-export function renderEmailTemplate(template, variables, isHtml = false) {
+export function renderEmailTemplate(template: string, variables: Record<string, string | number | null | undefined>, isHtml = false): string {
     if (!template) return '';
     
     let rendered = template;
@@ -37,21 +38,14 @@ export function renderEmailTemplate(template, variables, isHtml = false) {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
         // For HTML templates, escape variables to prevent XSS (except for otp which is safe)
         // For text templates, use as-is
-        const replacement = isHtml && key !== 'otp' ? escapeHtml(value || '') : (value || '');
+        const replacement = isHtml && key !== 'otp' ? escapeHtml(String(value || '')) : String(value || '');
         rendered = rendered.replace(regex, replacement);
     }
     
     return rendered;
 }
 
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-let emailTemplateCache = null;
+let emailTemplateCache: string | null = null;
 
 /**
  * Get default email template
@@ -62,9 +56,8 @@ let emailTemplateCache = null;
  * - Card: #252017
  * - Text: #f9f9f9
  * - Text secondary: #b8b8b8
- * @returns {string} Default HTML template
  */
-export function getDefaultEmailTemplate() {
+export function getDefaultEmailTemplate(): string {
     if (emailTemplateCache === null) {
         try {
             const templatePath = join(__dirname, '../templates/email-template.html');
@@ -77,7 +70,7 @@ export function getDefaultEmailTemplate() {
     return emailTemplateCache;
 }
 
-function getFallbackTemplate() {
+function getFallbackTemplate(): string {
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -197,9 +190,8 @@ function getFallbackTemplate() {
 
 /**
  * Get default text email template
- * @returns {string} Default text template
  */
-export function getDefaultTextTemplate() {
+export function getDefaultTextTemplate(): string {
     return `Your Verification Code
 
 Use this code to verify your email address: {{otp}}
@@ -212,57 +204,104 @@ If you didn't request this code, please ignore this email.
 This is an automated message, please do not reply.`;
 }
 
+export interface EmailOptions {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+}
+
+export interface EmailProvider {
+    sendEmail(options: EmailOptions): Promise<any>;
+}
+
 /**
  * Resend email provider
  */
-export class ResendProvider {
-    constructor(apiKey) {
+export class ResendProvider implements EmailProvider {
+    private apiKey: string;
+    private baseUrl: string;
+
+    constructor(apiKey: string) {
         this.apiKey = apiKey;
         this.baseUrl = 'https://api.resend.com';
     }
     
-    async sendEmail({ from, to, subject, html, text }) {
-        const response = await fetch(`${this.baseUrl}/emails`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                from,
-                to,
-                subject,
-                html,
-                text,
-            }),
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            let errorData;
-            try {
-                errorData = JSON.parse(errorText);
-            } catch (e) {
-                errorData = { message: errorText };
+    async sendEmail({ from, to, subject, html, text }: EmailOptions): Promise<any> {
+        try {
+            const response = await fetch(`${this.baseUrl}/emails`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from,
+                    to,
+                    subject,
+                    html,
+                    text,
+                }),
+            });
+            
+            if (!response.ok) {
+                let errorText = '';
+                let errorData: { message?: string; error?: string; details?: any } = {};
+                
+                try {
+                    errorText = await response.text();
+                    if (errorText) {
+                        try {
+                            errorData = JSON.parse(errorText);
+                        } catch (e) {
+                            errorData = { message: errorText };
+                        }
+                    }
+                } catch (readError) {
+                    errorText = `Unable to read error response: ${readError instanceof Error ? readError.message : String(readError)}`;
+                    errorData = { message: errorText };
+                }
+                
+                // Extract error message with fallbacks
+                const errorMessage = errorData.message || errorData.error || errorText || `HTTP ${response.status} ${response.statusText}`;
+                
+                throw new Error(`Resend API error: ${response.status} - ${errorMessage}`);
             }
             
-            throw new Error(`Resend API error: ${response.status} - ${errorData.message || errorText}`);
+            return await response.json();
+        } catch (error: any) {
+            // Re-throw if it's already our formatted error
+            if (error.message && error.message.includes('Resend API error:')) {
+                throw error;
+            }
+            
+            // Handle network errors, timeouts, etc.
+            if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('network'))) {
+                throw new Error(`Network error: Unable to connect to Resend API - ${error.message}`);
+            } else if (error.name === 'AbortError' || error.message.includes('timeout')) {
+                throw new Error(`Timeout error: Resend API request timed out - ${error.message}`);
+            } else {
+                // Wrap other errors
+                throw new Error(`Resend API error: ${error.message || 'Unknown error'}`);
+            }
         }
-        
-        return await response.json();
     }
 }
 
 /**
  * SendGrid email provider
  */
-export class SendGridProvider {
-    constructor(apiKey) {
+export class SendGridProvider implements EmailProvider {
+    private apiKey: string;
+    private baseUrl: string;
+
+    constructor(apiKey: string) {
         this.apiKey = apiKey;
         this.baseUrl = 'https://api.sendgrid.com/v3';
     }
     
-    async sendEmail({ from, to, subject, html, text }) {
+    async sendEmail({ from, to, subject, html, text }: EmailOptions): Promise<{ success: boolean }> {
         const response = await fetch(`${this.baseUrl}/mail/send`, {
             method: 'POST',
             headers: {
@@ -291,15 +330,26 @@ export class SendGridProvider {
     }
 }
 
+interface Customer {
+    config?: {
+        emailProvider?: {
+            type: 'resend' | 'sendgrid';
+            apiKey: string;
+        };
+    };
+}
+
+interface Env {
+    RESEND_API_KEY?: string;
+    [key: string]: any;
+}
+
 /**
  * Get email provider based on customer config or environment
- * @param {object|null} customer - Customer object
- * @param {*} env - Worker environment
- * @returns {ResendProvider|SendGridProvider} Email provider instance
  */
-export function getEmailProvider(customer, env) {
+export function getEmailProvider(customer: Customer | null, env: Env): EmailProvider {
     // Check customer-specific email provider config
-    if (customer && customer.config && customer.config.emailProvider) {
+    if (customer?.config?.emailProvider) {
         const providerConfig = customer.config.emailProvider;
         
         if (providerConfig.type === 'sendgrid' && providerConfig.apiKey) {

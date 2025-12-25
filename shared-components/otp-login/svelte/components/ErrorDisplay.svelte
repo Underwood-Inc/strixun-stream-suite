@@ -63,8 +63,8 @@
           }}
           position="top" 
           interactive={true}
-          maxWidth="450px"
-          maxHeight="600px"
+          maxWidth="min(85vw, 500px)"
+          maxHeight="min(70vh, 600px)"
         >
           <span class="otp-login-error-info-icon" aria-label="Rate limit details">ℹ️</span>
         </Tooltip>
@@ -73,8 +73,8 @@
           content={tooltipContent} 
           position="top" 
           interactive={true}
-          maxWidth="420px"
-          maxHeight="500px"
+          maxWidth="min(85vw, 450px)"
+          maxHeight="min(60vh, 500px)"
         >
           <span class="otp-login-error-info-icon" aria-label="Error details">ℹ️</span>
         </Tooltip>

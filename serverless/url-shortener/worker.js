@@ -491,7 +491,7 @@ const STANDALONE_HTML = `<!DOCTYPE html>
 
     <script>
         // Configuration - Using custom domain (s.idling.app)
-        const OTP_AUTH_API_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+        const OTP_AUTH_API_URL = 'https://auth.idling.app';
         const URL_SHORTENER_API_URL = 'https://s.idling.app';
 
         // State

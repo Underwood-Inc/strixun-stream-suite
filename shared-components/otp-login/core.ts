@@ -163,10 +163,45 @@ export class OtpLoginCore {
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+      let data: any;
+      try {
+        const responseText = await response.text();
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            // Response is not valid JSON - create error object from status
+            data = {
+              detail: `Server error (${response.status}): ${response.statusText || 'Invalid response format'}`,
+              error: `Server error (${response.status}): ${response.statusText || 'Invalid response format'}`,
+              errorCode: 'invalid_response',
+              status: response.status
+            };
+          }
+        } else {
+          // Empty response
+          data = {
+            detail: `Server error (${response.status}): Empty response from server`,
+            error: `Server error (${response.status}): Empty response from server`,
+            errorCode: 'empty_response',
+            status: response.status
+          };
+        }
+      } catch (readError) {
+        // Failed to read response
+        data = {
+          detail: `Network error: Unable to read server response`,
+          error: `Network error: Unable to read server response`,
+          errorCode: 'response_read_error',
+          status: response.status
+        };
+      }
 
       if (!response.ok) {
-        const errorMsg = data.detail || data.error || 'Failed to send OTP';
+        // Extract error message with priority: detail > error > title > status text
+        const errorMsg = data.detail || data.error || data.title || 
+          `Server error (${response.status}): ${response.statusText || 'Unknown error'}`;
+        const errorCode = data.errorCode || data.reason || data.code || 'unknown_error';
         
         // Check if this is a rate limit error (429)
         if (response.status === 429 && data.reset_at) {
@@ -183,7 +218,7 @@ export class OtpLoginCore {
           this.setState({ 
             error: errorMsg, 
             loading: false,
-            errorCode: data.reason || 'rate_limit_exceeded',
+            errorCode: errorCode || 'rate_limit_exceeded',
             errorDetails: data.rate_limit_details,
             rateLimitResetAt: data.reset_at_iso || data.reset_at,
             rateLimitCountdown: secondsUntilReset,
@@ -195,7 +230,7 @@ export class OtpLoginCore {
           this.setState({ 
             error: errorMsg, 
             loading: false,
-            errorCode: data.reason || data.code,
+            errorCode: errorCode,
             errorDetails: data.rate_limit_details,
             rateLimitResetAt: null,
             rateLimitCountdown: 0,
@@ -218,8 +253,39 @@ export class OtpLoginCore {
       // Start countdown
       this.startCountdown();
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to request OTP';
-      this.setState({ error: errorMsg, loading: false });
+      // Handle different types of errors with detailed messages
+      let errorMsg = 'Failed to request OTP';
+      
+      if (err instanceof TypeError) {
+        // Network errors, CORS errors, etc.
+        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Failed to fetch')) {
+          errorMsg = 'Network error: Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (err.message.includes('CORS')) {
+          errorMsg = 'CORS error: Cross-origin request blocked. Please contact support.';
+        } else {
+          errorMsg = `Network error: ${err.message}`;
+        }
+      } else if (err instanceof SyntaxError) {
+        // JSON parsing errors
+        errorMsg = 'Server response error: Invalid response format from server. Please try again.';
+      } else if (err instanceof Error) {
+        // Other Error instances
+        if (err.name === 'AbortError') {
+          errorMsg = 'Request timeout: The request took too long. Please try again.';
+        } else {
+          errorMsg = err.message || 'An unexpected error occurred. Please try again.';
+        }
+      } else if (typeof err === 'string') {
+        errorMsg = err;
+      } else {
+        errorMsg = 'An unexpected error occurred. Please try again.';
+      }
+      
+      this.setState({ 
+        error: errorMsg, 
+        loading: false,
+        errorCode: 'network_error'
+      });
       this.config.onError?.(errorMsg);
     }
   }
@@ -253,11 +319,51 @@ export class OtpLoginCore {
         }),
       });
 
-      const data = await response.json();
+      let data: any;
+      try {
+        const responseText = await response.text();
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            // Response is not valid JSON
+            data = {
+              detail: `Server error (${response.status}): ${response.statusText || 'Invalid response format'}`,
+              error: `Server error (${response.status}): ${response.statusText || 'Invalid response format'}`,
+              errorCode: 'invalid_response',
+              status: response.status
+            };
+          }
+        } else {
+          // Empty response
+          data = {
+            detail: `Server error (${response.status}): Empty response from server`,
+            error: `Server error (${response.status}): Empty response from server`,
+            errorCode: 'empty_response',
+            status: response.status
+          };
+        }
+      } catch (readError) {
+        // Failed to read response
+        data = {
+          detail: 'Network error: Unable to read server response',
+          error: 'Network error: Unable to read server response',
+          errorCode: 'response_read_error',
+          status: response.status
+        };
+      }
 
       if (!response.ok) {
-        const errorMsg = data.detail || data.error || 'Invalid OTP';
-        this.setState({ error: errorMsg, loading: false });
+        // Extract error message with priority: detail > error > title > status text
+        const errorMsg = data.detail || data.error || data.title || 
+          `Server error (${response.status}): ${response.statusText || 'Unknown error'}`;
+        const errorCode = data.errorCode || 'unknown_error';
+        
+        this.setState({ 
+          error: errorMsg, 
+          loading: false,
+          errorCode: errorCode
+        });
         this.config.onError?.(errorMsg);
         return;
       }
@@ -276,8 +382,39 @@ export class OtpLoginCore {
       this.setState({ loading: false });
       this.config.onSuccess(successData);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to verify OTP';
-      this.setState({ error: errorMsg, loading: false });
+      // Handle different types of errors with detailed messages
+      let errorMsg = 'Failed to verify OTP';
+      
+      if (err instanceof TypeError) {
+        // Network errors, CORS errors, etc.
+        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Failed to fetch')) {
+          errorMsg = 'Network error: Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (err.message.includes('CORS')) {
+          errorMsg = 'CORS error: Cross-origin request blocked. Please contact support.';
+        } else {
+          errorMsg = `Network error: ${err.message}`;
+        }
+      } else if (err instanceof SyntaxError) {
+        // JSON parsing errors
+        errorMsg = 'Server response error: Invalid response format from server. Please try again.';
+      } else if (err instanceof Error) {
+        // Other Error instances
+        if (err.name === 'AbortError') {
+          errorMsg = 'Request timeout: The request took too long. Please try again.';
+        } else {
+          errorMsg = err.message || 'An unexpected error occurred. Please try again.';
+        }
+      } else if (typeof err === 'string') {
+        errorMsg = err;
+      } else {
+        errorMsg = 'An unexpected error occurred. Please try again.';
+      }
+      
+      this.setState({ 
+        error: errorMsg, 
+        loading: false,
+        errorCode: 'network_error'
+      });
       this.config.onError?.(errorMsg);
     }
   }

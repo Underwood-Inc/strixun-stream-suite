@@ -241,7 +241,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     width: 90%;
-    max-width: 400px;
+    max-width: min(90vw, 500px);
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);

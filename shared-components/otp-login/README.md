@@ -35,7 +35,7 @@ The component is located in `shared-components/otp-login/`. No npm package neede
 </script>
 
 <OtpLogin
-  apiUrl="https://otp-auth-service.strixuns-script-suite.workers.dev"
+  apiUrl="https://auth.idling.app"
   onSuccess={handleLoginSuccess}
   onError={handleLoginError}
   title="Developer Dashboard"
@@ -56,7 +56,7 @@ The component is located in `shared-components/otp-login/`. No npm package neede
 
 {#if showLogin}
   <OtpLogin
-    apiUrl="https://otp-auth-service.strixuns-script-suite.workers.dev"
+    apiUrl="https://auth.idling.app"
     onSuccess={handleLoginSuccess}
     onError={handleLoginError}
     showAsModal={true}
@@ -71,7 +71,7 @@ The component is located in `shared-components/otp-login/`. No npm package neede
 import { OtpLoginCore } from './shared-components/otp-login/core';
 
 const login = new OtpLoginCore({
-  apiUrl: 'https://otp-auth-service.strixuns-script-suite.workers.dev',
+  apiUrl: 'https://auth.idling.app',
   onSuccess: (data) => {
     console.log('Logged in!', data);
     localStorage.setItem('auth_token', data.token);

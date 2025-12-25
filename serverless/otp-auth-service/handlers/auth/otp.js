@@ -203,19 +203,156 @@ export async function handleRequestOTP(request, env, customerId = null) {
             console.error('Failed to send OTP email:', {
                 message: error.message,
                 stack: error.stack,
+                name: error.name,
                 email: email.toLowerCase().trim(),
-                hasResendKey: !!env.RESEND_API_KEY
+                hasResendKey: !!env.RESEND_API_KEY,
+                hasResendFromEmail: !!env.RESEND_FROM_EMAIL,
+                errorType: error.constructor?.name || typeof error
             });
-            // Return error so user knows email failed
-            // Show details in development/local mode for easier debugging
+            
+            // Determine error type and provide appropriate message
             const isDev = !env.ENVIRONMENT || env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'local';
-            return new Response(JSON.stringify({ 
-                error: 'Failed to send email. Please check your email address and try again.',
-                details: isDev ? error.message : undefined,
-                hint: isDev && !env.RESEND_API_KEY ? 'RESEND_API_KEY is not configured. Create a .dev.vars file with your Resend API key.' : undefined
-            }), {
-                status: 500,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            const errorMessage = error.message || 'Unknown error';
+            const errorName = error.name || '';
+            
+            // Extract HTTP status code from Resend API errors if present
+            let httpStatus = 500;
+            let resendStatusCode = null;
+            let resendErrorDetails = null;
+            
+            // Parse Resend API error details
+            if (errorMessage.includes('Resend API error:')) {
+                const statusMatch = errorMessage.match(/Resend API error:\s*(\d+)/);
+                if (statusMatch) {
+                    resendStatusCode = parseInt(statusMatch[1], 10);
+                    httpStatus = resendStatusCode >= 400 && resendStatusCode < 600 ? resendStatusCode : 500;
+                }
+                // Extract error message after status code
+                const messageMatch = errorMessage.match(/Resend API error:\s*\d+\s*-\s*(.+)/);
+                if (messageMatch) {
+                    resendErrorDetails = messageMatch[1];
+                }
+            }
+            
+            // Check for network errors
+            const isNetworkError = errorName === 'TypeError' && (
+                errorMessage.includes('fetch') || 
+                errorMessage.includes('network') || 
+                errorMessage.includes('Failed to fetch') ||
+                errorMessage.includes('NetworkError') ||
+                errorMessage.includes('Network request failed')
+            );
+            
+            // Check for timeout errors
+            const isTimeoutError = errorName === 'AbortError' || 
+                errorMessage.includes('timeout') || 
+                errorMessage.includes('aborted');
+            
+            // Check for configuration errors
+            let userMessage = 'Failed to send email. Please try again later.';
+            let errorCode = 'email_send_failed';
+            let httpStatusCode = httpStatus;
+            
+            if (errorMessage.includes('RESEND_API_KEY not configured') || !env.RESEND_API_KEY) {
+                userMessage = 'Email service is not configured. Please contact support.';
+                errorCode = 'email_service_not_configured';
+                httpStatusCode = 500;
+            } else if (errorMessage.includes('RESEND_FROM_EMAIL') || !env.RESEND_FROM_EMAIL) {
+                userMessage = 'Email service is not configured. Please contact support.';
+                errorCode = 'email_service_not_configured';
+                httpStatusCode = 500;
+            } else if (isNetworkError) {
+                userMessage = 'Network error: Unable to connect to email service. Please check your internet connection and try again.';
+                errorCode = 'network_error';
+                httpStatusCode = 503; // Service Unavailable
+            } else if (isTimeoutError) {
+                userMessage = 'Request timeout: Email service took too long to respond. Please try again.';
+                errorCode = 'timeout_error';
+                httpStatusCode = 504; // Gateway Timeout
+            } else if (errorMessage.includes('Resend API error')) {
+                // Resend API returned an error - provide specific messages based on status code
+                if (resendStatusCode === 400) {
+                    userMessage = 'Invalid email request: The email address or email content is invalid. Please check your email address and try again.';
+                    errorCode = 'invalid_email_request';
+                } else if (resendStatusCode === 401) {
+                    userMessage = 'Email service authentication failed: The email service API key is invalid or expired. Please contact support.';
+                    errorCode = 'email_service_auth_failed';
+                } else if (resendStatusCode === 403) {
+                    userMessage = 'Email service access denied: The email service has restricted access. This may be due to an unverified domain or account limitations. Please contact support.';
+                    errorCode = 'email_service_forbidden';
+                } else if (resendStatusCode === 429) {
+                    userMessage = 'Email service rate limit exceeded: Too many emails sent. Please wait a few minutes and try again.';
+                    errorCode = 'email_service_rate_limited';
+                    httpStatusCode = 429;
+                } else if (resendStatusCode === 500 || resendStatusCode === 502 || resendStatusCode === 503) {
+                    userMessage = `Email service error (${resendStatusCode}): The email service is experiencing issues. Please try again in a few moments.`;
+                    errorCode = 'email_service_error';
+                    httpStatusCode = 502; // Bad Gateway (upstream service error)
+                } else if (resendStatusCode) {
+                    userMessage = `Email service error (${resendStatusCode}): ${resendErrorDetails || 'An error occurred while sending the email. Please try again.'}`;
+                    errorCode = 'email_api_error';
+                    httpStatusCode = resendStatusCode >= 400 && resendStatusCode < 500 ? resendStatusCode : 502;
+                } else {
+                    userMessage = `Email service error: ${resendErrorDetails || 'An error occurred while sending the email. Please try again.'}`;
+                    errorCode = 'email_api_error';
+                }
+            } else if (errorMessage.includes('email') && (errorMessage.includes('invalid') || errorMessage.includes('validation'))) {
+                // Email validation error from provider
+                userMessage = 'Invalid email address: The email address format is invalid. Please check your email address and try again.';
+                errorCode = 'invalid_email';
+                httpStatusCode = 400;
+            } else if (errorMessage.includes('KV') || errorMessage.includes('storage') || errorMessage.includes('database')) {
+                // Storage/KV errors
+                userMessage = 'Storage error: Unable to save OTP code. Please try again.';
+                errorCode = 'storage_error';
+                httpStatusCode = 500;
+            } else {
+                // Generic error - provide more context
+                userMessage = `Internal server error: ${isDev ? errorMessage : 'An unexpected error occurred while sending the email. Please try again.'}`;
+                errorCode = 'internal_error';
+                httpStatusCode = 500;
+            }
+            
+            // Build error response with detailed information
+            const errorResponse = {
+                type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
+                title: httpStatusCode >= 500 ? 'Internal Server Error' : 
+                       httpStatusCode === 429 ? 'Too Many Requests' :
+                       httpStatusCode === 503 ? 'Service Unavailable' :
+                       httpStatusCode === 504 ? 'Gateway Timeout' :
+                       'Bad Request',
+                status: httpStatusCode,
+                detail: userMessage,
+                error: userMessage, // Backward compatibility
+                errorCode: errorCode,
+                instance: request.url,
+            };
+            
+            // Add detailed information in development
+            if (isDev) {
+                errorResponse.details = errorMessage;
+                errorResponse.stack = error.stack;
+                errorResponse.name = errorName;
+                if (resendStatusCode) {
+                    errorResponse.resendStatusCode = resendStatusCode;
+                }
+                if (resendErrorDetails) {
+                    errorResponse.resendErrorDetails = resendErrorDetails;
+                }
+                if (!env.RESEND_API_KEY) {
+                    errorResponse.hint = 'RESEND_API_KEY is not configured. Set it via: wrangler secret put RESEND_API_KEY';
+                } else if (!env.RESEND_FROM_EMAIL) {
+                    errorResponse.hint = 'RESEND_FROM_EMAIL is not configured. Set it via: wrangler secret put RESEND_FROM_EMAIL';
+                }
+            }
+            
+            // Return error response
+            return new Response(JSON.stringify(errorResponse), {
+                status: httpStatusCode,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/problem+json',
+                },
             });
         }
         
@@ -231,17 +368,56 @@ export async function handleRequestOTP(request, env, customerId = null) {
         console.error('OTP request error:', {
             message: error.message,
             stack: error.stack,
-            name: error.name
+            name: error.name,
+            errorType: error.constructor?.name || typeof error
         });
+        
+        const isDev = !env.ENVIRONMENT || env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'local';
+        const errorMessage = error.message || 'Unknown error';
+        const errorName = error.name || '';
+        
+        // Determine error type
+        let userMessage = 'Internal server error: An unexpected error occurred while processing your request.';
+        let httpStatusCode = 500;
+        let errorCode = 'internal_error';
+        
+        // Check for JSON parsing errors
+        if (errorName === 'SyntaxError' && errorMessage.includes('JSON')) {
+            userMessage = 'Invalid request: The request data is malformed. Please try again.';
+            errorCode = 'invalid_request_format';
+            httpStatusCode = 400;
+        } else if (errorName === 'TypeError' && errorMessage.includes('fetch')) {
+            userMessage = 'Network error: Unable to connect to the server. Please check your internet connection and try again.';
+            errorCode = 'network_error';
+            httpStatusCode = 503;
+        } else if (errorMessage.includes('KV') || errorMessage.includes('storage')) {
+            userMessage = 'Storage error: Unable to access data storage. Please try again.';
+            errorCode = 'storage_error';
+            httpStatusCode = 500;
+        } else if (isDev) {
+            userMessage = `Internal server error: ${errorMessage}`;
+        }
+        
         // RFC 7807 Problem Details for HTTP APIs
-        return new Response(JSON.stringify({ 
+        const errorResponse = {
             type: 'https://tools.ietf.org/html/rfc7231#section-6.6.1',
-            title: 'Internal Server Error',
-            status: 500,
-            detail: 'Failed to request OTP',
+            title: httpStatusCode >= 500 ? 'Internal Server Error' : 'Bad Request',
+            status: httpStatusCode,
+            detail: userMessage,
+            error: userMessage, // Backward compatibility
+            errorCode: errorCode,
             instance: request.url,
-        }), {
-            status: 500,
+        };
+        
+        // Add detailed information in development
+        if (isDev) {
+            errorResponse.details = errorMessage;
+            errorResponse.stack = error.stack;
+            errorResponse.name = errorName;
+        }
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: httpStatusCode,
             headers: { 
                 ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/problem+json',

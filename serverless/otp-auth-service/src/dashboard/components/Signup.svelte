@@ -11,7 +11,7 @@
       if ((window as any).OTP_AUTH_API_URL) {
         return (window as any).OTP_AUTH_API_URL;
       }
-      return 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+      return 'https://auth.idling.app';
     }
     
     return window.location.origin;

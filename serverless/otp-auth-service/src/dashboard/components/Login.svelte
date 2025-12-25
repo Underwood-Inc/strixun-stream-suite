@@ -15,8 +15,8 @@
       if ((window as any).OTP_AUTH_API_URL) {
         return (window as any).OTP_AUTH_API_URL;
       }
-      // Use production worker in dev for real workflow testing
-      return 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+      // Use custom domain in dev for real workflow testing
+      return 'https://auth.idling.app';
     }
     
     // Production: use same origin

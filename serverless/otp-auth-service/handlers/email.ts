@@ -11,28 +11,43 @@ import {
     getEmailProvider
 } from '../utils/email.js';
 
+interface Customer {
+    config?: {
+        emailConfig?: {
+            fromEmail?: string;
+            fromName?: string;
+            subjectTemplate?: string;
+            htmlTemplate?: string | null;
+            textTemplate?: string | null;
+            variables?: Record<string, string | null>;
+        };
+    };
+    companyName?: string;
+}
+
+interface Env {
+    RESEND_API_KEY?: string;
+    RESEND_FROM_EMAIL?: string;
+    [key: string]: any;
+}
+
 /**
  * Send OTP email to user
- * @param {string} email - User email address
- * @param {string} otp - OTP code
- * @param {string|null} customerId - Customer ID for multi-tenant isolation
- * @param {*} env - Worker environment
- * @returns {Promise<object>} Email provider response
  */
-export async function sendOTPEmail(email, otp, customerId, env) {
+export async function sendOTPEmail(email: string, otp: string, customerId: string | null, env: Env): Promise<any> {
     if (!env.RESEND_API_KEY) {
         throw new Error('RESEND_API_KEY not configured');
     }
     
     // Get customer configuration if customerId provided
-    let customer = null;
-    let emailConfig = null;
+    let customer: Customer | null = null;
+    let emailConfig: Customer['config']['emailConfig'] | null = null;
     let fromEmail = env.RESEND_FROM_EMAIL;
     let fromName = 'OTP Auth Service';
     let subjectTemplate = 'Your Verification Code - {{appName}}';
-    let htmlTemplate = null;
-    let textTemplate = null;
-    let templateVariables = {
+    let htmlTemplate: string | null = null;
+    let textTemplate: string | null = null;
+    let templateVariables: Record<string, string | null> = {
         appName: 'OTP Auth Service',
         brandColor: '#edae49', // Strixun Stream Suite brand accent color
         footerText: 'This is an automated message, please do not reply.',
@@ -42,8 +57,8 @@ export async function sendOTPEmail(email, otp, customerId, env) {
     
     if (customerId) {
         const { getCustomer } = await import('../services/customer.js');
-        customer = await getCustomerCached(customerId, (id) => getCustomer(id, env));
-        if (customer && customer.config && customer.config.emailConfig) {
+        customer = await getCustomerCached(customerId, (id) => getCustomer(id, env)) as Customer | null;
+        if (customer?.config?.emailConfig) {
             emailConfig = customer.config.emailConfig;
             
             // Use customer's email config
@@ -74,7 +89,7 @@ export async function sendOTPEmail(email, otp, customerId, env) {
     }
     
     // Prepare template variables
-    const variables = {
+    const variables: Record<string, string | number> = {
         ...templateVariables,
         otp,
         expiresIn: '10',
@@ -105,11 +120,11 @@ export async function sendOTPEmail(email, otp, customerId, env) {
         
         console.log('Email sent successfully:', result);
         return result;
-    } catch (error) {
+    } catch (error: any) {
         // Log detailed error for debugging
         console.error('Email sending error:', {
-            message: error.message,
-            stack: error.stack,
+            message: error?.message,
+            stack: error?.stack,
             email: email.toLowerCase().trim(),
             customerId: customerId,
             provider: customer?.config?.emailProvider?.type || 'resend'

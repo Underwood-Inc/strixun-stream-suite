@@ -43,8 +43,8 @@
     if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
       return (window as any).getOtpAuthApiUrl() || '';
     }
-    // Fallback to workers.dev URL if function doesn't exist (more reliable than custom domain)
-    return 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+    // Fallback to custom domain if function doesn't exist
+    return 'https://auth.idling.app';
   }
   
   function handleLoginSuccess(data: LoginSuccessData) {

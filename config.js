@@ -221,18 +221,17 @@ window.getOtpAuthApiUrl = function() {
         return cachedOtpAuthApiUrl;
     }
     
-    // Priority 3: Hardcoded fallback - try workers.dev first (more reliable), then custom domain
-    // Use workers.dev as primary since custom domain DNS might not be resolving
-    const WORKERS_DEV_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
+    // Priority 3: Hardcoded fallback - use custom domain as primary
     const CUSTOM_DOMAIN_URL = 'https://auth.idling.app';
+    const WORKERS_DEV_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
     
-    // Use workers.dev as primary fallback (more reliable until DNS is configured)
-    const HARDCODED_OTP_AUTH_URL = WORKERS_DEV_URL;
+    // Use custom domain as primary (auth.idling.app)
+    const HARDCODED_OTP_AUTH_URL = CUSTOM_DOMAIN_URL;
     
     if (HARDCODED_OTP_AUTH_URL && !HARDCODED_OTP_AUTH_URL.includes('UPDATE-ME')) {
         if (!otpAuthApiUrlLogged) {
             console.log('[Config] Using hardcoded OTP Auth Worker URL:', HARDCODED_OTP_AUTH_URL);
-            console.warn('[Config] ⚠️ Using workers.dev URL. Custom domain (auth.idling.app) will be used once DNS is configured.');
+            console.log('[Config] ✅ Using custom domain: auth.idling.app');
             otpAuthApiUrlLogged = true;
         }
         cachedOtpAuthApiUrl = HARDCODED_OTP_AUTH_URL;
