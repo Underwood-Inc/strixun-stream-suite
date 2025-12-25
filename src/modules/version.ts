@@ -44,6 +44,7 @@ export const APP_VERSION: AppVersion = {
 export const GITHUB_REPO = 'Underwood-Inc/strixun-stream-suite';
 export const GITHUB_RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_REPO}/main`;
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
+// TODO: Update this to your custom domain after configuring GitHub Pages
 export const GITHUB_PAGES_URL = 'https://underwood-inc.github.io/strixun-stream-suite';
 
 // Default OAuth callback URL (GitHub Pages hosted)
