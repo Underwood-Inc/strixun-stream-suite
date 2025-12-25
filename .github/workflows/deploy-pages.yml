@@ -92,6 +92,13 @@ jobs:
           WORKER_URL="https://${WORKER_NAME}.${SUBDOMAIN}.workers.dev"
           echo "Worker URL: $WORKER_URL"
           
+          # Construct OTP Auth Service URL - prefer custom domain, fallback to workers.dev
+          OTP_AUTH_CUSTOM_DOMAIN="https://auth.idling.app"
+          OTP_AUTH_WORKERS_DEV="https://otp-auth-service.${SUBDOMAIN}.workers.dev"
+          # Use custom domain if available, otherwise workers.dev
+          OTP_AUTH_URL="${OTP_AUTH_CUSTOM_DOMAIN}"
+          echo "OTP Auth Service URL: $OTP_AUTH_URL"
+          
           # Get GitHub Pages URL - use custom domain if configured, otherwise github.io
           # For custom domain, use the domain from GitHub Pages settings
           # You can override this with a secret CUSTOM_DOMAIN if needed
@@ -112,6 +119,7 @@ jobs:
           
           # Inject values into config.js in dist directory
           sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" dist/config.js
+          sed -i "s|%%OTP_AUTH_API_URL%%|${OTP_AUTH_URL}|g" dist/config.js
           sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" dist/config.js
           sed -i "s|%%STORYBOOK_URL%%|${STORYBOOK_URL}|g" dist/config.js
           sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" dist/config.js
@@ -120,6 +128,7 @@ jobs:
           
           echo "✅ Configuration injected into dist/config.js"
           echo "Worker API URL: $WORKER_URL"
+          echo "OTP Auth Service URL: $OTP_AUTH_URL"
           echo "GitHub Pages URL: $PAGES_URL"
           echo "Twitch Client ID: ${TWITCH_CLIENT_ID:0:8}... (hidden)"
         
