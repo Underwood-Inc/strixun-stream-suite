@@ -224,6 +224,9 @@ export class ResendProvider implements EmailProvider {
     private baseUrl: string;
 
     constructor(apiKey: string) {
+        if (!apiKey) {
+            throw new Error('ResendProvider requires an API key');
+        }
         this.apiKey = apiKey;
         this.baseUrl = 'https://api.resend.com';
     }
@@ -297,6 +300,9 @@ export class SendGridProvider implements EmailProvider {
     private baseUrl: string;
 
     constructor(apiKey: string) {
+        if (!apiKey) {
+            throw new Error('SendGridProvider requires an API key');
+        }
         this.apiKey = apiKey;
         this.baseUrl = 'https://api.sendgrid.com/v3';
     }
