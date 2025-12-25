@@ -51,12 +51,10 @@ export function getCorsHeaders(env: Env, request: Request, customer: Customer | 
         allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : [];
     }
     
-    // If no origins configured, allow all (for development only)
-    // In production, you MUST set ALLOWED_ORIGINS via: wrangler secret put ALLOWED_ORIGINS
-    let allowOrigin: string | null = '*'; // Default fallback
+    // Check for exact match or wildcard patterns
+    let allowOrigin: string | null = null;
     
     if (allowedOrigins.length > 0) {
-        // Check for exact match or wildcard patterns
         const matchedOrigin = allowedOrigins.find(allowed => {
             if (allowed === '*') return true;
             if (allowed.endsWith('*')) {
@@ -66,6 +64,14 @@ export function getCorsHeaders(env: Env, request: Request, customer: Customer | 
             return origin === allowed;
         });
         allowOrigin = matchedOrigin === '*' ? '*' : (matchedOrigin || null);
+    } else {
+        // No origins configured - throw error in production
+        const isProduction = env.ENVIRONMENT === 'production';
+        if (isProduction) {
+            throw new Error('ALLOWED_ORIGINS must be configured in production. Set it via: wrangler secret put ALLOWED_ORIGINS');
+        }
+        // Development: allow all (but warn)
+        allowOrigin = '*';
     }
     
     return {

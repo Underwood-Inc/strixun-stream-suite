@@ -3,12 +3,8 @@
  * Template rendering, email providers, and sending logic
  */
 
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Cloudflare Workers: file system APIs are not available
+// Always use inline template
 
 /**
  * Escape HTML entities
@@ -59,18 +55,13 @@ let emailTemplateCache: string | null = null;
  */
 export function getDefaultEmailTemplate(): string {
     if (emailTemplateCache === null) {
-        try {
-            const templatePath = join(__dirname, '../templates/email-template.html');
-            emailTemplateCache = readFileSync(templatePath, 'utf-8');
-        } catch (error) {
-            // Fallback to inline template if file not found (e.g., in Workers runtime)
-            emailTemplateCache = getFallbackTemplate();
-        }
+        // Always use inline template - file system not available in Workers
+        emailTemplateCache = getInlineEmailTemplate();
     }
     return emailTemplateCache;
 }
 
-function getFallbackTemplate(): string {
+function getInlineEmailTemplate(): string {
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -266,7 +257,7 @@ export class ResendProvider implements EmailProvider {
                     errorData = { message: errorText };
                 }
                 
-                // Extract error message with fallbacks
+                // Extract error message from response (tries multiple fields, then throws)
                 const errorMessage = errorData.message || errorData.error || errorText || `HTTP ${response.status} ${response.statusText}`;
                 
                 throw new Error(`Resend API error: ${response.status} - ${errorMessage}`);
