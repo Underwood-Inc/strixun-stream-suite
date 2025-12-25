@@ -64,6 +64,9 @@ jobs:
       - name: Create .nojekyll
         run: touch dist/.nojekyll
       
+      - name: Create CNAME file for custom domain
+        run: echo "streamkit.idling.app" > dist/CNAME
+      
       - name: Copy config.js to dist
         run: cp config.js dist/config.js
       
