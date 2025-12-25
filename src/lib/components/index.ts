@@ -68,5 +68,5 @@ export type { Product, ProductStats } from './ProductCarousel.svelte';
 export { default as TwitchAdCarousel } from './TwitchAdCarousel.svelte';
 
 // Support Cards
-export { default as TwitchSupportCard } from './TwitchSupportCard.svelte';
+export { default as TwitchSupportCard } from '@shared-components/ad-carousel/TwitchSupportCard.svelte';
 

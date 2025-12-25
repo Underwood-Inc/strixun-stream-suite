@@ -54,7 +54,7 @@
     max-height: 100%;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(135deg, var(--card) 0%, var(--bg-dark) 100%);
+    background: var(--card);
     border: 2px solid var(--border);
     border-radius: 8px;
     padding: 0;
@@ -64,7 +64,7 @@
     will-change: transform, opacity;
     box-sizing: border-box;
     margin: 0;
-    overflow: hidden;
+    overflow: visible;
 
     &:hover {
       border-color: var(--accent);
@@ -84,7 +84,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 12px 12px 12px;
+    padding: 10px 12px 16px 12px;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -151,11 +151,29 @@
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--accent);
-    transition: all 0.2s ease;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), text-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: inline-block;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
     .support-card:hover & {
       color: var(--accent-light);
-      transform: translateX(4px);
+      transform: scale(1.08);
+      text-shadow: 0 0 12px rgba(237, 174, 73, 0.6);
+
+      &::after {
+        width: 100%;
+      }
     }
   }
 

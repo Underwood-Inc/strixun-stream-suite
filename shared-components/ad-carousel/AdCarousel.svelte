@@ -297,7 +297,7 @@
     pointer-events: auto;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform, opacity;
     z-index: 99999;
@@ -379,12 +379,12 @@
 
   .ad-carousel__content {
     flex: 1;
-    overflow: hidden;
+    overflow: visible;
     min-height: 0;
     contain: layout style paint;
     height: 100%;
     cursor: default;
-    padding: 6px 8px 8px 8px;
+    margin: 8px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -403,10 +403,11 @@
       min-width: 100%;
       max-width: 100%;
       padding: 0;
-      height: 100%;
-      max-height: 100%;
+      height: calc(100% - 4px);
+      max-height: calc(100% - 4px);
       box-sizing: border-box;
       display: flex;
+      margin-bottom: 4px;
     }
 
     // Ensure carousel wrapper allows overflow for hover effects
