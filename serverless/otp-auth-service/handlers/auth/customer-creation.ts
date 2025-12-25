@@ -4,11 +4,19 @@
  * Handles automatic customer account creation for OTP-verified users
  */
 
-import { generateCustomerId, storeCustomer, getCustomerByEmail } from '../../services/customer.js';
+import { generateCustomerId } from '../../services/customer.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
+import { 
+    getCustomerByEmailService, 
+    createCustomerService, 
+    getCustomerService,
+    updateCustomerService 
+} from '../../utils/customer-api-service-client.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
+    CUSTOMER_API_URL?: string;
+    SERVICE_API_KEY?: string; // Service-to-service API key for customer-api
     [key: string]: any;
 }
 
@@ -30,20 +38,23 @@ export async function ensureCustomerAccount(
 ): Promise<string | null> {
     // If customerId is already provided, verify it exists
     if (customerId) {
-        const { getCustomer } = await import('../../services/customer.js');
-        const existing = await getCustomer(customerId, env);
-        if (existing) {
-            // Customer exists, but check if we need to reactivate it
-            if (existing.status === 'suspended' || existing.status === 'cancelled') {
-                console.log(`[Customer Creation] Reactivating customer account: ${customerId}`);
-                existing.status = 'active';
-                existing.updatedAt = new Date().toISOString();
-                await storeCustomer(customerId, existing, env);
+        try {
+            const existing = await getCustomerService(customerId, env);
+            if (existing) {
+                // Customer exists, but check if we need to reactivate it
+                if (existing.status === 'suspended' || existing.status === 'cancelled') {
+                    console.log(`[Customer Creation] Reactivating customer account: ${customerId}`);
+                    existing.status = 'active';
+                    existing.updatedAt = new Date().toISOString();
+                    await updateCustomerService(customerId, existing, env);
+                }
+                return customerId;
             }
-            return customerId;
+        } catch (error) {
+            console.warn(`[Customer Creation] Error checking customer ${customerId}:`, error);
         }
         // CustomerId in JWT but doesn't exist - try to recover by email
-        console.warn(`[Customer Creation] CustomerId ${customerId} in JWT but not found in KV, attempting recovery by email`);
+        console.warn(`[Customer Creation] CustomerId ${customerId} in JWT but not found, attempting recovery by email`);
     }
     
     try {
@@ -51,7 +62,7 @@ export async function ensureCustomerAccount(
         console.log(`[Customer Creation] Looking up customer by email: ${emailLower}`);
         
         // Check for existing customer by email (smart recovery for reactivated accounts)
-        const existingCustomer = await getCustomerByEmail(emailLower, env);
+        const existingCustomer = await getCustomerByEmailService(emailLower, env);
         if (existingCustomer) {
             console.log(`[Customer Creation] Found existing customer account: ${existingCustomer.customerId} (recovered)`);
             
@@ -60,7 +71,7 @@ export async function ensureCustomerAccount(
                 console.log(`[Customer Creation] Reactivating customer account: ${existingCustomer.customerId}`);
                 existingCustomer.status = 'active';
                 existingCustomer.updatedAt = new Date().toISOString();
-                await storeCustomer(existingCustomer.customerId, existingCustomer, env);
+                await updateCustomerService(existingCustomer.customerId, existingCustomer, env);
             }
             
             return existingCustomer.customerId;
@@ -142,16 +153,16 @@ export async function ensureCustomerAccount(
             }
         };
         
-        // Store customer BEFORE creating JWT to ensure it exists
-        await storeCustomer(resolvedCustomerId, customerData, env);
-        console.log(`[Customer Creation] Customer account created and stored: ${resolvedCustomerId} for ${emailLower}`);
+        // Create customer via customer-api (service-to-service call)
+        await createCustomerService(customerData, env);
+        console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
         
         // Verify the customer was stored correctly (with retry for eventual consistency)
-        let verifyCustomer = await getCustomerByEmail(emailLower, env);
+        let verifyCustomer = await getCustomerByEmailService(emailLower, env);
         if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
             // Wait a bit and retry (KV eventual consistency)
             await new Promise(resolve => setTimeout(resolve, 100));
-            verifyCustomer = await getCustomerByEmail(emailLower, env);
+            verifyCustomer = await getCustomerByEmailService(emailLower, env);
         }
         
         if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {

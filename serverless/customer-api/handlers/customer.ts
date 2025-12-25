@@ -28,6 +28,83 @@ interface AuthResult {
 }
 
 /**
+ * Handle update customer by ID (for service calls)
+ * PUT /customer/:id
+ */
+export async function handleUpdateCustomerById(
+    request: Request,
+    env: Env,
+    auth: AuthResult,
+    customerId: string
+): Promise<Response> {
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+
+    try {
+        // Get existing customer
+        const customer = await getCustomer(customerId, env);
+        if (!customer) {
+            const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Parse update data
+        const body = await request.json() as Partial<CustomerData>;
+        
+        // Update allowed fields
+        if (body.name !== undefined) customer.name = body.name;
+        if (body.companyName !== undefined) customer.companyName = body.companyName;
+        if (body.tier !== undefined) customer.tier = body.tier;
+        if (body.status !== undefined) customer.status = body.status;
+        if (body.subscriptions !== undefined) customer.subscriptions = body.subscriptions;
+        if (body.flairs !== undefined) customer.flairs = body.flairs;
+        if (body.config !== undefined) customer.config = { ...customer.config, ...body.config };
+        if (body.features !== undefined) customer.features = { ...customer.features, ...body.features };
+
+        customer.updatedAt = new Date().toISOString();
+
+        // Store updated customer
+        await storeCustomer(customerId, customer, env);
+
+        // Build response with id and customerId (API architecture compliance)
+        const responseData = {
+            id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            customerId: customer.customerId,
+            ...customer,
+        };
+
+        return new Response(JSON.stringify(responseData), {
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('Update customer by ID error:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            env.ENVIRONMENT === 'development' ? error.message : 'Failed to update customer'
+        );
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
+/**
  * Get customer
  * GET /customer/me or GET /customer/:id
  */
@@ -202,6 +279,66 @@ export async function handleCreateCustomer(
             500,
             'Internal Server Error',
             env.ENVIRONMENT === 'development' ? error.message : 'Failed to create customer'
+        );
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
+/**
+ * Get customer by email
+ * GET /customer/by-email/:email
+ */
+export async function handleGetCustomerByEmail(
+    request: Request,
+    env: Env,
+    auth: AuthResult,
+    email: string
+): Promise<Response> {
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+    });
+
+    try {
+        // Get customer by email
+        const customer = await getCustomerByEmail(email, env);
+
+        if (!customer) {
+            const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Build response with id and customerId (API architecture compliance)
+        const responseData = {
+            id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            customerId: customer.customerId,
+            ...customer,
+        };
+
+        return new Response(JSON.stringify(responseData), {
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('Get customer by email error:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            env.ENVIRONMENT === 'development' ? error.message : 'Failed to get customer by email'
         );
         return new Response(JSON.stringify(rfcError), {
             status: 500,

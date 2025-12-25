@@ -178,18 +178,38 @@ export class ApiClient {
     this.setToken(null);
   }
 
-  // Admin endpoints
+  // Customer endpoints (now using customer-api)
   async getCustomer(): Promise<Customer> {
-    const response = await this.get<Customer | { success: boolean; customer: Customer }>('/admin/customers/me');
-    // Handle both response formats (backward compatibility)
-    if (response && typeof response === 'object' && 'customer' in response) {
-      return (response as { success: boolean; customer: Customer }).customer;
+    // Use customer-api endpoint instead of OTP auth service
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer.idling.app';
+    const response = await fetch(`${customerApiUrl}/customer/me`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to get customer' }));
+      throw new Error((error as { detail?: string }).detail || 'Failed to get customer');
     }
-    return response as Customer;
+    
+    return await this.decryptResponse<Customer>(response);
   }
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
-    return await this.put<Customer>('/admin/customers/me', data);
+    // Use customer-api endpoint instead of OTP auth service
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer.idling.app';
+    const response = await fetch(`${customerApiUrl}/customer/me`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to update customer' }));
+      throw new Error((error as { detail?: string }).detail || 'Failed to update customer');
+    }
+    
+    return await this.decryptResponse<Customer>(response);
   }
 
   async getApiKeys(customerId: string): Promise<{ apiKeys: ApiKey[] }> {

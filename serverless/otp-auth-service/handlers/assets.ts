@@ -105,17 +105,20 @@ export async function handleLandingPage(request: Request, env: Env): Promise<Res
         filePath = filePath.slice(1);
     }
     
+    // Check if this is an asset request (has file extension and is not index.html)
+    const isAssetRequest = filePath.includes('.') && filePath !== 'index.html';
+    
     // SPA routing - all non-file routes serve index.html
-    if (!assets[filePath] && !filePath.includes('.')) {
+    // BUT: if it's an asset request, don't fallback to index.html
+    if (!assets[filePath] && !isAssetRequest) {
         filePath = 'index.html';
     }
     
     const file = assets[filePath];
     if (!file) {
-        // If it's an asset request that's not found, return 404
-        // Check if it has a file extension (and is not index.html)
-        const hasFileExtension = filePath.includes('.') && filePath !== 'index.html';
-        if (hasFileExtension) {
+        // If it's an asset request that's not found, return 404 immediately
+        // Don't fallback to index.html for asset requests
+        if (isAssetRequest) {
             return new Response('Asset not found: ' + filePath, { 
                 status: 404,
                 headers: { 'Content-Type': 'text/plain' }
@@ -327,18 +330,28 @@ pnpm dev</code></pre>
         filePath = filePath.slice(1);
     }
     
+    // Check if this is an asset request (has file extension and is not index.html)
+    const isAssetRequest = filePath.includes('.') && filePath !== 'index.html';
+    
     // Handle SPA routing - all non-file routes serve index.html
-    if (!assets[filePath] && !filePath.includes('.')) {
+    // BUT: if it's an asset request, don't fallback to index.html
+    if (!assets[filePath] && !isAssetRequest) {
         filePath = 'index.html';
     }
     
     // Get file content
     const fileContent = assets[filePath];
     if (!fileContent) {
+        // If it's an asset request that's not found, return 404 immediately
+        // Don't fallback to index.html for asset requests
+        if (isAssetRequest) {
+            return new Response('File not found: ' + filePath, {
+                status: 404,
+                headers: getCorsHeaders(env, request),
+            });
+        }
         // Only fallback to index.html for SPA routes (no file extension)
-        // Asset requests (with file extensions) should return 404
-        const hasFileExtension = filePath.includes('.') && filePath !== 'index.html';
-        if (!hasFileExtension && filePath !== 'index.html' && assets['index.html']) {
+        if (filePath !== 'index.html' && assets['index.html']) {
             filePath = 'index.html';
             const indexContent = assets[filePath];
             if (!indexContent) {

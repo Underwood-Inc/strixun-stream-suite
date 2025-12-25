@@ -187,8 +187,8 @@ function getInlineEmailTemplate(): string {
                 <p>{{footerText}}</p>
             </div>
         </div>
-        {{trackingPixel}}
     </div>
+    {{trackingPixel}}
 </body>
 </html>`;
 }

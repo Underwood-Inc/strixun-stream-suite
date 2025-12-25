@@ -47,7 +47,7 @@
 
   .card {
     @include card;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-image 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
     max-height: 100%;
     display: flex;
@@ -59,13 +59,17 @@
     cursor: pointer;
     
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border-color: var(--accent);
+      box-shadow: 0 2px 12px rgba(237, 174, 73, 0.25);
+      // Subtle pulsing glow animation
+      @include card-hover-pattern;
+      // No transform to prevent content shift
     }
 
     &:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 1px 6px rgba(237, 174, 73, 0.2);
+      // No animation on active, just static shadow
+      // No transform to prevent content shift
     }
 
     &:focus-visible {

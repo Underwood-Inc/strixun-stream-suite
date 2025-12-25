@@ -160,6 +160,7 @@
 
 <style lang="scss">
   @use '@styles/mixins' as *;
+  @use '@styles/animations' as *;
 
   .product-carousel {
     width: 100%;
@@ -174,6 +175,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    contain: layout style paint;
   }
 
   // Target carousel container to reduce padding - scoped to this component
@@ -184,17 +186,29 @@
 
   // Target carousel slides directly - scoped to this component only
   // Override base Carousel slide width to use full width in constrained container
+  // Match AdCarousel's superior slide sizing behavior
   .product-carousel__wrapper :global(.swiper-slide) {
-    width: 100% !important;
+    width: 100%;
     min-width: 100%;
     max-width: 100%;
-    height: 280px;
-    max-height: 280px;
-  }
-
-  .product-carousel__wrapper :global(.swiper-slide > *) {
+    padding: 0;
     height: 100%;
     max-height: 100%;
+    box-sizing: border-box;
+    display: flex;
+  }
+
+  // Ensure carousel wrapper allows overflow for hover effects
+  .product-carousel__wrapper :global(.swiper-wrapper) {
+    align-items: stretch;
+    height: 100%;
+  }
+
+  // Carousel container - scoped to this component
+  .product-carousel__wrapper :global(.swiper) {
+    height: 100%;
+    flex: 1;
+    min-height: 0;
   }
 
   .product-carousel__link {
@@ -207,23 +221,35 @@
     max-height: 100%;
     cursor: pointer;
     overflow: hidden;
+    // Apply support card default styles
+    background: linear-gradient(135deg, var(--card) 0%, var(--bg-dark) 100%);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    @include gpu-accelerated;
+    box-sizing: border-box;
     
     &:hover,
-    &:focus,
+    &:focus {
+      text-decoration: none;
+      color: inherit;
+      // Apply support card hover styles (accent border and shadow)
+      border-color: var(--accent);
+      box-shadow: 0 2px 12px rgba(237, 174, 73, 0.25);
+      // No diagonal lines pattern for carousel cards
+    }
+    
     &:active {
       text-decoration: none;
       color: inherit;
     }
     
-    // Apply clickable card hover effects
-    &:hover .card {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    
-    &:active .card {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    // Remove Card's border and padding since we're styling the link wrapper
+    & :global(.card) {
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      background: transparent;
     }
     
     &:focus-visible {

@@ -4,13 +4,18 @@
 
 @use '../mixins' as *;
 
+@use '../animations' as *;
+
 .card {
   @include card;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent);
+    box-shadow: 0 2px 12px rgba(237, 174, 73, 0.25);
+    // Subtle pulsing glow animation
+    @include card-hover-pattern;
+    // No transform to prevent content shift
   }
   
   h3 {

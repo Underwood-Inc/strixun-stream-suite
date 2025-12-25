@@ -70,9 +70,15 @@ export function decodeTrackingToken(token: string): {
 /**
  * Generate tracking pixel HTML
  * Returns a 1x1 transparent PNG image tag with tracking URL
+ * Standard email tracking pixel - placed at end of body
+ * 
+ * Note: Some email clients may display the raw HTML tag as text if they're in
+ * plain text mode or don't support images. The tracking will still work when
+ * the image URL is requested by the email client.
  */
 export function generateTrackingPixel(baseUrl: string, trackingToken: string): string {
     const trackingUrl = `${baseUrl}/track/email-open?t=${encodeURIComponent(trackingToken)}`;
-    return `<img src="${trackingUrl}" width="1" height="1" style="display:block;width:1px;height:1px;border:0;margin:0;padding:0;" alt="" />`;
+    // Standard email tracking pixel format
+    return `<img src="${trackingUrl}" width="1" height="1" border="0" style="display:block;width:1px;height:1px;border:0;margin:0;padding:0;" alt="" />`;
 }
 

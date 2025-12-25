@@ -261,9 +261,8 @@
   }
   
   .featured-products-card {
-    padding: 0;
     overflow: hidden;
-    padding-top: 24px;
+    padding: 24px 24px 0 24px;
     margin-bottom: 24px;
     
     // Ensure carousel has proper height

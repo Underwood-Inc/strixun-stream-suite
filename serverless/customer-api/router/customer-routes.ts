@@ -8,7 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
 import { encryptWithJWT } from '../utils/jwt-encryption.js';
-import { handleGetCustomer, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
+import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -31,8 +31,12 @@ async function handleCustomerRoute(
     env: Env,
     auth: any
 ): Promise<RouteResult> {
-    if (!auth) {
-        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token.');
+    // Service calls (service-to-service) are allowed for customer creation
+    const isServiceCall = auth?.userId === 'service';
+    const isCustomerCreation = request.method === 'POST' && request.url.includes('/customer');
+    
+    if (!auth && !isServiceCall) {
+        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token or service key.');
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
@@ -52,7 +56,8 @@ async function handleCustomerRoute(
     const handlerResponse = await handler(request, env, auth);
 
     // If JWT token is present, encrypt the response (automatic E2E encryption)
-    if (auth.jwtToken && handlerResponse.ok) {
+    // Service calls don't have JWT tokens, so skip encryption for service responses
+    if (auth?.jwtToken && handlerResponse.ok) {
         try {
             const responseData = await handlerResponse.json();
             const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
@@ -94,7 +99,7 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
     // Normalize path - if root, treat as /customer/ for dedicated worker
     const normalizedPath = path === '/' ? '/customer/' : path;
 
-    // Authenticate request (returns null if not authenticated)
+    // Authenticate request (supports both JWT and service key)
     const auth = await authenticateRequest(request, env);
 
     // Route to appropriate handler with automatic encryption wrapper
@@ -114,16 +119,40 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
             return await handleCustomerRoute(handleUpdateCustomer, request, env, auth);
         }
 
-        // Get customer by ID (for admin/super-admin)
-        const customerIdMatch = normalizedPath.match(/^\/customer\/([^\/]+)$/);
-        if (customerIdMatch && request.method === 'GET') {
-            const customerId = customerIdMatch[1];
+        // Get customer by email
+        const emailMatch = normalizedPath.match(/^\/customer\/by-email\/(.+)$/);
+        if (emailMatch && request.method === 'GET') {
+            const email = decodeURIComponent(emailMatch[1]);
             return await handleCustomerRoute(
-                (req, e, a) => handleGetCustomer(req, e, a, customerId),
+                (req, e, a) => handleGetCustomerByEmail(req, e, a, email),
                 request,
                 env,
                 auth
             );
+        }
+
+        // Update customer by ID (for service calls)
+        const customerIdMatch = normalizedPath.match(/^\/customer\/([^\/]+)$/);
+        if (customerIdMatch) {
+            const customerId = customerIdMatch[1];
+            if (request.method === 'GET') {
+                return await handleCustomerRoute(
+                    (req, e, a) => handleGetCustomer(req, e, a, customerId),
+                    request,
+                    env,
+                    auth
+                );
+            }
+            if (request.method === 'PUT') {
+                // For service calls, allow updating by ID
+                const { handleUpdateCustomerById } = await import('../handlers/customer.js');
+                return await handleCustomerRoute(
+                    (req, e, a) => handleUpdateCustomerById(req, e, a, customerId),
+                    request,
+                    env,
+                    auth
+                );
+            }
         }
 
         return null; // Route not matched

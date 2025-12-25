@@ -72,10 +72,61 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
 }
 
 /**
+ * Authenticate service-to-service request using API key
+ * Used for internal service calls (e.g., OTP auth service calling customer-api)
+ */
+export async function authenticateServiceRequest(request: Request, env: Env): Promise<AuthResult | null> {
+    try {
+        const serviceKey = request.headers.get('X-Service-Key');
+        if (!serviceKey || !env.SERVICE_API_KEY) {
+            return null;
+        }
+
+        // Constant-time comparison to prevent timing attacks
+        const encoder = new TextEncoder();
+        const serviceKeyBytes = encoder.encode(serviceKey);
+        const envKeyBytes = encoder.encode(env.SERVICE_API_KEY);
+        
+        if (serviceKeyBytes.length !== envKeyBytes.length) {
+            return null;
+        }
+
+        let match = true;
+        for (let i = 0; i < serviceKeyBytes.length; i++) {
+            match = match && (serviceKeyBytes[i] === envKeyBytes[i]);
+        }
+
+        if (!match) {
+            return null;
+        }
+
+        // Service authentication successful
+        // Return a service auth result (no user JWT, but authenticated)
+        return {
+            userId: 'service', // Service identifier
+            email: undefined,
+            customerId: null, // Will be set by handler
+            jwtToken: '' // No JWT for service calls
+        };
+    } catch (error) {
+        console.error('Service authentication error:', error);
+        return null;
+    }
+}
+
+/**
  * Authenticate request and extract user info
+ * Supports both JWT tokens (user requests) and service keys (service-to-service)
  * Returns auth object with userId, customerId, and jwtToken
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
+    // Try service authentication first (for internal calls)
+    const serviceAuth = await authenticateServiceRequest(request, env);
+    if (serviceAuth) {
+        return serviceAuth;
+    }
+
+    // Try JWT authentication (for user requests)
     try {
         const authHeader = request.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {

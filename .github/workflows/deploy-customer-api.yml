@@ -72,6 +72,9 @@ jobs:
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS
           fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY
+          fi
         continue-on-error: true
       
       - name: Get KV Namespace ID
