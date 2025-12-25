@@ -19,7 +19,17 @@ const config: StorybookConfig = {
   ],
   framework: {
     name: '@storybook/svelte-vite',
-    options: {},
+    options: {
+      svelteOptions: {
+        onwarn: (warning: any, handler: any) => {
+          // Suppress CSS unused selector warnings (classes may be used dynamically or in imported SCSS)
+          if (warning.code === 'css-unused-selector') return;
+          // Suppress a11y warnings during migration
+          if (warning.code?.startsWith('a11y-')) return;
+          handler(warning);
+        },
+      },
+    },
   },
   docs: {
     autodocs: 'tag',

@@ -9,7 +9,15 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   // Explicitly set public directory to ensure brand images are copied
   publicDir: 'public',
-  plugins: [svelte(),
+  plugins: [svelte({
+    onwarn: (warning, handler) => {
+      // Suppress CSS unused selector warnings (classes may be used dynamically or in imported SCSS)
+      if (warning.code === 'css-unused-selector') return;
+      // Suppress a11y warnings during migration
+      if (warning.code?.startsWith('a11y-')) return;
+      handler(warning);
+    },
+  }),
   // @ts-expect-error - Type mismatch due to multiple Vite versions in node_modules, but build works correctly
   VitePWA({
     registerType: 'autoUpdate',

@@ -297,10 +297,6 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         const emailHash = await hashEmail(email);
         const emailLower = email.toLowerCase().trim();
         
-        // Get latest OTP key with customer isolation
-        const latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
-        const latestOtpKeyValue = await env.OTP_AUTH_KV.get(latestOtpKey);
-        
         // Get client IP for statistics
         const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
         
@@ -312,6 +308,20 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             detail: 'Invalid or expired OTP code. Please request a new OTP code.',
             instance: request.url,
         };
+        
+        // Try to get latest OTP key - try with customer prefix first, then without (for backward compatibility)
+        let latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
+        let latestOtpKeyValue = await env.OTP_AUTH_KV.get(latestOtpKey);
+        
+        // If not found with customer prefix and customerId is null, try without prefix
+        // This handles cases where OTP was requested before customer isolation was implemented
+        if (!latestOtpKeyValue && !customerId) {
+            const fallbackKey = `otp_latest_${emailHash}`;
+            latestOtpKeyValue = await env.OTP_AUTH_KV.get(fallbackKey);
+            if (latestOtpKeyValue) {
+                latestOtpKey = fallbackKey; // Use the fallback key for subsequent operations
+            }
+        }
         
         if (!latestOtpKeyValue) {
             // Record failure for statistics
@@ -458,80 +468,100 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         
         // ALWAYS ensure user has a customer account (past, present, future)
         // This is safe - customer accounts are just organizational data, not a security concern
+        // Wrap in try-catch to prevent customer creation failures from blocking OTP verification
         let resolvedCustomerId = customerId;
         if (!resolvedCustomerId) {
-            console.log(`[OTP Verify] No customerId provided, looking up customer by email: ${emailLower}`);
-            const existingCustomer = await getCustomerByEmail(emailLower, env);
-            if (existingCustomer) {
-                resolvedCustomerId = existingCustomer.customerId;
-                console.log(`[OTP Verify] Found existing customer: ${resolvedCustomerId}`);
-            } else {
-                // ALWAYS create customer account for ALL users (dashboard or API end-users)
-                // This ensures every user has a customer ID for consistent data organization
-                console.log(`[OTP Verify] No existing customer found, auto-creating customer account for: ${emailLower}`);
-                resolvedCustomerId = generateCustomerId();
-                const emailDomain = emailLower.split('@')[1] || 'unknown';
-                const companyName = emailDomain.split('.')[0] || 'My App';
-                
-                const customerData = {
-                    customerId: resolvedCustomerId,
-                    name: emailLower.split('@')[0], // Use email prefix as name
-                    email: emailLower,
-                    companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-                    plan: 'free',
-                    status: 'active',
-                    createdAt: new Date().toISOString(),
-                    configVersion: 1,
-                    config: {
-                        emailConfig: {
-                            fromEmail: null,
-                            fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-                            subjectTemplate: 'Your {{appName}} Verification Code',
-                            htmlTemplate: null,
-                            textTemplate: null,
-                            variables: {
-                                appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
-                                brandColor: '#007bff',
-                                footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
-                                supportUrl: null,
-                                logoUrl: null
-                            }
+            try {
+                console.log(`[OTP Verify] No customerId provided, looking up customer by email: ${emailLower}`);
+                const existingCustomer = await getCustomerByEmail(emailLower, env);
+                if (existingCustomer) {
+                    resolvedCustomerId = existingCustomer.customerId;
+                    console.log(`[OTP Verify] Found existing customer: ${resolvedCustomerId}`);
+                } else {
+                    // ALWAYS create customer account for ALL users (dashboard or API end-users)
+                    // This ensures every user has a customer ID for consistent data organization
+                    console.log(`[OTP Verify] No existing customer found, auto-creating customer account for: ${emailLower}`);
+                    resolvedCustomerId = generateCustomerId();
+                    const emailDomain = emailLower.split('@')[1] || 'unknown';
+                    const companyName = emailDomain.split('.')[0] || 'My App';
+                    
+                    const customerData = {
+                        customerId: resolvedCustomerId,
+                        name: emailLower.split('@')[0], // Use email prefix as name
+                        email: emailLower,
+                        companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                        plan: 'free',
+                        status: 'active',
+                        createdAt: new Date().toISOString(),
+                        configVersion: 1,
+                        config: {
+                            emailConfig: {
+                                fromEmail: null,
+                                fromName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                                subjectTemplate: 'Your {{appName}} Verification Code',
+                                htmlTemplate: null,
+                                textTemplate: null,
+                                variables: {
+                                    appName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+                                    brandColor: '#007bff',
+                                    footerText: `© ${new Date().getFullYear()} ${companyName.charAt(0).toUpperCase() + companyName.slice(1)}`,
+                                    supportUrl: null,
+                                    logoUrl: null
+                                }
+                            },
+                            rateLimits: {
+                                otpRequestsPerHour: 3,
+                                otpRequestsPerDay: 50,
+                                maxUsers: 100
+                            },
+                            webhookConfig: {
+                                url: null,
+                                secret: null,
+                                events: []
+                            },
+                            allowedOrigins: []
                         },
-                        rateLimits: {
-                            otpRequestsPerHour: 3,
-                            otpRequestsPerDay: 50,
-                            maxUsers: 100
-                        },
-                        webhookConfig: {
-                            url: null,
-                            secret: null,
-                            events: []
-                        },
-                        allowedOrigins: []
-                    },
-                    features: {
-                        customEmailTemplates: false,
-                        webhooks: false,
-                        analytics: false,
-                        sso: false
+                        features: {
+                            customEmailTemplates: false,
+                            webhooks: false,
+                            analytics: false,
+                            sso: false
+                        }
+                    };
+                    
+                    // Store customer BEFORE creating JWT to ensure it exists
+                    await storeCustomer(resolvedCustomerId, customerData, env);
+                    console.log(`[OTP Verify] Customer account created and stored: ${resolvedCustomerId} for ${emailLower}`);
+                    
+                    // Verify the customer was stored correctly (with retry for eventual consistency)
+                    let verifyCustomer = await getCustomerByEmail(emailLower, env);
+                    if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
+                        // Wait a bit and retry (KV eventual consistency)
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        verifyCustomer = await getCustomerByEmail(emailLower, env);
                     }
-                };
-                
-                // Store customer BEFORE creating JWT to ensure it exists
-                await storeCustomer(resolvedCustomerId, customerData, env);
-                console.log(`[OTP Verify] Customer account created and stored: ${resolvedCustomerId} for ${emailLower}`);
-                
-                // Verify the customer was stored correctly
-                const verifyCustomer = await getCustomerByEmail(emailLower, env);
-                if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
-                    console.error(`[OTP Verify] ERROR: Customer account verification failed! Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}`);
-                    throw new Error('Failed to create customer account. Please try again.');
+                    
+                    if (!verifyCustomer || verifyCustomer.customerId !== resolvedCustomerId) {
+                        console.warn(`[OTP Verify] WARNING: Customer account verification failed! Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}. Continuing anyway.`);
+                        // Don't throw - continue with OTP verification even if customer creation had issues
+                    }
+                    
+                    // Generate initial API key for the customer (only for dashboard users, but safe to do for all)
+                    // This allows users to immediately use the API without additional signup steps
+                    // Wrap in try-catch to prevent API key creation failures from blocking OTP verification
+                    try {
+                        await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
+                        console.log(`[OTP Verify] API key created for customer: ${resolvedCustomerId}`);
+                    } catch (apiKeyError) {
+                        console.error(`[OTP Verify] WARNING: Failed to create API key for customer ${resolvedCustomerId}:`, apiKeyError.message);
+                        // Don't throw - continue with OTP verification even if API key creation failed
+                    }
                 }
-                
-                // Generate initial API key for the customer (only for dashboard users, but safe to do for all)
-                // This allows users to immediately use the API without additional signup steps
-                await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
-                console.log(`[OTP Verify] API key created for customer: ${resolvedCustomerId}`);
+            } catch (customerError) {
+                console.error(`[OTP Verify] ERROR: Customer account creation/lookup failed:`, customerError);
+                // Don't throw - continue with OTP verification using null customerId
+                // The user can still authenticate, they just won't have a customer account
+                resolvedCustomerId = null;
             }
         }
         
@@ -699,12 +729,28 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             },
         });
     } catch (error) {
-        return new Response(JSON.stringify({ 
+        // Log detailed error for debugging
+        console.error('[OTP Verify] Error:', error);
+        console.error('[OTP Verify] Stack:', error.stack);
+        
+        // Return detailed error in development, generic in production
+        const errorResponse = {
             error: 'Failed to verify OTP',
-            message: error.message 
-        }), {
+            ...(env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'dev' ? {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            } : {
+                message: 'An internal error occurred. Please try again.'
+            })
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                'Content-Type': 'application/json' 
+            },
         });
     }
 }
