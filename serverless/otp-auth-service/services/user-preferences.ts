@@ -68,6 +68,7 @@ export async function getUserPreferences(
 
 /**
  * Store user preferences
+ * Uses same TTL as user data (1 year) to ensure consistency
  */
 export async function storeUserPreferences(
   userId: string,
@@ -76,7 +77,8 @@ export async function storeUserPreferences(
   env: Env
 ): Promise<void> {
   const preferencesKey = getCustomerKey(customerId, `user_preferences_${userId}`);
-  await env.OTP_AUTH_KV.put(preferencesKey, JSON.stringify(preferences));
+  // Use same TTL as user data (1 year / 31536000 seconds) for consistency
+  await env.OTP_AUTH_KV.put(preferencesKey, JSON.stringify(preferences), { expirationTtl: 31536000 });
 }
 
 /**

@@ -16,6 +16,7 @@ import { trackUsage } from '../../services/analytics.js';
 import { retrieveOTP, deleteOTP, incrementOTPAttempts } from './otp-storage.js';
 import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
+import { storeUserPreferences, getDefaultPreferences, getUserPreferences } from '../../services/user-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
 
 interface Env {
@@ -70,6 +71,28 @@ async function getOrCreateUser(
             lastLogin: new Date().toISOString(),
         };
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 }); // 1 year
+        
+        // Initialize user preferences with default values and display name
+        const preferences = getDefaultPreferences();
+        preferences.displayName.current = displayName;
+        preferences.displayName.previousNames.push({
+            name: displayName,
+            changedAt: new Date().toISOString(),
+            reason: 'auto-generated',
+        });
+        preferences.displayName.lastChangedAt = new Date().toISOString();
+        await storeUserPreferences(userId, customerId, preferences, env);
+        
+        // Initialize user preferences with default values and display name
+        const preferences = getDefaultPreferences();
+        preferences.displayName.current = displayName;
+        preferences.displayName.previousNames.push({
+            name: displayName,
+            changedAt: new Date().toISOString(),
+            reason: 'auto-generated',
+        });
+        preferences.displayName.lastChangedAt = new Date().toISOString();
+        await storeUserPreferences(userId, customerId, preferences, env);
     } else {
         // Ensure displayName exists (for users created before this feature)
         if (!user.displayName) {
@@ -91,6 +114,10 @@ async function getOrCreateUser(
         // Update last login
         user.lastLogin = new Date().toISOString();
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+        
+        // Reset preferences TTL on login to keep it in sync with user data
+        const preferences = await getUserPreferences(userId, customerId, env);
+        await storeUserPreferences(userId, customerId, preferences, env);
     }
     
     return user;

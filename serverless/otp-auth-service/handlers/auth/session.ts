@@ -102,6 +102,11 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
+        // Reset preferences TTL on access to keep it in sync with user data
+        const { getUserPreferences, storeUserPreferences } = await import('../../services/user-preferences.js');
+        const preferences = await getUserPreferences(user.userId, customerId, env);
+        await storeUserPreferences(user.userId, customerId, preferences, env);
+        
         // Generate request ID for root config
         const requestId = user.userId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         

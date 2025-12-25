@@ -26,6 +26,7 @@
  * - Requesters need owner's JWT (provided by system) + approved request key to decrypt
  */
 
+// @ts-ignore - jwt-encryption.js is a JavaScript file without type definitions
 import { decryptWithJWT, encryptWithJWT } from './jwt-encryption.js';
 
 const PBKDF2_ITERATIONS = 100000;
@@ -57,10 +58,13 @@ async function deriveKeyFromRequestKey(requestKey: string, salt: Uint8Array): Pr
         ['deriveBits', 'deriveKey']
     );
 
+    // Create a new Uint8Array to ensure proper type for Web Crypto API
+    const saltBuffer = new Uint8Array(salt);
+
     const key = await crypto.subtle.deriveKey(
         {
             name: 'PBKDF2',
-            salt: salt,
+            salt: saltBuffer,
             iterations: PBKDF2_ITERATIONS,
             hash: 'SHA-256',
         },
@@ -177,8 +181,8 @@ export async function encryptTwoStage(
         stage2: {
             encrypted: true,
             algorithm: 'AES-GCM-256',
-            iv: arrayBufferToBase64(stage2IV),
-            salt: arrayBufferToBase64(stage2Salt),
+            iv: arrayBufferToBase64(stage2IV.buffer),
+            salt: arrayBufferToBase64(stage2Salt.buffer),
             keyHash: stage2KeyHash,
             data: arrayBufferToBase64(stage2Encrypted), // This contains Stage 1 encrypted data
         },

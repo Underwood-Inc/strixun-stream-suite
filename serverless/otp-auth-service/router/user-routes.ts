@@ -82,6 +82,13 @@ export async function handleUserRoutes(
         };
     }
     
+    if (path === '/user/display-name/regenerate' && request.method === 'POST') {
+        return { 
+            response: await userHandlers.handleRegenerateDisplayName(request, env), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
     // Twitch account attachment endpoints
     if (path === '/user/twitch/attach' && request.method === 'POST') {
         return { 
