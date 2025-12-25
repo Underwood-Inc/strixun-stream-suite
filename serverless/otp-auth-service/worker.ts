@@ -11,7 +11,7 @@
  * @version 2.2.0 - Enhanced with API framework features
  */
 
-import { createEnhancedRouter } from '../shared/enhanced-router.js';
+import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
 import { initializeServiceTypes, type ExecutionContext } from '../shared/types.js';
 import { route } from './router.js';
 
@@ -25,7 +25,7 @@ interface Env {
 initializeServiceTypes();
 
 // Create enhanced router
-const enhancedRoute = createEnhancedRouter(route);
+const corsMiddleware = createCORSMiddleware({});
 
 /**
  * Main request handler
@@ -33,7 +33,13 @@ const enhancedRoute = createEnhancedRouter(route);
  */
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-        return enhancedRoute(request, env, ctx);
+        // Handle CORS preflight
+        if (request.method === 'OPTIONS') {
+            return corsMiddleware(request, async () => new Response(null, { status: 204 }));
+        }
+        
+        // Handle request with CORS
+        return corsMiddleware(request, async (req) => route(req, env, ctx));
     }
 };
 

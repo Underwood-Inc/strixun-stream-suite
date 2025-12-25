@@ -1,0 +1,247 @@
+/**
+ * Upload mod handler
+ * POST /mods
+ * Creates a new mod with initial version
+ */
+
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from '../../utils/errors.js';
+import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
+
+/**
+ * Generate unique mod ID
+ */
+function generateModId(): string {
+    return `mod_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Generate unique version ID
+ */
+function generateVersionId(): string {
+    return `ver_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Handle upload mod request
+ */
+export async function handleUploadMod(
+    request: Request,
+    env: Env,
+    auth: { userId: string; email?: string; customerId: string | null }
+): Promise<Response> {
+    try {
+        // Parse multipart form data
+        const formData = await request.formData();
+        const file = formData.get('file') as File | null;
+        
+        if (!file) {
+            const rfcError = createError(request, 400, 'File Required', 'File is required for mod upload');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Parse metadata from form data
+        const metadataJson = formData.get('metadata') as string | null;
+        if (!metadataJson) {
+            const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        const metadata = JSON.parse(metadataJson) as ModUploadRequest;
+
+        // Validate required fields
+        if (!metadata.title || !metadata.version || !metadata.category) {
+            const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Generate IDs
+        const modId = generateModId();
+        const versionId = generateVersionId();
+        const now = new Date().toISOString();
+
+        // Upload file to R2
+        const fileExtension = file.name.split('.').pop() || 'zip';
+        const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${fileExtension}`);
+        
+        await env.MODS_R2.put(r2Key, file.stream(), {
+            httpMetadata: {
+                contentType: file.type || 'application/zip',
+                cacheControl: 'public, max-age=31536000',
+            },
+            customMetadata: {
+                modId,
+                versionId,
+                uploadedBy: auth.userId,
+                uploadedAt: now,
+            },
+        });
+
+        // Generate download URL
+        const downloadUrl = env.MODS_PUBLIC_URL 
+            ? `${env.MODS_PUBLIC_URL}/${r2Key}`
+            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${r2Key}`;
+
+        // Create version metadata
+        const version: ModVersion = {
+            versionId,
+            modId,
+            version: metadata.version,
+            changelog: metadata.changelog || '',
+            fileSize: file.size,
+            fileName: file.name,
+            r2Key,
+            downloadUrl,
+            createdAt: now,
+            downloads: 0,
+            gameVersions: metadata.gameVersions || [],
+            dependencies: metadata.dependencies || [],
+        };
+
+        // Create mod metadata
+        const mod: ModMetadata = {
+            modId,
+            authorId: auth.userId,
+            authorEmail: auth.email || '',
+            title: metadata.title,
+            description: metadata.description || '',
+            category: metadata.category,
+            tags: metadata.tags || [],
+            thumbnailUrl: metadata.thumbnail ? await handleThumbnailUpload(metadata.thumbnail, modId, env, auth.customerId) : undefined,
+            createdAt: now,
+            updatedAt: now,
+            latestVersion: metadata.version,
+            downloadCount: 0,
+            visibility: metadata.visibility || 'public',
+            featured: false,
+            customerId: auth.customerId,
+        };
+
+        // Store in KV
+        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+        const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+        const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
+
+        // Store mod and version
+        await env.MODS_KV.put(modKey, JSON.stringify(mod));
+        await env.MODS_KV.put(versionKey, JSON.stringify(version));
+
+        // Add version to mod's version list
+        const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+        const updatedVersionsList = [...(versionsList || []), versionId];
+        await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
+
+        // Add mod to global list
+        const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
+        const updatedModsList = [...(modsList || []), modId];
+        await env.MODS_KV.put(modsListKey, JSON.stringify(updatedModsList));
+
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify({
+            mod,
+            version
+        }), {
+            status: 201,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('Upload mod error:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Failed to Upload Mod',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while uploading the mod'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
+/**
+ * Handle thumbnail upload (base64 to R2)
+ */
+async function handleThumbnailUpload(
+    base64Data: string,
+    modId: string,
+    env: Env,
+    customerId: string | null
+): Promise<string> {
+    try {
+        // Parse base64 data URL
+        const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (!matches) {
+            throw new Error('Invalid base64 image data');
+        }
+
+        const [, imageType, base64Content] = matches;
+        const imageBuffer = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+
+        // Upload to R2
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${imageType}`);
+        await env.MODS_R2.put(r2Key, imageBuffer, {
+            httpMetadata: {
+                contentType: `image/${imageType}`,
+                cacheControl: 'public, max-age=31536000',
+            },
+        });
+
+        // Return public URL
+        return env.MODS_PUBLIC_URL 
+            ? `${env.MODS_PUBLIC_URL}/${r2Key}`
+            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${r2Key}`;
+    } catch (error) {
+        console.error('Thumbnail upload error:', error);
+        throw error;
+    }
+}
+
+interface Env {
+    MODS_KV: KVNamespace;
+    MODS_R2: R2Bucket;
+    MODS_PUBLIC_URL?: string;
+    ENVIRONMENT?: string;
+    [key: string]: any;
+}
+

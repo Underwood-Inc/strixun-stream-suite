@@ -1,0 +1,29 @@
+{
+  "name": "@strixun/api-framework",
+  "version": "1.0.0",
+  "description": "Shared API framework for Strixun Stream Suite - Cloudflare Workers and browser support",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./enhanced": {
+      "types": "./enhanced.d.ts",
+      "default": "./enhanced.js"
+    },
+    "./client": {
+      "types": "./client.d.ts",
+      "default": "./client.js"
+    }
+  },
+  "files": [
+    "*.js",
+    "*.d.ts",
+    "*.ts"
+  ]
+}
+

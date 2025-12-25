@@ -7,16 +7,21 @@ module.exports = {
     node: true
   },
   extends: [
-    'eslint:recommended'
+    'eslint:recommended',
+    'plugin:svelte/recommended'
   ],
   parserOptions: {
     ecmaVersion: 2021,
     sourceType: 'module'
   },
+  plugins: ['svelte'],
   overrides: [
     {
       files: ['*.svelte'],
-      processor: 'svelte3/svelte3'
+      parser: 'svelte-eslint-parser',
+      parserOptions: {
+        parser: '@typescript-eslint/parser'
+      }
     },
     {
       files: ['*.ts', '*.tsx'],
@@ -33,7 +38,7 @@ module.exports = {
     'no-unused-vars': 'off' // Use TypeScript version for .ts files
   },
   settings: {
-    'svelte3/typescript': () => require('typescript')
+    'svelte/typescript': () => require('typescript')
   },
   ignorePatterns: [
     'dist/**',

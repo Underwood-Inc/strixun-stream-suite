@@ -1,0 +1,63 @@
+# Mods API Service - Cloudflare Worker Configuration
+# Dedicated worker for mod hosting and version control
+
+name = "strixun-mods-api"
+main = "worker.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV Namespace for mod metadata
+# Created via: wrangler kv namespace create "MODS_KV"
+[[kv_namespaces]]
+binding = "MODS_KV"
+id = "0d3dafe0994046c6a47146c6bd082ad3"
+
+# R2 Bucket for mod files
+# Created via: wrangler r2 bucket create "mods-storage"
+[[r2_buckets]]
+binding = "MODS_R2"
+bucket_name = "mods-storage"
+# To create: cd serverless/mods-api && wrangler r2 bucket create "mods-storage"
+
+# Environment variables (secrets should be set via wrangler secret put)
+# DO NOT put actual secrets here - use wrangler CLI:
+#   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (must match OTP auth service)
+#   wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: Comma-separated CORS origins (recommended for production)
+#   wrangler secret put MODS_PUBLIC_URL     # OPTIONAL: Public URL for R2 bucket (if using custom domain)
+#
+# IMPORTANT: JWT_SECRET must match the OTP auth service secret for authentication to work
+
+[vars]
+ENVIRONMENT = "production"
+
+# Custom domain configuration
+# Using idling.app domain
+routes = [
+  { pattern = "mods.idling.app/*", zone_name = "idling.app" }
+]
+
+# Alternative: Configure in Cloudflare Dashboard (recommended for production):
+# 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-mods-api
+# 2. Go to Settings → Triggers → Routes
+# 3. Add custom domain route: mods.idling.app/*
+# 4. DNS records are automatically managed by Cloudflare
+#
+# Note: Routes configured in the dashboard take precedence over wrangler.toml
+
+# Observability Configuration
+# Enables logging and tracing for the worker
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+

@@ -11,8 +11,9 @@ import { handleScrollbar, handleScrollbarCompensation, handleScrollbarCustomizer
 import { getAppAccessToken, handleClips, handleFollowing, handleGame, handleUser } from './handlers/twitch.js';
 import { handleRequestOTP, handleVerifyOTP, handleGetMe, handleLogout, handleRefresh } from './handlers/auth.js';
 import { handleTestEmail, handleClearRateLimit } from './handlers/test.js';
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from './utils/errors.js';
 import { authenticateRequest } from './utils/auth.js';
-import { getCorsHeaders } from './utils/cors.js';
 
 /**
  * Health check endpoint
@@ -21,21 +22,31 @@ async function handleHealth(env, request) {
     try {
         // Test token generation
         await getAppAccessToken(env);
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
         return new Response(JSON.stringify({ 
             status: 'ok', 
             message: 'Strixun Stream Suite API is running',
             features: ['twitch-api', 'cloud-storage', 'scrollbar-customizer'],
             timestamp: new Date().toISOString()
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
         });
     } catch (error) {
-        return new Response(JSON.stringify({ 
-            status: 'error', 
-            message: error.message 
-        }), {
+        const rfcError = createError(request, 500, 'Health Check Error', error.message);
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
         });
     }
 }
@@ -100,26 +111,53 @@ export async function route(request, env) {
         if (path === '/health' || path === '/') return handleHealth(env, request);
         
         // Not found
-        return new Response(JSON.stringify({ error: 'Not found' }), {
+        const rfcError404 = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
+        const corsHeaders404 = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError404), {
             status: 404,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders404.entries()),
+            },
         });
     } catch (error) {
         // Check if it's a JWT secret error (configuration issue)
         if (error.message && error.message.includes('JWT_SECRET')) {
-            return new Response(JSON.stringify({ 
-                error: 'Server configuration error',
-                message: 'JWT_SECRET environment variable is required. Please contact the administrator.',
-                details: 'The server is not properly configured. JWT_SECRET must be set via: wrangler secret put JWT_SECRET'
-            }), {
+            const rfcError = createError(
+                request,
+                500,
+                'Server Configuration Error',
+                'JWT_SECRET environment variable is required. Please contact the administrator.'
+            );
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
                 status: 500,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
             });
         }
         
-        return new Response(JSON.stringify({ error: 'Internal server error', message: error.message }), {
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            error.message || 'An internal server error occurred'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
             status: 500,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
         });
     }
 }

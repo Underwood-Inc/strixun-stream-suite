@@ -2,5 +2,6 @@ packages:
   - '.'
   - 'serverless'
   - 'serverless/*'
+  - 'serverless/shared/api'
   - 'control-panel'
 

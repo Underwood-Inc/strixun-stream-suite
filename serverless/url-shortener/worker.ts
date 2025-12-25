@@ -7,21 +7,15 @@
  * @version 2.0.0 - Modular architecture
  */
 
-import { createEnhancedRouter } from '../shared/enhanced-router.js';
+import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
 import { initializeServiceTypes, type ExecutionContext } from '../shared/types.js';
 import { createRouter } from './router/routes.js';
 import { STANDALONE_HTML } from './templates/standalone.js';
-import { getCorsHeaders } from './utils/cors.js';
 
 /**
- * Original request handler
+ * Request handler
  */
-async function originalFetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-  // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(env, request) });
-  }
-
+async function handleRequest(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
   // Create router with embedded HTML
   const router = createRouter(STANDALONE_HTML);
   return router(request, env);
@@ -30,14 +24,20 @@ async function originalFetch(request: Request, env: any, ctx: ExecutionContext):
 // Initialize service types
 initializeServiceTypes();
 
-// Create enhanced router
-const enhancedFetch = createEnhancedRouter(originalFetch);
+// Create CORS middleware
+const corsMiddleware = createCORSMiddleware({});
 
 /**
- * Main request handler
+ * Main request handler with CORS support
  */
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    return enhancedFetch(request, env, ctx);
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return corsMiddleware(request, async () => new Response(null, { status: 204 }));
+    }
+    
+    // Handle request with CORS
+    return corsMiddleware(request, async (req) => handleRequest(req, env, ctx));
   },
 };

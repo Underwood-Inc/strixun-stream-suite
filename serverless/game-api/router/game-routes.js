@@ -12,7 +12,8 @@ import { handleGameInventory } from '../handlers/game/inventory.js';
 import { handleGameLootBox } from '../handlers/game/loot-box.js';
 import { handleGameLoot } from '../handlers/game/loot.js';
 import { handleGameSaveState } from '../handlers/game/save-state.js';
-import { getCorsHeaders } from '../utils/cors.js';
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
 import { encryptWithJWT } from '../utils/jwt-encryption.js';
 
@@ -21,13 +22,17 @@ import { encryptWithJWT } from '../utils/jwt-encryption.js';
  */
 async function handleGameRoute(handler, request, env, auth) {
     if (!auth) {
+        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token.');
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
         return {
-            response: new Response(JSON.stringify({
-                error: 'Unauthorized',
-                message: 'Authentication required. Please provide a valid JWT token.'
-            }), {
+            response: new Response(JSON.stringify(rfcError), {
                 status: 401,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
             }),
             customerId: null
         };
