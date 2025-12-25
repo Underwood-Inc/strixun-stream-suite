@@ -41,7 +41,7 @@ jobs:
       - name: Read version from package.json
         id: get_version
         run: |
-          VERSION=$(grep -o '"version": "[^"]*"' package.json | cut -d'"' -f4)
+          VERSION=$(jq -r '.version' package.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Current version: $VERSION"
 

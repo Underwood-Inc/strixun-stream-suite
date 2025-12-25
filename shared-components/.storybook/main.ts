@@ -1,12 +1,9 @@
 import type { StorybookConfig } from '@storybook/svelte-vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { mergeConfig } from 'vite';
+const { svelte } = require('@sveltejs/vite-plugin-svelte');
+const { resolve } = require('path');
+const { mergeConfig } = require('vite');
 
-// ES module compatible __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// __dirname is automatically available in CommonJS context (no need to define it)
 
 const config: StorybookConfig = {
   stories: [
@@ -38,7 +35,7 @@ const config: StorybookConfig = {
     autodocs: 'tag',
   } as any,
   staticDirs: [],
-  async viteFinal(config) {
+  async viteFinal(config: any) {
     // Set base path from environment variable for Cloudflare deployment
     const basePath = process.env.STORYBOOK_BASE_PATH || '/';
     if (basePath !== '/') {
@@ -208,5 +205,4 @@ const config: StorybookConfig = {
   },
 };
 
-export default config;
-
+module.exports = config;

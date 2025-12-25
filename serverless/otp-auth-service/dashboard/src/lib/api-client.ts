@@ -180,7 +180,12 @@ export class ApiClient {
 
   // Admin endpoints
   async getCustomer(): Promise<Customer> {
-    return await this.get<Customer>('/admin/customers/me');
+    const response = await this.get<Customer | { success: boolean; customer: Customer }>('/admin/customers/me');
+    // Handle both response formats (backward compatibility)
+    if (response && typeof response === 'object' && 'customer' in response) {
+      return (response as { success: boolean; customer: Customer }).customer;
+    }
+    return response as Customer;
   }
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {

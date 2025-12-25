@@ -11,14 +11,14 @@
   let error: string | null = null;
 
   onMount(async () => {
-    // Set timeout to prevent infinite loading
+    // Set timeout to prevent infinite loading (increased to 10 seconds)
     const timeout = setTimeout(() => {
       if (loading) {
         console.warn('Dashboard data load timed out');
         loading = false;
         error = 'Failed to load dashboard data: Request timed out';
       }
-    }, 5000);
+    }, 10000);
 
     try {
       await loadData();
@@ -32,10 +32,14 @@
     error = null;
 
     try {
-      if (!customer) {
-        customer = await apiClient.getCustomer();
-      }
-      analytics = await apiClient.getAnalytics();
+      // Load customer and analytics in parallel for better performance
+      const [customerData, analyticsData] = await Promise.all([
+        customer ? Promise.resolve(customer) : apiClient.getCustomer().catch(() => null),
+        apiClient.getAnalytics().catch(() => null)
+      ]);
+      
+      customer = customerData;
+      analytics = analyticsData;
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       error = err instanceof Error ? err.message : 'Failed to load dashboard data';

@@ -23,9 +23,15 @@ export async function ensureCustomerAccount(
     customerId: string | null,
     env: Env
 ): Promise<string | null> {
-    // If customerId is already provided, use it
+    // If customerId is already provided, verify it exists
     if (customerId) {
-        return customerId;
+        const { getCustomer } = await import('../../services/customer.js');
+        const existing = await getCustomer(customerId, env);
+        if (existing) {
+            return customerId;
+        }
+        // CustomerId in JWT but doesn't exist - this is a data inconsistency
+        console.warn(`[Customer Creation] CustomerId ${customerId} in JWT but not found in KV, creating new customer`);
     }
     
     try {

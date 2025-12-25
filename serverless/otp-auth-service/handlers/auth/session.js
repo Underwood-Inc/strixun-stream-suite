@@ -197,7 +197,12 @@ export async function handleRefresh(request, env) {
         }
         
         // Get customer ID from token
-        const customerId = payload.customerId || null;
+        let customerId = payload.customerId || null;
+        
+        // Ensure customer account exists (backwards compatibility for users without customer accounts)
+        const emailLower = payload.email.toLowerCase().trim();
+        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
+        customerId = resolvedCustomerId || customerId;
         
         // Check if token is blacklisted with customer isolation
         const tokenHash = await hashEmail(token);

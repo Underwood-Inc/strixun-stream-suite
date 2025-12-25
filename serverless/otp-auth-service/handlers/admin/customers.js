@@ -51,19 +51,16 @@ export async function handleAdminGetMe(request, env, customerId) {
             });
         }
         
-        // Don't expose sensitive data
+        // Return customer directly (not wrapped) to match API client expectations
         return new Response(JSON.stringify({
-            success: true,
-            customer: {
-                customerId: customer.customerId,
-                name: customer.name,
-                email: customer.email,
-                companyName: customer.companyName,
-                plan: customer.plan,
-                status: customer.status,
-                createdAt: customer.createdAt,
-                features: customer.features
-            }
+            customerId: customer.customerId,
+            name: customer.name,
+            email: customer.email,
+            companyName: customer.companyName,
+            plan: customer.plan,
+            status: customer.status,
+            createdAt: customer.createdAt,
+            features: customer.features
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
