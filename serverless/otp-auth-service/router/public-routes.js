@@ -16,12 +16,32 @@ import { getCorsHeaders } from '../utils/cors.js';
  * @returns {Response|null} Response if route matched, null otherwise
  */
 export async function handlePublicRoutes(request, path, env) {
-    // Serve landing page at root and all asset paths
+    // Serve landing page at root
     const isLandingPageRequest = (path === '/' || path === '') && request.method === 'GET';
-    const isLandingPageAsset = path.startsWith('/assets/') && request.method === 'GET';
     
-    if (isLandingPageRequest || isLandingPageAsset) {
+    if (isLandingPageRequest) {
         return assetHandlers.handleLandingPage(request, env);
+    }
+    
+    // Serve dashboard (SPA - all routes serve index.html)
+    // This must come before /assets/ check so dashboard assets are handled correctly
+    if (path.startsWith('/dashboard') && request.method === 'GET') {
+        return assetHandlers.handleDashboard(request, env);
+    }
+    
+    // Handle asset requests - check dashboard assets first, then landing page assets
+    // Dashboard HTML references /assets/... which are served from dashboard-assets.js
+    // Landing page assets are separate
+    const isAssetRequest = path.startsWith('/assets/') && request.method === 'GET';
+    
+    if (isAssetRequest) {
+        // Try dashboard assets first (dashboard HTML references /assets/...)
+        const dashboardResponse = await assetHandlers.handleDashboard(request, env);
+        // If dashboard handler returns 404, try landing page assets
+        if (dashboardResponse.status === 404) {
+            return assetHandlers.handleLandingPage(request, env);
+        }
+        return dashboardResponse;
     }
     
     // Serve OpenAPI spec
@@ -40,11 +60,6 @@ export async function handlePublicRoutes(request, path, env) {
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
-    }
-    
-    // Serve dashboard (SPA - all routes serve index.html)
-    if (path.startsWith('/dashboard') && request.method === 'GET') {
-        return assetHandlers.handleDashboard(request, env);
     }
     
     // Public endpoints (no auth required)

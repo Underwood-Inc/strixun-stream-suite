@@ -290,10 +290,22 @@ pnpm dev</code></pre>
     }
     
     // For /dashboard routes, serve index.html (SPA routing handled client-side)
-    // For asset requests, remove /dashboard prefix
+    // For asset requests, handle both /dashboard/assets/... and /assets/... paths
     const url = new URL(request.url);
-    let filePath = url.pathname.replace(/^\/dashboard\/?/, '') || 'index.html';
-    if (filePath === '') filePath = 'index.html';
+    let filePath = url.pathname;
+    
+    // Remove /dashboard prefix if present
+    filePath = filePath.replace(/^\/dashboard\/?/, '');
+    
+    // If path is empty or just '/', serve index.html
+    if (filePath === '' || filePath === '/') {
+        filePath = 'index.html';
+    }
+    
+    // Remove leading slash from asset paths (assets/main-xxx.js not /assets/main-xxx.js)
+    if (filePath.startsWith('/')) {
+        filePath = filePath.slice(1);
+    }
     
     // Handle SPA routing - all non-file routes serve index.html
     if (!assets[filePath] && !filePath.includes('.')) {

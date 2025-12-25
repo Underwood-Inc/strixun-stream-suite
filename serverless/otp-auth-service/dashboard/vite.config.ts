@@ -22,7 +22,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    base: '/dashboard/',
+    base: '/',
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')
