@@ -136,6 +136,13 @@
     core.goBack();
   }
 
+  function handleClose(e: Event) {
+    e.stopPropagation();
+    if (onClose) {
+      onClose();
+    }
+  }
+
   function formatCountdown(seconds: number): string {
     return OtpLoginCore.formatCountdown(seconds);
   }
@@ -164,7 +171,12 @@
       <div class="otp-login-header">
         <h2 id="otp-login-title">{title}</h2>
         {#if onClose}
-          <button class="otp-login-close" onclick={onClose} aria-label="Close">×</button>
+          <button 
+            type="button"
+            class="otp-login-close" 
+            onclick={handleClose} 
+            aria-label="Close"
+          >×</button>
         {/if}
       </div>
       <div class="otp-login-content">
@@ -541,15 +553,24 @@
     padding: 0;
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    min-height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 4px;
     transition: all 0.2s;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
     
     &:hover {
       background: var(--bg-secondary);
       color: var(--text);
+    }
+    
+    &:active {
+      transform: scale(0.95);
     }
   }
 
