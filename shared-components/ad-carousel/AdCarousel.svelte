@@ -24,7 +24,7 @@
   export let position: 'bottom-left' | 'bottom-right' | 'bottom-center' = 'bottom-right';
   export let autoRotate: boolean = true;
   export let interval: number = 8000; // milliseconds
-  export let showIndicators: boolean = true;
+  export let showIndicators: boolean = false;
   export let showControls: boolean = false; // Hidden by default for ads
   export let width: number = 320;
   export let maxHeight: number = 200;
@@ -381,10 +381,9 @@
     flex: 1;
     overflow: visible;
     min-height: 0;
-    contain: layout style paint;
     height: 100%;
     cursor: default;
-    margin: 8px;
+    padding: 6px 8px 12px 8px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -403,11 +402,12 @@
       min-width: 100%;
       max-width: 100%;
       padding: 0;
-      height: calc(100% - 4px);
-      max-height: calc(100% - 4px);
+      height: 100%;
+      max-height: 100%;
       box-sizing: border-box;
       display: flex;
-      margin-bottom: 4px;
+      overflow: visible;
+      align-items: stretch;
     }
 
     // Ensure carousel wrapper allows overflow for hover effects
@@ -421,6 +421,11 @@
       height: 100%;
       flex: 1;
       min-height: 0;
+      overflow: visible;
+    }
+    
+    :global(.swiper-wrapper) {
+      overflow: visible;
     }
   }
 

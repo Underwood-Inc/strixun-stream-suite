@@ -353,7 +353,7 @@
     width: 100%;
     height: 100%;
     padding: 20px 0;
-    overflow: hidden; // Clip overflow to prevent layout issues
+    overflow: visible;
     position: relative;
     
     // Ensure proper perspective for 3D effects
@@ -422,7 +422,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: visible;
       // Ensure content doesn't flip
       transform: translateZ(0);
     }

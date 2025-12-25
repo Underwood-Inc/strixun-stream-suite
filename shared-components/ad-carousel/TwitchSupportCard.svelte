@@ -64,7 +64,7 @@
     will-change: transform, opacity;
     box-sizing: border-box;
     margin: 0;
-    overflow: visible;
+    overflow: hidden;
 
     &:hover {
       border-color: var(--accent);
@@ -84,7 +84,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 12px 16px 12px;
+    padding: 8px;
     box-sizing: border-box;
     overflow: hidden;
   }

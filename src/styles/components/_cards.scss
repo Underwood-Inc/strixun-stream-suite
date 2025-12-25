@@ -15,7 +15,79 @@
     box-shadow: 0 2px 12px rgba(237, 174, 73, 0.25);
     // No transform to prevent content shift
   }
+}
+
+// Status flair support for cards - ensure status flair styles are visible in base state
+:global(.status-flair--in-testing > .card) {
+  border-color: var(--info);
+  border-width: 2px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(100, 149, 237, 0.08),
+    rgba(100, 149, 237, 0.08) 6px,
+    rgba(100, 149, 237, 0.12) 6px,
+    rgba(100, 149, 237, 0.12) 12px
+  );
   
+  &:hover {
+    border-color: var(--info);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.12),
+      rgba(100, 149, 237, 0.12) 6px,
+      rgba(100, 149, 237, 0.16) 6px,
+      rgba(100, 149, 237, 0.16) 12px
+    );
+  }
+}
+
+:global(.status-flair--wip > .card) {
+  border-color: #ff8c00;
+  border-width: 2px;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 140, 0, 0.1),
+    rgba(255, 140, 0, 0.1) 4px,
+    rgba(255, 140, 0, 0.15) 4px,
+    rgba(255, 140, 0, 0.15) 8px
+  );
+  
+  &:hover {
+    border-color: #ff8c00;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 140, 0, 0.1),
+      rgba(255, 140, 0, 0.1) 4px,
+      rgba(255, 140, 0, 0.15) 4px,
+      rgba(255, 140, 0, 0.15) 8px
+    );
+  }
+}
+
+:global(.status-flair--beta > .card) {
+  border-color: #9b59b6;
+  border-width: 2px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(155, 89, 182, 0.08),
+    rgba(155, 89, 182, 0.08) 8px,
+    rgba(155, 89, 182, 0.12) 8px,
+    rgba(155, 89, 182, 0.12) 16px
+  );
+  
+  &:hover {
+    border-color: #9b59b6;
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(155, 89, 182, 0.12),
+      rgba(155, 89, 182, 0.12) 8px,
+      rgba(155, 89, 182, 0.16) 8px,
+      rgba(155, 89, 182, 0.16) 16px
+    );
+  }
+}
+
+.card {
   h3 {
     margin-top: 0;
     margin-bottom: 16px;

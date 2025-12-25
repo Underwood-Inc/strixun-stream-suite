@@ -323,29 +323,59 @@ import { currentPage } from '../../stores/navigation';
   }
 
   // Status flairs are now handled by StatusFlair component
-  // Active state overrides for in-testing status
-  .tabs .tab.active {
-    // When active and in-testing, keep active styling with testing pattern
-    :global(.status-flair--in-testing > *) {
-      background: var(--accent);
-      background-image: repeating-linear-gradient(
-        45deg,
-        rgba(100, 149, 237, 0.15),
-        rgba(100, 149, 237, 0.15) 6px,
-        rgba(100, 149, 237, 0.2) 6px,
-        rgba(100, 149, 237, 0.2) 12px
-      );
-      border-color: var(--info);
-    }
+  // Base state for in-testing tabs (always visible, not just on hover)
+  .tabs :global(.status-flair--in-testing > .tab) {
+    border-color: var(--info);
+    border-width: 2px;
+    background: var(--card);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.08),
+      rgba(100, 149, 237, 0.08) 6px,
+      rgba(100, 149, 237, 0.12) 6px,
+      rgba(100, 149, 237, 0.12) 12px
+    );
+  }
+
+  // Base state for WIP tabs (always visible)
+  .tabs :global(.status-flair--wip > .tab) {
+    border-color: #ff8c00;
+    border-width: 2px;
+    background: var(--card);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 140, 0, 0.1),
+      rgba(255, 140, 0, 0.1) 4px,
+      rgba(255, 140, 0, 0.15) 4px,
+      rgba(255, 140, 0, 0.15) 8px
+    );
   }
 
   // Hover state for in-testing tabs
-  .tabs .tab:hover:not(.disabled):not(.active) {
-    :global(.status-flair--in-testing > *) {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 4px 0 var(--info);
-      border-color: var(--info);
-    }
+  .tabs :global(.status-flair--in-testing > .tab):hover:not(.disabled):not(.active) {
+    border-color: var(--info);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.12),
+      rgba(100, 149, 237, 0.12) 6px,
+      rgba(100, 149, 237, 0.16) 6px,
+      rgba(100, 149, 237, 0.16) 12px
+    );
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 4px 0 var(--info);
+  }
+
+  // Active state overrides for in-testing status
+  .tabs :global(.status-flair--in-testing > .tab.active) {
+    background: var(--accent);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.15),
+      rgba(100, 149, 237, 0.15) 6px,
+      rgba(100, 149, 237, 0.2) 6px,
+      rgba(100, 149, 237, 0.2) 12px
+    );
+    border-color: var(--info);
   }
 </style>
 
