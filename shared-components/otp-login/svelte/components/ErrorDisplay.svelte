@@ -56,6 +56,7 @@
           component={RateLimitInfoCard as any}
           componentProps={{
             compact: true,
+            embedded: true,
             emailLimit: state.errorDetails?.emailLimit || null,
             failedAttempts: (state.errorDetails?.failedAttempts ?? null) as number | null,
             baseLimit: 3

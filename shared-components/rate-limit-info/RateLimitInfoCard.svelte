@@ -23,6 +23,7 @@
    */
 
   export let compact: boolean = false;
+  export let embedded: boolean = false; // When true, removes card styling (border, background, padding) for use in tooltips
   export let className: string = '';
   
   // Optional dynamic data
@@ -184,7 +185,7 @@
   }
 </script>
 
-<div class="rate-limit-info-card {className}" class:rate-limit-info-card--compact={compact}>
+<div class="rate-limit-info-card {className}" class:rate-limit-info-card--compact={compact} class:rate-limit-info-card--embedded={embedded}>
   <div class="rate-limit-info-card__header">
     <div class="rate-limit-info-card__icon">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -311,6 +312,13 @@
   .rate-limit-info-card--compact {
     padding: var(--spacing-sm);
     border-width: 1px;
+  }
+
+  .rate-limit-info-card--embedded {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
   }
 
   .rate-limit-info-card__header {

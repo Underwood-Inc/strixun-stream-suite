@@ -262,6 +262,7 @@
     class="tooltip tooltip--{position}" 
     class:tooltip--interactive={interactive}
     class:tooltip--scrollable={maxHeight !== null || height !== null}
+    class:tooltip--has-component={component !== null}
     role="tooltip" 
     style="{dimensionStyles}; {fixedStyle}"
     bind:this={tooltipElement}
@@ -317,6 +318,10 @@
   
   .tooltip--scrollable {
     overflow: hidden;
+  }
+
+  .tooltip--has-component {
+    padding: 12px 16px;
   }
   
   .tooltip--scrollable .tooltip-content {
