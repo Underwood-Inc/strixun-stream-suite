@@ -466,7 +466,7 @@
     <div style="margin-top:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:0.8em">
       <strong style="color:var(--accent)">OAuth Redirect URI:</strong>
       <code style="display:block;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px;word-break:break-all;user-select:all">
-        https://underwood-inc.github.io/strixun-stream-suite/twitch_auth_callback.html
+        https://streamkit.idling.app/twitch_auth_callback.html
       </code>
       <p style="color:var(--muted);margin-top:4px">☝️ Add this URL to your Twitch app's OAuth Redirect URLs</p>
     </div>

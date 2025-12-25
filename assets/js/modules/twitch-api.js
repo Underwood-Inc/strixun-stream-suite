@@ -37,8 +37,8 @@ function getTwitchOAuthCallback() {
     if (window.Version && window.Version.DEFAULT_OAUTH_CALLBACK) {
         return window.Version.DEFAULT_OAUTH_CALLBACK;
     }
-    // Hardcoded fallback
-    return 'https://underwood-inc.github.io/strixun-stream-suite/twitch_auth_callback.html';
+    // Hardcoded fallback - custom domain
+    return 'https://streamkit.idling.app/twitch_auth_callback.html';
 }
 
 // Generate dynamic OAuth URL using configured values

@@ -25,7 +25,8 @@ const APP_VERSION = {
 const GITHUB_REPO = 'Underwood-Inc/strixun-stream-suite';
 const GITHUB_RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_REPO}/main`;
 const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
-const GITHUB_PAGES_URL = 'https://underwood-inc.github.io/strixun-stream-suite';
+// Custom domain: streamkit.idling.app
+const GITHUB_PAGES_URL = 'https://streamkit.idling.app';
 
 // Default OAuth callback URL (GitHub Pages hosted)
 const DEFAULT_OAUTH_CALLBACK = `${GITHUB_PAGES_URL}/twitch_auth_callback.html`;

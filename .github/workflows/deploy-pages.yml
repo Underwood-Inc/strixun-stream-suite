@@ -52,7 +52,10 @@ jobs:
         
       - name: Build Svelte app
         env:
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          # Use root path (/) for custom domain deployment
+          # If you need to support both custom domain and github.io, use:
+          # VITE_BASE_PATH: ${{ secrets.CUSTOM_DOMAIN && '/' || format('/{0}/', github.event.repository.name) }}
+          VITE_BASE_PATH: /
         run: pnpm build
         
       - name: Setup Pages
@@ -74,6 +77,7 @@ jobs:
         env:
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
           CF_WORKERS_SUBDOMAIN: ${{ secrets.CF_WORKERS_SUBDOMAIN }}
+          CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || 'streamkit.idling.app' }}
         run: |
           # Read worker name from wrangler.toml
           WORKER_NAME=$(grep '^name = ' serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/')
@@ -85,8 +89,15 @@ jobs:
           WORKER_URL="https://${WORKER_NAME}.${SUBDOMAIN}.workers.dev"
           echo "Worker URL: $WORKER_URL"
           
-          # Get GitHub Pages URL (will be available after deployment)
-          PAGES_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
+          # Get GitHub Pages URL - use custom domain if configured, otherwise github.io
+          # For custom domain, use the domain from GitHub Pages settings
+          # You can override this with a secret CUSTOM_DOMAIN if needed
+          CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-streamkit.idling.app}"
+          if [ -n "$CUSTOM_DOMAIN" ] && [ "$CUSTOM_DOMAIN" != "none" ]; then
+            PAGES_URL="https://${CUSTOM_DOMAIN}/"
+          else
+            PAGES_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
+          fi
           echo "GitHub Pages URL: $PAGES_URL"
           
           # Get deployment timestamp
