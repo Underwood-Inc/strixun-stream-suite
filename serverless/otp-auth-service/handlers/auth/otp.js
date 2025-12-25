@@ -123,25 +123,49 @@ export async function handleRequestOTP(request, env, customerId = null) {
                 }
             }
             
-            // Format reset time for display
-            const resetTimeFormatted = resetTime.toLocaleString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
+            // Format reset time for display using browser locale (will be localized on client)
+            // Use ISO string and let client format it with their locale
+            const resetTimeFormatted = resetTime.toISOString();
+            
+            // Get detailed rate limit information for the error response
+            const rateLimitDetails = {
+                reason: rateLimit.reason || 'rate_limit_exceeded',
+                emailLimit: rateLimit.emailLimit || (rateLimit.reason === 'email_rate_limit_exceeded' ? {
+                    current: 0,
+                    max: 0,
+                    resetAt: rateLimit.resetAt
+                } : undefined),
+                ipLimit: rateLimit.ipLimit || (rateLimit.reason === 'ip_rate_limit_exceeded' ? {
+                    current: 0,
+                    max: 0,
+                    resetAt: rateLimit.resetAt
+                } : undefined),
+                quotaLimit: !quotaCheck.allowed ? {
+                    daily: quotaCheck.usage?.daily ? {
+                        current: quotaCheck.usage.daily,
+                        max: quotaCheck.quota?.otpRequestsPerDay || 0
+                    } : undefined,
+                    monthly: quotaCheck.usage?.monthly ? {
+                        current: quotaCheck.usage.monthly,
+                        max: quotaCheck.quota?.otpRequestsPerMonth || 0
+                    } : undefined
+                } : undefined,
+                failedAttempts: rateLimit.failedAttempts
+            };
             
             // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc6585#section-4',
                 title: 'Too Many Requests',
                 status: 429,
-                detail: `Too many requests. Please try again ${resetMessage} (at ${resetTimeFormatted}).`,
+                detail: `Too many requests. Please try again ${resetMessage}.`,
                 instance: request.url,
                 retry_after: secondsUntilReset,
                 reset_at: rateLimit.resetAt,
-                reset_at_formatted: resetTimeFormatted,
+                reset_at_iso: resetTimeFormatted, // ISO string for client-side localization
                 remaining: rateLimit.remaining,
                 reason: rateLimit.reason || 'rate_limit_exceeded',
+                rate_limit_details: rateLimitDetails,
             }), {
                 status: 429,
                 headers: { 

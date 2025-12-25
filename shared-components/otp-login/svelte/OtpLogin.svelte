@@ -8,6 +8,8 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import type { OtpLoginState } from '../core';
   import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig } from '../core';
+  import Tooltip from '../../tooltip/Tooltip.svelte';
+  import { getErrorInfo, generateRateLimitTooltip } from '../../error-mapping/error-legend';
 
   export let apiUrl: string;
   export let onSuccess: (data: LoginSuccessData) => void;
@@ -185,13 +187,26 @@
 <!-- Content Component -->
 {#snippet OtpLoginContent()}
   {#if state.error}
+    {@const errorInfo = getErrorInfo(state.errorCode || 'rate_limit_exceeded')}
+    {@const resetTime = state.rateLimitResetAt ? new Date(state.rateLimitResetAt).toLocaleString(navigator.language || 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : null}
+    {@const tooltipContent = generateRateLimitTooltip(errorInfo, state.errorDetails)}
     <div class="otp-login-error">
-      <div class="otp-login-error-message">{state.error}</div>
+      <div class="otp-login-error-message">
+        {state.error}
+        {#if state.errorCode}
+          <Tooltip content={tooltipContent} position="top">
+            <span class="otp-login-error-info-icon" aria-label="Error details">ℹ️</span>
+          </Tooltip>
+        {/if}
+      </div>
       {#if state.rateLimitCountdown > 0}
         <div class="otp-login-rate-limit-countdown">
           <span class="otp-login-countdown-icon">⏱️</span>
           <span class="otp-login-countdown-text">
             Try again in: <strong>{formatRateLimitCountdown(state.rateLimitCountdown)}</strong>
+            {#if resetTime}
+              <span class="otp-login-reset-time">(at {resetTime})</span>
+            {/if}
           </span>
         </div>
       {/if}
@@ -323,6 +338,26 @@
 
   .otp-login-error-message {
     margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+  
+  .otp-login-error-info-icon {
+    cursor: help;
+    font-size: 1rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+  
+  .otp-login-reset-time {
+    font-size: 0.875rem;
+    opacity: 0.8;
+    margin-left: var(--spacing-xs);
   }
 
   .otp-login-rate-limit-countdown {

@@ -34,12 +34,39 @@ export interface LoginSuccessData {
   data?: any;
 }
 
+export interface RateLimitDetails {
+  reason?: string;
+  emailLimit?: {
+    current: number;
+    max: number;
+    resetAt: string;
+  };
+  ipLimit?: {
+    current: number;
+    max: number;
+    resetAt: string;
+  };
+  quotaLimit?: {
+    daily?: {
+      current: number;
+      max: number;
+    };
+    monthly?: {
+      current: number;
+      max: number;
+    };
+  };
+  failedAttempts?: number;
+}
+
 export interface OtpLoginState {
   step: 'email' | 'otp';
   email: string;
   otp: string;
   loading: boolean;
   error: string | null;
+  errorCode?: string; // Error code for mapping
+  errorDetails?: RateLimitDetails; // Detailed rate limit info
   countdown: number;
   rateLimitResetAt: string | null; // ISO timestamp when rate limit resets
   rateLimitCountdown: number; // Seconds until rate limit resets
@@ -148,7 +175,9 @@ export class OtpLoginCore {
           this.setState({ 
             error: errorMsg, 
             loading: false,
-            rateLimitResetAt: data.reset_at,
+            errorCode: data.reason || 'rate_limit_exceeded',
+            errorDetails: data.rate_limit_details,
+            rateLimitResetAt: data.reset_at_iso || data.reset_at,
             rateLimitCountdown: secondsUntilReset,
           });
           
@@ -158,6 +187,8 @@ export class OtpLoginCore {
           this.setState({ 
             error: errorMsg, 
             loading: false,
+            errorCode: data.reason || data.code,
+            errorDetails: data.rate_limit_details,
             rateLimitResetAt: null,
             rateLimitCountdown: 0,
           });

@@ -267,16 +267,22 @@ export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCus
         const oneHour = 60 * 60 * 1000;
         
         // Check IP rate limit
+        const ipRequests = ipRateLimit ? (ipRateLimit.requests || 0) : 0;
         if (ipRateLimit && ipRateLimit.resetAt && now <= new Date(ipRateLimit.resetAt).getTime()) {
-            if (ipRateLimit.requests >= planLimits.ipRequestsPerHour) {
+            if (ipRequests >= planLimits.ipRequestsPerHour) {
                 return { 
                     allowed: false, 
                     remaining: 0, 
                     resetAt: ipRateLimit.resetAt,
-                    reason: 'ip_rate_limit_exceeded'
+                    reason: 'ip_rate_limit_exceeded',
+                    ipLimit: {
+                        current: ipRequests,
+                        max: planLimits.ipRequestsPerHour,
+                        resetAt: ipRateLimit.resetAt
+                    }
                 };
             }
-            ipRateLimit.requests = (ipRateLimit.requests || 0) + 1;
+            ipRateLimit.requests = ipRequests + 1;
         } else {
             const resetAt = new Date(now + oneHour).toISOString();
             ipRateLimit = {
@@ -303,19 +309,31 @@ export async function checkOTPRateLimit(emailHash, customerId, ipAddress, getCus
         }
         
         // Check if rate limit exists and is still valid
+        const emailRequests = rateLimit ? (rateLimit.otpRequests || 0) : 0;
         if (rateLimit && rateLimit.resetAt && now <= new Date(rateLimit.resetAt).getTime()) {
             // Rate limit exists and is valid
-            if (rateLimit.otpRequests >= adjustedRateLimit) {
+            if (emailRequests >= adjustedRateLimit) {
                 return { 
                     allowed: false, 
                     remaining: 0, 
                     resetAt: rateLimit.resetAt,
-                    reason: 'email_rate_limit_exceeded'
+                    reason: 'email_rate_limit_exceeded',
+                    emailLimit: {
+                        current: emailRequests,
+                        max: adjustedRateLimit,
+                        resetAt: rateLimit.resetAt
+                    },
+                    ipLimit: {
+                        current: ipRateLimit ? (ipRateLimit.requests || 0) : 0,
+                        max: planLimits.ipRequestsPerHour,
+                        resetAt: ipRateLimit?.resetAt || new Date(now + oneHour).toISOString()
+                    },
+                    failedAttempts: rateLimit.failedAttempts || 0
                 };
             }
             
             // Increment counter (this request counts)
-            rateLimit.otpRequests = (rateLimit.otpRequests || 0) + 1;
+            rateLimit.otpRequests = emailRequests + 1;
             await env.OTP_AUTH_KV.put(rateLimitKey, JSON.stringify(rateLimit), { expirationTtl: 3600 });
             
             return { 
