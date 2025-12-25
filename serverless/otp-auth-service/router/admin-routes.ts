@@ -16,6 +16,7 @@ import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
 import * as publicHandlers from '../handlers/public.js';
 import * as debugHandlers from '../handlers/auth/debug.js';
+import * as dataRequestHandlers from '../handlers/admin/data-requests.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -463,6 +464,33 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         }
         // Super-admin authenticated, allow rate limit clearing
         return { response: await debugHandlers.handleClearRateLimit(request, env, null), customerId: null };
+    }
+    
+    // Data request endpoints (super-admin only)
+    if (path === '/admin/data-requests' && request.method === 'POST') {
+        const authError = await requireSuperAdmin(request, env);
+        if (authError) {
+            return { response: authError, customerId: null };
+        }
+        return { response: await dataRequestHandlers.handleCreateDataRequest(request, env), customerId: null };
+    }
+    
+    if (path === '/admin/data-requests' && request.method === 'GET') {
+        const authError = await requireSuperAdmin(request, env);
+        if (authError) {
+            return { response: authError, customerId: null };
+        }
+        return { response: await dataRequestHandlers.handleListDataRequests(request, env), customerId: null };
+    }
+    
+    const dataRequestMatch = path.match(/^\/admin\/data-requests\/([^\/]+)$/);
+    if (dataRequestMatch && request.method === 'GET') {
+        const requestId = dataRequestMatch[1];
+        const authError = await requireSuperAdmin(request, env);
+        if (authError) {
+            return { response: authError, customerId: null };
+        }
+        return { response: await dataRequestHandlers.handleGetDataRequest(request, env, requestId), customerId: null };
     }
     
     return null; // Route not matched

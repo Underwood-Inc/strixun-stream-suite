@@ -9,6 +9,7 @@ import * as userHandlers from '../handlers/user/displayName.js';
 import * as twitchHandlers from '../handlers/user/twitch.js';
 import * as profilePictureHandlers from '../handlers/user/profilePicture.js';
 import * as preferencesHandlers from '../handlers/user/preferences.js';
+import * as dataRequestHandlers from '../handlers/user/data-requests.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -144,6 +145,50 @@ export async function handleUserRoutes(
     if (path === '/user/me/preferences' && request.method === 'PUT') {
         return { 
             response: await preferencesHandlers.handleUpdatePreferences(request, env), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
+    // Data request endpoints (user can view/approve/reject requests for their data)
+    if (path === '/user/data-requests' && request.method === 'GET') {
+        return { 
+            response: await dataRequestHandlers.handleGetUserDataRequests(request, env), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
+    const userDataRequestMatch = path.match(/^\/user\/data-requests\/([^\/]+)$/);
+    if (userDataRequestMatch && request.method === 'GET') {
+        const requestId = userDataRequestMatch[1];
+        return { 
+            response: await dataRequestHandlers.handleGetUserDataRequest(request, env, requestId), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
+    const approveDataRequestMatch = path.match(/^\/user\/data-requests\/([^\/]+)\/approve$/);
+    if (approveDataRequestMatch && request.method === 'POST') {
+        const requestId = approveDataRequestMatch[1];
+        return { 
+            response: await dataRequestHandlers.handleApproveDataRequest(request, env, requestId), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
+    const rejectDataRequestMatch = path.match(/^\/user\/data-requests\/([^\/]+)\/reject$/);
+    if (rejectDataRequestMatch && request.method === 'POST') {
+        const requestId = rejectDataRequestMatch[1];
+        return { 
+            response: await dataRequestHandlers.handleRejectDataRequest(request, env, requestId), 
+            customerId: null // Will be extracted from JWT in handler
+        };
+    }
+    
+    const decryptDataMatch = path.match(/^\/user\/data-requests\/([^\/]+)\/decrypt$/);
+    if (decryptDataMatch && request.method === 'POST') {
+        const requestId = decryptDataMatch[1];
+        return { 
+            response: await dataRequestHandlers.handleDecryptData(request, env, requestId), 
             customerId: null // Will be extracted from JWT in handler
         };
     }
