@@ -22,7 +22,7 @@
       "$components/*": ["src/components/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "include": ["src/**/*.ts", "src/**/*.svelte", "src/vite-env.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
 

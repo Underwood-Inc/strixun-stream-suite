@@ -4,14 +4,14 @@
  */
 
 import type {
-  User,
-  Customer,
+  Analytics,
   ApiKey,
   ApiKeyResponse,
   AuditLogsResponse,
-  Analytics,
+  Customer,
+  ErrorAnalytics,
   RealtimeAnalytics,
-  ErrorAnalytics
+  User
 } from './types.js';
 
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
@@ -135,6 +135,9 @@ export class ApiClient {
     return await this.decryptResponse<T>(response);
   }
 
+  // PUT method kept for API completeness and future use
+  // Note: updateCustomer uses fetch directly because it calls external customer-api
+  // @ts-expect-error - Intentionally kept for API completeness (standard HTTP method)
   private async put<T>(endpoint: string, body?: unknown): Promise<T> {
     const response = await this.request(endpoint, {
       method: 'PUT',

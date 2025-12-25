@@ -196,7 +196,7 @@ export async function getUserDataRequests(
     // Sort by created date (newest first)
     requests.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
+    );
 
     return requests;
 }

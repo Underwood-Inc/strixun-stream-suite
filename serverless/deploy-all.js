@@ -6,9 +6,10 @@
  * This ensures proper deployment order and provides clear feedback.
  */
 
-import { execSync, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { platform } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,6 +35,7 @@ const results = [];
 
 /**
  * Execute command with timeout and progress logging
+ * Cross-platform compatible spawn for shell commands
  */
 function execWithTimeout(command, options, timeoutMs = 600000) { // 10 minutes default
   return new Promise((resolve, reject) => {
@@ -41,13 +43,17 @@ function execWithTimeout(command, options, timeoutMs = 600000) { // 10 minutes d
     console.log(`   🚀 Starting command...\n`);
     
     const startTime = Date.now();
-    let lastProgressLog = startTime;
     
-    // Use shell: true for complex commands like "pnpm run deploy"
-    // When using shell: true, pass command as first arg, options as second
-    const child = spawn(command, [], {
+    // Determine shell based on platform for cross-platform compatibility
+    const isWindows = platform() === 'win32';
+    const shell = isWindows ? process.env.COMSPEC || 'cmd.exe' : '/bin/sh';
+    const shellFlag = isWindows ? '/c' : '-c';
+    
+    // For shell commands, spawn with proper shell syntax
+    // On Windows: cmd.exe /c "command"
+    // On Unix: /bin/sh -c "command"
+    const child = spawn(shell, [shellFlag, command], {
       ...options,
-      shell: true,
       stdio: 'inherit',
     });
     

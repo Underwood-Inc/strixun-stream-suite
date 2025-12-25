@@ -106,6 +106,9 @@ export class ApiClient {
         }
         return await this.decryptResponse(response);
     }
+    // PUT method kept for API completeness and future use
+    // Note: updateCustomer uses fetch directly because it calls external customer-api
+    // @ts-expect-error - Intentionally kept for API completeness (standard HTTP method)
     async put(endpoint, body) {
         const response = await this.request(endpoint, {
             method: 'PUT',
@@ -144,12 +147,33 @@ export class ApiClient {
         }
         this.setToken(null);
     }
-    // Admin endpoints
+    // Customer endpoints (now using customer-api)
     async getCustomer() {
-        return await this.get('/admin/customers/me');
+        // Use customer-api endpoint instead of OTP auth service
+        const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer.idling.app';
+        const response = await fetch(`${customerApiUrl}/customer/me`, {
+            method: 'GET',
+            headers: this.getHeaders(),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Failed to get customer' }));
+            throw new Error(error.detail || 'Failed to get customer');
+        }
+        return await this.decryptResponse(response);
     }
     async updateCustomer(data) {
-        return await this.put('/admin/customers/me', data);
+        // Use customer-api endpoint instead of OTP auth service
+        const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer.idling.app';
+        const response = await fetch(`${customerApiUrl}/customer/me`, {
+            method: 'PUT',
+            headers: this.getHeaders(),
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Failed to update customer' }));
+            throw new Error(error.detail || 'Failed to update customer');
+        }
+        return await this.decryptResponse(response);
     }
     async getApiKeys(customerId) {
         return await this.get(`/admin/customers/${customerId}/api-keys`);
