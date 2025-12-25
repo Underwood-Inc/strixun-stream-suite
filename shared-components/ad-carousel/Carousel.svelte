@@ -94,12 +94,35 @@
         return;
       }
       
-      // Swiper requires at least 2 slides for loop mode
-      // Disable loop if we only have 1 slide
+      // If there's only one slide, skip Swiper entirely and display statically
       const slideCount = slides.length;
+      if (slideCount < 2) {
+        // Unwrap the slide - remove swiper-slide wrapper and display content directly
+        slides.forEach((slide) => {
+          const content = slide.firstElementChild;
+          if (content && swiperWrapper) {
+            swiperWrapper.insertBefore(content, slide);
+            slide.remove();
+          }
+        });
+        // Add static class to disable all carousel functionality
+        if (swiperContainer) {
+          swiperContainer.classList.add('carousel--static');
+        }
+        isInitializing = false;
+        return; // Don't initialize Swiper at all
+      }
+      
+      // Swiper requires at least 2 slides for loop mode
       const effectiveLoop = loop && slideCount >= 2;
       if (loop && slideCount < 2) {
         console.warn(`Carousel: Loop mode requires at least 2 slides, but only ${slideCount} slide(s) found. Disabling loop mode.`);
+      }
+      
+      // Disable autoplay and animations if there's only one slide
+      const effectiveAutoRotate = autoRotate && slideCount >= 2;
+      if (autoRotate && slideCount < 2) {
+        console.warn(`Carousel: Autoplay requires at least 2 slides, but only ${slideCount} slide(s) found. Disabling autoplay.`);
       }
       
       isInitializing = true;
@@ -107,7 +130,11 @@
       // Watch for new children and wrap them (but don't interfere during init)
       observer = new MutationObserver((mutations) => {
         // Only process if Swiper is already initialized
-        if (!swiper || isInitializing) return;
+        if (isInitializing) return;
+        
+        // If we're in static mode (no Swiper), don't do anything
+        // Static mode means single slide - no carousel functionality needed
+        if (!swiper) return;
         
         let shouldUpdate = false;
         mutations.forEach((mutation) => {
@@ -144,11 +171,11 @@
         modules.push(Navigation);
       }
       
-      if (showIndicators) {
+      if (showIndicators && slideCount >= 2) {
         modules.push(Pagination);
       }
       
-      if (autoRotate) {
+      if (effectiveAutoRotate) {
         modules.push(Autoplay);
       }
 
@@ -160,18 +187,19 @@
         spaceBetween: spaceBetween,
         centeredSlides: true, // Center the active slide
         watchOverflow: true, // Watch for overflow
-        autoplay: autoRotate ? {
+        autoplay: effectiveAutoRotate ? {
           delay: interval,
           disableOnInteraction: false,
           pauseOnMouseEnter: true,
           enabled: true
         } : false,
-        navigation: showControls ? {
+        speed: slideCount >= 2 ? 800 : 0, // Disable animation speed for single slide
+        navigation: showControls && slideCount >= 2 ? {
           nextEl: '.carousel__control--next',
           prevEl: '.carousel__control--prev',
           disabledClass: 'carousel__control--disabled'
         } : false,
-        pagination: showIndicators ? {
+        pagination: showIndicators && slideCount >= 2 ? {
           el: '.carousel__pagination',
           clickable: true,
           type: 'bullets'
@@ -189,14 +217,14 @@
           modifier: 1,
           slideShadows: true
         } : undefined,
-        speed: 800, // Animation speed - increased for smoother animation
-        allowTouchMove: true,
-        grabCursor: true,
+        speed: slideCount >= 2 ? 800 : 0, // Animation speed - only for multiple slides
+        allowTouchMove: slideCount >= 2, // Disable touch move for single slide
+        grabCursor: slideCount >= 2, // Disable grab cursor for single slide
         on: {
           init: () => {
             isInitializing = false;
-            // Start autoplay if enabled
-            if (autoRotate && swiper?.autoplay) {
+            // Start autoplay if enabled and we have multiple slides
+            if (effectiveAutoRotate && swiper?.autoplay) {
               swiper.autoplay.start();
             }
           },
@@ -245,24 +273,30 @@
     }
   }
 
-  // Update autoplay when interval changes
+  // Update autoplay when interval changes (only if we have multiple slides)
   $: if (swiper && autoRotate && swiper.autoplay && !isInitializing) {
-    swiper.autoplay.stop();
-    swiper.params.autoplay = {
-      delay: interval,
-      disableOnInteraction: false,
-      pauseOnMouseEnter: true,
-      enabled: true
-    };
-    swiper.autoplay.start();
+    const slides = swiperWrapper?.querySelectorAll('.swiper-slide');
+    if (slides && slides.length >= 2) {
+      swiper.autoplay.stop();
+      swiper.params.autoplay = {
+        delay: interval,
+        disableOnInteraction: false,
+        pauseOnMouseEnter: true,
+        enabled: true
+      };
+      swiper.autoplay.start();
+    }
   }
 
-  // Handle autoplay toggle
+  // Handle autoplay toggle (only if we have multiple slides)
   $: if (swiper && swiper.autoplay && !isInitializing) {
-    if (autoRotate) {
-      swiper.autoplay.start();
-    } else {
-      swiper.autoplay.stop();
+    const slides = swiperWrapper?.querySelectorAll('.swiper-slide');
+    if (slides && slides.length >= 2) {
+      if (autoRotate) {
+        swiper.autoplay.start();
+      } else {
+        swiper.autoplay.stop();
+      }
     }
   }
 </script>
@@ -328,8 +362,24 @@
       perspective-origin: center center;
     }
     
+    // Static mode - no Swiper, just display content
+    &.carousel--static {
+      padding: 0;
+      
+      :global(.swiper-wrapper) {
+        display: flex;
+        align-items: stretch;
+        perspective: none;
+        transform: none;
+      }
+    }
+    
     @media (max-width: 640px) {
       padding: 12px 0;
+      
+      &.carousel--static {
+        padding: 0;
+      }
     }
   }
 

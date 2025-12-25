@@ -331,21 +331,32 @@
   animation: spin 1s linear infinite;
 }
 
-// ============ Card Hover Glow Effect ============
-// Subtle pulsing glow animation for card hover state
+// ============ Card Hover Diagonal Lines Pattern ============
+// Clean, modern animated diagonal lines pattern for card hover state
 
-@keyframes card-glow-pulse {
-  0%, 100% {
-    box-shadow: 0 2px 12px rgba(237, 174, 73, 0.25);
+@keyframes card-lines-slide {
+  0% {
+    background-position: 0 0;
   }
-  50% {
-    box-shadow: 0 2px 16px rgba(237, 174, 73, 0.35);
+  100% {
+    // For 45deg diagonal, move by repeat distance: 16px * sqrt(2) = 22.63px
+    background-position: 22.63px 22.63px;
   }
 }
 
 @mixin card-hover-pattern {
-  // Subtle pulsing glow effect instead of moving pattern
-  animation: card-glow-pulse 3s ease-in-out infinite;
+  // Subtle animated diagonal lines pattern (matching tooltip flair style)
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--card),
+    var(--card) 8px,
+    rgba(237, 174, 73, 0.04) 8px,
+    rgba(237, 174, 73, 0.04) 16px
+  );
+  // Set background-size to diagonal distance for seamless animation
+  // For 45deg with 16px repeat: size = 16px * sqrt(2) = 22.63px
+  background-size: 22.63px 22.63px;
+  animation: card-lines-slide 8s linear infinite;
 }
 
 // ============ GPU Acceleration ============

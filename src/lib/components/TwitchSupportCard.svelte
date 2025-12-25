@@ -12,6 +12,8 @@
    * ```
    */
 
+  import OtpAuthLink from '@shared-components/ad-carousel/OtpAuthLink.svelte';
+
   export let supportUrl: string = 'https://www.twitch.tv/strixun';
   export let className: string = '';
 </script>
@@ -38,6 +40,9 @@
     </div>
     
     <div class="support-card__action">
+      <span class="support-card__powered-by-wrapper" role="none" on:click|stopPropagation on:keydown|stopPropagation>
+        <OtpAuthLink />
+      </span>
       <span class="support-card__link">Show Support →</span>
     </div>
   </div>
@@ -82,7 +87,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 10px 12px 12px 12px;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -132,11 +137,17 @@
 
   .support-card__action {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: 12px;
     padding-top: 6px;
     border-top: 1px solid var(--border);
     margin-top: auto;
+  }
+
+  .support-card__powered-by-wrapper {
+    flex-shrink: 0;
   }
 
   .support-card__link {

@@ -61,14 +61,23 @@
     &:hover {
       border-color: var(--accent);
       box-shadow: 0 2px 12px rgba(237, 174, 73, 0.25);
-      // Subtle pulsing glow animation
+      // Clean animated diagonal lines pattern - distinct from carousel border effect
       @include card-hover-pattern;
       // No transform to prevent content shift
     }
 
     &:active {
       box-shadow: 0 1px 6px rgba(237, 174, 73, 0.2);
-      // No animation on active, just static shadow
+      // Keep pattern on active but slightly more visible
+      background-image: repeating-linear-gradient(
+        45deg,
+        var(--card),
+        var(--card) 8px,
+        rgba(237, 174, 73, 0.06) 8px,
+        rgba(237, 174, 73, 0.06) 16px
+      );
+      background-size: 22.63px 22.63px;
+      animation: card-lines-slide 6s linear infinite;
       // No transform to prevent content shift
     }
 
