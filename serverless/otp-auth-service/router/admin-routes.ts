@@ -354,7 +354,9 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         }
         
         if (request.method === 'GET') {
-            return { response: await adminHandlers.handleListApiKeys(request, env, auth.customerId), customerId: auth.customerId };
+            // Pass JWT token for double-encryption
+            const jwtToken = 'jwtToken' in auth ? auth.jwtToken : null;
+            return { response: await adminHandlers.handleListApiKeys(request, env, auth.customerId, jwtToken), customerId: auth.customerId };
         }
         if (request.method === 'POST') {
             return { response: await adminHandlers.handleCreateApiKey(request, env, auth.customerId), customerId: auth.customerId };
@@ -382,6 +384,40 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         }
         
         return { response: await adminHandlers.handleRevokeApiKey(request, env, auth.customerId, keyId), customerId: auth.customerId };
+    }
+    
+    const revealApiKeyMatch = path.match(/^\/admin\/customers\/([^\/]+)\/api-keys\/([^\/]+)\/reveal$/);
+    if (revealApiKeyMatch && request.method === 'POST') {
+        const pathCustomerId = revealApiKeyMatch[1];
+        const keyId = revealApiKeyMatch[2];
+        const auth = await authenticateRequest(request, env);
+        
+        if (!auth) {
+            return { response: new Response(JSON.stringify({ error: 'Authentication required' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }), customerId: null };
+        }
+        
+        if (auth.customerId !== pathCustomerId) {
+            return { response: new Response(JSON.stringify({ error: 'Forbidden' }), {
+                status: 403,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }), customerId: auth.customerId };
+        }
+        
+        // Require JWT token for reveal endpoint
+        if (!('jwtToken' in auth) || !auth.jwtToken) {
+            return { response: new Response(JSON.stringify({ 
+                error: 'JWT token required',
+                message: 'You must be authenticated with a JWT token to reveal API keys'
+            }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }), customerId: auth.customerId };
+        }
+        
+        return { response: await adminHandlers.handleRevealApiKey(request, env, auth.customerId, keyId, auth.jwtToken), customerId: auth.customerId };
     }
     
     const rotateApiKeyMatch = path.match(/^\/admin\/customers\/([^\/]+)\/api-keys\/([^\/]+)\/rotate$/);

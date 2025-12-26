@@ -4,27 +4,38 @@
  * 
  * Deploys all Cloudflare Workers in the serverless directory sequentially.
  * This ensures proper deployment order and provides clear feedback.
+ * 
+ * Supports --dry-run flag for validation without deployment.
  */
 
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { platform } from 'os';
+import { existsSync, readFileSync } from 'fs';
+import { parse } from '@iarna/toml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Check for dry-run flag
+const isDryRun = process.argv.includes('--dry-run') || process.argv.includes('-d');
 
 const services = [
   { name: 'Twitch API', path: 'twitch-api', worker: 'strixun-twitch-api', command: 'wrangler deploy' },
   { name: 'OTP Auth Service', path: 'otp-auth-service', worker: 'otp-auth-service', command: 'pnpm run deploy' },
   { name: 'Customer API', path: 'customer-api', worker: 'strixun-customer-api', command: 'wrangler deploy' },
   { name: 'Game API', path: 'game-api', worker: 'strixun-game-api', command: 'wrangler deploy' },
-  { name: 'URL Shortener', path: 'url-shortener', worker: 'strixun-url-shortener', command: 'wrangler deploy' },
+  { name: 'URL Shortener', path: 'url-shortener', worker: 'strixun-url-shortener', command: 'wrangler deploy --env production' },
   { name: 'Chat Signaling', path: 'chat-signaling', worker: 'strixun-chat-signaling', command: 'wrangler deploy' },
 ];
 
-console.log('🚀 Deploying All Cloudflare Workers\n');
-console.log(`Found ${services.length} services to deploy:\n`);
+if (isDryRun) {
+  console.log('🔍 DRY RUN MODE - Validating deployments without deploying\n');
+} else {
+  console.log('🚀 Deploying All Cloudflare Workers\n');
+}
+console.log(`Found ${services.length} services to ${isDryRun ? 'validate' : 'deploy'}:\n`);
 services.forEach((service, index) => {
   console.log(`  ${index + 1}. ${service.name} (${service.worker})`);
 });
@@ -101,69 +112,206 @@ function execWithTimeout(command, options, timeoutMs = 600000) { // 10 minutes d
   });
 }
 
+/**
+ * Validate service configuration for dry-run
+ */
+async function validateService(service) {
+  const servicePath = join(__dirname, service.path);
+  const issues = [];
+  const info = {};
+
+  // Check if service directory exists
+  if (!existsSync(servicePath)) {
+    issues.push(`Service directory does not exist: ${servicePath}`);
+    return { valid: false, issues, info };
+  }
+
+  // Check for wrangler.toml
+  const wranglerTomlPath = join(servicePath, 'wrangler.toml');
+  if (!existsSync(wranglerTomlPath)) {
+    issues.push(`Missing wrangler.toml at ${wranglerTomlPath}`);
+  } else {
+    try {
+      const tomlContent = readFileSync(wranglerTomlPath, 'utf-8');
+      const config = parse(tomlContent);
+      info.name = config.name;
+      info.main = config.main;
+      info.compatibility_date = config.compatibility_date;
+      
+      // Check if main file exists
+      if (config.main) {
+        const mainPath = join(servicePath, config.main);
+        if (!existsSync(mainPath)) {
+          issues.push(`Main file specified in wrangler.toml does not exist: ${config.main}`);
+        } else {
+          info.mainExists = true;
+        }
+      } else {
+        issues.push('No main file specified in wrangler.toml');
+      }
+
+      // Check for KV namespaces
+      if (config.kv_namespaces && Array.isArray(config.kv_namespaces)) {
+        info.kvNamespaces = config.kv_namespaces.length;
+        config.kv_namespaces.forEach((ns, idx) => {
+          if (!ns.id || !ns.binding) {
+            issues.push(`KV namespace ${idx + 1} missing id or binding`);
+          }
+        });
+      }
+
+      // Check for routes
+      if (config.routes && Array.isArray(config.routes)) {
+        info.routes = config.routes.length;
+      }
+    } catch (error) {
+      issues.push(`Failed to parse wrangler.toml: ${error.message}`);
+    }
+  }
+
+  // Check for package.json
+  const packageJsonPath = join(servicePath, 'package.json');
+  if (existsSync(packageJsonPath)) {
+    try {
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+      info.packageName = packageJson.name;
+      info.hasDeployScript = !!(packageJson.scripts && packageJson.scripts.deploy);
+    } catch (error) {
+      issues.push(`Failed to parse package.json: ${error.message}`);
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    info
+  };
+}
+
+/**
+ * Execute deployment or validation
+ */
 async function deployAll() {
   for (const service of services) {
     const servicePath = join(__dirname, service.path);
     
-    console.log(`\n📦 Deploying ${service.name}...`);
-    console.log(`   Path: ${servicePath}`);
-    console.log(`   Worker: ${service.worker}`);
-    console.log(`   Command: ${service.command || 'wrangler deploy'}`);
-    
-    try {
-      // Use timeout for build-heavy services (OTP Auth Service)
-      const timeout = service.name === 'OTP Auth Service' ? 900000 : 600000; // 15 min for OTP, 10 min for others
+    if (isDryRun) {
+      console.log(`\n🔍 Validating ${service.name}...`);
+      console.log(`   Path: ${servicePath}`);
+      console.log(`   Worker: ${service.worker}`);
       
-      await execWithTimeout(
-        service.command || 'wrangler deploy',
-        { cwd: servicePath },
-        timeout
-      );
+      const validation = await validateService(service);
       
-      console.log(`✅ ${service.name} deployed successfully!`);
-      successCount++;
-      results.push({ service: service.name, status: 'success' });
-    } catch (error) {
-      console.error(`❌ ${service.name} deployment failed!`);
-      console.error(`   Error: ${error.message}`);
-      failCount++;
-      results.push({ service: service.name, status: 'failed', error: error.message });
+      if (validation.valid) {
+        console.log(`   ✅ Configuration valid`);
+        if (validation.info.name) console.log(`   📝 Name: ${validation.info.name}`);
+        if (validation.info.main) console.log(`   📄 Main: ${validation.info.main}`);
+        if (validation.info.compatibility_date) console.log(`   📅 Compatibility: ${validation.info.compatibility_date}`);
+        if (validation.info.kvNamespaces) console.log(`   💾 KV Namespaces: ${validation.info.kvNamespaces}`);
+        if (validation.info.routes) console.log(`   🛣️  Routes: ${validation.info.routes}`);
+        if (validation.info.packageName) console.log(`   📦 Package: ${validation.info.packageName}`);
+        console.log(`   ✅ ${service.name} validation passed!`);
+        successCount++;
+        results.push({ service: service.name, status: 'valid' });
+      } else {
+        console.error(`   ❌ Configuration issues found:`);
+        validation.issues.forEach(issue => {
+          console.error(`      • ${issue}`);
+        });
+        failCount++;
+        results.push({ service: service.name, status: 'invalid', issues: validation.issues });
+        console.log(`\n⚠️  Continuing with remaining services...`);
+      }
+    } else {
+      console.log(`\n📦 Deploying ${service.name}...`);
+      console.log(`   Path: ${servicePath}`);
+      console.log(`   Worker: ${service.worker}`);
+      console.log(`   Command: ${service.command || 'wrangler deploy'}`);
       
-      // Ask if user wants to continue
-      console.log(`\n⚠️  Continuing with remaining services...`);
+      try {
+        // Use timeout for build-heavy services (OTP Auth Service)
+        const timeout = service.name === 'OTP Auth Service' ? 900000 : 600000; // 15 min for OTP, 10 min for others
+        
+        await execWithTimeout(
+          service.command || 'wrangler deploy',
+          { cwd: servicePath },
+          timeout
+        );
+        
+        console.log(`✅ ${service.name} deployed successfully!`);
+        successCount++;
+        results.push({ service: service.name, status: 'success' });
+      } catch (error) {
+        console.error(`❌ ${service.name} deployment failed!`);
+        console.error(`   Error: ${error.message}`);
+        failCount++;
+        results.push({ service: service.name, status: 'failed', error: error.message });
+        
+        // Ask if user wants to continue
+        console.log(`\n⚠️  Continuing with remaining services...`);
+      }
     }
   }
 }
 
-// Run deployment
+// Run deployment or validation
 deployAll().then(() => {
   // Summary
   console.log('\n' + '='.repeat(60));
-  console.log('📊 Deployment Summary');
+  if (isDryRun) {
+    console.log('📊 Validation Summary');
+  } else {
+    console.log('📊 Deployment Summary');
+  }
   console.log('='.repeat(60));
-  console.log(`✅ Successful: ${successCount}`);
-  console.log(`❌ Failed: ${failCount}`);
+  console.log(`✅ ${isDryRun ? 'Valid' : 'Successful'}: ${successCount}`);
+  console.log(`❌ ${isDryRun ? 'Invalid' : 'Failed'}: ${failCount}`);
   console.log(`📦 Total: ${services.length}\n`);
 
   if (failCount > 0) {
-    console.log('Failed services:');
-    results
-      .filter(r => r.status === 'failed')
-      .forEach(r => {
-        console.log(`  ❌ ${r.service}`);
-      });
+    if (isDryRun) {
+      console.log('Services with validation issues:');
+      results
+        .filter(r => r.status === 'invalid' || r.status === 'failed')
+        .forEach(r => {
+          console.log(`  ❌ ${r.service}`);
+          if (r.issues) {
+            r.issues.forEach(issue => {
+              console.log(`     • ${issue}`);
+            });
+          }
+          if (r.error) {
+            console.log(`     • ${r.error}`);
+          }
+        });
+    } else {
+      console.log('Failed services:');
+      results
+        .filter(r => r.status === 'failed')
+        .forEach(r => {
+          console.log(`  ❌ ${r.service}`);
+        });
+    }
     console.log('');
   }
 
   if (failCount === 0) {
-    console.log('🎉 All services deployed successfully!\n');
+    if (isDryRun) {
+      console.log('🎉 All services validated successfully! Ready to deploy.\n');
+    } else {
+      console.log('🎉 All services deployed successfully!\n');
+    }
     process.exit(0);
   } else {
-    console.log('⚠️  Some deployments failed. Check the errors above.\n');
+    if (isDryRun) {
+      console.log('⚠️  Some services have validation issues. Fix them before deploying.\n');
+    } else {
+      console.log('⚠️  Some deployments failed. Check the errors above.\n');
+    }
     process.exit(1);
   }
 }).catch((error) => {
-  console.error('❌ Fatal error during deployment:', error);
+  console.error(`❌ Fatal error during ${isDryRun ? 'validation' : 'deployment'}:`, error);
   process.exit(1);
 });
 

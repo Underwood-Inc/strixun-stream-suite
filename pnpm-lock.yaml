@@ -154,6 +154,10 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:shared/api
+    devDependencies:
+      '@iarna/toml':
+        specifier: ^2.2.5
+        version: 2.2.5
 
   serverless/chat-signaling:
     dependencies:

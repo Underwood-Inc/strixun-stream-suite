@@ -6,21 +6,30 @@
   "packageManager": "pnpm@9.15.1",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "deploy:prod": "wrangler deploy --env production",
-    "tail": "wrangler tail",
-    "tail:prod": "wrangler tail --env production",
+    "dev": "cd twitch-api && wrangler dev",
+    "deploy": "cd twitch-api && wrangler deploy",
+    "deploy:prod": "cd twitch-api && wrangler deploy --env production",
+    "tail": "cd twitch-api && wrangler tail",
+    "tail:prod": "cd twitch-api && wrangler tail --env production",
     "deploy:all": "node deploy-all.js",
-    "deploy:api": "wrangler deploy",
+    "deploy:all:dry-run": "node deploy-all.js --dry-run",
+    "deploy:api": "cd twitch-api && wrangler deploy",
+    "deploy:api:dry-run": "node validate-service.js twitch-api",
     "deploy:url-shortener": "cd url-shortener && wrangler deploy",
+    "deploy:url-shortener:dry-run": "node validate-service.js url-shortener",
     "deploy:otp-auth": "cd otp-auth-service && wrangler deploy",
+    "deploy:otp-auth:dry-run": "node validate-service.js otp-auth-service",
     "deploy:customer-api": "cd customer-api && wrangler deploy",
+    "deploy:customer-api:dry-run": "node validate-service.js customer-api",
     "deploy:game-api": "cd game-api && wrangler deploy",
-    "deploy:chat-signaling": "cd chat-signaling && wrangler deploy"
+    "deploy:game-api:dry-run": "node validate-service.js game-api",
+    "deploy:chat-signaling": "cd chat-signaling && wrangler deploy",
+    "deploy:chat-signaling:dry-run": "node validate-service.js chat-signaling"
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@iarna/toml": "^2.2.5"
+  }
 }

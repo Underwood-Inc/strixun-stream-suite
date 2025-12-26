@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/api-client';
-  import type { Customer, ApiKey, ApiKeyResponse } from '$lib/types';
+  import { decryptWithJWT } from '$lib/jwt-decrypt.js';
+  import type { Customer, ApiKey, ApiKeyResponse, EncryptedApiKeyData } from '$lib/types';
   import Card from '$components/Card.svelte';
 
   export let customer: Customer | null = null;
@@ -12,6 +13,8 @@
   let newKeyName = '';
   let showNewKeyModal = false;
   let newApiKey: string | null = null;
+  let revealedKeys: Record<string, string> = {}; // keyId -> decrypted API key
+  let revealingKeyId: string | null = null;
 
   onMount(async () => {
     await loadApiKeys();
@@ -40,12 +43,76 @@
     try {
       const response = await apiClient.getApiKeys(customer.customerId);
       apiKeys = response.apiKeys || [];
+      // API keys are double-encrypted - keep them encrypted until user clicks reveal
     } catch (err) {
       console.error('Failed to load API keys:', err);
       error = err instanceof Error ? err.message : 'Failed to load API keys';
     } finally {
       loading = false;
     }
+  }
+
+  async function handleRevealKey(keyId: string) {
+    if (!customer?.customerId) return;
+    
+    // Check if we can decrypt a double-encrypted key locally first
+    const key = apiKeys.find(k => k.keyId === keyId);
+    if (key && key.apiKey && typeof key.apiKey === 'object' && 'doubleEncrypted' in key.apiKey) {
+      const token = apiClient.getToken();
+      if (token) {
+        try {
+          revealingKeyId = keyId;
+          const encryptedData = key.apiKey as EncryptedApiKeyData;
+          const decrypted = await decryptWithJWT(encryptedData, token);
+          if (typeof decrypted === 'string') {
+            revealedKeys[keyId] = decrypted;
+            revealingKeyId = null;
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to decrypt API key locally:', err);
+          // Fall through to server-side reveal
+        }
+      }
+    }
+    
+    // If local decryption fails or key is not double-encrypted, use server reveal endpoint
+    revealingKeyId = keyId;
+    error = null;
+    
+    try {
+      const response = await apiClient.revealApiKey(customer.customerId, keyId);
+      if (response.apiKey) {
+        revealedKeys[keyId] = response.apiKey;
+      }
+    } catch (err) {
+      console.error('Failed to reveal API key:', err);
+      error = err instanceof Error ? err.message : 'Failed to reveal API key';
+      alert(error);
+    } finally {
+      revealingKeyId = null;
+    }
+  }
+
+  function maskApiKey(key: string): string {
+    if (!key || key.length < 8) return '••••••••';
+    const prefix = key.substring(0, 8);
+    const suffix = key.substring(key.length - 4);
+    return `${prefix}${'•'.repeat(Math.max(0, key.length - 12))}${suffix}`;
+  }
+
+  function getDisplayKey(key: ApiKey): string {
+    if (revealedKeys[key.keyId]) {
+      return revealedKeys[key.keyId];
+    }
+    if (key.apiKey && typeof key.apiKey === 'string') {
+      return maskApiKey(key.apiKey);
+    }
+    return '••••••••••••••••••••••••';
+  }
+
+  function isKeyRevealed(keyId: string): boolean {
+    return !!revealedKeys[keyId];
   }
 
   async function handleCreateKey() {
@@ -144,6 +211,7 @@
               <tr>
                 <th>Name</th>
                 <th>Key ID</th>
+                <th>API Key</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th>Last Used</th>
@@ -155,6 +223,20 @@
                 <tr>
                   <td>{key.name || 'Unnamed'}</td>
                   <td class="api-keys__key-id">{key.keyId || 'N/A'}</td>
+                  <td>
+                    <div class="api-keys__key-display">
+                      <code class="api-keys__key-value">{getDisplayKey(key)}</code>
+                      {#if !isKeyRevealed(key.keyId) && key.status === 'active'}
+                        <button 
+                          class="api-keys__button api-keys__button--reveal" 
+                          onclick={() => handleRevealKey(key.keyId)}
+                          disabled={revealingKeyId === key.keyId}
+                        >
+                          {revealingKeyId === key.keyId ? 'Revealing...' : 'Reveal'}
+                        </button>
+                      {/if}
+                    </div>
+                  </td>
                   <td>
                     <span class="api-keys__status" class:status-active={key.status === 'active'} class:status-revoked={key.status === 'revoked'}>
                       {key.status || 'unknown'}
@@ -342,6 +424,46 @@
     font-family: monospace;
     font-size: 0.875rem;
     color: var(--text-secondary);
+  }
+
+  .api-keys__key-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  .api-keys__key-value {
+    font-family: monospace;
+    font-size: 0.875rem;
+    background: var(--bg-dark);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    word-break: break-all;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .api-keys__button--reveal {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--accent);
+    border: 2px solid var(--accent-dark);
+    border-radius: var(--radius-sm);
+    color: #000;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .api-keys__button--reveal:hover:not(:disabled) {
+    background: var(--accent-dark);
+  }
+
+  .api-keys__button--reveal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .api-keys__status {

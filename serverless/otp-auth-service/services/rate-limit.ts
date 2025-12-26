@@ -477,3 +477,175 @@ export async function recordOTPFailure(emailHash: string, ipAddress: string, cus
     }
 }
 
+/**
+ * Record IP-only request for statistics (for endpoints without email)
+ * Updates IP usage statistics for dynamic rate limiting
+ * @param ipAddress - Client IP address
+ * @param customerId - Customer ID
+ * @param env - Worker environment
+ * @param success - Whether request was successful
+ */
+export async function recordIPRequest(ipAddress: string, customerId: string | null, env: Env, success: boolean = true): Promise<void> {
+    try {
+        const ipHash = await hashIP(ipAddress || 'unknown');
+        // Use empty email hash for IP-only endpoints
+        const emptyEmailHash = '0000000000000000';
+        await updateUsageStats(emptyEmailHash, ipHash, customerId, success, env);
+    } catch (error) {
+        console.error('Failed to record IP request:', error);
+        // Don't throw - statistics shouldn't break the request
+    }
+}
+
+/**
+ * Generic IP-based rate limiting for any endpoint
+ * Uses the FULL rate limiting logic from OTP requests including usage statistics and dynamic adjustment
+ * 
+ * @param ipAddress - Client IP address
+ * @param customerId - Customer ID (for multi-tenant isolation)
+ * @param getCustomerCachedFn - Function to get cached customer
+ * @param env - Worker environment
+ * @param endpointName - Name of endpoint for rate limit key (e.g., 'session-lookup')
+ * @param requestsPerHour - Optional custom limit (defaults to plan's ipRequestsPerHour)
+ * @param email - Optional email address for super admin check
+ * @returns Rate limit check result
+ */
+export async function checkIPRateLimit(
+    ipAddress: string,
+    customerId: string | null,
+    getCustomerCachedFn: GetCustomerFn,
+    env: Env,
+    endpointName: string = 'generic',
+    requestsPerHour?: number,
+    email?: string
+): Promise<RateLimitResult> {
+    try {
+        // Super admins are ALWAYS exempt from rate limits
+        if (email) {
+            const { isSuperAdminEmail } = await import('../utils/super-admin.js');
+            const isSuperAdmin = await isSuperAdminEmail(email, env);
+            if (isSuperAdmin) {
+                const now = Date.now();
+                const oneHour = 60 * 60 * 1000;
+                const resetAt = new Date(now + oneHour).toISOString();
+                return {
+                    allowed: true,
+                    remaining: 999999, // Effectively unlimited
+                    resetAt: resetAt
+                };
+            }
+        }
+        
+        // Get customer configuration and plan
+        let customer: CustomerData | null = null;
+        let plan = 'free';
+        
+        if (customerId) {
+            customer = await getCustomerCachedFn(customerId);
+            if (customer) {
+                plan = customer.plan || 'free';
+            }
+        }
+        
+        const planLimits = getPlanLimits(plan);
+        const baseLimit = requestsPerHour || planLimits.ipRequestsPerHour;
+        
+        // Hash IP address
+        const ipHash = await hashIP(ipAddress || 'unknown');
+        
+        // Get usage statistics for dynamic adjustment (FULL SERVICE - same as OTP rate limiting)
+        // Use empty email hash since we're doing IP-only rate limiting
+        const emptyEmailHash = '0000000000000000'; // Placeholder for IP-only endpoints
+        const { emailStats, ipStats } = await getUsageStats(emptyEmailHash, ipHash, customerId, env);
+        
+        // Calculate dynamic adjustment based on IP usage patterns (FULL SERVICE)
+        // For IP-only endpoints, we use IP stats for adjustment
+        let adjustment = 0;
+        
+        // IP-based penalties (from calculateDynamicAdjustment logic)
+        if (ipStats.requestsLast24h > 20) {
+            adjustment -= 1;
+        }
+        
+        if (ipStats.failedAttempts > 10) {
+            adjustment -= 1;
+        }
+        
+        // New IP bonus (< 3 requests in last 24h) - adapted from email logic
+        if (ipStats.requestsLast24h < 3) {
+            adjustment += 2;
+        }
+        
+        // Frequent IP penalty (> 10 requests in last 24h) - adapted from email logic
+        if (ipStats.requestsLast24h > 10) {
+            adjustment -= 1;
+        }
+        
+        // Clamp adjustment between -2 and +2 (same as OTP rate limiting)
+        adjustment = Math.max(-2, Math.min(2, adjustment));
+        const adjustedRateLimit = Math.max(1, baseLimit + adjustment);
+        
+        // Check IP-based rate limit (hard cap) - FULL SERVICE with endpoint-specific key
+        const ipRateLimitKey = customerId 
+            ? `cust_${customerId}_ratelimit_ip_${endpointName}_${ipHash}`
+            : `ratelimit_ip_${endpointName}_${ipHash}`;
+        
+        const ipRateLimitData = await env.OTP_AUTH_KV.get(ipRateLimitKey);
+        let ipRateLimit: { requests: number; resetAt: string } | null = null;
+        
+        if (ipRateLimitData) {
+            try {
+                ipRateLimit = typeof ipRateLimitData === 'string' ? JSON.parse(ipRateLimitData) : ipRateLimitData as { requests: number; resetAt: string };
+            } catch (e) {
+                ipRateLimit = null;
+            }
+        }
+        
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        // Check IP rate limit
+        const ipRequests = ipRateLimit ? (ipRateLimit.requests || 0) : 0;
+        if (ipRateLimit && ipRateLimit.resetAt && now <= new Date(ipRateLimit.resetAt).getTime()) {
+            if (ipRequests >= adjustedRateLimit) {
+                return { 
+                    allowed: false, 
+                    remaining: 0, 
+                    resetAt: ipRateLimit.resetAt,
+                    reason: 'ip_rate_limit_exceeded',
+                    ipLimit: {
+                        current: ipRequests,
+                        max: adjustedRateLimit,
+                        resetAt: ipRateLimit.resetAt
+                    },
+                    failedAttempts: ipStats.failedAttempts || 0
+                };
+            }
+            ipRateLimit.requests = ipRequests + 1;
+        } else {
+            const resetAt = new Date(now + oneHour).toISOString();
+            ipRateLimit = {
+                requests: 1,
+                resetAt: resetAt
+            };
+        }
+        await env.OTP_AUTH_KV.put(ipRateLimitKey, JSON.stringify(ipRateLimit), { expirationTtl: 3600 });
+        
+        return { 
+            allowed: true, 
+            remaining: adjustedRateLimit - ipRateLimit.requests, 
+            resetAt: ipRateLimit.resetAt 
+        };
+    } catch (error) {
+        console.error('IP rate limit check error:', error);
+        // Fail closed for security - deny request if rate limiting fails
+        // This prevents bypassing rate limits if KV is down (same as OTP rate limiting)
+        return { 
+            allowed: false, 
+            remaining: 0, 
+            resetAt: new Date(Date.now() + 3600000).toISOString(),
+            reason: 'rate_limit_error'
+        };
+    }
+}
+

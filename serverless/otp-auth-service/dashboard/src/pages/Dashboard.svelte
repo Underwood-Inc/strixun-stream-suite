@@ -1,14 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/api-client';
-  import type { Customer, Analytics } from '$lib/types';
+  import type { Customer, Analytics, ApiKey, EncryptedApiKeyData } from '$lib/types';
   import Card from '$components/Card.svelte';
 
   export let customer: Customer | null = null;
 
   let analytics: Analytics | null = null;
+  let apiKeys: ApiKey[] = [];
   let loading = true;
   let error: string | null = null;
+  let revealedKeys: Record<string, string> = {};
+  let revealingKeyId: string | null = null;
 
   onMount(async () => {
     // Set timeout to prevent infinite loading (increased to 10 seconds)
@@ -32,20 +35,89 @@
     error = null;
 
     try {
-      // Load customer and analytics in parallel for better performance
-      const [customerData, analyticsData] = await Promise.all([
+      // Load customer, analytics, and API keys in parallel for better performance
+      const [customerData, analyticsData, apiKeysData] = await Promise.all([
         customer ? Promise.resolve(customer) : apiClient.getCustomer().catch(() => null),
-        apiClient.getAnalytics().catch(() => null)
+        apiClient.getAnalytics().catch(() => null),
+        customer?.customerId ? apiClient.getApiKeys(customer.customerId).catch(() => ({ apiKeys: [] })) : Promise.resolve({ apiKeys: [] })
       ]);
       
       customer = customerData;
       analytics = analyticsData;
+      
+      // API keys are double-encrypted - keep them encrypted until user clicks reveal
+      if (apiKeysData && apiKeysData.apiKeys) {
+        apiKeys = apiKeysData.apiKeys;
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       error = err instanceof Error ? err.message : 'Failed to load dashboard data';
     } finally {
       loading = false;
     }
+  }
+
+  async function handleRevealKey(keyId: string) {
+    if (!customer?.customerId) return;
+    
+    // Check if we can decrypt a double-encrypted key locally first
+    const key = apiKeys.find(k => k.keyId === keyId);
+    if (key && key.apiKey && typeof key.apiKey === 'object' && 'doubleEncrypted' in key.apiKey) {
+      const token = apiClient.getToken();
+      if (token) {
+        try {
+          revealingKeyId = keyId;
+          const { decryptWithJWT } = await import('$lib/jwt-decrypt.js');
+          const encryptedData = key.apiKey as EncryptedApiKeyData;
+          const decrypted = await decryptWithJWT(encryptedData, token);
+          if (typeof decrypted === 'string') {
+            revealedKeys[keyId] = decrypted;
+            revealingKeyId = null;
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to decrypt API key locally:', err);
+          // Fall through to server-side reveal
+        }
+      }
+    }
+    
+    // If local decryption fails or key is not double-encrypted, use server reveal endpoint
+    revealingKeyId = keyId;
+    error = null;
+    
+    try {
+      const response = await apiClient.revealApiKey(customer.customerId, keyId);
+      if (response.apiKey) {
+        revealedKeys[keyId] = response.apiKey;
+      }
+    } catch (err) {
+      console.error('Failed to reveal API key:', err);
+      error = err instanceof Error ? err.message : 'Failed to reveal API key';
+    } finally {
+      revealingKeyId = null;
+    }
+  }
+
+  function maskApiKey(key: string): string {
+    if (!key || key.length < 8) return '••••••••';
+    const prefix = key.substring(0, 8);
+    const suffix = key.substring(key.length - 4);
+    return `${prefix}${'•'.repeat(Math.max(0, key.length - 12))}${suffix}`;
+  }
+
+  function getDisplayKey(key: ApiKey): string {
+    if (revealedKeys[key.keyId]) {
+      return revealedKeys[key.keyId];
+    }
+    if (key.apiKey && typeof key.apiKey === 'string') {
+      return maskApiKey(key.apiKey);
+    }
+    return '••••••••••••••••••••••••';
+  }
+
+  function isKeyRevealed(keyId: string): boolean {
+    return !!revealedKeys[keyId];
   }
 </script>
 
@@ -75,6 +147,37 @@
             <div class="dashboard__info-label">Plan</div>
             <div class="dashboard__info-value">{customer.plan || 'free'}</div>
           </div>
+        </div>
+      </Card>
+    {/if}
+
+    {#if apiKeys.length > 0}
+      <Card>
+        <h2 class="dashboard__section-title">Developer API Keys</h2>
+        <div class="dashboard__api-keys">
+          {#each apiKeys.slice(0, 3) as key}
+            <div class="dashboard__api-key-item">
+              <div class="dashboard__api-key-info">
+                <div class="dashboard__api-key-name">{key.name || 'Unnamed'}</div>
+                <div class="dashboard__api-key-id">ID: {key.keyId}</div>
+              </div>
+              <div class="dashboard__api-key-display">
+                <code class="dashboard__api-key-value">{getDisplayKey(key)}</code>
+                {#if !isKeyRevealed(key.keyId) && key.status === 'active'}
+                  <button 
+                    class="dashboard__api-key-reveal" 
+                    onclick={() => handleRevealKey(key.keyId)}
+                    disabled={revealingKeyId === key.keyId}
+                  >
+                    {revealingKeyId === key.keyId ? 'Revealing...' : 'Reveal'}
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+          {#if apiKeys.length > 3}
+            <p class="dashboard__api-keys-more">+ {apiKeys.length - 3} more API key{apiKeys.length - 3 === 1 ? '' : 's'}. View all in <a href="#api-keys">API Keys</a> tab.</p>
+          {/if}
         </div>
       </Card>
     {/if}
@@ -250,6 +353,91 @@
     margin-top: var(--spacing-sm);
     font-size: 0.875rem;
     color: var(--muted);
+  }
+
+  .dashboard__api-keys {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .dashboard__api-key-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-dark);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+
+  .dashboard__api-key-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .dashboard__api-key-name {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .dashboard__api-key-id {
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .dashboard__api-key-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  .dashboard__api-key-value {
+    font-family: monospace;
+    font-size: 0.875rem;
+    background: var(--bg);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    word-break: break-all;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .dashboard__api-key-reveal {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--accent);
+    border: 2px solid var(--accent-dark);
+    border-radius: var(--radius-sm);
+    color: #000;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .dashboard__api-key-reveal:hover:not(:disabled) {
+    background: var(--accent-dark);
+  }
+
+  .dashboard__api-key-reveal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .dashboard__api-keys-more {
+    margin-top: var(--spacing-sm);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .dashboard__api-keys-more a {
+    color: var(--accent);
+    text-decoration: underline;
   }
 </style>
 

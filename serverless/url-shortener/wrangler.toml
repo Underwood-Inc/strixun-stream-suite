@@ -2,14 +2,13 @@ name = "strixun-url-shortener"
 main = "worker.ts"
 compatibility_date = "2024-01-01"
 
-# Custom domain configuration
+[env.production]
+vars = { ENVIRONMENT = "production" }
+# Custom domain configuration for production
 # Using idling.app domain
 routes = [
   { pattern = "s.idling.app/*", zone_name = "idling.app" }
 ]
-
-[env.production]
-vars = { ENVIRONMENT = "production" }
 
 [env.development]
 vars = { ENVIRONMENT = "development" }

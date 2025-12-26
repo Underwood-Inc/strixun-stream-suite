@@ -322,8 +322,8 @@ export async function handleVerifyOTP(
             }, env);
         }
         
-        // Create JWT token and session
-        const tokenResponse = await createAuthToken(user, resolvedCustomerId, env);
+        // Create JWT token and session (with IP tracking)
+        const tokenResponse = await createAuthToken(user, resolvedCustomerId, env, request);
         
         return new Response(JSON.stringify(tokenResponse), {
             headers: { 

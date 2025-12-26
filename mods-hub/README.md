@@ -69,6 +69,14 @@ The app will be available at `http://localhost:3001`
 pnpm build
 ```
 
+### Production Deployment
+
+The Mods Hub is automatically deployed to Cloudflare Pages via GitHub Actions when changes are pushed to the `main` branch.
+
+**Production URL:** `https://mods.idling.app`
+
+For deployment setup instructions, see [CLOUDFLARE_PAGES_SETUP.md](./CLOUDFLARE_PAGES_SETUP.md)
+
 ## Project Structure
 
 ```

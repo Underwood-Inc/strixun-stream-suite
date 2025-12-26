@@ -18,6 +18,11 @@ export {
     handleRefresh
 } from './auth/session.js';
 
+// Session by IP handler
+export {
+    handleSessionByIP
+} from './auth/session-by-ip.js';
+
 // Quota handler
 export {
     handleGetQuota

@@ -187,6 +187,9 @@ export class ApiClient {
     async rotateApiKey(customerId, keyId) {
         return await this.post(`/admin/customers/${customerId}/api-keys/${keyId}/rotate`, {});
     }
+    async revealApiKey(customerId, keyId) {
+        return await this.post(`/admin/customers/${customerId}/api-keys/${keyId}/reveal`, {});
+    }
     async getAuditLogs(_customerId, params = {}) {
         const queryParams = new URLSearchParams();
         if (params.startDate)

@@ -1,8 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/api-client';
-  import type { Customer, Analytics, RealtimeAnalytics, ErrorAnalytics } from '$lib/types';
+  import type { Customer, Analytics, RealtimeAnalytics, ErrorAnalytics, DailyBreakdown } from '$lib/types';
   import Card from '$components/Card.svelte';
+  import LineChart from '$components/charts/LineChart.svelte';
+  import BarChart from '$components/charts/BarChart.svelte';
+  import AreaChart from '$components/charts/AreaChart.svelte';
 
   export let customer: Customer | null = null;
 
@@ -13,10 +16,6 @@
   let error: string | null = null;
 
   onMount(async () => {
-    // Customer prop available for future customer-specific filtering
-    if (customer) {
-      // Future: filter analytics by customer
-    }
     await loadData();
   });
 
@@ -41,6 +40,46 @@
       loading = false;
     }
   }
+
+  // Transform daily breakdown for line charts (Observable Plot needs long format for multi-series)
+  $: dailyData = analytics?.dailyBreakdown?.flatMap(day => [
+    { date: new Date(day.date), variable: 'OTP Requests', value: day.otpRequests },
+    { date: new Date(day.date), variable: 'OTP Verifications', value: day.otpVerifications },
+    { date: new Date(day.date), variable: 'Successful Logins', value: day.successfulLogins },
+    { date: new Date(day.date), variable: 'Failed Attempts', value: day.failedAttempts },
+    { date: new Date(day.date), variable: 'Emails Sent', value: day.emailsSent }
+  ]) || [];
+
+  // Transform daily breakdown for area chart (success rate)
+  $: successRateData = analytics?.dailyBreakdown?.map(day => {
+    const total = day.otpRequests || 1;
+    const success = day.otpVerifications || 0;
+    return {
+      date: new Date(day.date),
+      'Success Rate': (success / total) * 100
+    };
+  }) || [];
+
+  // Transform error categories for pie chart
+  $: errorCategoryData = errors?.byCategory ? Object.entries(errors.byCategory).map(([label, value]) => ({
+    label,
+    value
+  })) : [];
+
+  // Transform error endpoints for bar chart
+  $: errorEndpointData = errors?.byEndpoint ? Object.entries(errors.byEndpoint).map(([category, value]) => ({
+    category,
+    value
+  })) : [];
+
+  // Transform response time metrics for bar chart
+  $: responseTimeData = realtime?.responseTimeMetrics ? Object.entries(realtime.responseTimeMetrics).map(([endpoint, metrics]) => ({
+    endpoint,
+    'Average': metrics.avg,
+    'P50': metrics.p50,
+    'P95': metrics.p95,
+    'P99': metrics.p99
+  })) : [];
 </script>
 
 <div class="analytics">
@@ -104,7 +143,38 @@
       </div>
     {/if}
 
-    {#if realtime?.activeUsers !== undefined || realtime?.requestsPerMinute !== undefined}
+    <!-- Daily Breakdown Charts -->
+    {#if dailyData.length > 0}
+      <Card>
+        <h2 class="analytics__section-title">Usage Trends (30 Days)</h2>
+        <div class="analytics__chart-container">
+          <LineChart
+            data={dailyData}
+            x="date"
+            y="value"
+            series="variable"
+            title="Daily Activity"
+            height={350}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <h2 class="analytics__section-title">Success Rate Trend</h2>
+        <div class="analytics__chart-container">
+          <AreaChart
+            data={successRateData}
+            x="date"
+            y="Success Rate"
+            title="Success Rate Over Time"
+            height={300}
+          />
+        </div>
+      </Card>
+    {/if}
+
+    <!-- Real-time Analytics -->
+    {#if realtime}
       <Card>
         <h2 class="analytics__section-title">Real-time Metrics</h2>
         <div class="analytics__realtime">
@@ -120,10 +190,37 @@
               <div class="analytics__realtime-value">{realtime.requestsPerMinute || 0}</div>
             </div>
           {/if}
+          {#if realtime.errorRate !== undefined}
+            <div class="analytics__realtime-item">
+              <div class="analytics__realtime-label">Error Rate</div>
+              <div class="analytics__realtime-value">{realtime.errorRate.toFixed(2)}%</div>
+            </div>
+          {/if}
         </div>
+
+        {#if responseTimeData.length > 0}
+          <div class="analytics__chart-container">
+            <BarChart
+              data={responseTimeData.flatMap(d => [
+                { endpoint: d.endpoint, metric: 'Average', value: d.Average },
+                { endpoint: d.endpoint, metric: 'P50', value: d.P50 },
+                { endpoint: d.endpoint, metric: 'P95', value: d.P95 },
+                { endpoint: d.endpoint, metric: 'P99', value: d.P99 }
+              ])}
+              x="endpoint"
+              y="value"
+              fill="metric"
+              title="Response Time by Endpoint (ms)"
+              height={300}
+              horizontal={true}
+              colors={['var(--accent)', 'var(--success)', 'var(--warning)', 'var(--danger)']}
+            />
+          </div>
+        {/if}
       </Card>
     {/if}
 
+    <!-- Error Analytics -->
     {#if errors && errors.total !== undefined && errors.total > 0}
       <Card>
         <h2 class="analytics__section-title">Error Analytics</h2>
@@ -132,7 +229,37 @@
             <div class="analytics__errors-label">Total Errors</div>
             <div class="analytics__errors-value">{errors.total || 0}</div>
           </div>
-          {#if errors.byCategory}
+
+          {#if errorCategoryData.length > 0}
+            <div class="analytics__errors-charts">
+              <div class="analytics__errors-chart">
+                <h3 class="analytics__errors-subtitle">Errors by Category</h3>
+                <BarChart
+                  data={errorCategoryData}
+                  x="label"
+                  y="value"
+                  title=""
+                  height={300}
+                  colors={['var(--danger)']}
+                />
+              </div>
+              {#if errorEndpointData.length > 0}
+                <div class="analytics__errors-chart">
+                  <h3 class="analytics__errors-subtitle">Errors by Endpoint</h3>
+                  <BarChart
+                    data={errorEndpointData}
+                    x="category"
+                    y="value"
+                    title=""
+                    height={300}
+                    colors={['var(--danger)']}
+                  />
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+          {#if errors.byCategory && Object.keys(errors.byCategory).length > 0}
             <div class="analytics__errors-categories">
               <h3 class="analytics__errors-subtitle">By Category</h3>
               <div class="analytics__errors-grid">
@@ -236,10 +363,19 @@
     color: var(--accent2);
   }
 
+  .analytics__chart-container {
+    width: 100%;
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-dark);
+    border-radius: var(--radius-md);
+  }
+
   .analytics__realtime {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
   }
 
   .analytics__realtime-item {
@@ -280,6 +416,18 @@
     font-size: 2rem;
     font-weight: 700;
     color: var(--danger);
+  }
+
+  .analytics__errors-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-md);
+  }
+
+  .analytics__errors-chart {
+    display: flex;
+    flex-direction: column;
   }
 
   .analytics__errors-subtitle {
@@ -330,4 +478,3 @@
     color: var(--muted);
   }
 </style>
-

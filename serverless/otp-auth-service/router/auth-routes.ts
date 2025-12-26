@@ -11,6 +11,7 @@ import { checkIPAllowlist, logSecurityEvent } from '../services/security.js';
 import * as authHandlers from '../handlers/auth.js';
 import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
+import { handleSessionByIP } from '../handlers/auth/session-by-ip.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -124,6 +125,9 @@ export async function handleAuthRoutes(
     }
     if (path === '/auth/refresh' && request.method === 'POST') {
         return { response: await authHandlers.handleRefresh(request, env), customerId };
+    }
+    if (path === '/auth/session-by-ip' && request.method === 'GET') {
+        return { response: await handleSessionByIP(request, env), customerId };
     }
     
     return null; // Route not matched

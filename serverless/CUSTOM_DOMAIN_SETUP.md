@@ -6,12 +6,15 @@ This guide covers setting up custom domains for all Cloudflare Workers using `id
 
 All workers are configured to use the following subdomains:
 
-| Worker | Subdomain | Purpose |
-|--------|-----------|---------|
-| Main API | `api.idling.app` | Twitch API proxy, OTP auth, OBS credentials |
-| Auth Service | `auth.idling.app` | Standalone OTP auth service (optional) |
-| URL Shortener | `s.idling.app` | URL shortening service |
-| Chat Signaling | `chat.idling.app` | WebRTC signaling service |
+| Service | Subdomain | Purpose | Type |
+|---------|-----------|---------|------|
+| Main API | `api.idling.app` | Twitch API proxy, OTP auth, OBS credentials | Worker |
+| Auth Service | `auth.idling.app` | Standalone OTP auth service (optional) | Worker |
+| URL Shortener | `s.idling.app` | URL shortening service | Worker |
+| Chat Signaling | `chat.idling.app` | WebRTC signaling service | Worker |
+| Mods API | `mods.idling.app` | Mod hosting and version control API | Worker |
+| Mods Hub | `mods.idling.app` | Mod hosting frontend (React) | Pages |
+| Storybook | `design.idling.app` | Component library documentation | Pages |
 
 ## 📋 Setup Steps
 
@@ -20,8 +23,8 @@ All workers are configured to use the following subdomains:
 The `wrangler.toml` files have been updated with custom domain routes. Deploy each worker:
 
 ```bash
-# Main API Worker
-cd serverless
+# Main API Worker (Twitch API)
+cd serverless/twitch-api
 wrangler deploy
 
 # OTP Auth Service (if using standalone)
@@ -100,16 +103,33 @@ curl https://s.idling.app/health
 
 # Chat Signaling
 curl https://chat.idling.app/health
+
+# Mods API
+curl https://mods.idling.app/health
+
+# Mods Hub (Frontend)
+curl https://mods.idling.app
+
+# Storybook (Frontend)
+curl https://design.idling.app
 ```
 
 ## 🔧 Configuration Files Updated
 
 The following files have been updated with custom domain configuration:
 
-- ✅ `serverless/wrangler.toml` - Main API worker
+### Workers
+- ✅ `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
 - ✅ `serverless/otp-auth-service/wrangler.toml` - Auth service
 - ✅ `serverless/url-shortener/wrangler.toml` - URL shortener
 - ✅ `serverless/chat-signaling/wrangler.toml` - Chat signaling
+- ✅ `serverless/mods-api/wrangler.toml` - Mods API worker
+
+### Pages (Frontend)
+- ✅ `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
+- ✅ `shared-components/` - Storybook component library
+
+### Frontend Configuration
 - ✅ `config.js` - Frontend configuration (hardcoded fallbacks)
 
 ## 📝 Frontend Configuration

@@ -231,6 +231,10 @@ export class ApiClient {
     return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/rotate`, {});
   }
 
+  async revealApiKey(customerId: string, keyId: string): Promise<ApiKeyResponse> {
+    return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/reveal`, {});
+  }
+
   async getAuditLogs(
     _customerId: string | null,
     params: { startDate?: string; endDate?: string; eventType?: string } = {}

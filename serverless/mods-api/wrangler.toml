@@ -32,17 +32,24 @@ ENVIRONMENT = "production"
 
 # Custom domain configuration
 # Using idling.app domain
+# Route only API paths to Worker, Pages handles frontend
 routes = [
-  { pattern = "mods.idling.app/*", zone_name = "idling.app" }
+  { pattern = "mods.idling.app/mods/*", zone_name = "idling.app" },
+  { pattern = "mods.idling.app/health", zone_name = "idling.app" },
+  { pattern = "mods.idling.app/api/*", zone_name = "idling.app" }
 ]
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-mods-api
 # 2. Go to Settings → Triggers → Routes
-# 3. Add custom domain route: mods.idling.app/*
+# 3. Add custom domain routes:
+#    - mods.idling.app/mods/*
+#    - mods.idling.app/health
+#    - mods.idling.app/api/* (optional, for future API endpoints)
 # 4. DNS records are automatically managed by Cloudflare
 #
 # Note: Routes configured in the dashboard take precedence over wrangler.toml
+# The frontend (Pages) will handle all other paths on mods.idling.app
 
 # Observability Configuration
 # Enables logging and tracing for the worker

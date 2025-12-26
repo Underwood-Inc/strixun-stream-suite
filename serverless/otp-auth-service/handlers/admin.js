@@ -5,7 +5,7 @@
 
 // API Key Management
 export {
-    handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleRotateApiKey
+    handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleRotateApiKey, handleRevealApiKey
 } from './admin/api-keys.js';
 
 // Configuration Management

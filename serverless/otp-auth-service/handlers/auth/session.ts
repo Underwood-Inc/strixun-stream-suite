@@ -8,6 +8,7 @@ import { getCorsHeaders } from '../../utils/cors.js';
 import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
 import { buildCurrentUserResponse } from '../../utils/response-builder.js';
 import { ensureCustomerAccount } from './customer-creation.js';
+import { storeIPSessionMapping, deleteIPSessionMapping } from '../../services/ip-session-index.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -23,6 +24,17 @@ interface User {
     createdAt?: string;
     lastLogin?: string;
     [key: string]: any;
+}
+
+interface SessionData {
+    userId: string;
+    email: string;
+    token: string; // hashed
+    expiresAt: string;
+    createdAt: string;
+    ipAddress?: string;
+    userAgent?: string;
+    country?: string;
 }
 
 interface JWTPayload {
@@ -220,6 +232,14 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
         const userId = payload.userId || payload.sub;
         if (userId) {
             const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+            
+            // Get session to find IP address for cleanup
+            const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
+            if (sessionData?.ipAddress) {
+                // Delete IP-to-session mapping
+                await deleteIPSessionMapping(sessionData.ipAddress, userId, env);
+            }
+            
             await env.OTP_AUTH_KV.delete(sessionKey);
         }
         
@@ -325,16 +345,53 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         
         const newToken = await createJWT(newTokenPayload, jwtSecret);
         
-        // Update session with customer isolation
+        // Extract IP address and metadata from request
+        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        const userAgent = request.headers.get('User-Agent') || undefined;
+        const country = request.headers.get('CF-IPCountry') || undefined;
+        
+        // Get existing session to preserve original IP if new IP is unknown
+        let existingSession: SessionData | null = null;
         if (userId) {
             const sessionKey = getCustomerKey(customerId, `session_${userId}`);
-            await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify({
+            existingSession = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
+        }
+        
+        // Use existing IP if new IP is unknown, otherwise use new IP
+        const sessionIP = (clientIP === 'unknown' && existingSession?.ipAddress) ? existingSession.ipAddress : clientIP;
+        
+        // Update session with customer isolation (including IP tracking)
+        if (userId) {
+            const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+            const sessionData: SessionData = {
                 userId: userId,
                 email: payload.email,
                 token: await hashEmail(newToken),
                 expiresAt: expiresAt.toISOString(),
-                createdAt: new Date().toISOString(),
-            }), { expirationTtl: 25200 }); // 7 hours
+                createdAt: existingSession?.createdAt || new Date().toISOString(),
+                ipAddress: sessionIP,
+                userAgent: userAgent || existingSession?.userAgent,
+                country: country || existingSession?.country,
+            };
+            
+            await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours
+            
+            // Update IP-to-session mapping (delete old IP if changed, add new IP)
+            if (existingSession?.ipAddress && existingSession.ipAddress !== sessionIP) {
+                await deleteIPSessionMapping(existingSession.ipAddress, userId, env);
+            }
+            
+            if (sessionIP !== 'unknown') {
+                await storeIPSessionMapping(
+                    sessionIP,
+                    userId,
+                    customerId,
+                    sessionKey,
+                    expiresAt.toISOString(),
+                    payload.email,
+                    env
+                );
+            }
         }
         
         return new Response(JSON.stringify({ 

@@ -1,0 +1,83 @@
+# Strixun Stream Suite - Deploy Mods Hub to Cloudflare Pages
+#
+# This workflow deploys the Mods Hub React frontend to Cloudflare Pages
+# The Mods Hub will be available at the custom domain configured in Cloudflare Dashboard
+
+name: Deploy Mods Hub to Cloudflare Pages
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'mods-hub/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages-mods-hub"
+  cancel-in-progress: false
+
+# Sets permissions for GITHUB_TOKEN
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build Mods Hub
+        working-directory: mods-hub
+        env:
+          VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods.idling.app' }}
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+        run: pnpm build
+        
+      - name: Deploy to Cloudflare Pages
+        working-directory: mods-hub
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Create project if it doesn't exist (with production branch), then deploy
+          # Project name matches the directory for consistency
+          pnpm exec wrangler pages project create mods-hub --production-branch=main || true
+          pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+        
+      - name: Deployment Summary
+        run: |
+          echo "## 🎮 Mods Hub Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The Mods Hub frontend has been deployed to Cloudflare Pages." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** \`https://mods.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 API Endpoints:" >> $GITHUB_STEP_SUMMARY
+          echo "- Mods API: \`https://mods.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Auth API: \`https://auth.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Configure custom domain in Cloudflare Dashboard (if not already done)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify DNS CNAME record is created" >> $GITHUB_STEP_SUMMARY
+          echo "3. Wait for SSL certificate provisioning (usually 1-5 minutes)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 The Mods Hub is deployed to Cloudflare Pages. Access it via your custom domain." >> $GITHUB_STEP_SUMMARY
+
