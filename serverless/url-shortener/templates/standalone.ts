@@ -483,6 +483,9 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- Load decryption library -->
+    <script src="/decrypt.js"></script>
+
     <script>
         // Configuration - Using custom domain (s.idling.app)
         const OTP_AUTH_API_URL = 'https://auth.idling.app';
@@ -493,6 +496,27 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         let userEmail = null;
         let otpTimer = null;
         let otpTimerInterval = null;
+
+        // Helper to decrypt API responses using bundled library
+        async function decryptResponse(response, token) {
+            const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+            let data = await response.json();
+            
+            if (isEncrypted && data.encrypted && token) {
+                try {
+                    // Use the bundled decryptWithJWT function from /decrypt.js
+                    if (typeof window.decryptWithJWT !== 'function') {
+                        throw new Error('Decryption library not loaded. Please refresh the page.');
+                    }
+                    data = await window.decryptWithJWT(data, token);
+                } catch (error) {
+                    console.error('Failed to decrypt response:', error);
+                    throw new Error('Failed to decrypt response. Please try again.');
+                }
+            }
+            
+            return data;
+        }
 
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
@@ -574,8 +598,11 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
 
                 const data = await response.json();
 
-                if (response.ok && data.token) {
-                    authToken = data.token;
+                // Support both OAuth 2.0 format (access_token) and legacy format (token)
+                const token = data.access_token || data.token;
+
+                if (response.ok && token) {
+                    authToken = token;
                     userEmail = email;
                     
                     // Store token
@@ -699,7 +726,7 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
                     }),
                 });
 
-                const data = await response.json();
+                const data = await decryptResponse(response, authToken);
 
                 if (response.ok && data.success) {
                     showToast(\`Short URL created: \${data.shortUrl}\`, 'success');
@@ -731,7 +758,7 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
                     },
                 });
 
-                const data = await response.json();
+                const data = await decryptResponse(response, authToken);
 
                 if (response.ok && data.success) {
                     if (data.urls && data.urls.length > 0) {
@@ -793,7 +820,7 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
                     },
                 });
 
-                const data = await response.json();
+                const data = await decryptResponse(response, authToken);
 
                 if (response.ok && data.success) {
                     showToast('Short URL deleted successfully', 'success');

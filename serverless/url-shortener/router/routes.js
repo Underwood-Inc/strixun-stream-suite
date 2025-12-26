@@ -9,6 +9,7 @@ import { getCorsHeaders } from '../utils/cors.js';
 import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls, handleDeleteUrl } from '../handlers/url.js';
 import { handleHealth } from '../handlers/health.js';
 import { handleStandalonePage } from '../handlers/page.js';
+import { handleDecryptScript } from '../handlers/decrypt-script.js';
 
 /**
  * Helper to wrap handlers with automatic encryption
@@ -57,6 +58,11 @@ export function createRouter(standaloneHtml) {
       // Health check (moved before root to ensure it works)
       if (path === '/health') {
         return handleHealth();
+      }
+
+      // Serve decryption script
+      if (path === '/decrypt.js' && request.method === 'GET') {
+        return handleDecryptScript();
       }
 
       // Serve standalone HTML page at root

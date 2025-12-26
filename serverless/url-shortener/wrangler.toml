@@ -2,6 +2,9 @@ name = "strixun-url-shortener"
 main = "worker.ts"
 compatibility_date = "2024-01-01"
 
+[build]
+command = "pnpm build:decrypt"
+
 [env.production]
 vars = { ENVIRONMENT = "production" }
 # Custom domain route (s.idling.app/*) is managed in Cloudflare Dashboard
