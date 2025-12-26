@@ -66,6 +66,8 @@ let lastDataHash = '';
 /**
  * Initialize IndexedDB connection
  * @returns Promise resolving to database instance or null if unavailable
+ * 
+ * CRITICAL: Has timeout to prevent browser lockup if IndexedDB is blocked/corrupted
  */
 export function initIndexedDB(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
@@ -75,9 +77,16 @@ export function initIndexedDB(): Promise<IDBDatabase | null> {
       return;
     }
     
+    // Add timeout to prevent browser lockup (3 seconds max)
+    const timeoutId = setTimeout(() => {
+      console.warn('[Storage] IndexedDB initialization timed out after 3 seconds, using localStorage only');
+      resolve(null); // Fall back to localStorage
+    }, 3000);
+    
     const request = indexedDB.open(IDB_NAME, IDB_VERSION);
     
     request.onerror = () => {
+      clearTimeout(timeoutId);
       console.error('[Storage] IndexedDB open error:', request.error);
       resolve(null); // Fall back to localStorage
     };
@@ -90,6 +99,7 @@ export function initIndexedDB(): Promise<IDBDatabase | null> {
     };
     
     request.onsuccess = () => {
+      clearTimeout(timeoutId);
       idbInstance = request.result;
       idbReady = true;
       console.log('[Storage] IndexedDB ready');
@@ -110,7 +120,15 @@ export async function loadStorageCache(): Promise<void> {
       const store = tx.objectStore(IDB_STORE);
       const request = store.getAll();
       
-      await new Promise<void>((resolve, reject) => {
+      // Add timeout to prevent browser lockup (3 seconds max)
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          console.warn('[Storage] IndexedDB load timed out after 3 seconds, using localStorage only');
+          resolve(); // Resolve to continue with localStorage fallback
+        }, 3000);
+      });
+      
+      const loadPromise = new Promise<void>((resolve, reject) => {
         request.onsuccess = () => {
           const items = (request.result || []) as StorageItem[];
           items.forEach(item => {
@@ -124,6 +142,14 @@ export async function loadStorageCache(): Promise<void> {
           reject(request.error);
         };
       });
+      
+      // Race between load and timeout - whichever finishes first wins
+      try {
+        await Promise.race([loadPromise, timeoutPromise]);
+      } catch (e) {
+        // If IndexedDB fails, continue with localStorage fallback
+        // Error already logged above
+      }
     } catch (e) {
       console.error('[Storage] IndexedDB load error:', e);
     }

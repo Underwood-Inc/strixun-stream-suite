@@ -129,6 +129,8 @@ function getOtpAuthApiUrl(): string {
 /**
  * Restore session from backend based on IP address
  * This enables cross-application session sharing for the same device
+ * 
+ * CRITICAL: Has timeout to prevent browser lockup if server is slow/unresponsive
  */
 async function restoreSessionFromBackend(): Promise<boolean> {
   try {
@@ -138,12 +140,31 @@ async function restoreSessionFromBackend(): Promise<boolean> {
       return false;
     }
 
-    const response = await secureFetch(`${apiUrl}/auth/restore-session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Add timeout to prevent browser lockup (5 seconds max)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5000); // 5 second timeout
+
+    let response: Response;
+    try {
+      response = await secureFetch(`${apiUrl}/auth/restore-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      // If aborted, it's a timeout
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.warn('[Auth] Session restoration timed out after 5 seconds');
+        return false;
+      }
+      throw fetchError; // Re-throw other errors
+    }
 
     if (!response.ok) {
       // Not an error - just no session found

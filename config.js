@@ -289,10 +289,32 @@ window.testWorkerApi = async function() {
             };
         }
         
-        const response = await fetch(`${apiUrl}/health`, {
-            method: 'GET',
-            cache: 'no-store'
-        });
+        // Add timeout to prevent browser lockup (5 seconds max)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, 5000);
+        
+        let response;
+        try {
+            response = await fetch(`${apiUrl}/health`, {
+                method: 'GET',
+                cache: 'no-store',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            // If aborted, it's a timeout
+            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+                return {
+                    success: false,
+                    error: 'Request timeout',
+                    message: 'Health check timed out after 5 seconds'
+                };
+            }
+            throw fetchError; // Re-throw other errors
+        }
         
         if (!response.ok) {
             return {
