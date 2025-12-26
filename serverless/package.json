@@ -15,6 +15,7 @@
     "deploy:api": "wrangler deploy",
     "deploy:url-shortener": "cd url-shortener && wrangler deploy",
     "deploy:otp-auth": "cd otp-auth-service && wrangler deploy",
+    "deploy:customer-api": "cd customer-api && wrangler deploy",
     "deploy:game-api": "cd game-api && wrangler deploy",
     "deploy:chat-signaling": "cd chat-signaling && wrangler deploy"
   },
