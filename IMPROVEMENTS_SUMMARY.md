@@ -9,7 +9,7 @@ The previous system required users to:
 4. ❌ Remember to update URLs if anything changed
 5. ❌ Deal with cryptic error messages if misconfigured
 
-**This was janky as hell!** 🤬
+**This was extremely problematic!** 🤬
 
 ## Solution Implemented
 
@@ -379,7 +379,7 @@ sequenceDiagram
 
 This improvement transforms the Strixun Stream Suite from a powerful but complex tool into a **plug-and-play solution** that "just works" for the vast majority of users, while still providing advanced configuration options for power users.
 
-**Before:** Manual configuration hell 😤  
+**Before:** Manual configuration was very difficult 😤  
 **After:** Zero-config magic ✨
 
 ### Key Takeaway

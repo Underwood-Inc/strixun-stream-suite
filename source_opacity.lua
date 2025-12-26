@@ -298,7 +298,7 @@ function script_properties()
             local opacity = obs.obs_data_get_int(settings_ref, "opacity_value")
             
             if source_name == nil or source_name == "" then
-                log_error("Select a source first, ye damn fool!")
+                log_error("Select a source first, please!")
                 return false
             end
             
