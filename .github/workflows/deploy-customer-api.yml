@@ -28,13 +28,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
       
-      - name: Install root dependencies
+      - name: Install all dependencies
         working-directory: .
-        run: pnpm install --frozen-lockfile
-      
-      - name: Install customer-api dependencies
-        working-directory: serverless/customer-api
         run: pnpm install --frozen-lockfile
       
       - name: Create KV Namespace (if needed)

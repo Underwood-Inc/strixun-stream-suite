@@ -1,0 +1,554 @@
+# Strixun Stream Suite - Combined Deployment Workflow
+#
+# This workflow allows manual deployment of multiple services with checkboxes
+# Use this for easy manual deployment of any combination of services
+#
+# Required GitHub Secrets:
+#   - CF_API_TOKEN: Cloudflare API token with Workers and Pages permissions
+#   - CF_ACCOUNT_ID: Your Cloudflare account ID
+#   - JWT_SECRET: Secure random secret for JWT token signing
+#   - RESEND_API_KEY: Resend API key for OTP email functionality
+#   - RESEND_FROM_EMAIL: Verified domain email for sending OTP emails
+#   - TWITCH_CLIENT_ID: Your Twitch application client ID
+#   - TWITCH_CLIENT_SECRET: Your Twitch application client secret
+#   - ALLOWED_ORIGINS: Optional - Comma-separated list of allowed CORS origins
+#   - SERVICE_API_KEY: Optional - Service API key
+#   - MODS_PUBLIC_URL: Optional - Mods public URL
+#   - VITE_MODS_API_URL: Optional - Mods API URL for frontend (defaults to https://mods.idling.app)
+#   - VITE_AUTH_API_URL: Optional - Auth API URL for frontend (defaults to https://auth.idling.app)
+
+name: Deploy All Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_twitch_api:
+        description: 'Deploy Twitch API'
+        type: boolean
+        default: false
+      deploy_mods_api:
+        description: 'Deploy Mods API'
+        type: boolean
+        default: false
+      deploy_otp_auth:
+        description: 'Deploy OTP Auth Service'
+        type: boolean
+        default: false
+      deploy_customer_api:
+        description: 'Deploy Customer API'
+        type: boolean
+        default: false
+      deploy_game_api:
+        description: 'Deploy Game API'
+        type: boolean
+        default: false
+      deploy_mods_hub:
+        description: 'Deploy Mods Hub (Pages)'
+        type: boolean
+        default: false
+      deploy_storybook:
+        description: 'Deploy Storybook (Pages)'
+        type: boolean
+        default: false
+      deploy_pages:
+        description: 'Deploy GitHub Pages'
+        type: boolean
+        default: false
+
+# Sets permissions for GITHUB_TOKEN
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # Shared setup job for dependency installation
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+  # Twitch API Deployment
+  deploy_twitch_api:
+    needs: setup
+    if: ${{ inputs.deploy_twitch_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Deploy Worker
+        working-directory: serverless/twitch-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/twitch-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "${{ secrets.TWITCH_CLIENT_ID }}" | pnpm exec wrangler secret put TWITCH_CLIENT_ID || true
+          echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | pnpm exec wrangler secret put TWITCH_CLIENT_SECRET || true
+          echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY || true
+          echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL || true
+          echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+        continue-on-error: true
+
+  # Mods API Deployment
+  deploy_mods_api:
+    needs: setup
+    if: ${{ inputs.deploy_mods_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Deploy to Cloudflare Workers
+        working-directory: serverless/mods-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/mods-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+          fi
+          if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
+            echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL || true
+          fi
+        continue-on-error: true
+
+  # OTP Auth Service Deployment
+  deploy_otp_auth:
+    needs: setup
+    if: ${{ inputs.deploy_otp_auth }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build and Deploy to Cloudflare Workers
+        working-directory: serverless/otp-auth-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm run deploy
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/otp-auth-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+          fi
+          if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
+            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY || true
+          fi
+          if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
+            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL || true
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY || true
+          fi
+        continue-on-error: true
+
+  # Customer API Deployment
+  deploy_customer_api:
+    needs: setup
+    if: ${{ inputs.deploy_customer_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Create KV Namespace (if needed)
+        working-directory: serverless/customer-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "Creating KV namespace CUSTOMER_API_KV (if it doesn't exist)..."
+          pnpm exec wrangler kv namespace create "CUSTOMER_API_KV" || true
+        continue-on-error: true
+      
+      - name: Deploy to Cloudflare Workers
+        working-directory: serverless/customer-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/customer-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+          fi
+          if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY || true
+          fi
+        continue-on-error: true
+
+  # Game API Deployment
+  deploy_game_api:
+    needs: setup
+    if: ${{ inputs.deploy_game_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Deploy to Cloudflare Workers
+        working-directory: serverless/game-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
+      
+      - name: Set Worker Secrets
+        working-directory: serverless/game-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+          fi
+        continue-on-error: true
+
+  # Mods Hub Deployment (Cloudflare Pages)
+  deploy_mods_hub:
+    needs: setup
+    if: ${{ inputs.deploy_mods_hub }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Mods Hub
+        working-directory: mods-hub
+        env:
+          VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods.idling.app' }}
+          VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
+        run: pnpm run build
+      
+      - name: Deploy to Cloudflare Pages
+        working-directory: mods-hub
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler pages project create mods-hub --production-branch=main || true
+          pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+
+  # Storybook Deployment (Cloudflare Pages)
+  deploy_storybook:
+    needs: setup
+    if: ${{ inputs.deploy_storybook }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Storybook
+        working-directory: shared-components
+        run: pnpm build-storybook
+      
+      - name: Deploy to Cloudflare Pages
+        working-directory: shared-components
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler pages project create storybook --production-branch=main || true
+          pnpm exec wrangler pages deploy storybook-static --project-name=storybook --branch=main
+
+  # GitHub Pages Deployment - Build
+  deploy_pages_build:
+    needs: setup
+    if: ${{ inputs.deploy_pages }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Svelte app
+        env:
+          VITE_BASE_PATH: /
+        run: pnpm build
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Create .nojekyll
+        run: touch dist/.nojekyll
+      
+      - name: Create CNAME file for custom domain
+        run: echo "streamkit.idling.app" > dist/CNAME
+      
+      - name: Copy config.js to dist
+        run: cp config.js dist/config.js
+      
+      - name: Copy legacy assets
+        run: |
+          mkdir -p dist/assets/js/modules
+          cp assets/js/modules/installer.js dist/assets/js/modules/installer.js || echo "installer.js not found, skipping"
+      
+      - name: Inject Auto-Configuration
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          CF_WORKERS_SUBDOMAIN: ${{ secrets.CF_WORKERS_SUBDOMAIN }}
+          CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || 'streamkit.idling.app' }}
+        run: |
+          WORKER_NAME=$(grep '^name = ' serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/' || echo "strixun-twitch-api")
+          SUBDOMAIN="${CF_WORKERS_SUBDOMAIN:-strixuns-script-suite}"
+          WORKER_URL="https://${WORKER_NAME}.${SUBDOMAIN}.workers.dev"
+          OTP_AUTH_URL="https://auth.idling.app"
+          CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-streamkit.idling.app}"
+          PAGES_URL="https://${CUSTOM_DOMAIN}/"
+          STORYBOOK_URL="${PAGES_URL}storybook/"
+          DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" dist/config.js
+          sed -i "s|%%OTP_AUTH_API_URL%%|${OTP_AUTH_URL}|g" dist/config.js
+          sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" dist/config.js
+          sed -i "s|%%STORYBOOK_URL%%|${STORYBOOK_URL}|g" dist/config.js
+          sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" dist/config.js
+          sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" dist/config.js
+          sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" dist/config.js
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+  # GitHub Pages Deployment - Deploy
+  deploy_pages:
+    needs: deploy_pages_build
+    if: ${{ inputs.deploy_pages }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Deployment Summary
+  summary:
+    needs: [deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_mods_hub, deploy_storybook, deploy_pages]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
+            echo "✅ **Twitch API** - Deployed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
+            echo "✅ **Mods API** - Deployed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
+            echo "✅ **OTP Auth Service** - Deployed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
+            echo "✅ **Customer API** - Deployed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
+            echo "✅ **Game API** - Deployed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
+            echo "✅ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_storybook }}" == "true" ]; then
+            echo "✅ **Storybook** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ inputs.deploy_pages }}" == "true" ]; then
+            echo "✅ **GitHub Pages** - Deployed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 All selected services have been deployed." >> $GITHUB_STEP_SUMMARY
+

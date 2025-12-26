@@ -41,23 +41,11 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
           
-      - name: Install root dependencies
+      - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
-        
-      - name: Install serverless dependencies
-        working-directory: serverless
-        run: pnpm install --frozen-lockfile
-        
-      - name: Install twitch-api dependencies
-        working-directory: serverless/twitch-api
-        run: pnpm install --frozen-lockfile
-        
-      - name: Install control-panel dependencies (for type checking)
-        working-directory: control-panel
-        run: pnpm install --frozen-lockfile
-        continue-on-error: true
         
       - name: Deploy Worker
         working-directory: serverless/twitch-api

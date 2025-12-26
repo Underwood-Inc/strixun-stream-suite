@@ -40,13 +40,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
           
-      - name: Install root dependencies
+      - name: Install all dependencies
         working-directory: .
-        run: pnpm install --frozen-lockfile
-        
-      - name: Install mods-hub dependencies
-        working-directory: mods-hub
         run: pnpm install --frozen-lockfile
         
       - name: Build Mods Hub
@@ -54,7 +51,7 @@ jobs:
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
-        run: pnpm build
+        run: pnpm run build
         
       - name: Deploy to Cloudflare Pages
         working-directory: mods-hub
