@@ -99,6 +99,10 @@ export async function createAuthToken(
     // Generate CSRF token for this session
     const csrfToken = generateCSRFToken();
     
+    // Check if user is a super admin
+    const { isSuperAdminEmail } = await import('../../utils/super-admin.js');
+    const isSuperAdmin = await isSuperAdminEmail(emailLower, env);
+    
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
     const tokenPayload = {
         // Standard JWT Claims
@@ -117,6 +121,7 @@ export async function createAuthToken(
         userId: user.userId, // Backward compatibility
         customerId: customerId || null, // Multi-tenant customer ID
         csrf: csrfToken, // CSRF token included in JWT
+        isSuperAdmin: isSuperAdmin, // Super admin status
     };
     
     // Log JWT creation for debugging

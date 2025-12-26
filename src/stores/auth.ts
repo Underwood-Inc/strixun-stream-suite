@@ -85,12 +85,16 @@ function saveAuthState(userData: User | null): void {
       storage.set('auth_token', userData.token);
     }
     
-    // Extract CSRF token from JWT payload
+    // Extract CSRF token and isSuperAdmin from JWT payload
     const payload = decodeJWTPayload(userData.token);
     const csrf = payload?.csrf as string | undefined;
+    const isSuperAdmin = payload?.isSuperAdmin === true;
+    
+    // Update userData with isSuperAdmin from JWT if not already set
+    const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
     
     isAuthenticated.set(true);
-    user.set(userData);
+    user.set(updatedUserData);
     token.set(userData.token);
     csrfToken.set(csrf || null);
   } else {
@@ -132,13 +136,16 @@ export function loadAuthState(): void {
           // Remove from regular storage if it was there
           storage.remove('auth_token');
         }
-        // Extract CSRF token from JWT payload before saving
+        // Extract CSRF token and isSuperAdmin from JWT payload before saving
         const payload = decodeJWTPayload(savedToken);
         const csrf = payload?.csrf as string | undefined;
+        const isSuperAdmin = payload?.isSuperAdmin === true;
         if (csrf) {
           csrfToken.set(csrf);
         }
-        saveAuthState(userData as User);
+        // Update userData with isSuperAdmin from JWT if not already set
+        const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
+        saveAuthState(updatedUserData as User);
       } else {
         // Token expired, clear auth
         saveAuthState(null);

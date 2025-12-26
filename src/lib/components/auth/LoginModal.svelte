@@ -48,6 +48,24 @@
   }
   
   function handleLoginSuccess(data: LoginSuccessData) {
+    // Decode JWT to extract isSuperAdmin from payload
+    let isSuperAdmin = false;
+    try {
+      const token = data.token;
+      if (token) {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payloadB64 = parts[1];
+          const payload = JSON.parse(
+            atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+          );
+          isSuperAdmin = payload?.isSuperAdmin === true;
+        }
+      }
+    } catch (error) {
+      console.warn('[LoginModal] Failed to decode JWT for super admin status:', error);
+    }
+    
     // Set authentication - support both old format and OAuth 2.0 format
     setAuth({
       userId: data.userId || '',
@@ -55,6 +73,7 @@
       displayName: data.displayName || undefined,
       token: data.token,
       expiresAt: data.expiresAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
+      isSuperAdmin: isSuperAdmin,
     });
     
     showToast({ message: 'Login successful', type: 'success' });
