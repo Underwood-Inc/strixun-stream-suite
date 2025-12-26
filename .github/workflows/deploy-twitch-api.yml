@@ -54,6 +54,11 @@ jobs:
         working-directory: serverless/twitch-api
         run: pnpm install --frozen-lockfile
         
+      - name: Install control-panel dependencies (for type checking)
+        working-directory: control-panel
+        run: pnpm install --frozen-lockfile
+        continue-on-error: true
+        
       - name: Deploy Worker
         working-directory: serverless/twitch-api
         env:
