@@ -381,90 +381,99 @@
         }
       });
       
-      // Ensure background is set
-      const computed = window.getComputedStyle(carouselContainer);
-      const bgColor = computed.backgroundColor;
-      if (!bgColor || bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
-        carouselContainer.style.setProperty('background-color', '#252017', 'important'); // fallback for --card
-      }
+      // Set background color directly (avoid getComputedStyle which can block)
+      carouselContainer.style.setProperty('background-color', '#252017', 'important');
       
-      // Check computed styles AFTER setting - if still not visible, something is overriding
-      // Add timeout protection for getComputedStyle (can be slow on some devices)
-      let finalComputed: CSSStyleDeclaration;
-      let rect: DOMRect;
-      try {
-        const startTime = Date.now();
-        finalComputed = window.getComputedStyle(carouselContainer);
-        rect = carouselContainer.getBoundingClientRect();
-        // If getComputedStyle takes too long, skip the check
-        if (Date.now() - startTime > 50) {
-          console.warn('[AdCarousel] getComputedStyle/getBoundingClientRect took too long, skipping visibility check');
-          return; // Exit early to prevent blocking
-        }
-      } catch (error) {
-        console.warn('[AdCarousel] Failed to check computed styles:', error);
-        return; // Exit early if check fails
-      }
-      
-      if (finalComputed.display === 'none' || finalComputed.visibility === 'hidden' || rect.width === 0 || rect.height === 0) {
-        // DOM interference detected - set flag in store
-        setDomInterferenceDetected(true);
-        
-        // Check if parent portal is hiding it
-        if (portalContainer) {
-          const portalComputed = window.getComputedStyle(portalContainer);
-          if (portalComputed.display === 'none' || portalComputed.visibility === 'hidden') {
-            portalContainer.style.setProperty('display', 'block', 'important');
-            portalContainer.style.setProperty('visibility', 'visible', 'important');
-          }
-        }
-        
-        // Last resort: remove all classes that might be hiding it and force inline styles
-        carouselContainer.className = 'ad-carousel';
-        carouselContainer.removeAttribute('hidden');
-        carouselContainer.removeAttribute('aria-hidden');
-        
-        // Force all critical styles using cssText to override everything
-        const criticalStyles = [
-          `position: fixed !important`,
-          `display: flex !important`,
-          `visibility: visible !important`,
-          `pointer-events: auto !important`,
-          `z-index: 99999 !important`,
-          `width: ${width}px !important`,
-          `max-height: ${maxHeight}px !important`,
-          `min-width: ${width}px !important`,
-          `min-height: 100px !important`,
-          `background-color: #252017 !important`,
-          `flex-direction: column !important`,
-          `overflow: visible !important`
-        ];
-        
-        // Add positioning styles
-        const posStyles = positionStyles.split(';').filter(s => s.trim());
-        posStyles.forEach(style => {
-          if (style.trim()) {
-            criticalStyles.push(`${style.trim()} !important`);
+      // CRITICAL: Defer expensive DOM operations (getComputedStyle, getBoundingClientRect)
+      // These can block the main thread if the DOM is large or CSS is complex
+      // Use requestAnimationFrame to defer to next frame, preventing lockup
+      requestAnimationFrame(() => {
+        // Wrap in try-catch and add timeout to prevent blocking
+        const checkPromise = new Promise<void>((resolve) => {
+          try {
+            if (!carouselContainer) {
+              resolve();
+              return;
+            }
+            
+            // Check computed styles AFTER setting - if still not visible, something is overriding
+            const finalComputed = window.getComputedStyle(carouselContainer);
+            const rect = carouselContainer.getBoundingClientRect();
+            
+            if (finalComputed.display === 'none' || finalComputed.visibility === 'hidden' || rect.width === 0 || rect.height === 0) {
+              // DOM interference detected - set flag in store
+              setDomInterferenceDetected(true);
+              
+              // Check if parent portal is hiding it
+              if (portalContainer) {
+                try {
+                  const portalComputed = window.getComputedStyle(portalContainer);
+                  if (portalComputed.display === 'none' || portalComputed.visibility === 'hidden') {
+                    portalContainer.style.setProperty('display', 'block', 'important');
+                    portalContainer.style.setProperty('visibility', 'visible', 'important');
+                  }
+                } catch (e) {
+                  // Portal check failed, continue anyway
+                }
+              }
+              
+              // Last resort: remove all classes that might be hiding it and force inline styles
+              carouselContainer.className = 'ad-carousel';
+              carouselContainer.removeAttribute('hidden');
+              carouselContainer.removeAttribute('aria-hidden');
+              
+              // Force all critical styles using cssText to override everything
+              const criticalStyles = [
+                `position: fixed !important`,
+                `display: flex !important`,
+                `visibility: visible !important`,
+                `pointer-events: auto !important`,
+                `z-index: 99999 !important`,
+                `width: ${width}px !important`,
+                `max-height: ${maxHeight}px !important`,
+                `min-width: ${width}px !important`,
+                `min-height: 100px !important`,
+                `background-color: #252017 !important`,
+                `flex-direction: column !important`,
+                `overflow: visible !important`
+              ];
+              
+              // Add positioning styles
+              const posStyles = positionStyles.split(';').filter(s => s.trim());
+              posStyles.forEach(style => {
+                if (style.trim()) {
+                  criticalStyles.push(`${style.trim()} !important`);
+                }
+              });
+              
+              carouselContainer.style.cssText = criticalStyles.join('; ');
+            }
+            
+            // Ensure opacity is correct (but don't override if dimmed class should handle it)
+            if (!isDimmed && finalComputed.opacity === '0') {
+              carouselContainer.style.setProperty('opacity', '1', 'important');
+            }
+            
+            resolve();
+          } catch (error) {
+            console.warn('[AdCarousel] Error in deferred visibility check:', error);
+            resolve(); // Resolve anyway to prevent hanging
           }
         });
         
-        carouselContainer.style.cssText = criticalStyles.join('; ');
+        // Add timeout to prevent hanging if getComputedStyle blocks
+        const timeoutPromise = new Promise<void>((resolve) => {
+          setTimeout(() => {
+            console.warn('[AdCarousel] Visibility check timed out after 100ms, skipping');
+            resolve();
+          }, 100);
+        });
         
-        // Double-check after cssText
-        setTimeout(() => {
-          const recheck = window.getComputedStyle(carouselContainer);
-          const recheckRect = carouselContainer.getBoundingClientRect();
-          if (recheck.display === 'none' || recheckRect.width === 0) {
-            // Still not visible - interference confirmed
-            setDomInterferenceDetected(true);
-          }
-        }, 50);
-      }
-      
-      // Ensure opacity is correct (but don't override if dimmed class should handle it)
-      if (!isDimmed && finalComputed.opacity === '0') {
-        carouselContainer.style.setProperty('opacity', '1', 'important');
-      }
+        // Race between check and timeout
+        Promise.race([checkPromise, timeoutPromise]).catch(() => {
+          // Silently handle any errors
+        });
+      });
     } catch (error) {
       // Silently handle errors
     }
@@ -523,28 +532,36 @@
     resizeObserver.observe(carouselContainer);
     
     // Periodic visibility check as a fallback
+    // CRITICAL: Defer expensive DOM operations to prevent blocking
     visibilityCheckInterval = setInterval(() => {
       if (!carouselContainer) {
         clearInterval(visibilityCheckInterval!);
         return;
       }
       
-      const rect = carouselContainer.getBoundingClientRect();
-      const computed = window.getComputedStyle(carouselContainer);
-      const isVisible = 
-        computed.display !== 'none' &&
-        computed.visibility !== 'hidden' &&
-        computed.opacity !== '0' &&
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.top < window.innerHeight &&
-        rect.bottom > 0 &&
-        rect.left < window.innerWidth &&
-        rect.right > 0;
-      
-      if (!isVisible) {
-        enforceVisibility();
-      }
+      // Defer expensive operations to prevent blocking
+      requestAnimationFrame(() => {
+        try {
+          const rect = carouselContainer.getBoundingClientRect();
+          const computed = window.getComputedStyle(carouselContainer);
+          const isVisible = 
+            computed.display !== 'none' &&
+            computed.visibility !== 'hidden' &&
+            computed.opacity !== '0' &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            rect.top < window.innerHeight &&
+            rect.bottom > 0 &&
+            rect.left < window.innerWidth &&
+            rect.right > 0;
+          
+          if (!isVisible) {
+            enforceVisibility();
+          }
+        } catch (error) {
+          // Silently handle errors in periodic check
+        }
+      });
     }, 2000); // Check every 2 seconds
   }
 
