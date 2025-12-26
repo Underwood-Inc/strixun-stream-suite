@@ -157,30 +157,56 @@ export async function loadStorageCache(): Promise<void> {
   
   // Then merge with localStorage (fallback/sync)
   // localStorage values fill in any gaps from IndexedDB
+  // CRITICAL: Wrap in try-catch with timeout to prevent browser lockup if localStorage is corrupted
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const fullKey = localStorage.key(i);
-      if (fullKey && fullKey.startsWith(STORAGE_PREFIX)) {
-        const key = fullKey.substring(STORAGE_PREFIX.length);
-        // Only use localStorage value if not already in cache from IDB
-        if (storageCache[key] === undefined) {
+    // Add timeout protection for localStorage access (some browsers can hang if localStorage is corrupted)
+    const localStoragePromise = new Promise<void>((resolve) => {
+      try {
+        const length = localStorage.length;
+        for (let i = 0; i < length; i++) {
           try {
-            const raw = localStorage.getItem(fullKey);
-            if (raw) {
-              storageCache[key] = JSON.parse(raw);
-              console.log('[Storage] Recovered from localStorage:', key);
-              // Sync back to IndexedDB
-              if (idbInstance) {
-                saveToIDB(key, storageCache[key]);
+            const fullKey = localStorage.key(i);
+            if (fullKey && fullKey.startsWith(STORAGE_PREFIX)) {
+              const key = fullKey.substring(STORAGE_PREFIX.length);
+              // Only use localStorage value if not already in cache from IDB
+              if (storageCache[key] === undefined) {
+                try {
+                  const raw = localStorage.getItem(fullKey);
+                  if (raw) {
+                    storageCache[key] = JSON.parse(raw);
+                    console.log('[Storage] Recovered from localStorage:', key);
+                    // Sync back to IndexedDB
+                    if (idbInstance) {
+                      saveToIDB(key, storageCache[key]);
+                    }
+                  }
+                } catch (e) {
+                  // Raw string value (credentials etc)
+                  storageCache[key] = localStorage.getItem(fullKey);
+                }
               }
             }
           } catch (e) {
-            // Raw string value (credentials etc)
-            storageCache[key] = localStorage.getItem(fullKey);
+            // Skip corrupted keys
+            console.warn('[Storage] Skipping corrupted localStorage key at index', i);
           }
         }
+        resolve();
+      } catch (e) {
+        console.error('[Storage] localStorage scan error:', e);
+        resolve(); // Resolve anyway to continue
       }
-    }
+    });
+    
+    // Timeout after 2 seconds - if localStorage is corrupted, don't wait forever
+    const timeoutPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        console.warn('[Storage] localStorage scan timed out, continuing without localStorage data');
+        resolve();
+      }, 2000);
+    });
+    
+    await Promise.race([localStoragePromise, timeoutPromise]);
   } catch (e) {
     console.error('[Storage] localStorage scan error:', e);
   }

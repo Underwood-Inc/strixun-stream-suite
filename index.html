@@ -33,8 +33,8 @@
     <meta name="twitter:image:alt" content="Strixun's Stream Suite - OBS Studio Toolkit">
     <!-- Auto-configuration (injected during deployment) -->
     <script src="config.js"></script>
-    <!-- Particle effects library (lightweight confetti) -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <!-- Particle effects library (lightweight confetti) - async to prevent blocking -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" async></script>
     <!-- Legacy modules (will be migrated to TypeScript) -->
     <!-- Storage migrated to TypeScript - loaded via main.ts -->
     <!-- <script src="assets/js/storage.js"></script> -->

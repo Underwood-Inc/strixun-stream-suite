@@ -215,7 +215,14 @@
   onMount(async () => {
     isMounted = true;
     
-    loadPersistedState();
+    // Load persisted state with timeout protection
+    // Wrap in try-catch to prevent blocking if storage is corrupted
+    try {
+      loadPersistedState();
+    } catch (error) {
+      console.warn('[AdCarousel] Failed to load persisted state:', error);
+      // Continue without persisted state - use defaults
+    }
     
     // Wait for DOM to be ready
     await tick();
@@ -382,8 +389,22 @@
       }
       
       // Check computed styles AFTER setting - if still not visible, something is overriding
-      const finalComputed = window.getComputedStyle(carouselContainer);
-      const rect = carouselContainer.getBoundingClientRect();
+      // Add timeout protection for getComputedStyle (can be slow on some devices)
+      let finalComputed: CSSStyleDeclaration;
+      let rect: DOMRect;
+      try {
+        const startTime = Date.now();
+        finalComputed = window.getComputedStyle(carouselContainer);
+        rect = carouselContainer.getBoundingClientRect();
+        // If getComputedStyle takes too long, skip the check
+        if (Date.now() - startTime > 50) {
+          console.warn('[AdCarousel] getComputedStyle/getBoundingClientRect took too long, skipping visibility check');
+          return; // Exit early to prevent blocking
+        }
+      } catch (error) {
+        console.warn('[AdCarousel] Failed to check computed styles:', error);
+        return; // Exit early if check fails
+      }
       
       if (finalComputed.display === 'none' || finalComputed.visibility === 'hidden' || rect.width === 0 || rect.height === 0) {
         // DOM interference detected - set flag in store
