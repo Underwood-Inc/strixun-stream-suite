@@ -21,6 +21,7 @@
   import Tooltip from './Tooltip.svelte';
   import TruncatedText from './TruncatedText.svelte';
   import AlertsDropdown from './ui/AlertsDropdown.svelte';
+  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
   
   let statusClass = 'disconnected';
   let reloadButton: HTMLButtonElement;
@@ -136,19 +137,21 @@
       </Tooltip>
     {/if}
     <Tooltip text={testToastsTooltip} position="bottom" level={isSuperAdmin ? "info" : "warning"}>
-      <button 
-        class="btn-icon in-testing" 
-        class:disabled={!isSuperAdmin}
-        on:click={handleTestToasts} 
-        title="Test Toasts"
-        disabled={!isSuperAdmin}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-        </svg>
-      </button>
+      <StatusFlair status={isSuperAdmin ? "in-testing" : "super-admin"}>
+        <button 
+          class="btn-icon" 
+          class:disabled={!isSuperAdmin}
+          on:click={handleTestToasts} 
+          title="Test Toasts"
+          disabled={!isSuperAdmin}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </button>
+      </StatusFlair>
     </Tooltip>
     <Tooltip text="Reload Panel" position="bottom">
       <button class="btn-icon" bind:this={reloadButton} on:click={handleReload}>
@@ -277,9 +280,9 @@
       transform: rotate(90deg);
     }
     
-    // Disabled state
-    &:disabled,
-    &.disabled {
+    // Disabled state - but StatusFlair will handle its own disabled styling
+    &:disabled:not(:global(.status-flair > *)),
+    &.disabled:not(:global(.status-flair > *)) {
       opacity: 0.5;
       cursor: not-allowed;
       pointer-events: none;
@@ -291,38 +294,6 @@
       
       svg {
         transform: none;
-      }
-    }
-
-    // IN TESTING state - override default styles
-    &.in-testing {
-      @include in-testing-state;
-      box-shadow: 0 2px 0 var(--info);
-      
-      &:hover {
-        border-color: var(--info);
-        box-shadow: 0 3px 0 var(--info);
-        background-image: repeating-linear-gradient(
-          45deg,
-          rgba(100, 149, 237, 0.12),
-          rgba(100, 149, 237, 0.12) 6px,
-          rgba(100, 149, 237, 0.16) 6px,
-          rgba(100, 149, 237, 0.16) 12px
-        );
-      }
-      
-      &:disabled,
-      &.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        pointer-events: none;
-        box-shadow: 0 2px 0 var(--border);
-        
-        &:hover {
-          border-color: var(--border);
-          box-shadow: 0 2px 0 var(--border);
-          background-image: none;
-        }
       }
     }
   }

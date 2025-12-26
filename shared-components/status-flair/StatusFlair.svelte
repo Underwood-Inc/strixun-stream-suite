@@ -19,7 +19,7 @@
    * ```
    */
 
-  export let status: 'wip' | 'in-testing' | 'beta' | 'alpha' | 'experimental' | 'deprecated' | 'coming-soon' | null = null;
+  export let status: 'wip' | 'in-testing' | 'beta' | 'alpha' | 'experimental' | 'deprecated' | 'coming-soon' | 'super-admin' | null = null;
   export let className: string = '';
 </script>
 
@@ -32,6 +32,7 @@
   class:status-flair--experimental={status === 'experimental'}
   class:status-flair--deprecated={status === 'deprecated'}
   class:status-flair--coming-soon={status === 'coming-soon'}
+  class:status-flair--super-admin={status === 'super-admin'}
 >
   <slot />
 </div>
@@ -76,6 +77,24 @@
   // Apply COMING SOON state to direct child only
   .status-flair--coming-soon :global(> *) {
     @include coming-soon-state;
+  }
+
+  // Apply SUPER ADMIN state to direct child only
+  .status-flair--super-admin :global(> *) {
+    @include super-admin-state;
+    
+    // Ensure disabled state preserves styling
+    &:disabled {
+      border-color: var(--warning) !important;
+      background-image: repeating-linear-gradient(
+        135deg,
+        rgba(255, 193, 7, 0.08),
+        rgba(255, 193, 7, 0.08) 6px,
+        rgba(255, 193, 7, 0.12) 6px,
+        rgba(255, 193, 7, 0.12) 12px
+      ) !important;
+      box-shadow: 0 2px 0 var(--warning) !important;
+    }
   }
 </style>
 

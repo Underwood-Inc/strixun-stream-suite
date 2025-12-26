@@ -216,6 +216,55 @@
   @include in-testing-state;
 }
 
+// ============ SUPER ADMIN State ============
+// Restricted feature - requires super admin privileges
+// Styled with warning/orange color to indicate restricted access
+@mixin super-admin-state {
+  position: relative;
+  border-color: var(--warning);
+  border-width: 2px;
+  background: var(--card);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 193, 7, 0.08),
+    rgba(255, 193, 7, 0.08) 6px,
+    rgba(255, 193, 7, 0.12) 6px,
+    rgba(255, 193, 7, 0.12) 12px
+  );
+  
+  &:hover:not(:disabled) {
+    border-color: var(--warning);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 193, 7, 0.12),
+      rgba(255, 193, 7, 0.12) 6px,
+      rgba(255, 193, 7, 0.16) 6px,
+      rgba(255, 193, 7, 0.16) 12px
+    );
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    // Preserve styling even when disabled
+    border-color: var(--warning) !important;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 193, 7, 0.08),
+      rgba(255, 193, 7, 0.08) 6px,
+      rgba(255, 193, 7, 0.12) 6px,
+      rgba(255, 193, 7, 0.12) 12px
+    ) !important;
+    box-shadow: 0 2px 0 var(--warning) !important;
+  }
+}
+
+// SUPER ADMIN utility class for buttons and interactive elements
+.super-admin {
+  @include super-admin-state;
+}
+
 // ============ BETA State ============
 // Functional but may have bugs or incomplete features
 @mixin beta-state {
