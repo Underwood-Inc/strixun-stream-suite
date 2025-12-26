@@ -355,24 +355,35 @@
     if (!carouselContainer) return;
     
     try {
-      // Force critical styles
-      carouselContainer.style.position = 'fixed';
-      carouselContainer.style.display = 'flex';
-      carouselContainer.style.visibility = 'visible';
-      carouselContainer.style.pointerEvents = 'auto';
-      carouselContainer.style.zIndex = '99999';
+      // CRITICAL: Set display FIRST and use !important to override any CSS
+      carouselContainer.style.setProperty('display', 'flex', 'important');
+      carouselContainer.style.setProperty('visibility', 'visible', 'important');
+      carouselContainer.style.setProperty('position', 'fixed', 'important');
+      carouselContainer.style.setProperty('pointer-events', 'auto', 'important');
+      carouselContainer.style.setProperty('z-index', '99999', 'important');
+      
+      // Ensure dimensions are set
+      carouselContainer.style.setProperty('width', `${width}px`, 'important');
+      carouselContainer.style.setProperty('max-height', `${maxHeight}px`, 'important');
+      carouselContainer.style.setProperty('min-width', `${width}px`, 'important');
+      carouselContainer.style.setProperty('min-height', '100px', 'important');
       
       // Apply positioning styles from getPositionStyles()
       const positionStyles = getPositionStyles();
-      // Parse and apply each style property
+      // Parse and apply each style property with !important
       const stylePairs = positionStyles.split(';').filter(s => s.trim());
       stylePairs.forEach(stylePair => {
         const colonIndex = stylePair.indexOf(':');
         if (colonIndex > 0) {
           const prop = stylePair.substring(0, colonIndex).trim();
           const value = stylePair.substring(colonIndex + 1).trim();
-          if (prop && value) {
-            carouselContainer.style.setProperty(prop, value);
+          if (prop && value && prop !== 'display' && prop !== 'width' && prop !== 'max-height') {
+            // Use setProperty with important flag for critical positioning
+            if (prop === 'position' || prop === 'z-index' || prop.includes('left') || prop.includes('right') || prop.includes('top') || prop.includes('bottom')) {
+              carouselContainer.style.setProperty(prop, value, 'important');
+            } else {
+              carouselContainer.style.setProperty(prop, value);
+            }
           }
         }
       });
@@ -381,23 +392,92 @@
       const computed = window.getComputedStyle(carouselContainer);
       const bgColor = computed.backgroundColor;
       if (!bgColor || bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
-        carouselContainer.style.backgroundColor = '#252017'; // fallback for --card
+        carouselContainer.style.setProperty('background-color', '#252017', 'important'); // fallback for --card
       }
       
-      // Check computed styles to ensure visibility
-      if (computed.display === 'none' || computed.visibility === 'hidden') {
-        console.warn('[AdCarousel] Element not visible, forcing visibility', {
-          display: computed.display,
-          visibility: computed.visibility,
-          opacity: computed.opacity
+      // Check computed styles AFTER setting - if still not visible, something is overriding
+      const finalComputed = window.getComputedStyle(carouselContainer);
+      const rect = carouselContainer.getBoundingClientRect();
+      
+      if (finalComputed.display === 'none' || finalComputed.visibility === 'hidden' || rect.width === 0 || rect.height === 0) {
+        console.error('[AdCarousel] CRITICAL: Element still not visible after enforcement!', {
+          display: finalComputed.display,
+          visibility: finalComputed.visibility,
+          opacity: finalComputed.opacity,
+          width: rect.width,
+          height: rect.height,
+          position: finalComputed.position,
+          zIndex: finalComputed.zIndex,
+          inlineStyles: carouselContainer.getAttribute('style'),
+          parentDisplay: portalContainer ? window.getComputedStyle(portalContainer).display : 'N/A',
+          parentVisibility: portalContainer ? window.getComputedStyle(portalContainer).visibility : 'N/A'
         });
-        carouselContainer.style.display = 'flex';
-        carouselContainer.style.visibility = 'visible';
+        
+        // Check if parent portal is hiding it
+        if (portalContainer) {
+          const portalComputed = window.getComputedStyle(portalContainer);
+          if (portalComputed.display === 'none' || portalComputed.visibility === 'hidden') {
+            console.error('[AdCarousel] Parent portal is hiding the element! Fixing portal...');
+            portalContainer.style.setProperty('display', 'block', 'important');
+            portalContainer.style.setProperty('visibility', 'visible', 'important');
+          }
+        }
+        
+        // Last resort: remove all classes that might be hiding it and force inline styles
+        carouselContainer.className = 'ad-carousel';
+        carouselContainer.removeAttribute('hidden');
+        carouselContainer.removeAttribute('aria-hidden');
+        
+        // Force all critical styles using cssText to override everything
+        const criticalStyles = [
+          `position: fixed !important`,
+          `display: flex !important`,
+          `visibility: visible !important`,
+          `pointer-events: auto !important`,
+          `z-index: 99999 !important`,
+          `width: ${width}px !important`,
+          `max-height: ${maxHeight}px !important`,
+          `min-width: ${width}px !important`,
+          `min-height: 100px !important`,
+          `background-color: #252017 !important`,
+          `flex-direction: column !important`,
+          `overflow: visible !important`
+        ];
+        
+        // Add positioning styles
+        const posStyles = positionStyles.split(';').filter(s => s.trim());
+        posStyles.forEach(style => {
+          if (style.trim()) {
+            criticalStyles.push(`${style.trim()} !important`);
+          }
+        });
+        
+        carouselContainer.style.cssText = criticalStyles.join('; ');
+        
+        // Double-check after cssText
+        setTimeout(() => {
+          const recheck = window.getComputedStyle(carouselContainer);
+          const recheckRect = carouselContainer.getBoundingClientRect();
+          if (recheck.display === 'none' || recheckRect.width === 0) {
+            console.error('[AdCarousel] STILL NOT VISIBLE after cssText! This is a critical issue.', {
+              display: recheck.display,
+              width: recheckRect.width,
+              height: recheckRect.height
+            });
+          }
+        }, 50);
+      } else {
+        console.log('[AdCarousel] Visibility enforced successfully', {
+          display: finalComputed.display,
+          visibility: finalComputed.visibility,
+          width: rect.width,
+          height: rect.height
+        });
       }
       
       // Ensure opacity is correct (but don't override if dimmed class should handle it)
-      if (!isDimmed && computed.opacity === '0') {
-        carouselContainer.style.opacity = '1';
+      if (!isDimmed && finalComputed.opacity === '0') {
+        carouselContainer.style.setProperty('opacity', '1', 'important');
       }
     } catch (error) {
       console.error('[AdCarousel] Error enforcing visibility:', error);
