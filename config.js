@@ -51,6 +51,63 @@ window.STRIXUN_CONFIG = window.STRIXUN_CONFIG || {
 let cachedApiUrl = null;
 let apiUrlLogged = false;
 
+/**
+ * Validate and normalize a URL
+ * Returns null if URL is invalid or malformed
+ */
+function validateAndNormalizeUrl(url) {
+    if (!url || typeof url !== 'string') {
+        return null;
+    }
+    
+    const trimmed = url.trim();
+    if (!trimmed || trimmed === '') {
+        return null;
+    }
+    
+    // Check for placeholder values
+    if (trimmed.startsWith('%%') || trimmed.includes('%%')) {
+        return null;
+    }
+    
+    // Check for malformed URLs (starts with dot, missing protocol, etc.)
+    if (trimmed.startsWith('.') || trimmed.startsWith('/')) {
+        console.warn('[Config] Invalid URL format (starts with . or /):', trimmed);
+        return null;
+    }
+    
+    // If URL doesn't start with http:// or https://, try to fix it
+    let normalized = trimmed;
+    if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
+        // If it looks like a domain, add https://
+        if (normalized.includes('.') && !normalized.includes(' ')) {
+            normalized = 'https://' + normalized;
+        } else {
+            console.warn('[Config] Invalid URL format (missing protocol):', trimmed);
+            return null;
+        }
+    }
+    
+    // Validate URL format
+    try {
+        const urlObj = new URL(normalized);
+        // Ensure it's a valid URL
+        if (!urlObj.hostname || urlObj.hostname === '') {
+            console.warn('[Config] Invalid URL (no hostname):', trimmed);
+            return null;
+        }
+        // Check for double dots in hostname (malformed)
+        if (urlObj.hostname.startsWith('.') || urlObj.hostname.includes('..')) {
+            console.warn('[Config] Invalid URL (malformed hostname):', trimmed);
+            return null;
+        }
+        return normalized;
+    } catch (e) {
+        console.warn('[Config] Invalid URL format:', trimmed, e);
+        return null;
+    }
+}
+
 window.getWorkerApiUrl = function() {
     // Return cached value if available
     if (cachedApiUrl !== null) {
@@ -60,25 +117,35 @@ window.getWorkerApiUrl = function() {
     // Priority 1: Manual override from storage
     if (typeof storage !== 'undefined') {
         const manualOverride = storage.get('twitch_api_server');
-        if (manualOverride && manualOverride.trim() !== '') {
-            if (!apiUrlLogged) {
-                console.log('[Config] Using manual API server override:', manualOverride);
-                apiUrlLogged = true;
+        if (manualOverride && typeof manualOverride === 'string' && manualOverride.trim() !== '') {
+            const validated = validateAndNormalizeUrl(manualOverride);
+            if (validated) {
+                if (!apiUrlLogged) {
+                    console.log('[Config] Using manual API server override:', validated);
+                    apiUrlLogged = true;
+                }
+                cachedApiUrl = validated;
+                return cachedApiUrl;
+            } else {
+                console.warn('[Config] Manual override URL is invalid, ignoring:', manualOverride);
             }
-            cachedApiUrl = manualOverride;
-            return cachedApiUrl;
         }
     }
     
     // Priority 2: Auto-injected during deployment
     const injected = window.STRIXUN_CONFIG.WORKER_API_URL;
-    if (injected && !injected.startsWith('%%')) {
-        if (!apiUrlLogged) {
-            console.log('[Config] Using auto-injected API server:', injected);
-            apiUrlLogged = true;
+    if (injected && typeof injected === 'string') {
+        const validated = validateAndNormalizeUrl(injected);
+        if (validated) {
+            if (!apiUrlLogged) {
+                console.log('[Config] Using auto-injected API server:', validated);
+                apiUrlLogged = true;
+            }
+            cachedApiUrl = validated;
+            return cachedApiUrl;
+        } else {
+            console.warn('[Config] Injected URL is invalid, ignoring:', injected);
         }
-        cachedApiUrl = injected;
-        return cachedApiUrl;
     }
     
     // Priority 3: Hardcoded fallback for local development
@@ -276,6 +343,25 @@ window.testWorkerApi = async function() {
             success: false,
             error: 'No API server configured',
             message: 'Configure API server URL in Setup → Twitch API Settings'
+        };
+    }
+    
+    // Validate URL before making request
+    try {
+        const urlObj = new URL(apiUrl);
+        // Check for malformed URLs
+        if (urlObj.hostname.startsWith('.') || urlObj.hostname.includes('..') || !urlObj.hostname) {
+            return {
+                success: false,
+                error: 'Invalid URL format',
+                message: `API URL is malformed: ${apiUrl}. Please check your configuration.`
+            };
+        }
+    } catch (e) {
+        return {
+            success: false,
+            error: 'Invalid URL format',
+            message: `API URL is invalid: ${apiUrl}. Please check your configuration.`
         };
     }
     

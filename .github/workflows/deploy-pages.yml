@@ -83,14 +83,38 @@ jobs:
           CF_WORKERS_SUBDOMAIN: ${{ secrets.CF_WORKERS_SUBDOMAIN }}
           CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || 'streamkit.idling.app' }}
         run: |
-          # Read worker name from wrangler.toml
-          WORKER_NAME=$(grep '^name = ' serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/')
+          # Read worker name from wrangler.toml (correct path: serverless/twitch-api/wrangler.toml)
+          # CRITICAL: Validate WORKER_NAME to prevent malformed URLs
+          WORKER_NAME=$(grep '^name = ' serverless/twitch-api/wrangler.toml | sed 's/name = "\(.*\)"/\1/' || echo "")
+          
+          # Validate WORKER_NAME - if empty or invalid, use fallback
+          if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "" ]; then
+            echo "⚠️ Warning: Could not read worker name from wrangler.toml, using fallback"
+            WORKER_NAME="strixun-twitch-api"
+          fi
+          
           echo "Worker name: $WORKER_NAME"
           
           # Construct Worker URL using Cloudflare Workers subdomain from secrets
           # If CF_WORKERS_SUBDOMAIN is not set, use hardcoded fallback
           SUBDOMAIN="${CF_WORKERS_SUBDOMAIN:-strixuns-script-suite}"
+          
+          # CRITICAL: Validate SUBDOMAIN to prevent malformed URLs
+          if [ -z "$SUBDOMAIN" ] || [ "$SUBDOMAIN" = "" ]; then
+            echo "⚠️ Warning: CF_WORKERS_SUBDOMAIN is empty, using fallback"
+            SUBDOMAIN="strixuns-script-suite"
+          fi
+          
+          # Construct URL with validation
           WORKER_URL="https://${WORKER_NAME}.${SUBDOMAIN}.workers.dev"
+          
+          # CRITICAL: Validate final URL format before injection
+          if [[ "$WORKER_URL" =~ ^https://\..*\.workers\.dev$ ]] || [[ "$WORKER_URL" =~ ^https://.*\.\..*\.workers\.dev$ ]]; then
+            echo "❌ ERROR: Malformed WORKER_URL detected: $WORKER_URL"
+            echo "❌ This would cause browser lockup. Aborting deployment."
+            exit 1
+          fi
+          
           echo "Worker URL: $WORKER_URL"
           
           # Construct OTP Auth Service URL - prefer custom domain, fallback to workers.dev
@@ -118,7 +142,25 @@ jobs:
           STORYBOOK_URL="${PAGES_URL}storybook/"
           echo "Storybook URL: $STORYBOOK_URL"
           
+          # CRITICAL: Validate all URLs before injection to prevent malformed URLs
+          # Check for malformed patterns: starts with dot, double dots, etc.
+          if [[ "$WORKER_URL" =~ ^https?://\. ]] || [[ "$WORKER_URL" =~ \.\. ]] || [[ -z "$WORKER_URL" ]]; then
+            echo "❌ ERROR: Invalid WORKER_URL format: $WORKER_URL"
+            exit 1
+          fi
+          
+          if [[ "$OTP_AUTH_URL" =~ ^https?://\. ]] || [[ "$OTP_AUTH_URL" =~ \.\. ]] || [[ -z "$OTP_AUTH_URL" ]]; then
+            echo "❌ ERROR: Invalid OTP_AUTH_URL format: $OTP_AUTH_URL"
+            exit 1
+          fi
+          
+          if [[ "$PAGES_URL" =~ ^https?://\. ]] || [[ "$PAGES_URL" =~ \.\. ]] || [[ -z "$PAGES_URL" ]]; then
+            echo "❌ ERROR: Invalid PAGES_URL format: $PAGES_URL"
+            exit 1
+          fi
+          
           # Inject values into config.js in dist directory
+          # Use | as delimiter to avoid issues with URLs containing /
           sed -i "s|%%WORKER_API_URL%%|${WORKER_URL}|g" dist/config.js
           sed -i "s|%%OTP_AUTH_API_URL%%|${OTP_AUTH_URL}|g" dist/config.js
           sed -i "s|%%GITHUB_PAGES_URL%%|${PAGES_URL}|g" dist/config.js
@@ -126,6 +168,12 @@ jobs:
           sed -i "s|%%TWITCH_CLIENT_ID%%|${TWITCH_CLIENT_ID}|g" dist/config.js
           sed -i "s|%%DEPLOYED_AT%%|${DEPLOYED_AT}|g" dist/config.js
           sed -i "s|%%DEPLOYMENT_ENV%%|github-pages|g" dist/config.js
+          
+          # Verify injection succeeded by checking for remaining placeholders
+          if grep -q "%%WORKER_API_URL%%" dist/config.js; then
+            echo "❌ ERROR: Failed to inject WORKER_API_URL - placeholder still present"
+            exit 1
+          fi
           
           echo "✅ Configuration injected into dist/config.js"
           echo "Worker API URL: $WORKER_URL"
@@ -151,9 +199,27 @@ jobs:
         
       - name: Deployment Summary
         run: |
-          # Read worker name from wrangler.toml (from checked out code)
-          WORKER_NAME=$(grep '^name = ' serverless/wrangler.toml | sed 's/name = "\(.*\)"/\1/' || echo "strixun-twitch-api")
-          WORKER_URL="https://${WORKER_NAME}.${GITHUB_ACTOR}.workers.dev"
+          # Read worker name from wrangler.toml (correct path: serverless/twitch-api/wrangler.toml)
+          WORKER_NAME=$(grep '^name = ' serverless/twitch-api/wrangler.toml | sed 's/name = "\(.*\)"/\1/' || echo "strixun-twitch-api")
+          
+          # Validate WORKER_NAME
+          if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "" ]; then
+            WORKER_NAME="strixun-twitch-api"
+          fi
+          
+          # Use CF_WORKERS_SUBDOMAIN if available, otherwise use GITHUB_ACTOR
+          SUBDOMAIN="${CF_WORKERS_SUBDOMAIN:-${GITHUB_ACTOR}}"
+          if [ -z "$SUBDOMAIN" ] || [ "$SUBDOMAIN" = "" ]; then
+            SUBDOMAIN="strixuns-script-suite"
+          fi
+          
+          WORKER_URL="https://${WORKER_NAME}.${SUBDOMAIN}.workers.dev"
+          
+          # Validate URL format
+          if [[ "$WORKER_URL" =~ ^https://\..*\.workers\.dev$ ]] || [[ "$WORKER_URL" =~ ^https://.*\.\..*\.workers\.dev$ ]]; then
+            echo "⚠️ Warning: Malformed WORKER_URL in summary: $WORKER_URL"
+            WORKER_URL="https://strixun-twitch-api.strixuns-script-suite.workers.dev"
+          fi
           
           echo "## 🌐 GitHub Pages Deployed!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
