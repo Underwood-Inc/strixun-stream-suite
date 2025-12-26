@@ -101,6 +101,17 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Type guard to check if data is encrypted
+   */
+  private isEncryptedData(data: unknown): data is { encrypted?: boolean; algorithm?: string; iv?: string; data?: string; [key: string]: unknown } {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+    const obj = data as Record<string, unknown>;
+    return obj.encrypted === true || (typeof obj.algorithm === 'string' && typeof obj.iv === 'string' && typeof obj.data === 'string');
+  }
+
   private async decryptResponse<T>(response: Response): Promise<T> {
     // Check headers first
     const headerEncrypted = response.headers.get('X-Encrypted') === 'true';
@@ -109,10 +120,7 @@ export class ApiClient {
     
     // Also check response body structure for encryption indicators
     // Encrypted responses have: encrypted: true, algorithm, iv, data, etc.
-    const bodyEncrypted = data && typeof data === 'object' && (
-      data.encrypted === true ||
-      (data.algorithm && data.iv && data.data)
-    );
+    const bodyEncrypted = this.isEncryptedData(data);
     
     const isEncrypted = headerEncrypted || bodyEncrypted;
     
