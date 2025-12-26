@@ -4,10 +4,10 @@
  * Manages user authentication state and token
  */
 
-import { writable, derived, get } from 'svelte/store';
-import type { Writable, Readable } from 'svelte/store';
-import { storage } from '../modules/storage';
+import type { Readable, Writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
 import { secureFetch } from '../core/services/encryption';
+import { storage } from '../modules/storage';
 
 export interface TwitchAccount {
   twitchUserId: string;
@@ -218,9 +218,74 @@ async function restoreSessionFromBackend(): Promise<boolean> {
 }
 
 /**
+ * Validate token with backend to check if it's blacklisted or invalid
+ * Returns true if token is valid, false if invalid/blacklisted
+ * 
+ * Uses OTP Auth API URL to ensure we're validating against the same auth service
+ * that handles logout and token blacklisting
+ */
+async function validateTokenWithBackend(token: string): Promise<boolean> {
+  try {
+    const apiUrl = getOtpAuthApiUrl();
+    if (!apiUrl) {
+      // If no API URL configured, skip validation (graceful degradation)
+      return true;
+    }
+
+    // Add timeout to prevent blocking initialization (2 seconds max)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 2000); // 2 second timeout
+
+    try {
+      const response = await secureFetch(`${apiUrl}/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      // If 401, token is invalid/blacklisted
+      if (response.status === 401) {
+        console.log('[Auth] Token validation failed: token is invalid or blacklisted');
+        return false;
+      }
+
+      // If 200, token is valid
+      if (response.ok) {
+        return true;
+      }
+
+      // Other status codes - assume invalid to be safe
+      return false;
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      // If aborted, it's a timeout - assume valid to avoid blocking initialization
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.warn('[Auth] Token validation timed out, assuming valid to avoid blocking initialization');
+        return true;
+      }
+      // Other errors - assume invalid to be safe
+      console.warn('[Auth] Token validation error:', fetchError);
+      return false;
+    }
+  } catch (error) {
+    // Silently fail - don't block initialization if validation fails
+    console.debug('[Auth] Token validation error (non-critical):', error);
+    return true; // Assume valid to avoid blocking initialization
+  }
+}
+
+/**
  * Load authentication state from storage
  * Loads token from sessionStorage (more secure)
  * If no token found, attempts to restore session from backend (cross-domain session sharing)
+ * 
+ * CRITICAL: Validates tokens with backend to detect blacklisted tokens from logout on other domains
  */
 export async function loadAuthState(): Promise<void> {
   try {
@@ -235,8 +300,22 @@ export async function loadAuthState(): Promise<void> {
     }
     
     if (userData && savedToken && typeof savedToken === 'string' && 'expiresAt' in userData && typeof userData.expiresAt === 'string') {
-      // Check if token is expired
+      // Check if token is expired locally first (fast check)
       if (new Date(userData.expiresAt) > new Date()) {
+        // Token not expired locally - validate with backend to check if blacklisted
+        // This ensures we detect tokens that were blacklisted on other domains
+        const isValid = await validateTokenWithBackend(savedToken);
+        
+        if (!isValid) {
+          // Token is blacklisted or invalid - clear auth state
+          console.log('[Auth] Token is blacklisted or invalid, clearing auth state');
+          saveAuthState(null);
+          // Try to restore session from backend (in case there's a valid session for this IP)
+          await restoreSessionFromBackend();
+          return;
+        }
+
+        // Token is valid - proceed with normal flow
         // Update token in sessionStorage if we loaded from regular storage
         if (typeof window !== 'undefined' && window.sessionStorage) {
           sessionStorage.setItem('auth_token', savedToken);
