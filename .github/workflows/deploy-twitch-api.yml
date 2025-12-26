@@ -50,6 +50,10 @@ jobs:
         working-directory: serverless
         run: pnpm install --frozen-lockfile
         
+      - name: Install twitch-api dependencies
+        working-directory: serverless/twitch-api
+        run: pnpm install --frozen-lockfile
+        
       - name: Deploy Worker
         working-directory: serverless/twitch-api
         env:

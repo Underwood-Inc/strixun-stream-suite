@@ -7,6 +7,8 @@
   import BarChart from '$components/charts/BarChart.svelte';
   import AreaChart from '$components/charts/AreaChart.svelte';
 
+  // Customer prop - kept for API consistency with other pages (may be used for customer-specific filtering in future)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   export let customer: Customer | null = null;
 
   let analytics: Analytics | null = null;
