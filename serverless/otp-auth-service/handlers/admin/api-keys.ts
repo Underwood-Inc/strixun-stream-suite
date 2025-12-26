@@ -9,11 +9,87 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomer } from '../../services/customer.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
 import { decryptData, getJWTSecret } from '../../utils/crypto.js';
+import { getCustomer } from '../../utils/customer-api-client.js';
 // Uses shared encryption suite from serverless/shared/encryption
+
+interface Env {
+    OTP_AUTH_KV: KVNamespace;
+    JWT_SECRET?: string;
+    [key: string]: any;
+}
+
+interface ApiKeyData {
+    keyId: string;
+    name: string;
+    createdAt: string;
+    lastUsed: string | null;
+    status: 'active' | 'inactive' | 'revoked' | 'rotated';
+    encryptedKey: string;
+    rotatedAt?: string;
+    replacedBy?: string;
+    revokedAt?: string;
+}
+
+interface EncryptedKeyData {
+    doubleEncrypted: boolean;
+    encrypted: boolean;
+    algorithm: string;
+    iv: string;
+    salt: string;
+    tokenHash: string;
+    data: string;
+    timestamp: string;
+}
+
+interface ApiKeyResponse {
+    keyId: string;
+    name: string;
+    createdAt: string;
+    lastUsed: string | null;
+    status: string;
+    apiKey: EncryptedKeyData | null;
+}
+
+interface CreateApiKeyBody {
+    name?: string;
+}
+
+interface CreateApiKeyResponse {
+    success: boolean;
+    apiKey: string;
+    keyId: string;
+    name: string;
+    message: string;
+}
+
+interface ListApiKeysResponse {
+    success: boolean;
+    apiKeys: ApiKeyResponse[];
+}
+
+interface RotateApiKeyResponse {
+    success: boolean;
+    apiKey: string;
+    keyId: string;
+    oldKeyId: string;
+    message: string;
+}
+
+interface RevealApiKeyResponse {
+    success: boolean;
+    apiKey: string | null;
+    keyId: string;
+    name: string;
+    message: string;
+}
+
+interface RevokeApiKeyResponse {
+    success: boolean;
+    message: string;
+}
 
 /**
  * List customer API keys
@@ -22,15 +98,20 @@ import { decryptData, getJWTSecret } from '../../utils/crypto.js';
  * Returns API keys with double-encrypted values (encrypted with user's JWT)
  * Router will encrypt the entire response again (data in transit)
  */
-export async function handleListApiKeys(request, env, customerId, jwtToken = null) {
+export async function handleListApiKeys(
+    request: Request,
+    env: Env,
+    customerId: string,
+    jwtToken: string | null = null
+): Promise<Response> {
     try {
         const customerApiKeysKey = `customer_${customerId}_apikeys`;
-        const keys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+        const keys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         
         // Decrypt API keys from storage (server-side encryption with JWT_SECRET)
         const jwtSecret = getJWTSecret(env);
-        const keysWithEncryptedValues = await Promise.all(keys.map(async (k) => {
-            let doubleEncryptedKey = null;
+        const keysWithEncryptedValues = await Promise.all(keys.map(async (k): Promise<ApiKeyResponse> => {
+            let doubleEncryptedKey: EncryptedKeyData | null = null;
             
             // If we have user's JWT token, double-encrypt the API key with it
             if (k.encryptedKey && jwtToken) {
@@ -41,7 +122,17 @@ export async function handleListApiKeys(request, env, customerId, jwtToken = nul
                     // Then encrypt with user's JWT (Stage 1 encryption - only user can decrypt)
                     // Uses shared encryption suite
                     const { encryptWithJWT } = await import('@strixun/api-framework');
-                    doubleEncryptedKey = await encryptWithJWT(decryptedKey, jwtToken);
+                    const encrypted = await encryptWithJWT(decryptedKey, jwtToken);
+                    doubleEncryptedKey = {
+                        doubleEncrypted: true,
+                        encrypted: true,
+                        algorithm: encrypted.algorithm,
+                        iv: encrypted.iv,
+                        salt: encrypted.salt,
+                        tokenHash: encrypted.tokenHash,
+                        data: encrypted.data,
+                        timestamp: encrypted.timestamp
+                    };
                 } catch (error) {
                     console.error('Failed to double-encrypt API key:', error);
                     // If encryption fails, don't include the key
@@ -54,31 +145,23 @@ export async function handleListApiKeys(request, env, customerId, jwtToken = nul
                 createdAt: k.createdAt,
                 lastUsed: k.lastUsed,
                 status: k.status,
-                // Include double-encrypted key (encrypted with user's JWT)
-                // Router will encrypt entire response again (Stage 2 - data in transit)
-                apiKey: doubleEncryptedKey ? {
-                    doubleEncrypted: true,
-                    encrypted: true,
-                    algorithm: doubleEncryptedKey.algorithm,
-                    iv: doubleEncryptedKey.iv,
-                    salt: doubleEncryptedKey.salt,
-                    tokenHash: doubleEncryptedKey.tokenHash,
-                    data: doubleEncryptedKey.data,
-                    timestamp: doubleEncryptedKey.timestamp
-                } : null
+                apiKey: doubleEncryptedKey
             };
         }));
         
-        return new Response(JSON.stringify({
+        const response: ListApiKeysResponse = {
             success: true,
             apiKeys: keysWithEncryptedValues
-        }), {
+        };
+        
+        return new Response(JSON.stringify(response), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to list API keys',
-            message: error.message
+            message: errorMessage
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -90,13 +173,27 @@ export async function handleListApiKeys(request, env, customerId, jwtToken = nul
  * Create new API key for customer
  * POST /admin/customers/{customerId}/api-keys
  */
-export async function handleCreateApiKey(request, env, customerId) {
+export async function handleCreateApiKey(
+    request: Request,
+    env: Env,
+    customerId: string
+): Promise<Response> {
     try {
-        const body = await request.json();
-        const { name = 'New API Key' } = body;
+        const body = await request.json() as CreateApiKeyBody;
+        const name = body.name || 'New API Key';
         
-        // Verify customer exists
-        const customer = await getCustomer(customerId, env);
+        // Get JWT token from Authorization header
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Authorization required' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        const jwtToken = authHeader.substring(7);
+        
+        // Verify customer exists in customer-api
+        const customer = await getCustomer(customerId, jwtToken, env);
         if (!customer) {
             return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
@@ -107,19 +204,22 @@ export async function handleCreateApiKey(request, env, customerId) {
         // Create API key
         const { apiKey, keyId } = await createApiKeyForCustomer(customerId, name, env);
         
-        return new Response(JSON.stringify({
+        const response: CreateApiKeyResponse = {
             success: true,
             apiKey, // Only returned once!
             keyId,
             name,
             message: 'API key created successfully. Your API key is also available in the API Keys tab.'
-        }), {
+        };
+        
+        return new Response(JSON.stringify(response), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to create API key',
-            message: error.message
+            message: errorMessage
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -131,11 +231,16 @@ export async function handleCreateApiKey(request, env, customerId) {
  * Rotate API key
  * POST /admin/customers/{customerId}/api-keys/{keyId}/rotate
  */
-export async function handleRotateApiKey(request, env, customerId, keyId) {
+export async function handleRotateApiKey(
+    request: Request,
+    env: Env,
+    customerId: string,
+    keyId: string
+): Promise<Response> {
     try {
         // Find the API key in customer's list
         const customerApiKeysKey = `customer_${customerId}_apikeys`;
-        const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+        const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         const keyIndex = customerKeys.findIndex(k => k.keyId === keyId);
         
         if (keyIndex < 0) {
@@ -164,19 +269,22 @@ export async function handleRotateApiKey(request, env, customerId, keyId) {
             newKeyId: newKeyId
         }, env);
         
-        return new Response(JSON.stringify({
+        const response: RotateApiKeyResponse = {
             success: true,
             apiKey: newApiKey, // Only returned once!
             keyId: newKeyId,
             oldKeyId: keyId,
             message: 'API key rotated successfully. Old key will work for 7 days. Your new API key is also available in the API Keys tab.'
-        }), {
+        };
+        
+        return new Response(JSON.stringify(response), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to rotate API key',
-            message: error.message
+            message: errorMessage
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -191,7 +299,13 @@ export async function handleRotateApiKey(request, env, customerId, keyId) {
  * Decrypts and returns API key - requires user's JWT token
  * This is the only way to see the actual API key value
  */
-export async function handleRevealApiKey(request, env, customerId, keyId, jwtToken) {
+export async function handleRevealApiKey(
+    request: Request,
+    env: Env,
+    customerId: string,
+    keyId: string,
+    jwtToken: string | null
+): Promise<Response> {
     try {
         if (!jwtToken) {
             return new Response(JSON.stringify({ 
@@ -205,7 +319,7 @@ export async function handleRevealApiKey(request, env, customerId, keyId, jwtTok
         
         // Find the API key in customer's list
         const customerApiKeysKey = `customer_${customerId}_apikeys`;
-        const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+        const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         const keyData = customerKeys.find(k => k.keyId === keyId);
         
         if (!keyData) {
@@ -217,7 +331,7 @@ export async function handleRevealApiKey(request, env, customerId, keyId, jwtTok
         
         // Decrypt API key from storage
         const jwtSecret = getJWTSecret(env);
-        let apiKey = null;
+        let apiKey: string | null = null;
         if (keyData.encryptedKey) {
             apiKey = await decryptData(keyData.encryptedKey, jwtSecret);
         }
@@ -228,19 +342,22 @@ export async function handleRevealApiKey(request, env, customerId, keyId, jwtTok
             keyName: keyData.name
         }, env);
         
-        return new Response(JSON.stringify({
+        const response: RevealApiKeyResponse = {
             success: true,
             apiKey, // Plain text API key (will be encrypted by router)
             keyId,
             name: keyData.name,
             message: 'API key revealed. Copy it now - it will not be shown again.'
-        }), {
+        };
+        
+        return new Response(JSON.stringify(response), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to reveal API key',
-            message: error.message
+            message: errorMessage
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -252,11 +369,16 @@ export async function handleRevealApiKey(request, env, customerId, keyId, jwtTok
  * Revoke API key
  * DELETE /admin/customers/{customerId}/api-keys/{keyId}
  */
-export async function handleRevokeApiKey(request, env, customerId, keyId) {
+export async function handleRevokeApiKey(
+    request: Request,
+    env: Env,
+    customerId: string,
+    keyId: string
+): Promise<Response> {
     try {
         // Find the API key in customer's list
         const customerApiKeysKey = `customer_${customerId}_apikeys`;
-        const customerKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) || [];
+        const customerKeys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) as ApiKeyData[] | null || [];
         const keyIndex = customerKeys.findIndex(k => k.keyId === keyId);
         
         if (keyIndex < 0) {
@@ -274,16 +396,19 @@ export async function handleRevokeApiKey(request, env, customerId, keyId) {
         // Note: We can't delete the hash->keyId mapping without the original key
         // But we check status in verifyApiKey, so revoked keys won't work
         
-        return new Response(JSON.stringify({
+        const response: RevokeApiKeyResponse = {
             success: true,
             message: 'API key revoked successfully'
-        }), {
+        };
+        
+        return new Response(JSON.stringify(response), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify({
             error: 'Failed to revoke API key',
-            message: error.message
+            message: errorMessage
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
