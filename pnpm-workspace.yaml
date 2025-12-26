@@ -2,6 +2,7 @@ packages:
   - '.'
   - 'serverless'
   - 'serverless/*'
+  - 'serverless/*/dashboard'
   - 'serverless/shared/api'
   - 'control-panel'
   - 'shared-components'
