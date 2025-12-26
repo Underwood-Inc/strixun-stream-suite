@@ -102,9 +102,19 @@ export class ApiClient {
   }
 
   private async decryptResponse<T>(response: Response): Promise<T> {
-    const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+    // Check headers first
+    const headerEncrypted = response.headers.get('X-Encrypted') === 'true';
     const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
     const data = await response.json();
+    
+    // Also check response body structure for encryption indicators
+    // Encrypted responses have: encrypted: true, algorithm, iv, data, etc.
+    const bodyEncrypted = data && typeof data === 'object' && (
+      data.encrypted === true ||
+      (data.algorithm && data.iv && data.data)
+    );
+    
+    const isEncrypted = headerEncrypted || bodyEncrypted;
     
     if (!isEncrypted) {
       return data as T;
@@ -115,29 +125,41 @@ export class ApiClient {
     
     if (encryptionStrategy === 'jwt' && this.token) {
       // JWT-encrypted response - decrypt with JWT token
-      return await decryptWithJWT(data as any, this.token) as T;
+      try {
+        return await decryptWithJWT(data as any, this.token) as T;
+      } catch (error) {
+        console.error('[API Client] JWT decryption failed:', error);
+        throw new Error('Failed to decrypt response: ' + (error instanceof Error ? error.message : String(error)));
+      }
     } else if (encryptionStrategy === 'service-key') {
       // Service-key-encrypted response - decrypt with service key
       // Note: Service key should be stored in environment or config
       // For now, try to get from localStorage or use a default
       const serviceKey = localStorage.getItem('service_encryption_key');
       if (serviceKey) {
-        return await decryptWithServiceKey(data as any, serviceKey) as T;
+        try {
+          return await decryptWithServiceKey(data as any, serviceKey) as T;
+        } catch (error) {
+          console.error('[API Client] Service key decryption failed:', error);
+          throw new Error('Failed to decrypt response: ' + (error instanceof Error ? error.message : String(error)));
+        }
       }
       // If no service key available, return encrypted data (client needs to handle)
-      console.warn('Service key not available for decryption');
+      console.warn('[API Client] Service key not available for decryption');
       return data as T;
     } else if (this.token) {
-      // Fallback: Try JWT decryption if token is available
+      // Fallback: Try JWT decryption if token is available (customer-api uses JWT encryption)
       try {
         return await decryptWithJWT(data as any, this.token) as T;
-      } catch {
-        // If JWT decryption fails, return data as-is
-        return data as T;
+      } catch (error) {
+        // If JWT decryption fails, log and throw
+        console.error('[API Client] JWT decryption failed (fallback):', error);
+        throw new Error('Failed to decrypt response: ' + (error instanceof Error ? error.message : String(error)));
       }
     }
     
     // No decryption method available
+    console.warn('[API Client] Encrypted response detected but no decryption method available');
     return data as T;
   }
 
