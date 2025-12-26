@@ -37,13 +37,19 @@ const api = createAPIClient({
 });
 
 // Add auth middleware
-api.useMiddleware(async (request, next) => {
+import type { APIRequest, APIResponse, Middleware } from '@strixun/api-framework/client';
+
+type NextFunction = (request: APIRequest) => Promise<APIResponse>;
+
+const authMiddleware: Middleware = async (request: APIRequest, next: NextFunction): Promise<APIResponse> => {
     const token = getAuthToken();
     if (token) {
         request.headers.set('Authorization', `Bearer ${token}`);
     }
     return next(request);
-});
+};
+
+api.use(authMiddleware);
 
 /**
  * List mods

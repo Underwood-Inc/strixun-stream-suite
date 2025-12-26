@@ -3,7 +3,7 @@
  * Form for uploading new mods
  */
 
-import { useState } from 'react';
+// useState imported but not used - removed
 import { useNavigate } from 'react-router-dom';
 import { useUploadMod } from '../hooks/useMods';
 import { ModUploadForm } from '../components/mod/ModUploadForm';

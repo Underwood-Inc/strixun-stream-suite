@@ -102,7 +102,7 @@ export function LoginPage() {
             });
 
             if (!response.ok) {
-                const data = await response.json();
+                const data = await response.json() as { error?: string };
                 throw new Error(data.error || 'Failed to request OTP');
             }
 
@@ -127,7 +127,7 @@ export function LoginPage() {
             });
 
             if (!response.ok) {
-                const data = await response.json();
+                const data = await response.json() as { error?: string };
                 throw new Error(data.error || 'Failed to verify OTP');
             }
 

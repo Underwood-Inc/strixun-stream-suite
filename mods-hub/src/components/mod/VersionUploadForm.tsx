@@ -112,7 +112,7 @@ interface VersionUploadFormProps {
     isLoading: boolean;
 }
 
-export function VersionUploadForm({ modId, onSubmit, isLoading }: VersionUploadFormProps) {
+export function VersionUploadForm({ modId: _modId, onSubmit, isLoading }: VersionUploadFormProps) {
     const [version, setVersion] = useState('');
     const [changelog, setChangelog] = useState('');
     const [gameVersions, setGameVersions] = useState('');

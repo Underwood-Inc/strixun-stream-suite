@@ -3,7 +3,7 @@
  * Shows mod information, versions, and download options
  */
 
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useModDetail } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
 import styled from 'styled-components';

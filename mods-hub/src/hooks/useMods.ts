@@ -89,7 +89,7 @@ export function useUpdateMod() {
             modId: string;
             updates: ModUpdateRequest;
         }) => api.updateMod(modId, updates),
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
             addNotification({
@@ -144,7 +144,7 @@ export function useUploadVersion() {
             file: File;
             metadata: VersionUploadRequest;
         }) => api.uploadVersion(modId, file, metadata),
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
             addNotification({
                 message: 'Version uploaded successfully!',

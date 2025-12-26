@@ -54,7 +54,7 @@ const Error = styled.div`
 `;
 
 export function ModListPage() {
-    const [page, setPage] = useState(1);
+    const [page] = useState(1);
     const [category, setCategory] = useState<string>('');
     const [search, setSearch] = useState('');
     
