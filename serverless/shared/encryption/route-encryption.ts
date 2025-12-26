@@ -405,16 +405,14 @@ export async function encryptResponse(
  * These can be overridden or extended per service
  */
 export const DEFAULT_ENCRYPTION_POLICIES: RouteEncryptionPolicy[] = [
-  // Public routes - use service key
+  // Public routes - don't encrypt (clients need to read responses without JWT/service key)
   {
     pattern: '/signup',
-    strategy: 'service-key',
-    mandatory: true,
+    strategy: 'none', // Don't encrypt - client needs to read success/error messages
   },
   {
     pattern: '/signup/**',
-    strategy: 'service-key',
-    mandatory: true,
+    strategy: 'none', // Don't encrypt - client needs to read API keys, JWT tokens, customer info
   },
   {
     pattern: '/health',
@@ -434,16 +432,14 @@ export const DEFAULT_ENCRYPTION_POLICIES: RouteEncryptionPolicy[] = [
     mandatory: true,
   },
 
-  // Auth routes - conditional (JWT if available, service key otherwise)
+  // Auth routes - don't encrypt endpoints that clients need to read before authentication
   {
     pattern: '/auth/request-otp',
-    strategy: 'service-key',
-    mandatory: true,
+    strategy: 'none', // Don't encrypt - client needs to read success/error, rate limit info
   },
   {
     pattern: '/auth/verify-otp',
-    strategy: 'service-key',
-    mandatory: true,
+    strategy: 'none', // Don't encrypt - client needs to read the JWT token
   },
   {
     pattern: '/auth/**',
