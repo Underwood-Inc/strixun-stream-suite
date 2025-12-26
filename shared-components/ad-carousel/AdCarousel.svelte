@@ -163,6 +163,9 @@
   function getPositionStyles(): string {
     const styles: string[] = [];
     
+    // Always set position: fixed to ensure it works even if CSS doesn't load
+    styles.push('position: fixed;');
+    
     // If dragged, use absolute positioning
     if (currentX !== 0 || currentY !== 0) {
       styles.push(`left: ${currentX}px;`);
@@ -193,6 +196,8 @@
     
     styles.push(`width: ${width}px;`);
     styles.push(`max-height: ${maxHeight}px;`);
+    // Ensure z-index is set inline as well
+    styles.push('z-index: 99999;');
     
     return styles.join(' ');
   }
@@ -304,9 +309,14 @@
     }
     
     // Ensure carousel is visible and interactive
+    // Set critical styles inline to ensure visibility even if CSS doesn't load
     carouselContainer.style.pointerEvents = 'auto';
     carouselContainer.style.display = 'flex';
     carouselContainer.style.visibility = 'visible';
+    // Set background color as fallback if CSS variables don't load
+    if (!carouselContainer.style.backgroundColor) {
+      carouselContainer.style.backgroundColor = '#252017'; // fallback for --card
+    }
     // Don't set opacity inline - let CSS class handle it via .ad-carousel--dimmed
     
     console.log('[AdCarousel] Portal initialization complete', {
