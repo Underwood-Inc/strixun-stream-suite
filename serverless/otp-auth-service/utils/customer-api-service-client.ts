@@ -34,7 +34,7 @@ interface Env {
  * Get the customer API base URL
  * Priority:
  * 1. CUSTOMER_API_URL environment variable (if set)
- * 2. Custom domain (customer.idling.app) - if configured
+ * 2. Custom domain (customer-api.idling.app) - if configured
  * 3. Workers.dev subdomain (always works) - fallback
  */
 function getCustomerApiUrl(env: Env): string {

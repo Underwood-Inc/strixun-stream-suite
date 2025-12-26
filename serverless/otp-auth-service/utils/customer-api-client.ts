@@ -27,7 +27,7 @@ interface CustomerData {
 }
 
 interface Env {
-    CUSTOMER_API_URL?: string; // Optional override (defaults to https://customer.idling.app)
+    CUSTOMER_API_URL?: string; // Optional override (defaults to https://customer-api.idling.app)
     JWT_SECRET?: string;
     [key: string]: any;
 }
@@ -41,7 +41,7 @@ function getCustomerApiUrl(env: Env): string {
         return env.CUSTOMER_API_URL;
     }
     // Default to production URL
-    return 'https://customer.idling.app';
+    return 'https://customer-api.idling.app';
 }
 
 /**

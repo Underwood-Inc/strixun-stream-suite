@@ -11,6 +11,9 @@ build/
 
 # TypeScript
 *.tsbuildinfo
+# TypeScript compiled output (Vite handles compilation)
+**/src/**/*.js
+**/src/**/*.js.map
 
 # IDE
 .vscode/

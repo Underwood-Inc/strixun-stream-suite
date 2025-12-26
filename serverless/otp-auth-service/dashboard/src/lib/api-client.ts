@@ -211,7 +211,7 @@ export class ApiClient {
   // Customer endpoints (now using customer-api)
   async getCustomer(): Promise<Customer> {
     // Use customer-api endpoint instead of OTP auth service
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer.idling.app';
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
     const response = await fetch(`${customerApiUrl}/customer/me`, {
       method: 'GET',
       headers: this.getHeaders(),
@@ -227,7 +227,7 @@ export class ApiClient {
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
     // Use customer-api endpoint instead of OTP auth service
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer.idling.app';
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
     const response = await fetch(`${customerApiUrl}/customer/me`, {
       method: 'PUT',
       headers: this.getHeaders(),
