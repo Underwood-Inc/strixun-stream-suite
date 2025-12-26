@@ -12,6 +12,7 @@ import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
+import { applyEncryptionMiddleware } from '@strixun/api-framework';
 import type { ExecutionContext } from '../../shared/types.js';
 
 /**
@@ -69,73 +70,66 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
     }
     
     try {
+        let response: Response | null = null;
+        
         // Try public routes first
         const publicResponse = await handlePublicRoutes(request, path, env);
         if (publicResponse) {
-            return publicResponse;
+            response = publicResponse;
         }
         
         // Try admin routes
-        const adminResult = await handleAdminRoutes(request, path, env);
-        if (adminResult) {
-            customerId = adminResult.customerId || null;
-            
-            // Track response time
-            const responseTime = performance.now() - startTime;
-            if (customerId && path.startsWith('/admin/')) {
-                await trackResponseTime(customerId, endpoint, responseTime, env);
+        if (!response) {
+            const adminResult = await handleAdminRoutes(request, path, env);
+            if (adminResult) {
+                customerId = adminResult.customerId || null;
+                response = adminResult.response;
             }
-            
-            return adminResult.response;
         }
         
         // Try auth routes
-        const authResult = await handleAuthRoutes(request, path, env);
-        if (authResult) {
-            customerId = authResult.customerId;
-            
-            // Track response time
-            const responseTime = performance.now() - startTime;
-            if (customerId && path.startsWith('/auth/')) {
-                await trackResponseTime(customerId, endpoint, responseTime, env);
+        if (!response) {
+            const authResult = await handleAuthRoutes(request, path, env);
+            if (authResult) {
+                customerId = authResult.customerId;
+                response = authResult.response;
             }
-            
-            return authResult.response;
         }
         
         // Try user routes
-        const userResult = await handleUserRoutes(request, path, env);
-        if (userResult) {
-            customerId = userResult.customerId;
-            
-            // Track response time
-            const responseTime = performance.now() - startTime;
-            if (customerId && path.startsWith('/user/')) {
-                await trackResponseTime(customerId, endpoint, responseTime, env);
+        if (!response) {
+            const userResult = await handleUserRoutes(request, path, env);
+            if (userResult) {
+                customerId = userResult.customerId;
+                response = userResult.response;
             }
-            
-            return userResult.response;
         }
         
         // Try game routes
-        const gameResult = await handleGameRoutes(request, path, env);
-        if (gameResult) {
-            customerId = gameResult.customerId;
-            
-            // Track response time
-            const responseTime = performance.now() - startTime;
-            if (customerId && path.startsWith('/game/')) {
-                await trackResponseTime(customerId, endpoint, responseTime, env);
+        if (!response) {
+            const gameResult = await handleGameRoutes(request, path, env);
+            if (gameResult) {
+                customerId = gameResult.customerId;
+                response = gameResult.response;
             }
-            
-            return gameResult.response;
         }
         
         // 404 for unknown routes
-        return new Response(JSON.stringify({ error: 'Not found' }), {
-            status: 404,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-        });
+        if (!response) {
+            response = new Response(JSON.stringify({ error: 'Not found' }), {
+                status: 404,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // Track response time
+        const responseTime = performance.now() - startTime;
+        if (customerId && (path.startsWith('/admin/') || path.startsWith('/auth/') || path.startsWith('/user/') || path.startsWith('/game/'))) {
+            await trackResponseTime(customerId, endpoint, responseTime, env);
+        }
+        
+        // Apply encryption middleware to ALL responses
+        return await applyEncryptionMiddleware(response, request, env);
     } catch (error: any) {
         console.error('Request handler error:', error);
         
@@ -160,7 +154,8 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             await trackResponseTime(customerId, endpoint, responseTime, env);
         }
         
-        return errorResponse;
+        // Apply encryption middleware to error responses too
+        return await applyEncryptionMiddleware(errorResponse, request, env);
     } finally {
         // Track response time
         const responseTime = performance.now() - startTime;

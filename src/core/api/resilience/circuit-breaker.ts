@@ -4,7 +4,7 @@
  * Circuit breaker pattern to prevent cascading failures
  */
 
-import type { CircuitBreakerConfig, CircuitBreakerState, CircuitState } from '../types';
+import type { CircuitBreakerConfig, CircuitBreakerState } from '../types';
 
 export class CircuitBreaker {
   private state: CircuitBreakerState;
@@ -29,7 +29,7 @@ export class CircuitBreaker {
    */
   async execute<T>(
     fn: () => Promise<T>,
-    key?: string
+    _key?: string
   ): Promise<T> {
     // Check circuit state
     if (this.state.state === 'open') {

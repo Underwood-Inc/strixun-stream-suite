@@ -5,7 +5,7 @@
  */
 
 import type { Plugin, Middleware, APIRequest, APIResponse, NextFunction } from '../types';
-import type { APIClient } from '../types';
+// APIClient type not needed here
 
 export interface LoggingConfig {
   enabled?: boolean;
@@ -21,7 +21,6 @@ export function createLoggingPlugin(config: LoggingConfig = {}): Plugin {
     logRequests = true,
     logResponses = true,
     logErrors = true,
-    logLevel = 'debug',
   } = config;
 
   const middleware: Middleware = async (request: APIRequest, next: NextFunction): Promise<APIResponse> => {

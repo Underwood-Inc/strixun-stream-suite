@@ -11,7 +11,6 @@ import type {
   ResponseBuilderOptions,
   BuiltResponse,
   RequestContext,
-  MetricDefinition,
 } from '../types';
 import type { APIRequest } from '../../types';
 import { computeMetric } from './metric-computer';

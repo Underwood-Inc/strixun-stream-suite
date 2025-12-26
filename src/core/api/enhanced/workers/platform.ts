@@ -4,6 +4,9 @@
  * Auto-detect if running in Cloudflare Worker, browser, or Node.js
  */
 
+// @ts-ignore - Conditional type reference
+/// <reference types="@cloudflare/workers-types" />
+
 export type Platform = 'cloudflare-worker' | 'browser' | 'node';
 
 /**
@@ -11,6 +14,7 @@ export type Platform = 'cloudflare-worker' | 'browser' | 'node';
  */
 export function detectPlatform(): Platform {
   // Check for Cloudflare Worker environment
+  // @ts-ignore - WebSocketPair is a Cloudflare Workers global
   if (typeof caches !== 'undefined' && typeof WebSocketPair !== 'undefined') {
     return 'cloudflare-worker';
   }
@@ -21,6 +25,7 @@ export function detectPlatform(): Platform {
   }
 
   // Check for Node.js environment
+  // @ts-ignore - process is a Node.js global
   if (typeof process !== 'undefined' && process.versions && process.versions.node) {
     return 'node';
   }

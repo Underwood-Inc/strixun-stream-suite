@@ -4,6 +4,9 @@
  * Cloudflare KV-based caching for Workers
  */
 
+// @ts-ignore - Conditional type reference
+/// <reference types="@cloudflare/workers-types" />
+
 import type { RequestContext } from '../types';
 
 export interface KVCacheOptions {

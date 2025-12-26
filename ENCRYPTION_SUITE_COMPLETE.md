@@ -34,8 +34,9 @@ serverless/shared/encryption/
 ### **2. Multi-Stage Encryption (NEW! 🚀)**
 - **Supports 2-10 parties** (all keys required to decrypt)
 - **Flexible key types**: JWT tokens, request keys, or custom keys
-- **Order matters**: Encryption order is reversed for decryption
-- **Backward compatible**: Two-stage encryption still works
+- **Order-independent decryption**: Can decrypt in ANY order (version 3+)
+- **Master key architecture**: Uses parallel encryption for true order independence
+- **Backward compatible**: Two-stage encryption still works, version 2 nested encryption supported
 
 ### **3. Two-Stage Encryption (Backward Compatible)**
 - Special case of multi-stage with exactly 2 parties
@@ -81,7 +82,7 @@ const parties: EncryptionParty[] = [
 
 const encrypted = await encryptMultiStage(data, parties);
 
-// Decrypt (requires ALL parties' keys)
+// Decrypt (requires ALL parties' keys - order does NOT matter!)
 const decrypted = await decryptMultiStage(encrypted, parties);
 ```
 

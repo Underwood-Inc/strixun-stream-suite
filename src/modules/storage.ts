@@ -52,7 +52,7 @@ const IDB_STORE = 'settings';
 const IDB_VERSION = 1;
 const AUTO_BACKUP_KEY = 'sss_recovery_snapshot';
 const AUTO_BACKUP_INTERVAL = 60000; // Every minute when changes detected
-const CONFIG_KEYS = ['swapConfigs', 'layoutPresets', 'textCyclerConfigs', 'clipsConfigs'] as const;
+// const CONFIG_KEYS = ['swapConfigs', 'layoutPresets', 'textCyclerConfigs', 'clipsConfigs'] as const;
 
 // ============ State ============
 let storageCache: Record<string, unknown> = {};

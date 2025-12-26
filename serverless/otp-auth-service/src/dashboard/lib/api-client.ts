@@ -103,13 +103,34 @@ export class ApiClient {
 
   private async decryptResponse<T>(response: Response): Promise<T> {
     const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+    const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
     const data = await response.json();
     
-    if (isEncrypted && this.token) {
-      // Decrypt the response using JWT token
-      // Uses shared encryption suite from serverless/shared/encryption
-      const { decryptWithJWT } = await import('@strixun/api-framework');
+    if (!isEncrypted) {
+      return data as T;
+    }
+    
+    // Decrypt based on encryption strategy
+    const { decryptWithJWT, decryptWithServiceKey } = await import('@strixun/api-framework');
+    
+    if (encryptionStrategy === 'jwt' && this.token) {
+      // JWT-encrypted response - decrypt with JWT token
       return await decryptWithJWT(data as any, this.token) as T;
+    } else if (encryptionStrategy === 'service-key') {
+      // Service-key-encrypted response - decrypt with service key
+      const serviceKey = localStorage.getItem('service_encryption_key');
+      if (serviceKey) {
+        return await decryptWithServiceKey(data as any, serviceKey) as T;
+      }
+      console.warn('Service key not available for decryption');
+      return data as T;
+    } else if (this.token) {
+      // Fallback: Try JWT decryption if token is available
+      try {
+        return await decryptWithJWT(data as any, this.token) as T;
+      } catch {
+        return data as T;
+      }
     }
     
     return data as T;

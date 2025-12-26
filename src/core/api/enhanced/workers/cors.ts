@@ -56,8 +56,14 @@ export function createCORSHeaders(
     if (opts.credentials) {
       headers.set('Access-Control-Allow-Credentials', 'true');
     }
-  } else if (opts.allowedOrigins.includes('*')) {
+  } else if (Array.isArray(opts.allowedOrigins) && opts.allowedOrigins.includes('*')) {
     headers.set('Access-Control-Allow-Origin', '*');
+  } else if (typeof opts.allowedOrigins === 'function') {
+    // Function-based origin checking - handled separately
+    const origin = request.headers.get('Origin');
+    if (origin && opts.allowedOrigins(origin)) {
+      headers.set('Access-Control-Allow-Origin', origin);
+    }
   }
 
   // Handle preflight requests

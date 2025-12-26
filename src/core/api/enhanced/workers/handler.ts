@@ -4,10 +4,13 @@
  * Utilities for handling requests in Cloudflare Workers with enhanced features
  */
 
+// @ts-ignore - Conditional type reference
+/// <reference types="@cloudflare/workers-types" />
+
 import type { RequestContext, TypeDefinition, ResponseFilterConfig } from '../types';
-import type { APIRequest, APIResponse } from '../../types';
+import type { APIRequest } from '../../types';
 import { buildResponse } from '../building/response-builder';
-import { createRFC7807Response, formatErrorAsRFC7807 } from '../errors';
+import { createRFC7807Response } from '../errors';
 import { applyFiltering, parseFilteringParams } from '../filtering';
 import { WorkerAdapter } from './adapter';
 import { encryptWithJWT } from '../encryption';
@@ -32,14 +35,14 @@ export interface HandlerContext extends RequestContext {
  * - Error handling (RFC 7807)
  * - CORS support
  */
-export function createEnhancedHandler<T = unknown>(
+export function createEnhancedHandler<T extends Record<string, any> = Record<string, any>>(
   handler: (request: Request, context: HandlerContext) => Promise<T>,
   options: HandlerOptions = {}
 ) {
   return async (
     request: Request,
     env: any,
-    ctx: ExecutionContext
+    _ctx: ExecutionContext
   ): Promise<Response> => {
     try {
       // Create adapter
@@ -104,10 +107,8 @@ export function createEnhancedHandler<T = unknown>(
 
       // Add CORS headers if enabled
       if (options.cors && adapter) {
-        const corsHeaders = adapter.createCORS()(request, async (req) => {
-          return new Response();
-        });
-        // Note: CORS middleware would handle this, but we add headers manually here
+        // CORS is handled by the adapter if needed
+        // Headers are added automatically by the adapter
       }
 
       // Automatically encrypt response if JWT token is present
@@ -172,7 +173,7 @@ function requestToAPIRequest(request: Request): APIRequest {
  */
 async function extractUserFromRequest(
   request: Request,
-  env: any
+  _env: any
 ): Promise<{ id: string; customerId: string; email: string } | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -203,7 +204,7 @@ async function extractUserFromRequest(
 /**
  * Create simple GET handler
  */
-export function createGetHandler<T = unknown>(
+export function createGetHandler<T extends Record<string, any> = Record<string, any>>(
   handler: (request: Request, context: HandlerContext) => Promise<T>,
   options: HandlerOptions = {}
 ) {
@@ -213,7 +214,7 @@ export function createGetHandler<T = unknown>(
 /**
  * Create simple POST handler
  */
-export function createPostHandler<T = unknown>(
+export function createPostHandler<T extends Record<string, any> = Record<string, any>>(
   handler: (request: Request, context: HandlerContext) => Promise<T>,
   options: HandlerOptions = {}
 ) {

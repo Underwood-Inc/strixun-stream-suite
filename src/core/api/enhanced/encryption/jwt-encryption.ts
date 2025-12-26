@@ -11,7 +11,7 @@ export {
   decryptWithJWT,
 } from '../../../../../serverless/shared/encryption/jwt-encryption.js';
 
-import type { E2EEncryptionConfig, EncryptedData } from '../types';
+import type { E2EEncryptionConfig } from '../types';
 import type { APIRequest, APIResponse } from '../../types';
 
 /**
@@ -46,7 +46,7 @@ export function createE2EEncryptionMiddleware(
       ? config.encryptCondition(request, response)
       : true;
 
-    if (!shouldEncrypt || !response.ok) {
+    if (!shouldEncrypt || response.status >= 400) {
       return response;
     }
 
@@ -58,9 +58,10 @@ export function createE2EEncryptionMiddleware(
         return response;
       }
 
-      const data = await response.json();
+      const data = response.data;
 
       // Encrypt data using shared encryption suite
+      const { encryptWithJWT } = await import('../../../../../serverless/shared/encryption/jwt-encryption.js');
       const encrypted = await encryptWithJWT(data, token);
 
       // Create new response with encrypted data

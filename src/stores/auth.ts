@@ -113,7 +113,7 @@ function saveAuthState(userData: User | null): void {
  */
 export function loadAuthState(): void {
   try {
-    const userData = storage.get<User>('auth_user');
+    const userData = storage.get('auth_user') as User | null;
     // Try sessionStorage first (more secure), fallback to regular storage
     let savedToken: string | null = null;
     if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -123,7 +123,7 @@ export function loadAuthState(): void {
       savedToken = storage.getRaw('auth_token') as string | null;
     }
     
-    if (userData && savedToken && typeof savedToken === 'string') {
+    if (userData && savedToken && typeof savedToken === 'string' && 'expiresAt' in userData && typeof userData.expiresAt === 'string') {
       // Check if token is expired
       if (new Date(userData.expiresAt) > new Date()) {
         // Update token in sessionStorage if we loaded from regular storage
@@ -138,7 +138,7 @@ export function loadAuthState(): void {
         if (csrf) {
           csrfToken.set(csrf);
         }
-        saveAuthState(userData);
+        saveAuthState(userData as User);
       } else {
         // Token expired, clear auth
         saveAuthState(null);

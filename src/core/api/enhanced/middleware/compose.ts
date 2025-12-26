@@ -39,8 +39,9 @@ export function composeServerMiddlewares(
 export function createServerMiddleware(
   middleware: Middleware
 ): ServerMiddleware {
-  return async (request: Request, context: RequestContext, next: () => Promise<Response>): Promise<Response> => {
+  return async (request: Request, _context: RequestContext, next: () => Promise<Response>): Promise<Response> => {
     // Convert Request to APIRequest
+    void _context;
     const apiRequest = {
       id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       method: request.method as any,
@@ -50,7 +51,7 @@ export function createServerMiddleware(
     };
 
     // Execute middleware
-    const response = await middleware(apiRequest, async (req) => {
+    const response = await middleware(apiRequest, async (_req) => {
       // Call next middleware/handler
       const nextResponse = await next();
       

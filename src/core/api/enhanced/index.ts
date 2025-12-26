@@ -88,11 +88,20 @@ export {
   isBrowser,
   isNode,
   getStorageAdapter,
+} from './workers/platform';
+
+export {
   KVCache,
   createKVCache,
+} from './workers/kv-cache';
+
+export {
   WorkerAdapter,
   createWorkerAdapter,
   createWorkerHandler,
+} from './workers/adapter';
+
+export {
   createEnhancedHandler,
   createGetHandler,
   createPostHandler,
@@ -100,6 +109,9 @@ export {
 
 export type {
   KVCacheOptions,
+} from './workers/kv-cache';
+
+export type {
   HandlerOptions,
   HandlerContext,
 } from './workers/handler';

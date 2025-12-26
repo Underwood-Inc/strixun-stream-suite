@@ -4,24 +4,32 @@ compatibility_date = "2024-01-01"
 
 [env.production]
 vars = { ENVIRONMENT = "production" }
-# Custom domain configuration for production
-# Using idling.app domain
-routes = [
-  { pattern = "s.idling.app/*", zone_name = "idling.app" }
-]
-
-[env.development]
-vars = { ENVIRONMENT = "development" }
-
+# Custom domain route (s.idling.app/*) is managed in Cloudflare Dashboard
+# Routes configured in the dashboard take precedence over wrangler.toml
 # KV Namespace for storing URL mappings
 # Created via: wrangler kv namespace create "URL_SHORTENER_KV"
-[[kv_namespaces]]
+[[env.production.kv_namespaces]]
 binding = "URL_KV"
 id = "aed413a5133e445fbe4d91c1a080369e"
 preview_id = "7bebce133d884ffda2f34e4398acd660"
 
 # Analytics KV Namespace (optional, for tracking clicks)
 # Created via: wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
+[[env.production.kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "486b241817f34f76b0cbb44d81205ce3"
+preview_id = "b0e590fa55ce4513af3c5e07068372ef"
+
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# KV Namespace for storing URL mappings (development)
+[[kv_namespaces]]
+binding = "URL_KV"
+id = "aed413a5133e445fbe4d91c1a080369e"
+preview_id = "7bebce133d884ffda2f34e4398acd660"
+
+# Analytics KV Namespace (optional, for tracking clicks)
 [[kv_namespaces]]
 binding = "ANALYTICS_KV"
 id = "486b241817f34f76b0cbb44d81205ce3"

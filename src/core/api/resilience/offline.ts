@@ -12,7 +12,7 @@ export class OfflineQueue {
   private isOnline = true;
   private syncListeners: Array<() => void> = [];
 
-  constructor(config: OfflineConfig = {}) {
+  constructor(config: OfflineConfig = { enabled: false }) {
     this.config = {
       enabled: config.enabled ?? false,
       queueSize: config.queueSize || 100,

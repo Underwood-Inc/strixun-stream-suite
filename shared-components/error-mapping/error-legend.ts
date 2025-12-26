@@ -342,7 +342,7 @@ export function generateErrorTooltip(errorInfo: ErrorInfo, details?: RateLimitDe
   
   if (rateLimitErrors.length > 0) {
     content += `<strong>Rate Limit & Quota:</strong><br>`;
-    rateLimitErrors.forEach(([code, info]) => {
+    rateLimitErrors.forEach(([_code, info]) => {
       content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
     });
     content += `<br>`;
@@ -350,7 +350,7 @@ export function generateErrorTooltip(errorInfo: ErrorInfo, details?: RateLimitDe
   
   if (otpErrors.length > 0) {
     content += `<strong>OTP Verification:</strong><br>`;
-    otpErrors.forEach(([code, info]) => {
+    otpErrors.forEach(([_code, info]) => {
       content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
     });
     content += `<br>`;
@@ -358,7 +358,7 @@ export function generateErrorTooltip(errorInfo: ErrorInfo, details?: RateLimitDe
   
   if (emailErrors.length > 0) {
     content += `<strong>Email Issues:</strong><br>`;
-    emailErrors.forEach(([code, info]) => {
+    emailErrors.forEach(([_code, info]) => {
       content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
     });
     content += `<br>`;
@@ -366,7 +366,7 @@ export function generateErrorTooltip(errorInfo: ErrorInfo, details?: RateLimitDe
   
   if (authErrors.length > 0) {
     content += `<strong>Authentication:</strong><br>`;
-    authErrors.forEach(([code, info]) => {
+    authErrors.forEach(([_code, info]) => {
       content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
     });
     content += `<br>`;
@@ -374,7 +374,7 @@ export function generateErrorTooltip(errorInfo: ErrorInfo, details?: RateLimitDe
   
   if (systemErrors.length > 0) {
     content += `<strong>System & Network:</strong><br>`;
-    systemErrors.forEach(([code, info]) => {
+    systemErrors.forEach(([_code, info]) => {
       content += `• <strong>${info.title}</strong>: ${info.description}<br>`;
     });
   }

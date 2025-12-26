@@ -4,7 +4,7 @@
  * Different caching strategies implementation
  */
 
-import type { APIRequest, APIResponse, CacheConfig, CacheEntry } from '../types';
+import type { APIRequest, APIResponse, CacheConfig } from '../types';
 import { MemoryCache } from './memory';
 import { IndexedDBCache } from './indexeddb';
 

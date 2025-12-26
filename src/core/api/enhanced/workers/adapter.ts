@@ -4,8 +4,11 @@
  * Worker compatibility layer for enhanced API framework
  */
 
+// @ts-ignore - Conditional type reference
+/// <reference types="@cloudflare/workers-types" />
+
 import type { WorkerAdapterConfig, RequestContext } from '../types';
-import type { APIRequest, APIResponse } from '../../types';
+import type { APIRequest } from '../../types';
 import { detectPlatform, isCloudflareWorker } from './platform';
 import { createCORSMiddleware, type CORSOptions } from './cors';
 import { createKVCache, type KVCache } from './kv-cache';
@@ -84,7 +87,7 @@ export class WorkerAdapter {
    * Handle Worker fetch event
    */
   async handleFetch(
-    event: FetchEvent,
+    event: { request: Request },
     handler: (request: Request, env: any) => Promise<Response>
   ): Promise<Response> {
     const request = event.request;
@@ -118,9 +121,15 @@ export function createWorkerHandler(
 ) {
   const adapter = createWorkerAdapter(adapterConfig);
 
-  return async (event: FetchEvent): Promise<Response> => {
+  return async (event: { request: Request }): Promise<Response> => {
     return adapter.handleFetch(event, async (request, env) => {
-      return handler(request, env, event);
+      // Create a minimal ExecutionContext-like object
+      const ctx: ExecutionContext = {
+        waitUntil: () => {},
+        passThroughOnException: () => {},
+        props: {},
+      } as ExecutionContext;
+      return handler(request, env, ctx);
     });
   };
 }

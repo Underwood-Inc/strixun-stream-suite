@@ -20,10 +20,8 @@ import type { APIRequest, APIResponse, APIClientConfig } from '../types';
 import { EnhancedAPIClient } from '../enhanced-client';
 import { createE2EEncryptionMiddleware } from './encryption';
 import { createResponseFilterMiddleware } from './filtering';
-import { createResponseBuilderMiddleware } from './building';
-import { createErrorLegendMiddleware, createRFC7807Response } from './errors';
+import { createErrorLegendMiddleware } from './errors';
 import { createWorkerAdapter, type WorkerAdapter } from './workers';
-import { detectPlatform } from './workers/platform';
 
 /**
  * Enhanced API Client
@@ -123,7 +121,7 @@ export class EnhancedAPIClientV2 extends EnhancedAPIClient {
    */
   async requestTyped<T extends Record<string, any>>(
     request: APIRequest,
-    typeDef?: TypeDefinition
+    _typeDef?: TypeDefinition
   ): Promise<APIResponse<EnhancedAPIResponse<T>>> {
     // Update request context
     this.requestContext.request = request;
@@ -137,7 +135,7 @@ export class EnhancedAPIClientV2 extends EnhancedAPIClient {
     const response = await super.requestRaw<T>(request);
 
     // If successful, ensure root config is present
-    if (response.ok && response.data) {
+    if (response.status < 400 && response.data) {
       const data = response.data as Partial<T>;
       const rootConfig: Partial<RootResponseConfig> = {
         id: data.id || this.requestContext.user?.id || generateId(),

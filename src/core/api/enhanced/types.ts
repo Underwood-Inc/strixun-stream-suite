@@ -8,7 +8,11 @@
  * - Type-based response building
  */
 
-import type { APIRequest, APIResponse as BaseAPIResponse, APIError } from '../types';
+// Cloudflare Workers types - only reference when actually in a worker context
+// @ts-ignore - Conditional type reference
+/// <reference types="@cloudflare/workers-types" />
+
+import type { APIRequest, APIResponse as BaseAPIResponse } from '../types';
 
 // ============ Root Response Config (Type-Based Enforcement) ============
 
@@ -74,7 +78,7 @@ export interface EncryptedData {
 
 export interface ResponseFilterConfig {
   // Root config type (compile-time enforcement)
-  rootConfigType: typeof RootResponseConfig;
+  rootConfigType: new () => RootResponseConfig;
   
   // Root config runtime (for filtering logic)
   rootConfig: {

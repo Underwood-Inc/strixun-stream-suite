@@ -8,9 +8,6 @@ import type {
   APIRequest,
   APIResponse,
   APIClientConfig,
-  RequestPriority,
-  CacheConfig,
-  RetryConfig,
   OptimisticConfig,
 } from './types';
 import { APIClient } from './client';
@@ -21,8 +18,9 @@ import { RetryManager } from './resilience/retry';
 import { CircuitBreaker } from './resilience/circuit-breaker';
 import { OfflineQueue } from './resilience/offline';
 import { CacheManager } from './cache/strategies';
-import { RequestBatcher } from './batch/batcher';
-import { RequestDebouncer } from './batch/debouncer';
+// RequestBatcher and RequestDebouncer reserved for future use
+// import { RequestBatcher } from './batch/batcher';
+// import { RequestDebouncer } from './batch/debouncer';
 import { OptimisticUpdateManager } from './optimistic/updates';
 import { createLoggingPlugin, createMetricsPlugin } from './plugins';
 
@@ -34,8 +32,9 @@ export class EnhancedAPIClient extends APIClient {
   private circuitBreaker: CircuitBreaker;
   private offlineQueue: OfflineQueue;
   private cacheManager: CacheManager;
-  private batcher: RequestBatcher;
-  private debouncer: RequestDebouncer;
+  // Batcher and debouncer reserved for future use
+  // private _batcher: RequestBatcher;
+  // private _debouncer: RequestDebouncer;
   private optimisticManager: OptimisticUpdateManager;
 
   constructor(config: APIClientConfig = {}) {
@@ -55,8 +54,8 @@ export class EnhancedAPIClient extends APIClient {
     });
     this.offlineQueue = new OfflineQueue(config.offline);
     this.cacheManager = new CacheManager(config.cache?.enabled ?? true);
-    this.batcher = new RequestBatcher();
-    this.debouncer = new RequestDebouncer();
+    // this._batcher = new RequestBatcher();
+    // this._debouncer = new RequestDebouncer();
     this.optimisticManager = new OptimisticUpdateManager();
 
     // Setup default plugins
@@ -83,15 +82,15 @@ export class EnhancedAPIClient extends APIClient {
     }
 
     // Execute with all features
-    return this.deduplicator.deduplicate(request, async () => {
+    return this.deduplicator.deduplicate<T>(request, async (): Promise<APIResponse<T>> => {
       return this.queue.enqueue(request, async () => {
         return this.circuitBreaker.execute(async () => {
-          return this.retryManager.execute(request, async () => {
+          return this.retryManager.execute(request, async (): Promise<APIResponse<T>> => {
             // Check offline queue
             if (this.offlineQueue.isEnabled() && !this.offlineQueue.isCurrentlyOnline()) {
               return this.offlineQueue.enqueue(request, async () => {
                 return super.requestRaw<T>(request);
-              });
+              }) as Promise<APIResponse<T>>;
             }
 
             // Execute request
@@ -106,9 +105,9 @@ export class EnhancedAPIClient extends APIClient {
             this.cancellationManager.cleanup(request.id);
 
             return response;
-          });
-        });
-      });
+          }) as Promise<APIResponse<T>>;
+        }) as Promise<APIResponse<T>>;
+      }) as Promise<APIResponse<T>>;
     });
   }
 
@@ -118,16 +117,21 @@ export class EnhancedAPIClient extends APIClient {
   async getCached<T = unknown>(
     path: string,
     params?: Record<string, unknown>,
-    cacheConfig?: CacheConfig,
+    cacheConfig?: { enabled?: boolean; defaultStrategy?: string; defaultTTL?: number },
     options?: Partial<APIRequest>
   ): Promise<APIResponse<T>> {
+    const cache: any = cacheConfig ? {
+      strategy: (cacheConfig as any).defaultStrategy || 'stale-while-revalidate',
+      ttl: (cacheConfig as any).defaultTTL || 5 * 60 * 1000,
+      maxAge: ((cacheConfig as any).defaultTTL || 5 * 60 * 1000) * 2,
+    } : {
+      strategy: 'stale-while-revalidate',
+      ttl: 5 * 60 * 1000,
+      maxAge: 10 * 60 * 1000,
+    };
     return this.get<T>(path, params, {
       ...options,
-      cache: cacheConfig || {
-        strategy: 'stale-while-revalidate',
-        ttl: 5 * 60 * 1000,
-        maxAge: 10 * 60 * 1000,
-      },
+      cache,
     });
   }
 
@@ -164,6 +168,7 @@ export class EnhancedAPIClient extends APIClient {
     const request: APIRequest = {
       id: this.generateRequestId(),
       method: 'GET',
+      url: path,
       path,
       params,
     };
@@ -202,7 +207,7 @@ export class EnhancedAPIClient extends APIClient {
   /**
    * Generate request ID (override to use cancellation manager)
    */
-  private generateRequestId(): string {
+  protected generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }

@@ -32,7 +32,7 @@ export class WebSocketClient {
   constructor(config: WebSocketConfig) {
     this.config = {
       url: config.url,
-      protocols: config.protocols,
+      protocols: config.protocols || [],
       reconnectDelay: config.reconnectDelay || 1000,
       maxReconnectDelay: config.maxReconnectDelay || 30000,
       reconnectAttempts: config.reconnectAttempts || Infinity,
@@ -135,11 +135,11 @@ export class WebSocketClient {
   /**
    * Send request and wait for response
    */
-  async request<T = unknown>(
+  async request(
     type: string,
     data?: Record<string, unknown>,
     timeout: number = 5000
-  ): Promise<WebSocketResponse<T>> {
+  ): Promise<WebSocketResponse> {
     const requestId = `req_${++this.requestIdCounter}`;
     const request: WebSocketRequest = {
       type,

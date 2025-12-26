@@ -27,12 +27,14 @@ export function createMetricsPlugin(config: MetricsConfig = {}): Plugin {
     }
 
     const startTime = Date.now();
-    const startMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+    // @ts-ignore - performance.memory is a Chrome-specific API
+    const startMemory = (performance as any).memory ? (performance as any).memory.usedJSHeapSize : 0;
 
     try {
       const response = await next(request);
       const duration = Date.now() - startTime;
-      const endMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+      // @ts-ignore - performance.memory is a Chrome-specific API
+      const endMemory = (performance as any).memory ? (performance as any).memory.usedJSHeapSize : 0;
       const memoryDelta = endMemory - startMemory;
 
       // Record metrics

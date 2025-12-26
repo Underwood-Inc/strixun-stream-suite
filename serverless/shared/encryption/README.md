@@ -59,7 +59,7 @@ const parties: EncryptionParty[] = [
 
 const encrypted = await encryptMultiStage({ sensitive: 'data' }, parties);
 
-// Decrypt (requires ALL parties' keys in same order)
+// Decrypt (requires ALL parties' keys - order does NOT matter!)
 const decrypted = await decryptMultiStage(encrypted, parties);
 ```
 
@@ -85,23 +85,36 @@ async function handleRoute(
 
 ### Multi-Stage Encryption
 
-Multi-stage encryption chains encryption layers where each party adds a layer:
+Multi-stage encryption uses a master key approach for order-independent decryption:
 
 ```
-Data → [Party1 Encrypt] → [Party2 Encrypt] → [Party3 Encrypt] → Encrypted
+1. Generate random master key
+2. Encrypt data with master key → Encrypted Data
+3. Encrypt master key with each party's key independently (parallel)
+   → Encrypted Master Key 1 (Party1)
+   → Encrypted Master Key 2 (Party2)
+   → Encrypted Master Key 3 (Party3)
 ```
 
-To decrypt, you need ALL parties' keys in reverse order:
+To decrypt, you need ALL parties' keys (order does NOT matter):
 
 ```
-Encrypted → [Party3 Decrypt] → [Party2 Decrypt] → [Party1 Decrypt] → Data
+For each party:
+  Encrypted Master Key → [Decrypt with Party's Key] → Master Key (verify all match)
+  
+Once ALL parties verified:
+  Master Key → [Decrypt Data] → Original Data
 ```
+
+**Important:** ALL parties must successfully decrypt their encrypted master keys before the data can be decrypted. The order in which parties are verified does NOT matter.
 
 **Key Points:**
 - All parties must be known at encryption time
 - All parties' keys are required for decryption
-- Order matters: encryption order is reversed for decryption
+- **Decryption order: COMPLETELY ORDER-INDEPENDENT** - can decrypt in any order
+- Parties can be provided in any order (matched by key hash)
 - Each party can use JWT token, request key, or custom key
+- Version 3+ uses order-independent architecture (backward compatible with version 2)
 
 ### Two-Stage Encryption
 
@@ -135,7 +148,7 @@ Decrypts data using a JWT token.
 Encrypts data with multiple parties (2-10 parties supported).
 
 #### `decryptMultiStage(encryptedData: MultiStageEncryptedData, parties: EncryptionParty[]): Promise<unknown>`
-Decrypts multi-stage encrypted data (requires all parties' keys).
+Decrypts multi-stage encrypted data (requires all parties' keys). **Order does NOT matter** - parties can be provided in any order.
 
 #### `encryptTwoStage(data: unknown, userToken: string, requestKey: string): Promise<TwoStageEncryptedData>`
 Encrypts data with two-stage encryption (backward compatible).
@@ -269,13 +282,44 @@ const encrypted = await encryptMultiStage(sensitiveData, [
   { id: 'auditor', key: auditorKey, keyType: 'custom' },
 ]);
 
-// All three parties must provide keys to decrypt
+// All three parties must provide keys to decrypt (order does NOT matter!)
 const decrypted = await decryptMultiStage(encrypted, [
-  { id: 'owner', key: ownerJWT, keyType: 'jwt' },
-  { id: 'requester', key: requesterJWT, keyType: 'jwt' },
-  { id: 'auditor', key: auditorKey, keyType: 'custom' },
+  { id: 'auditor', key: auditorKey, keyType: 'custom' },  // Can be first
+  { id: 'owner', key: ownerJWT, keyType: 'jwt' },          // Can be second
+  { id: 'requester', key: requesterJWT, keyType: 'jwt' },  // Can be third
 ]);
 ```
+
+## Testing
+
+Comprehensive unit tests are available in `multi-stage-encryption.test.ts` covering:
+
+- ✅ Order-independent decryption (all order combinations)
+- ✅ All parties required verification
+- ✅ Missing/wrong key detection
+- ✅ Different key types (JWT, request-key, custom)
+- ✅ Multi-party scenarios (2-10 parties)
+- ✅ Edge cases (empty data, large data, special characters)
+- ✅ Security properties (tampering detection, master key verification)
+- ✅ Performance benchmarks
+
+### Running Tests
+
+From the `serverless/otp-auth-service` directory:
+```bash
+# Run all encryption tests (includes shared encryption tests)
+pnpm test
+
+# Run only multi-stage encryption tests
+pnpm exec vitest run ../shared/encryption/multi-stage-encryption.test.ts
+
+# Run with coverage
+pnpm test:coverage
+```
+
+The vitest config in `serverless/otp-auth-service/vitest.config.ts` is configured to find tests in both `otp-auth-service` and `shared/encryption` directories using the pattern `../shared/**/*.{test,spec}.{js,ts}`.
+
+Tests are automatically run in CI/CD on push to main/master branches.
 
 ## License
 

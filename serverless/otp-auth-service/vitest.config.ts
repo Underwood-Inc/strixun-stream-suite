@@ -4,7 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/*.{test,spec}.{js,ts}'],
+    include: [
+      '**/*.{test,spec}.{js,ts}',
+      '../shared/**/*.{test,spec}.{js,ts}', // Include shared encryption tests
+    ],
     exclude: ['node_modules', 'dist', 'dashboard'],
     coverage: {
       provider: 'v8',

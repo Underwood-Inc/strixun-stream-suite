@@ -225,7 +225,7 @@ export interface APIClientConfig {
 export interface Plugin {
   name: string;
   version?: string;
-  setup?: (client: APIClient) => void | Promise<void>;
+  setup?: (client: any) => void | Promise<void>;
   teardown?: () => void | Promise<void>;
   middleware?: Middleware;
 }

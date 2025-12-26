@@ -5,7 +5,6 @@
  */
 
 import type { APIRequest, APIResponse, Middleware, NextFunction } from '../types';
-import { createError, handleErrorResponse } from '../utils/response-handler';
 
 export interface AuthMiddlewareConfig {
   tokenGetter?: () => string | null | Promise<string | null>;

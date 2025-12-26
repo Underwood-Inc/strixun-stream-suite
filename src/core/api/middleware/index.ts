@@ -39,7 +39,7 @@ export class MiddlewarePipeline {
   /**
    * Execute middleware pipeline
    */
-  async execute(request: APIRequest, finalHandler: NextFunction): Promise<APIResponse> {
+  async execute<T = unknown>(request: APIRequest, finalHandler: NextFunction): Promise<APIResponse<T>> {
     let index = 0;
 
     const next: NextFunction = async (req: APIRequest): Promise<APIResponse> => {
@@ -51,7 +51,7 @@ export class MiddlewarePipeline {
       return middleware(req, next);
     };
 
-    return next(request);
+    return next(request) as Promise<APIResponse<T>>;
   }
 
   /**

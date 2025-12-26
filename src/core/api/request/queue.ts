@@ -5,7 +5,7 @@
  */
 
 import type { APIRequest, APIResponse, QueuedRequest, RequestPriority } from '../types';
-import { comparePriority, getDefaultPriority } from './priority';
+import { comparePriority } from './priority';
 
 export interface QueueConfig {
   maxConcurrent?: number;
@@ -32,7 +32,7 @@ export class RequestQueue {
    */
   enqueue(
     request: APIRequest,
-    executor: () => Promise<APIResponse>
+    _executor: () => Promise<APIResponse>
   ): Promise<APIResponse> {
     return new Promise((resolve, reject) => {
       // Check queue size

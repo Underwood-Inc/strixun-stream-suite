@@ -4,7 +4,7 @@
  * Extensible plugin architecture
  */
 
-import type { Plugin, APIClient } from '../types';
+import type { Plugin } from '../types';
 
 export class PluginManager {
   private plugins = new Map<string, Plugin>();
@@ -35,7 +35,7 @@ export class PluginManager {
   /**
    * Setup all plugins
    */
-  setup(client: APIClient): void {
+  setup(client: any): void {
     for (const plugin of this.plugins.values()) {
       if (plugin.setup) {
         plugin.setup(client);

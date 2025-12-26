@@ -77,16 +77,39 @@ async function makeCustomerApiRequest(
 /**
  * Decrypt response from customer-api (if encrypted)
  */
-async function decryptResponse(response: Response, jwtToken: string): Promise<any> {
+async function decryptResponse(response: Response, jwtToken: string, env?: Env): Promise<any> {
     const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+    const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
     
     if (!isEncrypted) {
         return await response.json();
     }
     
-    // Response is encrypted, decrypt it
+    // Response is encrypted, decrypt based on strategy
     const encryptedData = await response.json();
-    return await decryptWithJWT(encryptedData, jwtToken);
+    const { decryptWithJWT, decryptWithServiceKey } = await import('@strixun/api-framework');
+    
+    if (encryptionStrategy === 'jwt' && jwtToken) {
+        // JWT-encrypted response
+        return await decryptWithJWT(encryptedData, jwtToken);
+    } else if (encryptionStrategy === 'service-key' && env) {
+        // Service-key-encrypted response - get service key from env
+        const serviceKey = (env as any).SERVICE_ENCRYPTION_KEY;
+        if (serviceKey) {
+            return await decryptWithServiceKey(encryptedData, serviceKey);
+        }
+    } else if (jwtToken) {
+        // Fallback: Try JWT decryption
+        try {
+            return await decryptWithJWT(encryptedData, jwtToken);
+        } catch {
+            // If decryption fails, return encrypted data
+            return encryptedData;
+        }
+    }
+    
+    // No decryption method available
+    return encryptedData;
 }
 
 /**
@@ -105,7 +128,7 @@ export async function getCustomer(customerId: string, jwtToken: string, env?: En
             throw new Error(error.detail || `Failed to get customer: ${response.statusText}`);
         }
         
-        const data = await decryptResponse(response, jwtToken);
+        const data = await decryptResponse(response, jwtToken, env);
         
         // Extract customer data (remove id field added by API architecture)
         const { id, ...customerData } = data;
@@ -133,7 +156,7 @@ export async function getCustomerByEmail(email: string, jwtToken: string, env?: 
             throw new Error(error.detail || `Failed to get customer by email: ${response.statusText}`);
         }
         
-        const data = await decryptResponse(response, jwtToken);
+        const data = await decryptResponse(response, jwtToken, env);
         
         // Extract customer data (remove id field added by API architecture)
         const { id, ...customerData } = data;
@@ -156,7 +179,7 @@ export async function createCustomer(customerData: Partial<CustomerData>, jwtTok
             throw new Error(error.detail || `Failed to create customer: ${response.statusText}`);
         }
         
-        const data = await decryptResponse(response, jwtToken);
+        const data = await decryptResponse(response, jwtToken, env);
         
         // Extract customer data (remove id field added by API architecture)
         const { id, ...customer } = data;
@@ -183,7 +206,7 @@ export async function updateCustomer(customerId: string, updates: Partial<Custom
             throw new Error(error.detail || `Failed to update customer: ${response.statusText}`);
         }
         
-        const data = await decryptResponse(response, jwtToken);
+        const data = await decryptResponse(response, jwtToken, env);
         
         // Extract customer data (remove id field added by API architecture)
         const { id, ...customer } = data;
@@ -210,7 +233,7 @@ export async function getCurrentCustomer(jwtToken: string, env?: Env): Promise<C
             throw new Error(error.detail || `Failed to get current customer: ${response.statusText}`);
         }
         
-        const data = await decryptResponse(response, jwtToken);
+        const data = await decryptResponse(response, jwtToken, env);
         
         // Extract customer data (remove id field added by API architecture)
         const { id, ...customerData } = data;

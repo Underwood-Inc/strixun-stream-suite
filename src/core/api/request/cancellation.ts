@@ -4,7 +4,7 @@
  * Manages request cancellation and AbortSignal handling
  */
 
-import type { APIRequest } from '../types';
+// APIRequest type not needed here
 
 export class CancellationManager {
   private controllers = new Map<string, AbortController>();
@@ -38,7 +38,7 @@ export class CancellationManager {
    * Cancel all requests
    */
   cancelAll(): void {
-    for (const [requestId, controller] of this.controllers) {
+    for (const [_requestId, controller] of this.controllers) {
       controller.abort();
     }
     this.controllers.clear();

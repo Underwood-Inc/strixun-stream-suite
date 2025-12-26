@@ -65,7 +65,7 @@ export class RetryManager {
    * Execute request with retry logic
    */
   async execute<T = unknown>(
-    request: APIRequest,
+    _request: APIRequest,
     executor: () => Promise<APIResponse<T>>
   ): Promise<APIResponse<T>> {
     const state: RetryState = {

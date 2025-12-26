@@ -36,7 +36,7 @@ export function parseTypeDefinition(
  * 
  * This would use TypeScript compiler API in full implementation
  */
-export function extractRequiredFields(typeName: string): string[] {
+export function extractRequiredFields(_typeName: string): string[] {
   // Placeholder - would parse TypeScript interface
   // For now, returns empty (manual definition required)
   return [];
@@ -47,7 +47,7 @@ export function extractRequiredFields(typeName: string): string[] {
  * 
  * This would use TypeScript compiler API in full implementation
  */
-export function extractOptionalFields(typeName: string): string[] {
+export function extractOptionalFields(_typeName: string): string[] {
   // Placeholder - would parse TypeScript interface
   // For now, returns empty (manual definition required)
   return [];
@@ -63,8 +63,8 @@ export function extractOptionalFields(typeName: string): string[] {
  * 4. Report mismatches
  */
 export function validateTypeDefinition(
-  typeName: string,
-  typeDef: TypeDefinition
+  _typeName: string,
+  _typeDef: TypeDefinition
 ): { valid: boolean; errors: string[] } {
   // Placeholder - would validate against TypeScript source
   return { valid: true, errors: [] };

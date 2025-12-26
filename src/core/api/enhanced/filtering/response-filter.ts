@@ -8,7 +8,6 @@ import type {
   ResponseFilterConfig,
   TypeDefinition,
   FilteringParams,
-  RequestContext,
 } from '../types';
 import type { APIRequest, APIResponse } from '../../types';
 
@@ -168,7 +167,7 @@ export function createResponseFilterMiddleware(
     const response = await next(request);
 
     // Only filter successful JSON responses
-    if (!response.ok) {
+    if (response.status >= 400) {
       return response;
     }
 
@@ -179,7 +178,7 @@ export function createResponseFilterMiddleware(
 
     try {
       // Parse response data
-      const data = await response.json();
+      const data = response.data;
 
       // Parse filtering parameters
       const params = parseFilteringParams(request);
@@ -188,7 +187,7 @@ export function createResponseFilterMiddleware(
       const typeDef = getTypeDefinition(request, config);
 
       // Apply filtering
-      const filteredData = applyFiltering(data, params, config, typeDef);
+      const filteredData = applyFiltering(data, params, config, typeDef || undefined);
 
       // Create new response with filtered data
       return {

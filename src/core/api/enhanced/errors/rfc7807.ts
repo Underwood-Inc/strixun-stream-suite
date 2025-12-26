@@ -68,7 +68,7 @@ export function formatErrorAsRFC7807(
     title,
     detail,
     {
-      ...(error.data && { ...error.data }),
+      ...(error.data && typeof error.data === 'object' && error.data !== null ? error.data : {}),
       retry_after: error.retryAfter,
       retryable: error.retryable,
     }

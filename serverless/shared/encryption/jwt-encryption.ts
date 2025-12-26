@@ -45,10 +45,18 @@ async function deriveKeyFromToken(token: string, salt: Uint8Array): Promise<Cryp
     ['deriveBits', 'deriveKey']
   );
 
+  // Ensure salt is a proper BufferSource for deriveKey
+  // Create a new Uint8Array from the buffer to avoid type inference issues
+  // Convert to ArrayBuffer explicitly to avoid SharedArrayBuffer issues
+  const saltBuffer = new ArrayBuffer(salt.byteLength);
+  const saltView = new Uint8Array(saltBuffer);
+  saltView.set(salt);
+  const saltArray = saltView;
+
   const key = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: saltArray,
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
@@ -62,10 +70,10 @@ async function deriveKeyFromToken(token: string, salt: Uint8Array): Promise<Cryp
 }
 
 /**
- * Convert ArrayBuffer to base64
+ * Convert ArrayBuffer or Uint8Array to base64
  */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);

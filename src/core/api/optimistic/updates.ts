@@ -11,12 +11,12 @@ export class OptimisticUpdateManager {
    * Execute request with optimistic update
    */
   async execute<T = unknown>(
-    request: APIRequest,
+    _request: APIRequest,
     executor: () => Promise<APIResponse<T>>,
     config: OptimisticConfig
   ): Promise<APIResponse<T>> {
-    // Store original data for rollback
-    const originalData = config.data;
+    // Store original data for rollback (used in rollback logic)
+    // const _originalData = config.data;
 
     try {
       // Execute request

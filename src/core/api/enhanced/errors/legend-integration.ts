@@ -4,12 +4,12 @@
  * Integrates with error legend system for comprehensive error information
  */
 
-import type { RFC7807Error, RequestContext } from '../types';
+import type { RFC7807Error } from '../types';
 import type { APIRequest, APIError } from '../../types';
 
 // Import error legend from shared-components
 // Using relative path from src/core/api/enhanced/errors to shared-components
-import { getErrorInfo as getErrorInfoFromLegend, type ErrorInfo } from '../../../../../shared-components/error-mapping/error-legend';
+import { getErrorInfo as getErrorInfoFromLegend } from '../../../../../shared-components/error-mapping/error-legend';
 
 /**
  * Enhance RFC 7807 error with error legend information
@@ -49,7 +49,7 @@ export function enhanceErrorWithLegend(
       details: errorInfo.details,
       suggestion: errorInfo.suggestion,
     },
-    ...(apiError.data && { ...apiError.data }),
+    ...(apiError.data && typeof apiError.data === 'object' && apiError.data !== null ? apiError.data : {}),
   };
 }
 

@@ -27,7 +27,7 @@ export interface MultiStageEncryptedData {
   multiEncrypted: boolean;
   stageCount: number; // Number of encryption stages (parties)
   stages: Array<{
-    // Each stage represents one party's encryption layer
+    // Each stage represents one party's encryption of the master key
     stage: number; // Stage number (1, 2, 3, ...)
     encrypted: boolean;
     algorithm: string;
@@ -35,8 +35,9 @@ export interface MultiStageEncryptedData {
     salt: string; // Base64 encoded
     keyHash: string; // Hash of the key used for this stage (for verification)
     keyType: 'jwt' | 'request-key' | 'custom'; // Type of key used
-    data: string; // Base64 encoded encrypted data (contains previous stage's encrypted data)
+    data: string; // Base64 encoded encrypted master key
   }>;
+  data?: string; // Base64 encoded JSON containing encrypted data + master IV/salt (version 3+)
   timestamp: string;
 }
 

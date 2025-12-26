@@ -45,6 +45,10 @@ jobs:
       - name: Install all dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
+      
+      - name: Build workspace dependencies
+        working-directory: .
+        run: pnpm --filter "@strixun/api-framework" run build || echo "Workspace dependency build skipped if no build script"
         
       - name: Build Mods Hub
         working-directory: mods-hub

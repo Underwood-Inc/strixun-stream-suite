@@ -43,6 +43,24 @@ export {
   wrapWithEncryption,
 } from './middleware.js';
 
+// Per-route encryption system (industry standard)
+export {
+  encryptResponse,
+  createEncryptionContext,
+  extractJWTToken,
+  getServiceKey,
+  findMatchingPolicy,
+  decryptWithServiceKey,
+  DEFAULT_ENCRYPTION_POLICIES,
+} from './route-encryption.js';
+
+// Centralized encryption middleware
+export {
+  applyEncryptionMiddleware,
+  withEncryption,
+  createServicePolicies,
+} from './encryption-middleware.js';
+
 // Types
 export type {
   EncryptedData,
@@ -52,6 +70,18 @@ export type {
   E2EEncryptionConfig,
   EncryptionWrapperOptions,
 } from './types.js';
+
+// Route encryption types
+export type {
+  EncryptionStrategy,
+  RouteEncryptionPolicy,
+  EncryptionContext,
+  EncryptionResult,
+} from './route-encryption.js';
+
+export type {
+  EncryptionMiddlewareOptions,
+} from './encryption-middleware.js';
 
 // Re-export RouteResult and AuthResult for convenience
 export type {

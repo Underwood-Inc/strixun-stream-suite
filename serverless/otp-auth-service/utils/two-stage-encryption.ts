@@ -229,13 +229,15 @@ export async function decryptTwoStage(
     }
 
     // Stage 2: Decrypt with request key
-    const stage2Salt = base64ToArrayBuffer(encryptedData.stage2.salt);
-    const stage2IV = base64ToArrayBuffer(encryptedData.stage2.iv);
+    const stage2SaltBuffer = base64ToArrayBuffer(encryptedData.stage2.salt);
+    const stage2IVBuffer = base64ToArrayBuffer(encryptedData.stage2.iv);
     const stage2EncryptedData = base64ToArrayBuffer(encryptedData.stage2.data);
-    const stage2Key = await deriveKeyFromRequestKey(requestKey, new Uint8Array(stage2Salt));
+    const stage2Salt = new Uint8Array(stage2SaltBuffer);
+    const stage2IV = new Uint8Array(stage2IVBuffer);
+    const stage2Key = await deriveKeyFromRequestKey(requestKey, stage2Salt);
 
     const stage2Decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(stage2IV) },
+        { name: 'AES-GCM', iv: stage2IV },
         stage2Key,
         stage2EncryptedData
     );

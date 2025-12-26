@@ -9,10 +9,6 @@ import type {
   APIResponse,
   APIClientConfig,
   Middleware,
-  Plugin,
-  RequestPriority,
-  CacheConfig,
-  RetryConfig,
 } from './types';
 import { MiddlewarePipeline } from './middleware/index';
 import { createAuthMiddleware } from './middleware/auth';
@@ -53,7 +49,7 @@ export class APIClient {
         retryOnReconnect: config.offline?.retryOnReconnect ?? true,
       },
       auth: config.auth || {},
-      errorHandler: config.errorHandler,
+      errorHandler: config.errorHandler || (async () => {}),
       plugins: config.plugins || [],
     };
 
@@ -166,7 +162,7 @@ export class APIClient {
     };
 
     // Execute through middleware pipeline
-    return this.middlewarePipeline.execute(request, async (req: APIRequest) => {
+    return this.middlewarePipeline.execute<T>(request, async (req: APIRequest) => {
       // Create timeout controller if needed
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       let abortController: AbortController | undefined;
@@ -350,7 +346,7 @@ export class APIClient {
   /**
    * Generate unique request ID
    */
-  private generateRequestId(): string {
+  protected generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
