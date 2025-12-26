@@ -11,13 +11,12 @@
  * @version 2.0.0 (TypeScript)
  */
 
-import { storage, checkForRecoverySnapshot, startAutoBackup } from './storage';
-import { request } from './websocket';
-import { connected, sources } from '../stores/connection';
 import { get } from 'svelte/store';
-import { navigateTo, currentPage } from '../stores/navigation';
-import { ScriptStatus } from './script-status';
+import { connected, sources } from '../stores/connection';
+import { navigateTo } from '../stores/navigation';
 import type { StorageBackup } from '../types';
+import { checkForRecoverySnapshot, storage } from './storage';
+import { request } from './websocket';
 
 // ============ Types ============
 interface ImportChoices {
@@ -586,19 +585,18 @@ export function restoreActiveTab(): void {
 }
 
 export function log(msg: string, type: string = 'info', flair?: string, icon?: string): void {
-  // Always use new store-based logging
-  // If addLogEntry is not available yet, import it directly
-  if (typeof window !== 'undefined' && (window as any).addLogEntry) {
+  // Helper to map type and detect flair
+  const processLogParams = (message: string, logType: string, logFlair?: string) => {
     // Map old type strings to new LogType
-    let logType: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
-    if (type === 'success' || type === 'error' || type === 'warning' || type === 'debug') {
-      logType = type as 'info' | 'success' | 'error' | 'warning' | 'debug';
+    let mappedType: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
+    if (logType === 'success' || logType === 'error' || logType === 'warning' || logType === 'debug') {
+      mappedType = logType as 'info' | 'success' | 'error' | 'warning' | 'debug';
     }
     
     // Auto-detect flairs from common patterns
-    let detectedFlair = flair;
+    let detectedFlair = logFlair;
     if (!detectedFlair) {
-      const upperMsg = msg.toUpperCase();
+      const upperMsg = message.toUpperCase();
       if (upperMsg.includes('CONNECTED') || upperMsg.includes('SUCCESS')) {
         detectedFlair = 'CONNECTION';
       } else if (upperMsg.includes('ERROR') || upperMsg.includes('FAILED')) {
@@ -612,37 +610,29 @@ export function log(msg: string, type: string = 'info', flair?: string, icon?: s
       }
     }
     
-    (window as any).addLogEntry(msg, logType, detectedFlair, icon);
-    return;
+    return { mappedType, detectedFlair };
+  };
+  
+  // Try to use window.addLogEntry if available (set up by bootstrap)
+  if (typeof window !== 'undefined' && (window as any).addLogEntry && typeof (window as any).addLogEntry === 'function') {
+    try {
+      const { mappedType, detectedFlair } = processLogParams(msg, type, flair);
+      (window as any).addLogEntry(msg, mappedType, detectedFlair, icon);
+      return;
+    } catch (err) {
+      // If window.addLogEntry fails, fall through to direct import
+      console.warn('[log] window.addLogEntry failed, falling back to direct import:', err);
+    }
   }
   
-  // If store not available yet, import it directly (shouldn't happen after bootstrap fix)
+  // If window.addLogEntry not available or failed, import store directly
   import('../stores/activity-log').then(({ addLogEntry }) => {
-    let logType: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
-    if (type === 'success' || type === 'error' || type === 'warning' || type === 'debug') {
-      logType = type as 'info' | 'success' | 'error' | 'warning' | 'debug';
-    }
-    
-    let detectedFlair = flair;
-    if (!detectedFlair) {
-      const upperMsg = msg.toUpperCase();
-      if (upperMsg.includes('CONNECTED') || upperMsg.includes('SUCCESS')) {
-        detectedFlair = 'CONNECTION';
-      } else if (upperMsg.includes('ERROR') || upperMsg.includes('FAILED')) {
-        detectedFlair = 'ERROR';
-      } else if (upperMsg.includes('WARNING') || upperMsg.includes('WARN')) {
-        detectedFlair = 'WARNING';
-      } else if (upperMsg.includes('IMPORTED') || upperMsg.includes('EXPORTED')) {
-        detectedFlair = 'DATA';
-      } else if (upperMsg.includes('REFRESHED') || upperMsg.includes('UPDATED')) {
-        detectedFlair = 'UPDATE';
-      }
-    }
-    
-    addLogEntry(msg, logType, detectedFlair, icon);
+    const { mappedType, detectedFlair } = processLogParams(msg, type, flair);
+    addLogEntry(msg, mappedType, detectedFlair, icon);
   }).catch(err => {
-    // Fallback to console if store import fails (shouldn't happen)
+    // Fallback to console if store import fails
     console.error('[log] Failed to import activity-log store:', err);
+    console.log(`[${type.toUpperCase()}] ${msg}`);
   });
 }
 

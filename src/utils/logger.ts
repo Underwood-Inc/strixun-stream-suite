@@ -87,15 +87,22 @@ export function logDebug(message: string, flair?: string, icon?: string): void {
  * Synchronous version for immediate logging (uses window.addLogEntry if available)
  */
 export function logSync(message: string, type: LogType = 'info', flair?: string, icon?: string): void {
-  if (typeof window !== 'undefined' && (window as any).addLogEntry) {
-    (window as any).addLogEntry(message, type, flair, icon);
-  } else {
-    // Fallback to console
-    const consoleMethod = type === 'error' ? console.error : 
-                          type === 'warning' ? console.warn :
-                          type === 'debug' ? console.debug : console.log;
-    consoleMethod(`[${type.toUpperCase()}] ${message}`);
+  // Try to use window.addLogEntry if available (set up by bootstrap)
+  if (typeof window !== 'undefined' && (window as any).addLogEntry && typeof (window as any).addLogEntry === 'function') {
+    try {
+      (window as any).addLogEntry(message, type, flair, icon);
+      return;
+    } catch (err) {
+      // If window.addLogEntry fails, fall through to console
+      console.warn('[logSync] window.addLogEntry failed:', err);
+    }
   }
+  
+  // Fallback to console if window.addLogEntry not available or failed
+  const consoleMethod = type === 'error' ? console.error : 
+                        type === 'warning' ? console.warn :
+                        type === 'debug' ? console.debug : console.log;
+  consoleMethod(`[${type.toUpperCase()}] ${message}`);
 }
 
 /**

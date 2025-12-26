@@ -404,9 +404,9 @@
     <div class="split-log__body">
       <ActivityLogFilterAside bind:expanded={filterExpanded} />
       <div class="split-log__content" id="log">
-        {#if $visibleLogEntries.length > 0}
+        {#if $logEntries.length > 0}
           <VirtualList
-          items={$visibleLogEntries}
+          items={$visibleLogEntries.length > 0 ? $visibleLogEntries : $logEntries}
           itemHeight={28}
           containerHeight={logContainerHeight}
           overscan={3}
@@ -423,11 +423,7 @@
           </VirtualList>
         {:else}
           <div class="split-log__empty">
-            {#if $logEntries.length === 0}
-              <p>No log entries yet</p>
-            {:else}
-              <p>No entries match your filters</p>
-            {/if}
+            <p>No log entries yet</p>
           </div>
         {/if}
       </div>

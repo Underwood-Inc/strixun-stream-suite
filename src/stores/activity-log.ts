@@ -44,24 +44,27 @@ export const resetLogFilters = logFilterState.resetFilters;
 export const visibleLogEntries = derived(
   [logEntries, logFilters],
   ([entries, filters]) => {
+    if (!entries || entries.length === 0) {
+      return [];
+    }
+    
     let filtered = entries;
     
     // Filter by type - only filter if some (but not all) types are active
     // If all are active OR all are inactive, show everything (no filtering)
-    const hasSomeFilters = filters.activeFilters.size > 0;
-    const hasAllFilters = filters.activeFilters.size === filters.allFilters.size;
+    const activeFilterCount = filters.activeFilters.size;
+    const totalFilterCount = filters.allFilters.size;
     
-    if (hasSomeFilters && !hasAllFilters) {
-      // Some filters are active but not all - filter by active filters
+    // Only apply type filtering if some (but not all) filters are active
+    if (activeFilterCount > 0 && activeFilterCount < totalFilterCount) {
       filtered = filtered.filter(entry => filters.activeFilters.has(entry.type));
     }
-    // Otherwise: all active (show all) or none active (show all) - no filtering needed
     
     // Filter by search query with advanced syntax
-    if (filters.searchQuery.trim()) {
-      const query = filters.searchQuery.trim();
+    const searchQuery = filters.searchQuery?.trim() || '';
+    if (searchQuery) {
       filtered = filtered.filter(entry => {
-        return matchesSearchQuery(entry, query);
+        return matchesSearchQuery(entry, searchQuery);
       });
     }
     

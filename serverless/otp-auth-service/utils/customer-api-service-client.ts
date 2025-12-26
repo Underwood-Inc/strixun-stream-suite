@@ -85,8 +85,26 @@ async function makeServiceRequest(
             console.log(`[Customer API Service Client] ${method} ${url} - ${response.status} ${response.statusText}`);
         }
         
+        // Handle Cloudflare 530 errors (Origin is unreachable)
+        if (response.status === 530) {
+            console.error('[Customer API Service Client] Cloudflare 530 error - Customer API worker is unreachable:', {
+                method,
+                url,
+                baseUrl,
+                hasServiceKey: !!env?.SERVICE_API_KEY,
+                status: response.status,
+                statusText: response.statusText,
+            });
+            throw new Error(`Customer API service is unreachable (530). The customer-api worker may not be deployed or is experiencing issues. URL: ${baseUrl}`);
+        }
+        
         return response;
     } catch (networkError) {
+        // If it's already our formatted 530 error, re-throw it
+        if (networkError instanceof Error && networkError.message.includes('530')) {
+            throw networkError;
+        }
+        
         console.error('[Customer API Service Client] Network error making request:', {
             method,
             url,

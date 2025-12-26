@@ -26,13 +26,13 @@ ENVIRONMENT = "production"
 # Custom domain configuration
 # Using idling.app domain
 routes = [
-  { pattern = "customer.idling.app/*", zone_name = "idling.app" }
+  { pattern = "customer-api.idling.app/*", zone_name = "idling.app" }
 ]
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-customer-api
 # 2. Go to Settings → Triggers → Routes
-# 3. Add custom domain route: customer.idling.app/*
+# 3. Add custom domain route: customer-api.idling.app/*
 # 4. DNS records are automatically managed by Cloudflare
 #
 # Note: Routes configured in the dashboard take precedence over wrangler.toml
