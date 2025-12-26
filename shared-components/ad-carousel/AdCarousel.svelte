@@ -78,6 +78,18 @@
   function toggleDimmed(): void {
     isDimmed = !isDimmed;
     saveState();
+    console.log('[AdCarousel] Dim state toggled:', isDimmed);
+    
+    // Explicitly remove inline opacity to let CSS class control it
+    if (carouselContainer) {
+      carouselContainer.style.removeProperty('opacity');
+    }
+  }
+  
+  // Reactive statement to ensure CSS class updates when isDimmed changes
+  $: if (carouselContainer && isMounted) {
+    // Remove any inline opacity that might have been set
+    carouselContainer.style.removeProperty('opacity');
   }
 
   function startDrag(e: MouseEvent | TouchEvent): void {
@@ -252,9 +264,10 @@
       console.log('[AdCarousel] Using existing portal:', portalId);
     } else {
       // Create portal container at body level with unique ID based on storageKey
+      // Portal should cover full viewport for proper positioning context
       portalContainer = document.createElement('div');
       portalContainer.id = portalId;
-      portalContainer.style.cssText = 'position: fixed; z-index: 99999; pointer-events: none;';
+      portalContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; pointer-events: none;';
       
       // Append to body - this should always work if document.body exists
       try {
@@ -294,7 +307,7 @@
     carouselContainer.style.pointerEvents = 'auto';
     carouselContainer.style.display = 'flex';
     carouselContainer.style.visibility = 'visible';
-    carouselContainer.style.opacity = isDimmed ? '0.4' : '1';
+    // Don't set opacity inline - let CSS class handle it via .ad-carousel--dimmed
     
     console.log('[AdCarousel] Portal initialization complete', {
       portalId,
