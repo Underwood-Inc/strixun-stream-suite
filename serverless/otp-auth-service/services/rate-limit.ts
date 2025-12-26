@@ -265,6 +265,7 @@ export async function hashIP(ip: string): Promise<string> {
  * @param ipAddress - Client IP address
  * @param getCustomerCachedFn - Function to get cached customer
  * @param env - Worker environment
+ * @param email - Optional email address for super admin check
  * @returns Rate limit check result
  */
 export async function checkOTPRateLimit(
@@ -272,9 +273,26 @@ export async function checkOTPRateLimit(
     customerId: string | null,
     ipAddress: string,
     getCustomerCachedFn: GetCustomerFn,
-    env: Env
+    env: Env,
+    email?: string
 ): Promise<RateLimitResult> {
     try {
+        // Super admins are ALWAYS exempt from rate limits
+        if (email) {
+            const { isSuperAdminEmail } = await import('../utils/super-admin.js');
+            const isSuperAdmin = await isSuperAdminEmail(email, env);
+            if (isSuperAdmin) {
+                // Return unlimited access for super admins
+                const now = Date.now();
+                const oneHour = 60 * 60 * 1000;
+                const resetAt = new Date(now + oneHour).toISOString();
+                return {
+                    allowed: true,
+                    remaining: 999999, // Effectively unlimited
+                    resetAt: resetAt
+                };
+            }
+        }
         // Get customer configuration and plan
         let customer: CustomerData | null = null;
         let plan = 'free';

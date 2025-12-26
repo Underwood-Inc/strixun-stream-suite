@@ -305,14 +305,42 @@ export async function getMonthlyUsage(customerId: string, env: Env): Promise<Agg
  * @param getCustomerCachedFn - Function to get cached customer
  * @param getPlanLimitsFn - Function to get plan limits
  * @param env - Worker environment
+ * @param email - Optional email address for super admin check
  * @returns Quota check result
  */
 export async function checkQuota(
     customerId: string | null,
     getCustomerCachedFn: GetCustomerFn,
     getPlanLimitsFn: GetPlanLimitsFn,
-    env: Env
+    env: Env,
+    email?: string
 ): Promise<QuotaResult> {
+    // Super admins are ALWAYS exempt from quota limits
+    if (email) {
+        const { isSuperAdminEmail } = await import('../utils/super-admin.js');
+        const isSuperAdmin = await isSuperAdminEmail(email, env);
+        if (isSuperAdmin) {
+            // Return unlimited quota for super admins
+            return {
+                allowed: true,
+                quota: {
+                    otpRequestsPerDay: 999999,
+                    otpRequestsPerMonth: 999999,
+                    maxUsers: 999999,
+                    otpRequestsPerHour: 999999,
+                    ipRequestsPerHour: 999999,
+                    ipRequestsPerDay: 999999
+                },
+                usage: {
+                    daily: 0,
+                    monthly: 0,
+                    remainingDaily: 999999,
+                    remainingMonthly: 999999
+                }
+            };
+        }
+    }
+    
     if (!customerId) {
         return { allowed: true }; // No quota check for non-authenticated (backward compat)
     }

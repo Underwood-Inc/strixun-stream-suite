@@ -29,12 +29,13 @@ interface Env {
 }
 
 // Wrapper for checkQuota to pass getPlanLimits
-async function checkQuota(customerId: string | null, env: Env) {
+async function checkQuota(customerId: string | null, env: Env, email?: string) {
     return checkQuotaService(
         customerId,
         async (id) => await getCustomerCached(id, (cid) => getCustomer(cid, env)),
         getPlanLimits,
-        env
+        env,
+        email
     );
 }
 
@@ -68,8 +69,8 @@ export async function handleRequestOTP(
             });
         }
         
-        // Check quota first
-        const quotaCheck = await checkQuota(customerId, env);
+        // Check quota first (super admins are exempt)
+        const quotaCheck = await checkQuota(customerId, env, email);
         if (!quotaCheck.allowed) {
             // Send webhook for quota exceeded
             if (customerId) {
@@ -101,7 +102,7 @@ export async function handleRequestOTP(
             });
         }
         
-        // Check rate limit
+        // Check rate limit (super admins are exempt)
         const emailHash = await hashEmail(email);
         const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
         const rateLimit = await checkOTPRateLimitService(
@@ -109,7 +110,8 @@ export async function handleRequestOTP(
             customerId,
             clientIP,
             (id) => getCustomerCached(id, env),
-            env
+            env,
+            email
         );
         
         if (!rateLimit.allowed) {

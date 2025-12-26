@@ -27,8 +27,8 @@ import { getPlanLimits } from '../../utils/validation.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
 
 // Wrapper for checkQuota to pass getPlanLimits
-async function checkQuota(customerId, env) {
-    return checkQuotaService(customerId, async (id) => await getCustomerCached(id, (cid) => getCustomer(cid, env)), getPlanLimits, env);
+async function checkQuota(customerId, env, email) {
+    return checkQuotaService(customerId, async (id) => await getCustomerCached(id, (cid) => getCustomer(cid, env)), getPlanLimits, env, email);
 }
 
 /**
@@ -58,8 +58,8 @@ export async function handleRequestOTP(request, env, customerId = null) {
             });
         }
         
-        // Check quota first
-        const quotaCheck = await checkQuota(customerId, env);
+        // Check quota first (super admins are exempt)
+        const quotaCheck = await checkQuota(customerId, env, email);
         if (!quotaCheck.allowed) {
             // Send webhook for quota exceeded
             if (customerId) {
@@ -92,10 +92,10 @@ export async function handleRequestOTP(request, env, customerId = null) {
             });
         }
         
-        // Check rate limit
+        // Check rate limit (super admins are exempt)
         const emailHash = await hashEmail(email);
         const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
-        const rateLimit = await checkOTPRateLimitService(emailHash, customerId, clientIP, (id) => getCustomerCached(id, env), env);
+        const rateLimit = await checkOTPRateLimitService(emailHash, customerId, clientIP, (id) => getCustomerCached(id, env), env, email);
         
         if (!rateLimit.allowed) {
             // Record failed rate limit attempt
