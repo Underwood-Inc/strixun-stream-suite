@@ -15,7 +15,7 @@ import { handleGameSaveState } from '../handlers/game/save-state.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
-import { encryptWithJWT } from '../utils/jwt-encryption.js';
+// Uses shared encryption suite from serverless/shared/encryption
 
 /**
  * Helper to wrap game route handlers with authentication and automatic encryption
@@ -42,8 +42,10 @@ async function handleGameRoute(handler, request, env, auth) {
     const handlerResponse = await handler(request, env, auth.userId, auth.customerId);
 
     // If JWT token is present, encrypt the response (automatic E2E encryption)
+    // Uses shared encryption suite from serverless/shared/encryption
     if (auth.jwtToken && handlerResponse.ok) {
         try {
+            const { encryptWithJWT } = await import('@strixun/api-framework');
             const responseData = await handlerResponse.json();
             const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
 

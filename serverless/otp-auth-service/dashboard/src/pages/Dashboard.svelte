@@ -67,7 +67,8 @@
       if (token) {
         try {
           revealingKeyId = keyId;
-          const { decryptWithJWT } = await import('$lib/jwt-decrypt.js');
+          // Uses shared encryption suite from serverless/shared/encryption
+          const { decryptWithJWT } = await import('@strixun/api-framework');
           const encryptedData = key.apiKey as EncryptedApiKeyData;
           const decrypted = await decryptWithJWT(encryptedData, token);
           if (typeof decrypted === 'string') {

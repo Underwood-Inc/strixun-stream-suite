@@ -57,6 +57,64 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
 }
 
 /**
+ * Helper to wrap user route handlers with automatic encryption
+ * Uses shared encryption suite from serverless/shared/encryption
+ */
+async function handleUserRoute(
+    handler: (request: Request, env: Env) => Promise<Response>,
+    request: Request,
+    env: Env,
+    auth: AuthResult
+): Promise<RouteResult> {
+    if (!auth.authenticated) {
+        return {
+            response: new Response(JSON.stringify({
+                error: auth.error || 'Unauthorized',
+                code: 'AUTHENTICATION_REQUIRED'
+            }), {
+                status: auth.status || 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }),
+            customerId: null
+        };
+    }
+
+    // Get handler response
+    const handlerResponse = await handler(request, env);
+
+    // If JWT token is present, encrypt the response (automatic E2E encryption)
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (token && token.length >= 10 && handlerResponse.ok) {
+        try {
+            const { encryptWithJWT } = await import('@strixun/api-framework');
+            const responseData = await handlerResponse.json();
+            const encrypted = await encryptWithJWT(responseData, token);
+
+            // Preserve original headers and add encryption flag
+            const headers = new Headers(handlerResponse.headers);
+            headers.set('Content-Type', 'application/json');
+            headers.set('X-Encrypted', 'true');
+
+            return {
+                response: new Response(JSON.stringify(encrypted), {
+                    status: handlerResponse.status,
+                    statusText: handlerResponse.statusText,
+                    headers: headers,
+                }),
+                customerId: auth.customerId || null
+            };
+        } catch (error) {
+            console.error('Failed to encrypt response:', error);
+            return { response: handlerResponse, customerId: auth.customerId || null };
+        }
+    }
+
+    return { response: handlerResponse, customerId: auth.customerId || null };
+}
+
+/**
  * Handle user routes
  * @param request - HTTP request
  * @param path - Request path
@@ -68,129 +126,104 @@ export async function handleUserRoutes(
     path: string,
     env: Env
 ): Promise<RouteResult | null> {
+    // Authenticate request
+    const auth = await authenticateRequest(request, env);
+    
     // User profile endpoints (require JWT authentication)
     if (path === '/user/display-name' && request.method === 'GET') {
-        return { 
-            response: await userHandlers.handleGetDisplayName(request, env), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(userHandlers.handleGetDisplayName, request, env, auth);
     }
     
     if (path === '/user/display-name' && request.method === 'PUT') {
-        return { 
-            response: await userHandlers.handleUpdateDisplayName(request, env), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(userHandlers.handleUpdateDisplayName, request, env, auth);
     }
     
     if (path === '/user/display-name/regenerate' && request.method === 'POST') {
-        return { 
-            response: await userHandlers.handleRegenerateDisplayName(request, env), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(userHandlers.handleRegenerateDisplayName, request, env, auth);
     }
     
     // Twitch account attachment endpoints
     if (path === '/user/twitch/attach' && request.method === 'POST') {
-        return { 
-            response: await twitchHandlers.handleAttachTwitchAccount(request, env), 
-            customerId: null
-        };
+        return await handleUserRoute(twitchHandlers.handleAttachTwitchAccount, request, env, auth);
     }
     
     if (path === '/user/twitch' && request.method === 'GET') {
-        return { 
-            response: await twitchHandlers.handleGetTwitchAccount(request, env), 
-            customerId: null
-        };
+        return await handleUserRoute(twitchHandlers.handleGetTwitchAccount, request, env, auth);
     }
     
     if (path === '/user/twitch/detach' && request.method === 'DELETE') {
-        return { 
-            response: await twitchHandlers.handleDetachTwitchAccount(request, env), 
-            customerId: null
-        };
+        return await handleUserRoute(twitchHandlers.handleDetachTwitchAccount, request, env, auth);
     }
     
     // Profile picture endpoints (post-MVP)
     if (path === '/user/profile-picture' && request.method === 'POST') {
-        return { 
-            response: await profilePictureHandlers.handleUploadProfilePicture(request, env), 
-            customerId: null
-        };
+        return await handleUserRoute(profilePictureHandlers.handleUploadProfilePicture, request, env, auth);
     }
     
     if (path.startsWith('/user/profile-picture/') && request.method === 'GET') {
-        return { 
-            response: await profilePictureHandlers.handleGetProfilePicture(request, env), 
-            customerId: null
-        };
+        return await handleUserRoute(profilePictureHandlers.handleGetProfilePicture, request, env, auth);
     }
     
     if (path === '/user/profile-picture' && request.method === 'DELETE') {
-        return { 
-            response: await profilePictureHandlers.handleDeleteProfilePicture(request, env), 
-            customerId: null
-        };
+        return await handleUserRoute(profilePictureHandlers.handleDeleteProfilePicture, request, env, auth);
     }
     
     // User preferences endpoints
     if (path === '/user/me/preferences' && request.method === 'GET') {
-        return { 
-            response: await preferencesHandlers.handleGetPreferences(request, env), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(preferencesHandlers.handleGetPreferences, request, env, auth);
     }
     
     if (path === '/user/me/preferences' && request.method === 'PUT') {
-        return { 
-            response: await preferencesHandlers.handleUpdatePreferences(request, env), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(preferencesHandlers.handleUpdatePreferences, request, env, auth);
     }
     
     // Data request endpoints (user can view/approve/reject requests for their data)
     if (path === '/user/data-requests' && request.method === 'GET') {
-        return { 
-            response: await dataRequestHandlers.handleGetUserDataRequests(request, env), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(dataRequestHandlers.handleGetUserDataRequests, request, env, auth);
     }
     
     const userDataRequestMatch = path.match(/^\/user\/data-requests\/([^\/]+)$/);
     if (userDataRequestMatch && request.method === 'GET') {
         const requestId = userDataRequestMatch[1];
-        return { 
-            response: await dataRequestHandlers.handleGetUserDataRequest(request, env, requestId), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(
+            (req, e) => dataRequestHandlers.handleGetUserDataRequest(req, e, requestId),
+            request,
+            env,
+            auth
+        );
     }
     
     const approveDataRequestMatch = path.match(/^\/user\/data-requests\/([^\/]+)\/approve$/);
     if (approveDataRequestMatch && request.method === 'POST') {
         const requestId = approveDataRequestMatch[1];
-        return { 
-            response: await dataRequestHandlers.handleApproveDataRequest(request, env, requestId), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(
+            (req, e) => dataRequestHandlers.handleApproveDataRequest(req, e, requestId),
+            request,
+            env,
+            auth
+        );
     }
     
     const rejectDataRequestMatch = path.match(/^\/user\/data-requests\/([^\/]+)\/reject$/);
     if (rejectDataRequestMatch && request.method === 'POST') {
         const requestId = rejectDataRequestMatch[1];
-        return { 
-            response: await dataRequestHandlers.handleRejectDataRequest(request, env, requestId), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(
+            (req, e) => dataRequestHandlers.handleRejectDataRequest(req, e, requestId),
+            request,
+            env,
+            auth
+        );
     }
     
     const decryptDataMatch = path.match(/^\/user\/data-requests\/([^\/]+)\/decrypt$/);
     if (decryptDataMatch && request.method === 'POST') {
         const requestId = decryptDataMatch[1];
-        return { 
-            response: await dataRequestHandlers.handleDecryptData(request, env, requestId), 
-            customerId: null // Will be extracted from JWT in handler
-        };
+        return await handleUserRoute(
+            (req, e) => dataRequestHandlers.handleDecryptData(req, e, requestId),
+            request,
+            env,
+            auth
+        );
     }
     
     return null; // Route not matched

@@ -107,7 +107,8 @@ export class ApiClient {
     
     if (isEncrypted && this.token) {
       // Decrypt the response using JWT token
-      const { decryptWithJWT } = await import('./jwt-decrypt.js');
+      // Uses shared encryption suite from serverless/shared/encryption
+      const { decryptWithJWT } = await import('@strixun/api-framework');
       return await decryptWithJWT(data as any, this.token) as T;
     }
     

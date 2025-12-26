@@ -68,9 +68,10 @@ async function handleGameRoute(handler, request, env, auth) {
     const handlerResponse = await handler(request, env, auth.userId, auth.customerId);
 
     // If JWT token is present, encrypt the response (automatic E2E encryption)
+    // Uses shared encryption suite from serverless/shared/encryption
     if (auth.jwtToken && handlerResponse.ok) {
         try {
-            const { encryptWithJWT } = await import('../utils/jwt-encryption.js');
+            const { encryptWithJWT } = await import('@strixun/api-framework');
             const responseData = await handlerResponse.json();
             const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
 

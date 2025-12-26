@@ -13,6 +13,7 @@ import { handleDeleteMod } from '../handlers/mods/delete.js';
 import { handleUploadVersion } from '../handlers/versions/upload.js';
 import { handleDownloadVersion } from '../handlers/versions/download.js';
 import { authenticateRequest } from '../utils/auth.js';
+import { wrapWithEncryption } from '@strixun/api-framework';
 
 /**
  * Handle mod routes
@@ -32,10 +33,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         
         // Route: GET /mods - List mods
         if (pathSegments.length === 1 && pathSegments[0] === 'mods' && request.method === 'GET') {
-            return {
-                response: await handleListMods(request, env, auth),
-                customerId: auth?.customerId || null
-            };
+            const response = await handleListMods(request, env, auth);
+            return await wrapWithEncryption(response, auth || undefined);
         }
 
         // Route: POST /mods - Upload new mod
@@ -56,19 +55,15 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            return {
-                response: await handleUploadMod(request, env, auth),
-                customerId: auth.customerId
-            };
+            const response = await handleUploadMod(request, env, auth);
+            return await wrapWithEncryption(response, auth);
         }
 
         // Route: GET /mods/:modId - Get mod detail
         if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'GET') {
             const modId = pathSegments[1];
-            return {
-                response: await handleGetModDetail(request, env, modId, auth),
-                customerId: auth?.customerId || null
-            };
+            const response = await handleGetModDetail(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth || undefined);
         }
 
         // Route: PATCH /mods/:modId - Update mod
@@ -90,10 +85,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const modId = pathSegments[1];
-            return {
-                response: await handleUpdateMod(request, env, modId, auth),
-                customerId: auth.customerId
-            };
+            const response = await handleUpdateMod(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth);
         }
 
         // Route: DELETE /mods/:modId - Delete mod
@@ -115,10 +108,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const modId = pathSegments[1];
-            return {
-                response: await handleDeleteMod(request, env, modId, auth),
-                customerId: auth.customerId
-            };
+            const response = await handleDeleteMod(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth);
         }
 
         // Route: POST /mods/:modId/versions - Upload new version
@@ -140,10 +131,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const modId = pathSegments[1];
-            return {
-                response: await handleUploadVersion(request, env, modId, auth),
-                customerId: auth.customerId
-            };
+            const response = await handleUploadVersion(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth);
         }
 
         // Route: GET /mods/:modId/versions/:versionId/download - Download version
@@ -152,10 +141,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 5 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && pathSegments[4] === 'download' && request.method === 'GET') {
             const modId = pathSegments[1];
             const versionId = pathSegments[3];
-            return {
-                response: await handleDownloadVersion(request, env, modId, versionId, auth),
-                customerId: auth?.customerId || null
-            };
+            const response = await handleDownloadVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, auth || undefined);
         }
 
         // 404 for unknown mod routes

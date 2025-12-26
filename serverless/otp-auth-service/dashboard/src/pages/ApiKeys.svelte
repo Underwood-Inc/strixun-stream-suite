@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/api-client';
-  import { decryptWithJWT } from '$lib/jwt-decrypt.js';
+  // Uses shared encryption suite from serverless/shared/encryption
+  import { decryptWithJWT } from '@strixun/api-framework';
   import type { Customer, ApiKey, ApiKeyResponse, EncryptedApiKeyData } from '$lib/types';
   import Card from '$components/Card.svelte';
 

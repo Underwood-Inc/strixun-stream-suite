@@ -68,6 +68,7 @@ function getInlineEmailTemplate(): string {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        /* Inline styles for better email client compatibility */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
             line-height: 1.6; 
@@ -127,6 +128,24 @@ function getInlineEmailTemplate(): string {
         .expires-text strong {
             color: #c68214;
         }
+        .expired-warning {
+            background-color: #fee;
+            border: 2px solid #c00;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            color: #c00;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+        .expired-warning.show {
+            display: block;
+        }
+        .expired-warning-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
         .footer { 
             margin-top: 40px; 
             padding-top: 24px;
@@ -155,6 +174,22 @@ function getInlineEmailTemplate(): string {
             color: #c68214;
             text-decoration: underline;
         }
+        ::selection {
+            background: #edae49;
+            color: #0f0e0b;
+        }
+        ::-moz-selection {
+            background: #edae49;
+            color: #0f0e0b;
+        }
+        .otp-code::selection {
+            background: #edae49;
+            color: #0f0e0b;
+        }
+        .otp-code::-moz-selection {
+            background: #edae49;
+            color: #0f0e0b;
+        }
         @media only screen and (max-width: 600px) {
             .container {
                 padding: 24px 16px;
@@ -177,18 +212,53 @@ function getInlineEmailTemplate(): string {
                 <h1>Your Verification Code</h1>
             </div>
             <div class="content">
-                <p>Use this code to verify your email address:</p>
-                <div class="otp-code">{{otp}}</div>
-                <p class="expires-text">This code will expire in <strong>{{expiresIn}} minutes</strong>.</p>
-                <p>If you didn't request this code, please ignore this email.</p>
+                <div class="expired-warning" id="expiredWarning">
+                    <div class="expired-warning-icon">⚠️</div>
+                    <div><strong>This code has expired.</strong></div>
+                </div>
+                <p>Your One Time Password (OTP) is:</p>
+                <div class="otp-code" data-expires-at="{{expiresAt}}">{{otp}}</div>
+                <p class="expires-text">This OTP will expire in <strong>{{expiresIn}} minutes</strong>.</p>
+                <p>If you didn't request this OTP, please ignore this email.</p>
             </div>
             <div class="footer">
                 <p><a href="https://auth.idling.app" class="brand-name">{{appName}}</a></p>
                 <p>{{footerText}}</p>
             </div>
         </div>
+        {{trackingPixel}}
     </div>
-    {{trackingPixel}}
+    <script>
+        (function() {
+            // Check if OTP has expired when email is opened
+            try {
+                var otpCodeElement = document.querySelector('.otp-code[data-expires-at]');
+                if (otpCodeElement) {
+                    var expiresAtStr = otpCodeElement.getAttribute('data-expires-at');
+                    if (expiresAtStr) {
+                        var expiresAt = new Date(expiresAtStr);
+                        var now = new Date();
+                        
+                        // Check if expired
+                        if (now > expiresAt) {
+                            // Show expired warning
+                            var warningElement = document.getElementById('expiredWarning');
+                            if (warningElement) {
+                                warningElement.classList.add('show');
+                            }
+                            
+                            // Optionally disable/hide the OTP code
+                            otpCodeElement.style.opacity = '0.5';
+                            otpCodeElement.style.textDecoration = 'line-through';
+                        }
+                    }
+                }
+            } catch (e) {
+                // Silently fail if JavaScript is disabled or errors occur
+                // This ensures email still displays correctly in all clients
+            }
+        })();
+    </script>
 </body>
 </html>`;
 }

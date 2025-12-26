@@ -2,12 +2,48 @@
  * URL Shortener Router
  * 
  * Routes all requests to appropriate handlers
+ * Uses shared encryption suite for automatic response encryption
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
 import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls, handleDeleteUrl } from '../handlers/url.js';
 import { handleHealth } from '../handlers/health.js';
 import { handleStandalonePage } from '../handlers/page.js';
+
+/**
+ * Helper to wrap handlers with automatic encryption
+ * Uses shared encryption suite from serverless/shared/encryption
+ */
+async function wrapWithEncryption(handlerResponse, request) {
+  // Check if response should be encrypted (has JWT token and is OK)
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  
+  if (token && token.length >= 10 && handlerResponse.ok) {
+    try {
+      const contentType = handlerResponse.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const { encryptWithJWT } = await import('@strixun/api-framework');
+        const responseData = await handlerResponse.json();
+        const encrypted = await encryptWithJWT(responseData, token);
+        
+        const headers = new Headers(handlerResponse.headers);
+        headers.set('Content-Type', 'application/json');
+        headers.set('X-Encrypted', 'true');
+        
+        return new Response(JSON.stringify(encrypted), {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to encrypt response:', error);
+    }
+  }
+  
+  return handlerResponse;
+}
 
 // Import standalone HTML content
 // In Cloudflare Workers, we need to embed the HTML as a string
@@ -30,19 +66,23 @@ export function createRouter(standaloneHtml) {
 
       // API endpoints (require authentication)
       if (path === '/api/create' && request.method === 'POST') {
-        return handleCreateShortUrl(request, env);
+        const response = await handleCreateShortUrl(request, env);
+        return await wrapWithEncryption(response, request);
       }
 
       if (path.startsWith('/api/info/') && request.method === 'GET') {
-        return handleGetUrlInfo(request, env);
+        const response = await handleGetUrlInfo(request, env);
+        return await wrapWithEncryption(response, request);
       }
 
       if (path === '/api/list' && request.method === 'GET') {
-        return handleListUrls(request, env);
+        const response = await handleListUrls(request, env);
+        return await wrapWithEncryption(response, request);
       }
 
       if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
-        return handleDeleteUrl(request, env);
+        const response = await handleDeleteUrl(request, env);
+        return await wrapWithEncryption(response, request);
       }
 
       // Redirect endpoint (public, no auth required)

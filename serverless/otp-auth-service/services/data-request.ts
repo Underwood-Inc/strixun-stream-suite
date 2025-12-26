@@ -13,7 +13,8 @@
  */
 
 import { getCustomerKey } from './customer.js';
-import { encryptWithJWT, decryptWithJWT } from '../utils/jwt-encryption.js';
+// Uses shared encryption suite from serverless/shared/encryption
+import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
 import { generateRequestKey } from '../utils/two-stage-encryption.js';
 
 export interface DataRequest {

@@ -26,9 +26,17 @@ export * from '../../../src/core/api/enhanced/index.js';
 
 // Re-export client factory for convenience
 export {
-  getAPIClient,
-  createAPIClient,
-  setAPIClient,
-  resetAPIClient,
+  createAPIClient, getAPIClient, resetAPIClient, setAPIClient
 } from '../../../src/core/api/factory.js';
+
+// Re-export encryption utilities
+export {
+  createEncryptionWrapper, decryptMultiStage, decryptTwoStage, decryptWithJWT,
+  encryptMultiStage, encryptTwoStage, encryptWithJWT, generateRequestKey, isDoubleEncrypted, isMultiEncrypted, wrapWithEncryption
+} from '../encryption/index.js';
+
+// Re-export encryption types
+export type {
+  AuthResult, E2EEncryptionConfig, EncryptedData, EncryptionParty, EncryptionWrapperOptions, MultiStageEncryptedData, RouteResult, TwoStageEncryptedData
+} from '../encryption/index.js';
 

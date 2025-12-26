@@ -26,8 +26,8 @@
  * - Requesters need owner's JWT (provided by system) + approved request key to decrypt
  */
 
-// @ts-ignore - jwt-encryption.js is a JavaScript file without type definitions
-import { decryptWithJWT, encryptWithJWT } from './jwt-encryption.js';
+// Uses shared encryption suite from serverless/shared/encryption
+import { decryptWithJWT, encryptWithJWT } from '@strixun/api-framework';
 
 const PBKDF2_ITERATIONS = 100000;
 const SALT_LENGTH = 16;

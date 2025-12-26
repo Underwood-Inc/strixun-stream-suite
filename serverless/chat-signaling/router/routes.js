@@ -2,12 +2,48 @@
  * Chat Signaling Router
  * 
  * Routes all requests to appropriate handlers
+ * Uses shared encryption suite for automatic response encryption
  */
 
-import { getCorsHeaders } from '../utils/cors.js';
-import { handleCreateRoom, handleJoinRoom, handleSendOffer, handleGetOffer, handleSendAnswer, handleGetAnswer, handleHeartbeat, handleGetRooms, handleLeaveRoom } from '../handlers/signaling.js';
-import { handleCreatePartyRoom, handleGetPartyRooms, handleInviteToPartyRoom } from '../handlers/party.js';
 import { handleHealth } from '../handlers/health.js';
+import { handleCreatePartyRoom, handleGetPartyRooms, handleInviteToPartyRoom } from '../handlers/party.js';
+import { handleCreateRoom, handleGetAnswer, handleGetOffer, handleGetRooms, handleHeartbeat, handleJoinRoom, handleLeaveRoom, handleSendAnswer, handleSendOffer } from '../handlers/signaling.js';
+import { getCorsHeaders } from '../utils/cors.js';
+
+/**
+ * Helper to wrap handlers with automatic encryption
+ * Uses shared encryption suite from serverless/shared/encryption
+ */
+async function wrapWithEncryption(handlerResponse, request) {
+  // Check if response should be encrypted (has JWT token and is OK)
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  
+  if (token && token.length >= 10 && handlerResponse.ok) {
+    try {
+      const contentType = handlerResponse.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const { encryptWithJWT } = await import('@strixun/api-framework');
+        const responseData = await handlerResponse.json();
+        const encrypted = await encryptWithJWT(responseData, token);
+        
+        const headers = new Headers(handlerResponse.headers);
+        headers.set('Content-Type', 'application/json');
+        headers.set('X-Encrypted', 'true');
+        
+        return new Response(JSON.stringify(encrypted), {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to encrypt response:', error);
+    }
+  }
+  
+  return handlerResponse;
+}
 
 /**
  * Route requests to appropriate handlers
@@ -24,52 +60,64 @@ export async function route(request, env) {
 
     // Signaling endpoints
     if (path === '/signaling/create-room' && request.method === 'POST') {
-      return handleCreateRoom(request, env);
+      const response = await handleCreateRoom(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path === '/signaling/join-room' && request.method === 'POST') {
-      return handleJoinRoom(request, env);
+      const response = await handleJoinRoom(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path === '/signaling/offer' && request.method === 'POST') {
-      return handleSendOffer(request, env);
+      const response = await handleSendOffer(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path.startsWith('/signaling/offer/') && request.method === 'GET') {
-      return handleGetOffer(request, env);
+      const response = await handleGetOffer(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path === '/signaling/answer' && request.method === 'POST') {
-      return handleSendAnswer(request, env);
+      const response = await handleSendAnswer(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path.startsWith('/signaling/answer/') && request.method === 'GET') {
-      return handleGetAnswer(request, env);
+      const response = await handleGetAnswer(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path === '/signaling/heartbeat' && request.method === 'POST') {
-      return handleHeartbeat(request, env);
+      const response = await handleHeartbeat(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path === '/signaling/rooms' && request.method === 'GET') {
-      return handleGetRooms(request, env);
+      const response = await handleGetRooms(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path === '/signaling/leave' && request.method === 'POST') {
-      return handleLeaveRoom(request, env);
+      const response = await handleLeaveRoom(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     // Party room endpoints (opt-in room splitting)
     if (path === '/signaling/create-party-room' && request.method === 'POST') {
-      return handleCreatePartyRoom(request, env);
+      const response = await handleCreatePartyRoom(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path.startsWith('/signaling/party-rooms/') && request.method === 'GET') {
-      return handleGetPartyRooms(request, env);
+      const response = await handleGetPartyRooms(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     if (path.startsWith('/signaling/party-room/') && path.endsWith('/invite') && request.method === 'POST') {
-      return handleInviteToPartyRoom(request, env);
+      const response = await handleInviteToPartyRoom(request, env);
+      return await wrapWithEncryption(response, request);
     }
 
     // Not found

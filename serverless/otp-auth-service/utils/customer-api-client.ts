@@ -5,7 +5,8 @@
  * Replaces direct KV access with HTTP API calls for decoupled architecture
  */
 
-import { decryptWithJWT } from './jwt-encryption.js';
+// Uses shared encryption suite from serverless/shared/encryption
+import { decryptWithJWT } from '@strixun/api-framework';
 
 interface CustomerData {
     customerId: string;

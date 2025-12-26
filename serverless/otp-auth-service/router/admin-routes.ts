@@ -176,9 +176,10 @@ async function handleAdminRoute(
     const handlerResponse = await handler(request, env, auth.customerId);
     
     // If JWT token is present, encrypt the response (only for dashboard/JWT auth)
+    // Uses shared encryption suite from serverless/shared/encryption
     if ('jwtToken' in auth && auth.jwtToken && handlerResponse.ok) {
         try {
-            const { encryptWithJWT } = await import('../utils/jwt-encryption.js');
+            const { encryptWithJWT } = await import('@strixun/api-framework');
             const responseData = await handlerResponse.json();
             const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
             

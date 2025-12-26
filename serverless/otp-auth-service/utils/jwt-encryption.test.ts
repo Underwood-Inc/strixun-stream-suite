@@ -4,7 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { encryptWithJWT, decryptWithJWT } from './jwt-encryption.js';
+// Uses shared encryption suite from serverless/shared/encryption
+import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
 
 describe('JWT Encryption Utilities', () => {
   const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMzQ1NiIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsImV4cCI6OTk5OTk5OTk5OX0.test-signature';

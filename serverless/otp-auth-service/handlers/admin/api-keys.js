@@ -13,7 +13,7 @@ import { getCustomer } from '../../services/customer.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
 import { decryptData, getJWTSecret } from '../../utils/crypto.js';
-import { encryptWithJWT } from '../../utils/jwt-encryption.js';
+// Uses shared encryption suite from serverless/shared/encryption
 
 /**
  * List customer API keys
@@ -39,6 +39,8 @@ export async function handleListApiKeys(request, env, customerId, jwtToken = nul
                     const decryptedKey = await decryptData(k.encryptedKey, jwtSecret);
                     
                     // Then encrypt with user's JWT (Stage 1 encryption - only user can decrypt)
+                    // Uses shared encryption suite
+                    const { encryptWithJWT } = await import('@strixun/api-framework');
                     doubleEncryptedKey = await encryptWithJWT(decryptedKey, jwtToken);
                 } catch (error) {
                     console.error('Failed to double-encrypt API key:', error);

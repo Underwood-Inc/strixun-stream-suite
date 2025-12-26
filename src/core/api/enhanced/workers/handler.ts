@@ -10,6 +10,7 @@ import { buildResponse } from '../building/response-builder';
 import { createRFC7807Response, formatErrorAsRFC7807 } from '../errors';
 import { applyFiltering, parseFilteringParams } from '../filtering';
 import { WorkerAdapter } from './adapter';
+import { encryptWithJWT } from '../encryption';
 
 export interface HandlerOptions {
   typeDef?: TypeDefinition;
@@ -109,9 +110,31 @@ export function createEnhancedHandler<T = unknown>(
         // Note: CORS middleware would handle this, but we add headers manually here
       }
 
-      return new Response(JSON.stringify(filteredData), {
+      // Automatically encrypt response if JWT token is present
+      let responseData = filteredData;
+      let responseHeaders = headers;
+      
+      if (context.user) {
+        // Extract JWT token from request
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        
+        if (token && token.length >= 10) {
+          try {
+            // Encrypt response data
+            const encrypted = await encryptWithJWT(responseData, token);
+            responseData = encrypted as any;
+            responseHeaders.set('X-Encrypted', 'true');
+          } catch (error) {
+            console.error('Failed to encrypt response:', error);
+            // Continue with unencrypted response if encryption fails
+          }
+        }
+      }
+
+      return new Response(JSON.stringify(responseData), {
         status: 200,
-        headers,
+        headers: responseHeaders,
       });
     } catch (error: any) {
       // Handle errors with RFC 7807

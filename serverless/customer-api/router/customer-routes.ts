@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
-import { encryptWithJWT } from '../utils/jwt-encryption.js';
+import { encryptWithJWT } from '@strixun/api-framework';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 
 interface Env {
