@@ -105,11 +105,12 @@ export async function handleRequestOTP(
         // Check rate limit (super admins are exempt)
         const emailHash = await hashEmail(email);
         const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        const getCustomerFn = (cid: string) => getCustomer(cid, env);
         const rateLimit = await checkOTPRateLimitService(
             emailHash,
             customerId,
             clientIP,
-            (id) => getCustomerCached(id, env),
+            (id: string) => getCustomerCached(id, getCustomerFn),
             env,
             email
         );

@@ -8,7 +8,7 @@
 import { getCustomer } from '../../services/customer.js';
 import { getSessionsByIP } from '../../services/ip-session-index.js';
 import { checkIPRateLimit, recordIPRequest } from '../../services/rate-limit.js';
-import { getCustomerCached } from '../../utils/cache.js';
+import { getCustomerCached, type GetCustomerFn } from '../../utils/cache.js';
 import { getCorsHeaders } from '../../utils/cors.js';
 import { getJWTSecret, verifyJWT } from '../../utils/crypto.js';
 import { isSuperAdminEmail } from '../../utils/super-admin.js';
@@ -74,10 +74,11 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
         const email = payload.email;
         
         // Check IP rate limit for session lookup endpoint using existing rate limiting service
+        const getCustomerFn: GetCustomerFn = (cid: string) => getCustomer(cid, env);
         const rateLimit = await checkIPRateLimit(
             requestIP,
             customerId,
-            (id) => getCustomerCached(id, (cid) => getCustomer(cid, env)),
+            (id: string) => getCustomerCached(id, getCustomerFn),
             env,
             'session-lookup',
             undefined, // Use plan default

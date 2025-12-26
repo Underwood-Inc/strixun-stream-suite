@@ -3,17 +3,32 @@
  * In-memory cache with TTL for performance optimization
  */
 
+import type { CustomerData } from '../services/customer.js';
+
+interface CacheEntry {
+    data: CustomerData;
+    timestamp: number;
+}
+
 // In-memory cache for customer data (5-minute TTL)
-const customerCache = new Map();
+const customerCache = new Map<string, CacheEntry>();
 const cacheTTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Get customer from cache or KV
- * @param {string} customerId - Customer ID
- * @param {Function} getCustomerFn - Function to fetch customer from KV
- * @returns {Promise<object|null>} Customer data
+ * Function type for fetching customer data
  */
-export async function getCustomerCached(customerId, getCustomerFn) {
+export type GetCustomerFn = (customerId: string) => Promise<CustomerData | null>;
+
+/**
+ * Get customer from cache or KV
+ * @param customerId - Customer ID
+ * @param getCustomerFn - Function to fetch customer from KV
+ * @returns Customer data or null
+ */
+export async function getCustomerCached(
+    customerId: string | null,
+    getCustomerFn: GetCustomerFn
+): Promise<CustomerData | null> {
     if (!customerId) return null;
     
     const cacheKey = `customer_${customerId}`;
@@ -36,9 +51,9 @@ export async function getCustomerCached(customerId, getCustomerFn) {
 
 /**
  * Invalidate customer cache
- * @param {string} customerId - Customer ID
+ * @param customerId - Customer ID
  */
-export function invalidateCustomerCache(customerId) {
+export function invalidateCustomerCache(customerId: string | null): void {
     if (customerId) {
         customerCache.delete(`customer_${customerId}`);
     }
