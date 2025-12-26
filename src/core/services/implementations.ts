@@ -134,9 +134,21 @@ class LoggerServiceImpl implements LoggerService {
       this.entries.shift();
     }
 
-    // Emit event for UI components
+    // CRITICAL: Directly call addLogEntry if available (set up by bootstrap)
+    // This ensures logs reach the activity log store immediately
+    if (typeof window !== 'undefined' && (window as any).addLogEntry && typeof (window as any).addLogEntry === 'function') {
+      try {
+        (window as any).addLogEntry(message, level, flair, icon);
+      } catch (err) {
+        console.warn('[LoggerService] Failed to call window.addLogEntry:', err);
+      }
+    }
+
+    // Emit event for UI components (backup/alternative path)
     import('../../core/events/EventBus').then(({ EventBus }) => {
       EventBus.emitSync('log:entry', entry);
+    }).catch(() => {
+      // EventBus import failed, but we already logged via window.addLogEntry above
     });
 
     // Also call legacy logger if available
@@ -167,8 +179,21 @@ class LoggerServiceImpl implements LoggerService {
 
   clear(): void {
     this.entries = [];
+    
+    // CRITICAL: Directly call clearLogEntries if available (set up by bootstrap)
+    if (typeof window !== 'undefined' && (window as any).clearLogEntries && typeof (window as any).clearLogEntries === 'function') {
+      try {
+        (window as any).clearLogEntries();
+      } catch (err) {
+        console.warn('[LoggerService] Failed to call window.clearLogEntries:', err);
+      }
+    }
+    
+    // Emit event for UI components (backup/alternative path)
     import('../../core/events/EventBus').then(({ EventBus }) => {
       EventBus.emitSync('log:cleared', {});
+    }).catch(() => {
+      // EventBus import failed, but we already cleared via window.clearLogEntries above
     });
   }
 

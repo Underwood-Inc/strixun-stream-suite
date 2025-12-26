@@ -447,8 +447,8 @@ async function sendToDisplay(configId: string, message: TextCyclerMessage): Prom
     }
   } else if (!isConnected && !isDock) {
     // Silently skip - connection is already validated in startTextCycler()
-    // Console warn only for debugging, not user-facing spam
-    console.warn('[Text Cycler] Not connected to OBS - cannot send message via WebSocket');
+    // Don't log warnings here - this is expected during restore when OBS isn't connected yet
+    // Only log if this is an actual user action, not a restore operation
   }
 }
 
@@ -753,12 +753,29 @@ export function quickStart(index: number): void {
 
 /**
  * Restore running configs on load
+ * Only restores if OBS is connected (for browser mode) or if in dock (local mode)
  */
 export function restoreRunningTextCyclers(): void {
+  const isConnected = get(connected);
+  const isDock = dependencies.isOBSDock();
+  
   textCyclerConfigs.forEach((config, index) => {
     if (config.isRunning) {
-      config.isRunning = false;
-      startConfigCycling(index);
+      // Only restore if:
+      // 1. Browser mode: OBS is connected OR we're in dock (local mode)
+      // 2. Legacy mode: OBS is connected
+      const canRestore = config.mode === 'browser' 
+        ? (isConnected || isDock)
+        : isConnected;
+      
+      if (canRestore) {
+        config.isRunning = false;
+        startConfigCycling(index);
+      } else {
+        // Don't restore if not connected - just mark as not running
+        config.isRunning = false;
+        saveTextCyclerConfigs();
+      }
     }
   });
 }

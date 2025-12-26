@@ -85,37 +85,58 @@ export function logDebug(message: string, flair?: string, icon?: string): void {
 
 /**
  * Synchronous version for immediate logging (uses window.addLogEntry if available)
+ * CRITICAL: Always uses original console methods for fallback to prevent recursion
  */
 export function logSync(message: string, type: LogType = 'info', flair?: string, icon?: string): void {
+  // CRITICAL: Always get original console methods FIRST to prevent recursion
+  const originalLog = (console as any).__originalLog || console.log;
+  const originalError = (console as any).__originalError || console.error;
+  const originalWarn = (console as any).__originalWarn || console.warn;
+  const originalDebug = (console as any).__originalDebug || console.debug;
+  
   // Try to use window.addLogEntry if available (set up by bootstrap)
   if (typeof window !== 'undefined' && (window as any).addLogEntry && typeof (window as any).addLogEntry === 'function') {
     try {
+      // Call the wrapped function directly - FORCE synchronous execution
       (window as any).addLogEntry(message, type, flair, icon);
       return;
     } catch (err) {
-      // If window.addLogEntry fails, fall through to console
-      console.warn('[logSync] window.addLogEntry failed:', err);
+      // If window.addLogEntry fails, use original console methods to avoid recursion
+      // DO NOT use intercepted console methods here
+      originalWarn('[logSync] window.addLogEntry failed:', err);
+      // Fall through to console fallback
     }
   }
   
-  // Fallback to console if window.addLogEntry not available or failed
-  const consoleMethod = type === 'error' ? console.error : 
-                        type === 'warning' ? console.warn :
-                        type === 'debug' ? console.debug : console.log;
+  // Fallback to ORIGINAL console methods (never intercepted ones) to avoid recursion
+  const consoleMethod = type === 'error' ? originalError : 
+                        type === 'warning' ? originalWarn :
+                        type === 'debug' ? originalDebug : originalLog;
   consoleMethod(`[${type.toUpperCase()}] ${message}`);
 }
 
 /**
  * Replace console methods with store-based logging
  * Call this early in bootstrap to intercept all console calls
+ * CRITICAL: Must be called AFTER window.addLogEntry is set up
  */
 export function interceptConsole(): void {
   if (typeof window === 'undefined') return;
   
-  const originalLog = console.log.bind(console);
-  const originalError = console.error.bind(console);
-  const originalWarn = console.warn.bind(console);
-  const originalDebug = console.debug.bind(console);
+  // Get originals if already stored (from bootstrap), otherwise create new ones
+  const originalLog = (console as any).__originalLog || console.log.bind(console);
+  const originalError = (console as any).__originalError || console.error.bind(console);
+  const originalWarn = (console as any).__originalWarn || console.warn.bind(console);
+  const originalDebug = (console as any).__originalDebug || console.debug.bind(console);
+  
+  // Store originals for use in logSync fallback (to avoid recursion)
+  // Only set if not already set (bootstrap may have set them first)
+  if (!(console as any).__originalLog) {
+    (console as any).__originalLog = originalLog;
+    (console as any).__originalError = originalError;
+    (console as any).__originalWarn = originalWarn;
+    (console as any).__originalDebug = originalDebug;
+  }
   
   console.log = (...args: any[]) => {
     const message = args.map(arg => 

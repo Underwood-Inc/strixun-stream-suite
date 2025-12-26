@@ -30,6 +30,7 @@
   let lastItemsLength = 0;
   let lastStart = -1;
   let lastEnd = -1;
+  let previousItemsLengthForScroll = 0;
   
   // Calculate visible items reactively with error handling and memoization
   $: {
@@ -116,10 +117,21 @@
     scrollTop = target.scrollTop;
   }
   
+  // Auto-scroll to top when new items are added (newest first)
+  // Watch for items length changes and scroll to top
+  $: {
+    if (items.length > previousItemsLengthForScroll && container) {
+      // New items added - scroll to top
+      container.scrollTop = 0;
+    }
+    previousItemsLengthForScroll = items.length;
+  }
+  
   onMount(() => {
-    // Auto-scroll to top when new items are added (newest first)
+    // Initial scroll to top if items exist
     if (container && items.length > 0) {
       container.scrollTop = 0;
+      previousItemsLengthForScroll = items.length;
     }
   });
 </script>

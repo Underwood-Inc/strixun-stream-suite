@@ -4,17 +4,49 @@
  * Initializes the Svelte application
  */
 
+// CRITICAL: Set up window.addLogEntry IMMEDIATELY and SYNCHRONOUSLY
+// SIMPLIFIED - Direct import, no queue bullshit
+if (typeof window !== 'undefined') {
+  // Set up window.addLogEntry to directly import and call the store
+  (window as any).addLogEntry = async (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info',
+    flair?: string,
+    icon?: string
+  ) => {
+    try {
+      // Direct import and call - no queue, no complexity
+      const { addLogEntry } = await import('./stores/activity-log');
+      addLogEntry(message, type, flair, icon);
+    } catch (err) {
+      // Fallback to console
+      const consoleMethod = type === 'error' ? console.error : 
+                            type === 'warning' ? console.warn :
+                            type === 'debug' ? console.debug : 
+                            console.log;
+      consoleMethod(`[${type.toUpperCase()}] ${message}`);
+    }
+  };
+  
+  (window as any).clearLogEntries = async () => {
+    try {
+      const { clearLogEntries } = await import('./stores/activity-log');
+      clearLogEntries();
+    } catch (err) {
+      console.error('[clearLogEntries] Failed:', err);
+    }
+  };
+  
+  // Set chat signaling server URL
+  (window as any).CHAT_SIGNALING_URL = 'https://strixun-chat-signaling.strixuns-script-suite.workers.dev';
+}
+
 import { mount } from 'svelte';
 import App from './App.svelte';
 import './styles/main.scss';
 
 // Initialize core communication layer FIRST
 import { initializeCore } from './core/init';
-
-// Set chat signaling server URL
-if (typeof window !== 'undefined') {
-  (window as any).CHAT_SIGNALING_URL = 'https://strixun-chat-signaling.strixuns-script-suite.workers.dev';
-}
 
 // Import modules to ensure they're available
 import './modules/app';
@@ -48,4 +80,3 @@ const app = mount(App, {
 // This ensures the Svelte app is fully mounted before initialization
 
 export default app;
-

@@ -1,10 +1,11 @@
 /**
  * Activity Log Store
  * 
- * Manages log entries with virtualization support
+ * SIMPLIFIED - Direct, working implementation
+ * No complex queueing, no bullshit - just works
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { createFilterState } from './filter-state';
 
 export type LogType = 'info' | 'success' | 'error' | 'warning' | 'debug';
@@ -14,18 +15,15 @@ export interface LogEntry {
   message: string;
   type: LogType;
   timestamp: Date;
-  flair?: string; // Optional flair/badge text
-  icon?: string; // Optional icon emoji
-  metadata?: Record<string, any>; // Additional metadata
-  count?: number; // Count of duplicate consecutive messages
+  flair?: string;
+  icon?: string;
+  metadata?: Record<string, any>;
+  count?: number;
 }
 
 // Store for all log entries (max 1000 entries)
 const MAX_ENTRIES = 1000;
 const logEntries = writable<LogEntry[]>([]);
-
-// Derived store for filtered entries (for search/type filtering)
-export const filteredLogEntries = writable<LogEntry[]>([]);
 
 // Create reusable filter state for log types
 const logFilterState = createFilterState<LogType>({
@@ -51,16 +49,14 @@ export const visibleLogEntries = derived(
     let filtered = entries;
     
     // Filter by type - only filter if some (but not all) types are active
-    // If all are active OR all are inactive, show everything (no filtering)
     const activeFilterCount = filters.activeFilters.size;
     const totalFilterCount = filters.allFilters.size;
     
-    // Only apply type filtering if some (but not all) filters are active
     if (activeFilterCount > 0 && activeFilterCount < totalFilterCount) {
       filtered = filtered.filter(entry => filters.activeFilters.has(entry.type));
     }
     
-    // Filter by search query with advanced syntax
+    // Filter by search query
     const searchQuery = filters.searchQuery?.trim() || '';
     if (searchQuery) {
       filtered = filtered.filter(entry => {
@@ -74,11 +70,6 @@ export const visibleLogEntries = derived(
 
 /**
  * Advanced search query matching
- * Supports:
- * - "exact phrase" - matches exact phrase in quotes
- * - word1 word2 - matches entries containing both words (AND)
- * - word1 | word2 - matches entries containing either word (OR)
- * - word* - wildcard matching
  */
 function matchesSearchQuery(entry: LogEntry, query: string): boolean {
   const message = entry.message.toLowerCase();
@@ -99,21 +90,17 @@ function matchesSearchQuery(entry: LogEntry, query: string): boolean {
     }
   }
   
-  // Process remaining query (AND/OR logic)
   processedQuery = processedQuery.trim();
   if (!processedQuery) {
-    return quotedPhrases.length > 0; // Only quoted phrases, all matched
+    return quotedPhrases.length > 0;
   }
   
   // Split by | for OR groups, then by space for AND within groups
   const orGroups = processedQuery.split('|').map(g => g.trim()).filter(g => g);
   
-  // If any OR group matches, the entry matches
   return orGroups.some(orGroup => {
     const andTerms = orGroup.split(/\s+/).filter(t => t);
-    // All AND terms must match
     return andTerms.every(term => {
-      // Support wildcard * at end
       if (term.endsWith('*')) {
         const prefix = term.slice(0, -1).toLowerCase();
         return searchText.includes(prefix);
@@ -124,8 +111,7 @@ function matchesSearchQuery(entry: LogEntry, query: string): boolean {
 }
 
 /**
- * Add a log entry
- * Merges duplicate consecutive messages (like a browser console would)
+ * Add a log entry - SIMPLIFIED, DIRECT, WORKS
  */
 export function addLogEntry(
   message: string,
@@ -134,41 +120,45 @@ export function addLogEntry(
   icon?: string,
   metadata?: Record<string, any>
 ): void {
-  logEntries.update(entries => {
-    // Check if the first entry is a duplicate (same message, type, flair, icon)
-    const firstEntry = entries[0];
-    if (
-      firstEntry &&
-      firstEntry.message === message &&
-      firstEntry.type === type &&
-      firstEntry.flair === flair &&
-      firstEntry.icon === icon
-    ) {
-      // Merge with existing entry - increment count and update timestamp
-      const updatedEntry: LogEntry = {
-        ...firstEntry,
-        timestamp: new Date(), // Update to most recent timestamp
-        count: (firstEntry.count || 1) + 1
-      };
-      return [updatedEntry, ...entries.slice(1)];
-    }
-    
-    // New unique entry
-    const entry: LogEntry = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      message,
-      type,
+  // Get current entries
+  const currentEntries = get(logEntries);
+  
+  // Check if first entry is a duplicate
+  const firstEntry = currentEntries[0];
+  if (
+    firstEntry &&
+    firstEntry.message === message &&
+    firstEntry.type === type &&
+    firstEntry.flair === flair &&
+    firstEntry.icon === icon
+  ) {
+    // Merge with existing entry
+    const updatedEntry: LogEntry = {
+      ...firstEntry,
       timestamp: new Date(),
-      flair,
-      icon,
-      metadata,
-      count: 1
+      count: (firstEntry.count || 1) + 1
     };
-    
-    const newEntries = [entry, ...entries];
-    // Keep only the most recent MAX_ENTRIES
-    return newEntries.slice(0, MAX_ENTRIES);
-  });
+    const newEntries = [updatedEntry, ...currentEntries.slice(1)];
+    logEntries.set(newEntries);
+    return;
+  }
+  
+  // New unique entry
+  const entry: LogEntry = {
+    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    message,
+    type,
+    timestamp: new Date(),
+    flair,
+    icon,
+    metadata,
+    count: 1
+  };
+  
+  const newEntries = [entry, ...currentEntries];
+  // Keep only the most recent MAX_ENTRIES
+  const limitedEntries = newEntries.slice(0, MAX_ENTRIES);
+  logEntries.set(limitedEntries);
 }
 
 /**
@@ -182,12 +172,7 @@ export function clearLogEntries(): void {
  * Get log entries (for external access)
  */
 export function getLogEntries(): LogEntry[] {
-  let entries: LogEntry[] = [];
-  logEntries.subscribe(value => {
-    entries = value;
-  })();
-  return entries;
+  return get(logEntries);
 }
 
 export { logEntries };
-

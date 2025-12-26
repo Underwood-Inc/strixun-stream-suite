@@ -65,6 +65,11 @@
 
 {#if $authRequired}
   <AuthScreen />
+  <!-- ActivityLog must be rendered even during auth so logs can be displayed -->
+  <div class="split-container auth-only">
+    <div class="split-divider" id="logDivider"></div>
+    <ActivityLog />
+  </div>
 {:else}
 <div class="app">
   <Header />
@@ -129,14 +134,14 @@
   </FloatingPanel>
   
   <ToastContainer />
+  
+  <TwitchAdCarousel
+    position="bottom-right"
+    supportUrl="https://www.twitch.tv/strixun"
+    storageKey="ui_main_ad_carousel_state"
+  />
 </div>
 {/if}
-
-<TwitchAdCarousel
-  position="bottom-right"
-  supportUrl="https://www.twitch.tv/strixun"
-  storageKey="ui_main_ad_carousel_state"
-/>
 
 <style lang="scss">
   @use '@styles/main';
@@ -146,6 +151,15 @@
   .page-wrapper {
     @include page-transition;
     @include gpu-accelerated;
+  }
+  
+  .split-container.auth-only {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 300px;
+    z-index: 1000;
   }
 </style>
 

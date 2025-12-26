@@ -5,19 +5,18 @@
  */
 
 import { navigateTo, restorePage } from '../stores/navigation';
-import { connected, currentScene, sources, textSources } from '../stores/connection';
-import { initIndexedDB, loadStorageCache, storage, startAutoBackup } from './storage';
-import { loadCredentials, connect as wsConnect, updateConnectionState } from './websocket';
-import * as textCycler from './text-cycler';
+import * as App from './app';
+import { Layouts } from './layouts';
+import { ScriptStatus, isOBSDock, openUrlOrCopy } from './script-status';
 import * as sourceSwaps from './source-swaps';
+import { Sources } from './sources';
+import { initIndexedDB, loadStorageCache, startAutoBackup } from './storage';
 import * as storageSync from './storage-sync';
+import * as textCycler from './text-cycler';
+import { TwitchAPI } from './twitch-api';
 import { UIUtils } from './ui-utils';
 import { Version } from './version';
-import { ScriptStatus, isOBSDock, openUrlOrCopy } from './script-status';
-import { Sources } from './sources';
-import { Layouts } from './layouts';
-import { TwitchAPI } from './twitch-api';
-import * as App from './app';
+import { loadCredentials, updateConnectionState, connect as wsConnect } from './websocket';
 
 /**
  * Set encryption enabled state in store
@@ -34,15 +33,46 @@ async function setEncryptionState(): Promise<void> {
  * Initialize the application
  */
 export async function initializeApp(): Promise<void> {
-  // CRITICAL: Initialize log store FIRST so all logging goes through the store
+  // Get the actual addLogEntry function for use in this module
+  // window.addLogEntry is already set up in main.ts, so we can use it directly
   const { addLogEntry, clearLogEntries } = await import('../stores/activity-log');
-  (window as any).addLogEntry = addLogEntry;
-  (window as any).clearLogEntries = clearLogEntries;
+  
+  // CRITICAL: Get original console methods BEFORE intercepting (to prevent recursion)
+  const originalLog = console.log.bind(console);
+  const originalError = console.error.bind(console);
+  const originalWarn = console.warn.bind(console);
+  const originalDebug = console.debug.bind(console);
+  
+  // Store originals for use in fallbacks (to avoid recursion)
+  (console as any).__originalLog = originalLog;
+  (console as any).__originalError = originalError;
+  (console as any).__originalWarn = originalWarn;
+  (console as any).__originalDebug = originalDebug;
+  
+  // CRITICAL: Bridge EventBus log:entry events to the activity log store
+  // This ensures LoggerService events reach the ActivityLog component
+  const { EventBus } = await import('../core/events/EventBus');
+  EventBus.on('log:entry', (entry: { message: string; level: 'info' | 'success' | 'error' | 'warning' | 'debug'; flair?: string; icon?: string }) => {
+    try {
+      addLogEntry(entry.message, entry.level, entry.flair, entry.icon);
+    } catch (err) {
+      originalError('[EventBus log:entry] Failed to add log entry:', err);
+    }
+  });
+  EventBus.on('log:cleared', () => {
+    try {
+      clearLogEntries();
+    } catch (err) {
+      originalError('[EventBus log:cleared] Failed to clear log entries:', err);
+    }
+  });
   
   // Intercept all console calls to route through the store
+  // NOTE: This must happen AFTER window.addLogEntry is set up
   const { interceptConsole } = await import('../utils/logger');
   interceptConsole();
   
+  // Test that logging works
   addLogEntry('Starting application initialization...', 'info');
   
   try {

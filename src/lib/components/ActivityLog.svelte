@@ -2,15 +2,9 @@
   /**
    * Enhanced Activity Log Component
    * 
-   * Features:
-   * - Color-coded messages by type
-   * - Flairs/badges for special messages
-   * - List virtualization for 500+ entries
-   * - Type filtering
-   * - Search functionality
-   * - Auto-scroll to top
+   * SIMPLIFIED - Direct store subscription, no bullshit
    */
-  
+
   import { onDestroy, onMount, tick } from 'svelte';
   import { storage } from '../../modules/storage';
   import {
@@ -24,15 +18,23 @@
   import Tooltip from './Tooltip.svelte';
   import VirtualList from './VirtualList.svelte';
   import { ChevronButton } from './primitives/ChevronButton';
-  
+
   let collapsed = false;
   let filterExpanded = false;
   let selectionMode = false;
-  let selectedEntries = new Set<string>(); // Set of log entry IDs
-  
+  let selectedEntries = new Set<string>();
+
+  // DIRECT store subscriptions - Svelte auto-subscription
+  // These will trigger re-renders when stores update
+  $: allEntries = $logEntries;
+  $: visibleEntries = $visibleLogEntries;
+  $: displayItems = visibleEntries.length > 0 ? visibleEntries : allEntries;
+  $: hasEntries = displayItems.length > 0;
+
   function toggleFilters(): void {
     filterExpanded = !filterExpanded;
   }
+
   let splitLog: HTMLDivElement;
   let isResizing = false;
   let startY = 0;
@@ -41,51 +43,23 @@
   let pendingHeight: number | null = null;
   let logContainerHeight = 300;
   let resizeObserver: ResizeObserver | null = null;
-  
-  // Helper to cast item to LogEntry (for slot typing)
+
+  // Helper to cast item to LogEntry
   function asLogEntry(item: unknown): import('../../stores/activity-log').LogEntry {
     return item as import('../../stores/activity-log').LogEntry;
   }
-  
+
   onMount(async () => {
-    // Migrate any existing DOM-based log entries to the store
-    // This needs to happen BEFORE the component renders to avoid showing old entries
     await tick();
-    const logElement = document.getElementById('log');
-    if (logElement) {
-      const domEntries = Array.from(logElement.querySelectorAll('.log-entry'));
-      if (domEntries.length > 0) {
-        // Parse existing DOM entries and add them to the store (in reverse order to maintain chronological order)
-        const entriesToMigrate: Array<{ message: string; type: 'info' | 'success' | 'error' | 'warning' | 'debug' }> = [];
-        
-        domEntries.forEach((entry) => {
-          const textEl = entry.querySelector('.log-entry__text');
-          if (textEl) {
-            const message = textEl.textContent || '';
-            const className = entry.className || '';
-            let type: 'info' | 'success' | 'error' | 'warning' | 'debug' = 'info';
-            if (className.includes('success')) type = 'success';
-            else if (className.includes('error')) type = 'error';
-            else if (className.includes('warning')) type = 'warning';
-            else if (className.includes('debug')) type = 'debug';
-            
-            entriesToMigrate.push({ message, type });
-          }
-        });
-        
-        // Add entries to store in reverse order (oldest first, so they appear at bottom)
-        for (let i = entriesToMigrate.length - 1; i >= 0; i--) {
-          const { message, type } = entriesToMigrate[i];
-          addLogEntry(message, type);
-        }
-        
-        // Clear the DOM entries after migration
-        logElement.innerHTML = '';
-      }
-    }
     
     // Restore collapsed state
-    const saved = storage.get('ui_split_panel') as { collapsed?: boolean; height?: number } | null;
+    let saved: { collapsed?: boolean; height?: number } | null = null;
+    try {
+      saved = storage.get('ui_split_panel') as { collapsed?: boolean; height?: number } | null;
+    } catch (err) {
+      saved = null;
+    }
+    
     if (saved?.collapsed) {
       collapsed = true;
       await tick();
@@ -104,9 +78,8 @@
         splitLog.classList.remove('collapsed');
         if (saved?.height) {
           splitLog.style.height = `${saved.height}px`;
-          logContainerHeight = saved.height - 34; // Subtract header height
+          logContainerHeight = saved.height - 34;
         } else {
-          // Default height if no saved height
           splitLog.style.height = '200px';
           logContainerHeight = 166;
         }
@@ -130,7 +103,7 @@
       resizeObserver.observe(splitLog);
     }
   });
-  
+
   function handleResizeStart(e: MouseEvent): void {
     if (collapsed) return;
     e.preventDefault();
@@ -150,7 +123,7 @@
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'ns-resize';
   }
-  
+
   function handleResize(e: MouseEvent): void {
     if (!isResizing || !splitLog) return;
     e.preventDefault();
@@ -170,7 +143,7 @@
       });
     }
   }
-  
+
   function handleResizeEnd(): void {
     if (!isResizing) return;
     
@@ -206,7 +179,7 @@
       });
     }
   }
-  
+
   onDestroy(() => {
     const divider = document.getElementById('logDivider');
     if (divider) {
@@ -223,7 +196,7 @@
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
   });
-  
+
   function toggleCollapse(): void {
     if (isResizing) {
       handleResizeEnd();
@@ -231,8 +204,6 @@
     
     const currentCollapsed = collapsed;
     const newVal = !currentCollapsed;
-    
-    // Set state immediately for instant UI update
     collapsed = newVal;
     
     let savedHeight = 200;
@@ -247,11 +218,9 @@
       splitLog.classList.remove('resizing');
       
       if (newVal) {
-        // Collapsing: immediate collapse
         splitLog.classList.add('collapsed');
         splitLog.style.height = '34px';
       } else {
-        // Expanding: remove collapsed class and set height
         splitLog.classList.remove('collapsed');
         splitLog.style.height = `${savedHeight}px`;
         logContainerHeight = savedHeight - 34;
@@ -274,56 +243,53 @@
       height: savedHeight
     });
   }
-  
+
   function clearLog(): void {
     try {
       clearLogEntries();
       selectedEntries.clear();
       addLogEntry('Log cleared', 'info', 'CLEARED');
     } catch (error) {
-      // Error already handled, just log to console as fallback
       console.error('[ActivityLog] Error clearing log:', error);
     }
   }
-  
+
   function toggleSelectionMode(): void {
     if (selectionMode) {
-      // Exiting selection mode - clear all selections
       selectedEntries.clear();
-      selectedEntries = selectedEntries; // Trigger reactivity
+      selectedEntries = selectedEntries;
     }
     selectionMode = !selectionMode;
   }
-  
+
   function toggleEntrySelection(entryId: string): void {
     if (selectedEntries.has(entryId)) {
       selectedEntries.delete(entryId);
     } else {
       selectedEntries.add(entryId);
     }
-    selectedEntries = selectedEntries; // Trigger reactivity
+    selectedEntries = selectedEntries;
   }
-  
+
   function selectAll(): void {
-    $visibleLogEntries.forEach(entry => {
+    displayItems.forEach(entry => {
       selectedEntries.add(entry.id);
     });
-    selectedEntries = selectedEntries; // Trigger reactivity
+    selectedEntries = selectedEntries;
   }
-  
+
   function deselectAll(): void {
     selectedEntries.clear();
-    selectedEntries = selectedEntries; // Trigger reactivity
+    selectedEntries = selectedEntries;
   }
-  
+
   function copySelected(): void {
     if (selectedEntries.size === 0) {
       addLogEntry('No entries selected', 'warning', 'COPY');
       return;
     }
     
-    // Get selected entries in order (newest first, matching display order)
-    const selected = $visibleLogEntries
+    const selected = displayItems
       .filter(entry => selectedEntries.has(entry.id))
       .map(entry => {
         const timestamp = entry.timestamp instanceof Date 
@@ -336,19 +302,12 @@
       })
       .join('\n');
     
-    // Copy to clipboard
     navigator.clipboard.writeText(selected).then(() => {
       addLogEntry(`Copied ${selectedEntries.size} log entr${selectedEntries.size === 1 ? 'y' : 'ies'} to clipboard`, 'success', 'COPY');
-      // Optionally exit selection mode after copying
-      // selectionMode = false;
-      // selectedEntries.clear();
     }).catch(err => {
       addLogEntry(`Failed to copy: ${err instanceof Error ? err.message : String(err)}`, 'error', 'COPY');
     });
   }
-  
-  // Toggle filter is now handled by the reusable filter state system
-  
 </script>
 
 <div class="split-log" bind:this={splitLog}>
@@ -404,13 +363,13 @@
     <div class="split-log__body">
       <ActivityLogFilterAside bind:expanded={filterExpanded} />
       <div class="split-log__content" id="log">
-        {#if $logEntries.length > 0}
+        {#if hasEntries}
           <VirtualList
-          items={$visibleLogEntries.length > 0 ? $visibleLogEntries : $logEntries}
-          itemHeight={28}
-          containerHeight={logContainerHeight}
-          overscan={3}
-        >
+            items={displayItems}
+            itemHeight={28}
+            containerHeight={logContainerHeight}
+            overscan={3}
+          >
             <svelte:fragment let:item let:index>
               <LogEntry 
                 entry={asLogEntry(item)} 
@@ -474,7 +433,6 @@
     }
   }
   
-  // Disable transition during manual resize for instant response
   :global(.filter-aside-resizing) .split-log__content {
     transition: none;
   }
