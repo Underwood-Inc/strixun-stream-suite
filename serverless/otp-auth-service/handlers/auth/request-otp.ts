@@ -174,7 +174,7 @@ export async function handleRequestOTP(
         const otp = generateOTP();
         
         // Store OTP in KV with customer isolation
-        const { otpKey } = await storeOTP(email, otp, customerId, env);
+        const { otpKey, expiresAt } = await storeOTP(email, otp, customerId, env);
         
         // Get base URL from request for tracking pixel
         const url = new URL(request.url);
@@ -186,7 +186,8 @@ export async function handleRequestOTP(
             const emailResult = await sendOTPEmail(email, otp, customerId, env, {
                 emailHash,
                 otpKey,
-                baseUrl
+                baseUrl,
+                expiresAt
             });
             console.log('OTP email sent successfully:', emailResult);
             

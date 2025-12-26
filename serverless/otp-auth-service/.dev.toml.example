@@ -1,0 +1,16 @@
+# Integration Test Configuration - Development Environment
+# Copy this file to .dev.toml and fill in your values
+# .dev.toml is gitignored and will not be committed
+
+[integration]
+# Customer API URL for integration tests
+# Use workers.dev URL for development
+customer_api_url = "https://strixun-customer-api.strixuns-script-suite.workers.dev"
+
+# Service API Key for service-to-service authentication
+# Must match the SERVICE_API_KEY in both otp-auth-service and customer-api workers
+service_api_key = "your-service-api-key-here"
+
+# Enable live API tests
+use_live_api = true
+

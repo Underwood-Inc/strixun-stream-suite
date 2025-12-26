@@ -64,6 +64,24 @@
         .expires-text strong {
             color: #c68214;
         }
+        .expired-warning {
+            background-color: #fee;
+            border: 2px solid #c00;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            color: #c00;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+        .expired-warning.show {
+            display: block;
+        }
+        .expired-warning-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
         .footer { 
             margin-top: 40px; 
             padding-top: 24px;
@@ -130,8 +148,12 @@
                 <h1>Your Verification Code</h1>
             </div>
             <div class="content">
+                <div class="expired-warning" id="expiredWarning">
+                    <div class="expired-warning-icon">⚠️</div>
+                    <div><strong>This code has expired.</strong></div>
+                </div>
                 <p>Your One Time Password (OTP) is:</p>
-                <div class="otp-code">{{otp}}</div>
+                <div class="otp-code" data-expires-at="{{expiresAt}}">{{otp}}</div>
                 <p class="expires-text">This OTP will expire in <strong>{{expiresIn}} minutes</strong>.</p>
                 <p>If you didn't request this OTP, please ignore this email.</p>
             </div>
@@ -142,6 +164,37 @@
         </div>
         {{trackingPixel}}
     </div>
+    <script>
+        (function() {
+            // Check if OTP has expired when email is opened
+            try {
+                var otpCodeElement = document.querySelector('.otp-code[data-expires-at]');
+                if (otpCodeElement) {
+                    var expiresAtStr = otpCodeElement.getAttribute('data-expires-at');
+                    if (expiresAtStr) {
+                        var expiresAt = new Date(expiresAtStr);
+                        var now = new Date();
+                        
+                        // Check if expired
+                        if (now > expiresAt) {
+                            // Show expired warning
+                            var warningElement = document.getElementById('expiredWarning');
+                            if (warningElement) {
+                                warningElement.classList.add('show');
+                            }
+                            
+                            // Optionally disable/hide the OTP code
+                            otpCodeElement.style.opacity = '0.5';
+                            otpCodeElement.style.textDecoration = 'line-through';
+                        }
+                    }
+                }
+            } catch (e) {
+                // Silently fail if JavaScript is disabled or errors occur
+                // This ensures email still displays correctly in all clients
+            }
+        })();
+    </script>
 </body>
 </html>
 

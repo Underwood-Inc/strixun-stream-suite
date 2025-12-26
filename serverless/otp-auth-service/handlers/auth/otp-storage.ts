@@ -27,7 +27,7 @@ export async function storeOTP(
     otp: string,
     customerId: string | null,
     env: Env
-): Promise<{ otpKey: string; latestOtpKey: string }> {
+): Promise<{ otpKey: string; latestOtpKey: string; expiresAt: string }> {
     const emailHash = await hashEmail(email);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     
@@ -44,7 +44,7 @@ export async function storeOTP(
     const latestOtpKey = getCustomerKey(customerId, `otp_latest_${emailHash}`);
     await env.OTP_AUTH_KV.put(latestOtpKey, otpKey, { expirationTtl: 600 });
     
-    return { otpKey, latestOtpKey };
+    return { otpKey, latestOtpKey, expiresAt: expiresAt.toISOString() };
 }
 
 /**

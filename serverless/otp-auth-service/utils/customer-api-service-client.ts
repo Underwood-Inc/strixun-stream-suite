@@ -32,12 +32,18 @@ interface Env {
 
 /**
  * Get the customer API base URL
+ * Priority:
+ * 1. CUSTOMER_API_URL environment variable (if set)
+ * 2. Custom domain (customer.idling.app) - if configured
+ * 3. Workers.dev subdomain (always works) - fallback
  */
 function getCustomerApiUrl(env: Env): string {
     if (env.CUSTOMER_API_URL) {
         return env.CUSTOMER_API_URL;
     }
-    return 'https://customer.idling.app';
+    // Default to workers.dev subdomain (always works, no DNS setup needed)
+    // Custom domain can be configured later via CUSTOMER_API_URL env var
+    return 'https://strixun-customer-api.strixuns-script-suite.workers.dev';
 }
 
 /**
@@ -53,6 +59,7 @@ async function makeServiceRequest(
     const url = `${baseUrl}${path}`;
     
     if (!env?.SERVICE_API_KEY) {
+        console.error('[Customer API Service Client] SERVICE_API_KEY is missing in environment');
         throw new Error('SERVICE_API_KEY is required for service-to-service requests');
     }
     
@@ -70,7 +77,25 @@ async function makeServiceRequest(
         options.body = JSON.stringify(body);
     }
     
-    return fetch(url, options);
+    try {
+        const response = await fetch(url, options);
+        
+        // Log request details for debugging (only in development)
+        if (env?.ENVIRONMENT === 'development' || env?.ENVIRONMENT === 'dev') {
+            console.log(`[Customer API Service Client] ${method} ${url} - ${response.status} ${response.statusText}`);
+        }
+        
+        return response;
+    } catch (networkError) {
+        console.error('[Customer API Service Client] Network error making request:', {
+            method,
+            url,
+            error: networkError instanceof Error ? networkError.message : String(networkError),
+            hasServiceKey: !!env?.SERVICE_API_KEY,
+            baseUrl,
+        });
+        throw networkError;
+    }
 }
 
 /**
@@ -86,8 +111,31 @@ export async function getCustomerByEmailService(email: string, env: Env): Promis
         }
         
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Failed to get customer by email' }));
-            throw new Error(error.detail || `Failed to get customer by email: ${response.statusText}`);
+            let errorDetail = 'Failed to get customer by email';
+            let errorBody: any = null;
+            
+            try {
+                errorBody = await response.json();
+                errorDetail = errorBody.detail || errorBody.error || errorBody.message || errorDetail;
+            } catch (parseError) {
+                // If JSON parsing fails, try to get text
+                try {
+                    const text = await response.text();
+                    errorDetail = text || errorDetail;
+                } catch (textError) {
+                    // Ignore text parsing errors
+                }
+            }
+            
+            console.error(`[Customer API Service Client] Failed to get customer by email: ${response.status} ${response.statusText}`, {
+                email: encodedEmail,
+                status: response.status,
+                statusText: response.statusText,
+                errorBody,
+                url: response.url,
+            });
+            
+            throw new Error(errorDetail || `Failed to get customer by email: ${response.status} ${response.statusText}`);
         }
         
         // Service responses are not encrypted (no JWT)
@@ -97,7 +145,17 @@ export async function getCustomerByEmailService(email: string, env: Env): Promis
         const { id, ...customerData } = data;
         return customerData as CustomerData;
     } catch (error) {
-        console.error('[Customer API Service Client] Error getting customer by email:', error);
+        // Re-throw if it's already our formatted error
+        if (error instanceof Error && error.message.includes('Failed to get customer by email')) {
+            throw error;
+        }
+        
+        // Log and re-throw network/other errors
+        console.error('[Customer API Service Client] Error getting customer by email:', {
+            email,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+        });
         throw error;
     }
 }
@@ -110,8 +168,32 @@ export async function createCustomerService(customerData: Partial<CustomerData>,
         const response = await makeServiceRequest('POST', '/customer', customerData, env);
         
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Failed to create customer' }));
-            throw new Error(error.detail || `Failed to create customer: ${response.statusText}`);
+            let errorDetail = 'Failed to create customer';
+            let errorBody: any = null;
+            
+            try {
+                errorBody = await response.json();
+                errorDetail = errorBody.detail || errorBody.error || errorBody.message || errorDetail;
+            } catch (parseError) {
+                // If JSON parsing fails, try to get text
+                try {
+                    const text = await response.text();
+                    errorDetail = text || errorDetail;
+                } catch (textError) {
+                    // Ignore text parsing errors
+                }
+            }
+            
+            console.error(`[Customer API Service Client] Failed to create customer: ${response.status} ${response.statusText}`, {
+                email: customerData.email,
+                customerId: customerData.customerId,
+                status: response.status,
+                statusText: response.statusText,
+                errorBody,
+                url: response.url,
+            });
+            
+            throw new Error(errorDetail || `Failed to create customer: ${response.status} ${response.statusText}`);
         }
         
         // Service responses are not encrypted (no JWT)
@@ -121,7 +203,18 @@ export async function createCustomerService(customerData: Partial<CustomerData>,
         const { id, ...customer } = data;
         return customer as CustomerData;
     } catch (error) {
-        console.error('[Customer API Service Client] Error creating customer:', error);
+        // Re-throw if it's already our formatted error
+        if (error instanceof Error && error.message.includes('Failed to create customer')) {
+            throw error;
+        }
+        
+        // Log and re-throw network/other errors
+        console.error('[Customer API Service Client] Error creating customer:', {
+            email: customerData.email,
+            customerId: customerData.customerId,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+        });
         throw error;
     }
 }

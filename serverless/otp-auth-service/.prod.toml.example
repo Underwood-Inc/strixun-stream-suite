@@ -1,0 +1,16 @@
+# Integration Test Configuration - Production Environment
+# Copy this file to .prod.toml and fill in your values
+# .prod.toml is gitignored and will not be committed
+
+[integration]
+# Customer API URL for integration tests
+# Use custom domain for production (if configured)
+customer_api_url = "https://customer.idling.app"
+
+# Service API Key for service-to-service authentication
+# Must match the SERVICE_API_KEY in both otp-auth-service and customer-api workers
+service_api_key = "your-service-api-key-here"
+
+# Enable live API tests
+use_live_api = true
+

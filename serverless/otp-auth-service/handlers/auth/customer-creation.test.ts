@@ -1,6 +1,14 @@
 /**
  * Unit Tests for Customer Account Creation
  * Tests ensureCustomerAccount function for legacy user migration
+ * 
+ * ⚠️ NOTE: These are MOCKED unit tests - they will NOT catch:
+ * - Incorrect CUSTOMER_API_URL configuration
+ * - Network/connectivity issues
+ * - Authentication problems (SERVICE_API_KEY)
+ * 
+ * For integration tests against live API, see: customer-creation.integration.test.ts
+ * Integration tests run automatically in GitHub Actions CI
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

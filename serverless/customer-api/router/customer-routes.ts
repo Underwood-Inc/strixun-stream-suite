@@ -92,12 +92,14 @@ async function handleCustomerRoute(
  */
 export async function handleCustomerRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     // Only handle /customer/* routes (or root if this is dedicated customer worker)
-    if (!path.startsWith('/customer/') && path !== '/') {
+    // Allow /customer (without trailing slash) for POST requests
+    if (!path.startsWith('/customer/') && path !== '/' && path !== '/customer') {
         return null;
     }
 
     // Normalize path - if root, treat as /customer/ for dedicated worker
-    const normalizedPath = path === '/' ? '/customer/' : path;
+    // Also normalize /customer to /customer/ for consistency
+    const normalizedPath = path === '/' ? '/customer/' : (path === '/customer' ? '/customer/' : path);
 
     // Authenticate request (supports both JWT and service key)
     const auth = await authenticateRequest(request, env);
@@ -110,7 +112,7 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
         }
 
         // Create customer
-        if (normalizedPath === '/customer' && request.method === 'POST') {
+        if (normalizedPath === '/customer/' && request.method === 'POST') {
             return await handleCustomerRoute(handleCreateCustomer, request, env, auth);
         }
 

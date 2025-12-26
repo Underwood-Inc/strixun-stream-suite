@@ -181,7 +181,9 @@ export async function handleRequestOTP(request, env, customerId = null) {
         // Send email
         try {
             const { sendOTPEmail } = await import('../email.js');
-            const emailResult = await sendOTPEmail(email, otp, customerId, env);
+            const emailResult = await sendOTPEmail(email, otp, customerId, env, {
+                expiresAt: expiresAt.toISOString()
+            });
             console.log('OTP email sent successfully:', emailResult);
             
             // Track usage

@@ -27,6 +27,11 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 
 [vars]
 ENVIRONMENT = "production"
+# CUSTOMER_API_URL - Optional: Override customer-api URL (defaults to workers.dev subdomain)
+# To use custom domain: Set this to "https://customer.idling.app" (requires DNS setup)
+# To use workers.dev: Leave unset or set to "https://strixun-customer-api.strixuns-script-suite.workers.dev"
+# CUSTOMER_API_URL = "https://strixun-customer-api.strixuns-script-suite.workers.dev"
+CUSTOMER_API_URL = "https://customer.idling.app"
 
 # Custom domain configuration
 # Using idling.app domain

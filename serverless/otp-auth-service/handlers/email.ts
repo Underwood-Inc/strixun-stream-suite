@@ -49,6 +49,7 @@ export async function sendOTPEmail(
         emailHash: string;
         otpKey: string;
         baseUrl: string;
+        expiresAt?: string;
     }
 ): Promise<any> {
     if (!env.RESEND_API_KEY) {
@@ -109,6 +110,7 @@ export async function sendOTPEmail(
         ...templateVariables,
         otp,
         expiresIn: '10',
+        expiresAt: trackingData?.expiresAt || new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         userEmail: email,
         appName: templateVariables.appName || customer?.companyName || 'OTP Auth Service'
     };
