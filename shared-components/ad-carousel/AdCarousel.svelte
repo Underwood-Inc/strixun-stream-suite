@@ -20,6 +20,12 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import Carousel from './Carousel.svelte';
   import { localStorageAdapter, type StorageAdapter } from './storage';
+  
+  // Observers for ensuring visibility
+  let visibilityObserver: IntersectionObserver | null = null;
+  let resizeObserver: ResizeObserver | null = null;
+  let styleObserver: MutationObserver | null = null;
+  let visibilityCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   export let position: 'bottom-left' | 'bottom-right' | 'bottom-center' = 'bottom-right';
   export let autoRotate: boolean = true;
@@ -83,6 +89,8 @@
     // Explicitly remove inline opacity to let CSS class control it
     if (carouselContainer) {
       carouselContainer.style.removeProperty('opacity');
+      // Ensure visibility is still enforced
+      enforceVisibility();
     }
   }
   
@@ -90,6 +98,8 @@
   $: if (carouselContainer && isMounted) {
     // Remove any inline opacity that might have been set
     carouselContainer.style.removeProperty('opacity');
+    // Ensure visibility is maintained
+    enforceVisibility();
   }
 
   function startDrag(e: MouseEvent | TouchEvent): void {
@@ -324,9 +334,184 @@
       carouselInPortal: carouselContainer.parentNode === portalContainer,
       portalInBody: portalContainer.parentNode === document.body
     });
+    
+    // Set up observers to ensure visibility
+    setupVisibilityObservers();
+    
+    // Force visibility immediately after setup
+    await tick();
+    enforceVisibility();
+    
+    // Also enforce after a short delay to catch any late-loading CSS issues
+    setTimeout(() => {
+      enforceVisibility();
+    }, 100);
+  }
+  
+  /**
+   * Force visibility by ensuring critical styles are applied
+   */
+  function enforceVisibility(): void {
+    if (!carouselContainer) return;
+    
+    try {
+      // Force critical styles
+      carouselContainer.style.position = 'fixed';
+      carouselContainer.style.display = 'flex';
+      carouselContainer.style.visibility = 'visible';
+      carouselContainer.style.pointerEvents = 'auto';
+      carouselContainer.style.zIndex = '99999';
+      
+      // Apply positioning styles from getPositionStyles()
+      const positionStyles = getPositionStyles();
+      // Parse and apply each style property
+      const stylePairs = positionStyles.split(';').filter(s => s.trim());
+      stylePairs.forEach(stylePair => {
+        const colonIndex = stylePair.indexOf(':');
+        if (colonIndex > 0) {
+          const prop = stylePair.substring(0, colonIndex).trim();
+          const value = stylePair.substring(colonIndex + 1).trim();
+          if (prop && value) {
+            carouselContainer.style.setProperty(prop, value);
+          }
+        }
+      });
+      
+      // Ensure background is set
+      const computed = window.getComputedStyle(carouselContainer);
+      const bgColor = computed.backgroundColor;
+      if (!bgColor || bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+        carouselContainer.style.backgroundColor = '#252017'; // fallback for --card
+      }
+      
+      // Check computed styles to ensure visibility
+      if (computed.display === 'none' || computed.visibility === 'hidden') {
+        console.warn('[AdCarousel] Element not visible, forcing visibility', {
+          display: computed.display,
+          visibility: computed.visibility,
+          opacity: computed.opacity
+        });
+        carouselContainer.style.display = 'flex';
+        carouselContainer.style.visibility = 'visible';
+      }
+      
+      // Ensure opacity is correct (but don't override if dimmed class should handle it)
+      if (!isDimmed && computed.opacity === '0') {
+        carouselContainer.style.opacity = '1';
+      }
+    } catch (error) {
+      console.error('[AdCarousel] Error enforcing visibility:', error);
+    }
+  }
+  
+  /**
+   * Set up observers to ensure the carousel stays visible
+   */
+  function setupVisibilityObservers(): void {
+    if (!carouselContainer) return;
+    
+    // IntersectionObserver to detect if element is in viewport
+    visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting && entry.intersectionRatio === 0) {
+            console.warn('[AdCarousel] Element not in viewport, enforcing visibility');
+            enforceVisibility();
+          }
+        });
+      },
+      {
+        threshold: [0, 0.1, 1.0],
+        root: null // viewport
+      }
+    );
+    visibilityObserver.observe(carouselContainer);
+    
+    // MutationObserver to watch for style changes
+    styleObserver = new MutationObserver((mutations) => {
+      let needsEnforcement = false;
+      mutations.forEach(mutation => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          const computed = window.getComputedStyle(carouselContainer);
+          if (computed.display === 'none' || computed.visibility === 'hidden') {
+            needsEnforcement = true;
+          }
+        }
+      });
+      if (needsEnforcement) {
+        console.warn('[AdCarousel] Style changed to hidden, enforcing visibility');
+        enforceVisibility();
+      }
+    });
+    styleObserver.observe(carouselContainer, {
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+    
+    // ResizeObserver to watch for size changes (might indicate positioning issues)
+    resizeObserver = new ResizeObserver(() => {
+      // Check if element is actually visible
+      const rect = carouselContainer.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        console.warn('[AdCarousel] Element has zero size, enforcing visibility');
+        enforceVisibility();
+      }
+    });
+    resizeObserver.observe(carouselContainer);
+    
+    // Periodic visibility check as a fallback
+    visibilityCheckInterval = setInterval(() => {
+      if (!carouselContainer) {
+        clearInterval(visibilityCheckInterval!);
+        return;
+      }
+      
+      const rect = carouselContainer.getBoundingClientRect();
+      const computed = window.getComputedStyle(carouselContainer);
+      const isVisible = 
+        computed.display !== 'none' &&
+        computed.visibility !== 'hidden' &&
+        computed.opacity !== '0' &&
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.top < window.innerHeight &&
+        rect.bottom > 0 &&
+        rect.left < window.innerWidth &&
+        rect.right > 0;
+      
+      if (!isVisible) {
+        console.warn('[AdCarousel] Periodic check: element not visible, enforcing', {
+          display: computed.display,
+          visibility: computed.visibility,
+          opacity: computed.opacity,
+          rect: { width: rect.width, height: rect.height, top: rect.top, left: rect.left }
+        });
+        enforceVisibility();
+      }
+    }, 2000); // Check every 2 seconds
+    
+    console.log('[AdCarousel] Visibility observers set up');
   }
 
   onDestroy(() => {
+    // Clean up observers
+    if (visibilityObserver) {
+      visibilityObserver.disconnect();
+      visibilityObserver = null;
+    }
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      resizeObserver = null;
+    }
+    if (styleObserver) {
+      styleObserver.disconnect();
+      styleObserver = null;
+    }
+    if (visibilityCheckInterval) {
+      clearInterval(visibilityCheckInterval);
+      visibilityCheckInterval = null;
+    }
+    
     // Clean up portal container
     if (portalContainer && portalContainer.parentNode) {
       portalContainer.parentNode.removeChild(portalContainer);
