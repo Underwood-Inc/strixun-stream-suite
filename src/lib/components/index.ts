@@ -9,6 +9,7 @@
 export { default as Header } from './Header.svelte';
 export { default as Navigation } from './Navigation.svelte';
 export { default as InfoBar } from './InfoBar.svelte';
+export { default as DomInterferenceBanner } from './DomInterferenceBanner.svelte';
 export { default as Tooltip } from './Tooltip.svelte';
 export { default as TruncatedText } from './TruncatedText.svelte';
 export { default as ProgressRing } from './ProgressRing.svelte';

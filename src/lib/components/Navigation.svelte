@@ -14,6 +14,7 @@
   
 import { connected } from '../../stores/connection';
 import { currentPage } from '../../stores/navigation';
+import { domInterferenceDetected } from '../../stores/dom-interference';
   import { celebrateClick } from '../../utils/particles';
   import Tooltip from './Tooltip.svelte';
   import { animate, stagger } from '../../core/animations';
@@ -121,10 +122,16 @@ import { currentPage } from '../../stores/navigation';
     }
   ];
   
-  // Redirect away from disabled pages when connection is lost
+  // Pages restricted when DOM interference is detected
+  const RESTRICTED_PAGES_ON_INTERFERENCE = ['sources', 'text', 'swaps', 'layouts', 'chat', 'url-shortener'];
+  
+  // Redirect away from disabled pages when connection is lost or interference detected
   $: {
     const currentTab = tabs.find(t => t.id === $currentPage);
-    if (currentTab && currentTab.requiresConnection && !$connected) {
+    if ($domInterferenceDetected && RESTRICTED_PAGES_ON_INTERFERENCE.includes($currentPage)) {
+      // Redirect to dashboard if interference detected and on restricted page
+      currentPage.set('dashboard');
+    } else if (currentTab && currentTab.requiresConnection && !$connected) {
       // Redirect to setup if we're on a disabled page
       currentPage.set('setup');
     }
@@ -133,6 +140,15 @@ import { currentPage } from '../../stores/navigation';
   function handleTabClick(e: MouseEvent, tabId: string, requiresConnection: boolean): void {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Check for DOM interference first
+    if ($domInterferenceDetected && RESTRICTED_PAGES_ON_INTERFERENCE.includes(tabId)) {
+      if (window.App?.log) {
+        window.App.log('This feature is restricted due to detected DOM interference', 'error');
+      }
+      currentPage.set('dashboard');
+      return;
+    }
     
     if (requiresConnection && !$connected) {
       if (window.App?.log) {
@@ -155,21 +171,26 @@ import { currentPage } from '../../stores/navigation';
 
 <nav class="tabs" use:stagger={{ preset: 'slideDown', stagger: 50, config: { duration: 250 } }}>
   {#each tabs as tab, index}
-    {@const isDisabled = tab.requiresConnection && !$connected}
+    {@const isRestrictedByInterference = $domInterferenceDetected && RESTRICTED_PAGES_ON_INTERFERENCE.includes(tab.id)}
+    {@const isDisabled = isRestrictedByInterference || (tab.requiresConnection && !$connected)}
     {@const isWipDisabled = tab.isWip}
     {@const isInTesting = tab.inTesting}
-    {@const tooltipLevel = tab.inTesting 
-      ? 'info' 
-      : (tab.requiresConnection && !$connected) || tab.isWip 
-        ? 'warning' 
-        : 'log'}
-    {@const tooltipContent = tab.inTesting
-      ? `${tab.label} | This feature is currently in testing`
-      : tab.isWip
-        ? `${tab.label} | This feature is incomplete and still in progress`
-        : tab.requiresConnection && !$connected && tab.disabledReason 
-          ? `${tab.label} | ${tab.disabledReason}` 
-          : tab.label}
+    {@const tooltipLevel = isRestrictedByInterference
+      ? 'error'
+      : tab.inTesting 
+        ? 'info' 
+        : (tab.requiresConnection && !$connected) || tab.isWip 
+          ? 'warning' 
+          : 'log'}
+    {@const tooltipContent = isRestrictedByInterference
+      ? `${tab.label} | Restricted due to detected DOM interference`
+      : tab.inTesting
+        ? `${tab.label} | This feature is currently in testing`
+        : tab.isWip
+          ? `${tab.label} | This feature is incomplete and still in progress`
+          : tab.requiresConnection && !$connected && tab.disabledReason 
+            ? `${tab.label} | ${tab.disabledReason}` 
+            : tab.label}
     {@const isActive = $currentPage === tab.id && !isDisabled && !isWipDisabled}
     {@const statusFlair = isWipDisabled ? 'wip' : (isInTesting ? 'in-testing' : null)}
     <Tooltip 

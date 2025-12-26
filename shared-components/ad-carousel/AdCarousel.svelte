@@ -20,6 +20,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import Carousel from './Carousel.svelte';
   import { localStorageAdapter, type StorageAdapter } from './storage';
+  import { setDomInterferenceDetected } from '../../src/stores/dom-interference.js';
   
   // Observers for ensuring visibility
   let visibilityObserver: IntersectionObserver | null = null;
@@ -84,7 +85,6 @@
   function toggleDimmed(): void {
     isDimmed = !isDimmed;
     saveState();
-    console.log('[AdCarousel] Dim state toggled:', isDimmed);
     
     // Explicitly remove inline opacity to let CSS class control it
     if (carouselContainer) {
@@ -214,7 +214,6 @@
 
   onMount(async () => {
     isMounted = true;
-    console.log('[AdCarousel] Component mounted, storageKey:', storageKey);
     
     loadPersistedState();
     
@@ -234,26 +233,23 @@
         }
         
         await initializePortal();
-        console.log('[AdCarousel] Portal initialized successfully');
       } catch (error) {
         retryCount++;
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.warn(`[AdCarousel] Portal initialization attempt ${retryCount}/${maxRetries} failed:`, errorMessage);
         
         if (retryCount < maxRetries) {
           // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
           const delay = Math.min(100 * Math.pow(2, retryCount - 1), 2000);
           setTimeout(() => {
             tryInitialize().catch(() => {
-              // Final error will be logged below
+              // Silently retry
             });
           }, delay);
         } else {
-          console.error('[AdCarousel] Failed to initialize portal after all retries:', error);
           // Last resort: try one more time after a longer delay
           setTimeout(() => {
-            initializePortal().catch((finalError) => {
-              console.error('[AdCarousel] Final portal initialization attempt failed:', finalError);
+            initializePortal().catch(() => {
+              // Silently fail
             });
           }, 3000);
         }
@@ -276,7 +272,6 @@
     
     if (existingPortal) {
       portalContainer = existingPortal as HTMLDivElement;
-      console.log('[AdCarousel] Using existing portal:', portalId);
     } else {
       // Create portal container at body level with unique ID based on storageKey
       // Portal should cover full viewport for proper positioning context
@@ -287,9 +282,7 @@
       // Append to body - this should always work if document.body exists
       try {
         document.body.appendChild(portalContainer);
-        console.log('[AdCarousel] Portal container created and appended to body:', portalId);
       } catch (appendError) {
-        console.error('[AdCarousel] Failed to append portal to body:', appendError);
         throw new Error(`Failed to append portal to body: ${appendError instanceof Error ? appendError.message : String(appendError)}`);
       }
       
@@ -315,7 +308,6 @@
     // Only move if not already in portal
     if (carouselContainer.parentNode !== portalContainer) {
       portalContainer.appendChild(carouselContainer);
-      console.log('[AdCarousel] Carousel moved to portal');
     }
     
     // Ensure carousel is visible and interactive
@@ -328,12 +320,6 @@
       carouselContainer.style.backgroundColor = '#252017'; // fallback for --card
     }
     // Don't set opacity inline - let CSS class handle it via .ad-carousel--dimmed
-    
-    console.log('[AdCarousel] Portal initialization complete', {
-      portalId,
-      carouselInPortal: carouselContainer.parentNode === portalContainer,
-      portalInBody: portalContainer.parentNode === document.body
-    });
     
     // Set up observers to ensure visibility
     setupVisibilityObservers();
@@ -400,24 +386,13 @@
       const rect = carouselContainer.getBoundingClientRect();
       
       if (finalComputed.display === 'none' || finalComputed.visibility === 'hidden' || rect.width === 0 || rect.height === 0) {
-        console.error('[AdCarousel] CRITICAL: Element still not visible after enforcement!', {
-          display: finalComputed.display,
-          visibility: finalComputed.visibility,
-          opacity: finalComputed.opacity,
-          width: rect.width,
-          height: rect.height,
-          position: finalComputed.position,
-          zIndex: finalComputed.zIndex,
-          inlineStyles: carouselContainer.getAttribute('style'),
-          parentDisplay: portalContainer ? window.getComputedStyle(portalContainer).display : 'N/A',
-          parentVisibility: portalContainer ? window.getComputedStyle(portalContainer).visibility : 'N/A'
-        });
+        // DOM interference detected - set flag in store
+        setDomInterferenceDetected(true);
         
         // Check if parent portal is hiding it
         if (portalContainer) {
           const portalComputed = window.getComputedStyle(portalContainer);
           if (portalComputed.display === 'none' || portalComputed.visibility === 'hidden') {
-            console.error('[AdCarousel] Parent portal is hiding the element! Fixing portal...');
             portalContainer.style.setProperty('display', 'block', 'important');
             portalContainer.style.setProperty('visibility', 'visible', 'important');
           }
@@ -459,20 +434,10 @@
           const recheck = window.getComputedStyle(carouselContainer);
           const recheckRect = carouselContainer.getBoundingClientRect();
           if (recheck.display === 'none' || recheckRect.width === 0) {
-            console.error('[AdCarousel] STILL NOT VISIBLE after cssText! This is a critical issue.', {
-              display: recheck.display,
-              width: recheckRect.width,
-              height: recheckRect.height
-            });
+            // Still not visible - interference confirmed
+            setDomInterferenceDetected(true);
           }
         }, 50);
-      } else {
-        console.log('[AdCarousel] Visibility enforced successfully', {
-          display: finalComputed.display,
-          visibility: finalComputed.visibility,
-          width: rect.width,
-          height: rect.height
-        });
       }
       
       // Ensure opacity is correct (but don't override if dimmed class should handle it)
@@ -480,7 +445,7 @@
         carouselContainer.style.setProperty('opacity', '1', 'important');
       }
     } catch (error) {
-      console.error('[AdCarousel] Error enforcing visibility:', error);
+      // Silently handle errors
     }
   }
   
@@ -495,7 +460,6 @@
       (entries) => {
         entries.forEach(entry => {
           if (!entry.isIntersecting && entry.intersectionRatio === 0) {
-            console.warn('[AdCarousel] Element not in viewport, enforcing visibility');
             enforceVisibility();
           }
         });
@@ -519,7 +483,6 @@
         }
       });
       if (needsEnforcement) {
-        console.warn('[AdCarousel] Style changed to hidden, enforcing visibility');
         enforceVisibility();
       }
     });
@@ -533,7 +496,6 @@
       // Check if element is actually visible
       const rect = carouselContainer.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) {
-        console.warn('[AdCarousel] Element has zero size, enforcing visibility');
         enforceVisibility();
       }
     });
@@ -560,17 +522,9 @@
         rect.right > 0;
       
       if (!isVisible) {
-        console.warn('[AdCarousel] Periodic check: element not visible, enforcing', {
-          display: computed.display,
-          visibility: computed.visibility,
-          opacity: computed.opacity,
-          rect: { width: rect.width, height: rect.height, top: rect.top, left: rect.left }
-        });
         enforceVisibility();
       }
     }, 2000); // Check every 2 seconds
-    
-    console.log('[AdCarousel] Visibility observers set up');
   }
 
   onDestroy(() => {

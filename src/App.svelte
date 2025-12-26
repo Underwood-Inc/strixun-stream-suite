@@ -5,7 +5,7 @@
    * Main application component that orchestrates all pages
    */
   
-  import { ActivityLog, AuthScreen, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchAdCarousel } from '@components';
+  import { ActivityLog, AuthScreen, DomInterferenceBanner, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchAdCarousel } from '@components';
   import { onMount } from 'svelte';
   import Chat from './pages/Chat.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -24,6 +24,7 @@
   import { initializeApp, completeInitializationAfterAuth } from './modules/bootstrap';
   import { authRequired, isAuthenticated } from './stores/auth';
   import { currentPage } from './stores/navigation';
+  import { domInterferenceDetected } from './stores/dom-interference';
   
   let pageWrapper: HTMLDivElement;
   let hasCompletedPostAuthInit = false;
@@ -71,8 +72,9 @@
     <ActivityLog />
   </div>
 {:else}
-<div class="app">
+<div class="app" class:app--restricted={$domInterferenceDetected}>
   <Header />
+  <DomInterferenceBanner />
   <InfoBar />
   <Navigation />
   
@@ -90,28 +92,45 @@
             trigger: 'mount'
           }}
         >
-          {#if $currentPage === 'dashboard'}
-            <Dashboard />
-          {:else if $currentPage === 'sources'}
-            <Sources />
-          {:else if $currentPage === 'text'}
-            <TextCycler />
-          {:else if $currentPage === 'swaps'}
-            <Swaps />
-          {:else if $currentPage === 'layouts'}
-            <Layouts />
-          {:else if $currentPage === 'notes'}
-            <Notes />
-          {:else if $currentPage === 'chat'}
-            <Chat />
-          {:else if $currentPage === 'scripts'}
-            <Scripts />
-          {:else if $currentPage === 'install'}
-            <Install />
-          {:else if $currentPage === 'url-shortener'}
-            <UrlShortener />
-          {:else if $currentPage === 'setup'}
-            <Setup />
+          {#if $domInterferenceDetected}
+            {#if $currentPage === 'dashboard'}
+              <Dashboard />
+            {:else if $currentPage === 'notes'}
+              <Notes />
+            {:else if $currentPage === 'scripts'}
+              <Scripts />
+            {:else if $currentPage === 'install'}
+              <Install />
+            {:else if $currentPage === 'setup'}
+              <Setup />
+            {:else}
+              <!-- Redirect to dashboard when interference detected and trying to access restricted pages -->
+              <Dashboard />
+            {/if}
+          {:else}
+            {#if $currentPage === 'dashboard'}
+              <Dashboard />
+            {:else if $currentPage === 'sources'}
+              <Sources />
+            {:else if $currentPage === 'text'}
+              <TextCycler />
+            {:else if $currentPage === 'swaps'}
+              <Swaps />
+            {:else if $currentPage === 'layouts'}
+              <Layouts />
+            {:else if $currentPage === 'notes'}
+              <Notes />
+            {:else if $currentPage === 'chat'}
+              <Chat />
+            {:else if $currentPage === 'scripts'}
+              <Scripts />
+            {:else if $currentPage === 'install'}
+              <Install />
+            {:else if $currentPage === 'url-shortener'}
+              <UrlShortener />
+            {:else if $currentPage === 'setup'}
+              <Setup />
+            {/if}
           {/if}
         </div>
       {/key}
@@ -160,6 +179,18 @@
     right: 0;
     height: 300px;
     z-index: 1000;
+  }
+  
+  .app--restricted {
+    .split-main {
+      opacity: 0.6;
+      pointer-events: none;
+      user-select: none;
+    }
+    
+    .split-main .page-wrapper {
+      filter: blur(2px);
+    }
   }
 </style>
 
