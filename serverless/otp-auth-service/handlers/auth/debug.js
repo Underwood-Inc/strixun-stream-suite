@@ -24,11 +24,9 @@ export async function handleClearRateLimit(request, env, customerId = null) {
         let { email, ip } = body;
         
         // Auto-detect IP from request headers if not provided
+        // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
         if (!ip) {
-            ip = request.headers.get('CF-Connecting-IP') || 
-                 request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || 
-                 request.headers.get('X-Real-IP') || 
-                 null;
+            ip = request.headers.get('CF-Connecting-IP') || null;
         }
         
         const cleared = {

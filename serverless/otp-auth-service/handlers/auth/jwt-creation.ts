@@ -89,9 +89,9 @@ export async function createAuthToken(
     const expiresIn = 7 * 60 * 60; // 7 hours in seconds
     const now = Math.floor(Date.now() / 1000);
     
-    // Extract IP address and metadata from request
+    // Extract IP address and metadata from request (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
     const clientIP = request 
-        ? (request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown')
+        ? (request.headers.get('CF-Connecting-IP') || 'unknown')
         : 'unknown';
     const userAgent = request?.headers.get('User-Agent') || undefined;
     const country = request?.headers.get('CF-IPCountry') || undefined;

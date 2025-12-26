@@ -78,9 +78,8 @@ export async function handleEmailTracking(
         }
         
         // Extract client information from Cloudflare headers (privacy-compliant)
-        const clientIP = request.headers.get('CF-Connecting-IP') || 
-                        request.headers.get('X-Forwarded-For') || 
-                        'unknown';
+        // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const userAgent = request.headers.get('User-Agent') || null;
         const country = request.headers.get('CF-IPCountry') || null;
         const city = request.headers.get('CF-IPCity') || null;

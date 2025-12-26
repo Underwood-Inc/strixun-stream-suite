@@ -83,9 +83,9 @@ export async function initializeApp(): Promise<void> {
     
     // Notes storage is cloud-only, no initialization needed
     
-    // Load authentication state
+    // Load authentication state (includes cross-domain session restoration)
     const { loadAuthState, getAuthToken } = await import('../stores/auth');
-    loadAuthState();
+    await loadAuthState();
     addLogEntry('Authentication state loaded', 'info', 'AUTH');
     
     // Set encryption enabled state in store (for reactive auth checks)

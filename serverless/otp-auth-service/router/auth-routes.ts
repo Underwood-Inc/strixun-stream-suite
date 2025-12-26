@@ -12,6 +12,7 @@ import * as authHandlers from '../handlers/auth.js';
 import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleSessionByIP } from '../handlers/auth/session-by-ip.js';
+import { handleRestoreSession } from '../handlers/auth/restore-session.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -70,8 +71,8 @@ export async function handleAuthRoutes(
         customerId = auth.customerId;
         customer = await getCustomerCached(customerId, (id) => getCustomer(id, env));
         
-        // Check IP allowlist
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // Check IP allowlist (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const ipAllowed = await checkIPAllowlist(customerId, clientIP, env);
         
         if (!ipAllowed) {
@@ -98,8 +99,8 @@ export async function handleAuthRoutes(
             ip: clientIP
         }, env);
     } else if (path.startsWith('/auth/') || path.startsWith('/admin/')) {
-        // Log failed authentication attempt
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // Log failed authentication attempt (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         await logSecurityEvent(null, 'auth_failed', {
             endpoint: path,
             method: request.method,
@@ -128,6 +129,10 @@ export async function handleAuthRoutes(
     }
     if (path === '/auth/session-by-ip' && request.method === 'GET') {
         return { response: await handleSessionByIP(request, env), customerId };
+    }
+    if (path === '/auth/restore-session' && request.method === 'POST') {
+        // restore-session doesn't require API key authentication (it's for unauthenticated session restoration)
+        return { response: await handleRestoreSession(request, env), customerId: null };
     }
     
     return null; // Route not matched

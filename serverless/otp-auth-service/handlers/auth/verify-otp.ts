@@ -172,7 +172,8 @@ export async function handleVerifyOTP(
         
         const emailLower = email.toLowerCase().trim();
         const emailHash = await hashEmail(email);
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         
         // Retrieve OTP data
         const otpResult = await retrieveOTP(email, customerId, env);

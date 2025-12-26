@@ -40,10 +40,8 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
         const url = new URL(request.url);
         const queryIP = url.searchParams.get('ip');
         
-        // Get request IP
-        const requestIP = request.headers.get('CF-Connecting-IP') || 
-                         request.headers.get('X-Forwarded-For') || 
-                         'unknown';
+        // Get request IP (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
+        const requestIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         
         // Extract and verify authentication token
         const authHeader = request.headers.get('Authorization');

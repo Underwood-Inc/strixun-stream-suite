@@ -112,10 +112,96 @@ function saveAuthState(userData: User | null): void {
 }
 
 /**
+ * Get OTP Auth API URL
+ */
+function getOtpAuthApiUrl(): string {
+  // Try to get from window config (injected during build)
+  if (typeof window !== 'undefined') {
+    if ((window as any).getOtpAuthApiUrl) {
+      return (window as any).getOtpAuthApiUrl() || '';
+    }
+    // Fallback to hardcoded URL
+    return 'https://auth.idling.app';
+  }
+  return '';
+}
+
+/**
+ * Restore session from backend based on IP address
+ * This enables cross-application session sharing for the same device
+ */
+async function restoreSessionFromBackend(): Promise<boolean> {
+  try {
+    const apiUrl = getOtpAuthApiUrl();
+    if (!apiUrl) {
+      console.warn('[Auth] OTP Auth API URL not configured, skipping session restoration');
+      return false;
+    }
+
+    const response = await secureFetch(`${apiUrl}/auth/restore-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      // Not an error - just no session found
+      if (response.status === 200) {
+        const data = await response.json() as { restored?: boolean };
+        if (!data.restored) {
+          return false;
+        }
+      } else {
+        console.warn('[Auth] Session restoration failed:', response.status);
+        return false;
+      }
+    }
+
+    const data = await response.json() as {
+      restored?: boolean;
+      access_token?: string;
+      token?: string;
+      userId?: string;
+      sub?: string;
+      email?: string;
+      displayName?: string | null;
+      customerId?: string | null;
+      expiresAt?: string;
+      isSuperAdmin?: boolean;
+    };
+    
+    if (data.restored && data.access_token) {
+      // Session restored! Save the token
+      const userData: User = {
+        userId: data.userId || data.sub || '',
+        email: data.email || '',
+        displayName: data.displayName || undefined,
+        customerId: data.customerId || undefined,
+        token: data.access_token || data.token || '',
+        expiresAt: data.expiresAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
+        isSuperAdmin: data.isSuperAdmin || false,
+      };
+      
+      saveAuthState(userData);
+      console.log('[Auth] Session restored from backend');
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    // Silently fail - session restoration is optional
+    console.debug('[Auth] Session restoration error (non-critical):', error);
+    return false;
+  }
+}
+
+/**
  * Load authentication state from storage
  * Loads token from sessionStorage (more secure)
+ * If no token found, attempts to restore session from backend (cross-domain session sharing)
  */
-export function loadAuthState(): void {
+export async function loadAuthState(): Promise<void> {
   try {
     const userData = storage.get('auth_user') as User | null;
     // Try sessionStorage first (more secure), fallback to regular storage
@@ -146,12 +232,19 @@ export function loadAuthState(): void {
         // Update userData with isSuperAdmin from JWT if not already set
         const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
         saveAuthState(updatedUserData as User);
+        return;
       } else {
         // Token expired, clear auth
         saveAuthState(null);
       }
     } else {
       saveAuthState(null);
+    }
+
+    // If no valid token found, try to restore session from backend
+    // This enables cross-application session sharing for the same device/IP
+    if (!savedToken || !userData) {
+      await restoreSessionFromBackend();
     }
   } catch (error) {
     console.error('[Auth] Failed to load auth state:', error);

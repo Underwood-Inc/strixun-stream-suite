@@ -104,7 +104,8 @@ export async function handleRequestOTP(
         
         // Check rate limit (super admins are exempt)
         const emailHash = await hashEmail(email);
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const getCustomerFn = (cid: string) => getCustomer(cid, env);
         const rateLimit = await checkOTPRateLimitService(
             emailHash,

@@ -2,9 +2,11 @@
  * Main layout component
  */
 
+import { useEffect } from 'react';
 import styled from 'styled-components';
 import { Header } from './Header';
 import { NotificationContainer } from './NotificationContainer';
+import { useAuthStore } from '../../stores/auth';
 import { colors, spacing } from '../../theme';
 
 const LayoutContainer = styled.div`
@@ -27,6 +29,18 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+    const { restoreSession, user } = useAuthStore();
+
+    // Restore session from backend on mount if no user is set
+    // This enables cross-application session sharing for the same device
+    useEffect(() => {
+        if (!user) {
+            restoreSession().catch(error => {
+                console.debug('[Layout] Session restoration failed (non-critical):', error);
+            });
+        }
+    }, []); // Only run once on mount
+
     return (
         <LayoutContainer>
             <Header />

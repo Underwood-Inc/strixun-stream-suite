@@ -345,8 +345,8 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         
         const newToken = await createJWT(newTokenPayload, jwtSecret);
         
-        // Extract IP address and metadata from request
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // Extract IP address and metadata from request (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const userAgent = request.headers.get('User-Agent') || undefined;
         const country = request.headers.get('CF-IPCountry') || undefined;
         

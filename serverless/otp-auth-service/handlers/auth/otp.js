@@ -94,7 +94,8 @@ export async function handleRequestOTP(request, env, customerId = null) {
         
         // Check rate limit (super admins are exempt)
         const emailHash = await hashEmail(email);
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const rateLimit = await checkOTPRateLimitService(emailHash, customerId, clientIP, (id) => getCustomerCached(id, env), env, email);
         
         if (!rateLimit.allowed) {
@@ -475,8 +476,8 @@ export async function handleVerifyOTP(request, env, customerId = null) {
         const emailHash = await hashEmail(email);
         const emailLower = email.toLowerCase().trim();
         
-        // Get client IP for statistics
-        const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+        // Get client IP for statistics (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         
         // Generic error message to prevent email enumeration
         const genericOTPError = {
