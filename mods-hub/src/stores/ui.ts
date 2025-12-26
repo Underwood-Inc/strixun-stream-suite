@@ -3,7 +3,7 @@
  * Manages global UI state (modals, notifications, etc.)
  */
 
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
 
 interface Notification {
     id: string;
@@ -23,12 +23,12 @@ interface UIState {
     removeNotification: (id: string) => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
+const uiStoreCreator: StateCreator<UIState> = (set) => ({
     uploadModalOpen: false,
-    setUploadModalOpen: (open) => set({ uploadModalOpen: open }),
+    setUploadModalOpen: (open: boolean) => set({ uploadModalOpen: open }),
     
     notifications: [],
-    addNotification: (notification) => {
+    addNotification: (notification: Omit<Notification, 'id'>) => {
         const id = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         set((state) => ({
             notifications: [...state.notifications, { ...notification, id }],
@@ -42,10 +42,12 @@ export const useUIStore = create<UIState>((set) => ({
             }));
         }, duration);
     },
-    removeNotification: (id) => {
+    removeNotification: (id: string) => {
         set((state) => ({
             notifications: state.notifications.filter((n) => n.id !== id),
         }));
     },
-}));
+});
+
+export const useUIStore = create<UIState>(uiStoreCreator);
 

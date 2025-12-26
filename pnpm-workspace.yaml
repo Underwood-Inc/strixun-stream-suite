@@ -5,5 +5,6 @@ packages:
   - 'serverless/*/dashboard'
   - 'serverless/shared/api'
   - 'control-panel'
+  - 'mods-hub'
   - 'shared-components'
 

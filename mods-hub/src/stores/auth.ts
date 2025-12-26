@@ -3,7 +3,7 @@
  * Manages authentication state
  */
 
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface User {
@@ -20,18 +20,20 @@ interface AuthState {
     logout: () => void;
 }
 
+const authStoreCreator: StateCreator<AuthState> = (set) => ({
+    user: null,
+    isAuthenticated: false,
+    setUser: (user: User | null) => set({ user, isAuthenticated: !!user }),
+    logout: () => set({ user: null, isAuthenticated: false }),
+});
+
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
-            user: null,
-            isAuthenticated: false,
-            setUser: (user) => set({ user, isAuthenticated: !!user }),
-            logout: () => set({ user: null, isAuthenticated: false }),
-        }),
+        authStoreCreator,
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => localStorage),
-            partialize: (state) => ({ user: state.user }),
+            partialize: (state: AuthState) => ({ user: state.user }),
         }
     )
 );
