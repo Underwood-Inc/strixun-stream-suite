@@ -24,6 +24,7 @@ export interface User {
   twitchAccount?: TwitchAccount; // Attached Twitch account
   token: string;
   expiresAt: string;
+  isSuperAdmin?: boolean; // Super admin status
 }
 
 // Store for authentication state

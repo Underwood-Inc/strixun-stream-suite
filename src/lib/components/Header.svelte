@@ -17,7 +17,7 @@
   import { navigateTo } from '../../stores/navigation';
   import { celebrateClick, celebrateConnection } from '../../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../../stores/toast-queue';
-  import { isAuthenticated, logout as logoutUser } from '../../stores/auth';
+  import { isAuthenticated, logout as logoutUser, user } from '../../stores/auth';
   import Tooltip from './Tooltip.svelte';
   import TruncatedText from './TruncatedText.svelte';
   import AlertsDropdown from './ui/AlertsDropdown.svelte';
@@ -26,6 +26,12 @@
   let reloadButton: HTMLButtonElement;
   let connectButton: HTMLButtonElement;
   let alertsOpen = false;
+  
+  // Computed values for super admin check
+  $: isSuperAdmin = $user?.isSuperAdmin ?? false;
+  $: testToastsTooltip = isSuperAdmin 
+    ? "Test Toasts | This feature is currently in testing" 
+    : "Test Toasts | Super admin only";
   
   function toggleAlerts(): void {
     alertsOpen = !alertsOpen;
@@ -129,8 +135,14 @@
         </button>
       </Tooltip>
     {/if}
-    <Tooltip text="Test Toasts | This feature is currently in testing" position="bottom" level="info">
-      <button class="btn-icon in-testing" on:click={handleTestToasts} title="Test Toasts">
+    <Tooltip text={testToastsTooltip} position="bottom" level={isSuperAdmin ? "info" : "warning"}>
+      <button 
+        class="btn-icon in-testing" 
+        class:disabled={!isSuperAdmin}
+        on:click={handleTestToasts} 
+        title="Test Toasts"
+        disabled={!isSuperAdmin}
+      >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/>
           <path d="M2 17l10 5 10-5"/>
@@ -264,6 +276,23 @@
     &:hover svg {
       transform: rotate(90deg);
     }
+    
+    // Disabled state
+    &:disabled,
+    &.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+      
+      &:hover {
+        transform: none;
+        box-shadow: 0 2px 0 var(--border);
+      }
+      
+      svg {
+        transform: none;
+      }
+    }
 
     // IN TESTING state - override default styles
     &.in-testing {
@@ -280,6 +309,20 @@
           rgba(100, 149, 237, 0.16) 6px,
           rgba(100, 149, 237, 0.16) 12px
         );
+      }
+      
+      &:disabled,
+      &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+        box-shadow: 0 2px 0 var(--border);
+        
+        &:hover {
+          border-color: var(--border);
+          box-shadow: 0 2px 0 var(--border);
+          background-image: none;
+        }
       }
     }
   }

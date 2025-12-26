@@ -3,11 +3,11 @@
  * Handles user session endpoints: me, logout, refresh
  */
 
-import { getCorsHeaders } from '../../utils/cors.js';
-import { hashEmail, verifyJWT, createJWT, getJWTSecret } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
-import { ensureCustomerAccount } from './customer-creation.js';
+import { getCorsHeaders } from '../../utils/cors.js';
+import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
 import { buildCurrentUserResponse } from '../../utils/response-builder.js';
+import { ensureCustomerAccount } from './customer-creation.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -121,6 +121,10 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         const preferences = await getUserPreferences(user.userId, customerId, env);
         await storeUserPreferences(user.userId, customerId, preferences, env);
         
+        // Check if user is a super admin
+        const { isSuperAdminEmail } = await import('../../utils/super-admin.js');
+        const isSuperAdmin = await isSuperAdminEmail(user.email, env);
+        
         // Generate request ID for root config
         const requestId = user.userId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
@@ -141,6 +145,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
                 displayName: user.displayName || null, // Anonymized display name
                 createdAt: user.createdAt,
                 lastLogin: user.lastLogin,
+                isSuperAdmin: isSuperAdmin, // Super admin status
             },
             user.userId,
             token,
