@@ -17,16 +17,17 @@
    * ```
    */
 
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import Carousel from './Carousel.svelte';
   import { localStorageAdapter, type StorageAdapter } from './storage';
-  import { setDomInterferenceDetected } from '../../src/stores/dom-interference.js';
+  // DISABLED: Removed dom-interference import to prevent blocking
+  // import { setDomInterferenceDetected } from '../../src/stores/dom-interference.js';
   
-  // Observers for ensuring visibility
-  let visibilityObserver: IntersectionObserver | null = null;
-  let resizeObserver: ResizeObserver | null = null;
-  let styleObserver: MutationObserver | null = null;
-  let visibilityCheckInterval: ReturnType<typeof setInterval> | null = null;
+  // DISABLED: All observers removed to prevent blocking
+  // let visibilityObserver: IntersectionObserver | null = null;
+  // let resizeObserver: ResizeObserver | null = null;
+  // let styleObserver: MutationObserver | null = null;
+  // let visibilityCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   export let position: 'bottom-left' | 'bottom-right' | 'bottom-center' = 'bottom-right';
   export let autoRotate: boolean = true;
@@ -41,16 +42,19 @@
   export let storage: StorageAdapter = localStorageAdapter; // Allow custom storage adapter
 
   let carouselContainer: HTMLDivElement;
-  let portalContainer: HTMLDivElement | null = null;
+  // DISABLED: Portal removed to simplify
+  // let portalContainer: HTMLDivElement | null = null;
   let isDimmed = defaultDimmed;
-  let isMounted = false;
+  // DISABLED: Removed isMounted tracking
+  // let isMounted = false;
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
   let currentX = 0;
   let currentY = 0;
-  let initialX = 0;
-  let initialY = 0;
+  // DISABLED: Removed initial position tracking
+  // let initialX = 0;
+  // let initialY = 0;
 
   interface SavedState {
     dimmed: boolean;
@@ -86,21 +90,18 @@
     isDimmed = !isDimmed;
     saveState();
     
-    // Explicitly remove inline opacity to let CSS class control it
-    if (carouselContainer) {
-      carouselContainer.style.removeProperty('opacity');
-      // Ensure visibility is still enforced
-      enforceVisibility();
-    }
+    // DISABLED: Removed enforceVisibility call to prevent blocking
+    // if (carouselContainer) {
+    //   carouselContainer.style.removeProperty('opacity');
+    //   enforceVisibility();
+    // }
   }
   
-  // Reactive statement to ensure CSS class updates when isDimmed changes
-  $: if (carouselContainer && isMounted) {
-    // Remove any inline opacity that might have been set
-    carouselContainer.style.removeProperty('opacity');
-    // Ensure visibility is maintained
-    enforceVisibility();
-  }
+  // DISABLED: Reactive statement removed to prevent blocking
+  // $: if (carouselContainer && isMounted) {
+  //   carouselContainer.style.removeProperty('opacity');
+  //   enforceVisibility();
+  // }
 
   function startDrag(e: MouseEvent | TouchEvent): void {
     const target = e.target as HTMLElement;
@@ -113,17 +114,18 @@
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
-    // If we haven't dragged before, convert from bottom-based to top-based positioning
-    if (currentX === 0 && currentY === 0 && carouselContainer) {
-      const rect = carouselContainer.getBoundingClientRect();
-      currentX = rect.left;
-      currentY = rect.top;
-    }
+    // DISABLED: Removed getBoundingClientRect call to prevent blocking
+    // if (currentX === 0 && currentY === 0 && carouselContainer) {
+    //   const rect = carouselContainer.getBoundingClientRect();
+    //   currentX = rect.left;
+    //   currentY = rect.top;
+    // }
     
     dragStartX = clientX - currentX;
     dragStartY = clientY - currentY;
-    initialX = currentX;
-    initialY = currentY;
+    // DISABLED: Removed initial position tracking
+    // initialX = currentX;
+    // initialY = currentY;
     
     document.addEventListener('mousemove', handleDrag);
     document.addEventListener('mouseup', stopDrag);
@@ -143,9 +145,9 @@
     currentX = clientX - dragStartX;
     currentY = clientY - dragStartY;
     
-    // Constrain to viewport
+    // Constrain to viewport (simplified - no offsetHeight call to prevent blocking)
     const maxX = window.innerWidth - width;
-    const maxY = window.innerHeight - (carouselContainer?.offsetHeight || maxHeight);
+    const maxY = window.innerHeight - maxHeight;
     
     currentX = Math.max(0, Math.min(currentX, maxX));
     currentY = Math.max(0, Math.min(currentY, maxY));
@@ -212,8 +214,9 @@
     return styles.join(' ');
   }
 
-  onMount(async () => {
-    isMounted = true;
+  onMount(() => {
+    // DISABLED: Removed isMounted tracking
+    // isMounted = true;
     
     // Load persisted state with timeout protection
     // Wrap in try-catch to prevent blocking if storage is corrupted
@@ -224,370 +227,49 @@
       // Continue without persisted state - use defaults
     }
     
-    // Wait for DOM to be ready
-    await tick();
-    
-    // Initialize portal with multiple retry attempts
-    // This ensures the portal is created even if there are timing issues
-    const maxRetries = 5;
-    let retryCount = 0;
-    
-    const tryInitialize = async (): Promise<void> => {
-      try {
-        // Ensure document.body exists before creating portal
-        if (!document.body) {
-          throw new Error('document.body not available');
-        }
-        
-        await initializePortal();
-      } catch (error) {
-        retryCount++;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        
-        if (retryCount < maxRetries) {
-          // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
-          const delay = Math.min(100 * Math.pow(2, retryCount - 1), 2000);
-          setTimeout(() => {
-            tryInitialize().catch(() => {
-              // Silently retry
-            });
-          }, delay);
-        } else {
-          // Last resort: try one more time after a longer delay
-          setTimeout(() => {
-            initializePortal().catch(() => {
-              // Silently fail
-            });
-          }, 3000);
-        }
-      }
-    };
-    
-    // Start initialization
-    tryInitialize();
+    // DISABLED: Removed portal initialization to simplify and prevent blocking
+    // await tick();
+    // initializePortal();
   });
 
-  async function initializePortal(): Promise<void> {
-    // Ensure document.body exists
-    if (!document.body) {
-      throw new Error('document.body not available');
-    }
-
-    // Check if portal already exists (e.g., from a previous mount)
-    const portalId = `ad-carousel-portal-${storageKey.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    const existingPortal = document.getElementById(portalId);
-    
-    if (existingPortal) {
-      portalContainer = existingPortal as HTMLDivElement;
-    } else {
-      // Create portal container at body level with unique ID based on storageKey
-      // Portal should cover full viewport for proper positioning context
-      portalContainer = document.createElement('div');
-      portalContainer.id = portalId;
-      portalContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; pointer-events: none;';
-      
-      // Append to body - this should always work if document.body exists
-      try {
-        document.body.appendChild(portalContainer);
-      } catch (appendError) {
-        throw new Error(`Failed to append portal to body: ${appendError instanceof Error ? appendError.message : String(appendError)}`);
-      }
-      
-      // Verify portal was actually added to DOM
-      const verifyPortal = document.getElementById(portalId);
-      if (!verifyPortal) {
-        throw new Error('Portal was created but not found in DOM after append');
-      }
-    }
-    
-    // Wait for next tick to ensure carouselContainer is bound
-    await tick();
-    
-    // Move carousel to portal
-    if (!carouselContainer) {
-      throw new Error('carouselContainer not bound - component may not be fully mounted');
-    }
-    
-    if (!portalContainer) {
-      throw new Error('portalContainer is null after initialization');
-    }
-    
-    // Only move if not already in portal
-    if (carouselContainer.parentNode !== portalContainer) {
-      portalContainer.appendChild(carouselContainer);
-    }
-    
-    // Ensure carousel is visible and interactive
-    // Set critical styles inline to ensure visibility even if CSS doesn't load
-    carouselContainer.style.pointerEvents = 'auto';
-    carouselContainer.style.display = 'flex';
-    carouselContainer.style.visibility = 'visible';
-    // Set background color as fallback if CSS variables don't load
-    if (!carouselContainer.style.backgroundColor) {
-      carouselContainer.style.backgroundColor = '#252017'; // fallback for --card
-    }
-    // Don't set opacity inline - let CSS class handle it via .ad-carousel--dimmed
-    
-    // Set up observers to ensure visibility
-    setupVisibilityObservers();
-    
-    // Force visibility immediately after setup
-    await tick();
-    enforceVisibility();
-    
-    // Also enforce after a short delay to catch any late-loading CSS issues
-    setTimeout(() => {
-      enforceVisibility();
-    }, 100);
-  }
+  // DISABLED: Portal initialization removed to simplify and prevent blocking
+  // async function initializePortal(): Promise<void> {
+  //   ...
+  // }
   
-  /**
-   * Force visibility by ensuring critical styles are applied
-   */
-  function enforceVisibility(): void {
-    if (!carouselContainer) return;
-    
-    try {
-      // CRITICAL: Set display FIRST and use !important to override any CSS
-      carouselContainer.style.setProperty('display', 'flex', 'important');
-      carouselContainer.style.setProperty('visibility', 'visible', 'important');
-      carouselContainer.style.setProperty('position', 'fixed', 'important');
-      carouselContainer.style.setProperty('pointer-events', 'auto', 'important');
-      carouselContainer.style.setProperty('z-index', '99999', 'important');
-      
-      // Ensure dimensions are set
-      carouselContainer.style.setProperty('width', `${width}px`, 'important');
-      carouselContainer.style.setProperty('max-height', `${maxHeight}px`, 'important');
-      carouselContainer.style.setProperty('min-width', `${width}px`, 'important');
-      carouselContainer.style.setProperty('min-height', '100px', 'important');
-      
-      // Apply positioning styles from getPositionStyles()
-      const positionStyles = getPositionStyles();
-      // Parse and apply each style property with !important
-      const stylePairs = positionStyles.split(';').filter(s => s.trim());
-      stylePairs.forEach(stylePair => {
-        const colonIndex = stylePair.indexOf(':');
-        if (colonIndex > 0) {
-          const prop = stylePair.substring(0, colonIndex).trim();
-          const value = stylePair.substring(colonIndex + 1).trim();
-          if (prop && value && prop !== 'display' && prop !== 'width' && prop !== 'max-height') {
-            // Use setProperty with important flag for critical positioning
-            if (prop === 'position' || prop === 'z-index' || prop.includes('left') || prop.includes('right') || prop.includes('top') || prop.includes('bottom')) {
-              carouselContainer.style.setProperty(prop, value, 'important');
-            } else {
-              carouselContainer.style.setProperty(prop, value);
-            }
-          }
-        }
-      });
-      
-      // Set background color directly (avoid getComputedStyle which can block)
-      carouselContainer.style.setProperty('background-color', '#252017', 'important');
-      
-      // CRITICAL: Defer expensive DOM operations (getComputedStyle, getBoundingClientRect)
-      // These can block the main thread if the DOM is large or CSS is complex
-      // Use requestAnimationFrame to defer to next frame, preventing lockup
-      requestAnimationFrame(() => {
-        // Wrap in try-catch and add timeout to prevent blocking
-        const checkPromise = new Promise<void>((resolve) => {
-          try {
-            if (!carouselContainer) {
-              resolve();
-              return;
-            }
-            
-            // Check computed styles AFTER setting - if still not visible, something is overriding
-            const finalComputed = window.getComputedStyle(carouselContainer);
-            const rect = carouselContainer.getBoundingClientRect();
-            
-            if (finalComputed.display === 'none' || finalComputed.visibility === 'hidden' || rect.width === 0 || rect.height === 0) {
-              // DOM interference detected - set flag in store
-              setDomInterferenceDetected(true);
-              
-              // Check if parent portal is hiding it
-              if (portalContainer) {
-                try {
-                  const portalComputed = window.getComputedStyle(portalContainer);
-                  if (portalComputed.display === 'none' || portalComputed.visibility === 'hidden') {
-                    portalContainer.style.setProperty('display', 'block', 'important');
-                    portalContainer.style.setProperty('visibility', 'visible', 'important');
-                  }
-                } catch (e) {
-                  // Portal check failed, continue anyway
-                }
-              }
-              
-              // Last resort: remove all classes that might be hiding it and force inline styles
-              carouselContainer.className = 'ad-carousel';
-              carouselContainer.removeAttribute('hidden');
-              carouselContainer.removeAttribute('aria-hidden');
-              
-              // Force all critical styles using cssText to override everything
-              const criticalStyles = [
-                `position: fixed !important`,
-                `display: flex !important`,
-                `visibility: visible !important`,
-                `pointer-events: auto !important`,
-                `z-index: 99999 !important`,
-                `width: ${width}px !important`,
-                `max-height: ${maxHeight}px !important`,
-                `min-width: ${width}px !important`,
-                `min-height: 100px !important`,
-                `background-color: #252017 !important`,
-                `flex-direction: column !important`,
-                `overflow: visible !important`
-              ];
-              
-              // Add positioning styles
-              const posStyles = positionStyles.split(';').filter(s => s.trim());
-              posStyles.forEach(style => {
-                if (style.trim()) {
-                  criticalStyles.push(`${style.trim()} !important`);
-                }
-              });
-              
-              carouselContainer.style.cssText = criticalStyles.join('; ');
-            }
-            
-            // Ensure opacity is correct (but don't override if dimmed class should handle it)
-            if (!isDimmed && finalComputed.opacity === '0') {
-              carouselContainer.style.setProperty('opacity', '1', 'important');
-            }
-            
-            resolve();
-          } catch (error) {
-            console.warn('[AdCarousel] Error in deferred visibility check:', error);
-            resolve(); // Resolve anyway to prevent hanging
-          }
-        });
-        
-        // Add timeout to prevent hanging if getComputedStyle blocks
-        const timeoutPromise = new Promise<void>((resolve) => {
-          setTimeout(() => {
-            console.warn('[AdCarousel] Visibility check timed out after 100ms, skipping');
-            resolve();
-          }, 100);
-        });
-        
-        // Race between check and timeout
-        Promise.race([checkPromise, timeoutPromise]).catch(() => {
-          // Silently handle any errors
-        });
-      });
-    } catch (error) {
-      // Silently handle errors
-    }
-  }
+  // DISABLED: enforceVisibility removed to prevent blocking
+  // function enforceVisibility(): void {
+  //   ...
+  // }
   
-  /**
-   * Set up observers to ensure the carousel stays visible
-   */
-  function setupVisibilityObservers(): void {
-    if (!carouselContainer) return;
-    
-    // IntersectionObserver to detect if element is in viewport
-    visibilityObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting && entry.intersectionRatio === 0) {
-            enforceVisibility();
-          }
-        });
-      },
-      {
-        threshold: [0, 0.1, 1.0],
-        root: null // viewport
-      }
-    );
-    visibilityObserver.observe(carouselContainer);
-    
-    // MutationObserver to watch for style changes
-    styleObserver = new MutationObserver((mutations) => {
-      let needsEnforcement = false;
-      mutations.forEach(mutation => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-          const computed = window.getComputedStyle(carouselContainer);
-          if (computed.display === 'none' || computed.visibility === 'hidden') {
-            needsEnforcement = true;
-          }
-        }
-      });
-      if (needsEnforcement) {
-        enforceVisibility();
-      }
-    });
-    styleObserver.observe(carouselContainer, {
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
-    
-    // ResizeObserver to watch for size changes (might indicate positioning issues)
-    resizeObserver = new ResizeObserver(() => {
-      // Check if element is actually visible
-      const rect = carouselContainer.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        enforceVisibility();
-      }
-    });
-    resizeObserver.observe(carouselContainer);
-    
-    // Periodic visibility check as a fallback
-    // CRITICAL: Defer expensive DOM operations to prevent blocking
-    visibilityCheckInterval = setInterval(() => {
-      if (!carouselContainer) {
-        clearInterval(visibilityCheckInterval!);
-        return;
-      }
-      
-      // Defer expensive operations to prevent blocking
-      requestAnimationFrame(() => {
-        try {
-          const rect = carouselContainer.getBoundingClientRect();
-          const computed = window.getComputedStyle(carouselContainer);
-          const isVisible = 
-            computed.display !== 'none' &&
-            computed.visibility !== 'hidden' &&
-            computed.opacity !== '0' &&
-            rect.width > 0 &&
-            rect.height > 0 &&
-            rect.top < window.innerHeight &&
-            rect.bottom > 0 &&
-            rect.left < window.innerWidth &&
-            rect.right > 0;
-          
-          if (!isVisible) {
-            enforceVisibility();
-          }
-        } catch (error) {
-          // Silently handle errors in periodic check
-        }
-      });
-    }, 2000); // Check every 2 seconds
-  }
+  // DISABLED: setupVisibilityObservers removed to prevent blocking
+  // function setupVisibilityObservers(): void {
+  //   ...
+  // }
 
   onDestroy(() => {
-    // Clean up observers
-    if (visibilityObserver) {
-      visibilityObserver.disconnect();
-      visibilityObserver = null;
-    }
-    if (resizeObserver) {
-      resizeObserver.disconnect();
-      resizeObserver = null;
-    }
-    if (styleObserver) {
-      styleObserver.disconnect();
-      styleObserver = null;
-    }
-    if (visibilityCheckInterval) {
-      clearInterval(visibilityCheckInterval);
-      visibilityCheckInterval = null;
-    }
+    // DISABLED: Observer cleanup removed (observers are disabled)
+    // if (visibilityObserver) {
+    //   visibilityObserver.disconnect();
+    //   visibilityObserver = null;
+    // }
+    // if (resizeObserver) {
+    //   resizeObserver.disconnect();
+    //   resizeObserver = null;
+    // }
+    // if (styleObserver) {
+    //   styleObserver.disconnect();
+    //   styleObserver = null;
+    // }
+    // if (visibilityCheckInterval) {
+    //   clearInterval(visibilityCheckInterval);
+    //   visibilityCheckInterval = null;
+    // }
     
-    // Clean up portal container
-    if (portalContainer && portalContainer.parentNode) {
-      portalContainer.parentNode.removeChild(portalContainer);
-    }
+    // DISABLED: Portal cleanup removed (portal is disabled)
+    // if (portalContainer && portalContainer.parentNode) {
+    //   portalContainer.parentNode.removeChild(portalContainer);
+    // }
   });
 </script>
 
