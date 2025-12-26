@@ -44,7 +44,10 @@ type NextFunction = (request: APIRequest) => Promise<APIResponse>;
 const authMiddleware: Middleware = async (request: APIRequest, next: NextFunction): Promise<APIResponse> => {
     const token = getAuthToken();
     if (token) {
-        request.headers.set('Authorization', `Bearer ${token}`);
+        if (!request.headers) {
+            request.headers = {};
+        }
+        request.headers['Authorization'] = `Bearer ${token}`;
     }
     return next(request);
 };

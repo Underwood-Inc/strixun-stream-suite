@@ -66,7 +66,7 @@ const Button = styled.button<{ disabled?: boolean }>`
   }
 `;
 
-const Error = styled.div`
+const ErrorMessage = styled.div`
   color: ${colors.danger};
   font-size: 0.875rem;
   text-align: center;
@@ -171,7 +171,7 @@ export function LoginPage() {
                         <Button type="submit" disabled={loading}>
                             {loading ? 'Sending...' : 'Send OTP'}
                         </Button>
-                        {error && <Error>{error}</Error>}
+                        {error && <ErrorMessage>{error}</ErrorMessage>}
                     </Form>
                 ) : (
                     <Form onSubmit={handleVerifyOTP}>
@@ -199,7 +199,7 @@ export function LoginPage() {
                         >
                             Back
                         </Button>
-                        {error && <Error>{error}</Error>}
+                        {error && <ErrorMessage>{error}</ErrorMessage>}
                     </Form>
                 )}
             </Card>
