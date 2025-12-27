@@ -61,6 +61,29 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /mods/permissions/me - Get current user's upload permissions
+        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[1] === 'permissions' && pathSegments[2] === 'me' && request.method === 'GET') {
+            if (!auth) {
+                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return {
+                    response: new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    }),
+                    customerId: null
+                };
+            }
+            const { handleGetUserPermissions } = await import('../handlers/mods/permissions.js');
+            const response = await handleGetUserPermissions(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
         // Route: GET /mods/:slug/review - Get mod review page (admin/uploader only)
         if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'review' && request.method === 'GET') {
             const slug = pathSegments[1];

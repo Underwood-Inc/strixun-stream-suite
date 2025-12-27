@@ -7,6 +7,7 @@
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { useModReview, useAddReviewComment, useUpdateModStatus } from '../hooks/useMods';
+import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme/index';
 import type { ModStatus } from '../types/mod';
@@ -184,6 +185,7 @@ export function ModReviewPage() {
     const { data, isLoading, error } = useModReview(slug || '');
     const addComment = useAddReviewComment();
     const updateStatus = useUpdateModStatus();
+    const { isSuperAdmin, user } = useAuthStore();
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -197,7 +199,8 @@ export function ModReviewPage() {
     if (!data) return <Error>Review not found</Error>;
 
     const { mod } = data;
-    const isAdmin = false; // TODO: Check admin status from API
+    const isAdmin = isSuperAdmin || false;
+    const isUploader = user?.userId === mod.authorId;
 
     return (
         <PageContainer>
@@ -211,28 +214,32 @@ export function ModReviewPage() {
                         </span>
                     </div>
                 </Info>
-                {isAdmin && (
+                {(isAdmin || isUploader) && (
                     <StatusActions>
-                        <Button
-                            variant="primary"
-                            onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'approved' })}
-                            disabled={updateStatus.isPending || mod.status === 'approved'}
-                        >
-                            Approve
-                        </Button>
-                        <Button
-                            onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'changes_requested' })}
-                            disabled={updateStatus.isPending || mod.status === 'changes_requested'}
-                        >
-                            Request Changes
-                        </Button>
-                        <Button
-                            variant="danger"
-                            onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'denied' })}
-                            disabled={updateStatus.isPending || mod.status === 'denied'}
-                        >
-                            Deny
-                        </Button>
+                        {isAdmin && (
+                            <>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'approved' })}
+                                    disabled={updateStatus.isPending || mod.status === 'approved'}
+                                >
+                                    Approve
+                                </Button>
+                                <Button
+                                    onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'changes_requested' })}
+                                    disabled={updateStatus.isPending || mod.status === 'changes_requested'}
+                                >
+                                    Request Changes
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'denied' })}
+                                    disabled={updateStatus.isPending || mod.status === 'denied'}
+                                >
+                                    Deny
+                                </Button>
+                            </>
+                        )}
                     </StatusActions>
                 )}
             </Header>

@@ -11,14 +11,17 @@ interface User {
     email: string;
     token: string;
     expiresAt: string;
+    isSuperAdmin?: boolean;
 }
 
 interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
+    isSuperAdmin: boolean;
     setUser: (user: User | null) => void;
     logout: () => void;
     restoreSession: () => Promise<void>;
+    fetchUserInfo: () => Promise<void>;
 }
 
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
@@ -67,6 +70,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
                 email,
                 token,
                 expiresAt,
+                isSuperAdmin: false, // Will be fetched separately
             };
             
             // Store token in sessionStorage
@@ -95,9 +99,39 @@ async function restoreSessionFromBackend(): Promise<User | null> {
     }
 }
 
+/**
+ * Fetch user info from /auth/me to get admin status
+ */
+async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean } | null> {
+    try {
+        const { createAPIClient } = await import('@strixun/api-framework/client');
+        const authClient = createAPIClient({
+            baseURL: AUTH_API_URL,
+            timeout: 5000,
+            auth: {
+                tokenGetter: () => token,
+            },
+        });
+        
+        const response = await authClient.get<{ isSuperAdmin?: boolean; [key: string]: any }>('/auth/me');
+        
+        if (response.status === 200 && response.data) {
+            return {
+                isSuperAdmin: response.data.isSuperAdmin || false,
+            };
+        }
+        
+        return null;
+    } catch (error) {
+        console.warn('[Auth] Failed to fetch user info:', error instanceof Error ? error.message : String(error));
+        return null;
+    }
+}
+
 const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
     user: null,
     isAuthenticated: false,
+    isSuperAdmin: false,
     setUser: (user: User | null) => {
         // Store token in sessionStorage when setting user
         if (user && typeof window !== 'undefined' && window.sessionStorage) {
@@ -105,13 +139,32 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
         } else if (!user && typeof window !== 'undefined') {
             sessionStorage.removeItem('auth_token');
         }
-        set({ user, isAuthenticated: !!user });
+        set({ 
+            user, 
+            isAuthenticated: !!user,
+            isSuperAdmin: user?.isSuperAdmin || false,
+        });
     },
     logout: () => {
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('auth_token');
         }
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, isSuperAdmin: false });
+    },
+    fetchUserInfo: async () => {
+        const currentUser = get().user;
+        if (!currentUser || !currentUser.token) {
+            return;
+        }
+        
+        const userInfo = await fetchUserInfo(currentUser.token);
+        if (userInfo) {
+            const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin };
+            set({ 
+                user: updatedUser, 
+                isSuperAdmin: userInfo.isSuperAdmin,
+            });
+        }
     },
     restoreSession: async () => {
         const currentUser = get().user;
@@ -130,7 +183,16 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
         // Try to restore from backend (IP-based session sharing)
         const restoredUser = await restoreSessionFromBackend();
         if (restoredUser) {
-            set({ user: restoredUser, isAuthenticated: true });
+            set({ user: restoredUser, isAuthenticated: true, isSuperAdmin: false });
+            // Fetch admin status after restoring session
+            const userInfo = await fetchUserInfo(restoredUser.token);
+            if (userInfo) {
+                const updatedUser = { ...restoredUser, isSuperAdmin: userInfo.isSuperAdmin };
+                set({ 
+                    user: updatedUser, 
+                    isSuperAdmin: userInfo.isSuperAdmin,
+                });
+            }
         }
     },
 });
@@ -167,6 +229,11 @@ export const useAuthStore = create<AuthState>()(
                     } else {
                         // No user and no token - try to restore from backend
                         state.restoreSession();
+                    }
+                    
+                    // If we have a user, fetch admin status
+                    if (state.user && state.user.token) {
+                        state.fetchUserInfo();
                     }
                 }
             },

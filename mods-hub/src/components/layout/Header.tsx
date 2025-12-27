@@ -5,6 +5,7 @@
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
+import { useUploadPermission } from '../../hooks/useUploadPermission';
 import { colors, spacing } from '../../theme';
 
 const HeaderContainer = styled.header`
@@ -77,7 +78,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 `;
 
 export function Header() {
-    const { isAuthenticated, user, logout } = useAuthStore();
+    const { isAuthenticated, user, logout, isSuperAdmin } = useAuthStore();
+    const { hasPermission } = useUploadPermission();
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -92,7 +94,16 @@ export function Header() {
                 <NavLink to="/">Browse</NavLink>
                 {isAuthenticated ? (
                     <>
-                        <NavLink to="/upload">Upload</NavLink>
+                        {hasPermission && (
+                            <>
+                                <NavLink to="/upload">Upload</NavLink>
+                                <NavLink to="/dashboard">My Mods</NavLink>
+                            </>
+                        )}
+                        <NavLink to="/profile">Profile</NavLink>
+                        {isSuperAdmin && (
+                            <NavLink to="/admin">Admin</NavLink>
+                        )}
                         <Button variant="secondary" onClick={handleLogout}>
                             Logout ({user?.email})
                         </Button>

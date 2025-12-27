@@ -1,0 +1,60 @@
+/**
+ * Handle get user permissions request
+ * GET /mods/permissions/me
+ * Returns the current user's upload permission status
+ */
+
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from '../../utils/errors.js';
+import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
+
+/**
+ * Handle get user permissions
+ * Returns upload permission status for the authenticated user
+ */
+export async function handleGetUserPermissions(
+    request: Request,
+    env: Env,
+    auth: { userId: string; email?: string; customerId: string | null }
+): Promise<Response> {
+    try {
+        // Check if user has upload permission
+        const hasPermission = await hasUploadPermission(auth.userId, auth.email, env);
+        const isSuperAdmin = auth.email ? await isSuperAdminEmail(auth.email, env) : false;
+        
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        
+        return new Response(JSON.stringify({
+            hasUploadPermission: hasPermission,
+            isSuperAdmin: isSuperAdmin,
+            userId: auth.userId,
+            email: auth.email,
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error) {
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            'Failed to check user permissions'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+

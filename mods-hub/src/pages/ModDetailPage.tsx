@@ -6,6 +6,8 @@
 import { useParams } from 'react-router-dom';
 import { useModDetail } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
+import { ModAnalytics } from '../components/mod/ModAnalytics';
+import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
@@ -130,6 +132,20 @@ export function ModDetailPage() {
             </Header>
 
             <ModVersionList modId={mod.modId} versions={versions} isUploader={isUploader} />
+            
+            {isUploader && (
+                <ModAnalytics mod={mod} versions={versions} />
+            )}
+            
+            <ModRatings 
+                modId={mod.modId}
+                ratings={[]} // TODO: Fetch from API
+                averageRating={undefined} // TODO: Calculate from ratings
+                onRatingSubmit={async (rating, comment) => {
+                    // TODO: Implement API call to submit rating
+                    console.log('Submit rating:', { rating, comment, modId: mod.modId });
+                }}
+            />
             </PageContainer>
         </>
     );

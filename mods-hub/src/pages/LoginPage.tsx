@@ -50,6 +50,11 @@ export function LoginPage() {
             sessionStorage.setItem('auth_token', data.token);
         }
 
+        // Fetch admin status after login
+        const { useAuthStore } = await import('../stores/auth');
+        const store = useAuthStore.getState();
+        await store.fetchUserInfo();
+
         console.log('[Login] ✅ User authenticated:', userData.email, 'Token expires at:', expiresAt);
 
         navigate('/');

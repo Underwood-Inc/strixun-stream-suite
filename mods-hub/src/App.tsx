@@ -6,6 +6,8 @@ import { ModUploadPage } from './pages/ModUploadPage';
 import { ModManagePage } from './pages/ModManagePage';
 import { ModReviewPage } from './pages/ModReviewPage';
 import { AdminPanel } from './pages/AdminPanel';
+import { UserDashboardPage } from './pages/UserDashboardPage';
+import { UserProfilePage } from './pages/UserProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { Layout } from './components/layout/Layout';
 
@@ -30,6 +32,8 @@ export function App() {
                     <Route path="/mods/:slug" element={<ModDetailPage />} />
                     <Route path="/mods/:slug/review" element={<ModReviewPage />} />
                     <Route path="/upload" element={<ModUploadPage />} />
+                    <Route path="/dashboard" element={<UserDashboardPage />} />
+                    <Route path="/profile" element={<UserProfilePage />} />
                     <Route path="/manage/:slug" element={<ModManagePage />} />
                     <Route path="/admin" element={<AdminPanel />} />
                     <Route path="*" element={<Navigate to="/" replace />} />

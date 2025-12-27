@@ -421,6 +421,18 @@ export async function revokeUser(userId: string): Promise<{ success: boolean; us
     return response.data;
 }
 
+/**
+ * Check if current user has upload permission
+ * Calls the backend endpoint to get the user's permission status
+ */
+export async function checkUploadPermission(): Promise<{ hasPermission: boolean; isSuperAdmin?: boolean }> {
+    const response = await api.get<{ hasUploadPermission: boolean; isSuperAdmin: boolean; userId: string; email?: string }>('/mods/permissions/me');
+    return {
+        hasPermission: response.data.hasUploadPermission,
+        isSuperAdmin: response.data.isSuperAdmin,
+    };
+}
+
 // Import types for use in function signatures
 import type { 
     ModListResponse, 

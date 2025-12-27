@@ -5,6 +5,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion } from '../hooks/useMods';
+import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
 import { useAuthStore } from '../stores/auth';
@@ -28,7 +29,21 @@ const Title = styled.h1`
 const Unauthorized = styled.div`
   text-align: center;
   padding: ${spacing.xxl};
+  background: ${colors.danger}20;
+  border: 1px solid ${colors.danger};
+  border-radius: 8px;
   color: ${colors.danger};
+`;
+
+const UnauthorizedTitle = styled.h2`
+  margin: 0 0 ${spacing.md} 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+`;
+
+const UnauthorizedMessage = styled.p`
+  margin: ${spacing.sm} 0;
+  font-size: 0.875rem;
 `;
 
 const Loading = styled.div`
@@ -41,15 +56,49 @@ export function ModManagePage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuthStore();
+    const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const { data, isLoading } = useModDetail(slug || '');
     const updateMod = useUpdateMod();
     const deleteMod = useDeleteMod();
     const uploadVersion = useUploadVersion();
 
-    if (isLoading) return <Loading>Loading...</Loading>;
-    if (!data) return <Unauthorized>Mod not found</Unauthorized>;
-    if (!isAuthenticated || data.mod.authorId !== user?.userId) {
-        return <Unauthorized>You don't have permission to manage this mod</Unauthorized>;
+    if (isLoading || permissionLoading) return <Loading>Loading...</Loading>;
+    if (!data) {
+        return (
+            <Unauthorized>
+                <UnauthorizedTitle>Mod Not Found</UnauthorizedTitle>
+                <UnauthorizedMessage>The mod you're looking for doesn't exist or has been deleted.</UnauthorizedMessage>
+            </Unauthorized>
+        );
+    }
+    if (!isAuthenticated) {
+        return (
+            <Unauthorized>
+                <UnauthorizedTitle>Authentication Required</UnauthorizedTitle>
+                <UnauthorizedMessage>Please log in to manage mods.</UnauthorizedMessage>
+            </Unauthorized>
+        );
+    }
+    if (!hasPermission) {
+        return (
+            <Unauthorized>
+                <UnauthorizedTitle>Mod Management Permission Required</UnauthorizedTitle>
+                <UnauthorizedMessage>
+                    You do not have permission to manage mods. Only users with explicit mod-management permission can upload and manage mods.
+                    <br />
+                    <br />
+                    Please request approval from an administrator.
+                </UnauthorizedMessage>
+            </Unauthorized>
+        );
+    }
+    if (data.mod.authorId !== user?.userId) {
+        return (
+            <Unauthorized>
+                <UnauthorizedTitle>Permission Denied</UnauthorizedTitle>
+                <UnauthorizedMessage>You can only manage mods that you uploaded. This mod belongs to {data.mod.authorEmail}.</UnauthorizedMessage>
+            </Unauthorized>
+        );
     }
 
     const handleUpdate = async (updates: any) => {
