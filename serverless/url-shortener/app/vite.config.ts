@@ -3,7 +3,21 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [
+    svelte({
+      onwarn: (warning, handler) => {
+        // Suppress unused CSS selector warnings
+        if (warning.code === 'css-unused-selector' || warning.code === 'css_unused_selector') {
+          return;
+        }
+        // Suppress accessibility warnings
+        if (warning.code?.startsWith('a11y-')) {
+          return;
+        }
+        handler(warning);
+      }
+    })
+  ],
   css: {
     preprocessorOptions: {
       scss: {
