@@ -8,10 +8,9 @@
 import { getCorsHeaders } from '../utils/cors.js';
 import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls, handleDeleteUrl } from '../handlers/url.js';
 import { handleHealth } from '../handlers/health.js';
-import { handleStandalonePage } from '../handlers/page.js';
 import { handleDecryptScript } from '../handlers/decrypt-script.js';
 import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
-import { handleOtpLoginSvelteScript } from '../handlers/otp-login-svelte-script.js';
+import { handleAppAssets } from '../handlers/app-assets.js';
 
 /**
  * Helper to wrap handlers with automatic encryption
@@ -48,11 +47,8 @@ async function wrapWithEncryption(handlerResponse, request) {
   return handlerResponse;
 }
 
-// Import standalone HTML content
-// In Cloudflare Workers, we need to embed the HTML as a string
-// This will be passed from worker.js
-export function createRouter(standaloneHtml) {
-  return async function route(request, env) {
+export function createRouter() {
+  return async function route(request: Request, env: any): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -70,16 +66,6 @@ export function createRouter(standaloneHtml) {
       // Serve OTP core script
       if (path === '/otp-core.js' && request.method === 'GET') {
         return handleOtpCoreScript();
-      }
-
-      // Serve OTP Login Svelte component bundle
-      if (path === '/otp-login-svelte.js' && request.method === 'GET') {
-        return handleOtpLoginSvelteScript();
-      }
-
-      // Serve standalone HTML page at root
-      if (path === '/' && request.method === 'GET') {
-        return handleStandalonePage(standaloneHtml);
       }
 
       // API endpoints (require authentication)
@@ -104,9 +90,19 @@ export function createRouter(standaloneHtml) {
       }
 
       // Redirect endpoint (public, no auth required)
-      // This must be last to catch all other paths
-      if (request.method === 'GET' && path !== '/api' && !path.startsWith('/api/')) {
-        return handleRedirect(request, env);
+      // Check for short code redirects before serving app
+      // Short codes are 3-20 alphanumeric characters
+      if (request.method === 'GET' && path !== '/' && !path.startsWith('/api/') && /^\/[a-zA-Z0-9_-]{3,20}$/.test(path)) {
+        const redirectResponse = await handleRedirect(request, env);
+        // If redirect found, return it; otherwise fall through to app
+        if (redirectResponse.status !== 404) {
+          return redirectResponse;
+        }
+      }
+
+      // Serve Svelte app (SPA routing - all non-API paths serve the app)
+      if (request.method === 'GET' && !path.startsWith('/api/')) {
+        return handleAppAssets(request, env);
       }
 
       // Not found

@@ -10,14 +10,12 @@
 import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
 import { initializeServiceTypes, type ExecutionContext } from '../shared/types.js';
 import { createRouter } from './router/routes.js';
-import { STANDALONE_HTML } from './templates/standalone.js';
 
 /**
  * Request handler
  */
 async function handleRequest(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-  // Create router with embedded HTML
-  const router = createRouter(STANDALONE_HTML);
+  const router = createRouter();
   return router(request, env);
 }
 

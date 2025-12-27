@@ -8,15 +8,22 @@ import { build } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { mkdirSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const projectRoot = resolve(__dirname, '../..');
-const componentPath = resolve(__dirname, '../svelte/OtpLogin.svelte');
+const entryPath = resolve(__dirname, '../entry.ts');
 const outputDir = resolve(__dirname, '../dist');
-const outputFile = resolve(outputDir, 'otp-login-svelte.js');
+const svelteConfigPath = resolve(__dirname, '../svelte.config.js');
+
+// Verify config file exists
+import { existsSync } from 'fs';
+if (!existsSync(svelteConfigPath)) {
+  console.error(`❌ Svelte config not found at: ${svelteConfigPath}`);
+  process.exit(1);
+}
 
 // Ensure dist directory exists
 mkdirSync(outputDir, { recursive: true });
@@ -26,14 +33,23 @@ try {
   await build({
     plugins: [
       svelte({
+        configFile: svelteConfigPath,
         compilerOptions: {
-          customElement: false,
+          css: 'injected',
+        },
+        onwarn: (warning, handler) => {
+          // Suppress CSS unused selector warnings
+          if (warning.code === 'css-unused-selector') return;
+          // Suppress a11y warnings
+          if (warning.code?.startsWith('a11y-')) return;
+          // Call default handler for other warnings
+          handler(warning);
         },
       }),
     ],
     build: {
       lib: {
-        entry: componentPath,
+        entry: entryPath,
         name: 'OtpLoginSvelte',
         fileName: 'otp-login-svelte',
         formats: ['iife'],
@@ -42,20 +58,25 @@ try {
         output: {
           extend: true,
         },
+        external: [],
       },
       outDir: outputDir,
       write: true,
+      minify: false, // Disable minification to help debug issues
     },
     resolve: {
       alias: {
         '@shared-components': projectRoot,
       },
     },
+    define: {
+      'process.env.NODE_ENV': '"production"',
+    },
   });
 
-  console.log(`✅ Bundled OtpLogin Svelte component to ${outputFile}`);
+  console.log(`✅ Bundled OtpLogin Svelte component to ${outputDir}/otp-login-svelte.js`);
   console.log(`   Load it in HTML with: <script src="/otp-login-svelte.js"></script>`);
-  console.log(`   Then use: new OtpLoginSvelte({ target: element, props: {...} })`);
+  console.log(`   Then use: OtpLoginSvelte.mountOtpLogin({ target: element, ...props })`);
 } catch (error) {
   console.error('❌ Failed to bundle OtpLogin Svelte component:', error);
   process.exit(1);

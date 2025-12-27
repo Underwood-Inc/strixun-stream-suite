@@ -3,6 +3,7 @@ packages:
   - 'serverless'
   - 'serverless/*'
   - 'serverless/*/dashboard'
+  - 'serverless/*/app'
   - 'serverless/shared/api'
   - 'control-panel'
   - 'mods-hub'
