@@ -10,6 +10,24 @@ export const GlobalStyle = createGlobalStyle`
 
   html {
     font-size: 16px;
+    /* CSS variables for shared components (OTP login, etc.) */
+    --card: ${colors.card};
+    --card-hover: ${colors.cardHover};
+    --bg: ${colors.bg};
+    --bg-secondary: ${colors.bgSecondary};
+    --bg-tertiary: ${colors.bgTertiary};
+    --text: ${colors.text};
+    --text-secondary: ${colors.textSecondary};
+    --text-muted: ${colors.textMuted};
+    --accent: ${colors.accent};
+    --accent-hover: ${colors.accentHover};
+    --accent-active: ${colors.accentActive};
+    --success: ${colors.success};
+    --warning: ${colors.warning};
+    --danger: ${colors.danger};
+    --info: ${colors.info};
+    --border: ${colors.border};
+    --border-light: ${colors.borderLight};
   }
 
   body {

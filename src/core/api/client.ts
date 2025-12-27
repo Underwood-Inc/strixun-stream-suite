@@ -145,9 +145,15 @@ export class APIClient {
     });
 
     // Serialize body
-    let body: string | undefined;
+    let body: string | FormData | undefined;
     if (request.body) {
-      if (typeof request.body === 'string') {
+      if (request.body instanceof FormData) {
+        // FormData should be passed directly to fetch
+        // Don't set Content-Type - browser will set it with boundary
+        body = request.body;
+        // Remove Content-Type header if it was set (browser will set it correctly)
+        headers.delete('Content-Type');
+      } else if (typeof request.body === 'string') {
         body = request.body;
       } else {
         body = JSON.stringify(request.body);

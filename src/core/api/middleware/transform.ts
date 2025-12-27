@@ -36,9 +36,11 @@ export function createTransformMiddleware(config: TransformConfig): Middleware {
 
 /**
  * Default request transformer - ensures Content-Type header for JSON bodies
+ * Note: FormData should NOT have Content-Type set - browser will set it with boundary
  */
 export function defaultRequestTransformer(request: APIRequest): APIRequest {
-  if (request.body && typeof request.body === 'object') {
+  // Skip Content-Type for FormData - browser will set it correctly with boundary
+  if (request.body && typeof request.body === 'object' && !(request.body instanceof FormData)) {
     if (!request.headers) {
       request.headers = {};
     }
