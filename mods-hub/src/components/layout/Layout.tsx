@@ -31,14 +31,13 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
     const { restoreSession, user } = useAuthStore();
 
-    // Restore session from backend on mount if no user is set
+    // Restore session from backend on mount
     // This enables cross-application session sharing for the same device
+    // Always try to restore - it will check if restoration is needed
     useEffect(() => {
-        if (!user) {
-            restoreSession().catch(error => {
-                console.debug('[Layout] Session restoration failed (non-critical):', error);
-            });
-        }
+        restoreSession().catch(error => {
+            console.debug('[Layout] Session restoration failed (non-critical):', error);
+        });
     }, []); // Only run once on mount
 
     return (

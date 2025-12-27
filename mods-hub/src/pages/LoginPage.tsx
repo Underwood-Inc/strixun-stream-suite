@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { useAuthStore } from '../stores/auth';
+import { createAPIClient } from '@strixun/api-framework/client';
 
 const PageContainer = styled.div`
   max-width: 400px;
@@ -80,6 +81,12 @@ const Info = styled.div`
 
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
 
+// Create auth API client (uses secureFetch internally)
+const authClient = createAPIClient({
+    baseURL: AUTH_API_URL,
+    timeout: 30000,
+});
+
 export function LoginPage() {
     const navigate = useNavigate();
     const { setUser } = useAuthStore();
@@ -95,15 +102,11 @@ export function LoginPage() {
         setError('');
 
         try {
-            const response = await fetch(`${AUTH_API_URL}/auth/request-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
+            const response = await authClient.post<{ success?: boolean; message?: string }>('/auth/request-otp', { email });
 
-            if (!response.ok) {
-                const data = await response.json() as { error?: string };
-                throw new Error(data.error || 'Failed to request OTP');
+            if (response.status !== 200) {
+                const errorData = response.data as { error?: string; detail?: string } | undefined;
+                throw new Error(errorData?.error || errorData?.detail || 'Failed to request OTP');
             }
 
             setStep('otp');
@@ -120,31 +123,51 @@ export function LoginPage() {
         setError('');
 
         try {
-            const response = await fetch(`${AUTH_API_URL}/auth/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp }),
-            });
+            const response = await authClient.post<{
+                access_token?: string;
+                token?: string;
+                userId?: string;
+                sub?: string;
+                email?: string;
+                expiresAt?: string;
+                expires_in?: number;
+            }>('/auth/verify-otp', { email, otp });
 
-            if (!response.ok) {
-                const data = await response.json() as { error?: string };
-                throw new Error(data.error || 'Failed to verify OTP');
+            if (response.status !== 200 || !response.data) {
+                const errorData = response.data as { error?: string; detail?: string } | undefined;
+                throw new Error(errorData?.error || errorData?.detail || 'Failed to verify OTP');
             }
 
-            const data = await response.json();
+            const data = response.data;
             
-            // Store user data
-            setUser({
+            // Use expiresAt from backend response (it's already in ISO string format)
+            // If not provided, calculate from expires_in (in seconds) or default to 7 hours
+            let expiresAt: string;
+            if (data.expiresAt) {
+                expiresAt = data.expiresAt;
+            } else if (data.expires_in) {
+                expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
+            } else {
+                // Default to 7 hours (matching backend token expiration)
+                expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
+            }
+            
+            // Store user data with correct expiration
+            const userData = {
                 userId: data.userId || data.sub,
-                email: email,
+                email: data.email || email,
                 token: data.access_token || data.token,
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-            });
+                expiresAt: expiresAt,
+            };
+            
+            setUser(userData);
 
             // Store token in sessionStorage
             if (data.access_token || data.token) {
                 sessionStorage.setItem('auth_token', data.access_token || data.token);
             }
+            
+            console.log('[Login] ✅ User authenticated:', userData.email, 'Token expires at:', expiresAt);
 
             navigate('/');
         } catch (err: any) {

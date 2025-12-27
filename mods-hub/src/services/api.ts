@@ -23,19 +23,21 @@ async function refreshAuthToken(): Promise<string | null> {
     const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
     
     try {
-        const response = await fetch(`${AUTH_API_URL}/auth/restore-session`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        // Use the API framework client which already handles secureFetch internally
+        const { createAPIClient } = await import('@strixun/api-framework/client');
+        const authClient = createAPIClient({
+            baseURL: AUTH_API_URL,
+            timeout: 5000, // 5 second timeout for session restoration
         });
+        
+        const response = await authClient.post<{ restored: boolean; access_token?: string; token?: string; userId?: string; sub?: string; email?: string; expiresAt?: string }>('/auth/restore-session', {});
 
-        if (!response.ok) {
+        if (response.status !== 200 || !response.data) {
             console.warn('[API] Token refresh failed:', response.status);
             return null;
         }
 
-        const data = await response.json();
+        const data = response.data;
         if (data.restored && data.access_token) {
             // Update token in storage
             if (typeof window !== 'undefined' && window.sessionStorage) {
