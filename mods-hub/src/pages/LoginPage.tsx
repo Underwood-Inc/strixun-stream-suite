@@ -39,7 +39,7 @@ export function LoginPage() {
         const userData = {
             userId: data.userId,
             email: data.email,
-            token: data.token || data.access_token || '',
+            token: data.token,
             expiresAt: expiresAt,
         };
 
