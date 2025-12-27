@@ -20,10 +20,15 @@ export async function handleGetModDetail(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
+        // Check if user is super admin (needed for filtering)
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        
         // Find mod by slug
         let mod = await findModBySlug(slug, env, auth);
         
-        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
+        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility for legacy mods)
+        // BUT: Still enforce visibility/status filtering
         if (!mod) {
             // Check global/public scope (no customer prefix)
             const globalModKey = `mod_${slug}`;
@@ -33,6 +38,17 @@ export async function handleGetModDetail(
             if (!mod && auth?.customerId) {
                 const customerModKey = getCustomerKey(auth.customerId, `mod_${slug}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
+            
+            // CRITICAL: Filter legacy mods that don't meet visibility/status requirements
+            if (mod && !isAdmin) {
+                // For non-super users: ONLY public, published mods are allowed
+                if (mod.visibility !== 'public' || mod.status !== 'published') {
+                    // Only allow if user is the author
+                    if (mod.authorId !== auth?.userId) {
+                        mod = null; // Filter out - don't show to non-authors
+                    }
+                }
             }
         }
         
@@ -76,34 +92,64 @@ export async function handleGetModDetail(
             });
         }
 
-        // Check visibility
-        if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
-            const rfcError = createError(
-                request,
-                404,
-                'Mod Not Found',
-                'The requested mod was not found'
-            );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        // Check status: only show published mods to public, admins and authors can see all statuses
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        // isAdmin already checked above
         const isAuthor = mod.authorId === auth?.userId;
         
-        if (mod.status && mod.status !== 'published') {
-            // Only show non-published mods to admins or the author
-            if (!isAuthor && !isAdmin) {
+        // CRITICAL: Enforce strict visibility and status filtering
+        // Only super admins can bypass these checks
+        if (!isAdmin) {
+            // For non-super users: ONLY public, published mods are allowed
+            // Legacy mods without proper fields are filtered out
+            
+            // Check visibility: MUST be 'public'
+            if (mod.visibility !== 'public') {
+                // Only show private/unlisted mods to their author
+                if (mod.authorId !== auth?.userId) {
+                    const rfcError = createError(
+                        request,
+                        404,
+                        'Mod Not Found',
+                        'The requested mod was not found'
+                    );
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 404,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+            }
+            
+            // Check status: MUST be 'published'
+            // Legacy mods without status field are filtered out (undefined !== 'published')
+            if (mod.status !== 'published') {
+                // Only show non-published mods to their author
+                if (!isAuthor) {
+                    const rfcError = createError(
+                        request,
+                        404,
+                        'Mod Not Found',
+                        'The requested mod was not found'
+                    );
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 404,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+            }
+        } else {
+            // Super admins: check visibility but allow all statuses
+            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
                 const rfcError = createError(
                     request,
                     404,

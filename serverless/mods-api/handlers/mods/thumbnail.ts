@@ -46,19 +46,67 @@ export async function handleThumbnail(
             });
         }
 
-        // Check visibility
-        if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
-            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        // Check if user is super admin
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        
+        // CRITICAL: Enforce strict visibility and status filtering
+        // Only super admins can bypass these checks
+        if (!isAdmin) {
+            // For non-super users: ONLY public, published mods are allowed
+            // Legacy mods without proper fields are filtered out
+            
+            // Check visibility: MUST be 'public'
+            if (mod.visibility !== 'public') {
+                // Only show private/unlisted mods to their author
+                if (mod.authorId !== auth?.userId) {
+                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 404,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+            }
+            
+            // Check status: MUST be 'published'
+            // Legacy mods without status field are filtered out (undefined !== 'published')
+            if (mod.status !== 'published') {
+                // Only show non-published mods to their author
+                if (mod.authorId !== auth?.userId) {
+                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 404,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+            }
+        } else {
+            // Super admins: check visibility but allow all statuses
+            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
         }
 
         // If no thumbnail, return 404

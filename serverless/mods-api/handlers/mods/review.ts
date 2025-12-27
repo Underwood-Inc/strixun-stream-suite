@@ -37,8 +37,7 @@ export async function handleGetModReview(
         }
 
         // Find mod by slug
-        const { mod: foundMod } = await findModBySlug(slug, env, auth?.customerId || null);
-        let mod = foundMod;
+        let mod = await findModBySlug(slug, env, auth);
         
         // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
         if (!mod) {

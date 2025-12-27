@@ -28,7 +28,7 @@ export async function handleListMods(
         const featured = url.searchParams.get('featured') === 'true';
         const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
-        // Check if user is admin (once, not in loop)
+        // Check if user is super admin (once, not in loop)
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
 
         // Get all mod IDs from global public list
@@ -37,9 +37,10 @@ export async function handleListMods(
         const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
         const globalModIds = globalListData || [];
 
-        // Also get customer-specific mods if authenticated (for private/unlisted mods)
+        // Only get customer-specific mods if user is super admin
+        // Super admins need to see everything, regular users only see public mods
         let customerModIds: string[] = [];
-        if (auth?.customerId) {
+        if (isAdmin && auth?.customerId) {
             const customerListKey = getCustomerKey(auth.customerId, 'mods_list');
             const customerListData = await env.MODS_KV.get(customerListKey, { type: 'json' }) as string[] | null;
             customerModIds = customerListData || [];
@@ -83,21 +84,35 @@ export async function handleListMods(
             if (authorId && mod.authorId !== authorId) continue;
             if (featured && !mod.featured) continue;
             
-            // Visibility filter
-            if (visibility === 'public' && mod.visibility !== 'public') {
-                // Only show private/unlisted mods to their author
-                if (mod.authorId !== auth?.userId) continue;
-            } else if (visibility === 'all' && mod.visibility !== 'public' && mod.authorId !== auth?.userId) {
-                continue;
-            }
-
-            // Status filter: only show published mods to public, admins and authors can see all statuses
-            if (mod.status && mod.status !== 'published') {
-                // Only show non-published mods to admins or the author
-                const isAuthor = mod.authorId === auth?.userId;
+            // CRITICAL: Enforce strict visibility and status filtering
+            // Only super admins can bypass these checks
+            if (!isAdmin) {
+                // For non-super users: ONLY public, published mods are allowed
+                // Legacy mods without proper fields are filtered out
                 
-                if (!isAuthor && !isAdmin) {
-                    // Skip non-published mods for non-authors and non-admins
+                // Check visibility: MUST be 'public'
+                if (mod.visibility !== 'public') {
+                    // Only show private/unlisted mods to their author (if visibility filter allows)
+                    if (visibility === 'public' || mod.authorId !== auth?.userId) {
+                        continue;
+                    }
+                }
+                
+                // Check status: MUST be 'published'
+                // Legacy mods without status field are filtered out (undefined !== 'published')
+                if (mod.status !== 'published') {
+                    // Only show non-published mods to their author (if visibility filter allows)
+                    const isAuthor = mod.authorId === auth?.userId;
+                    if (!isAuthor || visibility === 'public') {
+                        continue;
+                    }
+                }
+            } else {
+                // Super admins: apply visibility filter but allow all statuses
+                if (visibility === 'public' && mod.visibility !== 'public') {
+                    // Only show private/unlisted mods to their author
+                    if (mod.authorId !== auth?.userId) continue;
+                } else if (visibility === 'all' && mod.visibility !== 'public' && mod.authorId !== auth?.userId) {
                     continue;
                 }
             }
