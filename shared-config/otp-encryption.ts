@@ -47,13 +47,17 @@ export function getOtpEncryptionKey(): string | undefined {
   }
 
   // Priority 2: Window function (runtime injection - DEVELOPMENT ONLY)
-  // This is a fallback for development/testing scenarios
-  // WARNING: Only use this in development, never in production
+  // ⚠️ SECURITY WARNING: This fallback is for development/testing ONLY.
+  // NEVER use runtime injection in production - it exposes the key in plain text.
+  // The URL shortener previously used runtime injection and it was a CRITICAL security vulnerability.
+  // Always use VITE_SERVICE_ENCRYPTION_KEY at build time instead.
   if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
     const key = (window as any).getOtpEncryptionKey();
     if (key && typeof key === 'string' && key.length >= 32) {
       if (process.env.NODE_ENV === 'production') {
-        console.warn('[SECURITY] Using window.getOtpEncryptionKey() in production is not recommended. Use environment variables instead.');
+        console.error('[SECURITY CRITICAL] Using window.getOtpEncryptionKey() in production is a security vulnerability. The key is exposed in plain text. Use VITE_SERVICE_ENCRYPTION_KEY at build time instead.');
+      } else {
+        console.warn('[SECURITY] Using window.getOtpEncryptionKey() - this should only be used in development. In production, use VITE_SERVICE_ENCRYPTION_KEY at build time.');
       }
       return key;
     }
