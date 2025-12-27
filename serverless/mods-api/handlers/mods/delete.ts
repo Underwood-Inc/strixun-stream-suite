@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { isEmailAllowed } from '../../utils/auth.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
@@ -16,9 +17,24 @@ export async function handleDeleteMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null }
+    auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
+        // Check email whitelist
+        if (!isEmailAllowed(auth.email, env)) {
+            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to manage mods');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Get mod metadata
         const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
@@ -90,12 +106,22 @@ export async function handleDeleteMod(
         await env.MODS_KV.delete(modKey);
         await env.MODS_KV.delete(versionsListKey);
 
-        // Remove from mods list
+        // Remove from customer-specific list
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
         const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
         if (modsList) {
             const updatedList = modsList.filter(id => id !== modId);
             await env.MODS_KV.put(modsListKey, JSON.stringify(updatedList));
+        }
+
+        // Remove from global public list if it was public
+        if (mod.visibility === 'public') {
+            const globalListKey = 'mods_list_public';
+            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+            if (globalModsList) {
+                const updatedGlobalList = globalModsList.filter(id => id !== modId);
+                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+            }
         }
 
         const corsHeaders = createCORSHeaders(request, {
@@ -132,6 +158,8 @@ export async function handleDeleteMod(
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
+    ALLOWED_EMAILS?: string;
+    ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }

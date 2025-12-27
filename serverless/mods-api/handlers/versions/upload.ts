@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { isEmailAllowed } from '../../utils/auth.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
 
 /**
@@ -23,9 +24,24 @@ export async function handleUploadVersion(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null }
+    auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
+        // Check email whitelist
+        if (!isEmailAllowed(auth.email, env)) {
+            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to upload mod versions');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Get mod metadata
         const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
@@ -152,20 +168,36 @@ export async function handleUploadVersion(
             dependencies: metadata.dependencies || [],
         };
 
-        // Store version in KV
+        // Store version in KV (customer scope)
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
         await env.MODS_KV.put(versionKey, JSON.stringify(version));
 
-        // Add version to mod's version list
+        // Add version to mod's version list (customer scope)
         const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
         const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
         const updatedVersionsList = [...(versionsList || []), versionId];
         await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
 
-        // Update mod's latest version and updatedAt
+        // Update mod's latest version and updatedAt (customer scope)
         mod.latestVersion = metadata.version;
         mod.updatedAt = now;
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
+
+        // Also update in global scope if mod is public
+        if (mod.visibility === 'public') {
+            const globalModKey = `mod_${modId}`;
+            const globalVersionKey = `version_${versionId}`;
+            const globalVersionsListKey = `mod_${modId}_versions`;
+            
+            await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
+            
+            const globalVersionsList = await env.MODS_KV.get(globalVersionsListKey, { type: 'json' }) as string[] | null;
+            const updatedGlobalVersionsList = [...(globalVersionsList || []), versionId];
+            await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(updatedGlobalVersionsList));
+            
+            // Update global mod metadata
+            await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+        }
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -202,6 +234,8 @@ interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     MODS_PUBLIC_URL?: string;
+    ALLOWED_EMAILS?: string;
+    ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }

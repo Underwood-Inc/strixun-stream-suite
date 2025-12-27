@@ -27,18 +27,45 @@ export async function handleListMods(
         const featured = url.searchParams.get('featured') === 'true';
         const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
-        // Build list key
-        const listKey = getCustomerKey(auth?.customerId || null, 'mods_list');
-        
-        // Get all mod IDs from list (stored as JSON array)
-        const listData = await env.MODS_KV.get(listKey, { type: 'json' }) as string[] | null;
-        const modIds = listData || [];
+        // Get all mod IDs from global public list
+        // This list contains ALL public mods regardless of customer
+        const globalListKey = 'mods_list_public';
+        const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+        const globalModIds = globalListData || [];
+
+        // Also get customer-specific mods if authenticated (for private/unlisted mods)
+        let customerModIds: string[] = [];
+        if (auth?.customerId) {
+            const customerListKey = getCustomerKey(auth.customerId, 'mods_list');
+            const customerListData = await env.MODS_KV.get(customerListKey, { type: 'json' }) as string[] | null;
+            customerModIds = customerListData || [];
+        }
+
+        // Combine and deduplicate mod IDs
+        const allModIds = [...new Set([...globalModIds, ...customerModIds])];
 
         // Fetch all mod metadata
         const mods: ModMetadata[] = [];
-        for (const modId of modIds) {
-            const modKey = getCustomerKey(auth?.customerId || null, `mod_${modId}`);
-            const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        for (const modId of allModIds) {
+            // Try to find mod in global scope first, then customer scope
+            let mod: ModMetadata | null = null;
+            
+            // Check global/public scope (no customer prefix)
+            const globalModKey = `mod_${modId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            
+            // If not found and authenticated, check customer scope
+            if (!mod && auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
+            
+            // If still not found, try other customer scopes (for public mods from other customers)
+            if (!mod) {
+                // Search through known customer prefixes (this is a fallback - ideally all public mods should be in global scope)
+                // For now, we'll skip mods we can't find
+                continue;
+            }
             
             if (!mod) continue;
 

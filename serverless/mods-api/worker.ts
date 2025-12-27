@@ -148,10 +148,11 @@ interface Env {
     MODS_R2: R2Bucket;
     
     // Environment variables
-    JWT_SECRET?: string;
-    ALLOWED_ORIGINS?: string;
+    JWT_SECRET?: string; // REQUIRED: JWT signing secret (must match OTP auth service)
+    ALLOWED_EMAILS?: string; // REQUIRED: Comma-separated list of allowed email addresses for upload/management
+    ALLOWED_ORIGINS?: string; // OPTIONAL: Comma-separated CORS origins (recommended for production)
     ENVIRONMENT?: string;
-    MODS_PUBLIC_URL?: string; // Public URL for R2 bucket (if using custom domain)
+    MODS_PUBLIC_URL?: string; // OPTIONAL: Public URL for R2 bucket (if using custom domain)
     
     [key: string]: any;
 }

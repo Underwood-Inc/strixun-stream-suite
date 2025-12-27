@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { isEmailAllowed } from '../../utils/auth.js';
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
 /**
@@ -16,9 +17,24 @@ export async function handleUpdateMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null }
+    auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
+        // Check email whitelist
+        if (!isEmailAllowed(auth.email, env)) {
+            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to manage mods');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Get existing mod
         const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
@@ -55,6 +71,10 @@ export async function handleUpdateMod(
         // Parse update request
         const updateData = await request.json() as ModUpdateRequest;
 
+        // Track visibility change for global list management
+        const wasPublic = mod.visibility === 'public';
+        const visibilityChanged = updateData.visibility !== undefined && updateData.visibility !== mod.visibility;
+
         // Update mod metadata
         if (updateData.title !== undefined) mod.title = updateData.title;
         if (updateData.description !== undefined) mod.description = updateData.description;
@@ -73,8 +93,42 @@ export async function handleUpdateMod(
             }
         }
 
-        // Save updated mod
+        // Save updated mod (customer scope)
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
+
+        // Update global scope if mod is public
+        if (mod.visibility === 'public') {
+            const globalModKey = `mod_${modId}`;
+            await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+        }
+
+        // Update global public list if visibility changed
+        if (visibilityChanged) {
+            const globalListKey = 'mods_list_public';
+            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+            
+            if (mod.visibility === 'public' && !wasPublic) {
+                // Add to global list
+                const updatedGlobalList = [...(globalModsList || []), modId];
+                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+            } else if (mod.visibility !== 'public' && wasPublic) {
+                // Remove from global list and delete global mod metadata
+                const updatedGlobalList = (globalModsList || []).filter(id => id !== modId);
+                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+                
+                // Delete global mod metadata
+                const globalModKey = `mod_${modId}`;
+                await env.MODS_KV.delete(globalModKey);
+            }
+        } else if (mod.visibility === 'public') {
+            // If visibility didn't change but mod is public, ensure it's in global list
+            const globalListKey = 'mods_list_public';
+            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+            if (!globalModsList || !globalModsList.includes(modId)) {
+                const updatedGlobalList = [...(globalModsList || []), modId];
+                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+            }
+        }
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -149,6 +203,8 @@ interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     MODS_PUBLIC_URL?: string;
+    ALLOWED_EMAILS?: string;
+    ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }

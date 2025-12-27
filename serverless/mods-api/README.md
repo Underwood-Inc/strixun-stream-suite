@@ -44,10 +44,13 @@ wrangler r2 bucket create "mods-storage"
 
 4. **Set Secrets:**
 ```bash
-wrangler secret put JWT_SECRET          # Must match OTP auth service
-wrangler secret put ALLOWED_ORIGINS     # Optional: CORS origins
-wrangler secret put MODS_PUBLIC_URL      # Optional: Custom R2 domain
+wrangler secret put JWT_SECRET          # REQUIRED: Must match OTP auth service
+wrangler secret put ALLOWED_EMAILS      # REQUIRED: Comma-separated allowed emails for upload/management
+wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: CORS origins (recommended for production)
+wrangler secret put MODS_PUBLIC_URL      # OPTIONAL: Custom R2 domain
 ```
+
+**Note:** See `SECRETS_AUDIT.md` for complete secrets documentation.
 
 ### Development
 

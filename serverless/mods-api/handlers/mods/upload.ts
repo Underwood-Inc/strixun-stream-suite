@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { isEmailAllowed } from '../../utils/auth.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
 
 /**
@@ -32,6 +33,21 @@ export async function handleUploadMod(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
+        // Check email whitelist
+        if (!isEmailAllowed(auth.email, env)) {
+            const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to upload mods');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Parse multipart form data
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
@@ -151,19 +167,42 @@ export async function handleUploadMod(
         const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
 
-        // Store mod and version
+        // Store mod and version in customer scope
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
         await env.MODS_KV.put(versionKey, JSON.stringify(version));
+
+        // Also store in global scope if public (for public browsing)
+        if (mod.visibility === 'public') {
+            const globalModKey = `mod_${modId}`;
+            const globalVersionKey = `version_${versionId}`;
+            const globalVersionsListKey = `mod_${modId}_versions`;
+            
+            await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+            await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
+            
+            // Add version to global versions list
+            const globalVersionsList = await env.MODS_KV.get(globalVersionsListKey, { type: 'json' }) as string[] | null;
+            const updatedGlobalVersionsList = [...(globalVersionsList || []), versionId];
+            await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(updatedGlobalVersionsList));
+        }
 
         // Add version to mod's version list
         const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
         const updatedVersionsList = [...(versionsList || []), versionId];
         await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
 
-        // Add mod to global list
+        // Add mod to customer-specific list (for management)
         const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
         const updatedModsList = [...(modsList || []), modId];
         await env.MODS_KV.put(modsListKey, JSON.stringify(updatedModsList));
+
+        // Add mod to global public list if visibility is public
+        if (mod.visibility === 'public') {
+            const globalListKey = 'mods_list_public';
+            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+            const updatedGlobalList = [...(globalModsList || []), modId];
+            await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+        }
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -241,6 +280,8 @@ interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     MODS_PUBLIC_URL?: string;
+    ALLOWED_EMAILS?: string;
+    ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }

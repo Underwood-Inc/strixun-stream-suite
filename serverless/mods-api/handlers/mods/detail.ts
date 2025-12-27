@@ -18,9 +18,18 @@ export async function handleGetModDetail(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata
-        const modKey = getCustomerKey(auth?.customerId || null, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Get mod metadata - try global scope first, then customer scope
+        let mod: ModMetadata | null = null;
+        
+        // Check global/public scope (no customer prefix)
+        const globalModKey = `mod_${modId}`;
+        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        
+        // If not found and authenticated, check customer scope
+        if (!mod && auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
 
         if (!mod) {
             const rfcError = createError(
@@ -61,15 +70,34 @@ export async function handleGetModDetail(
             });
         }
 
-        // Get all versions
-        const versionsKey = getCustomerKey(auth?.customerId || null, `mod_${modId}_versions`);
-        const versionsData = await env.MODS_KV.get(versionsKey, { type: 'json' }) as string[] | null;
-        const versionIds = versionsData || [];
+        // Get all versions - try global scope first, then customer scope
+        let versionIds: string[] = [];
+        
+        // Check global scope first
+        const globalVersionsKey = `mod_${modId}_versions`;
+        const globalVersionsData = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
+        if (globalVersionsData) {
+            versionIds = globalVersionsData;
+        } else if (auth?.customerId) {
+            // Fall back to customer scope
+            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+            const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
+            versionIds = customerVersionsData || [];
+        }
 
         const versions: ModVersion[] = [];
         for (const versionId of versionIds) {
-            const versionKey = getCustomerKey(auth?.customerId || null, `version_${versionId}`);
-            const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+            // Try global scope first, then customer scope
+            let version: ModVersion | null = null;
+            
+            const globalVersionKey = `version_${versionId}`;
+            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+            
+            if (!version && auth?.customerId) {
+                const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+                version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+            }
+            
             if (version) {
                 versions.push(version);
             }

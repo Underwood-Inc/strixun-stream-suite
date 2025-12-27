@@ -65,6 +65,25 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
 }
 
 /**
+ * Check if email is in allowed list
+ * @param email - Email address to check
+ * @param env - Worker environment
+ * @returns True if email is allowed (or no whitelist configured)
+ */
+export function isEmailAllowed(email: string | undefined, env: Env): boolean {
+    if (!email) return false;
+    
+    // If no whitelist is configured, allow all authenticated users
+    if (!env.ALLOWED_EMAILS) {
+        return true;
+    }
+    
+    // Parse comma-separated list of allowed emails
+    const allowedEmails = env.ALLOWED_EMAILS.split(',').map(e => e.trim().toLowerCase());
+    return allowedEmails.includes(email.toLowerCase());
+}
+
+/**
  * Authenticate request and extract user info
  * Returns auth object with userId, customerId, and jwtToken
  * @param request - HTTP request
@@ -125,6 +144,7 @@ export interface AuthResult {
  */
 interface Env {
     JWT_SECRET?: string;
+    ALLOWED_EMAILS?: string; // Comma-separated list of allowed email addresses
     [key: string]: any;
 }
 
