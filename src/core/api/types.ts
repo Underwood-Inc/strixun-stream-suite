@@ -106,6 +106,7 @@ export interface QueuedRequest {
   reject: (error: APIError) => void;
   priority: RequestPriority;
   timestamp: number;
+  executor?: () => Promise<APIResponse>;
 }
 
 // ============ Batch Types ============

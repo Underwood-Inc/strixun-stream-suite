@@ -136,6 +136,7 @@ export class APIClient {
   async requestRaw<T = unknown>(request: APIRequest): Promise<APIResponse<T>> {
     // Build full URL
     const url = this.buildURL(request.url || request.path);
+    console.log('[APIClient] requestRaw called:', { method: request.method, path: request.path, url, baseURL: this.baseURL });
 
     // Merge headers
     const headers = new Headers({
@@ -182,11 +183,13 @@ export class APIClient {
       }
 
       try {
+        console.log('[APIClient] Making fetch request to:', url, 'with options:', { method: fetchOptions.method, headers: Object.fromEntries(new Headers(fetchOptions.headers).entries()) });
         // Make fetch request
         const response = await secureFetch(url, {
           ...fetchOptions,
           signal: abortController?.signal || req.signal,
         });
+        console.log('[APIClient] Fetch response received:', { status: response.status, statusText: response.statusText, ok: response.ok });
 
         // Clear timeout
         if (timeoutId) {

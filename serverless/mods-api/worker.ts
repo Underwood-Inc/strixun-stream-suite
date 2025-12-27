@@ -20,10 +20,51 @@ import { handleModRoutes } from './router/mod-routes.js';
  * Get CORS headers (temporary - will be replaced by framework)
  */
 function getCorsHeaders(env: Env, request: Request): Record<string, string> {
-    // Use framework CORS headers
-    return createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    const origin = request.headers.get('Origin');
+    const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+    
+    // Check if we're in development (not production)
+    // If ENVIRONMENT is not set, assume development (common in local dev)
+    const isProduction = env.ENVIRONMENT === 'production';
+    const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
+    
+    // If no origins configured OR if localhost in non-production, allow all
+    // This ensures localhost works in development without needing to configure ALLOWED_ORIGINS
+    let effectiveOrigins = allowedOrigins.length > 0 ? allowedOrigins : ['*'];
+    if (!isProduction && isLocalhost && !allowedOrigins.includes('*') && !allowedOrigins.some(o => {
+        if (o === '*') return true;
+        if (o.endsWith('*')) {
+            const prefix = o.slice(0, -1);
+            return origin && origin.startsWith(prefix);
+        }
+        return origin === o;
+    })) {
+        // Add wildcard to allowed origins for localhost in development
+        effectiveOrigins = ['*'];
+    }
+    
+    // Use framework CORS headers (returns Headers object, convert to Record)
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: effectiveOrigins,
     });
+    
+    // Convert Headers to Record<string, string>
+    const headers: Record<string, string> = {};
+    corsHeaders.forEach((value, key) => {
+        headers[key] = value;
+    });
+    
+    // Ensure Access-Control-Allow-Origin is set (critical for CORS)
+    if (!headers['Access-Control-Allow-Origin'] && origin) {
+        // If no origin header was set but we have an origin, allow it in development
+        if (!isProduction && isLocalhost) {
+            headers['Access-Control-Allow-Origin'] = origin;
+        } else if (effectiveOrigins.includes('*')) {
+            headers['Access-Control-Allow-Origin'] = '*';
+        }
+    }
+    
+    return headers;
 }
 
 /**

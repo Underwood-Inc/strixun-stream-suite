@@ -84,6 +84,8 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         }
 
         // Check IP rate limit for session restoration endpoint
+        // Use a more lenient rate limit (60/hour) since this is called during app initialization
+        // and multiple apps might be initializing at the same time
         const getCustomerFn: GetCustomerFn = (cid: string) => getCustomer(cid, env);
         const rateLimit = await checkIPRateLimit(
             requestIP,
@@ -91,7 +93,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             (id: string) => getCustomerCached(id, getCustomerFn),
             env,
             'session-restore',
-            undefined, // Use plan default
+            60, // 60 requests per hour (more lenient for SSO session restoration)
             undefined // No email for unauthenticated requests
         );
         

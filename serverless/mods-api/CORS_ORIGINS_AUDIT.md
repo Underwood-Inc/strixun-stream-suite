@@ -68,15 +68,20 @@ This document lists **ALL** origins that should be included in the `ALLOWED_ORIG
     - Common development server port
     - **SHOULD INCLUDE** - For alternative dev setups
 
-12. **`http://localhost:5174`** ✅
+12. **`http://localhost:3001`** ✅
+    - Mods Hub development server port (as specified in README)
+    - **MUST INCLUDE** - For local development of mods-hub
+    - This is the port used by the mods-hub React app
+
+13. **`http://localhost:5174`** ✅
     - Alternative Vite port
     - **SHOULD INCLUDE** - For multiple dev servers
 
-13. **`http://127.0.0.1:5173`** ✅
+14. **`http://127.0.0.1:5173`** ✅
     - Localhost IP (alternative to localhost)
     - **SHOULD INCLUDE** - For IP-based local access
 
-14. **`http://localhost:8080`** ✅
+15. **`http://localhost:8080`** ✅
     - Alternative development port
     - **SHOULD INCLUDE** - For various dev setups
 
@@ -93,7 +98,7 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 ### Production + Development (Recommended for Development/Staging)
 
 ```bash
-https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
+https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
 ```
 
 ---
@@ -103,6 +108,7 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 ### 🔴 CRITICAL (Must Include)
 - `https://mods.idling.app` - Primary consumer (Mods Hub frontend)
 - `http://localhost:5173` - Local development (mods-hub Vite server)
+- `http://localhost:3001` - Local development (mods-hub React app port)
 
 ### 🟠 HIGH (Should Include)
 - `https://auth.idling.app` - Authentication service
@@ -141,7 +147,7 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 cd serverless/mods-api
 wrangler secret put ALLOWED_ORIGINS
 # When prompted, paste:
-https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
+https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
 ```
 
 ---
@@ -200,6 +206,7 @@ https://*.idling.app,http://localhost:*
 | `https://www.idling.app` | 🟠 HIGH | ✅ | ✅ | WWW subdomain |
 | `http://localhost:5173` | 🔴 CRITICAL | ❌ | ✅ | Vite dev server (mods-hub) |
 | `http://localhost:3000` | 🟡 MEDIUM | ❌ | ✅ | Alternative dev |
+| `http://localhost:3001` | 🔴 CRITICAL | ❌ | ✅ | Mods Hub React app port |
 | `http://localhost:5174` | 🟡 MEDIUM | ❌ | ✅ | Alternative Vite |
 | `http://127.0.0.1:5173` | 🟡 MEDIUM | ❌ | ✅ | IP localhost |
 | `http://localhost:8080` | 🟢 LOW | ❌ | ✅ | Alternative dev |
@@ -223,6 +230,6 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 cd serverless/mods-api
 wrangler secret put ALLOWED_ORIGINS
 # Paste this when prompted:
-https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
+https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
 ```
 

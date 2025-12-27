@@ -79,6 +79,7 @@ export async function listMods(params: {
     try {
         console.log('[API] Fetching mods list with params:', params);
         console.log('[API] Base URL:', API_BASE_URL);
+        console.log('[API] Calling api.get()...');
         const response = await api.get<ModListResponse>('/mods', params);
         console.log('[API] Response received:', response);
         if (!response.data) {
@@ -88,6 +89,11 @@ export async function listMods(params: {
         return response.data;
     } catch (error) {
         console.error('[API] Error fetching mods list:', error);
+        console.error('[API] Error details:', {
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            name: error instanceof Error ? error.name : typeof error,
+        });
         throw error;
     }
 }

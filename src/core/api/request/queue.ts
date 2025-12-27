@@ -4,7 +4,7 @@
  * Priority-based request queue with concurrency control
  */
 
-import type { APIRequest, APIResponse, QueuedRequest, RequestPriority } from '../types';
+import type { APIRequest, APIResponse, APIError, QueuedRequest, RequestPriority } from '../types';
 import { comparePriority } from './priority';
 
 export interface QueueConfig {
@@ -30,11 +30,11 @@ export class RequestQueue {
   /**
    * Enqueue request
    */
-  enqueue(
+  enqueue<T = unknown>(
     request: APIRequest,
-    _executor: () => Promise<APIResponse>
-  ): Promise<APIResponse> {
-    return new Promise((resolve, reject) => {
+    executor: () => Promise<APIResponse<T>>
+  ): Promise<APIResponse<T>> {
+    return new Promise<APIResponse<T>>((resolve, reject) => {
       // Check queue size
       if (this.queue.length >= this.config.maxQueueSize) {
         reject(new Error('Request queue is full'));
@@ -44,10 +44,11 @@ export class RequestQueue {
       const priority = request.priority || this.config.defaultPriority;
       const queuedRequest: QueuedRequest = {
         request,
-        resolve,
-        reject,
+        resolve: resolve as (response: APIResponse) => void,
+        reject: reject as (error: APIError) => void,
         priority,
         timestamp: Date.now(),
+        executor: executor as () => Promise<APIResponse>, // Store executor for later execution
       };
 
       // Insert in priority order
@@ -105,13 +106,15 @@ export class RequestQueue {
     this.running.add(requestId);
 
     try {
-      // Create executor function that will be called
-      // The executor is passed from enqueue, but we need to handle it differently
-      // For now, we'll assume the executor is provided via a callback
-      // This will be handled by the queue manager
+      // Get executor from queued request (stored during enqueue)
+      const executor = queuedRequest.executor;
+      if (!executor) {
+        throw new Error('No executor provided for queued request');
+      }
       
-      // This is a placeholder - the actual execution will be handled by the caller
-      // via a callback pattern
+      // Execute the request
+      const response = await executor();
+      queuedRequest.resolve(response);
     } catch (error) {
       queuedRequest.reject(error as Error);
     } finally {

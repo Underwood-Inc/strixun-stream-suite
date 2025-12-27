@@ -51,7 +51,74 @@ const Error = styled.div`
   text-align: center;
   padding: ${spacing.xxl};
   color: ${colors.danger};
+  background: ${colors.surface};
+  border: 1px solid ${colors.danger};
+  border-radius: 8px;
+  margin: ${spacing.lg} 0;
 `;
+
+const ErrorTitle = styled.h3`
+  margin: 0 0 ${spacing.md} 0;
+  font-size: 1.25rem;
+  color: ${colors.danger};
+`;
+
+const ErrorMessage = styled.p`
+  margin: ${spacing.sm} 0;
+  color: ${colors.textSecondary};
+  font-size: 0.9rem;
+`;
+
+function getErrorMessage(error: unknown): { title: string; message: string; details?: string } {
+    // Safely check if error has a message property
+    const errorMessage = (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+        ? error.message.toLowerCase()
+        : String(error || 'Unknown error').toLowerCase();
+    
+    if (error && typeof error === 'object') {
+        
+        // CORS errors
+        if (errorMessage.includes('cors') || errorMessage.includes('access-control')) {
+            return {
+                title: 'Connection Error',
+                message: 'Unable to connect to the mods API. This may be a CORS configuration issue.',
+                details: 'Please check that the mods API allows requests from this origin.'
+            };
+        }
+        
+        // Network errors
+        if (errorMessage.includes('failed to fetch') || errorMessage.includes('network')) {
+            return {
+                title: 'Network Error',
+                message: 'Unable to reach the mods API. Please check your internet connection.',
+                details: 'If the problem persists, the API server may be down or unreachable.'
+            };
+        }
+        
+        // Rate limit errors
+        if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+            return {
+                title: 'Rate Limit Exceeded',
+                message: 'Too many requests. Please wait a moment and try again.',
+                details: 'The API has rate limiting to prevent abuse. Please try again in a few minutes.'
+            };
+        }
+        
+        // Generic error
+        const message = ('message' in error && typeof error.message === 'string') 
+            ? error.message 
+            : 'An unexpected error occurred.';
+        return {
+            title: 'Error Loading Mods',
+            message: message,
+        };
+    }
+    
+    return {
+        title: 'Error Loading Mods',
+        message: typeof error === 'string' ? error : 'An unexpected error occurred while loading mods.',
+    };
+}
 
 export function ModListPage() {
     const [page] = useState(1);
@@ -65,6 +132,8 @@ export function ModListPage() {
         search: search || undefined,
         visibility: 'public',
     });
+
+    const errorInfo = error ? getErrorMessage(error) : null;
 
     return (
         <PageContainer>
@@ -81,7 +150,13 @@ export function ModListPage() {
             </Header>
 
             {isLoading && <Loading>Loading mods...</Loading>}
-            {error && <Error>Failed to load mods: {(error as Error).message}</Error>}
+            {error && errorInfo && (
+                <Error>
+                    <ErrorTitle>{errorInfo.title}</ErrorTitle>
+                    <ErrorMessage>{errorInfo.message}</ErrorMessage>
+                    {errorInfo.details && <ErrorMessage>{errorInfo.details}</ErrorMessage>}
+                </Error>
+            )}
             
             {data && (
                 <>

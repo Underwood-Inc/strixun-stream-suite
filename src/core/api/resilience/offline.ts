@@ -55,11 +55,11 @@ export class OfflineQueue {
   /**
    * Queue request for later execution
    */
-  enqueue(
+  enqueue<T = unknown>(
     request: APIRequest,
-    executor: () => Promise<APIResponse>
-  ): Promise<APIResponse> {
-    return new Promise((resolve, reject) => {
+    executor: () => Promise<APIResponse<T>>
+  ): Promise<APIResponse<T>> {
+    return new Promise<APIResponse<T>>((resolve, reject) => {
       // Check queue size
       if (this.queue.length >= this.config.queueSize) {
         reject(new Error('Offline queue is full'));
@@ -75,8 +75,8 @@ export class OfflineQueue {
       this.queue.push(entry);
 
       // Store executor in metadata for later execution
-      (entry as unknown as { executor: () => Promise<APIResponse> }).executor = executor;
-      (entry as unknown as { resolve: (response: APIResponse) => void }).resolve = resolve;
+      (entry as unknown as { executor: () => Promise<APIResponse<T>> }).executor = executor;
+      (entry as unknown as { resolve: (response: APIResponse<T>) => void }).resolve = resolve;
       (entry as unknown as { reject: (error: Error) => void }).reject = reject;
 
       // If online, try to execute immediately
@@ -98,8 +98,8 @@ export class OfflineQueue {
     this.queue = [];
 
     for (const entry of entries) {
-      const executor = (entry as unknown as { executor: () => Promise<APIResponse> }).executor;
-      const resolve = (entry as unknown as { resolve: (response: APIResponse) => void }).resolve;
+      const executor = (entry as unknown as { executor: () => Promise<APIResponse<unknown>> }).executor;
+      const resolve = (entry as unknown as { resolve: (response: APIResponse<unknown>) => void }).resolve;
       const reject = (entry as unknown as { reject: (error: Error) => void }).reject;
 
       if (!executor) {

@@ -69,46 +69,62 @@ export class EnhancedAPIClient extends APIClient {
    * Make request with all features integrated
    */
   override async requestRaw<T = unknown>(request: APIRequest): Promise<APIResponse<T>> {
+    console.log('[EnhancedAPIClient] requestRaw called:', { method: request.method, path: request.path, url: request.url });
     // Get or create abort controller
     const controller = this.cancellationManager.getController(request.id);
     request.signal = request.signal || controller.signal;
 
     // Check cache first
     if (request.cache) {
+      console.log('[EnhancedAPIClient] Checking cache...');
       const cached = await this.cacheManager.get<T>(request, request.cache);
       if (cached) {
+        console.log('[EnhancedAPIClient] Cache hit, returning cached response');
         return cached;
       }
+      console.log('[EnhancedAPIClient] Cache miss');
     }
 
     // Execute with all features
-    return this.deduplicator.deduplicate<T>(request, async (): Promise<APIResponse<T>> => {
-      return this.queue.enqueue(request, async () => {
-        return this.circuitBreaker.execute(async () => {
-          return this.retryManager.execute(request, async (): Promise<APIResponse<T>> => {
-            // Check offline queue
-            if (this.offlineQueue.isEnabled() && !this.offlineQueue.isCurrentlyOnline()) {
-              return this.offlineQueue.enqueue(request, async () => {
-                return super.requestRaw<T>(request);
-              }) as Promise<APIResponse<T>>;
-            }
+    console.log('[EnhancedAPIClient] Starting request pipeline...');
+    try {
+      return this.deduplicator.deduplicate<T>(request, async (): Promise<APIResponse<T>> => {
+        console.log('[EnhancedAPIClient] Deduplicator passed, enqueueing...');
+        return this.queue.enqueue(request, async () => {
+          console.log('[EnhancedAPIClient] Queue passed, executing circuit breaker...');
+          return this.circuitBreaker.execute(async () => {
+            console.log('[EnhancedAPIClient] Circuit breaker passed, executing retry manager...');
+            return this.retryManager.execute(request, async (): Promise<APIResponse<T>> => {
+              // Check offline queue
+              if (this.offlineQueue.isEnabled() && !this.offlineQueue.isCurrentlyOnline()) {
+                console.log('[EnhancedAPIClient] Offline, queuing request...');
+                return this.offlineQueue.enqueue(request, async () => {
+                  return super.requestRaw<T>(request);
+                });
+              }
 
-            // Execute request
-            const response = await super.requestRaw<T>(request);
+              console.log('[EnhancedAPIClient] Executing actual request...');
+              // Execute request
+              const response = await super.requestRaw<T>(request);
+              console.log('[EnhancedAPIClient] Request completed, status:', response.status);
 
-            // Cache response
-            if (request.cache) {
-              await this.cacheManager.set(request, response, request.cache);
-            }
+              // Cache response
+              if (request.cache) {
+                await this.cacheManager.set(request, response, request.cache);
+              }
 
-            // Cleanup cancellation
-            this.cancellationManager.cleanup(request.id);
+              // Cleanup cancellation
+              this.cancellationManager.cleanup(request.id);
 
-            return response;
-          }) as Promise<APIResponse<T>>;
-        }) as Promise<APIResponse<T>>;
-      }) as Promise<APIResponse<T>>;
-    });
+              return response;
+            });
+          });
+        });
+      });
+    } catch (error) {
+      console.error('[EnhancedAPIClient] Error in request pipeline:', error);
+      throw error;
+    }
   }
 
   /**
