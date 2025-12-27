@@ -6,7 +6,7 @@
  */
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig, type OtpLoginState } from '../core';
 
