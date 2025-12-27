@@ -289,8 +289,47 @@ export class OtpLoginCore {
         Object.assign(headers, this.config.customHeaders);
       }
 
-      // Encrypt request body (email)
-      const encryptedBody = await this.encryptRequestBody({ email });
+      // CRITICAL: Encrypt request body (email) - NEVER send unencrypted
+      let encryptedBody: string;
+      try {
+        encryptedBody = await this.encryptRequestBody({ email });
+      } catch (encryptError) {
+        console.error('[OtpLoginCore] ❌ ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
+        console.error('[OtpLoginCore] Encryption error:', encryptError);
+        this.setState({ 
+          loading: false, 
+          error: 'Encryption failed. Cannot send request without encryption. Please check your configuration.' 
+        });
+        this.config.onError?.('Encryption failed. Cannot send request without encryption.');
+        return; // CRITICAL: Do NOT send request if encryption fails
+      }
+      
+      // Verify encrypted body is actually encrypted (not plain JSON)
+      try {
+        const parsed = JSON.parse(encryptedBody);
+        if (!parsed.encrypted || parsed.encrypted !== true) {
+          console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
+          this.setState({ 
+            loading: false, 
+            error: 'Encryption validation failed. Request aborted for security.' 
+          });
+          this.config.onError?.('Encryption validation failed.');
+          return;
+        }
+        console.log('[OtpLoginCore] ✅ Verified encrypted payload:', {
+          version: parsed.version,
+          algorithm: parsed.algorithm,
+          hasData: !!parsed.data
+        });
+      } catch (parseError) {
+        console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body is not valid JSON! Aborting.');
+        this.setState({ 
+          loading: false, 
+          error: 'Encryption validation failed. Request aborted for security.' 
+        });
+        this.config.onError?.('Encryption validation failed.');
+        return;
+      }
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -446,11 +485,50 @@ export class OtpLoginCore {
         Object.assign(headers, this.config.customHeaders);
       }
 
-      // Encrypt request body (email and OTP)
-      const encryptedBody = await this.encryptRequestBody({
-        email: this.state.email,
-        otp,
-      });
+      // CRITICAL: Encrypt request body (email and OTP) - NEVER send unencrypted
+      let encryptedBody: string;
+      try {
+        encryptedBody = await this.encryptRequestBody({
+          email: this.state.email,
+          otp,
+        });
+      } catch (encryptError) {
+        console.error('[OtpLoginCore] ❌ ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
+        console.error('[OtpLoginCore] Encryption error:', encryptError);
+        this.setState({ 
+          loading: false, 
+          error: 'Encryption failed. Cannot send request without encryption. Please check your configuration.' 
+        });
+        this.config.onError?.('Encryption failed. Cannot send request without encryption.');
+        return; // CRITICAL: Do NOT send request if encryption fails
+      }
+      
+      // Verify encrypted body is actually encrypted (not plain JSON)
+      try {
+        const parsed = JSON.parse(encryptedBody);
+        if (!parsed.encrypted || parsed.encrypted !== true) {
+          console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
+          this.setState({ 
+            loading: false, 
+            error: 'Encryption validation failed. Request aborted for security.' 
+          });
+          this.config.onError?.('Encryption validation failed.');
+          return;
+        }
+        console.log('[OtpLoginCore] ✅ Verified encrypted payload:', {
+          version: parsed.version,
+          algorithm: parsed.algorithm,
+          hasData: !!parsed.data
+        });
+      } catch (parseError) {
+        console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body is not valid JSON! Aborting.');
+        this.setState({ 
+          loading: false, 
+          error: 'Encryption validation failed. Request aborted for security.' 
+        });
+        this.config.onError?.('Encryption validation failed.');
+        return;
+      }
 
       const response = await fetch(endpoint, {
         method: 'POST',

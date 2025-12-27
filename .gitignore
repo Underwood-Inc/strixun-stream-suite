@@ -9,6 +9,9 @@ dist/
 build/
 *.local
 
+# Auto-generated assets (may contain secrets)
+**/app-assets.ts
+
 # TypeScript
 *.tsbuildinfo
 # TypeScript compiled output (Vite handles compilation)
