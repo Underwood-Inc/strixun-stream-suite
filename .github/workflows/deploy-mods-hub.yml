@@ -53,7 +53,7 @@ jobs:
       - name: Build Mods Hub
         working-directory: mods-hub
         env:
-          VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods.idling.app' }}
+          VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
         run: pnpm run build
         
@@ -65,7 +65,8 @@ jobs:
         run: |
           # Create project if it doesn't exist (with production branch), then deploy
           # Project name matches the directory for consistency
-          pnpm exec wrangler pages project create mods-hub --production-branch=main || true
+          # Suppress error output if project already exists (this is expected and harmless)
+          pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
           pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
         
       - name: Deployment Summary
@@ -77,7 +78,7 @@ jobs:
           echo "**Frontend URL:** \`https://mods.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 API Endpoints:" >> $GITHUB_STEP_SUMMARY
-          echo "- Mods API: \`https://mods.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Mods API: \`https://mods-api.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "- Auth API: \`https://auth.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Next Steps:" >> $GITHUB_STEP_SUMMARY
