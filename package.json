@@ -20,6 +20,8 @@
     "release": "changeset publish",
     "generate-icons": "node scripts/generate-pwa-icons.js",
     "update-badge": "node scripts/update-version-badge.js",
+    "migrate-wiki": "node scripts/migrate-wiki.js",
+    "list-migrated-docs": "node scripts/list-migrated-docs.js",
     "storybook": "pnpm --filter @strixun/shared-components storybook",
     "build-storybook": "pnpm --filter @strixun/shared-components build-storybook"
   },
