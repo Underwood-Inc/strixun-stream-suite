@@ -353,20 +353,9 @@ export async function handleUploadMod(
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
         await env.MODS_KV.put(versionKey, JSON.stringify(version));
 
-        // Also store in global scope if public (for public browsing)
-        if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modId}`;
-            const globalVersionKey = `version_${versionId}`;
-            const globalVersionsListKey = `mod_${modId}_versions`;
-            
-            await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
-            await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
-            
-            // Add version to global versions list
-            const globalVersionsList = await env.MODS_KV.get(globalVersionsListKey, { type: 'json' }) as string[] | null;
-            const updatedGlobalVersionsList = [...(globalVersionsList || []), versionId];
-            await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(updatedGlobalVersionsList));
-        }
+        // NOTE: Do NOT store in global scope yet - mods start as 'pending' status
+        // They will only be stored in global scope when an admin changes status to 'published'
+        // This ensures pending mods are not visible to the public, even if visibility is 'public'
 
         // Add version to mod's version list
         const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
@@ -378,13 +367,9 @@ export async function handleUploadMod(
         const updatedModsList = [...(modsList || []), modId];
         await env.MODS_KV.put(modsListKey, JSON.stringify(updatedModsList));
 
-        // Add mod to global public list if visibility is public
-        if (mod.visibility === 'public') {
-            const globalListKey = 'mods_list_public';
-            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
-            const updatedGlobalList = [...(globalModsList || []), modId];
-            await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
-        }
+        // NOTE: Do NOT add to global public list yet - mods start as 'pending' status
+        // They will only be added to the public list when an admin changes status to 'published'
+        // This ensures pending mods are not visible to the public, even if visibility is 'public'
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
