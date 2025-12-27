@@ -20,6 +20,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    /* Types */
+    "types": ["@cloudflare/workers-types"],
+
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
