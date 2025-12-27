@@ -15,6 +15,7 @@ import { ensureCustomerAccount } from './customer-creation.js';
 import { checkIPRateLimit, recordIPRequest } from '../../services/rate-limit.js';
 import { getCustomerCached, type GetCustomerFn } from '../../utils/cache.js';
 import { getCustomer } from '../../services/customer.js';
+import { getClientIP, isValidIP } from '../../utils/ip.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -68,14 +69,14 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             });
         }
 
-        // Get request IP from Cloudflare header (trusted, cannot be spoofed)
-        // CF-Connecting-IP is set by Cloudflare and is the authoritative source
-        const requestIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        // Get request IP from headers (with fallback support)
+        const requestIP = getClientIP(request);
         
-        if (requestIP === 'unknown') {
+        if (!isValidIP(requestIP)) {
+            console.warn('[Restore Session] Unable to determine IP address for session restoration');
             return new Response(JSON.stringify({ 
                 error: 'Unable to determine IP address',
-                detail: 'IP address is required for session restoration'
+                detail: 'IP address is required for session restoration. This may occur if the request is not behind a proxy that sets IP headers.'
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -127,6 +128,8 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             // Record successful request (no session found is still a valid response)
             await recordIPRequest(requestIP, null, env, true);
             
+            console.log(`[Restore Session] No active sessions found for IP: ${requestIP}`);
+            
             return new Response(JSON.stringify({
                 restored: false,
                 message: 'No active session found for this IP address'
@@ -142,6 +145,8 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 },
             });
         }
+        
+        console.log(`[Restore Session] Found ${sessions.length} active session(s) for IP: ${requestIP}`);
 
         // Use the first active session (most recent)
         // In practice, there should only be one session per IP for same-device restoration
@@ -271,6 +276,8 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
 
         // Create a new JWT token for the restored session
         // This is more secure than returning the stored token hash
+        // NOTE: This will create a new session and update the IP mapping
+        console.log(`[Restore Session] Creating new token for user: ${userData.email} (${userData.userId})`);
         const tokenResponse = await createAuthToken(
             {
                 userId: userData.userId,
@@ -282,11 +289,13 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             },
             customerId,
             env,
-            request // Pass request for IP tracking
+            request // Pass request for IP tracking (will update IP mapping)
         );
 
         // Record successful request
         await recordIPRequest(requestIP, customerId, env, true);
+
+        console.log(`[Restore Session] Successfully restored session for user: ${userData.email} from IP: ${requestIP}`);
 
         // Return token response
         return new Response(JSON.stringify({

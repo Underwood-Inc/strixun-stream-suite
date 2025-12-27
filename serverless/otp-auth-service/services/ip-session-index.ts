@@ -62,6 +62,7 @@ export async function storeIPSessionMapping(
     env: Env
 ): Promise<void> {
     if (!ip || ip === 'unknown') {
+        console.warn(`[IP Session Index] Skipping IP mapping for unknown IP - userId: ${userId}, email: ${email}`);
         return; // Don't store unknown IPs
     }
     
@@ -73,6 +74,8 @@ export async function storeIPSessionMapping(
     const sessions = existing || [];
     
     // Remove existing session for this user (if any) to avoid duplicates
+    // This ensures that if a user logs in from the same IP multiple times,
+    // we only keep the most recent session
     const filtered = sessions.filter(s => s.userId !== userId);
     
     // Add new session
@@ -94,6 +97,8 @@ export async function storeIPSessionMapping(
     
     // Store with TTL matching session expiration
     await env.OTP_AUTH_KV.put(indexKey, JSON.stringify(filtered), { expirationTtl: ttl });
+    
+    console.log(`[IP Session Index] Stored IP mapping for IP: ${ip}, userId: ${userId}, email: ${email}, sessionKey: ${sessionKey}`);
 }
 
 /**

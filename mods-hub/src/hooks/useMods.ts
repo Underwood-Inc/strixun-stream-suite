@@ -33,7 +33,19 @@ export function useModsList(filters: {
 }) {
     return useQuery({
         queryKey: modKeys.list(filters),
-        queryFn: () => api.listMods(filters),
+        queryFn: async () => {
+            console.log('[useModsList] Query function called with filters:', filters);
+            try {
+                const result = await api.listMods(filters);
+                console.log('[useModsList] Query result:', result);
+                return result;
+            } catch (error) {
+                console.error('[useModsList] Query error:', error);
+                throw error;
+            }
+        },
+        retry: 1,
+        retryDelay: 1000,
     });
 }
 

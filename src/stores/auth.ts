@@ -205,14 +205,23 @@ async function restoreSessionFromBackend(): Promise<boolean> {
       };
       
       saveAuthState(userData);
-      console.log('[Auth] Session restored from backend');
+      console.log('[Auth] ✅ Session restored from backend for user:', userData.email);
       return true;
+    }
+
+    if (data.restored === false) {
+      console.log('[Auth] No active session found for this IP address');
+    } else {
+      console.warn('[Auth] Unexpected response format from restore-session:', { restored: data.restored, hasToken: !!data.access_token });
     }
 
     return false;
   } catch (error) {
-    // Silently fail - session restoration is optional
-    console.debug('[Auth] Session restoration error (non-critical):', error);
+    // Log error for debugging (session restoration is optional but we want to know if it's failing)
+    console.warn('[Auth] Session restoration error:', error instanceof Error ? error.message : String(error));
+    if (error instanceof Error && error.stack) {
+      console.debug('[Auth] Session restoration stack:', error.stack);
+    }
     return false;
   }
 }

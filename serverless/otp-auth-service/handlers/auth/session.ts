@@ -9,6 +9,7 @@ import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypt
 import { buildCurrentUserResponse } from '../../utils/response-builder.js';
 import { ensureCustomerAccount } from './customer-creation.js';
 import { storeIPSessionMapping, deleteIPSessionMapping } from '../../services/ip-session-index.js';
+import { getClientIP } from '../../utils/ip.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -345,8 +346,8 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         
         const newToken = await createJWT(newTokenPayload, jwtSecret);
         
-        // Extract IP address and metadata from request (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
-        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        // Extract IP address and metadata from request
+        const clientIP = getClientIP(request);
         const userAgent = request.headers.get('User-Agent') || undefined;
         const country = request.headers.get('CF-IPCountry') || undefined;
         

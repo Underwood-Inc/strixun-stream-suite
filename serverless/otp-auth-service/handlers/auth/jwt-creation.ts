@@ -7,6 +7,7 @@
 import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
 import { storeIPSessionMapping } from '../../services/ip-session-index.js';
+import { getClientIP } from '../../utils/ip.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -89,10 +90,8 @@ export async function createAuthToken(
     const expiresIn = 7 * 60 * 60; // 7 hours in seconds
     const now = Math.floor(Date.now() / 1000);
     
-    // Extract IP address and metadata from request (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
-    const clientIP = request 
-        ? (request.headers.get('CF-Connecting-IP') || 'unknown')
-        : 'unknown';
+    // Extract IP address and metadata from request
+    const clientIP = getClientIP(request);
     const userAgent = request?.headers.get('User-Agent') || undefined;
     const country = request?.headers.get('CF-IPCountry') || undefined;
     
@@ -150,15 +149,21 @@ export async function createAuthToken(
     await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours (matches token expiration)
     
     // Store IP-to-session mapping for cross-application session discovery
-    await storeIPSessionMapping(
-        clientIP,
-        user.userId,
-        customerId,
-        sessionKey,
-        expiresAt.toISOString(),
-        emailLower,
-        env
-    );
+    // This enables SSO - other apps can discover this session by IP address
+    if (clientIP !== 'unknown') {
+        await storeIPSessionMapping(
+            clientIP,
+            user.userId,
+            customerId,
+            sessionKey,
+            expiresAt.toISOString(),
+            emailLower,
+            env
+        );
+        console.log(`[JWT Creation] ✅ Created session and IP mapping for user: ${emailLower} from IP: ${clientIP}`);
+    } else {
+        console.warn(`[JWT Creation] ⚠️ Created session but could not create IP mapping (IP unknown) for user: ${emailLower}. SSO will not work for this session.`);
+    }
     
     // OAuth 2.0 Token Response (RFC 6749 Section 5.1)
     return {

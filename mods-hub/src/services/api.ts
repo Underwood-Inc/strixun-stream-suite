@@ -19,6 +19,7 @@ function getAuthToken(): string | null {
 /**
  * Create API client with auth middleware
  */
+console.log('[API] Initializing API client with baseURL:', API_BASE_URL);
 const api = createAPIClient({
     baseURL: API_BASE_URL,
     defaultHeaders: {
@@ -34,7 +35,16 @@ const api = createAPIClient({
         defaultStrategy: 'network-first',
         defaultTTL: 5 * 60 * 1000, // 5 minutes
     },
+    offline: {
+        enabled: false, // Disable offline queue to prevent blocking
+    },
 });
+// Verify API client is properly initialized
+if (typeof (api as any).getConfig === 'function') {
+    console.log('[API] API client initialized, config:', (api as any).getConfig());
+} else {
+    console.log('[API] API client initialized (getConfig not available)');
+}
 
 // Add auth middleware
 import type { APIRequest, APIResponse, Middleware } from '@strixun/api-framework/client';
@@ -66,8 +76,20 @@ export async function listMods(params: {
     featured?: boolean;
     visibility?: string;
 }): Promise<ModListResponse> {
-    const response = await api.get<ModListResponse>('/mods', params);
-    return response.data;
+    try {
+        console.log('[API] Fetching mods list with params:', params);
+        console.log('[API] Base URL:', API_BASE_URL);
+        const response = await api.get<ModListResponse>('/mods', params);
+        console.log('[API] Response received:', response);
+        if (!response.data) {
+            console.error('[API] Response missing data property:', response);
+            throw new Error('Invalid response format: missing data property');
+        }
+        return response.data;
+    } catch (error) {
+        console.error('[API] Error fetching mods list:', error);
+        throw error;
+    }
 }
 
 /**

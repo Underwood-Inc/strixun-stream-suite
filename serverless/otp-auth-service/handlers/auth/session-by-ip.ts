@@ -7,6 +7,7 @@
 
 import { getCustomer } from '../../services/customer.js';
 import { getSessionsByIP } from '../../services/ip-session-index.js';
+import { getClientIP, isValidIP } from '../../utils/ip.js';
 import { checkIPRateLimit, recordIPRequest } from '../../services/rate-limit.js';
 import { getCustomerCached, type GetCustomerFn } from '../../utils/cache.js';
 import { getCorsHeaders } from '../../utils/cors.js';
@@ -40,8 +41,8 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
         const url = new URL(request.url);
         const queryIP = url.searchParams.get('ip');
         
-        // Get request IP (CF-Connecting-IP is set by Cloudflare and cannot be spoofed)
-        const requestIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        // Get request IP
+        const requestIP = getClientIP(request);
         
         // Extract and verify authentication token
         const authHeader = request.headers.get('Authorization');
