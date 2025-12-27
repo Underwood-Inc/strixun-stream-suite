@@ -5,7 +5,6 @@
 
 import { useState } from 'react';
 import { useAdminModsList, useUpdateModStatus } from '../hooks/useMods';
-import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme/index';
 import type { ModStatus } from '../types/mod';

@@ -7,6 +7,7 @@ import { useParams } from 'react-router-dom';
 import { useModDetail } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
+import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -95,8 +96,10 @@ export function ModDetailPage() {
     const latestVersion = versions[0]; // Versions are sorted newest first
 
     return (
-        <PageContainer>
-            <Header>
+        <>
+            <ModMetaTags mod={mod} />
+            <PageContainer>
+                <Header>
                 {mod.thumbnailUrl && <Thumbnail src={mod.thumbnailUrl} alt={mod.title} />}
                 <Info>
                     <Title>{mod.title}</Title>
@@ -127,7 +130,8 @@ export function ModDetailPage() {
             </Header>
 
             <ModVersionList modId={mod.modId} versions={versions} isUploader={isUploader} />
-        </PageContainer>
+            </PageContainer>
+        </>
     );
 }
 

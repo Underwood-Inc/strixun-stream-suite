@@ -13,6 +13,7 @@ import { handleDeleteMod } from '../handlers/mods/delete.js';
 import { handleUploadVersion } from '../handlers/versions/upload.js';
 import { handleDownloadVersion } from '../handlers/versions/download.js';
 import { handleThumbnail } from '../handlers/mods/thumbnail.js';
+import { handleOGImage } from '../handlers/mods/og-image.js';
 import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 
@@ -149,6 +150,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = pathSegments[1];
             const response = await handleThumbnail(request, env, modId, auth);
             // Don't encrypt binary image data
+            return { response, customerId: auth?.customerId || null };
+        }
+
+        // Route: GET /mods/:slug/og-image - Get Open Graph preview image
+        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'og-image' && request.method === 'GET') {
+            const slug = pathSegments[1];
+            const response = await handleOGImage(request, env, slug, auth);
+            // Don't encrypt image data
             return { response, customerId: auth?.customerId || null };
         }
 

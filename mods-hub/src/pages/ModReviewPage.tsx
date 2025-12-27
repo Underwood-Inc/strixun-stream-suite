@@ -6,7 +6,6 @@
 
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
-import { useAuthStore } from '../stores/auth';
 import { useModReview, useAddReviewComment, useUpdateModStatus } from '../hooks/useMods';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme/index';
@@ -180,7 +179,6 @@ const Error = styled.div`
 
 export function ModReviewPage() {
     const { slug } = useParams<{ slug: string }>();
-    const { user } = useAuthStore();
     const [commentText, setCommentText] = useState('');
 
     const { data, isLoading, error } = useModReview(slug || '');
