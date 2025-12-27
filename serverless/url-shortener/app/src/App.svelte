@@ -15,7 +15,19 @@
     return 'https://auth.idling.app';
   }
 
+  /**
+   * Get OTP encryption key
+   * CRITICAL: This must match server-side OTP_ENCRYPTION_KEY or JWT_SECRET
+   * Uses environment variables like the main app (mods-hub)
+   */
   function getOtpEncryptionKey(): string | undefined {
+    // Use environment variables (same as main app)
+    // Vite exposes env vars via import.meta.env
+    const envKey = import.meta.env.VITE_OTP_ENCRYPTION_KEY || import.meta.env.VITE_JWT_SECRET;
+    if (envKey) {
+      return envKey;
+    }
+    // Fallback to window function (for dynamic configuration if needed)
     if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
       return (window as any).getOtpEncryptionKey();
     }

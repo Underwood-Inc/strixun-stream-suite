@@ -12,11 +12,16 @@ import { handleDecryptScript } from '../handlers/decrypt-script.js';
 import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
 import { handleAppAssets } from '../handlers/app-assets.js';
 
+interface Env {
+  ENVIRONMENT?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Helper to wrap handlers with automatic encryption
  * Uses shared encryption suite from serverless/shared/encryption
  */
-async function wrapWithEncryption(handlerResponse, request) {
+async function wrapWithEncryption(handlerResponse: Response, request: Request): Promise<Response> {
   // Check if response should be encrypted (has JWT token and is OK)
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
@@ -48,7 +53,7 @@ async function wrapWithEncryption(handlerResponse, request) {
 }
 
 export function createRouter() {
-  return async function route(request: Request, env: any): Promise<Response> {
+  return async function route(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -111,9 +116,10 @@ export function createRouter() {
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return new Response(JSON.stringify({
         error: 'Internal server error',
-        message: error.message,
+        message: errorMessage,
       }), {
         status: 500,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
