@@ -8,18 +8,13 @@
   // Compute once at component initialization
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : '';
   
+  import { getOtpEncryptionKey as getKey } from '../../../../../shared-config/otp-encryption';
+  
   /**
-   * Get OTP encryption key
-   * CRITICAL: This must match server-side OTP_ENCRYPTION_KEY or JWT_SECRET
+   * Get OTP encryption key from centralized config
    */
   function getOtpEncryptionKey(): string | undefined {
-    // Try to get from window function first (for dynamic configuration)
-    if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
-      return (window as any).getOtpEncryptionKey();
-    }
-    // Fallback to environment variable (if available)
-    // Note: In production, this should be set via build-time env var
-    return undefined; // Will use JWT_SECRET on server if not provided
+    return getKey();
   }
 
   async function handleLoginSuccess(data: LoginSuccessData) {

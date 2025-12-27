@@ -8,10 +8,9 @@ import { useAuthStore } from '../stores/auth';
 import { OtpLogin } from '../../../shared-components/otp-login/react/OtpLogin';
 import type { LoginSuccessData } from '../../../shared-components/otp-login/core';
 
+import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
+
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
-// CRITICAL: OTP encryption key must match server-side OTP_ENCRYPTION_KEY or JWT_SECRET
-// This should be set via environment variable for security
-const OTP_ENCRYPTION_KEY = import.meta.env.VITE_OTP_ENCRYPTION_KEY || import.meta.env.VITE_JWT_SECRET;
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -59,7 +58,7 @@ export function LoginPage() {
             apiUrl={AUTH_API_URL}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            otpEncryptionKey={OTP_ENCRYPTION_KEY} // CRITICAL: Pass encryption key for encrypting OTP requests
+            otpEncryptionKey={getOtpEncryptionKey()} // CRITICAL: Pass encryption key for encrypting OTP requests
             title="Login"
             subtitle="Enter your email to receive a verification code"
         />

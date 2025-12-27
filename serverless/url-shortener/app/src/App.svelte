@@ -15,23 +15,13 @@
     return 'https://auth.idling.app';
   }
 
+  import { getOtpEncryptionKey as getKey } from '../../../../shared-config/otp-encryption';
+  
   /**
-   * Get OTP encryption key
-   * CRITICAL: This must match server-side OTP_ENCRYPTION_KEY or JWT_SECRET
-   * Uses environment variables like the main app (mods-hub)
+   * Get OTP encryption key from centralized config
    */
   function getOtpEncryptionKey(): string | undefined {
-    // Use environment variables (same as main app)
-    // Vite exposes env vars via import.meta.env
-    const envKey = import.meta.env.VITE_OTP_ENCRYPTION_KEY || import.meta.env.VITE_JWT_SECRET;
-    if (envKey) {
-      return envKey;
-    }
-    // Fallback to window function (for dynamic configuration if needed)
-    if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
-      return (window as any).getOtpEncryptionKey();
-    }
-    return undefined;
+    return getKey();
   }
 
   onMount(() => {
@@ -66,6 +56,12 @@
     console.error('Login error:', error);
   }
 
+  function handleLoginClose(): void {
+    // Modal close handler - in this case, we don't allow closing without auth
+    // but we include it for consistency with the modal variant
+    console.log('[URL Shortener] Login modal close requested');
+  }
+
   function handleLogout(): void {
     apiClient.logout();
     isAuthenticated = false;
@@ -90,6 +86,8 @@
         onSuccess={handleLoginSuccess}
         onError={handleLoginError}
         otpEncryptionKey={getOtpEncryptionKey()}
+        showAsModal={true}
+        onClose={handleLoginClose}
         title="Sign In"
         subtitle="Enter your email to receive a verification code"
       />

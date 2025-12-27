@@ -23,8 +23,7 @@ import { decryptWithServiceKey } from '@strixun/api-framework';
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     ENVIRONMENT?: string;
-    OTP_ENCRYPTION_KEY?: string; // Optional: Dedicated OTP encryption key (falls back to JWT_SECRET)
-    JWT_SECRET?: string; // Fallback encryption key if OTP_ENCRYPTION_KEY not set
+    SERVICE_ENCRYPTION_KEY?: string; // Service encryption key for decrypting OTP requests
     [key: string]: any;
 }
 
@@ -139,18 +138,34 @@ async function decryptRequestBody(request: Request, env: Env): Promise<{ email: 
     
     // Check if body is encrypted (has encrypted field)
     if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
-        // Body is encrypted - decrypt using OTP encryption key
-        const otpEncryptionKey = env.OTP_ENCRYPTION_KEY || env.JWT_SECRET;
-        if (!otpEncryptionKey) {
-            throw new Error('OTP_ENCRYPTION_KEY or JWT_SECRET is required for decrypting OTP requests');
+        // Body is encrypted - decrypt using SERVICE_ENCRYPTION_KEY
+        // In Cloudflare Workers, secrets are accessed via env.SECRET_NAME
+        const serviceKey = env.SERVICE_ENCRYPTION_KEY as string | undefined;
+        if (!serviceKey || typeof serviceKey !== 'string') {
+            throw new Error('SERVICE_ENCRYPTION_KEY is required for decrypting OTP requests');
         }
         
         try {
-            const decrypted = await decryptWithServiceKey(body, otpEncryptionKey);
+            const decrypted = await decryptWithServiceKey(body, serviceKey);
             return decrypted as { email: string; otp: string };
-        } catch (error) {
-            console.error('[VerifyOTP] Decryption failed:', error);
-            throw new Error('Failed to decrypt OTP request. Invalid encryption key or corrupted data.');
+        } catch (error: any) {
+            const errorMessage = error?.message || String(error);
+            console.error('[VerifyOTP] Decryption failed:', {
+                error: errorMessage,
+                hasKey: !!serviceKey,
+                keyLength: serviceKey?.length || 0,
+                encryptedFields: Object.keys(body || {}),
+                errorType: error?.constructor?.name || typeof error
+            });
+            
+            // Provide more specific error message
+            if (errorMessage.includes('service key does not match')) {
+                throw new Error('SERVICE_ENCRYPTION_KEY mismatch: The encryption key on the server does not match the client key. Please verify SERVICE_ENCRYPTION_KEY is set correctly.');
+            } else if (errorMessage.includes('Valid service key is required')) {
+                throw new Error('SERVICE_ENCRYPTION_KEY not configured: Please set SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets.');
+            } else {
+                throw new Error(`Failed to decrypt OTP request: ${errorMessage}`);
+            }
         }
     }
     
