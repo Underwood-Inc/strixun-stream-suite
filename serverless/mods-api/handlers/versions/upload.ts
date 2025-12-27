@@ -95,54 +95,102 @@ export async function handleUploadVersion(
             });
         }
 
-        // Check if file is encrypted (has .encrypted suffix or is JSON)
+        // SECURITY: Files are already encrypted by the client
+        // Store encrypted files in R2 as-is (encryption at rest)
+        // Files are decrypted on-the-fly during download
         const isEncrypted = file.name.endsWith('.encrypted') || file.type === 'application/json';
         let originalFileName = file.name;
         
-        if (isEncrypted) {
-            // Remove .encrypted suffix if present
-            if (originalFileName.endsWith('.encrypted')) {
-                originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
-            }
+        if (!isEncrypted) {
+            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Remove .encrypted suffix if present to get original filename
+        if (originalFileName.endsWith('.encrypted')) {
+            originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
+        }
+        
+        // Get encrypted file data (already encrypted by client - store as-is)
+        let encryptedData: string;
+        let encryptedJson: any;
+        try {
+            encryptedData = await file.text();
+            encryptedJson = JSON.parse(encryptedData);
             
-            // Decrypt the file
-            try {
-                const encryptedData = await file.text();
-                const encryptedJson = JSON.parse(encryptedData);
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-                
-                if (!jwtToken) {
-                    throw new Error('JWT token required for file decryption');
-                }
-                
-                // Decrypt the base64 file data
-                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                
-                // Convert base64 back to binary (exact reverse of client's btoa conversion)
-                // This ensures the file is fully intact - no data loss or corruption
-                const binaryString = atob(decryptedBase64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                
-                // Create new File object with decrypted data and original filename
-                // The file is now identical to the original uploaded file
-                file = new File([bytes], originalFileName, { type: 'application/zip' });
-            } catch (error) {
-                console.error('File decryption error:', error);
-                const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated.');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 400,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
+            // Verify it's a valid encrypted structure
+            if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
+                throw new Error('Invalid encrypted file format');
             }
+        } catch (error) {
+            console.error('Encrypted file validation error:', error);
+            const rfcError = createError(request, 400, 'Invalid Encrypted File', 'The uploaded file does not appear to be properly encrypted. Please ensure the file is encrypted before upload.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Get JWT token for temporary decryption (to calculate hash)
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        if (!jwtToken) {
+            const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required for file processing');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 401,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Temporarily decrypt to calculate file hash (for integrity verification)
+        let fileHash: string;
+        let fileSize: number;
+        try {
+            const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+            
+            // Convert base64 back to binary for hash calculation
+            const binaryString = atob(decryptedBase64);
+            const fileBytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                fileBytes[i] = binaryString.charCodeAt(i);
+            }
+            fileSize = fileBytes.length;
+            
+            // Calculate hash from decrypted data
+            fileHash = await calculateFileHash(fileBytes);
+        } catch (error) {
+            console.error('File decryption error during upload:', error);
+            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated and the file was encrypted with your token.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
 
         // Parse metadata from form data
@@ -182,25 +230,27 @@ export async function handleUploadVersion(
         const versionId = generateVersionId();
         const now = new Date().toISOString();
 
-        // Calculate file integrity hash (SHA-256) before upload
-        const fileHash = await calculateFileHash(file);
-        const strixunHash = formatStrixunHash(fileHash);
-
-        // Upload file to R2
-        const fileExtension = file.name.split('.').pop() || 'zip';
+        // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
+        // Files are decrypted on-the-fly during download
+        const fileExtension = originalFileName.split('.').pop() || 'zip';
         const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${fileExtension}`);
         
-        await env.MODS_R2.put(r2Key, file.stream(), {
+        // Store encrypted file data as-is (the original encrypted JSON from client)
+        const encryptedFileBytes = new TextEncoder().encode(encryptedData);
+        await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
-                contentType: file.type || 'application/zip',
-                cacheControl: 'public, max-age=31536000',
+                contentType: 'application/json', // Stored as encrypted JSON
+                cacheControl: 'private, no-cache', // Don't cache encrypted files
             },
             customMetadata: {
                 modId,
                 versionId,
                 uploadedBy: auth.userId,
                 uploadedAt: now,
-                sha256: fileHash, // Store hash in R2 metadata for verification
+                encrypted: 'true', // Mark as encrypted
+                originalFileName,
+                originalContentType: 'application/zip', // Original file type
+                sha256: fileHash, // Hash of decrypted file for verification
             },
         });
 
@@ -215,8 +265,8 @@ export async function handleUploadVersion(
             modId,
             version: metadata.version,
             changelog: metadata.changelog || '',
-            fileSize: file.size,
-            fileName: file.name,
+            fileSize: fileSize, // Use calculated size from decrypted data
+            fileName: originalFileName, // Use original filename (without .encrypted)
             r2Key,
             downloadUrl,
             sha256: fileHash, // Store hash for verification

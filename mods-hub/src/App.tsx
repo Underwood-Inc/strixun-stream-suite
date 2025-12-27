@@ -4,6 +4,8 @@ import { ModListPage } from './pages/ModListPage';
 import { ModDetailPage } from './pages/ModDetailPage';
 import { ModUploadPage } from './pages/ModUploadPage';
 import { ModManagePage } from './pages/ModManagePage';
+import { ModReviewPage } from './pages/ModReviewPage';
+import { AdminPanel } from './pages/AdminPanel';
 import { LoginPage } from './pages/LoginPage';
 import { Layout } from './components/layout/Layout';
 
@@ -26,8 +28,10 @@ export function App() {
                     <Route path="/" element={<ModListPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/mods/:slug" element={<ModDetailPage />} />
+                    <Route path="/mods/:slug/review" element={<ModReviewPage />} />
                     <Route path="/upload" element={<ModUploadPage />} />
                     <Route path="/manage/:slug" element={<ModManagePage />} />
+                    <Route path="/admin" element={<AdminPanel />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </ConditionalLayout>

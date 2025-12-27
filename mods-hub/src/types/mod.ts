@@ -18,6 +18,32 @@ export interface ModDependency {
     required: boolean;
 }
 
+export type ModStatus = 
+    | 'pending'
+    | 'approved'
+    | 'changes_requested'
+    | 'denied'
+    | 'draft'
+    | 'published'
+    | 'archived';
+
+export interface ModStatusHistory {
+    status: ModStatus;
+    changedBy: string;
+    changedByEmail?: string;
+    changedAt: string;
+    reason?: string;
+}
+
+export interface ModReviewComment {
+    commentId: string;
+    authorId: string;
+    authorEmail: string;
+    content: string;
+    createdAt: string;
+    isAdmin: boolean;
+}
+
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
@@ -35,6 +61,9 @@ export interface ModMetadata {
     visibility: ModVisibility;
     featured: boolean;
     customerId: string | null;
+    status: ModStatus;
+    statusHistory?: ModStatusHistory[];
+    reviewComments?: ModReviewComment[];
 }
 
 export interface ModVersion {

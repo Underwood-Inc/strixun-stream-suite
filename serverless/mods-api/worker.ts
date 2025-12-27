@@ -15,6 +15,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from './utils/errors.js';
 import { handleModRoutes } from './router/mod-routes.js';
+import { handleAdminRoutes } from './router/admin-routes.js';
 
 /**
  * Route configuration interface
@@ -137,6 +138,14 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         // Health check
         if (path === '/health' || path === '/') {
             return await handleHealth(env, request);
+        }
+
+        // Handle admin routes (before mod routes to catch /admin paths)
+        if (path.startsWith('/admin')) {
+            const adminResult = await handleAdminRoutes(request, path, env);
+            if (adminResult) {
+                return adminResult.response;
+            }
         }
 
         // Handle mod routes

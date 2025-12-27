@@ -195,6 +195,7 @@ export async function handleUpdateMod(
 
 /**
  * Handle thumbnail upload (base64 to R2)
+ * Validates image format and ensures it's renderable
  */
 async function handleThumbnailUpload(
     base64Data: string,
@@ -210,14 +211,47 @@ async function handleThumbnailUpload(
         }
 
         const [, imageType, base64Content] = matches;
+        
+        // Validate image type (only allow common web-safe formats)
+        const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+        const normalizedType = imageType.toLowerCase();
+        if (!allowedTypes.includes(normalizedType)) {
+            throw new Error(`Unsupported image type: ${imageType}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
+
+        // Decode base64 to binary
         const imageBuffer = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+        
+        // Basic validation: Check minimum file size (at least 100 bytes)
+        if (imageBuffer.length < 100) {
+            throw new Error('Image file is too small or corrupted');
+        }
+
+        // Validate image headers for common formats
+        // JPEG: FF D8 FF
+        // PNG: 89 50 4E 47
+        // GIF: 47 49 46 38
+        // WebP: 52 49 46 46 (RIFF) followed by WEBP
+        const isValidImage = 
+            (normalizedType === 'jpeg' || normalizedType === 'jpg') && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF ||
+            normalizedType === 'png' && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47 ||
+            normalizedType === 'gif' && imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x38 ||
+            normalizedType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
+
+        if (!isValidImage) {
+            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image`);
+        }
 
         // Upload to R2
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${imageType}`);
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${normalizedType}`);
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
-                contentType: `image/${imageType}`,
+                contentType: `image/${normalizedType}`,
                 cacheControl: 'public, max-age=31536000',
+            },
+            customMetadata: {
+                modId,
+                validated: 'true', // Mark as validated for rendering
             },
         });
 

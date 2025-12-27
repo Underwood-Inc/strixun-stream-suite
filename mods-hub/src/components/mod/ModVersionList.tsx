@@ -7,6 +7,7 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion } from '../../types/mod';
 import { getDownloadUrl } from '../../services/api';
+import { IntegrityBadge } from './IntegrityBadge';
 
 const Container = styled.div`
   display: flex;
@@ -87,9 +88,10 @@ const DownloadButton = styled.a`
 interface ModVersionListProps {
     modId: string;
     versions: ModVersion[];
+    isUploader?: boolean;
 }
 
-export function ModVersionList({ modId, versions }: ModVersionListProps) {
+export function ModVersionList({ modId, versions, isUploader = false }: ModVersionListProps) {
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -122,6 +124,13 @@ export function ModVersionList({ modId, versions }: ModVersionListProps) {
                                 </>
                             )}
                         </Meta>
+                        {version.sha256 && (
+                            <IntegrityBadge 
+                                modId={modId} 
+                                versionId={version.versionId}
+                                showCopyButton={isUploader}
+                            />
+                        )}
                     </VersionInfo>
                     <DownloadButton
                         href={getDownloadUrl(modId, version.versionId)}

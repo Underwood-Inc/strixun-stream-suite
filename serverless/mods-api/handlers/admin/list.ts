@@ -1,7 +1,6 @@
 /**
- * List mods handler
- * GET /mods
- * Supports filtering, pagination, and search
+ * Admin list handler
+ * Lists all mods for admin triage (includes all statuses)
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
@@ -10,42 +9,39 @@ import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 
 /**
- * Handle list mods request
+ * Handle list all mods request (admin only)
  */
-export async function handleListMods(
+export async function handleListAllMods(
     request: Request,
     env: Env,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { userId: string; customerId: string | null }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
         const page = parseInt(url.searchParams.get('page') || '1', 10);
         const pageSize = Math.min(parseInt(url.searchParams.get('pageSize') || '20', 10), 100);
+        const status = url.searchParams.get('status'); // Filter by status
         const category = url.searchParams.get('category');
         const search = url.searchParams.get('search');
-        const authorId = url.searchParams.get('authorId');
-        const featured = url.searchParams.get('featured') === 'true';
-        const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
-        // Check if user is admin (once, not in loop)
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        // Get all mod IDs from all sources
+        const allModIds = new Set<string>();
 
-        // Get all mod IDs from global public list
-        // This list contains ALL public mods regardless of customer
+        // Get global public list
         const globalListKey = 'mods_list_public';
         const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
-        const globalModIds = globalListData || [];
-
-        // Also get customer-specific mods if authenticated (for private/unlisted mods)
-        let customerModIds: string[] = [];
-        if (auth?.customerId) {
-            const customerListKey = getCustomerKey(auth.customerId, 'mods_list');
-            const customerListData = await env.MODS_KV.get(customerListKey, { type: 'json' }) as string[] | null;
-            customerModIds = customerListData || [];
+        if (globalListData) {
+            globalListData.forEach(id => allModIds.add(id));
         }
 
-        // Combine and deduplicate mod IDs
-        const allModIds = [...new Set([...globalModIds, ...customerModIds])];
+        // Get customer-specific mods
+        if (auth.customerId) {
+            const customerListKey = getCustomerKey(auth.customerId, 'mods_list');
+            const customerListData = await env.MODS_KV.get(customerListKey, { type: 'json' }) as string[] | null;
+            if (customerListData) {
+                customerListData.forEach(id => allModIds.add(id));
+            }
+        }
 
         // Fetch all mod metadata
         const mods: ModMetadata[] = [];
@@ -53,52 +49,23 @@ export async function handleListMods(
             // Try to find mod in global scope first, then customer scope
             let mod: ModMetadata | null = null;
             
-            // Check global/public scope (no customer prefix)
             const globalModKey = `mod_${modId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             
-            // If not found and authenticated, check customer scope
-            if (!mod && auth?.customerId) {
+            if (!mod && auth.customerId) {
                 const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-            }
-            
-            // If still not found, try other customer scopes (for public mods from other customers)
-            if (!mod) {
-                // Search through known customer prefixes (this is a fallback - ideally all public mods should be in global scope)
-                // For now, we'll skip mods we can't find
-                continue;
             }
             
             if (!mod) continue;
 
             // Apply filters
+            if (status && mod.status !== status) continue;
             if (category && mod.category !== category) continue;
             if (search && !mod.title.toLowerCase().includes(search.toLowerCase()) && 
                 !mod.description.toLowerCase().includes(search.toLowerCase()) &&
                 !mod.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()))) {
                 continue;
-            }
-            if (authorId && mod.authorId !== authorId) continue;
-            if (featured && !mod.featured) continue;
-            
-            // Visibility filter
-            if (visibility === 'public' && mod.visibility !== 'public') {
-                // Only show private/unlisted mods to their author
-                if (mod.authorId !== auth?.userId) continue;
-            } else if (visibility === 'all' && mod.visibility !== 'public' && mod.authorId !== auth?.userId) {
-                continue;
-            }
-
-            // Status filter: only show published mods to public, admins and authors can see all statuses
-            if (mod.status && mod.status !== 'published') {
-                // Only show non-published mods to admins or the author
-                const isAuthor = mod.authorId === auth?.userId;
-                
-                if (!isAuthor && !isAdmin) {
-                    // Skip non-published mods for non-authors and non-admins
-                    continue;
-                }
             }
 
             mods.push(mod);
@@ -131,7 +98,7 @@ export async function handleListMods(
             },
         });
     } catch (error: any) {
-        console.error('List mods error:', error);
+        console.error('Admin list mods error:', error);
         const rfcError = createError(
             request,
             500,
@@ -154,6 +121,7 @@ export async function handleListMods(
 interface Env {
     MODS_KV: KVNamespace;
     ENVIRONMENT?: string;
+    ALLOWED_ORIGINS?: string;
     [key: string]: any;
 }
 

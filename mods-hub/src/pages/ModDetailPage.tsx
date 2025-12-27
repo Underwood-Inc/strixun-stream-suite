@@ -6,6 +6,8 @@
 import { useParams } from 'react-router-dom';
 import { useModDetail } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
+import { IntegrityBadge } from '../components/mod/IntegrityBadge';
+import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 
@@ -82,12 +84,15 @@ const Error = styled.div`
 export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const { data, isLoading, error } = useModDetail(slug || '');
+    const { user } = useAuthStore();
+    const isUploader = user && data?.mod.authorId === user.userId;
 
     if (isLoading) return <Loading>Loading mod...</Loading>;
     if (error) return <Error>Failed to load mod: {(error as Error).message}</Error>;
     if (!data) return <Error>Mod not found</Error>;
 
     const { mod, versions } = data;
+    const latestVersion = versions[0]; // Versions are sorted newest first
 
     return (
         <PageContainer>
@@ -102,6 +107,16 @@ export function ModDetailPage() {
                         <span>{mod.downloadCount} downloads</span>
                         <span>•</span>
                         <span>Latest: {mod.latestVersion}</span>
+                        {latestVersion?.sha256 && (
+                            <>
+                                <span>•</span>
+                                <IntegrityBadge 
+                                    modId={mod.modId} 
+                                    versionId={latestVersion.versionId}
+                                    showCopyButton={isUploader}
+                                />
+                            </>
+                        )}
                     </Meta>
                     <Tags>
                         {mod.tags.map((tag) => (
@@ -111,7 +126,7 @@ export function ModDetailPage() {
                 </Info>
             </Header>
 
-            <ModVersionList modId={mod.modId} versions={versions} />
+            <ModVersionList modId={mod.modId} versions={versions} isUploader={isUploader} />
         </PageContainer>
     );
 }

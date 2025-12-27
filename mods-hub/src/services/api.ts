@@ -5,6 +5,7 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
+import type { ModStatus, ModReviewComment } from '../types/mod';
 
 const API_BASE_URL = import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app';
 
@@ -317,13 +318,24 @@ export async function uploadVersion(
     file: File,
     metadata: VersionUploadRequest
 ): Promise<{ version: ModVersion }> {
+    // Get auth token for encryption
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('Authentication required - please log in to upload versions');
+    }
+
+    // Encrypt file before upload (consistent with uploadMod)
+    console.log('[Upload Version] Encrypting file before upload...');
+    const encryptedFile = await encryptFile(file, token);
+    console.log('[Upload Version] File encrypted successfully');
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', encryptedFile);
     formData.append('metadata', JSON.stringify(metadata));
     
     const response = await api.post<{ version: ModVersion }>(`/mods/${modId}/versions`, formData, {
         headers: {
-            // Don't set Content-Type for FormData
+            // Don't set Content-Type for FormData - browser will set it with boundary
         },
     });
     return response.data;
@@ -334,6 +346,79 @@ export async function uploadVersion(
  */
 export function getDownloadUrl(modId: string, versionId: string): string {
     return `${API_BASE_URL}/mods/${modId}/versions/${versionId}/download`;
+}
+
+/**
+ * Admin API functions
+ */
+
+/**
+ * List all mods (admin only)
+ */
+export async function listAllMods(params: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    category?: string;
+    search?: string;
+}): Promise<ModListResponse> {
+    const response = await api.get<ModListResponse>('/admin/mods', params);
+    return response.data;
+}
+
+/**
+ * Update mod status (admin only)
+ */
+export async function updateModStatus(
+    modId: string,
+    status: ModStatus,
+    reason?: string
+): Promise<{ mod: ModMetadata }> {
+    const response = await api.post<{ mod: ModMetadata }>(`/admin/mods/${modId}/status`, { status, reason });
+    return response.data;
+}
+
+/**
+ * Add review comment (admin or uploader)
+ */
+export async function addReviewComment(
+    modId: string,
+    content: string
+): Promise<{ comment: ModReviewComment }> {
+    const response = await api.post<{ comment: ModReviewComment }>(`/admin/mods/${modId}/comments`, { content });
+    return response.data;
+}
+
+/**
+ * Get mod review (admin or uploader only)
+ */
+export async function getModReview(slug: string): Promise<ModDetailResponse> {
+    const response = await api.get<ModDetailResponse>(`/mods/${slug}/review`);
+    return response.data;
+}
+
+/**
+ * List approved uploaders (admin only)
+ */
+export async function listApprovedUploaders(): Promise<{ approvedUsers: string[] }> {
+    const response = await api.get<{ approvedUsers: string[] }>('/admin/approvals');
+    return response.data;
+}
+
+/**
+ * Approve user for uploads (admin only)
+ */
+export async function approveUser(userId: string, email?: string): Promise<{ success: boolean; userId: string }> {
+    const response = await api.post<{ success: boolean; userId: string }>(`/admin/approvals/${userId}`, { email });
+    return response.data;
+}
+
+/**
+ * Revoke user upload permission (admin only)
+ */
+export async function revokeUser(userId: string): Promise<{ success: boolean; userId: string }> {
+    const response = await api.delete<{ success: boolean; userId: string }>(`/admin/approvals/${userId}`);
+    return response.data;
 }
 
 // Import types for use in function signatures

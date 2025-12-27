@@ -60,6 +60,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /mods/:slug/review - Get mod review page (admin/uploader only)
+        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'review' && request.method === 'GET') {
+            const slug = pathSegments[1];
+            const { handleGetModReview } = await import('../handlers/mods/review.js');
+            const response = await handleGetModReview(request, env, slug, auth);
+            return await wrapWithEncryption(response, auth || undefined);
+        }
+
         // Route: GET /mods/:slug - Get mod detail (by slug)
         if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'GET') {
             const slug = pathSegments[1];

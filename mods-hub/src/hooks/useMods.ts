@@ -3,10 +3,10 @@
  * Handles server state management
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../services/api';
-import type { ModUploadRequest, ModUpdateRequest, VersionUploadRequest } from '../types/mod';
 import { useUIStore } from '../stores/ui';
+import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 
 /**
  * Query keys
@@ -15,8 +15,10 @@ export const modKeys = {
     all: ['mods'] as const,
     lists: () => [...modKeys.all, 'list'] as const,
     list: (filters: Record<string, any>) => [...modKeys.lists(), filters] as const,
+    adminList: (filters: Record<string, any>) => [...modKeys.all, 'admin', 'list', filters] as const,
     details: () => [...modKeys.all, 'detail'] as const,
     detail: (id: string) => [...modKeys.details(), id] as const,
+    review: (slug: string) => [...modKeys.details(), slug, 'review'] as const,
 };
 
 /**
@@ -166,6 +168,87 @@ export function useUploadVersion() {
         onError: (error: Error) => {
             addNotification({
                 message: error.message || 'Failed to upload version',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Admin list mods query (all statuses)
+ */
+export function useAdminModsList(filters: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    category?: string;
+    search?: string;
+}) {
+    return useQuery({
+        queryKey: modKeys.adminList(filters),
+        queryFn: () => api.listAllMods(filters),
+    });
+}
+
+/**
+ * Get mod review query (admin/uploader only)
+ */
+export function useModReview(slug: string) {
+    return useQuery({
+        queryKey: modKeys.review(slug),
+        queryFn: () => api.getModReview(slug),
+        enabled: !!slug,
+    });
+}
+
+/**
+ * Update mod status mutation (admin only)
+ */
+export function useUpdateModStatus() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, status, reason }: { modId: string; status: ModStatus; reason?: string }) => 
+            api.updateModStatus(modId, status, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: modKeys.adminList({}) });
+            queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            addNotification({
+                message: 'Mod status updated successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to update mod status',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Add review comment mutation
+ */
+export function useAddReviewComment() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, content }: { modId: string; content: string }) => 
+            api.addReviewComment(modId, content),
+        onSuccess: () => {
+            // Invalidate all review queries to refresh the review page
+            queryClient.invalidateQueries({ queryKey: modKeys.details() });
+            addNotification({
+                message: 'Comment added successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to add comment',
                 type: 'error',
             });
         },

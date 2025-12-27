@@ -5,6 +5,18 @@
 /**
  * Mod metadata stored in KV
  */
+/**
+ * Mod review status (similar to GitHub PR statuses)
+ */
+export type ModStatus = 
+    | 'pending'      // Awaiting review
+    | 'approved'     // Approved for publication
+    | 'changes_requested' // Changes requested by admin
+    | 'denied'       // Denied/rejected
+    | 'draft'        // Draft (not ready for review)
+    | 'published'    // Published and visible
+    | 'archived';    // Archived
+
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
@@ -22,6 +34,9 @@ export interface ModMetadata {
     visibility: ModVisibility;
     featured: boolean;
     customerId: string | null;
+    status: ModStatus; // Review/triage status
+    statusHistory?: ModStatusHistory[]; // History of status changes
+    reviewComments?: ModReviewComment[]; // Comments from admins/uploader
 }
 
 /**
@@ -114,6 +129,29 @@ export interface ModListResponse {
     total: number;
     page: number;
     pageSize: number;
+}
+
+/**
+ * Mod status history entry
+ */
+export interface ModStatusHistory {
+    status: ModStatus;
+    changedBy: string; // User ID who changed the status
+    changedByEmail?: string;
+    changedAt: string;
+    reason?: string; // Optional reason for status change
+}
+
+/**
+ * Mod review comment
+ */
+export interface ModReviewComment {
+    commentId: string;
+    authorId: string;
+    authorEmail: string;
+    content: string;
+    createdAt: string;
+    isAdmin: boolean; // True if comment is from admin
 }
 
 /**
