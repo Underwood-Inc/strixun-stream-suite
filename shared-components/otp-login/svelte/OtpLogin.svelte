@@ -8,7 +8,7 @@
   import { onDestroy, onMount } from 'svelte';
   import type { OtpLoginState } from '../core';
   import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig } from '../core';
-  import { getOtpEncryptionKey } from '../../../../shared-config/otp-encryption';
+  import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
   import EmailForm from './components/EmailForm.svelte';
   import ErrorDisplay from './components/ErrorDisplay.svelte';
   import OtpForm from './components/OtpForm.svelte';
