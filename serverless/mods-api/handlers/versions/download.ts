@@ -9,32 +9,53 @@ import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
+import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
  * Handle download version request
+ * Supports both modId (legacy) and slug (new) patterns
  */
 export async function handleDownloadVersion(
     request: Request,
     env: Env,
-    modId: string,
+    modIdOrSlug: string,
     versionId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { userId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata - check both customer scope and global scope
+        // Get mod metadata - try multiple lookup strategies for legacy compatibility
         let mod: ModMetadata | null = null;
+        
+        // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
+        const cleanModId = modIdOrSlug.startsWith('mod_') ? modIdOrSlug.substring(4) : modIdOrSlug;
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${cleanModId}`);
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // Fall back to global scope if not found
         if (!mod) {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${cleanModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Strategy 2: If not found by modId, try slug lookup (new pattern)
+        if (!mod) {
+            mod = await findModBySlug(modIdOrSlug, env, auth);
+        }
+        
+        // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
+        if (!mod && modIdOrSlug.startsWith('mod_')) {
+            if (auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, modIdOrSlug);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
+            if (!mod) {
+                mod = await env.MODS_KV.get(modIdOrSlug, { type: 'json' }) as ModMetadata | null;
+            }
         }
 
         if (!mod) {
@@ -51,8 +72,9 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Check visibility
-        if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+        // Check visibility - legacy mods without visibility field are treated as public
+        const modVisibility = mod.visibility || 'public';
+        if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -67,11 +89,15 @@ export async function handleDownloadVersion(
         }
 
         // Check status: only allow downloads of published mods to public, admins and authors can download all statuses
+        // Legacy mods without status field are treated as published
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
         const isAuthor = mod.authorId === auth?.userId;
         
-        if (mod.status && mod.status !== 'published') {
+        // Legacy mods might not have status field - treat undefined/null as published
+        const modStatus = mod.status || 'published';
+        
+        if (modStatus !== 'published') {
             // Only allow downloads of non-published mods to admins or the author
             if (!isAuthor && !isAdmin) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
@@ -103,7 +129,10 @@ export async function handleDownloadVersion(
             version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
         }
 
-        if (!version || version.modId !== modId) {
+        // Check version belongs to mod - support both modId formats
+        const versionModId = version.modId;
+        const modModId = mod.modId;
+        if (!version || (versionModId !== modModId && versionModId !== cleanModId && versionModId !== modIdOrSlug)) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

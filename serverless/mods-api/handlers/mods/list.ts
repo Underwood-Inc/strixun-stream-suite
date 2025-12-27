@@ -96,7 +96,9 @@ export async function handleListMods(
                 // This applies to BOTH regular users AND admins
                 
                 // Check visibility: MUST be 'public'
-                if (mod.visibility !== 'public') {
+                // Legacy mods without visibility field are treated as public
+                const modVisibility = mod.visibility || 'public';
+                if (modVisibility !== 'public') {
                     // Only show private/unlisted mods to their author
                     if (mod.authorId !== auth?.userId) {
                         continue;
@@ -105,7 +107,9 @@ export async function handleListMods(
                 
                 // Check status: MUST be 'published' (exclude all non-published statuses)
                 // This is CRITICAL - even admins should not see non-published mods in public browsing
-                if (mod.status !== 'published') {
+                // Legacy mods without status field are treated as published
+                const modStatus = mod.status || 'published';
+                if (modStatus !== 'published') {
                     // Only show non-published mods to their author
                     if (mod.authorId !== auth?.userId) {
                         continue;
@@ -115,11 +119,15 @@ export async function handleListMods(
                 // For non-public visibility filters (e.g., 'all'), apply different rules
                 if (!isAdmin) {
                     // For non-super users: apply visibility filter
-                    if (mod.visibility !== 'public' && mod.authorId !== auth?.userId) {
+                    // Legacy mods without visibility field are treated as public
+                    const modVisibility = mod.visibility || 'public';
+                    if (modVisibility !== 'public' && mod.authorId !== auth?.userId) {
                         continue;
                     }
                     // Non-admins can only see published mods or their own mods
-                    if (mod.status !== 'published' && mod.authorId !== auth?.userId) {
+                    // Legacy mods without status field are treated as published
+                    const modStatus = mod.status || 'published';
+                    if (modStatus !== 'published' && mod.authorId !== auth?.userId) {
                         continue;
                     }
                 } else {

@@ -41,9 +41,12 @@ export async function handleGetModDetail(
             }
             
             // CRITICAL: Filter legacy mods that don't meet visibility/status requirements
+            // Legacy mods without visibility/status fields are treated as public/published
             if (mod && !isAdmin) {
+                const modVisibility = mod.visibility || 'public';
+                const modStatus = mod.status || 'published';
                 // For non-super users: ONLY public, published mods are allowed
-                if (mod.visibility !== 'public' || mod.status !== 'published') {
+                if (modVisibility !== 'public' || modStatus !== 'published') {
                     // Only allow if user is the author
                     if (mod.authorId !== auth?.userId) {
                         mod = null; // Filter out - don't show to non-authors
@@ -102,7 +105,9 @@ export async function handleGetModDetail(
             // Legacy mods without proper fields are filtered out
             
             // Check visibility: MUST be 'public'
-            if (mod.visibility !== 'public') {
+            // Legacy mods without visibility field are treated as public
+            const modVisibility = mod.visibility || 'public';
+            if (modVisibility !== 'public') {
                 // Only show private/unlisted mods to their author
                 if (mod.authorId !== auth?.userId) {
                     const rfcError = createError(
@@ -125,8 +130,9 @@ export async function handleGetModDetail(
             }
             
             // Check status: MUST be 'published'
-            // Legacy mods without status field are filtered out (undefined !== 'published')
-            if (mod.status !== 'published') {
+            // Legacy mods without status field are treated as published
+            const modStatus = mod.status || 'published';
+            if (modStatus !== 'published') {
                 // Only show non-published mods to their author
                 if (!isAuthor) {
                     const rfcError = createError(

@@ -29,9 +29,11 @@ export async function findModBySlug(
             const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             if (mod && mod.slug === slug) {
                 // CRITICAL: Filter legacy mods that don't meet visibility/status requirements
+                // Legacy mods without status field are treated as published
                 if (!isAdmin) {
+                    const modStatus = mod.status || 'published';
                     // For non-super users: ONLY public, published mods are allowed
-                    if (mod.visibility !== 'public' || mod.status !== 'published') {
+                    if (mod.visibility !== 'public' || modStatus !== 'published') {
                         // Only allow if user is the author
                         if (mod.authorId !== auth?.userId) {
                             continue; // Skip this mod, don't return it
