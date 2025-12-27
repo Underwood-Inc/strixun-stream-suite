@@ -50,6 +50,7 @@ export {
   extractJWTToken,
   getServiceKey,
   findMatchingPolicy,
+  encryptWithServiceKey,
   decryptWithServiceKey,
   DEFAULT_ENCRYPTION_POLICIES,
 } from './route-encryption.js';

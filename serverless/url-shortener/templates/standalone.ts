@@ -13,7 +13,7 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Shortener - Strixun</title>
+    <title>URL Shortener - Strixun Stream Suite</title>
     <style>
         * {
             margin: 0;
@@ -22,62 +22,95 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         :root {
-            --bg: #0f0f0f;
-            --card: #1a1a1a;
-            --border: #2a2a2a;
-            --text: #e0e0e0;
-            --text-muted: #888;
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --secondary: #3a3a3a;
-            --success: #10b981;
-            --error: #ef4444;
-            --warning: #f59e0b;
-            --radius: 8px;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            /* Strixun Stream Suite Design System Colors */
+            --bg: #1a1611;
+            --bg-dark: #0f0e0b;
+            --card: #252017;
+            --border: #3d3627;
+            --border-light: #4a4336;
+            
+            /* Brand Colors */
+            --accent: #edae49;
+            --accent-light: #f9df74;
+            --accent-dark: #c68214;
+            --accent2: #6495ed;
+            
+            /* Status Colors */
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #ea2b1f;
+            --info: #6495ed;
+            
+            /* Text Colors */
+            --text: #f9f9f9;
+            --text-secondary: #b8b8b8;
+            --muted: #888;
+            
+            /* Spacing (8px grid) */
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
             line-height: 1.6;
             min-height: 100vh;
-            padding: 20px;
+            padding: var(--spacing-lg);
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 40px;
-            padding: 20px 0;
+            margin-bottom: var(--spacing-2xl);
+            padding: var(--spacing-xl) 0;
         }
 
         .header h1 {
             font-size: 2.5rem;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--accent);
+            text-shadow: 0 2px 4px rgba(237, 174, 73, 0.3);
         }
 
         .header p {
-            color: var(--text-muted);
+            color: var(--text-secondary);
             font-size: 1.1rem;
         }
 
         .card {
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--border-light);
+            box-shadow: var(--shadow-lg);
         }
 
         .auth-section {
@@ -103,66 +136,72 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
 
         .form-group input {
             width: 100%;
-            padding: 12px 16px;
-            background: var(--bg);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-dark);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border-radius: var(--radius-md);
             color: var(--text);
             font-size: 1rem;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(237, 174, 73, 0.1);
         }
 
         .form-group small {
             display: block;
-            margin-top: 6px;
-            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
+            color: var(--text-secondary);
             font-size: 0.875rem;
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: var(--spacing-sm) var(--spacing-lg);
             border: none;
-            border-radius: var(--radius);
+            border-radius: var(--radius-md);
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             display: inline-block;
             text-decoration: none;
         }
 
         .btn-primary {
-            background: var(--primary);
-            color: white;
+            background: var(--accent);
+            color: var(--bg-dark);
+            font-weight: 600;
         }
 
         .btn-primary:hover:not(:disabled) {
-            background: var(--primary-hover);
+            background: var(--accent-light);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4);
         }
 
         .btn-secondary {
-            background: var(--secondary);
+            background: var(--card);
+            border: 1px solid var(--border);
             color: var(--text);
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: #4a4a4a;
+            background: var(--border);
+            border-color: var(--border-light);
         }
 
         .btn-danger {
-            background: var(--error);
+            background: var(--danger);
             color: white;
         }
 
         .btn-danger:hover:not(:disabled) {
-            background: #dc2626;
+            background: #c8231a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(234, 43, 31, 0.4);
         }
 
         .btn:disabled {
@@ -180,37 +219,40 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-lg);
             border-bottom: 1px solid var(--border);
         }
 
+        .user-info strong {
+            color: var(--accent);
+        }
+
         .user-info span {
-            color: var(--text-muted);
+            color: var(--text-secondary);
         }
 
-        .create-section h2 {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-        }
-
+        .create-section h2,
         .urls-section h2 {
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-lg);
             font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent);
         }
 
         .url-card {
-            background: var(--bg);
+            background: var(--bg-dark);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
 
         .url-card:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-light);
         }
 
         .url-card-header {
@@ -228,24 +270,27 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .url-short strong {
-            color: var(--primary);
+            color: var(--accent);
             font-size: 1.1rem;
+            font-weight: 600;
             word-break: break-all;
         }
 
         .btn-copy {
-            padding: 6px 12px;
-            background: var(--secondary);
-            border: none;
-            border-radius: var(--radius);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             color: var(--text);
             cursor: pointer;
             font-size: 0.875rem;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .btn-copy:hover {
-            background: #4a4a4a;
+            background: var(--border);
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         .url-original {
@@ -253,46 +298,47 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .url-original a {
-            color: var(--text-muted);
+            color: var(--text-secondary);
             text-decoration: none;
             font-size: 0.9rem;
             word-break: break-all;
+            transition: color 0.2s;
         }
 
         .url-original a:hover {
-            color: var(--primary);
+            color: var(--accent);
             text-decoration: underline;
         }
 
         .url-meta {
             display: flex;
-            gap: 15px;
-            color: var(--text-muted);
+            gap: var(--spacing-md);
+            color: var(--text-secondary);
             font-size: 0.875rem;
             flex-wrap: wrap;
         }
 
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted);
+            padding: var(--spacing-2xl) var(--spacing-lg);
+            color: var(--text-secondary);
         }
 
         .loading {
             text-align: center;
-            padding: 20px;
-            color: var(--text-muted);
+            padding: var(--spacing-lg);
+            color: var(--text-secondary);
         }
 
         .toast {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px 20px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            box-shadow: var(--shadow-lg);
             z-index: 10000;
             max-width: 400px;
             animation: slideIn 0.3s ease-out;
@@ -303,7 +349,7 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         }
 
         .toast.error {
-            border-left: 4px solid var(--error);
+            border-left: 4px solid var(--danger);
         }
 
         .toast.warning {
@@ -321,33 +367,18 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
             }
         }
 
-        .otp-input-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .otp-input {
-            flex: 1;
-        }
-
-        .otp-resend {
-            white-space: nowrap;
-        }
-
-        .otp-timer {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            margin-top: 8px;
-        }
 
         @media (max-width: 600px) {
+            body {
+                padding: var(--spacing-md);
+            }
+
             .header h1 {
                 font-size: 2rem;
             }
 
             .card {
-                padding: 20px;
+                padding: var(--spacing-lg);
             }
 
             .user-info {
@@ -375,56 +406,12 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
     <div class="container">
         <div class="header">
             <h1>🔗 URL Shortener</h1>
-            <p>Create and manage short URLs with OTP authentication</p>
+            <p>Strixun Stream Suite - Create and manage short URLs with secure OTP authentication</p>
         </div>
 
-        <!-- Authentication Section -->
+        <!-- Authentication Section - Uses Shared OTP Component -->
         <div id="authSection" class="card auth-section">
-            <h2>Sign In</h2>
-            <div id="authStep1">
-                <div class="form-group">
-                    <label for="emailInput">Email Address</label>
-                    <input 
-                        type="email" 
-                        id="emailInput" 
-                        placeholder="your@email.com"
-                        autocomplete="email"
-                    >
-                </div>
-                <button class="btn btn-primary" onclick="requestOTP()">
-                    Send OTP Code
-                </button>
-            </div>
-            <div id="authStep2" style="display: none;">
-                <div class="form-group">
-                    <label for="otpInput">Enter 6-digit OTP Code</label>
-                    <div class="otp-input-group">
-                        <input 
-                            type="text" 
-                            id="otpInput" 
-                            placeholder="000000"
-                            maxlength="6"
-                            pattern="[0-9]{6}"
-                            class="otp-input"
-                            onkeypress="return /[0-9]/.test(event.key)"
-                            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                        >
-                        <button class="btn btn-secondary otp-resend" onclick="requestOTP()" id="resendBtn">
-                            Resend
-                        </button>
-                    </div>
-                    <small>Check your email for the 6-digit code</small>
-                    <div id="otpTimer" class="otp-timer"></div>
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="verifyOTP()">
-                        Verify & Sign In
-                    </button>
-                    <button class="btn btn-secondary" onclick="backToEmail()">
-                        Back
-                    </button>
-                </div>
-            </div>
+            <div id="otpLoginContainer"></div>
         </div>
 
         <!-- Main App Section -->
@@ -483,19 +470,25 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- Load decryption library -->
+    <!-- Load decryption library and shared OTP Svelte component -->
     <script src="/decrypt.js"></script>
+    <script src="/otp-login-svelte.js"></script>
 
     <script>
         // Configuration - Using custom domain (s.idling.app)
         const OTP_AUTH_API_URL = 'https://auth.idling.app';
         const URL_SHORTENER_API_URL = 'https://s.idling.app';
+        
+        // CRITICAL: OTP encryption key - must match server-side OTP_ENCRYPTION_KEY or JWT_SECRET
+        // In production, this should be set via environment variable or window function
+        const OTP_ENCRYPTION_KEY = (typeof window !== 'undefined' && window.getOtpEncryptionKey) 
+            ? window.getOtpEncryptionKey() 
+            : undefined; // Will use JWT_SECRET on server if not provided
 
         // State
         let authToken = null;
         let userEmail = null;
-        let otpTimer = null;
-        let otpTimerInterval = null;
+        let otpLoginComponent = null;
 
         // Helper to decrypt API responses using bundled library
         async function decryptResponse(response, token) {
@@ -533,106 +526,22 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
             }
         });
 
-        // Authentication Functions
-        async function requestOTP() {
-            const email = document.getElementById('emailInput').value.trim();
+        // Authentication Functions - Using Shared OTP Component
+        function handleLoginSuccess(data) {
+            // Support both OAuth 2.0 format (access_token) and legacy format (token)
+            authToken = data.access_token || data.token;
+            userEmail = data.email;
             
-            if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
-                showToast('Please enter a valid email address', 'error');
-                return;
-            }
-
-            const resendBtn = document.getElementById('resendBtn');
-            resendBtn.disabled = true;
-
-            try {
-                const response = await fetch(\`\${OTP_AUTH_API_URL}/auth/request-otp\`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showToast('OTP code sent to your email!', 'success');
-                    document.getElementById('authStep1').style.display = 'none';
-                    document.getElementById('authStep2').style.display = 'block';
-                    document.getElementById('otpInput').focus();
-                    
-                    // Start OTP timer (10 minutes)
-                    startOTPTimer();
-                } else {
-                    showToast(data.error || 'Failed to send OTP', 'error');
-                    resendBtn.disabled = false;
-                }
-            } catch (error) {
-                showToast('Network error. Please try again.', 'error');
-                resendBtn.disabled = false;
-            }
+            // Store token
+            localStorage.setItem('urlShortenerToken', authToken);
+            localStorage.setItem('urlShortenerEmail', userEmail);
+            
+            showToast('Successfully signed in!', 'success');
+            showApp();
         }
 
-        async function verifyOTP() {
-            const email = document.getElementById('emailInput').value.trim();
-            const otp = document.getElementById('otpInput').value.trim();
-
-            if (!otp || !/^\\d{6}$/.test(otp)) {
-                showToast('Please enter a valid 6-digit OTP code', 'error');
-                return;
-            }
-
-            const verifyBtn = event.target;
-            verifyBtn.disabled = true;
-            verifyBtn.textContent = 'Verifying...';
-
-            try {
-                const response = await fetch(\`\${OTP_AUTH_API_URL}/auth/verify-otp\`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email, otp }),
-                });
-
-                const data = await response.json();
-
-                // Support both OAuth 2.0 format (access_token) and legacy format (token)
-                const token = data.access_token || data.token;
-
-                if (response.ok && token) {
-                    authToken = token;
-                    userEmail = email;
-                    
-                    // Store token
-                    localStorage.setItem('urlShortenerToken', authToken);
-                    localStorage.setItem('urlShortenerEmail', userEmail);
-                    
-                    showToast('Successfully signed in!', 'success');
-                    stopOTPTimer();
-                    showApp();
-                } else {
-                    showToast(data.error || 'Invalid OTP code', 'error');
-                    verifyBtn.disabled = false;
-                    verifyBtn.textContent = 'Verify & Sign In';
-                    
-                    if (data.remainingAttempts !== undefined) {
-                        showToast(\`Remaining attempts: \${data.remainingAttempts}\`, 'warning');
-                    }
-                }
-            } catch (error) {
-                showToast('Network error. Please try again.', 'error');
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Verify & Sign In';
-            }
-        }
-
-        function backToEmail() {
-            document.getElementById('authStep1').style.display = 'block';
-            document.getElementById('authStep2').style.display = 'none';
-            document.getElementById('otpInput').value = '';
-            stopOTPTimer();
+        function handleLoginError(error) {
+            showToast(error, 'error');
         }
 
         function logout() {
@@ -640,6 +549,10 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
             userEmail = null;
             localStorage.removeItem('urlShortenerToken');
             localStorage.removeItem('urlShortenerEmail');
+            if (otpLoginComponent) {
+                otpLoginComponent.$destroy();
+                otpLoginComponent = null;
+            }
             showAuth();
             showToast('Signed out successfully', 'success');
         }
@@ -647,9 +560,30 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
         function showAuth() {
             document.getElementById('authSection').style.display = 'block';
             document.getElementById('appSection').style.display = 'none';
-            document.getElementById('emailInput').value = '';
-            document.getElementById('otpInput').value = '';
-            backToEmail();
+            
+            // Initialize shared OTP Svelte component if not already initialized
+            if (!otpLoginComponent && typeof window.OtpLoginSvelte !== 'undefined') {
+                const container = document.getElementById('otpLoginContainer');
+                container.innerHTML = ''; // Clear container
+                
+                // Use the bundled Svelte component - same as all other apps
+                otpLoginComponent = new window.OtpLoginSvelte({
+                    target: container,
+                    props: {
+                        apiUrl: OTP_AUTH_API_URL,
+                        onSuccess: handleLoginSuccess,
+                        onError: handleLoginError,
+                        otpEncryptionKey: OTP_ENCRYPTION_KEY,
+                        title: 'Sign In',
+                        subtitle: 'Enter your email to receive a verification code',
+                    },
+                });
+            } else if (otpLoginComponent) {
+                // Reset component if it exists
+                otpLoginComponent.$destroy();
+                otpLoginComponent = null;
+                showAuth(); // Re-initialize
+            }
         }
 
         function showApp() {
@@ -657,36 +591,6 @@ export const STANDALONE_HTML = `<!DOCTYPE html>
             document.getElementById('appSection').style.display = 'block';
             document.getElementById('userEmail').textContent = userEmail;
             loadUrls();
-        }
-
-        // OTP Timer
-        function startOTPTimer() {
-            let timeLeft = 600; // 10 minutes in seconds
-            const timerEl = document.getElementById('otpTimer');
-            const resendBtn = document.getElementById('resendBtn');
-            
-            otpTimerInterval = setInterval(() => {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerEl.textContent = \`Code expires in \${minutes}:\${seconds.toString().padStart(2, '0')}\`;
-                
-                timeLeft--;
-                
-                if (timeLeft < 0) {
-                    stopOTPTimer();
-                    timerEl.textContent = 'OTP code expired. Please request a new one.';
-                    resendBtn.disabled = false;
-                }
-            }, 1000);
-        }
-
-        function stopOTPTimer() {
-            if (otpTimerInterval) {
-                clearInterval(otpTimerInterval);
-                otpTimerInterval = null;
-            }
-            document.getElementById('otpTimer').textContent = '';
-            document.getElementById('resendBtn').disabled = false;
         }
 
         // URL Shortener Functions

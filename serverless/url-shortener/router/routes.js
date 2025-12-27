@@ -10,6 +10,8 @@ import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls,
 import { handleHealth } from '../handlers/health.js';
 import { handleStandalonePage } from '../handlers/page.js';
 import { handleDecryptScript } from '../handlers/decrypt-script.js';
+import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
+import { handleOtpLoginSvelteScript } from '../handlers/otp-login-svelte-script.js';
 
 /**
  * Helper to wrap handlers with automatic encryption
@@ -63,6 +65,16 @@ export function createRouter(standaloneHtml) {
       // Serve decryption script
       if (path === '/decrypt.js' && request.method === 'GET') {
         return handleDecryptScript();
+      }
+
+      // Serve OTP core script
+      if (path === '/otp-core.js' && request.method === 'GET') {
+        return handleOtpCoreScript();
+      }
+
+      // Serve OTP Login Svelte component bundle
+      if (path === '/otp-login-svelte.js' && request.method === 'GET') {
+        return handleOtpLoginSvelteScript();
       }
 
       // Serve standalone HTML page at root

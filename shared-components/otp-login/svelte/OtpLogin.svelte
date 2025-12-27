@@ -17,6 +17,7 @@
   export let onError: ((error: string) => void) | undefined = undefined;
   export let endpoints: OtpLoginConfig['endpoints'] | undefined = undefined;
   export let customHeaders: OtpLoginConfig['customHeaders'] | undefined = undefined;
+  export let otpEncryptionKey: string | undefined = undefined; // CRITICAL: OTP encryption key for encrypting requests
   export let title: string = 'Sign In';
   export let subtitle: string = 'Enter your email to receive a verification code';
   export let showAsModal: boolean = false;
@@ -47,6 +48,7 @@
         onError,
         endpoints,
         customHeaders,
+        otpEncryptionKey, // CRITICAL: Pass encryption key for encrypting OTP requests
       });
 
       // Subscribe to state changes

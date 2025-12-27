@@ -19,12 +19,15 @@ import { getCustomer } from '../../services/customer.js';
 import { getPlanLimits } from '../../utils/validation.js';
 import { storeOTP } from './otp-storage.js';
 import { createEmailErrorResponse, createInternalErrorResponse } from './otp-errors.js';
+import { decryptWithServiceKey } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     ENVIRONMENT?: string;
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
+    OTP_ENCRYPTION_KEY?: string; // Optional: Dedicated OTP encryption key (falls back to JWT_SECRET)
+    JWT_SECRET?: string; // Fallback encryption key if OTP_ENCRYPTION_KEY not set
     [key: string]: any;
 }
 
@@ -43,14 +46,41 @@ async function checkQuota(customerId: string | null, env: Env, email?: string) {
  * Request OTP endpoint
  * POST /auth/request-otp
  */
+/**
+ * Decrypt request body if encrypted, otherwise return as-is (backward compatibility)
+ */
+async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string }> {
+    const body = await request.json();
+    
+    // Check if body is encrypted (has encrypted field)
+    if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
+        // Body is encrypted - decrypt using OTP encryption key
+        const otpEncryptionKey = env.OTP_ENCRYPTION_KEY || env.JWT_SECRET;
+        if (!otpEncryptionKey) {
+            throw new Error('OTP_ENCRYPTION_KEY or JWT_SECRET is required for decrypting OTP requests');
+        }
+        
+        try {
+            const decrypted = await decryptWithServiceKey(body, otpEncryptionKey);
+            return decrypted as { email: string };
+        } catch (error) {
+            console.error('[RequestOTP] Decryption failed:', error);
+            throw new Error('Failed to decrypt OTP request. Invalid encryption key or corrupted data.');
+        }
+    }
+    
+    // Body is not encrypted (backward compatibility)
+    return body as { email: string };
+}
+
 export async function handleRequestOTP(
     request: Request,
     env: Env,
     customerId: string | null = null
 ): Promise<Response> {
     try {
-        const body = await request.json();
-        const { email } = body;
+        // Decrypt request body if encrypted
+        const { email } = await decryptRequestBody(request, env);
         
         // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

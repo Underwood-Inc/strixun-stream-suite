@@ -57,6 +57,7 @@ export {
   encryptMultiStage,
   encryptTwoStage,
   encryptWithJWT,
+  encryptWithServiceKey,
   generateRequestKey,
   isDoubleEncrypted,
   isMultiEncrypted,

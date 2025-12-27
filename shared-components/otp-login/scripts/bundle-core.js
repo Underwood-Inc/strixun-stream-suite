@@ -1,0 +1,60 @@
+/**
+ * Bundle OTP Login Core for Browser Use
+ * 
+ * Bundles the shared OtpLoginCore for use in standalone HTML
+ */
+
+import { build } from 'esbuild';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const projectRoot = join(__dirname, '../..');
+const corePath = join(projectRoot, 'otp-login/core.ts');
+const outputFile = join(__dirname, '../dist/otp-core.js');
+
+// Ensure dist directory exists
+mkdirSync(join(__dirname, '../dist'), { recursive: true });
+
+try {
+  await build({
+    entryPoints: [corePath],
+    bundle: true,
+    outfile: outputFile,
+    format: 'iife',
+    globalName: 'OtpLoginCoreLib',
+    platform: 'browser',
+    target: 'es2020',
+    minify: false,
+    sourcemap: false,
+    define: {
+      'process.env.NODE_ENV': '"production"',
+    },
+    banner: {
+      js: '// Bundled OtpLoginCore from shared-components/otp-login/core.ts\n// This file is auto-generated - do not edit manually\n',
+    },
+  });
+
+  // Read the bundled file and wrap it to expose to window
+  const bundled = readFileSync(outputFile, 'utf-8');
+  const wrapped = `(function() {
+  'use strict';
+  ${bundled}
+  // Expose OtpLoginCore to window
+  if (typeof window !== 'undefined' && typeof OtpLoginCoreLib !== 'undefined') {
+    window.OtpLoginCore = OtpLoginCoreLib.OtpLoginCore || (() => {
+      throw new Error('OtpLoginCore not found in bundle');
+    });
+  }
+})();`;
+
+  writeFileSync(outputFile, wrapped);
+  console.log(`✅ Bundled OtpLoginCore to ${outputFile}`);
+} catch (error) {
+  console.error('❌ Failed to bundle OtpLoginCore:', error);
+  process.exit(1);
+}
+

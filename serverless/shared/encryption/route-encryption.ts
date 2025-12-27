@@ -146,7 +146,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 /**
  * Encrypt data using service key (for public routes)
  */
-async function encryptWithServiceKey(
+export async function encryptWithServiceKey(
   data: unknown,
   serviceKey: string
 ): Promise<EncryptedData> {

@@ -1,0 +1,21 @@
+{
+  "name": "@strixun/otp-login",
+  "version": "1.0.0",
+  "description": "Standalone OTP Login UI Library",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/bundle-core.js && node scripts/bundle-svelte.js",
+    "build:core": "node scripts/bundle-core.js",
+    "build:svelte": "node scripts/bundle-svelte.js",
+    "build:ui": "vite build"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "esbuild": "^0.24.0",
+    "svelte": "^5.46.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0"
+  }
+}
+

@@ -18,10 +18,13 @@ import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
 import { storeUserPreferences, getDefaultPreferences, getUserPreferences } from '../../services/user-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
+import { decryptWithServiceKey } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     ENVIRONMENT?: string;
+    OTP_ENCRYPTION_KEY?: string; // Optional: Dedicated OTP encryption key (falls back to JWT_SECRET)
+    JWT_SECRET?: string; // Fallback encryption key if OTP_ENCRYPTION_KEY not set
     [key: string]: any;
 }
 
@@ -128,14 +131,41 @@ async function getOrCreateUser(
  * Verify OTP endpoint
  * POST /auth/verify-otp
  */
+/**
+ * Decrypt request body if encrypted, otherwise return as-is (backward compatibility)
+ */
+async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string }> {
+    const body = await request.json();
+    
+    // Check if body is encrypted (has encrypted field)
+    if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
+        // Body is encrypted - decrypt using OTP encryption key
+        const otpEncryptionKey = env.OTP_ENCRYPTION_KEY || env.JWT_SECRET;
+        if (!otpEncryptionKey) {
+            throw new Error('OTP_ENCRYPTION_KEY or JWT_SECRET is required for decrypting OTP requests');
+        }
+        
+        try {
+            const decrypted = await decryptWithServiceKey(body, otpEncryptionKey);
+            return decrypted as { email: string; otp: string };
+        } catch (error) {
+            console.error('[VerifyOTP] Decryption failed:', error);
+            throw new Error('Failed to decrypt OTP request. Invalid encryption key or corrupted data.');
+        }
+    }
+    
+    // Body is not encrypted (backward compatibility)
+    return body as { email: string; otp: string };
+}
+
 export async function handleVerifyOTP(
     request: Request,
     env: Env,
     customerId: string | null = null
 ): Promise<Response> {
     try {
-        const body = await request.json();
-        const { email, otp } = body;
+        // Decrypt request body if encrypted
+        const { email, otp } = await decryptRequestBody(request, env);
         
         // Validate input
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

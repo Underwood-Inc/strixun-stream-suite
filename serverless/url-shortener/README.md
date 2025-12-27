@@ -1,212 +1,173 @@
-# Strixun URL Shortener Service
+# URL Shortener - Strixun Stream Suite
 
-A free, self-hosted URL shortener built with Cloudflare Workers and integrated with the Strixun OTP authentication system.
+Cloudflare Worker for URL shortening with OTP authentication, click analytics, and standalone web interface.
 
 ## Features
 
-- ✅ **Free URL Shortening** - Create short links for any URL
-- ✅ **OTP Authentication** - Integrated with Strixun OTP auth system
-- ✅ **Custom Short Codes** - Use your own custom codes (3-20 characters)
-- ✅ **Click Analytics** - Track clicks on your shortened URLs
-- ✅ **User Management** - List, view, and delete your shortened URLs
-- ✅ **Expiration Support** - Set expiration times for URLs (default: 1 year)
-- ✅ **Secure** - JWT-based authentication, CORS support, security headers
-- ✅ **Fast** - Edge computing with Cloudflare Workers
-- ✅ **Free** - Uses Cloudflare's free tier (100,000 requests/day)
-- ✅ **Standalone Web Interface** - Full-featured HTML page with integrated OTP auth (no main app required)
+- ✅ Secure OTP authentication using shared Strixun OTP component
+- ✅ Create and manage short URLs
+- ✅ Click analytics tracking
+- ✅ Standalone web interface with Strixun branding
+- ✅ Full encryption support for API responses
+- ✅ Custom URL codes
+- ✅ Automatic expiration support
+- ✅ User-specific URL management
 
 ## Setup
 
 ### Prerequisites
 
-1. Cloudflare account with Workers enabled
-2. Wrangler CLI installed: `npm install -g wrangler`
-3. Access to your OTP auth service (to share JWT_SECRET)
+- Cloudflare account
+- Wrangler CLI installed
+- Node.js 18+
+- pnpm package manager
 
 ### Installation
 
-1. **Navigate to the URL shortener directory:**
-   ```bash
-   cd serverless/url-shortener
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Create KV namespaces:**
-   ```bash
-   # Create main URL storage namespace
-   wrangler kv namespace create "URL_SHORTENER_KV"
-   
-   # Create analytics namespace
-   wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
-   ```
-
-4. **Update `wrangler.toml` with your KV namespace IDs:**
-   - After creating the namespaces, copy the IDs from the output
-   - Update the `id` and `preview_id` fields in `wrangler.toml`
-
-5. **Set environment secrets:**
-   ```bash
-   # IMPORTANT: Use the SAME JWT_SECRET as your OTP auth service
-   wrangler secret put JWT_SECRET
-   
-   # Optional: Set allowed origins for CORS (comma-separated)
-   wrangler secret put ALLOWED_ORIGINS
-   ```
-
-6. **Deploy the worker:**
-   ```bash
-   wrangler deploy
-   ```
-
-### Custom Domain (Optional)
-
-1. Go to Cloudflare Dashboard → Workers & Pages → strixun-url-shortener
-2. Go to Settings → Triggers → Routes
-3. Add custom domain route (e.g., `s.yourdomain.com/*` or `short.yourdomain.com/*`)
-4. Update DNS records as instructed by Cloudflare
-
-## Standalone Web Interface
-
-A fully self-contained HTML page (`standalone.html`) is included that provides a complete URL shortener interface with integrated OTP authentication. Users can access this page directly without needing to load the main streaming suite application.
-
-### Features
-
-- ✅ **Complete OTP Authentication Flow** - Request and verify OTP codes directly in the page
-- ✅ **URL Management** - Create, list, and delete short URLs
-- ✅ **Modern UI** - Clean, responsive design with dark theme
-- ✅ **Token Persistence** - JWT tokens stored in localStorage for automatic sign-in
-- ✅ **Real-time Feedback** - Toast notifications for all actions
-- ✅ **Mobile Responsive** - Works on all device sizes
-
-### Deployment Options
-
-#### Option 1: Cloudflare Pages (Recommended)
-
-1. **Create a Cloudflare Pages project:**
-   ```bash
-   # In the url-shortener directory
-   mkdir pages
-   cp standalone.html pages/index.html
-   ```
-
-2. **Deploy to Cloudflare Pages:**
-   - Go to Cloudflare Dashboard → Pages
-   - Create a new project
-   - Connect your repository or upload the `pages` folder
-   - Set build command: (none needed, static HTML)
-   - Set output directory: `pages`
-
-3. **Configure custom domain:**
-   - In Pages settings, add custom domain (e.g., `short.yourdomain.com`)
-   - DNS will be automatically configured
-
-#### Option 2: Static Hosting
-
-Simply upload `standalone.html` to any static hosting service:
-- GitHub Pages
-- Netlify
-- Vercel
-- Your own web server
-
-#### Option 3: Serve from Worker (Advanced)
-
-You can modify the worker to serve the HTML file directly, but Cloudflare Pages is recommended for better performance.
+```bash
+cd serverless/url-shortener
+pnpm install
+```
 
 ### Configuration
 
-Before using the standalone page, update the API URLs in `standalone.html`:
+1. **Create KV Namespaces:**
+```bash
+# Create URL storage namespace
+wrangler kv namespace create "URL_SHORTENER_KV"
 
-```javascript
-// Update these constants at the top of the <script> section
-const OTP_AUTH_API_URL = 'https://auth.idling.app';  // Your OTP auth service URL
-const URL_SHORTENER_API_URL = 'https://s.idling.app'; // Your URL shortener service URL
+# Create analytics namespace
+wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
 ```
 
-### Usage
+2. **Update `wrangler.toml`** with the KV namespace IDs
 
-1. **Open the standalone page** in a web browser
-2. **Enter your email address** and click "Send OTP Code"
-3. **Check your email** for the 6-digit OTP code
-4. **Enter the OTP code** and click "Verify & Sign In"
-5. **Start creating short URLs!**
+3. **Set Secrets:**
+```bash
+# JWT secret (must match OTP auth service)
+wrangler secret put JWT_SECRET
 
-The page will automatically:
-- Store your authentication token in localStorage
-- Remember you for future visits
-- Load your existing short URLs
-- Handle token expiration gracefully
-
-### Accessing the Standalone Page
-
-Once deployed, users can access the URL shortener at:
-- `https://short.yourdomain.com` (if using Cloudflare Pages with custom domain)
-- `https://your-pages-project.pages.dev` (Cloudflare Pages default URL)
-- Or wherever you've hosted the HTML file
-
-## API Reference
-
-### Authentication
-
-All API endpoints (except redirects) require authentication using JWT tokens from the OTP auth service.
-
-Include the JWT token in the Authorization header:
-```
-Authorization: Bearer <your-jwt-token>
+# Optional: CORS allowed origins
+wrangler secret put ALLOWED_ORIGINS
 ```
 
-### Endpoints
+**Note:** The `JWT_SECRET` must match the one used in your OTP auth service for authentication to work.
 
-#### Create Short URL
-**POST** `/api/create`
+## Local Development
 
-Create a new short URL. Requires authentication.
+### Quick Start
 
-**Request Body:**
-```json
-{
-  "url": "https://example.com/very/long/url",
-  "customCode": "mycode",  // Optional: custom short code (3-20 chars)
-  "expiresIn": 31536000    // Optional: expiration in seconds (default: 1 year)
-}
+```bash
+# From the url-shortener directory
+cd serverless/url-shortener
+
+# Build dependencies and start dev server
+pnpm dev
+```
+
+The `predev` script automatically builds:
+- Decryption library (`/decrypt.js`)
+- OTP core library (`/otp-core.js`)
+- OTP Login Svelte component (`/otp-login-svelte.js`)
+
+### Manual Build (if needed)
+
+```bash
+# Build all dependencies
+pnpm build:all
+
+# Or build individually
+pnpm build:decrypt      # Builds decryption library
+pnpm build:otp-core     # Builds OTP core logic
+pnpm build:otp-login    # Builds shared OTP Svelte component
+```
+
+### Development Server
+
+```bash
+# Start wrangler dev server (auto-builds dependencies first)
+pnpm dev
+
+# Or use explicit watch mode
+pnpm dev:watch
+```
+
+The dev server will be available at `http://localhost:8787` (or the port wrangler assigns).
+
+### Updating Shared OTP Component
+
+If you make changes to the shared OTP component (`shared-components/otp-login/`), rebuild it:
+
+```bash
+# From url-shortener directory
+pnpm build:otp-login
+
+# Or from root
+pnpm --filter @strixun/otp-login build
+```
+
+The `predev` script automatically rebuilds everything, so just restart `pnpm dev` after making changes.
+
+## Production Deployment
+
+```bash
+# Build and deploy
+pnpm deploy
+
+# Or deploy to production environment
+pnpm deploy:prod
+```
+
+## API Endpoints
+
+### Web Interface
+
+- `GET /` - Standalone web interface with OTP authentication
+
+### API Endpoints (require authentication)
+
+- `POST /api/create` - Create short URL
+- `GET /api/list` - List user's URLs
+- `GET /api/info/:code` - Get URL info
+- `DELETE /api/delete/:code` - Delete URL
+
+### Public Endpoints
+
+- `GET /:code` - Redirect to original URL (public, tracks clicks)
+- `GET /health` - Health check
+
+## Request/Response Examples
+
+### Create Short URL
+
+```bash
+curl -X POST https://s.idling.app/api/create \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/very/long/url",
+    "customCode": "mycode",
+    "expiresIn": 31536000
+  }'
 ```
 
 **Response:**
 ```json
 {
   "success": true,
-  "shortUrl": "https://s.yourdomain.com/abc123",
-  "shortCode": "abc123",
+  "shortUrl": "https://s.idling.app/mycode",
+  "shortCode": "mycode",
   "originalUrl": "https://example.com/very/long/url",
   "expiresAt": "2025-01-01T00:00:00.000Z"
 }
 ```
 
-#### Get URL Info
-**GET** `/api/info/:shortCode`
+### List URLs
 
-Get information about a short URL. Requires authentication and ownership.
-
-**Response:**
-```json
-{
-  "success": true,
-  "shortUrl": "https://s.yourdomain.com/abc123",
-  "shortCode": "abc123",
-  "originalUrl": "https://example.com/very/long/url",
-  "clickCount": 42,
-  "createdAt": "2024-01-01T00:00:00.000Z",
-  "expiresAt": "2025-01-01T00:00:00.000Z"
-}
+```bash
+curl https://s.idling.app/api/list \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
-
-#### List User's URLs
-**GET** `/api/list`
-
-List all short URLs created by the authenticated user.
 
 **Response:**
 ```json
@@ -214,9 +175,9 @@ List all short URLs created by the authenticated user.
   "success": true,
   "urls": [
     {
-      "shortCode": "abc123",
+      "shortUrl": "https://s.idling.app/mycode",
+      "shortCode": "mycode",
       "url": "https://example.com/very/long/url",
-      "shortUrl": "https://s.yourdomain.com/abc123",
       "createdAt": "2024-01-01T00:00:00.000Z",
       "clickCount": 42
     }
@@ -225,10 +186,32 @@ List all short URLs created by the authenticated user.
 }
 ```
 
-#### Delete Short URL
-**DELETE** `/api/delete/:shortCode`
+### Get URL Info
 
-Delete a short URL. Requires authentication and ownership.
+```bash
+curl https://s.idling.app/api/info/mycode \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "shortUrl": "https://s.idling.app/mycode",
+  "shortCode": "mycode",
+  "originalUrl": "https://example.com/very/long/url",
+  "clickCount": 42,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "expiresAt": "2025-01-01T00:00:00.000Z"
+}
+```
+
+### Delete URL
+
+```bash
+curl -X DELETE https://s.idling.app/api/delete/mycode \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
 
 **Response:**
 ```json
@@ -238,156 +221,174 @@ Delete a short URL. Requires authentication and ownership.
 }
 ```
 
-#### Redirect (Public)
-**GET** `/:shortCode`
+### Redirect (Public)
 
-Redirect to the original URL. Public endpoint, no authentication required.
+```bash
+curl -I https://s.idling.app/mycode
+# Returns 302 redirect to original URL
+```
 
-**Response:** HTTP 302 redirect to the original URL
+## Data Models
 
-#### Health Check
-**GET** `/health`
+### URL Data (stored in KV)
 
-Check if the service is running.
-
-**Response:**
-```json
+```typescript
 {
-  "status": "ok",
-  "service": "url-shortener",
-  "timestamp": "2024-01-01T00:00:00.000Z"
+  url: string;                    // Original URL
+  shortCode: string;              // Short code (3-20 chars)
+  userId: string;                 // User ID from JWT
+  email: string;                   // User email
+  createdAt: string;              // ISO timestamp
+  clickCount: number;             // Number of clicks
+  expiresAt: string;              // ISO timestamp
 }
 ```
 
-## Usage Examples
+### User URL List Entry
 
-### JavaScript/TypeScript
-
-```javascript
-// Get JWT token from OTP auth service first
-const token = await getOTPToken(); // Your OTP auth implementation
-
-// Create a short URL
-const response = await fetch('https://s.yourdomain.com/api/create', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    url: 'https://example.com/very/long/url',
-    customCode: 'mycode' // Optional
-  })
-});
-
-const data = await response.json();
-console.log(data.shortUrl); // https://s.yourdomain.com/mycode
-
-// List all your URLs
-const listResponse = await fetch('https://s.yourdomain.com/api/list', {
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-});
-
-const listData = await listResponse.json();
-console.log(listData.urls);
+```typescript
+{
+  shortCode: string;              // Short code
+  url: string;                    // Original URL
+  createdAt: string;              // ISO timestamp
+  clickCount: number;             // Number of clicks
+}
 ```
 
-### cURL
+**Note:** The user URL list stores a simplified version without `expiresAt` or user metadata.
 
+### Create Request
+
+```typescript
+{
+  url: string;                    // Required: URL to shorten
+  customCode?: string;            // Optional: Custom short code (3-20 chars)
+  expiresIn?: number;             // Optional: Expiration in seconds (max 10 years, default: 1 year)
+}
+```
+
+**Note:** The `customCode` parameter name matches the API, but the request body uses `customCode` (camelCase).
+
+## Storage
+
+### KV Structure
+
+- `url_{shortCode}` - URL data (with expiration TTL)
+- `user_urls_{userId}` - List of short codes for a user
+- `analytics_{shortCode}_{timestamp}` - Individual click analytics entries
+
+### Analytics
+
+Click tracking stores (per click):
+- `shortCode` - The short code that was clicked
+- `timestamp` - ISO timestamp of the click
+- `userAgent` - User agent string (raw, not hashed)
+- `referer` - Referrer header
+- `ip` - IP address from Cloudflare (CF-Connecting-IP, raw, not hashed)
+
+Analytics entries expire after 1 year (31536000 seconds).
+
+## Authentication
+
+All authenticated endpoints require a JWT token in the `Authorization` header:
+
+```
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+The JWT token is obtained from the OTP auth service (`https://auth.idling.app`) and must use the same `JWT_SECRET`.
+
+### OTP Authentication Flow
+
+1. User enters email on standalone page
+2. OTP code sent to email via OTP auth service
+3. User enters OTP code
+4. JWT token received and stored in localStorage
+5. Token used for all API requests
+
+## CORS
+
+CORS is configured via the `ALLOWED_ORIGINS` environment variable. If not set, all origins are allowed (development only).
+
+For production, set:
 ```bash
-# Create short URL
-curl -X POST https://s.yourdomain.com/api/create \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"url": "https://example.com/very/long/url", "customCode": "mycode"}'
-
-# List URLs
-curl https://s.yourdomain.com/api/list \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-
-# Get URL info
-curl https://s.yourdomain.com/api/info/mycode \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-
-# Delete URL
-curl -X DELETE https://s.yourdomain.com/api/delete/mycode \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+wrangler secret put ALLOWED_ORIGINS
+# Paste: https://s.idling.app,https://idling.app,https://www.idling.app
 ```
 
-## Integration with OTP Auth
+## Error Handling
 
-This service uses the same JWT tokens as your OTP auth service. Users authenticate through the OTP auth service and receive a JWT token, which they can then use to access the URL shortener API.
+Most errors return JSON with this structure:
 
-### Authentication Flow
-
-1. User requests OTP from OTP auth service
-2. User verifies OTP and receives JWT token
-3. User uses JWT token to authenticate with URL shortener API
-4. URL shortener verifies JWT token using shared JWT_SECRET
-
-**Important:** The `JWT_SECRET` must be the same in both services for authentication to work.
-
-## Development
-
-### Local Development
-
-```bash
-# Start local development server
-npm run dev
-
-# The worker will be available at http://localhost:8787
+```json
+{
+  "error": "Error message"
+}
 ```
 
-### Deploy
+Internal server errors (500) include additional details:
 
-```bash
-# Deploy to production
-npm run deploy
-
-# View logs
-npm run tail
+```json
+{
+  "error": "Error type",
+  "message": "Detailed error message"
+}
 ```
 
-## Security Features
+Common errors:
+- `400` - Bad Request (invalid URL, invalid code format, missing short code)
+- `401` - Unauthorized (missing or invalid JWT token)
+- `403` - Forbidden (user doesn't own the URL)
+- `404` - Not Found (URL doesn't exist)
+- `409` - Conflict (custom code already in use)
+- `500` - Internal Server Error (includes `message` field with details)
 
-- ✅ JWT token authentication
-- ✅ User ownership verification
-- ✅ CORS support with origin whitelisting
-- ✅ Security headers (XSS protection, frame options, etc.)
-- ✅ URL validation
-- ✅ Short code validation
-- ✅ Rate limiting (via Cloudflare)
+## Encryption
 
-## Limitations
+All API responses are automatically encrypted when authenticated using JWT-based encryption. The client must decrypt responses using the bundled `decryptWithJWT` function from `/decrypt.js`.
 
-- **Free Tier:** 100,000 requests/day (Cloudflare free tier)
-- **KV Storage:** 25MB per namespace (free tier)
-- **Short Code Length:** 3-20 characters
-- **Max Expiration:** 10 years
-- **Custom Codes:** Must be unique
+Responses include an `X-Encrypted: true` header when encrypted.
 
-## Troubleshooting
+## Security
 
-### "JWT_SECRET environment variable is required"
-- Make sure you've set the secret: `wrangler secret put JWT_SECRET`
-- Ensure it matches your OTP auth service's JWT_SECRET
+- JWT token verification on all authenticated endpoints
+- User-specific URL isolation (users can only see/manage their own URLs)
+- URL validation (must be http:// or https://)
+- Custom code validation (3-20 chars, alphanumeric + hyphens/underscores)
+- CORS protection
+- Input validation
+- Encrypted API responses
 
-### "Custom code already in use"
-- The custom code you're trying to use is already taken
-- Try a different custom code or let the system generate one
+## Performance
 
-### "Short URL not found"
-- The short code doesn't exist
-- The URL may have expired
-- Check the short code spelling
+- KV for fast URL lookups (sub-millisecond)
+- Automatic code generation with collision detection
+- TTL-based expiration (automatic cleanup)
+- Click analytics stored separately for performance
 
-### CORS errors
-- Set `ALLOWED_ORIGINS` secret: `wrangler secret put ALLOWED_ORIGINS`
-- Include your frontend domain in the comma-separated list
+## Architecture
+
+- **Worker**: `worker.ts` - Main entry point
+- **Router**: `router/routes.js` - Request routing
+- **Handlers**: `handlers/*.js` - Request handlers
+- **Templates**: `templates/standalone.ts` - Embedded HTML
+- **Scripts**: `scripts/*.js` - Build scripts for dependencies
+- **Utils**: `utils/*.js` - Utility functions (auth, CORS, URL validation)
+
+## Dependencies
+
+- `@strixun/api-framework` - Shared API framework
+- `@strixun/otp-login` - Shared OTP login component (built at dev time)
+
+## Notes
+
+- The standalone HTML uses the shared OTP Svelte component for authentication
+- All API responses are encrypted when authenticated
+- Custom URL codes must be 3-20 characters (letters, numbers, hyphens, underscores)
+- URLs are stored in Cloudflare KV for fast lookups
+- Default expiration is 1 year (configurable up to 10 years)
+- Click analytics are tracked automatically on redirects
 
 ## License
 
-Part of the Strixun Stream Suite.
-
+Private - Strixun Stream Suite

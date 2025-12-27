@@ -3,7 +3,24 @@
  * 
  * Framework-agnostic email OTP authentication component
  * Can be used with any framework or vanilla JavaScript
+ * 
+ * CRITICAL: All OTP requests (email and OTP code) are encrypted in transit
+ * using service key encryption for maximum security.
  */
+
+// Import encryption utilities
+// Note: These will be dynamically imported to avoid bundling issues
+type EncryptFunction = (data: unknown, serviceKey: string) => Promise<EncryptedData>;
+type EncryptedData = {
+  version: number;
+  encrypted: boolean;
+  algorithm: string;
+  iv: string;
+  salt: string;
+  tokenHash: string;
+  data: string;
+  timestamp: string;
+};
 
 export interface OtpLoginConfig {
   /** OTP Auth API base URL */
@@ -19,6 +36,8 @@ export interface OtpLoginConfig {
   };
   /** Optional: Custom headers to include in requests */
   customHeaders?: Record<string, string>;
+  /** Optional: OTP encryption key for encrypting request bodies (required for full encryption) */
+  otpEncryptionKey?: string;
 }
 
 export interface LoginSuccessData {
@@ -138,7 +157,107 @@ export class OtpLoginCore {
   }
 
   /**
+   * Encrypt request body using OTP encryption key
+   * Uses Web Crypto API (available in browsers and workers)
+   * Matches server-side encryptWithServiceKey implementation exactly
+   */
+  private async encryptRequestBody(data: { email?: string; otp?: string }): Promise<string> {
+    // If no encryption key provided, throw error (encryption is mandatory)
+    if (!this.config.otpEncryptionKey) {
+      throw new Error('OTP encryption key is required. Please configure otpEncryptionKey in OtpLoginConfig.');
+    }
+
+    const serviceKey = this.config.otpEncryptionKey;
+    if (serviceKey.length < 32) {
+      throw new Error('OTP encryption key must be at least 32 characters long.');
+    }
+
+    try {
+      // Constants matching server-side implementation
+      const PBKDF2_ITERATIONS = 100000;
+      const SALT_LENGTH = 16;
+      const IV_LENGTH = 12;
+      const KEY_LENGTH = 256;
+
+      // Generate random salt and IV
+      const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+      const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+
+      // Hash service key for verification (matches hashServiceKey)
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(serviceKey);
+      const keyHashBuffer = await crypto.subtle.digest('SHA-256', keyData);
+      const keyHashArray = Array.from(new Uint8Array(keyHashBuffer));
+      const keyHash = keyHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // Derive key from service key (matches deriveKeyFromServiceKey)
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(serviceKey),
+        'PBKDF2',
+        false,
+        ['deriveBits', 'deriveKey']
+      );
+
+      // Ensure salt is a proper BufferSource (matches server implementation)
+      const saltBuffer = new ArrayBuffer(salt.byteLength);
+      const saltView = new Uint8Array(saltBuffer);
+      saltView.set(salt);
+      const saltArray = saltView;
+
+      const derivedKey = await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: saltArray,
+          iterations: PBKDF2_ITERATIONS,
+          hash: 'SHA-256',
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: KEY_LENGTH },
+        false,
+        ['encrypt', 'decrypt']
+      );
+
+      // Encrypt data
+      const dataStr = JSON.stringify(data);
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        derivedKey,
+        encoder.encode(dataStr)
+      );
+
+      // Convert to base64 (matches arrayBufferToBase64)
+      const arrayBufferToBase64 = (buffer: ArrayBuffer | Uint8Array): string => {
+        const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      };
+
+      // Return encrypted blob (matches server-side format exactly)
+      const encryptedData: EncryptedData = {
+        version: 3,
+        encrypted: true,
+        algorithm: 'AES-GCM-256',
+        iv: arrayBufferToBase64(iv.buffer),
+        salt: arrayBufferToBase64(salt.buffer),
+        tokenHash: keyHash, // Reuse tokenHash field for service key hash
+        data: arrayBufferToBase64(encrypted),
+        timestamp: new Date().toISOString(),
+      };
+
+      return JSON.stringify(encryptedData);
+    } catch (error) {
+      console.error('[OtpLoginCore] Encryption failed:', error);
+      throw new Error('Failed to encrypt OTP request. Please check your encryption key configuration.');
+    }
+  }
+
+  /**
    * Request OTP code
+   * CRITICAL: Email is encrypted in transit using service key encryption
    */
   async requestOtp(): Promise<void> {
     const email = this.state.email.trim().toLowerCase();
@@ -157,10 +276,14 @@ export class OtpLoginCore {
       if (this.config.customHeaders) {
         Object.assign(headers, this.config.customHeaders);
       }
+
+      // Encrypt request body (email)
+      const encryptedBody = await this.encryptRequestBody({ email });
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ email }),
+        body: encryptedBody,
       });
 
       let data: any;
@@ -310,13 +433,17 @@ export class OtpLoginCore {
       if (this.config.customHeaders) {
         Object.assign(headers, this.config.customHeaders);
       }
+
+      // Encrypt request body (email and OTP)
+      const encryptedBody = await this.encryptRequestBody({
+        email: this.state.email,
+        otp,
+      });
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          email: this.state.email,
-          otp,
-        }),
+        body: encryptedBody,
       });
 
       let data: any;

@@ -47,6 +47,20 @@
     return 'https://auth.idling.app';
   }
   
+  /**
+   * Get OTP encryption key
+   * CRITICAL: This must match server-side OTP_ENCRYPTION_KEY or JWT_SECRET
+   */
+  function getOtpEncryptionKey(): string | undefined {
+    // Try to get from window function first (for dynamic configuration)
+    if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
+      return (window as any).getOtpEncryptionKey();
+    }
+    // Fallback to environment variable (if available)
+    // Note: In production, this should be set via build-time env var
+    return undefined; // Will use JWT_SECRET on server if not provided
+  }
+  
   function handleLoginSuccess(data: LoginSuccessData) {
     // Decode JWT to extract isSuperAdmin from payload
     let isSuperAdmin = false;
@@ -119,6 +133,7 @@
       apiUrl={getOtpAuthApiUrl()}
       onSuccess={handleLoginSuccess}
       onError={handleLoginError}
+      otpEncryptionKey={getOtpEncryptionKey()} // CRITICAL: Pass encryption key for encrypting OTP requests
       showAsModal={true}
       onClose={onClose}
       title="Sign In"

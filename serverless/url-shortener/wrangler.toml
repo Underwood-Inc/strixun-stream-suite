@@ -3,7 +3,7 @@ main = "worker.ts"
 compatibility_date = "2024-01-01"
 
 [build]
-command = "pnpm build:decrypt"
+command = "pnpm build:all"
 
 [env.production]
 vars = { ENVIRONMENT = "production" }
