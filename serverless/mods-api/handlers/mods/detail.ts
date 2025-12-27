@@ -96,6 +96,33 @@ export async function handleGetModDetail(
             });
         }
 
+        // Check status: only show published mods to public, admins and authors can see all statuses
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAuthor = mod.authorId === auth?.userId;
+        
+        if (mod.status && mod.status !== 'published') {
+            // Only show non-published mods to admins or the author
+            if (!isAuthor && !isAdmin) {
+                const rfcError = createError(
+                    request,
+                    404,
+                    'Mod Not Found',
+                    'The requested mod was not found'
+                );
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+        }
+
         // Get all versions - try global scope first, then customer scope
         let versionIds: string[] = [];
         

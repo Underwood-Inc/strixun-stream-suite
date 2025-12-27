@@ -22,9 +22,20 @@ export async function handleDownloadVersion(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata
-        const modKey = getCustomerKey(auth?.customerId || null, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Get mod metadata - check both customer scope and global scope
+        let mod: ModMetadata | null = null;
+        
+        // Check customer scope first if authenticated
+        if (auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Fall back to global scope if not found
+        if (!mod) {
+            const globalModKey = `mod_${modId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
@@ -55,9 +66,42 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Get version metadata
-        const versionKey = getCustomerKey(auth?.customerId || null, `version_${versionId}`);
-        const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+        // Check status: only allow downloads of published mods to public, admins and authors can download all statuses
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAuthor = mod.authorId === auth?.userId;
+        
+        if (mod.status && mod.status !== 'published') {
+            // Only allow downloads of non-published mods to admins or the author
+            if (!isAuthor && !isAdmin) {
+                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+        }
+
+        // Get version metadata - check both customer scope and global scope
+        let version: ModVersion | null = null;
+        
+        // Check customer scope first if authenticated
+        if (auth?.customerId) {
+            const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+            version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
+        
+        // Fall back to global scope if not found
+        if (!version) {
+            const globalVersionKey = `version_${versionId}`;
+            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        }
 
         if (!version || version.modId !== modId) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
@@ -77,8 +121,25 @@ export async function handleDownloadVersion(
         version.downloads += 1;
         mod.downloadCount += 1;
         
-        await env.MODS_KV.put(versionKey, JSON.stringify(version));
-        await env.MODS_KV.put(modKey, JSON.stringify(mod));
+        // Save version back to the appropriate scope
+        if (auth?.customerId) {
+            const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+            await env.MODS_KV.put(customerVersionKey, JSON.stringify(version));
+        }
+        if (mod.visibility === 'public') {
+            const globalVersionKey = `version_${versionId}`;
+            await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
+        }
+        
+        // Save mod back to the appropriate scope
+        if (auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
+        }
+        if (mod.visibility === 'public') {
+            const globalModKey = `mod_${modId}`;
+            await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+        }
 
         // Get encrypted file from R2
         // SECURITY: Files are stored encrypted in R2 (encryption at rest)
