@@ -7,6 +7,7 @@
  */
 export interface ModMetadata {
     modId: string;
+    slug: string; // URL-friendly slug derived from title
     authorId: string;
     authorEmail: string;
     title: string;
@@ -35,6 +36,7 @@ export interface ModVersion {
     fileName: string;
     r2Key: string; // R2 storage key
     downloadUrl: string; // Direct download URL
+    sha256: string; // SHA-256 hash of file (Strixun verified)
     createdAt: string;
     downloads: number;
     gameVersions: string[]; // Supported game versions

@@ -25,9 +25,9 @@ export function App() {
                 <Routes>
                     <Route path="/" element={<ModListPage />} />
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/mods/:modId" element={<ModDetailPage />} />
+                    <Route path="/mods/:slug" element={<ModDetailPage />} />
                     <Route path="/upload" element={<ModUploadPage />} />
-                    <Route path="/manage/:modId" element={<ModManagePage />} />
+                    <Route path="/manage/:slug" element={<ModManagePage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </ConditionalLayout>

@@ -206,10 +206,10 @@ export async function listMods(params: {
 }
 
 /**
- * Get mod detail
+ * Get mod detail (by slug)
  */
-export async function getModDetail(modId: string): Promise<ModDetailResponse> {
-    const response = await api.get<ModDetailResponse>(`/mods/${modId}`);
+export async function getModDetail(slug: string): Promise<ModDetailResponse> {
+    const response = await api.get<ModDetailResponse>(`/mods/${slug}`);
     return response.data;
 }
 

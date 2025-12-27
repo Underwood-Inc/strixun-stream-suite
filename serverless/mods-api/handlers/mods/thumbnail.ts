@@ -1,29 +1,36 @@
 /**
- * Download version handler
- * GET /mods/:modId/versions/:versionId/download
- * Returns direct download link or redirects to R2
+ * Thumbnail handler
+ * GET /mods/:modId/thumbnail
+ * Proxies thumbnail images from R2
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
-import { formatStrixunHash } from '../../utils/hash.js';
-import type { ModMetadata, ModVersion } from '../../types/mod.js';
+import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import type { ModMetadata } from '../../types/mod.js';
 
 /**
- * Handle download version request
+ * Handle thumbnail request
  */
-export async function handleDownloadVersion(
+export async function handleThumbnail(
     request: Request,
     env: Env,
     modId: string,
-    versionId: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata
-        const modKey = getCustomerKey(auth?.customerId || null, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Get mod metadata - check both customer scope and global scope
+        let mod: ModMetadata | null = null;
+        
+        // First try global scope (for public mods)
+        const globalModKey = `mod_${modId}`;
+        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        
+        // If not found and authenticated, check customer scope
+        if (!mod && auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
@@ -54,12 +61,9 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Get version metadata
-        const versionKey = getCustomerKey(auth?.customerId || null, `version_${versionId}`);
-        const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
-
-        if (!version || version.modId !== modId) {
-            const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
+        // If no thumbnail, return 404
+        if (!mod.thumbnailUrl) {
+            const rfcError = createError(request, 404, 'Thumbnail Not Found', 'This mod does not have a thumbnail');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -72,18 +76,44 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Increment download count
-        version.downloads += 1;
-        mod.downloadCount += 1;
-        
-        await env.MODS_KV.put(versionKey, JSON.stringify(version));
-        await env.MODS_KV.put(modKey, JSON.stringify(mod));
+        // Reconstruct R2 key from mod metadata
+        // Thumbnails are stored as: cust_xxx/thumbnails/mod_xxx.png
+        // Try to extract from thumbnailUrl if it's an old format, otherwise reconstruct
+        let r2Key: string;
+        try {
+            const url = new URL(mod.thumbnailUrl);
+            // If it's an API URL (new format), reconstruct the R2 key
+            if (url.hostname.includes('mods-api.idling.app')) {
+                // Reconstruct: use customerId from mod or try to find it
+                const customerId = mod.customerId || auth?.customerId || null;
+                // Try common image extensions
+                const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+                for (const ext of extensions) {
+                    r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${ext}`);
+                    const testFile = await env.MODS_R2.get(r2Key);
+                    if (testFile) {
+                        break;
+                    }
+                }
+                // If still not found, use png as default
+                if (!r2Key || !(await env.MODS_R2.get(r2Key))) {
+                    r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.png`);
+                }
+            } else {
+                // Old format: extract from URL path
+                r2Key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+            }
+        } catch {
+            // If URL parsing fails, reconstruct from modId
+            const customerId = mod.customerId || auth?.customerId || null;
+            r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.png`);
+        }
 
-        // Get file from R2
-        const file = await env.MODS_R2.get(version.r2Key);
+        // Get thumbnail from R2
+        const thumbnail = await env.MODS_R2.get(r2Key);
         
-        if (!file) {
-            const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found in storage');
+        if (!thumbnail) {
+            const rfcError = createError(request, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -96,34 +126,26 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Return file with proper headers including integrity hash
+        // Return thumbnail with proper headers
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
-        headers.set('Content-Type', file.httpMetadata?.contentType || 'application/octet-stream');
-        headers.set('Content-Disposition', `attachment; filename="${version.fileName}"`);
-        headers.set('Content-Length', file.size.toString());
+        headers.set('Content-Type', thumbnail.httpMetadata?.contentType || 'image/png');
         headers.set('Cache-Control', 'public, max-age=31536000');
-        
-        // Add Strixun file integrity hash headers
-        if (version.sha256) {
-            const strixunHash = formatStrixunHash(version.sha256);
-            headers.set('X-Strixun-File-Hash', strixunHash);
-            headers.set('X-Strixun-SHA256', version.sha256);
-        }
+        headers.set('Content-Length', thumbnail.size.toString());
 
-        return new Response(file.body, {
+        return new Response(thumbnail.body, {
             status: 200,
             headers,
         });
     } catch (error: any) {
-        console.error('Download version error:', error);
+        console.error('Thumbnail error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Download Version',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while downloading the version'
+            'Failed to Load Thumbnail',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while loading the thumbnail'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -141,6 +163,7 @@ export async function handleDownloadVersion(
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
+    ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }

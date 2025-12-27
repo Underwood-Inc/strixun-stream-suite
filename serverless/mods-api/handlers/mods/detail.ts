@@ -1,11 +1,13 @@
 /**
  * Get mod detail handler
- * GET /mods/:modId
+ * GET /mods/:slug
+ * Accepts slug (URL-friendly identifier) and looks up mod by slug
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
+import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -14,22 +16,46 @@ import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod
 export async function handleGetModDetail(
     request: Request,
     env: Env,
-    modId: string,
+    slug: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata - try global scope first, then customer scope
-        let mod: ModMetadata | null = null;
+        // Find mod by slug
+        let mod = await findModBySlug(slug, env, auth);
         
-        // Check global/public scope (no customer prefix)
-        const globalModKey = `mod_${modId}`;
-        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-        
-        // If not found and authenticated, check customer scope
-        if (!mod && auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
+        if (!mod) {
+            // Check global/public scope (no customer prefix)
+            const globalModKey = `mod_${slug}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            
+            // If not found and authenticated, check customer scope
+            if (!mod && auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
         }
+        
+        if (!mod) {
+            const rfcError = createError(
+                request,
+                404,
+                'Mod Not Found',
+                'The requested mod was not found'
+            );
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const modId = mod.modId;
 
         if (!mod) {
             const rfcError = createError(

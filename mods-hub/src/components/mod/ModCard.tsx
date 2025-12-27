@@ -75,7 +75,7 @@ interface ModCardProps {
 
 export function ModCard({ mod }: ModCardProps) {
     return (
-        <Card to={`/mods/${mod.modId}`}>
+        <Card to={`/mods/${mod.slug}`}>
             {mod.thumbnailUrl && <Thumbnail src={mod.thumbnailUrl} alt={mod.title} />}
             <Title>{mod.title}</Title>
             <Description>{mod.description || 'No description'}</Description>

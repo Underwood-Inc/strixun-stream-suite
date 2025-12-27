@@ -97,12 +97,12 @@ export function useUpdateMod() {
     const addNotification = useUIStore((state) => state.addNotification);
     
     return useMutation({
-        mutationFn: ({ modId, updates }: {
-            modId: string;
+        mutationFn: ({ slug, updates }: {
+            slug: string;
             updates: ModUpdateRequest;
-        }) => api.updateMod(modId, updates),
+        }) => api.updateMod(slug, updates),
         onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.slug) });
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
             addNotification({
                 message: 'Mod updated successfully!',
@@ -126,7 +126,7 @@ export function useDeleteMod() {
     const addNotification = useUIStore((state) => state.addNotification);
     
     return useMutation({
-        mutationFn: (modId: string) => api.deleteMod(modId),
+        mutationFn: (slug: string) => api.deleteMod(slug),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
             addNotification({

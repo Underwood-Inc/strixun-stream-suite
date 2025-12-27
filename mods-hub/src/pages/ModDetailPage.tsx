@@ -80,8 +80,8 @@ const Error = styled.div`
 `;
 
 export function ModDetailPage() {
-    const { modId } = useParams<{ modId: string }>();
-    const { data, isLoading, error } = useModDetail(modId || '');
+    const { slug } = useParams<{ slug: string }>();
+    const { data, isLoading, error } = useModDetail(slug || '');
 
     if (isLoading) return <Loading>Loading mod...</Loading>;
     if (error) return <Error>Failed to load mod: {(error as Error).message}</Error>;

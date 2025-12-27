@@ -7,7 +7,10 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { findModBySlug } from '../../utils/slug.js';
+import { generateUniqueSlug } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
+import { handleThumbnailUpload } from './upload.js';
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
 /**
@@ -16,7 +19,7 @@ import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 export async function handleUpdateMod(
     request: Request,
     env: Env,
-    modId: string,
+    slug: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
@@ -35,9 +38,31 @@ export async function handleUpdateMod(
             });
         }
 
-        // Get existing mod
-        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Find mod by slug
+        let mod = await findModBySlug(slug, env, auth);
+        
+        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
+        let modKey: string;
+        if (!mod) {
+            // Try customer scope first
+            modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+            mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+            
+            // If not found in customer scope, try global scope (for public mods)
+            if (!mod) {
+                const globalModKey = `mod_${slug}`;
+                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+                if (mod) {
+                    modKey = getCustomerKey(auth.customerId, `mod_${slug}`); // Still use customer key for primary storage
+                }
+            } else {
+                modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+            }
+        } else {
+            // Found by slug, determine the correct key
+            const modId = mod.modId;
+            modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
@@ -74,9 +99,16 @@ export async function handleUpdateMod(
         // Track visibility change for global list management
         const wasPublic = mod.visibility === 'public';
         const visibilityChanged = updateData.visibility !== undefined && updateData.visibility !== mod.visibility;
+        
+        const modId = mod.modId;
 
         // Update mod metadata
-        if (updateData.title !== undefined) mod.title = updateData.title;
+        if (updateData.title !== undefined) {
+            mod.title = updateData.title;
+            // Regenerate slug if title changed
+            const newSlug = await generateUniqueSlug(updateData.title, env, modId);
+            mod.slug = newSlug;
+        }
         if (updateData.description !== undefined) mod.description = updateData.description;
         if (updateData.category !== undefined) mod.category = updateData.category;
         if (updateData.tags !== undefined) mod.tags = updateData.tags;
@@ -189,10 +221,9 @@ async function handleThumbnailUpload(
             },
         });
 
-        // Return public URL
-        return env.MODS_PUBLIC_URL 
-            ? `${env.MODS_PUBLIC_URL}/${r2Key}`
-            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${r2Key}`;
+        // Return API proxy URL (thumbnails should be served through API, not direct R2)
+        const API_BASE_URL = 'https://mods-api.idling.app';
+        return `${API_BASE_URL}/mods/${modId}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);
         throw error;

@@ -5,9 +5,11 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
+import { calculateFileHash, formatStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
 
 /**
@@ -77,7 +79,7 @@ export async function handleUploadVersion(
 
         // Parse multipart form data
         const formData = await request.formData();
-        const file = formData.get('file') as File | null;
+        let file = formData.get('file') as File | null;
         
         if (!file) {
             const rfcError = createError(request, 400, 'File Required', 'File is required for version upload');
@@ -91,6 +93,56 @@ export async function handleUploadVersion(
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
+        }
+
+        // Check if file is encrypted (has .encrypted suffix or is JSON)
+        const isEncrypted = file.name.endsWith('.encrypted') || file.type === 'application/json';
+        let originalFileName = file.name;
+        
+        if (isEncrypted) {
+            // Remove .encrypted suffix if present
+            if (originalFileName.endsWith('.encrypted')) {
+                originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
+            }
+            
+            // Decrypt the file
+            try {
+                const encryptedData = await file.text();
+                const encryptedJson = JSON.parse(encryptedData);
+                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                
+                if (!jwtToken) {
+                    throw new Error('JWT token required for file decryption');
+                }
+                
+                // Decrypt the base64 file data
+                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                
+                // Convert base64 back to binary (exact reverse of client's btoa conversion)
+                // This ensures the file is fully intact - no data loss or corruption
+                const binaryString = atob(decryptedBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Create new File object with decrypted data and original filename
+                // The file is now identical to the original uploaded file
+                file = new File([bytes], originalFileName, { type: 'application/zip' });
+            } catch (error) {
+                console.error('File decryption error:', error);
+                const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated.');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 400,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
         }
 
         // Parse metadata from form data
@@ -130,6 +182,10 @@ export async function handleUploadVersion(
         const versionId = generateVersionId();
         const now = new Date().toISOString();
 
+        // Calculate file integrity hash (SHA-256) before upload
+        const fileHash = await calculateFileHash(file);
+        const strixunHash = formatStrixunHash(fileHash);
+
         // Upload file to R2
         const fileExtension = file.name.split('.').pop() || 'zip';
         const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${fileExtension}`);
@@ -144,6 +200,7 @@ export async function handleUploadVersion(
                 versionId,
                 uploadedBy: auth.userId,
                 uploadedAt: now,
+                sha256: fileHash, // Store hash in R2 metadata for verification
             },
         });
 
@@ -162,6 +219,7 @@ export async function handleUploadVersion(
             fileName: file.name,
             r2Key,
             downloadUrl,
+            sha256: fileHash, // Store hash for verification
             createdAt: now,
             downloads: 0,
             gameVersions: metadata.gameVersions || [],

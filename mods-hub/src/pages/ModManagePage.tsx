@@ -38,10 +38,10 @@ const Loading = styled.div`
 `;
 
 export function ModManagePage() {
-    const { modId } = useParams<{ modId: string }>();
+    const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuthStore();
-    const { data, isLoading } = useModDetail(modId || '');
+    const { data, isLoading } = useModDetail(slug || '');
     const updateMod = useUpdateMod();
     const deleteMod = useDeleteMod();
     const uploadVersion = useUploadVersion();
@@ -54,7 +54,7 @@ export function ModManagePage() {
 
     const handleUpdate = async (updates: any) => {
         try {
-            await updateMod.mutateAsync({ modId: modId!, updates });
+            await updateMod.mutateAsync({ slug: slug!, updates });
         } catch (error) {
             // Error handled by mutation
         }
@@ -65,19 +65,20 @@ export function ModManagePage() {
             return;
         }
         try {
-            await deleteMod.mutateAsync(modId!);
+            await deleteMod.mutateAsync(slug!);
             navigate('/');
         } catch (error) {
             // Error handled by mutation
         }
     };
 
-    const handleVersionUpload = async (data: { file: File; metadata: any }) => {
+    const handleVersionUpload = async (uploadData: { file: File; metadata: any }) => {
+        if (!data) return;
         try {
             await uploadVersion.mutateAsync({
-                modId: modId!,
-                file: data.file,
-                metadata: data.metadata,
+                modId: data.mod.modId, // Still use modId for version upload API
+                file: uploadData.file,
+                metadata: uploadData.metadata,
             });
         } catch (error) {
             // Error handled by mutation
@@ -94,7 +95,7 @@ export function ModManagePage() {
                 isLoading={updateMod.isPending || deleteMod.isPending}
             />
             <VersionUploadForm
-                modId={modId!}
+                modId={data.mod.modId} // Still use modId for version upload
                 onSubmit={handleVersionUpload}
                 isLoading={uploadVersion.isPending}
             />

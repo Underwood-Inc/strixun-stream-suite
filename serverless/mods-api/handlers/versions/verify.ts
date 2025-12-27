@@ -1,19 +1,19 @@
 /**
- * Download version handler
- * GET /mods/:modId/versions/:versionId/download
- * Returns direct download link or redirects to R2
+ * File verification handler
+ * GET /mods/:modId/versions/:versionId/verify
+ * Verifies file integrity using SHA-256 hash
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
-import { formatStrixunHash } from '../../utils/hash.js';
+import { calculateFileHash, formatStrixunHash, parseStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
- * Handle download version request
+ * Handle file verification request
  */
-export async function handleDownloadVersion(
+export async function handleVerifyVersion(
     request: Request,
     env: Env,
     modId: string,
@@ -72,14 +72,7 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Increment download count
-        version.downloads += 1;
-        mod.downloadCount += 1;
-        
-        await env.MODS_KV.put(versionKey, JSON.stringify(version));
-        await env.MODS_KV.put(modKey, JSON.stringify(mod));
-
-        // Get file from R2
+        // Get file from R2 and verify hash
         const file = await env.MODS_R2.get(version.r2Key);
         
         if (!file) {
@@ -96,34 +89,42 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Return file with proper headers including integrity hash
+        // Calculate current file hash
+        const fileData = await file.arrayBuffer();
+        const currentHash = await calculateFileHash(fileData);
+        const isValid = currentHash.toLowerCase() === version.sha256.toLowerCase();
+
+        // Return verification result
+        const verificationResult = {
+            verified: isValid,
+            modId: version.modId,
+            versionId: version.versionId,
+            version: version.version,
+            fileName: version.fileName,
+            fileSize: version.fileSize,
+            expectedHash: formatStrixunHash(version.sha256),
+            actualHash: formatStrixunHash(currentHash),
+            verifiedAt: new Date().toISOString(),
+            strixunVerified: isValid, // Strixun verification marker
+        };
+
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
-        const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
-        headers.set('Content-Type', file.httpMetadata?.contentType || 'application/octet-stream');
-        headers.set('Content-Disposition', `attachment; filename="${version.fileName}"`);
-        headers.set('Content-Length', file.size.toString());
-        headers.set('Cache-Control', 'public, max-age=31536000');
-        
-        // Add Strixun file integrity hash headers
-        if (version.sha256) {
-            const strixunHash = formatStrixunHash(version.sha256);
-            headers.set('X-Strixun-File-Hash', strixunHash);
-            headers.set('X-Strixun-SHA256', version.sha256);
-        }
-
-        return new Response(file.body, {
-            status: 200,
-            headers,
+        return new Response(JSON.stringify(verificationResult, null, 2), {
+            status: isValid ? 200 : 400,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
         });
     } catch (error: any) {
-        console.error('Download version error:', error);
+        console.error('Verify version error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Download Version',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while downloading the version'
+            'Failed to Verify Version',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while verifying the version'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

@@ -16,7 +16,7 @@ import type { ModMetadata, ModVersion } from '../../types/mod.js';
 export async function handleDeleteMod(
     request: Request,
     env: Env,
-    modId: string,
+    slug: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
@@ -35,10 +35,31 @@ export async function handleDeleteMod(
             });
         }
 
-        // Get mod metadata
-        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-
+        // Find mod by slug
+        let mod = await findModBySlug(slug, env, auth);
+        
+        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
+        let modKey: string;
+        if (!mod) {
+            // Try customer scope first
+            modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+            mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+            
+            // If not found in customer scope, try global scope (for public mods)
+            if (!mod) {
+                const globalModKey = `mod_${slug}`;
+                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+                if (mod) {
+                    modKey = globalModKey; // Use global key for deletion
+                }
+            } else {
+                modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+            }
+        } else {
+            // Found by slug, determine the correct key
+            modKey = getCustomerKey(auth.customerId, `mod_${mod.modId}`);
+        }
+        
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
@@ -68,9 +89,19 @@ export async function handleDeleteMod(
             });
         }
 
-        // Get all versions
-        const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
-        const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+        // Get all versions - check both customer scope and global scope
+        let versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+        let versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+        
+        // If not found in customer scope, try global scope
+        if (!versionsList) {
+            const globalVersionsKey = `mod_${modId}_versions`;
+            versionsList = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
+            if (versionsList) {
+                versionsListKey = globalVersionsKey;
+            }
+        }
+        
         const versionIds = versionsList || [];
 
         // Delete all version files from R2 and metadata from KV
@@ -102,9 +133,21 @@ export async function handleDeleteMod(
             }
         }
 
-        // Delete mod metadata
+        // Delete mod metadata from both scopes if it exists
         await env.MODS_KV.delete(modKey);
         await env.MODS_KV.delete(versionsListKey);
+        
+        // Also delete from global scope if it exists there
+        const globalModKey = `mod_${modId}`;
+        const globalVersionsKey = `mod_${modId}_versions`;
+        if (modKey !== globalModKey) {
+            // Only delete global if we didn't already delete it
+            await env.MODS_KV.delete(globalModKey);
+        }
+        if (versionsListKey !== globalVersionsKey) {
+            // Only delete global if we didn't already delete it
+            await env.MODS_KV.delete(globalVersionsKey);
+        }
 
         // Remove from customer-specific list
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');

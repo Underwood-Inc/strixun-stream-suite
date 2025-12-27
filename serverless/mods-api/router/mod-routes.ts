@@ -12,6 +12,7 @@ import { handleUpdateMod } from '../handlers/mods/update.js';
 import { handleDeleteMod } from '../handlers/mods/delete.js';
 import { handleUploadVersion } from '../handlers/versions/upload.js';
 import { handleDownloadVersion } from '../handlers/versions/download.js';
+import { handleThumbnail } from '../handlers/mods/thumbnail.js';
 import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 
@@ -59,14 +60,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: GET /mods/:modId - Get mod detail
+        // Route: GET /mods/:slug - Get mod detail (by slug)
         if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'GET') {
-            const modId = pathSegments[1];
-            const response = await handleGetModDetail(request, env, modId, auth);
+            const slug = pathSegments[1];
+            const response = await handleGetModDetail(request, env, slug, auth);
             return await wrapWithEncryption(response, auth || undefined);
         }
 
-        // Route: PATCH /mods/:modId - Update mod
+        // Route: PATCH /mods/:slug - Update mod (by slug)
         if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'PATCH') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
@@ -84,12 +85,12 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            const modId = pathSegments[1];
-            const response = await handleUpdateMod(request, env, modId, auth);
+            const slug = pathSegments[1];
+            const response = await handleUpdateMod(request, env, slug, auth);
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: DELETE /mods/:modId - Delete mod
+        // Route: DELETE /mods/:slug - Delete mod (by slug)
         if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'DELETE') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
@@ -107,8 +108,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            const modId = pathSegments[1];
-            const response = await handleDeleteMod(request, env, modId, auth);
+            const slug = pathSegments[1];
+            const response = await handleDeleteMod(request, env, slug, auth);
             return await wrapWithEncryption(response, auth);
         }
 
@@ -135,6 +136,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /mods/:modId/thumbnail - Get thumbnail
+        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'thumbnail' && request.method === 'GET') {
+            const modId = pathSegments[1];
+            const response = await handleThumbnail(request, env, modId, auth);
+            // Don't encrypt binary image data
+            return { response, customerId: auth?.customerId || null };
+        }
+
         // Route: GET /mods/:modId/versions/:versionId/download - Download version
         // Path: /mods/:modId/versions/:versionId/download
         // pathSegments = ['mods', modId, 'versions', versionId, 'download']
@@ -142,7 +151,29 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = pathSegments[1];
             const versionId = pathSegments[3];
             const response = await handleDownloadVersion(request, env, modId, versionId, auth);
+            // Downloads are binary files - DO NOT encrypt, return as-is
+            return { response, customerId: auth?.customerId || null };
+        }
+
+        // Route: GET /mods/:modId/versions/:versionId/verify - Verify file integrity
+        // Path: /mods/:modId/versions/:versionId/verify
+        if (pathSegments.length === 5 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && pathSegments[4] === 'verify' && request.method === 'GET') {
+            const modId = pathSegments[1];
+            const versionId = pathSegments[3];
+            const { handleVerifyVersion } = await import('../handlers/versions/verify.js');
+            const response = await handleVerifyVersion(request, env, modId, versionId, auth);
             return await wrapWithEncryption(response, auth || undefined);
+        }
+
+        // Route: GET /mods/:modId/versions/:versionId/badge - Get integrity badge
+        // Path: /mods/:modId/versions/:versionId/badge
+        if (pathSegments.length === 5 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && pathSegments[4] === 'badge' && request.method === 'GET') {
+            const modId = pathSegments[1];
+            const versionId = pathSegments[3];
+            const { handleBadge } = await import('../handlers/versions/badge.js');
+            const response = await handleBadge(request, env, modId, versionId, auth);
+            // Badges are SVG images - DO NOT encrypt
+            return { response, customerId: auth?.customerId || null };
         }
 
         // 404 for unknown mod routes
