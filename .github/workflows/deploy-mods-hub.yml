@@ -49,6 +49,30 @@ jobs:
       - name: Build workspace dependencies
         working-directory: .
         run: pnpm --filter "@strixun/api-framework" run build || echo "Workspace dependency build skipped if no build script"
+      
+      - name: Verify OTP Encryption Key
+        env:
+          OTP_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
+        run: |
+          if [ -z "$OTP_KEY" ]; then
+            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo ""
+            echo "To fix this:"
+            echo "1. Go to Settings → Secrets and variables → Actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: VITE_SERVICE_ENCRYPTION_KEY"
+            echo "4. Value: Your SERVICE_ENCRYPTION_KEY (same as Cloudflare Workers secret)"
+            echo "5. Click 'Add secret'"
+            echo ""
+            exit 1
+          fi
+          KEY_LENGTH=${#OTP_KEY}
+          if [ $KEY_LENGTH -lt 32 ]; then
+            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            echo "Current length: $KEY_LENGTH"
+            exit 1
+          fi
+          echo "✅ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
         
       - name: Build Mods Hub
         working-directory: mods-hub
