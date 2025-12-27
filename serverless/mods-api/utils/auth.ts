@@ -84,8 +84,34 @@ export function isEmailAllowed(email: string | undefined, env: Env): boolean {
 }
 
 /**
+ * Fetch user email from auth service if missing from JWT
+ * This is a fallback for older tokens that don't include email
+ */
+async function fetchEmailFromAuthService(token: string, env: Env): Promise<string | undefined> {
+    try {
+        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        const response = await fetch(`${authApiUrl}/auth/me`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json() as { email?: string; [key: string]: any };
+            return data.email;
+        }
+    } catch (error) {
+        console.warn('[Auth] Failed to fetch email from auth service:', error);
+    }
+    return undefined;
+}
+
+/**
  * Authenticate request and extract user info
  * Returns auth object with userId, customerId, and jwtToken
+ * If email is missing from JWT, attempts to fetch it from auth service
  * @param request - HTTP request
  * @param env - Worker environment
  * @returns Auth object or null if not authenticated
@@ -105,9 +131,21 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             return null;
         }
 
+        // If email is missing from JWT, try to fetch it from auth service
+        let email = payload.email;
+        if (!email) {
+            console.warn('[Auth] Email missing from JWT payload, fetching from auth service...');
+            email = await fetchEmailFromAuthService(token, env);
+            if (email) {
+                console.log('[Auth] Successfully fetched email from auth service');
+            } else {
+                console.warn('[Auth] Could not fetch email from auth service - admin checks may fail');
+            }
+        }
+
         return {
             userId: payload.sub,
-            email: payload.email,
+            email: email,
             customerId: payload.customerId || null,
             jwtToken: token // Include JWT token for encryption
         };
@@ -145,6 +183,7 @@ export interface AuthResult {
 interface Env {
     JWT_SECRET?: string;
     ALLOWED_EMAILS?: string; // Comma-separated list of allowed email addresses
+    AUTH_API_URL?: string; // URL of the auth service (for fetching email if missing from JWT)
     [key: string]: any;
 }
 
