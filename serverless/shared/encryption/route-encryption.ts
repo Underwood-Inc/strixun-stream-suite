@@ -405,6 +405,16 @@ export async function encryptResponse(
  * These can be overridden or extended per service
  */
 export const DEFAULT_ENCRYPTION_POLICIES: RouteEncryptionPolicy[] = [
+  // Root and static assets - don't encrypt (HTML, JS, CSS, etc.)
+  {
+    pattern: '/',
+    strategy: 'none', // Root path typically serves dashboard HTML
+  },
+  {
+    pattern: '/assets/**',
+    strategy: 'none', // Static assets (JS, CSS, images) don't need encryption
+  },
+  
   // Public routes - don't encrypt (clients need to read responses without JWT/service key)
   {
     pattern: '/signup',
