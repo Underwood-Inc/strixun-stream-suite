@@ -62,7 +62,7 @@ function getCategoryDisplayName(category: string): string {
 
 export function ModMetaTags({ mod, baseUrl }: MetaTagsProps) {
     const siteBaseUrl = getBaseUrl(baseUrl);
-    const modUrl = `${siteBaseUrl}/mods/${mod.slug}`;
+    const modUrl = `${siteBaseUrl}/${mod.slug}`;
     const description = formatDescription(mod.description);
     const title = `${mod.title} - Strixun Stream Suite Mods`;
     const categoryDisplay = getCategoryDisplayName(mod.category);

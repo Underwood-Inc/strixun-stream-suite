@@ -3,12 +3,15 @@
  * Shows user's mods with management options
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useModsList } from '../hooks/useMods';
+import { useModsList, useDeleteMod } from '../hooks/useMods';
 import { useAuthStore } from '../stores/auth';
 import { ModCard } from '../components/mod/ModCard';
+import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
+import type { ModMetadata } from '../types/mod';
 
 const PageContainer = styled.div`
   display: flex;
@@ -82,12 +85,41 @@ const EmptyStateMessage = styled.p`
 export function UserDashboardPage() {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuthStore();
+    const [modToDelete, setModToDelete] = useState<ModMetadata | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     
     const { data, isLoading, error } = useModsList({
         page: 1,
         pageSize: 100,
         authorId: user?.userId,
     });
+
+    const deleteMod = useDeleteMod();
+
+    const handleDeleteClick = (mod: ModMetadata) => {
+        setModToDelete(mod);
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!modToDelete) return;
+        
+        try {
+            await deleteMod.mutateAsync(modToDelete.modId);
+            setModToDelete(null);
+            setIsModalOpen(false);
+        } catch (error) {
+            // Error is handled by the mutation
+            // Don't close modal on error so user can retry
+        }
+    };
+
+    const handleModalClose = () => {
+        if (!deleteMod.isPending) {
+            setIsModalOpen(false);
+            setModToDelete(null);
+        }
+    };
 
     if (!isAuthenticated || !user) {
         return (
@@ -124,10 +156,26 @@ export function UserDashboardPage() {
             ) : (
                 <ModsGrid>
                     {mods.map((mod) => (
-                        <ModCard key={mod.modId} mod={mod} />
+                        <ModCard 
+                            key={mod.modId} 
+                            mod={mod} 
+                            onDelete={handleDeleteClick}
+                            showDelete={true}
+                        />
                     ))}
                 </ModsGrid>
             )}
+
+            <ConfirmationModal
+                isOpen={isModalOpen}
+                onClose={handleModalClose}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Mod"
+                message={`Are you sure you want to delete "${modToDelete?.title}"? This action cannot be undone and will permanently delete the mod and all its versions from everywhere.`}
+                confirmText="Delete Mod"
+                cancelText="Cancel"
+                isLoading={deleteMod.isPending}
+            />
         </PageContainer>
     );
 }

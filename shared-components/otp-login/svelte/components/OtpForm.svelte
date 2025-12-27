@@ -7,6 +7,7 @@
   
   import { OtpLoginCore } from '../../core';
   import type { OtpLoginState } from '../../core';
+  import { OTP_LENGTH, OTP_LENGTH_DESCRIPTION, OTP_PLACEHOLDER, OTP_HTML_PATTERN } from '../../../../shared-config/otp-config.js';
 
   export let state: OtpLoginState;
   export let onOtpChange: (e: Event) => void;
@@ -21,7 +22,7 @@
 
 <form class="otp-login-form" novalidate onsubmit={(e) => { e.preventDefault(); onVerifyOtp(); }}>
   <div class="otp-login-field">
-    <label for="otp-login-otp" class="otp-login-label">6-Digit OTP Code</label>
+    <label for="otp-login-otp" class="otp-login-label">{OTP_LENGTH_DESCRIPTION} OTP Code</label>
     <input
       type="tel"
       id="otp-login-otp"
@@ -29,8 +30,9 @@
       required
       autocomplete="one-time-code"
       inputmode="numeric"
-      maxlength="6"
-      placeholder="123456"
+      maxlength={OTP_LENGTH}
+      pattern={OTP_HTML_PATTERN}
+      placeholder={OTP_PLACEHOLDER}
       value={state.otp}
       disabled={state.loading}
       autofocus
@@ -56,7 +58,7 @@
     <button
       type="submit"
       class="otp-login-button otp-login-button--primary"
-      disabled={state.loading || state.otp.length !== 6}
+      disabled={state.loading || state.otp.length !== OTP_LENGTH}
     >
       {state.loading ? 'Verifying...' : 'Verify & Login'}
     </button>

@@ -104,7 +104,7 @@ export function ModUploadPage() {
     }) => {
         try {
             const result = await uploadMod.mutateAsync(data);
-            navigate(`/mods/${result.mod.slug}`);
+            navigate(`/${result.mod.slug}`);
         } catch (error) {
             // Error handled by mutation (notification shown)
         }

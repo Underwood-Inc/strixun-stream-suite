@@ -8,6 +8,7 @@ import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
 import { storeIPSessionMapping } from '../../services/ip-session-index.js';
 import { getClientIP } from '../../utils/ip.js';
+import { createFingerprintHash } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -46,6 +47,7 @@ interface SessionData {
     ipAddress: string;
     userAgent?: string;
     country?: string;
+    fingerprint?: string; // SHA-256 hash of device fingerprint
 }
 
 /**
@@ -95,6 +97,10 @@ export async function createAuthToken(
     const userAgent = request?.headers.get('User-Agent') || undefined;
     const country = request?.headers.get('CF-IPCountry') || undefined;
     
+    // Create device fingerprint for enhanced session security
+    // This enables device-level isolation when multiple devices share the same IP
+    const fingerprint = request ? await createFingerprintHash(request) : undefined;
+    
     // Generate CSRF token for this session
     const csrfToken = generateCSRFToken();
     
@@ -133,7 +139,7 @@ export async function createAuthToken(
     const jwtSecret = getJWTSecret(env);
     const accessToken = await createJWT(tokenPayload, jwtSecret);
     
-    // Store session with customer isolation (including IP address)
+    // Store session with customer isolation (including IP address and fingerprint)
     const sessionKey = getCustomerKey(customerId, `session_${user.userId}`);
     const sessionData: SessionData = {
         userId: user.userId,
@@ -144,6 +150,7 @@ export async function createAuthToken(
         ipAddress: clientIP,
         userAgent,
         country,
+        fingerprint, // Device fingerprint for enhanced security
     };
     
     await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours (matches token expiration)

@@ -9,6 +9,7 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig, type OtpLoginState } from '../core';
+import { OTP_LENGTH, OTP_HTML_PATTERN, OTP_PLACEHOLDER, OTP_LENGTH_DESCRIPTION } from '../../../shared-config/otp-config';
 
 export interface OtpLoginProps {
   apiUrl: string;
@@ -275,7 +276,7 @@ export function OtpLogin({
                 </div>
                 <div>
                   <label htmlFor="otp-login-otp" style={{ display: 'block', marginBottom: '8px' }}>
-                    6-Digit OTP Code
+                    {OTP_LENGTH_DESCRIPTION} OTP Code
                   </label>
                   <input
                     type="tel"
@@ -285,9 +286,11 @@ export function OtpLogin({
                     onKeyDown={(e) => handleKeyPress(e, handleVerifyOtp)}
                     disabled={state.loading}
                     required
-                    maxLength={6}
+                    maxLength={OTP_LENGTH}
+                    pattern={OTP_HTML_PATTERN}
                     inputMode="numeric"
                     autoComplete="one-time-code"
+                    placeholder={OTP_PLACEHOLDER}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -434,9 +437,11 @@ export function OtpLogin({
               onKeyDown={(e) => handleKeyPress(e, handleVerifyOtp)}
               disabled={state.loading}
               required
-              maxLength={6}
+              maxLength={OTP_LENGTH}
+              pattern={OTP_HTML_PATTERN}
               inputMode="numeric"
               autoComplete="one-time-code"
+              placeholder={OTP_PLACEHOLDER}
               style={{
                 padding: '12px',
                 border: '1px solid var(--border, #ddd)',

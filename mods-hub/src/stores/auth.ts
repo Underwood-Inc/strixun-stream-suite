@@ -9,6 +9,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 interface User {
     userId: string;
     email: string;
+    displayName?: string | null;
     token: string;
     expiresAt: string;
     isSuperAdmin?: boolean;
@@ -40,7 +41,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
             timeout: 5000, // 5 second timeout for session restoration
         });
         
-        const response = await authClient.post<{ restored: boolean; access_token?: string; token?: string; userId?: string; sub?: string; email?: string; expiresAt?: string }>('/auth/restore-session', {});
+        const response = await authClient.post<{ restored: boolean; access_token?: string; token?: string; userId?: string; sub?: string; email?: string; displayName?: string | null; expiresAt?: string }>('/auth/restore-session', {});
 
         if (response.status !== 200 || !response.data) {
             // Not an error - just no session found
@@ -68,6 +69,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
             const user: User = {
                 userId,
                 email,
+                displayName: data.displayName || null,
                 token,
                 expiresAt,
                 isSuperAdmin: false, // Will be fetched separately
@@ -106,7 +108,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
  * 
  * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
  */
-async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean } | null> {
+async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean; displayName?: string | null } | null> {
     try {
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
@@ -121,7 +123,7 @@ async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean } |
         });
         
         // CRITICAL: Pass token in metadata so the response handler can decrypt encrypted responses
-        const response = await authClient.get<{ isSuperAdmin?: boolean; [key: string]: any }>('/auth/me', undefined, {
+        const response = await authClient.get<{ isSuperAdmin?: boolean; displayName?: string | null; [key: string]: any }>('/auth/me', undefined, {
             metadata: {
                 cache: false, // Explicitly disable caching for this request
                 token: token, // Pass token in metadata for decryption
@@ -150,6 +152,7 @@ async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean } |
             
             return {
                 isSuperAdmin: response.data.isSuperAdmin || false,
+                displayName: response.data.displayName || null,
             };
         }
         
@@ -197,7 +200,7 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
         // This prevents undefined cache values from wiping the session
         const userInfo = await fetchUserInfo(currentUser.token);
         if (userInfo) {
-            const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin };
+            const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin, displayName: userInfo.displayName };
             set({ 
                 user: updatedUser, 
                 isSuperAdmin: userInfo.isSuperAdmin,
@@ -218,7 +221,7 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                 // Token is valid, just refresh admin status in background
                 fetchUserInfo(currentUser.token).then(userInfo => {
                     if (userInfo) {
-                        const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin };
+                        const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin, displayName: userInfo.displayName };
                         set({ 
                             user: updatedUser, 
                             isSuperAdmin: userInfo.isSuperAdmin,
@@ -240,7 +243,7 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
             // Fetch admin status after restoring session (don't clear if it fails)
             const userInfo = await fetchUserInfo(restoredUser.token);
             if (userInfo) {
-                const updatedUser = { ...restoredUser, isSuperAdmin: userInfo.isSuperAdmin };
+                const updatedUser = { ...restoredUser, isSuperAdmin: userInfo.isSuperAdmin, displayName: userInfo.displayName };
                 set({ 
                     user: updatedUser, 
                     isSuperAdmin: userInfo.isSuperAdmin,
@@ -269,7 +272,7 @@ export const useAuthStore = create<AuthState>()(
                         // If we have a user but token doesn't match, restore
                         if (token !== state.user.token) {
                             if (token) {
-                                // Update user token to match sessionStorage
+                                // Update user token to match sessionStorage (preserve displayName)
                                 state.setUser({ ...state.user, token });
                             } else {
                                 // No token in sessionStorage, try to restore

@@ -22,6 +22,7 @@ export interface ModMetadata {
     slug: string; // URL-friendly slug derived from title
     authorId: string;
     authorEmail: string;
+    authorDisplayName?: string | null; // Randomly generated username/display name
     title: string;
     description: string;
     category: ModCategory;

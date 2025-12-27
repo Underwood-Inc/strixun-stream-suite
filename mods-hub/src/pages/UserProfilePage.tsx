@@ -170,6 +170,10 @@ export function UserProfilePage() {
                 <SectionTitle>Account Information</SectionTitle>
                 <InfoGrid>
                     <InfoItem>
+                        <InfoLabel>Username</InfoLabel>
+                        <InfoValue>{user.displayName || 'Not set'}</InfoValue>
+                    </InfoItem>
+                    <InfoItem>
                         <InfoLabel>Email</InfoLabel>
                         <InfoValue>{user.email}</InfoValue>
                     </InfoItem>

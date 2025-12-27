@@ -214,7 +214,7 @@ export function AdminPanel() {
                     {filteredMods.map((mod) => (
                         <TableRow key={mod.modId}>
                             <TableCell>
-                                <Link href={`/mods/${mod.slug}`}>{mod.title}</Link>
+                                <Link href={`/${mod.slug}`}>{mod.title}</Link>
                             </TableCell>
                             <TableCell>{mod.authorEmail}</TableCell>
                             <TableCell>
@@ -245,7 +245,7 @@ export function AdminPanel() {
                                         Deny
                                     </ActionButton>
                                     <ActionButton
-                                        onClick={() => window.location.href = `/mods/${mod.slug}/review`}
+                                        onClick={() => window.location.href = `/${mod.slug}/review`}
                                     >
                                         Review
                                     </ActionButton>

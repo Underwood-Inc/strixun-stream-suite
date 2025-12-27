@@ -119,7 +119,7 @@ export function ModDetailPage() {
                     <Title>{mod.title}</Title>
                     <Description>{mod.description}</Description>
                     <Meta>
-                        <span>By {mod.authorEmail}</span>
+                        <span>By {mod.authorDisplayName || mod.authorEmail}</span>
                         <span>•</span>
                         <span>{mod.downloadCount} downloads</span>
                         <span>•</span>

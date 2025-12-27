@@ -8,22 +8,52 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
 
-const Card = styled(Link)`
+const CardContainer = styled.div`
+  position: relative;
   background: ${colors.bgSecondary};
   border: 1px solid ${colors.border};
   border-radius: 8px;
-  padding: ${spacing.lg};
-  display: flex;
-  flex-direction: column;
-  gap: ${spacing.md};
+  overflow: hidden;
   transition: all 0.2s ease;
-  text-decoration: none;
-  color: inherit;
   
   &:hover {
     border-color: ${colors.accent};
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+`;
+
+const Card = styled(Link)`
+  padding: ${spacing.lg};
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.md};
+  text-decoration: none;
+  color: inherit;
+`;
+
+const DeleteButton = styled.button`
+  position: absolute;
+  top: ${spacing.sm};
+  right: ${spacing.sm};
+  padding: ${spacing.xs} ${spacing.sm};
+  background: ${colors.danger};
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  
+  ${CardContainer}:hover & {
+    opacity: 1;
+  }
+  
+  &:hover {
+    background: ${colors.danger}dd;
   }
 `;
 
@@ -71,19 +101,36 @@ const Category = styled.span`
 
 interface ModCardProps {
     mod: ModMetadata;
+    onDelete?: (mod: ModMetadata) => void;
+    showDelete?: boolean;
 }
 
-export function ModCard({ mod }: ModCardProps) {
+export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onDelete) {
+            onDelete(mod);
+        }
+    };
+
     return (
-        <Card to={`/mods/${mod.slug}`}>
-            {mod.thumbnailUrl && <Thumbnail src={mod.thumbnailUrl} alt={mod.title} />}
-            <Title>{mod.title}</Title>
-            <Description>{mod.description || 'No description'}</Description>
-            <Meta>
-                <span>{mod.downloadCount} downloads</span>
-                <Category>{mod.category}</Category>
-            </Meta>
-        </Card>
+        <CardContainer>
+            {showDelete && onDelete && (
+                <DeleteButton onClick={handleDeleteClick} title="Delete mod">
+                    Delete
+                </DeleteButton>
+            )}
+            <Card to={`/${mod.slug}`}>
+                {mod.thumbnailUrl && <Thumbnail src={mod.thumbnailUrl} alt={mod.title} />}
+                <Title>{mod.title}</Title>
+                <Description>{mod.description || 'No description'}</Description>
+                <Meta>
+                    <span>{mod.downloadCount} downloads</span>
+                    <Category>{mod.category}</Category>
+                </Meta>
+            </Card>
+        </CardContainer>
     );
 }
 

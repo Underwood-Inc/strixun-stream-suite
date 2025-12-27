@@ -456,13 +456,18 @@ export async function handleVerifyOTP(request, env, customerId = null) {
             });
         }
         
-        if (!otp || !/^\d{6}$/.test(otp)) {
+        // OTP length validation - matches shared-config/otp-config.ts
+        // TODO: Import from shared-config/otp-config.ts when path resolution supports it
+        const OTP_LENGTH = 9;
+        const OTP_PATTERN = /^\d{9}$/;
+        
+        if (!otp || !OTP_PATTERN.test(otp)) {
             // RFC 7807 Problem Details for HTTP APIs
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
                 title: 'Bad Request',
                 status: 400,
-                detail: 'Valid 6-digit OTP required',
+                detail: `Valid ${OTP_LENGTH}-digit OTP required`,
                 instance: request.url,
             }), {
                 status: 400,

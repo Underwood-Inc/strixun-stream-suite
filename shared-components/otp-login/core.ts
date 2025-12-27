@@ -8,6 +8,9 @@
  * using service key encryption for maximum security.
  */
 
+// Import OTP configuration
+import { OTP_LENGTH, OTP_PATTERN, OTP_LENGTH_DESCRIPTION } from '../../shared-config/otp-config.js';
+
 // Import encryption utilities
 // Note: These will be dynamically imported to avoid bundling issues
 type EncryptedData = {
@@ -150,8 +153,8 @@ export class OtpLoginCore {
    * Set OTP
    */
   setOtp(otp: string): void {
-    // Only allow digits, max 6 characters
-    const cleanOtp = otp.replace(/\D/g, '').slice(0, 6);
+    // Only allow digits, max OTP_LENGTH characters
+    const cleanOtp = otp.replace(/\D/g, '').slice(0, OTP_LENGTH);
     this.setState({ otp: cleanOtp });
   }
 
@@ -470,9 +473,9 @@ export class OtpLoginCore {
   async verifyOtp(): Promise<void> {
     const otp = this.state.otp.trim();
 
-    // Validate OTP
-    if (!otp || !/^\d{6}$/.test(otp)) {
-      this.setState({ error: 'Please enter a valid 6-digit OTP' });
+    // Validate OTP using centralized config
+    if (!otp || !OTP_PATTERN.test(otp)) {
+      this.setState({ error: `Please enter a valid ${OTP_LENGTH_DESCRIPTION} OTP` });
       return;
     }
 

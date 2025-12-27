@@ -8,6 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
+import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
@@ -88,6 +89,8 @@ export async function handleDeleteMod(
                 },
             });
         }
+
+        const modId = mod.modId;
 
         // Get all versions - check both customer scope and global scope
         let versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);

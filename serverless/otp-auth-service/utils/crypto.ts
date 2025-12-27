@@ -24,19 +24,27 @@ interface Env {
 }
 
 /**
- * Generate 6-digit OTP code
+ * Generate OTP code
  * Uses cryptographically secure random number generation
- * @returns 6-digit OTP code
+ * @returns OTP code with length defined by OTP_LENGTH config
+ * 
+ * NOTE: OTP length is centralized in shared-config/otp-config.ts
+ * This function uses the same value for consistency
  */
 export function generateOTP(): string {
+    // OTP configuration - matches shared-config/otp-config.ts
+    // TODO: Import from shared-config/otp-config.ts when path resolution supports it
+    const OTP_LENGTH = 9;
+    const OTP_MAX_VALUE = 1000000000; // 10^9
+    
     // Use 2 Uint32 values to get 64 bits, eliminating modulo bias
     const array = new Uint32Array(2);
     crypto.getRandomValues(array);
     // Combine two 32-bit values for 64-bit range (0 to 2^64-1)
-    // Then modulo 1,000,000 for 6-digit code
-    // This eliminates modulo bias since 2^64 is much larger than 1,000,000
-    const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % 1000000;
-    return value.toString().padStart(6, '0');
+    // Then modulo OTP_MAX_VALUE for N-digit code
+    // This eliminates modulo bias since 2^64 is much larger than OTP_MAX_VALUE
+    const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % OTP_MAX_VALUE;
+    return value.toString().padStart(OTP_LENGTH, '0');
 }
 
 /**

@@ -85,35 +85,46 @@ export async function handleListMods(
             if (featured && !mod.featured) continue;
             
             // CRITICAL: Enforce strict visibility and status filtering
-            // Only super admins can bypass these checks
-            if (!isAdmin) {
-                // For non-super users: ONLY public, published mods are allowed
-                // Legacy mods without proper fields are filtered out
+            // When visibility='public', ALWAYS exclude non-published mods (even for admins)
+            // This ensures the public browsing page NEVER shows disabled/deleted/archived mods
+            
+            // Statuses that should NEVER appear in public browsing (visibility='public')
+            const excludedStatuses: string[] = ['pending', 'denied', 'archived', 'draft', 'changes_requested'];
+            
+            if (visibility === 'public') {
+                // For public browsing: ONLY published mods with public visibility
+                // This applies to BOTH regular users AND admins
                 
                 // Check visibility: MUST be 'public'
                 if (mod.visibility !== 'public') {
-                    // Only show private/unlisted mods to their author (if visibility filter allows)
-                    if (visibility === 'public' || mod.authorId !== auth?.userId) {
+                    // Only show private/unlisted mods to their author
+                    if (mod.authorId !== auth?.userId) {
                         continue;
                     }
                 }
                 
-                // Check status: MUST be 'published'
-                // Legacy mods without status field are filtered out (undefined !== 'published')
+                // Check status: MUST be 'published' (exclude all non-published statuses)
+                // This is CRITICAL - even admins should not see non-published mods in public browsing
                 if (mod.status !== 'published') {
-                    // Only show non-published mods to their author (if visibility filter allows)
-                    const isAuthor = mod.authorId === auth?.userId;
-                    if (!isAuthor || visibility === 'public') {
+                    // Only show non-published mods to their author
+                    if (mod.authorId !== auth?.userId) {
                         continue;
                     }
                 }
             } else {
-                // Super admins: apply visibility filter but allow all statuses
-                if (visibility === 'public' && mod.visibility !== 'public') {
-                    // Only show private/unlisted mods to their author
-                    if (mod.authorId !== auth?.userId) continue;
-                } else if (visibility === 'all' && mod.visibility !== 'public' && mod.authorId !== auth?.userId) {
-                    continue;
+                // For non-public visibility filters (e.g., 'all'), apply different rules
+                if (!isAdmin) {
+                    // For non-super users: apply visibility filter
+                    if (mod.visibility !== 'public' && mod.authorId !== auth?.userId) {
+                        continue;
+                    }
+                    // Non-admins can only see published mods or their own mods
+                    if (mod.status !== 'published' && mod.authorId !== auth?.userId) {
+                        continue;
+                    }
+                } else {
+                    // Super admins with visibility='all' can see everything
+                    // (This is for admin management pages, not public browsing)
                 }
             }
 

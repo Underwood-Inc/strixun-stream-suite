@@ -82,3 +82,17 @@ export type {
   TwoStageEncryptedData
 } from '../encryption/index.js';
 
+// Re-export fingerprinting utilities
+export {
+  createFingerprint,
+  createFingerprintHash,
+  hashFingerprint,
+  validateFingerprint,
+  validateFingerprintLenient,
+} from './fingerprint.js';
+
+export type {
+  FingerprintData,
+  FingerprintHash,
+} from './fingerprint.js';
+

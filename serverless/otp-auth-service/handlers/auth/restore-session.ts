@@ -16,6 +16,7 @@ import { checkIPRateLimit, recordIPRequest } from '../../services/rate-limit.js'
 import { getCustomerCached, type GetCustomerFn } from '../../utils/cache.js';
 import { getCustomer } from '../../services/customer.js';
 import { getClientIP, isValidIP } from '../../utils/ip.js';
+import { createFingerprintHash, validateFingerprintLenient } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -32,6 +33,7 @@ interface SessionData {
     ipAddress?: string;
     userAgent?: string;
     country?: string;
+    fingerprint?: string; // SHA-256 hash of device fingerprint
 }
 
 interface User {
@@ -209,6 +211,37 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             return new Response(JSON.stringify({
                 restored: false,
                 message: 'IP address mismatch'
+            }), {
+                status: 200,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store',
+                    'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
+                    'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
+                    'X-RateLimit-Reset': rateLimit.resetAt,
+                },
+            });
+        }
+
+        // Validate device fingerprint (enhanced security for device-level isolation)
+        // This prevents unauthorized session restoration when multiple devices share the same IP
+        const requestFingerprint = await createFingerprintHash(request);
+        const fingerprintValid = await validateFingerprintLenient(
+            sessionData.fingerprint,
+            requestFingerprint,
+            true // Lenient mode: allow sessions without fingerprints (backward compatibility)
+        );
+        
+        if (!fingerprintValid) {
+            // Fingerprint mismatch - different device detected
+            console.warn(`[Restore Session] Fingerprint mismatch: session fingerprint ${sessionData.fingerprint?.substring(0, 16)}... != request fingerprint ${requestFingerprint.substring(0, 16)}...`);
+            await recordIPRequest(requestIP, null, env, true);
+            
+            return new Response(JSON.stringify({
+                restored: false,
+                message: 'Device fingerprint mismatch. Please log in again.',
+                requiresLogin: true
             }), {
                 status: 200,
                 headers: { 

@@ -10,6 +10,7 @@ import { buildCurrentUserResponse } from '../../utils/response-builder.js';
 import { ensureCustomerAccount } from './customer-creation.js';
 import { storeIPSessionMapping, deleteIPSessionMapping } from '../../services/ip-session-index.js';
 import { getClientIP } from '../../utils/ip.js';
+import { createFingerprintHash } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -36,6 +37,7 @@ interface SessionData {
     ipAddress?: string;
     userAgent?: string;
     country?: string;
+    fingerprint?: string; // SHA-256 hash of device fingerprint
 }
 
 interface JWTPayload {
@@ -351,6 +353,9 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         const userAgent = request.headers.get('User-Agent') || undefined;
         const country = request.headers.get('CF-IPCountry') || undefined;
         
+        // Create device fingerprint for enhanced session security
+        const fingerprint = await createFingerprintHash(request);
+        
         // Get existing session to preserve original IP if new IP is unknown
         let existingSession: SessionData | null = null;
         if (userId) {
@@ -373,6 +378,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
                 ipAddress: sessionIP,
                 userAgent: userAgent || existingSession?.userAgent,
                 country: country || existingSession?.country,
+                fingerprint, // Update fingerprint on refresh
             };
             
             await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(sessionData), { expirationTtl: 25200 }); // 7 hours

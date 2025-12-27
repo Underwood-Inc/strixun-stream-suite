@@ -550,8 +550,8 @@ export default JSON.parse(`{
           },
           "otp": {
             "type": "string",
-            "pattern": "^[0-9]{6}$",
-            "example": "123456"
+            "pattern": "^[0-9]{9}$",
+            "example": "123456789"
           }
         }
       },

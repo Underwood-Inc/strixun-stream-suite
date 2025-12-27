@@ -65,22 +65,65 @@ export async function handleBadge(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata
-        const modKey = getCustomerKey(auth?.customerId || null, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Get mod metadata - check both global scope and customer scope
+        let mod: ModMetadata | null = null;
+        
+        // First try global scope (for public mods)
+        const globalModKey = `mod_${modId}`;
+        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        
+        // If not found and authenticated, check customer scope
+        if (!mod && auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
 
         if (!mod) {
             return new Response('Mod not found', { status: 404 });
         }
 
-        // Check visibility
-        if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
-            return new Response('Mod not found', { status: 404 });
+        // Check if user is super admin
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+
+        // CRITICAL: Enforce strict visibility and status filtering
+        // Only super admins can bypass these checks
+        if (!isAdmin) {
+            // For non-super users: ONLY public, published mods are allowed
+            // Check visibility: MUST be 'public'
+            if (mod.visibility !== 'public') {
+                // Only show private/unlisted mods to their author
+                if (mod.authorId !== auth?.userId) {
+                    return new Response('Mod not found', { status: 404 });
+                }
+            }
+            
+            // Check status: MUST be 'published'
+            if (mod.status !== 'published') {
+                // Only show non-published mods to their author
+                if (mod.authorId !== auth?.userId) {
+                    return new Response('Mod not found', { status: 404 });
+                }
+            }
+        } else {
+            // Super admins: check visibility but allow all statuses
+            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+                return new Response('Mod not found', { status: 404 });
+            }
         }
 
-        // Get version metadata
-        const versionKey = getCustomerKey(auth?.customerId || null, `version_${versionId}`);
-        const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+        // Get version metadata - check both global scope and customer scope
+        let version: ModVersion | null = null;
+        
+        // First try global scope
+        const globalVersionKey = `version_${versionId}`;
+        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        
+        // If not found and authenticated, check customer scope
+        if (!version && auth?.customerId) {
+            const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+            version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
 
         if (!version || version.modId !== modId) {
             return new Response('Version not found', { status: 404 });
