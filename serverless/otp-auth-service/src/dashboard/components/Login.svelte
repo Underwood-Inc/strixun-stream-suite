@@ -25,7 +25,7 @@
   
   const apiUrl = getApiUrl();
   
-  import { getOtpEncryptionKey as getKey } from '../../../../../../shared-config/otp-encryption';
+  import { getOtpEncryptionKey as getKey } from '@shared-config/otp-encryption';
   
   /**
    * Get OTP encryption key from centralized config

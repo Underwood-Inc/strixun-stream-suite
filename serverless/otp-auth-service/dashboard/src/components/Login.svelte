@@ -8,7 +8,7 @@
   // Compute once at component initialization
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : '';
   
-  import { getOtpEncryptionKey as getKey } from '../../../../../shared-config/otp-encryption';
+  import { getOtpEncryptionKey as getKey } from '@shared-config/otp-encryption';
   
   /**
    * Get OTP encryption key from centralized config

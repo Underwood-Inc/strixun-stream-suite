@@ -10,10 +10,37 @@ const API_BASE_URL = import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idli
 
 /**
  * Get auth token from storage
+ * Checks both sessionStorage and the auth store
  */
 function getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
+    
+    // First check sessionStorage (most reliable)
+    const sessionToken = sessionStorage.getItem('auth_token');
+    if (sessionToken) {
+        return sessionToken;
+    }
+    
+    // Fallback to localStorage
+    const localToken = localStorage.getItem('auth_token');
+    if (localToken) {
+        return localToken;
+    }
+    
+    // Last resort: check auth store (might be in memory)
+    try {
+        const { useAuthStore } = require('../stores/auth');
+        const store = useAuthStore.getState();
+        if (store.user?.token) {
+            // Sync it back to sessionStorage for consistency
+            sessionStorage.setItem('auth_token', store.user.token);
+            return store.user.token;
+        }
+    } catch (err) {
+        // Auth store might not be available, that's okay
+    }
+    
+    return null;
 }
 
 /**
@@ -24,13 +51,18 @@ async function refreshAuthToken(): Promise<string | null> {
     
     try {
         // Use the API framework client which already handles secureFetch internally
+        // IMPORTANT: Do NOT add auth config - restore-session is IP-based and doesn't require auth
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
             timeout: 5000, // 5 second timeout for session restoration
+            // Explicitly no auth config - restore-session is IP-based
         });
         
-        const response = await authClient.post<{ restored: boolean; access_token?: string; token?: string; userId?: string; sub?: string; email?: string; expiresAt?: string }>('/auth/restore-session', {});
+        // Make request with auth explicitly disabled
+        const response = await authClient.post<{ restored: boolean; access_token?: string; token?: string; userId?: string; sub?: string; email?: string; expiresAt?: string }>('/auth/restore-session', {}, {
+            metadata: { auth: false } // Explicitly disable auth for this request
+        });
 
         if (response.status !== 200 || !response.data) {
             console.warn('[API] Token refresh failed:', response.status);
@@ -38,10 +70,17 @@ async function refreshAuthToken(): Promise<string | null> {
         }
 
         const data = response.data;
-        if (data.restored && data.access_token) {
+        console.log('[API] Token refresh response:', { restored: data?.restored, hasAccessToken: !!data?.access_token, hasToken: !!data?.token, keys: data ? Object.keys(data) : [] });
+        
+        // Check for access_token (preferred) or token (fallback)
+        const token = data?.access_token || data?.token;
+        const isRestored = data?.restored !== false; // Default to true if not explicitly false
+        
+        if (token && isRestored) {
             // Update token in storage
             if (typeof window !== 'undefined' && window.sessionStorage) {
-                sessionStorage.setItem('auth_token', data.access_token);
+                sessionStorage.setItem('auth_token', token);
+                console.log('[API] Token stored in sessionStorage');
             }
             
             // Update auth store if available
@@ -51,20 +90,20 @@ async function refreshAuthToken(): Promise<string | null> {
                 if (store.setUser) {
                     const userId = data.userId || data.sub;
                     const email = data.email;
-                    const token = data.access_token;
                     const expiresAt = data.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-                    if (!userId || !email || !token) {
-                        console.error('[API] Invalid token refresh response - missing required fields');
-                        return null;
+                    if (!userId || !email) {
+                        console.warn('[API] Token refresh response missing userId/email, but token is valid');
+                        // Still return token even if userId/email missing - token is what matters
+                    } else {
+                        store.setUser({
+                            userId,
+                            email,
+                            token,
+                            expiresAt,
+                        });
+                        console.log('[API] Auth store updated');
                     }
-
-                    store.setUser({
-                        userId,
-                        email,
-                        token,
-                        expiresAt,
-                    });
                 }
             } catch (err) {
                 // Auth store might not be available, that's okay
@@ -72,9 +111,10 @@ async function refreshAuthToken(): Promise<string | null> {
             }
             
             console.log('[API] ✅ Token refreshed successfully');
-            return data.access_token;
+            return token;
         }
 
+        console.warn('[API] Token refresh failed - missing token or not restored', { hasToken: !!token, isRestored, data });
         return null;
     } catch (error) {
         console.warn('[API] Token refresh error:', error instanceof Error ? error.message : String(error));
@@ -107,11 +147,16 @@ const api = createAPIClient({
     auth: {
         tokenGetter: getAuthToken,
         onTokenExpired: async () => {
+            // If user is authenticated, try to refresh token
+            // Otherwise, they need to log in again
             console.log('[API] Token expired, attempting to refresh...');
             const newToken = await refreshAuthToken();
             if (!newToken) {
-                console.warn('[API] Token refresh failed, user may need to log in again');
-                // Could redirect to login page here if needed
+                console.warn('[API] Token refresh failed - user may need to log in again');
+                // Don't do anything else - let the 401 error propagate
+                // The UI should handle redirecting to login if needed
+            } else {
+                console.log('[API] Token refreshed successfully');
             }
         },
     },
@@ -169,6 +214,38 @@ export async function getModDetail(modId: string): Promise<ModDetailResponse> {
 }
 
 /**
+ * Encrypt file binary data using JWT token
+ */
+async function encryptFile(file: File, token: string): Promise<File> {
+    if (!token) {
+        throw new Error('Token required for file encryption');
+    }
+
+    // Read file as ArrayBuffer
+    const fileBuffer = await file.arrayBuffer();
+    
+    // Import JWT encryption utilities from shared API
+    const { encryptWithJWT } = await import('@strixun/api-framework');
+    
+    // Convert ArrayBuffer to base64 for encryption
+    const uint8Array = new Uint8Array(fileBuffer);
+    let binary = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
+    }
+    const fileBase64 = btoa(binary);
+    
+    // Encrypt the file data
+    const encrypted = await encryptWithJWT(fileBase64, token);
+    
+    // Convert encrypted data back to Blob/File
+    const encryptedBlob = new Blob([JSON.stringify(encrypted)], { type: 'application/json' });
+    const encryptedFile = new File([encryptedBlob], file.name + '.encrypted', { type: 'application/json' });
+    
+    return encryptedFile;
+}
+
+/**
  * Upload mod
  */
 export async function uploadMod(
@@ -176,8 +253,19 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: ModMetadata; version: ModVersion }> {
+    // Get auth token for encryption
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('Authentication required - please log in to upload mods');
+    }
+
+    // Encrypt file before upload
+    console.log('[Upload] Encrypting file before upload...');
+    const encryptedFile = await encryptFile(file, token);
+    console.log('[Upload] File encrypted successfully');
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', encryptedFile);
     
     if (thumbnail) {
         // Convert thumbnail to base64

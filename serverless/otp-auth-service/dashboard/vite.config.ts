@@ -16,7 +16,8 @@ export default defineConfig({
       '$lib': path.resolve(__dirname, './src/lib'),
       '$components': path.resolve(__dirname, './src/components'),
       '@shared-styles': path.resolve(__dirname, '../../../shared-styles'),
-      '@shared-components': path.resolve(__dirname, '../../../shared-components')
+      '@shared-components': path.resolve(__dirname, '../../../shared-components'),
+      '@shared-config': path.resolve(__dirname, '../../../shared-config')
     }
   },
   build: {

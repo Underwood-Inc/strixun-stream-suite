@@ -31,6 +31,9 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
           request.headers = {};
         }
         request.headers['Authorization'] = `Bearer ${token}`;
+        console.log('[AuthMiddleware] Token added to request:', { method: request.method, path: request.path, hasToken: true });
+      } else {
+        console.warn('[AuthMiddleware] No token available for request:', { method: request.method, path: request.path });
       }
     }
 
@@ -52,17 +55,22 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
 
       // Handle token expiration (401)
       if (response.status === 401 && config.onTokenExpired) {
+        console.log('[AuthMiddleware] 401 received, refreshing token...');
         await config.onTokenExpired();
         
         // Retry request with new token
         if (config.tokenGetter) {
           const newToken = await config.tokenGetter();
+          console.log('[AuthMiddleware] Token after refresh:', { hasToken: !!newToken, method: request.method, path: request.path });
           if (newToken) {
             if (!request.headers) {
               request.headers = {};
             }
             request.headers['Authorization'] = `Bearer ${newToken}`;
+            console.log('[AuthMiddleware] Retrying request with new token');
             return next(request);
+          } else {
+            console.error('[AuthMiddleware] No token available after refresh, cannot retry');
           }
         }
       }
