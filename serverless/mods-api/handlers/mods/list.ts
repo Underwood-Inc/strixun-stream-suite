@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
+import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 
 /**

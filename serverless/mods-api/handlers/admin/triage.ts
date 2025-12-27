@@ -98,10 +98,12 @@ export async function handleUpdateModStatus(
         };
         mod.statusHistory.push(statusEntry);
 
-        // If status is published, ensure it's in global list
+        // Update global public list based on status change
+        const globalListKey = 'mods_list_public';
+        const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+        
         if (newStatus === 'published' && oldStatus !== 'published') {
-            const globalListKey = 'mods_list_public';
-            const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+            // Add to global list when publishing
             if (!globalModsList || !globalModsList.includes(modId)) {
                 const updatedGlobalList = [...(globalModsList || []), modId];
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
@@ -110,6 +112,16 @@ export async function handleUpdateModStatus(
             // Also store in global scope
             const globalModKey = `mod_${modId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+        } else if (oldStatus === 'published' && newStatus !== 'published') {
+            // Remove from global list when unpublishing/delisting
+            if (globalModsList && globalModsList.includes(modId)) {
+                const updatedGlobalList = globalModsList.filter(id => id !== modId);
+                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+                
+                // Delete global mod metadata (it will still exist in customer scope)
+                const globalModKey = `mod_${modId}`;
+                await env.MODS_KV.delete(globalModKey);
+            }
         }
 
         // Save updated mod
