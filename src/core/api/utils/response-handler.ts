@@ -4,8 +4,8 @@
  * Utility for handling and transforming API responses
  */
 
-import type { APIRequest, APIResponse, APIError } from '../types';
-import { decryptWithJWT } from '../../enhanced/encryption/jwt-encryption';
+import { decryptWithJWT } from '../enhanced';
+import type { APIError, APIRequest, APIResponse } from '../types';
 
 /**
  * Get auth token from request metadata
