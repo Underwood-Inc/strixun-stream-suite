@@ -57,6 +57,7 @@ jobs:
           # If you need to support both custom domain and github.io, use:
           # VITE_BASE_PATH: ${{ secrets.CUSTOM_DOMAIN && '/' || format('/{0}/', github.event.repository.name) }}
           VITE_BASE_PATH: /
+          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: pnpm build
         
       - name: Setup Pages
