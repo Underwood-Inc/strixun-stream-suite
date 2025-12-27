@@ -5,9 +5,23 @@
  */
 
 import type { APIRequest, APIResponse, APIError } from '../types';
+import { decryptWithJWT } from '../../enhanced/encryption/jwt-encryption';
+
+/**
+ * Get auth token from request metadata
+ * The auth middleware stores the token in request.metadata.token
+ */
+function getTokenForDecryption(request: APIRequest): string | null {
+  // Check if token is in request metadata (set by auth middleware)
+  if (request.metadata?.token && typeof request.metadata.token === 'string') {
+    return request.metadata.token;
+  }
+  return null;
+}
 
 /**
  * Parse response and create APIResponse object
+ * Automatically decrypts encrypted responses if X-Encrypted header is present
  */
 export async function handleResponse<T = unknown>(
   request: APIRequest,
@@ -15,10 +29,34 @@ export async function handleResponse<T = unknown>(
 ): Promise<APIResponse<T>> {
   let data: T;
   const contentType = response.headers.get('content-type');
+  const isEncrypted = response.headers.get('X-Encrypted') === 'true';
 
   try {
     if (contentType?.includes('application/json')) {
       data = await response.json();
+      
+      // Decrypt if response is encrypted
+      if (isEncrypted && data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted) {
+        const token = getTokenForDecryption(request);
+        if (token) {
+          try {
+            data = await decryptWithJWT(data as any, token) as T;
+            console.log('[ResponseHandler] Successfully decrypted response');
+          } catch (error) {
+            console.error('[ResponseHandler] Failed to decrypt response:', error);
+            throw createError(
+              request,
+              response.status,
+              response.statusText,
+              'Failed to decrypt response',
+              error
+            );
+          }
+        } else {
+          console.warn('[ResponseHandler] Encrypted response received but no token available for decryption');
+          // Don't throw - return encrypted data and let the app handle it
+        }
+      }
     } else if (contentType?.includes('text/')) {
       data = (await response.text()) as unknown as T;
     } else {
@@ -48,6 +86,7 @@ export async function handleResponse<T = unknown>(
 
 /**
  * Create API error from response
+ * Automatically decrypts encrypted error responses if X-Encrypted header is present
  */
 export async function handleErrorResponse(
   request: APIRequest,
@@ -55,10 +94,27 @@ export async function handleErrorResponse(
 ): Promise<APIError> {
   let errorData: unknown;
   const contentType = response.headers.get('content-type');
+  const isEncrypted = response.headers.get('X-Encrypted') === 'true';
 
   try {
     if (contentType?.includes('application/json')) {
       errorData = await response.json();
+      
+      // Decrypt if error response is encrypted
+      if (isEncrypted && errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted) {
+        const token = getTokenForDecryption(request);
+        if (token) {
+          try {
+            errorData = await decryptWithJWT(errorData as any, token);
+            console.log('[ResponseHandler] Successfully decrypted error response');
+          } catch (error) {
+            console.error('[ResponseHandler] Failed to decrypt error response:', error);
+            // Don't throw - return encrypted error data
+          }
+        } else {
+          console.warn('[ResponseHandler] Encrypted error response received but no token available for decryption');
+        }
+      }
     } else {
       errorData = await response.text();
     }

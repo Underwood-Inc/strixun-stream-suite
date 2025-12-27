@@ -31,6 +31,11 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
           request.headers = {};
         }
         request.headers['Authorization'] = `Bearer ${token}`;
+        // Store token in metadata for response decryption
+        if (!request.metadata) {
+          request.metadata = {};
+        }
+        request.metadata.token = token;
         console.log('[AuthMiddleware] Token added to request:', { method: request.method, path: request.path, hasToken: true });
       } else {
         console.warn('[AuthMiddleware] No token available for request:', { method: request.method, path: request.path });
