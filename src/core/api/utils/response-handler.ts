@@ -35,11 +35,21 @@ export async function handleResponse<T = unknown>(
     if (contentType?.includes('application/json')) {
       data = await response.json();
       
-      // Decrypt if response is encrypted
-      if (isEncrypted && data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted) {
+      // Decrypt if response is encrypted (check both header and data structure)
+      const dataIsEncrypted = data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted === true;
+      console.log('[ResponseHandler] Checking encryption:', { 
+        isEncrypted, 
+        dataIsEncrypted, 
+        hasData: !!data, 
+        dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+        hasToken: !!getTokenForDecryption(request)
+      });
+      
+      if (dataIsEncrypted) {
         const token = getTokenForDecryption(request);
         if (token) {
           try {
+            console.log('[ResponseHandler] Decrypting encrypted response...');
             data = await decryptWithJWT(data as any, token) as T;
             console.log('[ResponseHandler] Successfully decrypted response');
           } catch (error) {
@@ -53,7 +63,7 @@ export async function handleResponse<T = unknown>(
             );
           }
         } else {
-          console.warn('[ResponseHandler] Encrypted response received but no token available for decryption');
+          console.warn('[ResponseHandler] Encrypted response received but no token available for decryption. Request metadata:', request.metadata);
           // Don't throw - return encrypted data and let the app handle it
         }
       }
@@ -100,11 +110,13 @@ export async function handleErrorResponse(
     if (contentType?.includes('application/json')) {
       errorData = await response.json();
       
-      // Decrypt if error response is encrypted
-      if (isEncrypted && errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted) {
+      // Decrypt if error response is encrypted (check both header and data structure)
+      const errorIsEncrypted = errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted === true;
+      if ((isEncrypted || errorIsEncrypted) && errorIsEncrypted) {
         const token = getTokenForDecryption(request);
         if (token) {
           try {
+            console.log('[ResponseHandler] Decrypting encrypted error response...');
             errorData = await decryptWithJWT(errorData as any, token);
             console.log('[ResponseHandler] Successfully decrypted error response');
           } catch (error) {

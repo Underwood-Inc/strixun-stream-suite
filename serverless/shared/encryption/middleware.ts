@@ -160,10 +160,25 @@ export async function wrapWithEncryption(
   handlerResponse: Response,
   auth: AuthResult | null | undefined
 ): Promise<RouteResult> {
-  if (!auth?.jwtToken || !handlerResponse.ok) {
+  // Don't encrypt if response is not OK
+  if (!handlerResponse.ok) {
     return {
       response: handlerResponse,
       customerId: auth?.customerId || null,
+    };
+  }
+
+  // If no auth token, return unencrypted (but still set header to false for clarity)
+  if (!auth?.jwtToken) {
+    const headers = new Headers(handlerResponse.headers);
+    headers.set('X-Encrypted', 'false');
+    return {
+      response: new Response(handlerResponse.body, {
+        status: handlerResponse.status,
+        statusText: handlerResponse.statusText,
+        headers: headers,
+      }),
+      customerId: null,
     };
   }
 
@@ -171,8 +186,15 @@ export async function wrapWithEncryption(
     // Check if response is JSON
     const contentType = handlerResponse.headers.get('content-type');
     if (!contentType?.includes('application/json')) {
+      // Not JSON, don't encrypt but set header
+      const headers = new Headers(handlerResponse.headers);
+      headers.set('X-Encrypted', 'false');
       return {
-        response: handlerResponse,
+        response: new Response(handlerResponse.body, {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        }),
         customerId: auth.customerId || null,
       };
     }
@@ -181,7 +203,7 @@ export async function wrapWithEncryption(
     const responseData = await handlerResponse.json();
     const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
 
-    // Create encrypted response
+    // Create encrypted response - ALWAYS set X-Encrypted header
     const headers = new Headers(handlerResponse.headers);
     headers.set('Content-Type', 'application/json');
     headers.set('X-Encrypted', 'true');
