@@ -4,7 +4,7 @@
  * Utility for handling and transforming API responses
  */
 
-import { decryptWithJWT } from '../enhanced';
+import { decryptWithJWT } from '../enhanced/encryption/jwt-encryption';
 import type { APIError, APIRequest, APIResponse } from '../types';
 
 /**
