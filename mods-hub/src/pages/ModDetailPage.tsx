@@ -85,7 +85,7 @@ export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const { data, isLoading, error } = useModDetail(slug || '');
     const { user } = useAuthStore();
-    const isUploader = user && data?.mod.authorId === user.userId;
+    const isUploader = user?.userId === data?.mod.authorId;
 
     if (isLoading) return <Loading>Loading mod...</Loading>;
     if (error) return <Error>Failed to load mod: {(error as Error).message}</Error>;

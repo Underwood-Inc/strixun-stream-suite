@@ -162,7 +162,6 @@ const Error = styled.div`
 `;
 
 export function AdminPanel() {
-    const { user } = useAuthStore();
     const [statusFilter, setStatusFilter] = useState<string>('pending');
     
     const { data, isLoading, error } = useAdminModsList({

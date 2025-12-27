@@ -200,7 +200,6 @@ export function ModReviewPage() {
 
     const { mod } = data;
     const isAdmin = false; // TODO: Check admin status from API
-    const isUploader = user?.userId === mod.authorId;
 
     return (
         <PageContainer>
