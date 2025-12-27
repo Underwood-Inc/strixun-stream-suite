@@ -28,6 +28,7 @@ const services = [
   { name: 'Game API', path: 'game-api', worker: 'strixun-game-api', command: 'wrangler deploy' },
   { name: 'URL Shortener', path: 'url-shortener', worker: 'strixun-url-shortener', command: 'wrangler deploy --env production' },
   { name: 'Chat Signaling', path: 'chat-signaling', worker: 'strixun-chat-signaling', command: 'wrangler deploy' },
+  { name: 'Mods API', path: 'mods-api', worker: 'strixun-mods-api', command: 'wrangler deploy' },
 ];
 
 if (isDryRun) {

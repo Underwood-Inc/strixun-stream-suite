@@ -1,8 +1,10 @@
 /**
  * API Client - TypeScript
  * Composable, type-safe API client for OTP Auth Service
+ * Uses the shared API framework for HTTPS enforcement, retry, encryption, etc.
  */
 
+import { createAPIClient } from '@strixun/api-framework/client';
 import type {
   Analytics,
   ApiKey,
@@ -17,17 +19,72 @@ import type {
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
 const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
+// Create API client instance with auth token getter
+const createClient = () => {
+  return createAPIClient({
+    baseURL: API_BASE_URL,
+    defaultHeaders: {
+      'Content-Type': 'application/json',
+    },
+    auth: {
+      tokenGetter: () => {
+        if (typeof window !== 'undefined') {
+          return localStorage.getItem('auth_token');
+        }
+        return null;
+      },
+      onTokenExpired: () => {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+        }
+      },
+    },
+    timeout: 30000,
+    retry: {
+      maxAttempts: 3,
+      backoff: 'exponential',
+      retryableErrors: [408, 429, 500, 502, 503, 504],
+    },
+  });
+};
+
 export class ApiClient {
-  private token: string | null = null;
+  private api = createClient();
+  private customerApi = createClient(); // Separate client for customer-api calls
 
   constructor() {
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
-    }
+    // Customer API uses different base URL
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
+    this.customerApi = createAPIClient({
+      baseURL: customerApiUrl,
+      defaultHeaders: {
+        'Content-Type': 'application/json',
+      },
+      auth: {
+        tokenGetter: () => {
+          if (typeof window !== 'undefined') {
+            return localStorage.getItem('auth_token');
+          }
+          return null;
+        },
+        onTokenExpired: () => {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
+          }
+        },
+      },
+      timeout: 30000,
+      retry: {
+        maxAttempts: 3,
+        backoff: 'exponential',
+        retryableErrors: [408, 429, 500, 502, 503, 504],
+      },
+    });
   }
 
   setToken(token: string | null): void {
-    this.token = token;
     if (typeof window !== 'undefined') {
       if (token) {
         localStorage.setItem('auth_token', token);
@@ -35,203 +92,70 @@ export class ApiClient {
         localStorage.removeItem('auth_token');
       }
     }
+    // Recreate clients to pick up new token
+    this.api = createClient();
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
+    this.customerApi = createAPIClient({
+      baseURL: customerApiUrl,
+      defaultHeaders: {
+        'Content-Type': 'application/json',
+      },
+      auth: {
+        tokenGetter: () => token,
+        onTokenExpired: () => {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
+          }
+        },
+      },
+      timeout: 30000,
+      retry: {
+        maxAttempts: 3,
+        backoff: 'exponential',
+        retryableErrors: [408, 429, 500, 502, 503, 504],
+      },
+    });
   }
 
   getToken(): string | null {
-    return this.token;
-  }
-
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_token');
     }
-    
-    return headers;
-  }
-
-  private async request(
-    endpoint: string,
-    options: RequestInit & { body?: BodyInit | null | unknown } = {}
-  ): Promise<Response> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const config: RequestInit = {
-      method: options.method,
-      headers: {
-        ...this.getHeaders(),
-        ...(options.headers || {}),
-      },
-    };
-
-    // Handle body - convert unknown to BodyInit
-    if (options.body !== undefined && options.body !== null) {
-      const body = options.body;
-      if (typeof body === 'string' || 
-          body instanceof FormData || 
-          body instanceof Blob || 
-          body instanceof ArrayBuffer ||
-          ArrayBuffer.isView(body)) {
-        config.body = body;
-      } else if (typeof body === 'object') {
-        config.body = JSON.stringify(body);
-      } else {
-        config.body = String(body);
-      }
-    }
-
-    try {
-      const response = await fetch(url, config);
-      
-      // Handle 401 - token expired
-      if (response.status === 401) {
-        this.setToken(null);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:logout'));
-        }
-        throw new Error('Authentication expired. Please login again.');
-      }
-
-      return response;
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Type guard to check if data is encrypted
-   */
-  private isEncryptedData(data: unknown): data is { encrypted?: boolean; algorithm?: string; iv?: string; data?: string; [key: string]: unknown } {
-    if (!data || typeof data !== 'object') {
-      return false;
-    }
-    const obj = data as Record<string, unknown>;
-    return obj.encrypted === true || (typeof obj.algorithm === 'string' && typeof obj.iv === 'string' && typeof obj.data === 'string');
-  }
-
-  private async decryptResponse<T>(response: Response): Promise<T> {
-    // Check headers first
-    const headerEncrypted = response.headers.get('X-Encrypted') === 'true';
-    const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
-    const data = await response.json();
-    
-    // Also check response body structure for encryption indicators
-    // Encrypted responses have: encrypted: true, algorithm, iv, data, etc.
-    const bodyEncrypted = this.isEncryptedData(data);
-    
-    const isEncrypted = headerEncrypted || bodyEncrypted;
-    
-    if (!isEncrypted) {
-      return data as T;
-    }
-    
-    // Decrypt based on encryption strategy
-    const { decryptWithJWT, decryptWithServiceKey } = await import('@strixun/api-framework');
-    
-    if (encryptionStrategy === 'jwt' && this.token) {
-      // JWT-encrypted response - decrypt with JWT token
-      try {
-        return await decryptWithJWT(data as any, this.token) as T;
-      } catch (error) {
-        console.error('[API Client] JWT decryption failed:', error);
-        throw new Error('Failed to decrypt response: ' + (error instanceof Error ? error.message : String(error)));
-      }
-    } else if (encryptionStrategy === 'service-key') {
-      // Service-key-encrypted response - decrypt with service key
-      // Note: Service key should be stored in environment or config
-      // For now, try to get from localStorage or use a default
-      const serviceKey = localStorage.getItem('service_encryption_key');
-      if (serviceKey) {
-        try {
-          return await decryptWithServiceKey(data as any, serviceKey) as T;
-        } catch (error) {
-          console.error('[API Client] Service key decryption failed:', error);
-          throw new Error('Failed to decrypt response: ' + (error instanceof Error ? error.message : String(error)));
-        }
-      }
-      // If no service key available, return encrypted data (client needs to handle)
-      console.warn('[API Client] Service key not available for decryption');
-      return data as T;
-    } else if (this.token) {
-      // Fallback: Try JWT decryption if token is available (customer-api uses JWT encryption)
-      try {
-        return await decryptWithJWT(data as any, this.token) as T;
-      } catch (error) {
-        // If JWT decryption fails, log and throw
-        console.error('[API Client] JWT decryption failed (fallback):', error);
-        throw new Error('Failed to decrypt response: ' + (error instanceof Error ? error.message : String(error)));
-      }
-    }
-    
-    // No decryption method available
-    console.warn('[API Client] Encrypted response detected but no decryption method available');
-    return data as T;
-  }
-
-  private async get<T>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint, { method: 'GET' });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
-  }
-
-  private async post<T>(endpoint: string, body?: unknown): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'POST',
-      body: body as BodyInit | null | undefined,
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
-  }
-
-  // PUT method kept for API completeness and future use
-  // Note: updateCustomer uses fetch directly because it calls external customer-api
-  // @ts-expect-error - Intentionally kept for API completeness (standard HTTP method)
-  private async put<T>(endpoint: string, body?: unknown): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'PUT',
-      body: body as BodyInit | null | undefined,
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
-  }
-
-  private async delete<T>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint, { method: 'DELETE' });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
+    return null;
   }
 
   // Authentication endpoints
   async requestOTP(email: string): Promise<{ success: boolean; message: string }> {
-    return await this.post('/auth/request-otp', { email });
+    const response = await this.api.post<{ success: boolean; message: string }>('/auth/request-otp', { email });
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to request OTP');
+    }
+    return response.data;
   }
 
   async verifyOTP(email: string, otp: string): Promise<{ access_token?: string; token?: string; [key: string]: unknown }> {
-    return await this.post('/auth/verify-otp', { email, otp });
+    const response = await this.api.post<{ access_token?: string; token?: string; [key: string]: unknown }>('/auth/verify-otp', { email, otp });
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to verify OTP');
+    }
+    return response.data;
   }
 
   async getMe(): Promise<User> {
-    return await this.get<User>('/auth/me');
+    const response = await this.api.get<User>('/auth/me');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get user');
+    }
+    return response.data;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.post('/auth/logout', {});
+      await this.api.post('/auth/logout', {});
     } catch (error) {
       console.warn('Logout API call failed:', error);
     }
@@ -240,56 +164,66 @@ export class ApiClient {
 
   // Customer endpoints (now using customer-api)
   async getCustomer(): Promise<Customer> {
-    // Use customer-api endpoint instead of OTP auth service
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
-    const response = await fetch(`${customerApiUrl}/customer/me`, {
-      method: 'GET',
-      headers: this.getHeaders(),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Failed to get customer' }));
-      throw new Error((error as { detail?: string }).detail || 'Failed to get customer');
+    const response = await this.customerApi.get<Customer>('/customer/me');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get customer');
     }
-    
-    return await this.decryptResponse<Customer>(response);
+    return response.data;
   }
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
-    // Use customer-api endpoint instead of OTP auth service
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
-    const response = await fetch(`${customerApiUrl}/customer/me`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Failed to update customer' }));
-      throw new Error((error as { detail?: string }).detail || 'Failed to update customer');
+    const response = await this.customerApi.put<Customer>('/customer/me', data);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to update customer');
     }
-    
-    return await this.decryptResponse<Customer>(response);
+    return response.data;
   }
 
   async getApiKeys(customerId: string): Promise<{ apiKeys: ApiKey[] }> {
-    return await this.get<{ apiKeys: ApiKey[] }>(`/admin/customers/${customerId}/api-keys`);
+    const response = await this.api.get<{ apiKeys: ApiKey[] }>(`/admin/customers/${customerId}/api-keys`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get API keys');
+    }
+    return response.data;
   }
 
   async createApiKey(customerId: string, name: string): Promise<ApiKeyResponse> {
-    return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys`, { name });
+    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys`, { name });
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to create API key');
+    }
+    return response.data;
   }
 
   async revokeApiKey(customerId: string, keyId: string): Promise<{ success: boolean }> {
-    return await this.delete<{ success: boolean }>(`/admin/customers/${customerId}/api-keys/${keyId}`);
+    const response = await this.api.delete<{ success: boolean }>(`/admin/customers/${customerId}/api-keys/${keyId}`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to revoke API key');
+    }
+    return response.data;
   }
 
   async rotateApiKey(customerId: string, keyId: string): Promise<ApiKeyResponse> {
-    return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/rotate`, {});
+    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/rotate`, {});
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to rotate API key');
+    }
+    return response.data;
   }
 
   async revealApiKey(customerId: string, keyId: string): Promise<ApiKeyResponse> {
-    return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/reveal`, {});
+    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/reveal`, {});
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to reveal API key');
+    }
+    return response.data;
   }
 
   async getAuditLogs(
@@ -302,19 +236,39 @@ export class ApiClient {
     if (params.eventType) queryParams.set('eventType', params.eventType);
     
     const query = queryParams.toString();
-    return await this.get<AuditLogsResponse>(`/admin/audit-logs${query ? `?${query}` : ''}`);
+    const response = await this.api.get<AuditLogsResponse>(`/admin/audit-logs${query ? `?${query}` : ''}`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get audit logs');
+    }
+    return response.data;
   }
 
   async getAnalytics(): Promise<Analytics> {
-    return await this.get<Analytics>('/admin/analytics');
+    const response = await this.api.get<Analytics>('/admin/analytics');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get analytics');
+    }
+    return response.data;
   }
 
   async getRealtimeAnalytics(): Promise<RealtimeAnalytics> {
-    return await this.get<RealtimeAnalytics>('/admin/analytics/realtime');
+    const response = await this.api.get<RealtimeAnalytics>('/admin/analytics/realtime');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get realtime analytics');
+    }
+    return response.data;
   }
 
   async getErrorAnalytics(): Promise<ErrorAnalytics> {
-    return await this.get<ErrorAnalytics>('/admin/analytics/errors');
+    const response = await this.api.get<ErrorAnalytics>('/admin/analytics/errors');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get error analytics');
+    }
+    return response.data;
   }
 }
 

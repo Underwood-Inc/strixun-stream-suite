@@ -105,7 +105,7 @@ curl https://s.idling.app/health
 curl https://chat.idling.app/health
 
 # Mods API
-curl https://mods.idling.app/health
+curl https://mods-api.idling.app/health
 
 # Mods Hub (Frontend)
 curl https://mods.idling.app

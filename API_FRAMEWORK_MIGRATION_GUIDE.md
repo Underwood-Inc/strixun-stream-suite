@@ -175,7 +175,7 @@ export async function listMods(params: any) {
 import { createAPIClient } from '@strixun/api-framework/client';
 
 const api = createAPIClient({
-    baseURL: import.meta.env.VITE_MODS_API_URL || 'https://mods.idling.app',
+    baseURL: import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app',
     defaultHeaders: {
         'Content-Type': 'application/json',
     },

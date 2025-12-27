@@ -93,7 +93,7 @@ Test the API:
 
 ```bash
 # Health check
-curl https://mods.idling.app/health
+curl https://mods-api.idling.app/health
 
 # Should return:
 # {"status":"ok","message":"Mods API is running",...}

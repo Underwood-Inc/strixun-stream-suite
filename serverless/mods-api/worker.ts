@@ -17,6 +17,44 @@ import { createError } from './utils/errors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 
 /**
+ * Route configuration interface
+ */
+interface RouteConfig {
+    pattern: string;
+    zone_name: string;
+}
+
+/**
+ * Parse ROUTES environment variable from JSON string
+ * Supports both JSON and TOML-like syntax
+ */
+function parseRoutes(env: Env): RouteConfig[] {
+    if (!env.ROUTES) {
+        return [];
+    }
+    
+    try {
+        let routesJson = env.ROUTES.trim();
+        
+        // If it contains TOML syntax (pattern = "value"), convert to JSON
+        if (routesJson.includes('=') && !routesJson.includes('":')) {
+            // Convert TOML object syntax to JSON
+            routesJson = routesJson
+                .replace(/\{\s*(\w+)\s*=\s*"([^"]+)"/g, '{"$1": "$2"')
+                .replace(/,\s*(\w+)\s*=\s*"([^"]+)"/g, ', "$1": "$2"')
+                .replace(/\{\s*(\w+)\s*=\s*(\w+)/g, '{"$1": "$2"')
+                .replace(/,\s*(\w+)\s*=\s*(\w+)/g, ', "$1": "$2"');
+        }
+        
+        const parsed = JSON.parse(routesJson);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('Failed to parse ROUTES environment variable:', error);
+        return [];
+    }
+}
+
+/**
  * Get CORS headers (temporary - will be replaced by framework)
  */
 function getCorsHeaders(env: Env, request: Request): Record<string, string> {
@@ -71,11 +109,15 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
  * Health check endpoint
  */
 async function handleHealth(env: Env, request: Request): Promise<Response> {
+    const routes = parseRoutes(env);
+    
     return new Response(JSON.stringify({ 
         status: 'ok', 
         message: 'Mods API is running',
         service: 'strixun-mods-api',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: env.ENVIRONMENT || 'development',
+        routes: routes.length > 0 ? routes : undefined
     }), {
         headers: { 
             'Content-Type': 'application/json',
@@ -194,6 +236,7 @@ interface Env {
     ALLOWED_ORIGINS?: string; // OPTIONAL: Comma-separated CORS origins (recommended for production)
     ENVIRONMENT?: string;
     MODS_PUBLIC_URL?: string; // OPTIONAL: Public URL for R2 bucket (if using custom domain)
+    ROUTES?: string; // OPTIONAL: JSON string array of route configurations (matches wrangler.toml routes)
     
     [key: string]: any;
 }

@@ -162,7 +162,7 @@ curl -H "Origin: https://mods.idling.app" \
      -H "Access-Control-Request-Method: GET" \
      -H "Access-Control-Request-Headers: Authorization" \
      -X OPTIONS \
-     https://mods.idling.app/mods
+     https://mods-api.idling.app/mods
 
 # Should return:
 # Access-Control-Allow-Origin: https://mods.idling.app

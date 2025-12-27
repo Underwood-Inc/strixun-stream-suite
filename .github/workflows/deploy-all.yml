@@ -14,7 +14,7 @@
 #   - ALLOWED_ORIGINS: Optional - Comma-separated list of allowed CORS origins
 #   - SERVICE_API_KEY: Optional - Service API key
 #   - MODS_PUBLIC_URL: Optional - Mods public URL
-#   - VITE_MODS_API_URL: Optional - Mods API URL for frontend (defaults to https://mods.idling.app)
+#   - VITE_MODS_API_URL: Optional - Mods API URL for frontend (defaults to https://mods-api.idling.app)
 #   - VITE_AUTH_API_URL: Optional - Auth API URL for frontend (defaults to https://auth.idling.app)
 
 name: Deploy All Services

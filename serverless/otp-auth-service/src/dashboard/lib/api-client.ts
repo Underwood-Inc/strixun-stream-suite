@@ -1,8 +1,10 @@
 /**
  * API Client - TypeScript
  * Composable, type-safe API client for OTP Auth Service
+ * Uses the shared API framework for HTTPS enforcement, retry, encryption, etc.
  */
 
+import { createAPIClient } from '@strixun/api-framework/client';
 import type {
   User,
   Customer,
@@ -17,17 +19,44 @@ import type {
 // API base URL - uses current origin (works with Vite proxy in dev, or same origin in production)
 const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
+// Create API client instance with auth token getter
+const createClient = () => {
+  return createAPIClient({
+    baseURL: API_BASE_URL,
+    defaultHeaders: {
+      'Content-Type': 'application/json',
+    },
+    auth: {
+      tokenGetter: () => {
+        if (typeof window !== 'undefined') {
+          return localStorage.getItem('auth_token');
+        }
+        return null;
+      },
+      onTokenExpired: () => {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+        }
+      },
+    },
+    timeout: 30000,
+    retry: {
+      maxAttempts: 3,
+      backoff: 'exponential',
+      retryableErrors: [408, 429, 500, 502, 503, 504],
+    },
+  });
+};
+
 export class ApiClient {
-  private token: string | null = null;
+  private api = createClient();
 
   constructor() {
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
-    }
+    // Client is created with token getter, so it will always read from localStorage
   }
 
   setToken(token: string | null): void {
-    this.token = token;
     if (typeof window !== 'undefined') {
       if (token) {
         localStorage.setItem('auth_token', token);
@@ -35,165 +64,48 @@ export class ApiClient {
         localStorage.removeItem('auth_token');
       }
     }
+    // Recreate client to pick up new token
+    this.api = createClient();
   }
 
   getToken(): string | null {
-    return this.token;
-  }
-
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_token');
     }
-    
-    return headers;
-  }
-
-  private async request(
-    endpoint: string,
-    options: RequestInit & { body?: BodyInit | null | unknown } = {}
-  ): Promise<Response> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const config: RequestInit = {
-      method: options.method,
-      headers: {
-        ...this.getHeaders(),
-        ...(options.headers || {}),
-      },
-    };
-
-    // Handle body - convert unknown to BodyInit
-    if (options.body !== undefined && options.body !== null) {
-      const body = options.body;
-      if (typeof body === 'string' || 
-          body instanceof FormData || 
-          body instanceof Blob || 
-          body instanceof ArrayBuffer ||
-          ArrayBuffer.isView(body)) {
-        config.body = body;
-      } else if (typeof body === 'object') {
-        config.body = JSON.stringify(body);
-      } else {
-        config.body = String(body);
-      }
-    }
-
-    try {
-      const response = await fetch(url, config);
-      
-      // Handle 401 - token expired
-      if (response.status === 401) {
-        this.setToken(null);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:logout'));
-        }
-        throw new Error('Authentication expired. Please login again.');
-      }
-
-      return response;
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
-    }
-  }
-
-  private async decryptResponse<T>(response: Response): Promise<T> {
-    const isEncrypted = response.headers.get('X-Encrypted') === 'true';
-    const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
-    const data = await response.json();
-    
-    if (!isEncrypted) {
-      return data as T;
-    }
-    
-    // Decrypt based on encryption strategy
-    const { decryptWithJWT, decryptWithServiceKey } = await import('@strixun/api-framework');
-    
-    if (encryptionStrategy === 'jwt' && this.token) {
-      // JWT-encrypted response - decrypt with JWT token
-      return await decryptWithJWT(data as any, this.token) as T;
-    } else if (encryptionStrategy === 'service-key') {
-      // Service-key-encrypted response - decrypt with service key
-      const serviceKey = localStorage.getItem('service_encryption_key');
-      if (serviceKey) {
-        return await decryptWithServiceKey(data as any, serviceKey) as T;
-      }
-      console.warn('Service key not available for decryption');
-      return data as T;
-    } else if (this.token) {
-      // Fallback: Try JWT decryption if token is available
-      try {
-        return await decryptWithJWT(data as any, this.token) as T;
-      } catch {
-        return data as T;
-      }
-    }
-    
-    return data as T;
-  }
-
-  private async get<T>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint, { method: 'GET' });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
-  }
-
-  private async post<T>(endpoint: string, body?: unknown): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'POST',
-      body: body as BodyInit | null | undefined,
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
-  }
-
-  private async put<T>(endpoint: string, body?: unknown): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'PUT',
-      body: body as BodyInit | null | undefined,
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
-  }
-
-  private async delete<T>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint, { method: 'DELETE' });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error((error as { detail?: string; error?: string }).detail || (error as { error?: string }).error || 'Request failed');
-    }
-    return await this.decryptResponse<T>(response);
+    return null;
   }
 
   // Authentication endpoints
   async requestOTP(email: string): Promise<{ success: boolean; message: string }> {
-    return await this.post('/auth/request-otp', { email });
+    const response = await this.api.post<{ success: boolean; message: string }>('/auth/request-otp', { email });
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to request OTP');
+    }
+    return response.data;
   }
 
   async verifyOTP(email: string, otp: string): Promise<{ access_token?: string; token?: string; [key: string]: unknown }> {
-    return await this.post('/auth/verify-otp', { email, otp });
+    const response = await this.api.post<{ access_token?: string; token?: string; [key: string]: unknown }>('/auth/verify-otp', { email, otp });
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to verify OTP');
+    }
+    return response.data;
   }
 
   async getMe(): Promise<User> {
-    return await this.get<User>('/auth/me');
+    const response = await this.api.get<User>('/auth/me');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get user');
+    }
+    return response.data;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.post('/auth/logout', {});
+      await this.api.post('/auth/logout', {});
     } catch (error) {
       console.warn('Logout API call failed:', error);
     }
@@ -202,27 +114,57 @@ export class ApiClient {
 
   // Admin endpoints
   async getCustomer(): Promise<Customer> {
-    return await this.get<Customer>('/admin/customers/me');
+    const response = await this.api.get<Customer>('/admin/customers/me');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get customer');
+    }
+    return response.data;
   }
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
-    return await this.put<Customer>('/admin/customers/me', data);
+    const response = await this.api.put<Customer>('/admin/customers/me', data);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to update customer');
+    }
+    return response.data;
   }
 
   async getApiKeys(customerId: string): Promise<{ apiKeys: ApiKey[] }> {
-    return await this.get<{ apiKeys: ApiKey[] }>(`/admin/customers/${customerId}/api-keys`);
+    const response = await this.api.get<{ apiKeys: ApiKey[] }>(`/admin/customers/${customerId}/api-keys`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get API keys');
+    }
+    return response.data;
   }
 
   async createApiKey(customerId: string, name: string): Promise<ApiKeyResponse> {
-    return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys`, { name });
+    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys`, { name });
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to create API key');
+    }
+    return response.data;
   }
 
   async revokeApiKey(customerId: string, keyId: string): Promise<{ success: boolean }> {
-    return await this.delete<{ success: boolean }>(`/admin/customers/${customerId}/api-keys/${keyId}`);
+    const response = await this.api.delete<{ success: boolean }>(`/admin/customers/${customerId}/api-keys/${keyId}`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to revoke API key');
+    }
+    return response.data;
   }
 
   async rotateApiKey(customerId: string, keyId: string): Promise<ApiKeyResponse> {
-    return await this.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/rotate`, {});
+    const response = await this.api.post<ApiKeyResponse>(`/admin/customers/${customerId}/api-keys/${keyId}/rotate`, {});
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to rotate API key');
+    }
+    return response.data;
   }
 
   async getAuditLogs(
@@ -235,19 +177,39 @@ export class ApiClient {
     if (params.eventType) queryParams.set('eventType', params.eventType);
     
     const query = queryParams.toString();
-    return await this.get<AuditLogsResponse>(`/admin/audit-logs${query ? `?${query}` : ''}`);
+    const response = await this.api.get<AuditLogsResponse>(`/admin/audit-logs${query ? `?${query}` : ''}`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get audit logs');
+    }
+    return response.data;
   }
 
   async getAnalytics(): Promise<Analytics> {
-    return await this.get<Analytics>('/admin/analytics');
+    const response = await this.api.get<Analytics>('/admin/analytics');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get analytics');
+    }
+    return response.data;
   }
 
   async getRealtimeAnalytics(): Promise<RealtimeAnalytics> {
-    return await this.get<RealtimeAnalytics>('/admin/analytics/realtime');
+    const response = await this.api.get<RealtimeAnalytics>('/admin/analytics/realtime');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get realtime analytics');
+    }
+    return response.data;
   }
 
   async getErrorAnalytics(): Promise<ErrorAnalytics> {
-    return await this.get<ErrorAnalytics>('/admin/analytics/errors');
+    const response = await this.api.get<ErrorAnalytics>('/admin/analytics/errors');
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get error analytics');
+    }
+    return response.data;
   }
 
   async getEmailAnalytics(params?: { startDate?: string; endDate?: string }): Promise<any> {
@@ -256,7 +218,12 @@ export class ApiClient {
     if (params?.endDate) queryParams.set('endDate', params.endDate);
     
     const query = queryParams.toString();
-    return await this.get<any>(`/admin/analytics/email${query ? `?${query}` : ''}`);
+    const response = await this.api.get<any>(`/admin/analytics/email${query ? `?${query}` : ''}`);
+    if (response.status !== 200 || !response.data) {
+      const error = response.data as { detail?: string } | undefined;
+      throw new Error(error?.detail || 'Failed to get email analytics');
+    }
+    return response.data;
   }
 }
 

@@ -64,9 +64,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The Mods API has been deployed to Cloudflare Workers." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Service URL:** \`https://mods.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** \`https://mods-api.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Health check: https://mods.idling.app/health" >> $GITHUB_STEP_SUMMARY
+          echo "- Health check: https://mods-api.idling.app/health" >> $GITHUB_STEP_SUMMARY
           echo "- API endpoints:" >> $GITHUB_STEP_SUMMARY
           echo "  - GET /mods - List mods" >> $GITHUB_STEP_SUMMARY
           echo "  - GET /mods/:modId - Get mod detail" >> $GITHUB_STEP_SUMMARY

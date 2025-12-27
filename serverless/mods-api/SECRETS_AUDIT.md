@@ -102,7 +102,7 @@ wrangler secret put MODS_PUBLIC_URL
 wrangler secret list
 
 # Verify worker is running
-curl https://mods.idling.app/health
+curl https://mods-api.idling.app/health
 ```
 
 ## Security Notes

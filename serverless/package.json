@@ -23,6 +23,8 @@
     "deploy:customer-api:dry-run": "node validate-service.js customer-api",
     "deploy:game-api": "cd game-api && wrangler deploy",
     "deploy:game-api:dry-run": "node validate-service.js game-api",
+    "deploy:mods-api": "cd mods-api && wrangler deploy",
+    "deploy:mods-api:dry-run": "node validate-service.js mods-api",
     "deploy:chat-signaling": "cd chat-signaling && wrangler deploy",
     "deploy:chat-signaling:dry-run": "node validate-service.js chat-signaling"
   },

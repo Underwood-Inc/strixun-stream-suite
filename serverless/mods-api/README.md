@@ -88,7 +88,7 @@ pnpm deploy
 ### Upload Mod
 
 ```bash
-curl -X POST https://mods.idling.app/mods \
+curl -X POST https://mods-api.idling.app/mods \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "file=@mod.zip" \
   -F 'metadata={"title":"My Mod","description":"A cool mod","category":"script","version":"1.0.0","visibility":"public"}'
@@ -97,13 +97,13 @@ curl -X POST https://mods.idling.app/mods \
 ### List Mods
 
 ```bash
-curl https://mods.idling.app/mods?page=1&pageSize=20&category=script
+curl https://mods-api.idling.app/mods?page=1&pageSize=20&category=script
 ```
 
 ### Download Version
 
 ```bash
-curl https://mods.idling.app/mods/MOD_ID/versions/VERSION_ID/download
+curl https://mods-api.idling.app/mods/MOD_ID/versions/VERSION_ID/download
 ```
 
 ## Data Models
