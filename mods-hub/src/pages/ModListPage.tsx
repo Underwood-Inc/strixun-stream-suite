@@ -51,7 +51,7 @@ const Error = styled.div`
   text-align: center;
   padding: ${spacing.xxl};
   color: ${colors.danger};
-  background: ${colors.surface};
+  background: ${colors.bgSecondary};
   border: 1px solid ${colors.danger};
   border-radius: 8px;
   margin: ${spacing.lg} 0;
