@@ -422,6 +422,29 @@ export async function revokeUser(userId: string): Promise<{ success: boolean; us
 }
 
 /**
+ * Rating API functions
+ */
+
+/**
+ * Get ratings for a mod
+ */
+export async function getModRatings(modId: string): Promise<ModRatingsResponse> {
+    const response = await api.get<ModRatingsResponse>(`/mods/${modId}/ratings`);
+    return response.data;
+}
+
+/**
+ * Submit a rating for a mod
+ */
+export async function submitModRating(modId: string, rating: number, comment?: string): Promise<{ rating: ModRating }> {
+    const response = await api.post<{ rating: ModRating }>(`/mods/${modId}/ratings`, {
+        rating,
+        comment,
+    });
+    return response.data;
+}
+
+/**
  * Check if current user has upload permission
  * Calls the backend endpoint to get the user's permission status
  */
@@ -441,6 +464,8 @@ import type {
     ModVersion, 
     ModUploadRequest, 
     ModUpdateRequest, 
-    VersionUploadRequest 
+    VersionUploadRequest,
+    ModRating,
+    ModRatingsResponse
 } from '../types/mod';
 

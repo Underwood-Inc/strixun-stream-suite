@@ -123,3 +123,25 @@ export interface VersionUploadRequest {
     dependencies?: ModDependency[];
 }
 
+export interface ModRating {
+    ratingId: string;
+    modId: string;
+    userId: string;
+    userEmail: string;
+    rating: number; // 1-5
+    comment?: string;
+    createdAt: string;
+    updatedAt?: string;
+}
+
+export interface ModRatingsResponse {
+    ratings: ModRating[];
+    averageRating: number;
+    totalRatings: number;
+}
+
+export interface ModRatingRequest {
+    rating: number; // 1-5
+    comment?: string;
+}
+

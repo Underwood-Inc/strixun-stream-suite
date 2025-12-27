@@ -4,7 +4,7 @@
  */
 
 import { useParams } from 'react-router-dom';
-import { useModDetail } from '../hooks/useMods';
+import { useModDetail, useModRatings, useSubmitModRating } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
 import { ModAnalytics } from '../components/mod/ModAnalytics';
 import { ModRatings } from '../components/mod/ModRatings';
@@ -89,6 +89,10 @@ export function ModDetailPage() {
     const { data, isLoading, error } = useModDetail(slug || '');
     const { user } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
+    
+    // Fetch ratings for this mod
+    const { data: ratingsData } = useModRatings(data?.mod.modId || '');
+    const submitRating = useSubmitModRating();
 
     if (isLoading) return <Loading>Loading mod...</Loading>;
     if (error) return <Error>Failed to load mod: {(error as Error).message}</Error>;
@@ -96,6 +100,14 @@ export function ModDetailPage() {
 
     const { mod, versions } = data;
     const latestVersion = versions[0]; // Versions are sorted newest first
+    
+    const handleRatingSubmit = async (rating: number, comment: string) => {
+        await submitRating.mutateAsync({
+            modId: mod.modId,
+            rating,
+            comment: comment || undefined,
+        });
+    };
 
     return (
         <>
@@ -139,12 +151,9 @@ export function ModDetailPage() {
             
             <ModRatings 
                 modId={mod.modId}
-                ratings={[]} // TODO: Fetch from API
-                averageRating={undefined} // TODO: Calculate from ratings
-                onRatingSubmit={async (rating, comment) => {
-                    // TODO: Implement API call to submit rating
-                    console.log('Submit rating:', { rating, comment, modId: mod.modId });
-                }}
+                ratings={ratingsData?.ratings || []}
+                averageRating={ratingsData?.averageRating}
+                onRatingSubmit={handleRatingSubmit}
             />
             </PageContainer>
         </>

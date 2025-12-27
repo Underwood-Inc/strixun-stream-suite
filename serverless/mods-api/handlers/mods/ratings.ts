@@ -1,0 +1,285 @@
+/**
+ * Handle mod ratings requests
+ * GET /mods/:modId/ratings - Get ratings for a mod
+ * POST /mods/:modId/ratings - Submit a rating for a mod
+ */
+
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from '../../utils/errors.js';
+import { getCustomerKey } from '../../utils/customer.js';
+import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../types/rating.js';
+
+/**
+ * Generate a unique rating ID
+ */
+function generateRatingId(): string {
+    return `rating_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Handle get mod ratings
+ * GET /mods/:modId/ratings
+ */
+export async function handleGetModRatings(
+    request: Request,
+    env: Env,
+    modId: string,
+    auth: { userId: string; customerId: string | null } | null
+): Promise<Response> {
+    try {
+        // Get mod to verify it exists and check visibility
+        const modKey = getCustomerKey(null, `mod_${modId}`); // Check global scope first
+        let mod = await env.MODS_KV.get(modKey, { type: 'json' });
+        
+        // If not in global scope, check customer scope
+        if (!mod && auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' });
+        }
+        
+        if (!mod) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Check visibility - only show ratings for public mods or if user owns the mod
+        if (mod.visibility !== 'public' && mod.status !== 'published') {
+            // Only allow viewing ratings if user is the author or mod is public
+            if (!auth || mod.authorId !== auth.userId) {
+                const rfcError = createError(request, 403, 'Forbidden', 'Ratings are only available for published public mods');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+        }
+        
+        // Get ratings list key
+        const ratingsListKey = getCustomerKey(null, `mod_${modId}_ratings`);
+        const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
+        const ratingIds = ratingsListJson || [];
+        
+        // Fetch all ratings
+        const ratings: ModRating[] = [];
+        for (const ratingId of ratingIds) {
+            const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
+            const rating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
+            if (rating) {
+                ratings.push(rating);
+            }
+        }
+        
+        // Sort by creation date (newest first)
+        ratings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        // Calculate average rating
+        const averageRating = ratings.length > 0
+            ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+            : 0;
+        
+        const response: ModRatingsResponse = {
+            ratings,
+            averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+            totalRatings: ratings.length,
+        };
+        
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        
+        return new Response(JSON.stringify(response), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error) {
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            'Failed to fetch mod ratings'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
+/**
+ * Handle submit mod rating
+ * POST /mods/:modId/ratings
+ */
+export async function handleSubmitModRating(
+    request: Request,
+    env: Env,
+    modId: string,
+    auth: { userId: string; email?: string; customerId: string | null }
+): Promise<Response> {
+    try {
+        // Parse request body
+        const body = await request.json() as ModRatingRequest;
+        
+        // Validate rating
+        if (!body.rating || body.rating < 1 || body.rating > 5) {
+            const rfcError = createError(request, 400, 'Invalid Rating', 'Rating must be between 1 and 5');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Get mod to verify it exists
+        const modKey = getCustomerKey(null, `mod_${modId}`);
+        let mod = await env.MODS_KV.get(modKey, { type: 'json' });
+        
+        if (!mod && auth.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' });
+        }
+        
+        if (!mod) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Check if mod is published (only published mods can be rated)
+        if (mod.status !== 'published') {
+            const rfcError = createError(request, 403, 'Forbidden', 'Only published mods can be rated');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Check if user has already rated this mod
+        const ratingsListKey = getCustomerKey(null, `mod_${modId}_ratings`);
+        const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
+        const ratingIds = ratingsListJson || [];
+        
+        // Check existing ratings for this user
+        for (const ratingId of ratingIds) {
+            const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
+            const existingRating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
+            if (existingRating && existingRating.userId === auth.userId) {
+                // User has already rated - update existing rating
+                const updatedRating: ModRating = {
+                    ...existingRating,
+                    rating: body.rating,
+                    comment: body.comment || existingRating.comment,
+                    updatedAt: new Date().toISOString(),
+                };
+                
+                await env.MODS_KV.put(ratingKey, JSON.stringify(updatedRating));
+                
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                
+                return new Response(JSON.stringify({ rating: updatedRating }), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+        }
+        
+        // Create new rating
+        const ratingId = generateRatingId();
+        const now = new Date().toISOString();
+        
+        const rating: ModRating = {
+            ratingId,
+            modId,
+            userId: auth.userId,
+            userEmail: auth.email || '',
+            rating: body.rating,
+            comment: body.comment,
+            createdAt: now,
+        };
+        
+        // Store rating
+        const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
+        await env.MODS_KV.put(ratingKey, JSON.stringify(rating));
+        
+        // Add to ratings list
+        const updatedRatingsList = [...ratingIds, ratingId];
+        await env.MODS_KV.put(ratingsListKey, JSON.stringify(updatedRatingsList));
+        
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        
+        return new Response(JSON.stringify({ rating }), {
+            status: 201,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error) {
+        const rfcError = createError(
+            request,
+            500,
+            'Internal Server Error',
+            'Failed to submit rating'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+

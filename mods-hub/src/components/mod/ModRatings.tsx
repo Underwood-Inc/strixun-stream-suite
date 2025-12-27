@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth';
+import type { ModRating } from '../../types/mod';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 
@@ -204,23 +205,14 @@ const AuthPrompt = styled.div`
   font-size: 0.875rem;
 `;
 
-interface Rating {
-    ratingId: string;
-    userId: string;
-    userEmail: string;
-    rating: number; // 1-5
-    comment?: string;
-    createdAt: string;
-}
-
 interface ModRatingsProps {
-    modId: string;
-    ratings?: Rating[];
-    averageRating?: number;
-    onRatingSubmit?: (rating: number, comment: string) => Promise<void>;
+    modId: string; // Required to associate ratings with the mod (used for API calls)
+    ratings?: ModRating[]; // Ratings for this mod (fetched via GET /mods/:modId/ratings)
+    averageRating?: number; // Pre-calculated average (optional, will calculate from ratings if not provided)
+    onRatingSubmit?: (rating: number, comment: string) => Promise<void>; // Callback receives rating/comment, parent provides modId
 }
 
-function renderStars(rating: number, size: 'small' | 'large' = 'small') {
+function renderStars(rating: number) {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
@@ -238,7 +230,7 @@ function renderStars(rating: number, size: 'small' | 'large' = 'small') {
     return <RatingStars>{stars}</RatingStars>;
 }
 
-function calculateRatingBreakdown(ratings: Rating[]): number[] {
+function calculateRatingBreakdown(ratings: ModRating[]): number[] {
     const breakdown = [0, 0, 0, 0, 0]; // 5, 4, 3, 2, 1
     ratings.forEach(r => {
         if (r.rating >= 1 && r.rating <= 5) {
@@ -248,7 +240,7 @@ function calculateRatingBreakdown(ratings: Rating[]): number[] {
     return breakdown;
 }
 
-export function ModRatings({ modId, ratings = [], averageRating, onRatingSubmit }: ModRatingsProps) {
+export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatingSubmit }: ModRatingsProps) {
     const { isAuthenticated, user } = useAuthStore();
     const [selectedRating, setSelectedRating] = useState(0);
     const [comment, setComment] = useState('');
@@ -292,7 +284,7 @@ export function ModRatings({ modId, ratings = [], averageRating, onRatingSubmit 
                     <RatingSummary>
                         <AverageRating>
                             <RatingValue>{avgRating.toFixed(1)}</RatingValue>
-                            {renderStars(avgRating, 'large')}
+                            {renderStars(avgRating)}
                             <RatingCount>{totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'}</RatingCount>
                         </AverageRating>
                         <RatingBreakdown>

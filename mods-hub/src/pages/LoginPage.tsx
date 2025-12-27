@@ -16,7 +16,7 @@ export function LoginPage() {
     const navigate = useNavigate();
     const { setUser } = useAuthStore();
 
-    const handleLoginSuccess = (data: LoginSuccessData) => {
+    const handleLoginSuccess = async (data: LoginSuccessData) => {
         // Calculate expiration
         let expiresAt: string;
         if (data.expiresAt) {

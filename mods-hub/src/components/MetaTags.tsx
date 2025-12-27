@@ -60,26 +60,6 @@ function getCategoryDisplayName(category: string): string {
     return categoryMap[category] || category;
 }
 
-/**
- * Ensure image URL is absolute
- * Converts relative URLs to absolute URLs using the base URL
- */
-function getAbsoluteImageUrl(imageUrl: string | undefined, baseUrl: string): string {
-    if (!imageUrl) {
-        return `${baseUrl}/og-default.png`;
-    }
-    
-    // If already absolute (starts with http:// or https://), return as-is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-        return imageUrl;
-    }
-    
-    // If relative, make it absolute
-    // Remove leading slash if present to avoid double slashes
-    const cleanPath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
-    return `${baseUrl}/${cleanPath}`;
-}
-
 export function ModMetaTags({ mod, baseUrl }: MetaTagsProps) {
     const siteBaseUrl = getBaseUrl(baseUrl);
     const modUrl = `${siteBaseUrl}/mods/${mod.slug}`;

@@ -145,6 +145,38 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /mods/:modId/ratings - Get ratings for a mod
+        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'ratings' && request.method === 'GET') {
+            const modId = pathSegments[1];
+            const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
+            const response = await handleGetModRatings(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth || undefined);
+        }
+
+        // Route: POST /mods/:modId/ratings - Submit a rating for a mod
+        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'ratings' && request.method === 'POST') {
+            if (!auth) {
+                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to submit ratings');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return {
+                    response: new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    }),
+                    customerId: null
+                };
+            }
+            const modId = pathSegments[1];
+            const { handleSubmitModRating } = await import('../handlers/mods/ratings.js');
+            const response = await handleSubmitModRating(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
         // Route: POST /mods/:modId/versions - Upload new version
         if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && request.method === 'POST') {
             if (!auth) {

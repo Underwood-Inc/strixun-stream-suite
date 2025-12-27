@@ -255,3 +255,42 @@ export function useAddReviewComment() {
     });
 }
 
+/**
+ * Get mod ratings query
+ */
+export function useModRatings(modId: string) {
+    return useQuery({
+        queryKey: [...modKeys.details(), modId, 'ratings'],
+        queryFn: () => api.getModRatings(modId),
+        enabled: !!modId,
+    });
+}
+
+/**
+ * Submit mod rating mutation
+ */
+export function useSubmitModRating() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, rating, comment }: { modId: string; rating: number; comment?: string }) =>
+            api.submitModRating(modId, rating, comment),
+        onSuccess: (_data, variables) => {
+            // Invalidate ratings query to refresh ratings
+            queryClient.invalidateQueries({ queryKey: [...modKeys.details(), variables.modId, 'ratings'] });
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Rating submitted successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to submit rating',
+                type: 'error',
+            });
+        },
+    });
+}
+
