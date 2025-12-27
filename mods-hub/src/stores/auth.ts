@@ -101,6 +101,10 @@ async function restoreSessionFromBackend(): Promise<User | null> {
 
 /**
  * Fetch user info from /auth/me to get admin status
+ * CRITICAL: Disable caching for this endpoint - we always need fresh user data
+ * Also handles undefined cached values gracefully
+ * 
+ * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
  */
 async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean } | null> {
     try {
@@ -111,19 +115,51 @@ async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean } |
             auth: {
                 tokenGetter: () => token,
             },
+            cache: {
+                enabled: false, // CRITICAL: Never cache /auth/me - always fetch fresh to avoid undefined cache hits
+            },
         });
         
-        const response = await authClient.get<{ isSuperAdmin?: boolean; [key: string]: any }>('/auth/me');
+        // CRITICAL: Pass token in metadata so the response handler can decrypt encrypted responses
+        const response = await authClient.get<{ isSuperAdmin?: boolean; [key: string]: any }>('/auth/me', undefined, {
+            metadata: {
+                cache: false, // Explicitly disable caching for this request
+                token: token, // Pass token in metadata for decryption
+            },
+        });
+        
+        console.log('[Auth] /auth/me response:', { 
+            status: response.status, 
+            hasData: !!response.data,
+            dataType: typeof response.data,
+            dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : null,
+        });
         
         if (response.status === 200 && response.data) {
+            // Validate that we got actual data, not undefined
+            if (response.data === undefined || response.data === null) {
+                console.error('[Auth] /auth/me returned undefined/null data - this indicates a decryption or caching issue');
+                return null;
+            }
+            
+            // Check if response is still encrypted (decryption failed)
+            if (typeof response.data === 'object' && 'encrypted' in response.data && (response.data as any).encrypted === true) {
+                console.error('[Auth] /auth/me response is still encrypted - decryption failed. Token may be invalid or missing from metadata.');
+                return null;
+            }
+            
             return {
                 isSuperAdmin: response.data.isSuperAdmin || false,
             };
         }
         
+        console.warn('[Auth] /auth/me returned non-200 status:', response.status);
         return null;
     } catch (error) {
-        console.warn('[Auth] Failed to fetch user info:', error instanceof Error ? error.message : String(error));
+        console.error('[Auth] Failed to fetch user info:', error instanceof Error ? error.message : String(error));
+        if (error instanceof Error && error.stack) {
+            console.debug('[Auth] fetchUserInfo error stack:', error.stack);
+        }
         return null;
     }
 }
@@ -157,6 +193,8 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
             return;
         }
         
+        // CRITICAL: Don't clear user if fetchUserInfo fails - only update if it succeeds
+        // This prevents undefined cache values from wiping the session
         const userInfo = await fetchUserInfo(currentUser.token);
         if (userInfo) {
             const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin };
@@ -164,6 +202,9 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                 user: updatedUser, 
                 isSuperAdmin: userInfo.isSuperAdmin,
             });
+        } else {
+            // If fetchUserInfo fails, log but don't clear the user - they're still authenticated
+            console.warn('[Auth] Failed to fetch user info, but keeping existing auth state');
         }
     },
     restoreSession: async () => {
@@ -172,8 +213,20 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
         // If we already have a user, check if token is still valid
         if (currentUser) {
             const token = sessionStorage.getItem('auth_token');
-            // If token matches and not expired, we're good
+            // If token matches and not expired, we're good - just refresh admin status
             if (token === currentUser.token && currentUser.expiresAt && new Date(currentUser.expiresAt) > new Date()) {
+                // Token is valid, just refresh admin status in background
+                fetchUserInfo(currentUser.token).then(userInfo => {
+                    if (userInfo) {
+                        const updatedUser = { ...currentUser, isSuperAdmin: userInfo.isSuperAdmin };
+                        set({ 
+                            user: updatedUser, 
+                            isSuperAdmin: userInfo.isSuperAdmin,
+                        });
+                    }
+                }).catch(err => {
+                    console.debug('[Auth] Background admin status refresh failed (non-critical):', err);
+                });
                 return; // Already authenticated with valid token
             }
             // Token mismatch or expired - clear and restore
@@ -184,7 +237,7 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
         const restoredUser = await restoreSessionFromBackend();
         if (restoredUser) {
             set({ user: restoredUser, isAuthenticated: true, isSuperAdmin: false });
-            // Fetch admin status after restoring session
+            // Fetch admin status after restoring session (don't clear if it fails)
             const userInfo = await fetchUserInfo(restoredUser.token);
             if (userInfo) {
                 const updatedUser = { ...restoredUser, isSuperAdmin: userInfo.isSuperAdmin };
@@ -192,6 +245,9 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                     user: updatedUser, 
                     isSuperAdmin: userInfo.isSuperAdmin,
                 });
+            } else {
+                // If fetchUserInfo fails, keep the user but log the issue
+                console.warn('[Auth] Failed to fetch admin status after restore, but keeping user authenticated');
             }
         }
     },
@@ -231,9 +287,12 @@ export const useAuthStore = create<AuthState>()(
                         state.restoreSession();
                     }
                     
-                    // If we have a user, fetch admin status
+                    // If we have a user, fetch admin status (but don't clear user if it fails)
                     if (state.user && state.user.token) {
-                        state.fetchUserInfo();
+                        // Don't await - let it run in background, don't block hydration
+                        state.fetchUserInfo().catch(err => {
+                            console.debug('[Auth] Background fetchUserInfo failed (non-critical):', err);
+                        });
                     }
                 }
             },
