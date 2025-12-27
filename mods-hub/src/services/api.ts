@@ -17,6 +17,60 @@ function getAuthToken(): string | null {
 }
 
 /**
+ * Refresh auth token by restoring session from backend
+ */
+async function refreshAuthToken(): Promise<string | null> {
+    const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
+    
+    try {
+        const response = await fetch(`${AUTH_API_URL}/auth/restore-session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            console.warn('[API] Token refresh failed:', response.status);
+            return null;
+        }
+
+        const data = await response.json();
+        if (data.restored && data.access_token) {
+            // Update token in storage
+            if (typeof window !== 'undefined' && window.sessionStorage) {
+                sessionStorage.setItem('auth_token', data.access_token);
+            }
+            
+            // Update auth store if available
+            try {
+                const { useAuthStore } = await import('../stores/auth');
+                const store = useAuthStore.getState();
+                if (store.setUser) {
+                    store.setUser({
+                        userId: data.userId || data.sub,
+                        email: data.email,
+                        token: data.access_token,
+                        expiresAt: data.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    });
+                }
+            } catch (err) {
+                // Auth store might not be available, that's okay
+                console.debug('[API] Could not update auth store:', err);
+            }
+            
+            console.log('[API] ✅ Token refreshed successfully');
+            return data.access_token;
+        }
+
+        return null;
+    } catch (error) {
+        console.warn('[API] Token refresh error:', error instanceof Error ? error.message : String(error));
+        return null;
+    }
+}
+
+/**
  * Create API client with auth middleware
  */
 console.log('[API] Initializing API client with baseURL:', API_BASE_URL);
@@ -38,6 +92,17 @@ const api = createAPIClient({
     offline: {
         enabled: false, // Disable offline queue to prevent blocking
     },
+    auth: {
+        tokenGetter: getAuthToken,
+        onTokenExpired: async () => {
+            console.log('[API] Token expired, attempting to refresh...');
+            const newToken = await refreshAuthToken();
+            if (!newToken) {
+                console.warn('[API] Token refresh failed, user may need to log in again');
+                // Could redirect to login page here if needed
+            }
+        },
+    },
 });
 // Verify API client is properly initialized
 if (typeof (api as any).getConfig === 'function') {
@@ -46,23 +111,8 @@ if (typeof (api as any).getConfig === 'function') {
     console.log('[API] API client initialized (getConfig not available)');
 }
 
-// Add auth middleware
-import type { APIRequest, APIResponse, Middleware } from '@strixun/api-framework/client';
-
-type NextFunction = (request: APIRequest) => Promise<APIResponse>;
-
-const authMiddleware: Middleware = async (request: APIRequest, next: NextFunction): Promise<APIResponse> => {
-    const token = getAuthToken();
-    if (token) {
-        if (!request.headers) {
-            request.headers = {};
-        }
-        request.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return next(request);
-};
-
-api.use(authMiddleware);
+// Auth middleware is now handled by the API framework's built-in auth config
+// No need for manual middleware since we're using the auth config in createAPIClient
 
 /**
  * List mods
