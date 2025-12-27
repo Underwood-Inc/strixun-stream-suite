@@ -127,7 +127,7 @@
       apiUrl={getOtpAuthApiUrl()}
       onSuccess={handleLoginSuccess}
       onError={handleLoginError}
-      otpEncryptionKey={getOtpEncryptionKey()} // CRITICAL: Pass encryption key for encrypting OTP requests
+      otpEncryptionKey={getOtpEncryptionKey()}
       showAsModal={true}
       onClose={onClose}
       title="Sign In"
