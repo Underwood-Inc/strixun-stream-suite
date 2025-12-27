@@ -23,7 +23,7 @@ import { decryptWithServiceKey } from '@strixun/api-framework';
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     ENVIRONMENT?: string;
-    SERVICE_ENCRYPTION_KEY?: string; // Service encryption key for decrypting OTP requests
+    VITE_SERVICE_ENCRYPTION_KEY?: string; // Service encryption key for decrypting OTP requests (CRITICAL: Must match client key)
     [key: string]: any;
 }
 
@@ -138,11 +138,11 @@ async function decryptRequestBody(request: Request, env: Env): Promise<{ email: 
     
     // Check if body is encrypted (has encrypted field)
     if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
-        // Body is encrypted - decrypt using SERVICE_ENCRYPTION_KEY
+        // Body is encrypted - decrypt using VITE_SERVICE_ENCRYPTION_KEY
         // In Cloudflare Workers, secrets are accessed via env.SECRET_NAME
-        const serviceKey = env.SERVICE_ENCRYPTION_KEY as string | undefined;
+        const serviceKey = env.VITE_SERVICE_ENCRYPTION_KEY as string | undefined;
         if (!serviceKey || typeof serviceKey !== 'string') {
-            throw new Error('SERVICE_ENCRYPTION_KEY is required for decrypting OTP requests');
+            throw new Error('VITE_SERVICE_ENCRYPTION_KEY is required for decrypting OTP requests');
         }
         
         try {
@@ -160,9 +160,9 @@ async function decryptRequestBody(request: Request, env: Env): Promise<{ email: 
             
             // Provide more specific error message
             if (errorMessage.includes('service key does not match')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY mismatch: The encryption key on the server does not match the client key. Please verify SERVICE_ENCRYPTION_KEY is set correctly.');
+                throw new Error('VITE_SERVICE_ENCRYPTION_KEY mismatch: The encryption key on the server does not match the client key. Please verify VITE_SERVICE_ENCRYPTION_KEY is set correctly.');
             } else if (errorMessage.includes('Valid service key is required')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY not configured: Please set SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets.');
+                throw new Error('VITE_SERVICE_ENCRYPTION_KEY not configured: Please set VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets.');
             } else {
                 throw new Error(`Failed to decrypt OTP request: ${errorMessage}`);
             }

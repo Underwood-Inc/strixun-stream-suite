@@ -499,10 +499,11 @@ export function extractJWTToken(request: Request): string | null {
 /**
  * Get service key from environment
  * Service key should be stored as a Cloudflare Worker secret
+ * CRITICAL: Uses VITE_SERVICE_ENCRYPTION_KEY (not SERVICE_ENCRYPTION_KEY which was compromised)
  */
 export function getServiceKey(env: any): string | null {
-  // Service key should be set as: wrangler secret put SERVICE_ENCRYPTION_KEY
-  return env.SERVICE_ENCRYPTION_KEY || null;
+  // Service key should be set as: wrangler secret put VITE_SERVICE_ENCRYPTION_KEY
+  return env.VITE_SERVICE_ENCRYPTION_KEY || null;
 }
 
 /**
