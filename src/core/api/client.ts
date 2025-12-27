@@ -328,7 +328,14 @@ export class APIClient {
     // Build URL from base URL and path
     const base = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const url = new URL(base + cleanPath, window.location.origin);
+    const fullPath = base + cleanPath;
+    // If baseURL is absolute (starts with http:// or https://), use it directly
+    // Otherwise, use window.location.origin as base (browser only, for relative URLs)
+    const url = base.startsWith('http://') || base.startsWith('https://')
+      ? new URL(fullPath)
+      : typeof window !== 'undefined'
+        ? new URL(fullPath, window.location.origin)
+        : new URL(fullPath, 'https://localhost'); // Fallback for Workers (shouldn't happen if baseURL is set)
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
