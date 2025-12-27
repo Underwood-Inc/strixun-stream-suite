@@ -49,11 +49,21 @@ async function refreshAuthToken(): Promise<string | null> {
                 const { useAuthStore } = await import('../stores/auth');
                 const store = useAuthStore.getState();
                 if (store.setUser) {
+                    const userId = data.userId || data.sub;
+                    const email = data.email;
+                    const token = data.access_token;
+                    const expiresAt = data.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+                    if (!userId || !email || !token) {
+                        console.error('[API] Invalid token refresh response - missing required fields');
+                        return null;
+                    }
+
                     store.setUser({
-                        userId: data.userId || data.sub,
-                        email: data.email,
-                        token: data.access_token,
-                        expiresAt: data.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                        userId,
+                        email,
+                        token,
+                        expiresAt,
                     });
                 }
             } catch (err) {

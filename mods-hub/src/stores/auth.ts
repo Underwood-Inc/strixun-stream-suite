@@ -52,11 +52,21 @@ async function restoreSessionFromBackend(): Promise<User | null> {
         const data = response.data;
         if (data.restored && data.access_token) {
             // Session restored! Return user data
+            const userId = data.userId || data.sub;
+            const email = data.email;
+            const token = data.access_token || data.token;
+            const expiresAt = data.expiresAt;
+
+            if (!userId || !email || !token || !expiresAt) {
+                console.warn('[Auth] Session restoration incomplete - missing required fields');
+                return null;
+            }
+
             const user: User = {
-                userId: data.userId || data.sub,
-                email: data.email,
-                token: data.access_token || data.token,
-                expiresAt: data.expiresAt,
+                userId,
+                email,
+                token,
+                expiresAt,
             };
             
             // Store token in sessionStorage

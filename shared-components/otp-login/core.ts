@@ -10,7 +10,6 @@
 
 // Import encryption utilities
 // Note: These will be dynamically imported to avoid bundling issues
-type EncryptFunction = (data: unknown, serviceKey: string) => Promise<EncryptedData>;
 type EncryptedData = {
   version: number;
   encrypted: boolean;

@@ -10,8 +10,14 @@
     "build:svelte": "node scripts/bundle-svelte.js",
     "build:ui": "vite build"
   },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
     "esbuild": "^0.24.0",
     "svelte": "^5.46.0",
     "typescript": "^5.9.3",

@@ -29,7 +29,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-    const { restoreSession, user } = useAuthStore();
+    const { restoreSession } = useAuthStore();
 
     // Restore session from backend on mount
     // This enables cross-application session sharing for the same device

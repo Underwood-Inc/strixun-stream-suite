@@ -29,11 +29,17 @@ export function LoginPage() {
             expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
         }
 
-        // Store user data
+        // Store user data - ensure all required fields are present
+        if (!data.userId || !data.email || !data.token) {
+            console.error('[Login] Missing required user data:', data);
+            handleLoginError('Invalid login response: missing required fields');
+            return;
+        }
+
         const userData = {
             userId: data.userId,
             email: data.email,
-            token: data.token,
+            token: data.token || data.access_token || '',
             expiresAt: expiresAt,
         };
 
@@ -58,7 +64,7 @@ export function LoginPage() {
             apiUrl={AUTH_API_URL}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            otpEncryptionKey={getOtpEncryptionKey()} // CRITICAL: Pass encryption key for encrypting OTP requests
+            otpEncryptionKey={getOtpEncryptionKey()}
             title="Login"
             subtitle="Enter your email to receive a verification code"
         />
