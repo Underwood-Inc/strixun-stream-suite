@@ -39,6 +39,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: pnpm run deploy
       
       - name: Set Worker Secrets
@@ -61,6 +62,9 @@ jobs:
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY
+          fi
+          if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
+            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put VITE_SERVICE_ENCRYPTION_KEY
           fi
         continue-on-error: true
       
