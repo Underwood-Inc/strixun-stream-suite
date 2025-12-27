@@ -41,6 +41,34 @@
   onMount(async () => {
     console.log('[OtpLogin] onMount - showAsModal:', showAsModal);
     
+    // CRITICAL: Verify encryption key is provided
+    if (!otpEncryptionKey) {
+      console.error('[OtpLogin] ❌ CRITICAL ERROR: otpEncryptionKey is missing!');
+      console.error('[OtpLogin] This will cause encryption to fail. Key status:', {
+        hasKey: !!otpEncryptionKey,
+        keyType: typeof otpEncryptionKey,
+        keyLength: otpEncryptionKey?.length || 0,
+        apiUrl: apiUrl
+      });
+      if (onError) {
+        onError('OTP encryption key is required. Please configure VITE_SERVICE_ENCRYPTION_KEY in your build environment.');
+      }
+      return;
+    }
+    
+    if (otpEncryptionKey.length < 32) {
+      console.error('[OtpLogin] ❌ CRITICAL ERROR: otpEncryptionKey is too short!', {
+        keyLength: otpEncryptionKey.length,
+        requiredLength: 32
+      });
+      if (onError) {
+        onError('OTP encryption key must be at least 32 characters long.');
+      }
+      return;
+    }
+    
+    console.log('[OtpLogin] ✅ Encryption key provided, length:', otpEncryptionKey.length);
+    
     try {
       core = new OtpLoginCore({
         apiUrl,

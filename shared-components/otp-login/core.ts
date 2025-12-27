@@ -162,14 +162,27 @@ export class OtpLoginCore {
    */
   private async encryptRequestBody(data: { email?: string; otp?: string }): Promise<string> {
     // If no encryption key provided, throw error (encryption is mandatory)
+    // CRITICAL: Never send unencrypted data - always require encryption key
     if (!this.config.otpEncryptionKey) {
+      console.error('[OtpLoginCore] ❌ CRITICAL: OTP encryption key is missing!');
+      console.error('[OtpLoginCore] Config:', {
+        hasKey: !!this.config.otpEncryptionKey,
+        keyLength: this.config.otpEncryptionKey?.length || 0,
+        apiUrl: this.config.apiUrl
+      });
       throw new Error('OTP encryption key is required. Please configure otpEncryptionKey in OtpLoginConfig.');
     }
 
     const serviceKey = this.config.otpEncryptionKey;
     if (serviceKey.length < 32) {
+      console.error('[OtpLoginCore] ❌ CRITICAL: OTP encryption key is too short!', {
+        keyLength: serviceKey.length,
+        requiredLength: 32
+      });
       throw new Error('OTP encryption key must be at least 32 characters long.');
     }
+    
+    console.log('[OtpLoginCore] ✅ Encrypting request body with key length:', serviceKey.length);
 
     try {
       // Constants matching server-side implementation
