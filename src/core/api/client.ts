@@ -138,38 +138,37 @@ export class APIClient {
     const url = this.buildURL(request.url || request.path);
     console.log('[APIClient] requestRaw called:', { method: request.method, path: request.path, url, baseURL: this.baseURL });
 
-    // Merge headers
-    const headers = new Headers({
-      ...this.config.defaultHeaders,
-      ...request.headers,
-    });
-
-    // Serialize body
-    let body: string | FormData | undefined;
-    if (request.body) {
-      if (request.body instanceof FormData) {
-        // FormData should be passed directly to fetch
-        // Don't set Content-Type - browser will set it with boundary
-        body = request.body;
-        // Remove Content-Type header if it was set (browser will set it correctly)
-        headers.delete('Content-Type');
-      } else if (typeof request.body === 'string') {
-        body = request.body;
-      } else {
-        body = JSON.stringify(request.body);
-      }
-    }
-
-    // Create fetch options
-    const fetchOptions: RequestInit = {
-      method: request.method,
-      headers,
-      body,
-      signal: request.signal,
-    };
-
-    // Execute through middleware pipeline
+    // Execute through middleware pipeline FIRST (so auth headers are added before we create fetch options)
     return this.middlewarePipeline.execute<T>(request, async (req: APIRequest) => {
+      // Merge headers AFTER middleware has run (so auth headers are included)
+      const headers = new Headers({
+        ...this.config.defaultHeaders,
+        ...req.headers,
+      });
+
+      // Serialize body
+      let body: string | FormData | undefined;
+      if (req.body) {
+        if (req.body instanceof FormData) {
+          // FormData should be passed directly to fetch
+          // Don't set Content-Type - browser will set it with boundary
+          body = req.body;
+          // Remove Content-Type header if it was set (browser will set it correctly)
+          headers.delete('Content-Type');
+        } else if (typeof req.body === 'string') {
+          body = req.body;
+        } else {
+          body = JSON.stringify(req.body);
+        }
+      }
+
+      // Create fetch options
+      const fetchOptions: RequestInit = {
+        method: req.method,
+        headers,
+        body,
+        signal: req.signal,
+      };
       // Create timeout controller if needed
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       let abortController: AbortController | undefined;
