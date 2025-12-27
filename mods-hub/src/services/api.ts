@@ -6,7 +6,7 @@
 
 import { createAPIClient } from '@strixun/api-framework/client';
 
-const API_BASE_URL = import.meta.env.VITE_MODS_API_URL || 'https://mods.idling.app';
+const API_BASE_URL = import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app';
 
 /**
  * Get auth token from storage

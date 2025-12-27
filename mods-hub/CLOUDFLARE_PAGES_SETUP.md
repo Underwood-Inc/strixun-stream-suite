@@ -8,7 +8,7 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
 2. **GitHub Secrets** configured:
    - `CF_API_TOKEN` - Cloudflare API token with Pages write permissions
    - `CF_ACCOUNT_ID` - Your Cloudflare Account ID
-   - `VITE_MODS_API_URL` (optional) - Defaults to `https://mods.idling.app`
+   - `VITE_MODS_API_URL` (optional) - Defaults to `https://mods-api.idling.app`
    - `VITE_AUTH_API_URL` (optional) - Defaults to `https://auth.idling.app`
 
 ## 🚀 Setup Steps
@@ -89,7 +89,7 @@ After first deployment:
 
 The Mods Hub uses the following environment variables (set at build time):
 
-- `VITE_MODS_API_URL` - Backend API URL (defaults to `https://mods.idling.app`)
+- `VITE_MODS_API_URL` - Backend API URL (defaults to `https://mods-api.idling.app`)
 - `VITE_AUTH_API_URL` - Authentication API URL (defaults to `https://auth.idling.app`)
 
 These can be configured in:
@@ -156,7 +156,7 @@ If you need to test deployment manually:
 ```bash
 cd mods-hub
 pnpm install
-VITE_MODS_API_URL=https://mods.idling.app VITE_AUTH_API_URL=https://auth.idling.app pnpm build
+VITE_MODS_API_URL=https://mods-api.idling.app VITE_AUTH_API_URL=https://auth.idling.app pnpm build
 pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
 ```
 

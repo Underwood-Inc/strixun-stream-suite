@@ -51,7 +51,7 @@ pnpm install
 Create a `.env` file:
 
 ```env
-VITE_MODS_API_URL=https://mods.idling.app
+VITE_MODS_API_URL=https://mods-api.idling.app
 VITE_AUTH_API_URL=https://auth.idling.app
 ```
 
@@ -98,7 +98,7 @@ mods-hub/
 
 ## API Integration
 
-The frontend communicates with the Cloudflare Worker API at `mods.idling.app`:
+The frontend communicates with the Cloudflare Worker API at `mods-api.idling.app`:
 
 - `GET /mods` - List mods
 - `GET /mods/:modId` - Get mod detail
