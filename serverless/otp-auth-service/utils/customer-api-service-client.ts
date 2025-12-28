@@ -30,6 +30,7 @@ interface CustomerData {
 interface Env {
     CUSTOMER_API_URL?: string;
     SERVICE_API_KEY?: string; // Service-to-service API key
+    NETWORK_INTEGRITY_KEYPHRASE?: string; // REQUIRED for network integrity verification
     [key: string]: any;
 }
 

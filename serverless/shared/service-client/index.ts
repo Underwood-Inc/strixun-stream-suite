@@ -14,6 +14,8 @@
  * - Configurable timeouts and retries
  */
 
+import type { IntegrityConfig } from './integrity.js';
+
 export interface ServiceClientConfig {
     /**
      * Base URL of the target service
@@ -41,6 +43,11 @@ export interface ServiceClientConfig {
          */
         serviceKeyHeader?: string;
     };
+    
+    /**
+     * Network integrity configuration (REQUIRED for security)
+     */
+    integrity: IntegrityConfig;
     
     /**
      * Request timeout in milliseconds (default: 30000)
@@ -96,8 +103,32 @@ export interface ServiceResponse<T = any> {
     headers: Headers;
 }
 
+interface InternalServiceClientConfig {
+    baseURL: string;
+    auth: {
+        superAdminKey?: string;
+        serviceKey?: string;
+        serviceKeyHeader: string;
+    };
+    integrity: {
+        enabled: boolean;
+        keyphrase: string;
+        verifyResponse: boolean;
+        verifyRequest: boolean;
+        throwOnFailure: boolean;
+    };
+    timeout: number;
+    retry: {
+        maxAttempts: number;
+        backoff: 'exponential' | 'linear' | 'fixed';
+        retryableErrors: number[];
+    };
+    defaultHeaders: Record<string, string>;
+}
+
 export class ServiceClient {
-    private config: Required<ServiceClientConfig>;
+    private config: InternalServiceClientConfig;
+    private integrityKeyphrase: string;
     
     constructor(config: ServiceClientConfig) {
         // Validate auth config
@@ -109,13 +140,32 @@ export class ServiceClient {
             throw new Error('ServiceClient: Cannot use both superAdminKey and serviceKey. Use one or the other.');
         }
         
-        // Set defaults
+        // Validate integrity config
+        if (!config.integrity) {
+            throw new Error('ServiceClient: integrity configuration is REQUIRED for security');
+        }
+        
+        if (!config.integrity.keyphrase) {
+            throw new Error('ServiceClient: integrity.keyphrase is REQUIRED for security');
+        }
+        
+        // Store integrity keyphrase
+        this.integrityKeyphrase = config.integrity.keyphrase;
+        
+        // Set defaults with integrity enforced
         this.config = {
             baseURL: config.baseURL,
             auth: {
                 superAdminKey: config.auth.superAdminKey,
                 serviceKey: config.auth.serviceKey,
                 serviceKeyHeader: config.auth.serviceKeyHeader || 'X-Service-Key',
+            },
+            integrity: {
+                enabled: config.integrity.enabled !== false, // Default to true
+                keyphrase: config.integrity.keyphrase,
+                verifyResponse: config.integrity.verifyResponse !== false, // Default to true
+                verifyRequest: config.integrity.verifyRequest !== false, // Default to true
+                throwOnFailure: config.integrity.throwOnFailure !== false, // Default to true - ENFORCE SECURITY
             },
             timeout: config.timeout || 30000,
             retry: {
@@ -254,17 +304,19 @@ export class ServiceClient {
                     
                     // Verify response integrity (baked-in security feature)
                     // CRITICAL: All service-to-service responses MUST include integrity header
-                    const verification = await this.verifyResponseIntegrity(
-                        response.status,
-                        responseText,
-                        response.headers
-                    );
-                    
-                    if (!verification.verified) {
-                        if (this.config.integrity.throwOnFailure) {
-                            throw new Error(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
-                        } else {
-                            console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
+                    if (this.config.integrity.enabled && this.config.integrity.verifyResponse) {
+                        const verification = await this.verifyResponseIntegrity(
+                            response.status,
+                            responseText,
+                            response.headers
+                        );
+                        
+                        if (!verification.verified) {
+                            if (this.config.integrity.throwOnFailure) {
+                                throw new Error(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
+                            } else {
+                                console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
+                            }
                         }
                     }
                     
@@ -396,6 +448,7 @@ export function createServiceClient(
     env: {
         SUPER_ADMIN_API_KEY?: string;
         SERVICE_API_KEY?: string;
+        NETWORK_INTEGRITY_KEYPHRASE?: string;
         [key: string]: any;
     },
     config?: Partial<ServiceClientConfig>
@@ -410,9 +463,23 @@ export function createServiceClient(
         throw new Error('ServiceClient: Either SUPER_ADMIN_API_KEY or SERVICE_API_KEY must be set in environment');
     }
     
+    // Get integrity keyphrase from env or config
+    const integrityKeyphrase = config?.integrity?.keyphrase || env.NETWORK_INTEGRITY_KEYPHRASE;
+    if (!integrityKeyphrase) {
+        throw new Error('ServiceClient: NETWORK_INTEGRITY_KEYPHRASE must be set in environment or provided in config');
+    }
+    
     return new ServiceClient({
         baseURL,
         auth,
+        integrity: {
+            enabled: true,
+            keyphrase: integrityKeyphrase,
+            verifyResponse: true,
+            verifyRequest: true,
+            throwOnFailure: true, // ENFORCE SECURITY - always throw on failure
+            ...config?.integrity,
+        },
         ...config,
     });
 }
