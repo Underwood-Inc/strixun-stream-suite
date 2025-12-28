@@ -233,28 +233,6 @@ const AddVariantButton = styled.button`
   }
 `;
 
-const StatusBadge = styled.span<{ status: ModStatus }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${({ status }) => {
-    switch (status) {
-      case 'draft': return `${colors.warning}30`;
-      case 'pending': return `${colors.info}30`;
-      case 'published': return `${colors.success}30`;
-      default: return `${colors.textMuted}30`;
-    }
-  }};
-  color: ${({ status }) => {
-    switch (status) {
-      case 'draft': return colors.warning;
-      case 'pending': return colors.info;
-      case 'published': return colors.success;
-      default: return colors.textMuted;
-    }
-  }};
-`;
 
 interface ModUploadFormProps {
     onSubmit: (data: {

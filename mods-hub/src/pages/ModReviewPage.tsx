@@ -283,7 +283,7 @@ export function ModReviewPage() {
                 <SectionTitle>Review Comments</SectionTitle>
                 <CommentList>
                     {mod.reviewComments && mod.reviewComments.length > 0 ? (
-                        mod.reviewComments.map((comment) => (
+                        mod.reviewComments.map((comment: { commentId: string; isAdmin: boolean; authorDisplayName?: string | null; content: string; createdAt: string }) => (
                             <Comment key={comment.commentId} isAdmin={comment.isAdmin}>
                                 <CommentHeader>
                                     <CommentAuthor>
@@ -304,7 +304,7 @@ export function ModReviewPage() {
                 <CommentForm onSubmit={handleSubmitComment}>
                     <TextArea
                         value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCommentText(e.target.value)}
                         placeholder="Add a comment..."
                         required
                     />
@@ -318,7 +318,7 @@ export function ModReviewPage() {
                 <Section>
                     <SectionTitle>Status History</SectionTitle>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-                        {mod.statusHistory.map((entry, index) => (
+                        {mod.statusHistory.map((entry: { status: ModStatus; changedAt: string; changedBy: string; changedByDisplayName?: string | null; reason?: string }, index: number) => (
                             <div key={index} style={{ padding: spacing.sm, background: colors.bgTertiary, borderRadius: 4 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing.xs }}>
                                     <StatusBadge status={entry.status}>{entry.status}</StatusBadge>

@@ -152,7 +152,16 @@ describe('Mods Hub API Service - Unit Tests', () => {
     describe('uploadMod', () => {
         it('should create FormData and call API with file and metadata', async () => {
             const mockFile = new File(['content'], 'test.zip', { type: 'application/zip' });
-            const mockMetadata = { title: 'Test', version: '1.0.0', category: 'rpg' };
+            const mockMetadata = { 
+                title: 'Test', 
+                version: '1.0.0', 
+                category: 'script' as const,
+                description: 'Test description',
+                tags: [],
+                changelog: 'Test changelog',
+                gameVersions: [],
+                visibility: 'public' as const
+            };
             const mockResponse = {
                 data: { mod: { id: 'mod_123' }, version: { id: 'ver_123' } },
                 status: 201,
@@ -172,7 +181,16 @@ describe('Mods Hub API Service - Unit Tests', () => {
         it('should include thumbnail in FormData when provided', async () => {
             const mockFile = new File(['content'], 'test.zip', { type: 'application/zip' });
             const mockThumbnail = new File(['image'], 'thumb.png', { type: 'image/png' });
-            const mockMetadata = { title: 'Test', version: '1.0.0', category: 'rpg' };
+            const mockMetadata = { 
+                title: 'Test', 
+                version: '1.0.0', 
+                category: 'script' as const,
+                description: 'Test description',
+                tags: [],
+                changelog: 'Test changelog',
+                gameVersions: [],
+                visibility: 'public' as const
+            };
             const mockResponse = {
                 data: { mod: { id: 'mod_123' }, version: { id: 'ver_123' } },
                 status: 201,
@@ -219,7 +237,7 @@ describe('Mods Hub API Service - Unit Tests', () => {
     describe('uploadVersion', () => {
         it('should create FormData and call API with file and metadata', async () => {
             const mockFile = new File(['content'], 'v2.zip', { type: 'application/zip' });
-            const mockMetadata = { version: '2.0.0', changelog: 'Updates' };
+            const mockMetadata = { version: '2.0.0', changelog: 'Updates', gameVersions: [] };
             const mockResponse = {
                 data: { id: 'ver_456' },
                 status: 201,
@@ -621,8 +639,8 @@ describe('Mods Hub API Service - Unit Tests', () => {
             const result = await detectDuplicates();
 
             expect(mockApiClient.get).toHaveBeenCalledWith('/admin/r2/duplicates');
-            expect(result.duplicates[0].files[0].uploaded).toBeInstanceOf(Date);
-            expect(result.orphaned[0].uploaded).toBeInstanceOf(Date);
+            expect(result.duplicateGroups[0].files[0].uploaded).toBeInstanceOf(Date);
+            expect(result.orphanedFiles[0].uploaded).toBeInstanceOf(Date);
         });
     });
 

@@ -3,7 +3,7 @@
  * Improves UX by breaking the form into logical steps
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
@@ -82,16 +82,6 @@ const StepLabel = styled.span<{ active: boolean }>`
   text-align: center;
 `;
 
-const StepLine = styled.div<{ completed: boolean }>`
-  position: absolute;
-  top: 20px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: ${({ completed }) => completed ? colors.accent : colors.border};
-  z-index: 0;
-  transition: all 0.3s ease;
-`;
 
 // Step Content
 const StepContent = styled.div<{ active: boolean }>`
@@ -434,7 +424,6 @@ export function ModUploadWizard({
     };
 
     const canProceed = validateStep(currentStep);
-    const canGoBack = currentStep > 1;
 
     const handleNext = () => {
         if (canProceed && currentStep < STEPS.length) {
@@ -564,7 +553,7 @@ export function ModUploadWizard({
         <WizardContainer>
             {/* Progress Stepper */}
             <Stepper>
-                {STEPS.map((step, index) => {
+                {STEPS.map((step) => {
                     const isActive = currentStep === step.id;
                     const isCompleted = currentStep > step.id;
                     const canClick = step.id <= currentStep || validateStep(step.id - 1);

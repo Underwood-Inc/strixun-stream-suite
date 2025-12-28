@@ -5,13 +5,12 @@
 
 // useState imported but not used - removed
 import { useNavigate } from 'react-router-dom';
-import { useUploadMod, useUpdateMod } from '../hooks/useMods';
+import { useUploadMod } from '../hooks/useMods';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModUploadWizard } from '../components/mod/ModUploadWizard';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
-import * as api from '../services/api';
 import { useUIStore } from '../stores/ui';
 import type { ModUploadRequest } from '../types/mod';
 
@@ -99,7 +98,6 @@ export function ModUploadPage() {
     const { isAuthenticated } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const uploadMod = useUploadMod();
-    const updateMod = useUpdateMod();
     const addNotification = useUIStore((state) => state.addNotification);
 
     const handleSubmit = async (data: {
@@ -129,7 +127,7 @@ export function ModUploadPage() {
                 return;
             }
             // Save as draft - same as upload but with draft status
-            const result = await uploadMod.mutateAsync({
+            await uploadMod.mutateAsync({
                 file: data.file,
                 metadata: { ...data.metadata, status: 'draft' },
                 thumbnail: data.thumbnail,

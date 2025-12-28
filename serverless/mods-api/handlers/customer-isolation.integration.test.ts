@@ -11,7 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { calculateRequestIntegrity } from '../../shared/service-client/integrity.js';
 import { createJWT } from '../../otp-auth-service/utils/crypto.js';
-import { authenticateRequest } from '../../utils/auth.js';
+import { authenticateRequest } from '../utils/auth.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({

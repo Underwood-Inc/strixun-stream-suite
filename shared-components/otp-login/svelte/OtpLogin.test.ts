@@ -7,7 +7,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte/svelte5';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tick } from 'svelte';
-import type { OtpLoginState, LoginSuccessData } from '../core';
+import type { LoginSuccessData } from '../core';
 
 // Use hoisted to ensure mocks are set up before imports
 const { mockOtpLoginCore, getMockCoreInstance, mockGetOtpEncryptionKey } = vi.hoisted(() => {

@@ -199,7 +199,7 @@ export function ModDetailPage() {
                         )}
                     </Meta>
                     <Tags>
-                        {mod.tags.map((tag) => (
+                        {mod.tags.map((tag: string) => (
                             <Tag key={tag}>{tag}</Tag>
                         ))}
                     </Tags>
@@ -236,7 +236,7 @@ export function ModDetailPage() {
             <ModRatings 
                 modId={mod.modId}
                 ratings={ratingsData?.ratings || []}
-                averageRating={ratingsData?.averageRating}
+                averageRating={ratingsData?.average}
                 onRatingSubmit={handleRatingSubmit}
             />
             </PageContainer>

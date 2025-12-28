@@ -409,7 +409,15 @@ export async function listR2Files(options?: { limit?: number }): Promise<{
  * Detect duplicate and orphaned R2 files
  */
 export async function detectDuplicates(): Promise<{
-    duplicates: Array<{
+    summary: {
+        totalFiles: number;
+        referencedFiles: number;
+        orphanedFiles: number;
+        orphanedSize: number;
+        duplicateGroups: number;
+        duplicateWastedSize: number;
+    };
+    duplicateGroups: Array<{
         files: Array<{
             key: string;
             size: number;
@@ -417,10 +425,11 @@ export async function detectDuplicates(): Promise<{
             contentType?: string;
             customMetadata?: Record<string, string>;
         }>;
-        size: number;
         count: number;
+        totalSize: number;
+        recommendedKeep?: string;
     }>;
-    orphaned: Array<{
+    orphanedFiles: Array<{
         key: string;
         size: number;
         uploaded: Date;
@@ -429,7 +438,15 @@ export async function detectDuplicates(): Promise<{
     }>;
 }> {
     const response = await api.get<{
-        duplicates: Array<{
+        summary: {
+            totalFiles: number;
+            referencedFiles: number;
+            orphanedFiles: number;
+            orphanedSize: number;
+            duplicateGroups: number;
+            duplicateWastedSize: number;
+        };
+        duplicateGroups: Array<{
             files: Array<{
                 key: string;
                 size: number;
@@ -437,10 +454,11 @@ export async function detectDuplicates(): Promise<{
                 contentType?: string;
                 customMetadata?: Record<string, string>;
             }>;
-            size: number;
             count: number;
+            totalSize: number;
+            recommendedKeep?: string;
         }>;
-        orphaned: Array<{
+        orphanedFiles: Array<{
             key: string;
             size: number;
             uploaded: string;
@@ -449,14 +467,15 @@ export async function detectDuplicates(): Promise<{
         }>;
     }>('/admin/r2/duplicates');
     return {
-        duplicates: response.data.duplicates.map(group => ({
+        summary: response.data.summary,
+        duplicateGroups: response.data.duplicateGroups.map(group => ({
             ...group,
             files: group.files.map(file => ({
                 ...file,
                 uploaded: new Date(file.uploaded),
             })),
         })),
-        orphaned: response.data.orphaned.map(file => ({
+        orphanedFiles: response.data.orphanedFiles.map(file => ({
             ...file,
             uploaded: new Date(file.uploaded),
         })),

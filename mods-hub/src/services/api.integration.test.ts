@@ -132,7 +132,16 @@ describe('Mods Hub API Service - Integration Tests', () => {
 
         it('should handle FormData for file uploads', async () => {
             const mockFile = new File(['content'], 'test.zip', { type: 'application/zip' });
-            const mockMetadata = { title: 'Test', version: '1.0.0', category: 'rpg' };
+            const mockMetadata = { 
+                title: 'Test', 
+                version: '1.0.0', 
+                category: 'script' as const,
+                description: 'Test description',
+                tags: [],
+                changelog: 'Test changelog',
+                gameVersions: [],
+                visibility: 'public' as const
+            };
             
             mockFetch.mockResolvedValueOnce({
                 ok: true,
@@ -211,8 +220,8 @@ describe('Mods Hub API Service - Integration Tests', () => {
 
             const result = await apiModule.detectDuplicates();
 
-            expect(result.duplicates[0].files[0].uploaded).toBeInstanceOf(Date);
-            expect(result.orphaned[0].uploaded).toBeInstanceOf(Date);
+            expect(result.duplicateGroups[0].files[0].uploaded).toBeInstanceOf(Date);
+            expect(result.orphanedFiles[0].uploaded).toBeInstanceOf(Date);
         });
     });
 

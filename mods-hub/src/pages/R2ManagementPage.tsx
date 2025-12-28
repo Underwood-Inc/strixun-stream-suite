@@ -396,7 +396,7 @@ export function R2ManagementPage() {
                             </Badge>
                         </DuplicateGroupHeader>
                         <DuplicateGroupFiles>
-                            {group.files.map((file) => (
+                            {group.files.map((file: { key: string; size: number; uploaded: Date; contentType?: string; customMetadata?: Record<string, string> }) => (
                                 <FileItem key={file.key}>
                                     <FileInfo>
                                         <FileKey>{file.key}</FileKey>
