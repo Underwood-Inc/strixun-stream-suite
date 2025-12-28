@@ -18,6 +18,30 @@ import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 
 /**
+ * Helper to create error response with integrity headers for service-to-service calls
+ */
+async function createErrorResponse(
+    request: Request,
+    env: Env,
+    status: number,
+    title: string,
+    detail: string,
+    auth: { userId?: string; customerId?: string | null } | null = null
+): Promise<RouteResult> {
+    const rfcError = createError(request, status, title, detail);
+    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+    const errorResponse = new Response(JSON.stringify(rfcError), {
+        status,
+        headers: {
+            'Content-Type': 'application/problem+json',
+            ...Object.fromEntries(corsHeaders.entries()),
+        },
+    });
+    // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
+    return await wrapWithEncryption(errorResponse, auth, request, env);
+}
+
+/**
  * Helper to resolve slug to modId for URL routing
  * CRITICAL: Slug is for URL/UI only - all data lookups must use modId
  */
@@ -71,20 +95,12 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Route: GET /mods or GET / - List mods
         // CRITICAL: Don't encrypt public mod list - it's public data and thumbnailUrls need to remain accessible
         // The list endpoint already filters by status/visibility, so encryption isn't needed for security
+        // BUT: Still use wrapWithEncryption to add integrity headers for service-to-service calls
         if (pathSegments.length === 0 && request.method === 'GET') {
             const response = await handleListMods(request, env, auth);
-            // Return unencrypted response - public mod list doesn't need encryption
-            // This ensures thumbnailUrls remain as plain strings that browsers can use
-            const headers = new Headers(response.headers);
-            headers.set('X-Encrypted', 'false');
-            return {
-                response: new Response(response.body, {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: headers,
-                }),
-                customerId: auth?.customerId || null,
-            };
+            // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
+            // wrapWithEncryption will detect it's a public endpoint and won't encrypt, but will add integrity headers
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: POST /mods or POST / - Upload new mod
@@ -92,16 +108,15 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to upload mods');
                 const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: null
-                };
+                const errorResponse = new Response(JSON.stringify(rfcError), {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+                // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
+                return await wrapWithEncryption(errorResponse, null, request, env);
             }
             const response = await handleUploadMod(request, env, auth);
             return await wrapWithEncryption(response, auth, request, env);
@@ -110,18 +125,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
         if (pathSegments.length === 2 && pathSegments[0] === 'permissions' && pathSegments[1] === 'me' && request.method === 'GET') {
             if (!auth) {
-                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: null
-                };
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }
             const { handleGetUserPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetUserPermissions(request, env, auth);
@@ -134,18 +138,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 404,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: auth?.customerId || null
-                };
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, modId, auth);
@@ -158,18 +151,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 404,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: auth?.customerId || null
-                };
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleGetModDetail(request, env, modId, auth);
             return await wrapWithEncryption(response, auth || undefined, request, env);
@@ -179,18 +161,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 1 && request.method === 'PATCH') {
             if (!auth) {
-                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: null
-                };
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -216,18 +187,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 1 && request.method === 'DELETE') {
             if (!auth) {
-                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: null
-                };
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -255,18 +215,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 404,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: auth?.customerId || null
-                };
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
@@ -277,18 +226,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'ratings' && request.method === 'POST') {
             if (!auth) {
-                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to submit ratings');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: null
-                };
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to submit ratings', null);
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -315,18 +253,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'versions' && request.method === 'POST') {
             if (!auth) {
-                const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: null
-                };
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
@@ -364,20 +291,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     modId = resolvedModId;
                     console.log('[Router] Resolved slug to modId for thumbnail:', { slug: slugOrModId, modId });
                 } else {
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return {
-                        response: new Response(JSON.stringify(rfcError), {
-                            status: 404,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        }),
-                        customerId: auth?.customerId || null
-                    };
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
@@ -393,18 +307,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const slugOrModId = pathSegments[0];
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
-                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
-                return {
-                    response: new Response(JSON.stringify(rfcError), {
-                        status: 404,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    }),
-                    customerId: auth?.customerId || null
-                };
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleOGImage(request, env, modId, auth);
             // Don't encrypt image data
@@ -470,20 +373,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return {
-                        response: new Response(JSON.stringify(rfcError), {
-                            status: 404,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        }),
-                        customerId: auth?.customerId || null
-                    };
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
@@ -507,20 +397,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return {
-                        response: new Response(JSON.stringify(rfcError), {
-                            status: 404,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        }),
-                        customerId: auth?.customerId || null
-                    };
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
@@ -544,10 +421,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 if (resolvedModId) {
                     modId = resolvedModId;
                 } else {
-                    return {
-                        response: new Response('Mod not found', { status: 404 }),
-                        customerId: auth?.customerId || null
-                    };
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
@@ -558,41 +432,17 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // 404 for unknown mod routes
-        const rfcError = createError(request, 404, 'Endpoint Not Found', 'The requested mod endpoint was not found');
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return {
-            response: new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            }),
-            customerId: auth?.customerId || null
-        };
+        return await createErrorResponse(request, env, 404, 'Endpoint Not Found', 'The requested mod endpoint was not found', auth);
     } catch (error: any) {
         console.error('Mod route handler error:', error);
-        const rfcError = createError(
+        return await createErrorResponse(
             request,
+            env,
             500,
             'Internal Server Error',
-            env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred'
+            env.ENVIRONMENT === 'development' ? error.message : 'An internal server error occurred',
+            auth
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return {
-            response: new Response(JSON.stringify(rfcError), {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            }),
-            customerId: auth?.customerId || null
-        };
     }
 }
 

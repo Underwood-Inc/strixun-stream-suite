@@ -174,8 +174,14 @@ export async function wrapWithEncryption(
                     customerId: auth?.customerId || null,
                 };
             } catch (error) {
-                console.error('Failed to add integrity header to error response:', error);
+                console.error('[NetworkIntegrity] Failed to add integrity header to error response:', error);
+                // If integrity header addition fails, we MUST fail the request for security
+                throw new Error(`[NetworkIntegrity] Failed to add integrity header to error response: ${error instanceof Error ? error.message : String(error)}`);
             }
+        }
+        // If service call but no request/env, fail for security
+        if (!auth?.jwtToken || auth.userId === 'service') {
+            throw new Error('[NetworkIntegrity] Service-to-service error responses require request and env to add integrity headers');
         }
         return {
             response: handlerResponse,
@@ -194,6 +200,7 @@ export async function wrapWithEncryption(
             // Ensure X-Encrypted header is set
             const finalHeaders = new Headers(responseWithIntegrity.headers);
             finalHeaders.set('X-Encrypted', 'false');
+            // Return the response directly - wrapResponseWithIntegrity already created a new Response with the body
             return {
                 response: new Response(responseWithIntegrity.body, {
                     status: responseWithIntegrity.status,
@@ -203,23 +210,16 @@ export async function wrapWithEncryption(
                 customerId: auth?.customerId || null,
             };
         } catch (error) {
-            console.error('Failed to add integrity header to service response:', error);
+            console.error('[NetworkIntegrity] Failed to add integrity header to service response:', error);
             // If integrity header addition fails, we MUST fail the request for security
             throw new Error(`[NetworkIntegrity] Failed to add integrity header: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
     
-    // If no request/env provided, still set X-Encrypted header
-    const headers = new Headers(handlerResponse.headers);
-    headers.set('X-Encrypted', 'false');
-    return {
-      response: new Response(handlerResponse.body, {
-        status: handlerResponse.status,
-        statusText: handlerResponse.statusText,
-        headers: headers,
-      }),
-      customerId: auth?.customerId || null,
-    };
+    // If no request/env provided, we CANNOT proceed without integrity headers for service calls
+    // This is a security violation
+    console.error('[NetworkIntegrity] Service-to-service call detected but request/env not provided for integrity header');
+    throw new Error('[NetworkIntegrity] Service-to-service calls require request and env to add integrity headers');
   }
 
   try {

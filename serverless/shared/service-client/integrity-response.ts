@@ -69,23 +69,29 @@ export async function addResponseIntegrityHeader(
     response: Response,
     keyphrase: string
 ): Promise<Response> {
-    // Clone response to read body
+    // Clone response to read body (CRITICAL: must clone before reading)
     const responseClone = response.clone();
     
     // Get response body text
     let bodyText: string;
     const contentType = response.headers.get('content-type');
     
-    if (contentType?.includes('application/json')) {
-        try {
-            const data = await responseClone.json();
-            bodyText = JSON.stringify(data);
-        } catch (error) {
-            // If JSON parsing fails, try text
+    try {
+        if (contentType?.includes('application/json')) {
+            try {
+                const data = await responseClone.json();
+                bodyText = JSON.stringify(data);
+            } catch (error) {
+                // If JSON parsing fails, try text
+                bodyText = await responseClone.text();
+            }
+        } else {
             bodyText = await responseClone.text();
         }
-    } else {
-        bodyText = await responseClone.text();
+    } catch (error) {
+        // If body reading fails, use empty string (shouldn't happen but be safe)
+        console.error('[NetworkIntegrity] Failed to read response body for integrity header:', error);
+        bodyText = '';
     }
     
     // Calculate integrity signature
@@ -137,14 +143,34 @@ export async function wrapResponseWithIntegrity(
     env: { NETWORK_INTEGRITY_KEYPHRASE?: string }
 ): Promise<Response> {
     // Only add integrity header for service-to-service calls
-    if (!isServiceToServiceCall(request, auth)) {
+    const isServiceCall = isServiceToServiceCall(request, auth);
+    if (!isServiceCall) {
+        console.log('[NetworkIntegrity] Not a service-to-service call, skipping integrity header', {
+            hasAuth: !!auth,
+            userId: auth?.userId,
+            hasJwtToken: !!auth?.jwtToken,
+            serviceKey: request.headers.get('X-Service-Key') ? 'present' : 'missing'
+        });
         return response;
     }
     
     // Get keyphrase
     const keyphrase = getNetworkIntegrityKeyphrase(env);
+    if (!keyphrase) {
+        throw new Error('[NetworkIntegrity] NETWORK_INTEGRITY_KEYPHRASE is required but not set');
+    }
     
-    // Add integrity header
-    return await addResponseIntegrityHeader(response, keyphrase);
+    // Add integrity header (CRITICAL: must always succeed for service calls)
+    try {
+        const responseWithIntegrity = await addResponseIntegrityHeader(response, keyphrase);
+        // Verify header was added
+        if (!responseWithIntegrity.headers.get('X-Strixun-Response-Integrity')) {
+            throw new Error('[NetworkIntegrity] Failed to add integrity header - header missing after addition');
+        }
+        return responseWithIntegrity;
+    } catch (error) {
+        console.error('[NetworkIntegrity] CRITICAL: Failed to add integrity header to service response:', error);
+        throw new Error(`[NetworkIntegrity] Failed to add integrity header: ${error instanceof Error ? error.message : String(error)}`);
+    }
 }
 
