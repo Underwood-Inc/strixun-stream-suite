@@ -371,7 +371,7 @@ Responses include an `X-Encrypted: true` header when encrypted.
 - **Worker**: `worker.ts` - Main entry point
 - **Router**: `router/routes.js` - Request routing
 - **Handlers**: `handlers/*.js` - Request handlers
-- **Templates**: `templates/standalone.ts` - Embedded HTML
+- **App**: Svelte app in `app/` directory using shared OTP login component
 - **Scripts**: `scripts/*.js` - Build scripts for dependencies
 - **Utils**: `utils/*.js` - Utility functions (auth, CORS, URL validation)
 
@@ -382,7 +382,7 @@ Responses include an `X-Encrypted: true` header when encrypted.
 
 ## Notes
 
-- The standalone HTML uses the shared OTP Svelte component for authentication
+- The Svelte app uses the shared OTP login component from `@shared-components/otp-login`
 - All API responses are encrypted when authenticated
 - Custom URL codes must be 3-20 characters (letters, numbers, hyphens, underscores)
 - URLs are stored in Cloudflare KV for fast lookups

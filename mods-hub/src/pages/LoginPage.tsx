@@ -20,7 +20,25 @@ export function LoginPage() {
     const { setUser } = useAuthStore();
 
     const handleLoginSuccess = async (data: LoginSuccessData) => {
-        // Calculate expiration
+        // Decode JWT to extract isSuperAdmin from payload (matching main app)
+        let isSuperAdmin = false;
+        try {
+            const token = data.token;
+            if (token) {
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                    const payloadB64 = parts[1];
+                    const payload = JSON.parse(
+                        atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+                    );
+                    isSuperAdmin = payload?.isSuperAdmin === true;
+                }
+            }
+        } catch (error) {
+            console.warn('[Login] Failed to decode JWT for super admin status:', error);
+        }
+
+        // Calculate expiration (matching main app)
         let expiresAt: string;
         if (data.expiresAt) {
             // expiresAt can be a number (timestamp) or string (ISO)
@@ -32,26 +50,26 @@ export function LoginPage() {
             expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
         }
 
-        // Store user data - ensure all required fields are present
+        // Store user data - ensure all required fields are present (matching main app)
         if (!data.userId || !data.email || !data.token) {
             console.error('[Login] Missing required user data:', data);
             handleLoginError('Invalid login response: missing required fields');
             return;
         }
 
+        // Set authentication - support both old format and OAuth 2.0 format (matching main app)
         const userData = {
-            userId: data.userId,
+            userId: data.userId || '',
             email: data.email,
+            displayName: data.displayName || undefined,
             token: data.token,
             expiresAt: expiresAt,
+            isSuperAdmin: isSuperAdmin,
         };
 
         setUser(userData);
 
-        // Token is stored in user object, which is persisted to localStorage via Zustand
-        // No need for separate sessionStorage
-
-        // Fetch admin status after login
+        // Fetch admin status after login (will update isSuperAdmin if different from JWT)
         const { useAuthStore } = await import('../stores/auth');
         const store = useAuthStore.getState();
         await store.fetchUserInfo();

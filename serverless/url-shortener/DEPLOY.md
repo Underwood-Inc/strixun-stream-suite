@@ -13,7 +13,7 @@ That's it! [EMOJI]
 
 ## What This Does
 
-1. **Deploys the worker** with the embedded standalone HTML page
+1. **Deploys the worker** with the Svelte app
 2. **Serves the UI** at `https://s.idling.app/` (root path)
 3. **Keeps the API** working at `https://s.idling.app/api/*`
 4. **Keeps redirects** working at `https://s.idling.app/:shortCode`
@@ -41,7 +41,7 @@ open https://s.idling.app
 
 ## Notes
 
-- The standalone HTML is embedded directly in the worker
+- The Svelte app is built and bundled into the worker assets
 - No additional configuration needed - your existing `s.idling.app` route handles everything
 - The HTML uses your existing API URLs (`auth.idling.app` and `s.idling.app`)
 - Token persistence works via localStorage
