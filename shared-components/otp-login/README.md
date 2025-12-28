@@ -155,9 +155,30 @@ The component uses CSS variables from `shared-styles/_variables.scss`. Ensure th
 - `--danger`, `--warning`
 - `--spacing-*` variables
 
+## CDN Usage
+
+The library can be used directly from a CDN without any build step. See [CDN_USAGE.md](./CDN_USAGE.md) for complete documentation.
+
+### Quick CDN Example
+
+```html
+<script src="https://cdn.example.com/otp-login-svelte.min.js"></script>
+<script>
+  OtpLoginSvelte.mountOtpLogin({
+    target: document.getElementById('login-container'),
+    apiUrl: 'https://auth.idling.app',
+    otpEncryptionKey: 'YOUR_ENCRYPTION_KEY_HERE',
+    onSuccess: (data) => {
+      localStorage.setItem('auth_token', data.token);
+    },
+  });
+</script>
+```
+
 ## Examples
 
 See:
 - `src/lib/components/auth/LoginModal.svelte` - Main app usage
 - `serverless/otp-auth-service/dashboard/src/components/Login.svelte` - Dashboard usage
+- `CDN_USAGE.md` - CDN usage examples and API reference
 

@@ -85,6 +85,63 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
 
+  # Test jobs - required before deployment
+  test_root:
+    needs: setup
+    if: ${{ inputs.deploy_mods_hub || inputs.deploy_storybook || inputs.deploy_pages }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Root/Client Tests
+        working-directory: .
+        run: pnpm test
+
+  test_otp_auth:
+    needs: setup
+    if: ${{ inputs.deploy_otp_auth }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run OTP Auth Service Tests
+        working-directory: serverless/otp-auth-service
+        run: pnpm test
+
   # Twitch API Deployment
   deploy_twitch_api:
     needs: setup
@@ -111,11 +168,19 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Deploy Worker
+        id: deploy
         working-directory: serverless/twitch-api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: pnpm exec wrangler deploy
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
       
       - name: Set Worker Secrets
         working-directory: serverless/twitch-api
@@ -156,11 +221,19 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Deploy to Cloudflare Workers
+        id: deploy
         working-directory: serverless/mods-api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: pnpm exec wrangler deploy
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
       
       - name: Set Worker Secrets
         working-directory: serverless/mods-api
@@ -181,8 +254,8 @@ jobs:
 
   # OTP Auth Service Deployment
   deploy_otp_auth:
-    needs: setup
-    if: ${{ inputs.deploy_otp_auth }}
+    needs: [setup, test_otp_auth]
+    if: ${{ inputs.deploy_otp_auth && needs.test_otp_auth.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -205,12 +278,20 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build and Deploy to Cloudflare Workers
+        id: deploy
         working-directory: serverless/otp-auth-service
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: pnpm run deploy
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
       
       - name: Set Worker Secrets
         working-directory: serverless/otp-auth-service
@@ -271,11 +352,19 @@ jobs:
         continue-on-error: true
       
       - name: Deploy to Cloudflare Workers
+        id: deploy
         working-directory: serverless/customer-api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: pnpm exec wrangler deploy
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
       
       - name: Set Worker Secrets
         working-directory: serverless/customer-api
@@ -320,11 +409,19 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Deploy to Cloudflare Workers
+        id: deploy
         working-directory: serverless/game-api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: pnpm exec wrangler deploy
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
       
       - name: Set Worker Secrets
         working-directory: serverless/game-api
@@ -342,8 +439,8 @@ jobs:
 
   # Mods Hub Deployment (Cloudflare Pages)
   deploy_mods_hub:
-    needs: setup
-    if: ${{ inputs.deploy_mods_hub }}
+    needs: [setup, test_root]
+    if: ${{ inputs.deploy_mods_hub && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -374,6 +471,7 @@ jobs:
         run: pnpm run build
       
       - name: Deploy to Cloudflare Pages
+        id: deploy
         working-directory: mods-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -382,11 +480,18 @@ jobs:
           # Create project if it doesn't exist (suppress error if already exists)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
           pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
 
   # Storybook Deployment (Cloudflare Pages)
   deploy_storybook:
-    needs: setup
-    if: ${{ inputs.deploy_storybook }}
+    needs: [setup, test_root]
+    if: ${{ inputs.deploy_storybook && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -413,6 +518,7 @@ jobs:
         run: pnpm build-storybook
       
       - name: Deploy to Cloudflare Pages
+        id: deploy
         working-directory: shared-components
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -420,11 +526,18 @@ jobs:
         run: |
           pnpm exec wrangler pages project create storybook --production-branch=main || true
           pnpm exec wrangler pages deploy storybook-static --project-name=storybook --branch=main
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
 
   # GitHub Pages Deployment - Build
   deploy_pages_build:
-    needs: setup
-    if: ${{ inputs.deploy_pages }}
+    needs: [setup, test_root]
+    if: ${{ inputs.deploy_pages && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -544,9 +657,16 @@ jobs:
           echo "✅ Configuration validated and injected successfully"
       
       - name: Upload artifact
+        id: upload
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'dist'
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Build failed - deployment prevented"
+          exit 1
 
   # GitHub Pages Deployment - Deploy
   deploy_pages:
@@ -560,10 +680,17 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check GitHub Pages settings and rollback if needed"
+          exit 1
 
   # Deployment Summary
   summary:
-    needs: [deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_mods_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_mods_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -571,39 +698,96 @@ jobs:
         run: |
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
           
-          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
-            echo "✅ **Twitch API** - Deployed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
-            echo "✅ **Mods API** - Deployed" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.deploy_mods_hub }}" == "true" ] || [ "${{ inputs.deploy_storybook }}" == "true" ] || [ "${{ inputs.deploy_pages }}" == "true" ]; then
+            if [ "${{ needs.test_root.result }}" == "success" ]; then
+              echo "✅ **Root/Client Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_root.result }}" == "failure" ]; then
+              echo "❌ **Root/Client Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Root/Client Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
           
           if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
-            echo "✅ **OTP Auth Service** - Deployed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
-            echo "✅ **Customer API** - Deployed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
-            echo "✅ **Game API** - Deployed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
-            echo "✅ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ inputs.deploy_storybook }}" == "true" ]; then
-            echo "✅ **Storybook** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ inputs.deploy_pages }}" == "true" ]; then
-            echo "✅ **GitHub Pages** - Deployed" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ needs.test_otp_auth.result }}" == "success" ]; then
+              echo "✅ **OTP Auth Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_otp_auth.result }}" == "failure" ]; then
+              echo "❌ **OTP Auth Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **OTP Auth Service Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> 💡 All selected services have been deployed." >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Results" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_twitch_api.result }}" == "success" ]; then
+              echo "✅ **Twitch API** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Twitch API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_mods_api.result }}" == "success" ]; then
+              echo "✅ **Mods API** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Mods API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
+            if [ "${{ needs.deploy_otp_auth.result }}" == "success" ]; then
+              echo "✅ **OTP Auth Service** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **OTP Auth Service** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_customer_api.result }}" == "success" ]; then
+              echo "✅ **Customer API** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Customer API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
+            if [ "${{ needs.deploy_game_api.result }}" == "success" ]; then
+              echo "✅ **Game API** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Game API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
+            if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
+              echo "✅ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Mods Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_storybook }}" == "true" ]; then
+            if [ "${{ needs.deploy_storybook.result }}" == "success" ]; then
+              echo "✅ **Storybook** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Storybook** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_pages }}" == "true" ]; then
+            if [ "${{ needs.deploy_pages.result }}" == "success" ]; then
+              echo "✅ **GitHub Pages** - Deployed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **GitHub Pages** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 All selected services have been processed. Tests are required before deployment." >> $GITHUB_STEP_SUMMARY
+          echo "> 🔒 Rollback protection: Failed deployments require manual rollback via Cloudflare/GitHub dashboard." >> $GITHUB_STEP_SUMMARY
 

@@ -62,7 +62,8 @@ try {
       },
       outDir: outputDir,
       write: true,
-      minify: false, // Disable minification to help debug issues
+      minify: 'terser', // Minify for production CDN
+      sourcemap: false, // Disable sourcemaps for CDN (smaller size)
     },
     resolve: {
       alias: {
@@ -77,6 +78,7 @@ try {
   console.log(`✅ Bundled OtpLogin Svelte component to ${outputDir}/otp-login-svelte.js`);
   console.log(`   Load it in HTML with: <script src="/otp-login-svelte.js"></script>`);
   console.log(`   Then use: OtpLoginSvelte.mountOtpLogin({ target: element, ...props })`);
+  console.log(`   CDN Usage: <script src="https://cdn.example.com/otp-login-svelte.js"></script>`);
 } catch (error) {
   console.error('❌ Failed to bundle OtpLogin Svelte component:', error);
   process.exit(1);

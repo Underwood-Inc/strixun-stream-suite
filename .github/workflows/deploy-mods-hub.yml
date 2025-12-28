@@ -24,7 +24,37 @@ permissions:
   contents: read
 
 jobs:
+  # Test job - required before deployment
+  test:
+    runs-on: ubuntu-latest
+    name: Test Root/Client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Root/Client Tests
+        working-directory: .
+        run: pnpm test
+
   build:
+    needs: test
+    if: needs.test.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -83,6 +113,7 @@ jobs:
         run: pnpm run build
         
       - name: Deploy to Cloudflare Pages
+        id: deploy
         working-directory: mods-hub
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -93,6 +124,13 @@ jobs:
           # Suppress error output if project already exists (this is expected and harmless)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
           pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
         
       - name: Deployment Summary
         run: |

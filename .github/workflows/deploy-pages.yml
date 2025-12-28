@@ -30,7 +30,37 @@ permissions:
   id-token: write
 
 jobs:
+  # Test job - required before deployment
+  test:
+    runs-on: ubuntu-latest
+    name: Test Root/Client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run Root/Client Tests
+        working-directory: .
+        run: pnpm test
+
   build:
+    needs: test
+    if: needs.test.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -207,9 +237,16 @@ jobs:
           echo "Twitch Client ID: ${TWITCH_CLIENT_ID:0:8}... (hidden)"
         
       - name: Upload artifact
+        id: upload
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'dist'
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Build failed - deployment prevented"
+          exit 1
 
   deploy:
     environment:
@@ -221,6 +258,13 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - manual rollback required"
+          echo "Please check GitHub Pages settings and rollback if needed"
+          exit 1
         
       - name: Deployment Summary
         run: |

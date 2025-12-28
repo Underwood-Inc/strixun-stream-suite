@@ -13,13 +13,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '../..');
-const corePath = join(projectRoot, 'otp-login/core.ts');
+const corePath = join(__dirname, '../core.ts');
 const outputFile = join(__dirname, '../dist/otp-core.js');
+const outputFileMin = join(__dirname, '../dist/otp-core.min.js');
 
 // Ensure dist directory exists
 mkdirSync(join(__dirname, '../dist'), { recursive: true });
 
 try {
+  // Build unminified version (for debugging)
   await build({
     entryPoints: [corePath],
     bundle: true,
@@ -29,20 +31,46 @@ try {
     platform: 'browser',
     target: 'es2020',
     minify: false,
-    sourcemap: false,
+    sourcemap: true,
     define: {
       'process.env.NODE_ENV': '"production"',
+    },
+    resolveExtensions: ['.ts', '.js', '.json'],
+    alias: {
+      '@shared-config': join(projectRoot, 'shared-config'),
     },
     banner: {
       js: '// Bundled OtpLoginCore from shared-components/otp-login/core.ts\n// This file is auto-generated - do not edit manually\n',
     },
   });
 
-  // Read the bundled file and wrap it to expose to window
+  // Build minified version (for production CDN)
+  await build({
+    entryPoints: [corePath],
+    bundle: true,
+    outfile: outputFileMin,
+    format: 'iife',
+    globalName: 'OtpLoginCoreLib',
+    platform: 'browser',
+    target: 'es2020',
+    minify: true,
+    sourcemap: false,
+    define: {
+      'process.env.NODE_ENV': '"production"',
+    },
+    resolveExtensions: ['.ts', '.js', '.json'],
+    alias: {
+      '@shared-config': join(projectRoot, 'shared-config'),
+    },
+  });
+
+  // Read the bundled files and wrap them to expose to window
   const bundled = readFileSync(outputFile, 'utf-8');
-  const wrapped = `(function() {
+  const bundledMin = readFileSync(outputFileMin, 'utf-8');
+  
+  const wrapBundle = (content) => `(function() {
   'use strict';
-  ${bundled}
+  ${content}
   // Expose OtpLoginCore to window
   if (typeof window !== 'undefined' && typeof OtpLoginCoreLib !== 'undefined') {
     window.OtpLoginCore = OtpLoginCoreLib.OtpLoginCore || (() => {
@@ -51,8 +79,12 @@ try {
   }
 })();`;
 
-  writeFileSync(outputFile, wrapped);
-  console.log(`✅ Bundled OtpLoginCore to ${outputFile}`);
+  writeFileSync(outputFile, wrapBundle(bundled));
+  writeFileSync(outputFileMin, wrapBundle(bundledMin));
+  
+  console.log(`✅ Bundled OtpLoginCore:`);
+  console.log(`   - Development: ${outputFile}`);
+  console.log(`   - Production (minified): ${outputFileMin}`);
 } catch (error) {
   console.error('❌ Failed to bundle OtpLoginCore:', error);
   process.exit(1);

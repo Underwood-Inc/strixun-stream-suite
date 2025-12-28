@@ -212,7 +212,6 @@ export async function handleUploadMod(
         // Store encrypted files in R2 as-is (encryption at rest)
         // Files are decrypted on-the-fly during download
         // Support both binary encryption (v4) and legacy JSON encryption (v3)
-        }
         
         // Get JWT token for temporary decryption (to calculate hash)
         const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';

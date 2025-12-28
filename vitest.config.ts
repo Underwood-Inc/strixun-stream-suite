@@ -15,7 +15,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom', // Default for Svelte components
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.{test,spec}.{js,ts}'], // Only src tests here
+    include: [
+      'src/**/*.{test,spec}.{js,ts}',
+      'shared-components/**/*.{test,spec}.{js,ts}', // Include shared-components tests
+    ],
     exclude: ['node_modules', 'dist', '.storybook', 'serverless/**'], // Exclude serverless
     coverage: {
       provider: 'v8',
@@ -27,6 +30,10 @@ export default defineConfig({
         '**/*.config.{js,ts}',
         '**/*.svelte',
         '**/stories/**',
+        'shared-components/**/scripts/**', // Exclude build scripts
+      ],
+      include: [
+        'shared-components/otp-login/**/*.ts', // Include OTP login core for coverage
       ],
     },
   },
