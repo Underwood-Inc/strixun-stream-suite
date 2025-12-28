@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import { useUploadPermission } from '../../hooks/useUploadPermission';
+import { useDrafts } from '../../hooks/useMods';
 import { colors, spacing } from '../../theme';
 
 const HeaderContainer = styled.header`
@@ -80,12 +81,16 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 export function Header() {
     const { isAuthenticated, user, logout, isSuperAdmin } = useAuthStore();
     const { hasPermission } = useUploadPermission();
+    const { data: draftsData } = useDrafts();
     const navigate = useNavigate();
 
     const handleLogout = () => {
         logout();
         navigate('/');
     };
+
+    // Check if user has any drafts
+    const hasDrafts = isAuthenticated && draftsData?.mods?.some(mod => mod.status === 'draft') || false;
 
     return (
         <HeaderContainer>
@@ -98,6 +103,11 @@ export function Header() {
                             <>
                                 <NavLink to="/upload">Upload</NavLink>
                                 <NavLink to="/dashboard">My Mods</NavLink>
+                                {hasDrafts && (
+                                    <NavLink to="/drafts" style={{ color: colors.warning }}>
+                                        Drafts ({draftsData?.mods?.filter(m => m.status === 'draft').length || 0})
+                                    </NavLink>
+                                )}
                             </>
                         )}
                         <NavLink to="/profile">Profile</NavLink>

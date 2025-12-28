@@ -12,10 +12,10 @@ export default defineConfig({
   })],
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'jsdom', // Default for Svelte components
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.{test,spec}.{js,ts}'],
-    exclude: ['node_modules', 'dist', '.storybook'],
+    include: ['src/**/*.{test,spec}.{js,ts}'], // Only src tests here
+    exclude: ['node_modules', 'dist', '.storybook', 'serverless/**'], // Exclude serverless
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

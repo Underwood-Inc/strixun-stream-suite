@@ -12,6 +12,66 @@ Dedicated Cloudflare Worker for mod hosting and version control. Provides a comp
 - ✅ **Direct Downloads** - Direct download links for mods
 - ✅ **Multi-tenant** - Customer isolation support
 - ✅ **TypeScript** - Fully typed API
+- ✅ **Client-Side Encryption** - Files encrypted before upload (zero server CPU)
+- ✅ **Default Compression** - Automatic gzip compression (maximizes free tier)
+
+## Data Flow
+
+### Upload Process (Client-Side Processing)
+
+```mermaid
+flowchart TB
+    subgraph Client["🌐 Client Browser"]
+        A[User Selects File] --> B[Read File as ArrayBuffer]
+        B --> C[Compress with Gzip<br/>Default: Always Enabled]
+        C --> D[Encrypt with AES-GCM<br/>JWT Token Key]
+        D --> E[Create Encrypted File]
+    end
+    
+    subgraph Upload["📤 Upload to API"]
+        E --> F[POST /mods/upload<br/>Multipart Form Data]
+    end
+    
+    subgraph Server["☁️ Cloudflare Worker"]
+        F --> G[Receive Compressed + Encrypted File]
+        G --> H[Store in R2<br/>No Processing Needed!]
+        H --> I[Save Metadata to KV]
+    end
+    
+    style Client fill:#1a1611,stroke:#edae49,stroke-width:2px
+    style C fill:#edae49,color:#000
+    style D fill:#edae49,color:#000
+    style Server fill:#0f0e0b,stroke:#28a745,stroke-width:2px
+    style H fill:#28a745,color:#fff
+```
+
+### Download Process (Server-Side Processing)
+
+```mermaid
+flowchart TB
+    subgraph Server["☁️ Cloudflare Worker"]
+        A[Receive Download Request] --> B[Retrieve from R2<br/>Compressed + Encrypted]
+        B --> C[Decrypt with AES-GCM<br/>JWT Token Key]
+        C --> D[Decompress Gzip]
+        D --> E[Return Original File]
+    end
+    
+    subgraph Client["🌐 Client Browser"]
+        E --> F[Receive File]
+        F --> G[Display/Download]
+    end
+    
+    style Server fill:#0f0e0b,stroke:#28a745,stroke-width:2px
+    style C fill:#edae49,color:#000
+    style D fill:#edae49,color:#000
+    style Client fill:#1a1611,stroke:#edae49,stroke-width:2px
+```
+
+**Key Benefits:**
+- **Zero server CPU on upload** - All compression/encryption happens client-side
+- **Reduced storage** - Compressed files save 20-40% space
+- **Reduced bandwidth** - Smaller uploads = less data transfer
+- **Maximizes free tier** - Efficient use of Cloudflare resources
 
 ## Setup
 

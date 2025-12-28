@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../services/api';
 import { useUIStore } from '../stores/ui';
+import { useAuthStore } from '../stores/auth';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 
 /**
@@ -330,6 +331,42 @@ export function useModRatings(modId: string) {
 }
 
 /**
+ * List drafts query (authenticated users only)
+ * Filters mods by authorId (current user) and status='draft'
+ */
+export function useDrafts(params?: {
+    page?: number;
+    pageSize?: number;
+}) {
+    const { user } = useAuthStore();
+    
+    return useQuery({
+        queryKey: [...modKeys.all, 'drafts', user?.userId || '', params || {}],
+        queryFn: async () => {
+            if (!user?.userId) {
+                return { mods: [], total: 0, page: 1, pageSize: 20 };
+            }
+            // Use listMods with authorId filter - this returns all statuses for the author
+            const result = await api.listMods({
+                ...params,
+                authorId: user.userId,
+            });
+            // Filter to only show drafts
+            return {
+                ...result,
+                mods: result.mods.filter(mod => mod.status === 'draft'),
+                total: result.mods.filter(mod => mod.status === 'draft').length,
+            };
+        },
+        enabled: !!user?.userId,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true,
+    });
+}
+
+/**
  * Submit mod rating mutation
  */
 export function useSubmitModRating() {
@@ -351,6 +388,42 @@ export function useSubmitModRating() {
         onError: (error: Error) => {
             addNotification({
                 message: error.message || 'Failed to submit rating',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
+ * Get admin settings query
+ */
+export function useAdminSettings() {
+    return useQuery({
+        queryKey: ['admin', 'settings'],
+        queryFn: () => api.getAdminSettings(),
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+}
+
+/**
+ * Update admin settings mutation
+ */
+export function useUpdateAdminSettings() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: (settings: { allowedFileExtensions: string[] }) => api.updateAdminSettings(settings),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] });
+            addNotification({
+                message: 'Settings updated successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to update settings',
                 type: 'error',
             });
         },

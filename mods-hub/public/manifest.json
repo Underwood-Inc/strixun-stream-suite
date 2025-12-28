@@ -1,0 +1,56 @@
+{
+  "name": "Mods Hub - Strixun Stream Suite",
+  "short_name": "Mods Hub",
+  "description": "Upload, manage, and discover mods for Strixun Stream Suite",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Browse Mods",
+      "short_name": "Browse",
+      "description": "Browse available mods",
+      "url": "/",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Upload Mod",
+      "short_name": "Upload",
+      "description": "Upload a new mod",
+      "url": "/upload",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Drafts",
+      "short_name": "Drafts",
+      "description": "View and manage your draft mods",
+      "url": "/drafts",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
+

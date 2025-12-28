@@ -12,6 +12,8 @@ import { UserDashboardPage } from './pages/UserDashboardPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
 import { LoginPage } from './pages/LoginPage';
+import { DraftsPage } from './pages/DraftsPage';
+import { AdminSettingsPage } from './pages/AdminSettingsPage';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { AdminRoute } from './components/routing/AdminRoute';
@@ -52,6 +54,14 @@ export function App() {
                         } 
                     />
                     <Route 
+                        path="/drafts" 
+                        element={
+                            <ProtectedRoute>
+                                <DraftsPage />
+                            </ProtectedRoute>
+                        } 
+                    />
+                    <Route 
                         path="/profile" 
                         element={
                             <ProtectedRoute>
@@ -88,6 +98,14 @@ export function App() {
                         element={
                             <AdminRoute>
                                 <R2ManagementPage />
+                            </AdminRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/admin/settings" 
+                        element={
+                            <AdminRoute>
+                                <AdminSettingsPage />
                             </AdminRoute>
                         } 
                     />

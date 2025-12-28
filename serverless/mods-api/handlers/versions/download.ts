@@ -258,9 +258,11 @@ export async function handleDownloadVersion(
 
         // Check if file is encrypted (should always be true for new uploads)
         const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
+        const encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
         console.log('[Download] File retrieved from R2:', { 
             size: encryptedFile.size, 
             isEncrypted, 
+            encryptionFormat,
             contentType: encryptedFile.httpMetadata?.contentType,
             hasCustomMetadata: !!encryptedFile.customMetadata
         });
@@ -273,10 +275,6 @@ export async function handleDownloadVersion(
             console.log('[Download] File is encrypted, decrypting...');
             // File is encrypted - decrypt it
             try {
-                const encryptedData = await encryptedFile.text();
-                const encryptedJson = JSON.parse(encryptedData);
-                console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
-                
                 // Get JWT token for decryption
                 const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
                 console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length });
@@ -294,18 +292,34 @@ export async function handleDownloadVersion(
                     });
                 }
                 
-                // Decrypt the file
-                console.log('[Download] Decrypting with JWT...');
-                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                console.log('[Download] Decryption successful, base64 length:', decryptedBase64.length);
-                
-                // Convert base64 back to binary
-                const binaryString = atob(decryptedBase64);
-                decryptedFileBytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    decryptedFileBytes[i] = binaryString.charCodeAt(i);
+                // Check encryption format and decrypt accordingly
+                if (encryptionFormat === 'binary-v4') {
+                    // Binary encrypted format - decrypt directly
+                    console.log('[Download] Using binary decryption (v4)...');
+                    const encryptedBinary = await encryptedFile.arrayBuffer();
+                    const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                    decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
+                    console.log('[Download] Binary decryption successful, size:', decryptedFileBytes.length);
+                } else {
+                    // Legacy JSON encrypted format
+                    console.log('[Download] Using JSON decryption (v3)...');
+                    const encryptedData = await encryptedFile.text();
+                    const encryptedJson = JSON.parse(encryptedData);
+                    console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
+                    
+                    // Decrypt the file
+                    console.log('[Download] Decrypting with JWT...');
+                    const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                    console.log('[Download] Decryption successful, base64 length:', decryptedBase64.length);
+                    
+                    // Convert base64 back to binary
+                    const binaryString = atob(decryptedBase64);
+                    decryptedFileBytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        decryptedFileBytes[i] = binaryString.charCodeAt(i);
+                    }
+                    console.log('[Download] Converted to binary, size:', decryptedFileBytes.length);
                 }
-                console.log('[Download] Converted to binary, size:', decryptedFileBytes.length);
                 
                 // Get original content type from metadata
                 originalContentType = encryptedFile.customMetadata?.originalContentType || 'application/zip';

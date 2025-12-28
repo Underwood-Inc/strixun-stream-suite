@@ -5,12 +5,15 @@
 
 // useState imported but not used - removed
 import { useNavigate } from 'react-router-dom';
-import { useUploadMod } from '../hooks/useMods';
+import { useUploadMod, useUpdateMod } from '../hooks/useMods';
 import { useUploadPermission } from '../hooks/useUploadPermission';
-import { ModUploadForm } from '../components/mod/ModUploadForm';
+import { ModUploadWizard } from '../components/mod/ModUploadWizard';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
+import * as api from '../services/api';
+import { useUIStore } from '../stores/ui';
+import type { ModUploadRequest } from '../types/mod';
 
 const PageContainer = styled.div`
   max-width: 800px;
@@ -96,10 +99,12 @@ export function ModUploadPage() {
     const { isAuthenticated } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const uploadMod = useUploadMod();
+    const updateMod = useUpdateMod();
+    const addNotification = useUIStore((state) => state.addNotification);
 
     const handleSubmit = async (data: {
         file: File;
-        metadata: any;
+        metadata: ModUploadRequest;
         thumbnail?: File;
     }) => {
         try {
@@ -107,6 +112,35 @@ export function ModUploadPage() {
             navigate(`/${result.mod.slug}`);
         } catch (error) {
             // Error handled by mutation (notification shown)
+        }
+    };
+
+    const handleSaveDraft = async (data: {
+        file?: File;
+        metadata: ModUploadRequest;
+        thumbnail?: File;
+    }) => {
+        try {
+            if (!data.file) {
+                addNotification({
+                    message: 'Please select a mod file before saving as draft',
+                    type: 'warning',
+                });
+                return;
+            }
+            // Save as draft - same as upload but with draft status
+            const result = await uploadMod.mutateAsync({
+                file: data.file,
+                metadata: { ...data.metadata, status: 'draft' },
+                thumbnail: data.thumbnail,
+            });
+            addNotification({
+                message: 'Draft saved successfully! You can continue editing it later.',
+                type: 'success',
+            });
+            navigate(`/drafts`);
+        } catch (error) {
+            // Error handled by mutation
         }
     };
 
@@ -155,7 +189,11 @@ export function ModUploadPage() {
                     <ErrorText>{uploadError.message}</ErrorText>
                 </ErrorMessage>
             )}
-            <ModUploadForm onSubmit={handleSubmit} isLoading={uploadMod.isPending} />
+            <ModUploadWizard 
+                onSubmit={handleSubmit} 
+                onSaveDraft={handleSaveDraft}
+                isLoading={uploadMod.isPending} 
+            />
         </PageContainer>
     );
 }

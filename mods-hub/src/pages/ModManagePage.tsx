@@ -4,13 +4,14 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion } from '../hooks/useMods';
+import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus } from '../hooks/useMods';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
+import type { ModStatus } from '../types/mod';
 
 const PageContainer = styled.div`
   max-width: 1000px;
@@ -61,6 +62,7 @@ export function ModManagePage() {
     const updateMod = useUpdateMod();
     const deleteMod = useDeleteMod();
     const uploadVersion = useUploadVersion();
+    const updateStatus = useUpdateModStatus();
 
     if (isLoading || permissionLoading) return <Loading>Loading...</Loading>;
     if (!data) {
@@ -109,6 +111,19 @@ export function ModManagePage() {
         }
     };
 
+    const handleStatusChange = async (status: ModStatus) => {
+        if (!data) return;
+        try {
+            await updateStatus.mutateAsync({ 
+                modId: data.mod.modId, 
+                status,
+                reason: status === 'pending' ? 'Submitted for review by author' : undefined
+            });
+        } catch (error) {
+            // Error handled by mutation
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this mod? This action cannot be undone.')) {
             return;
@@ -141,7 +156,8 @@ export function ModManagePage() {
                 mod={data.mod}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
-                isLoading={updateMod.isPending || deleteMod.isPending}
+                onStatusChange={handleStatusChange}
+                isLoading={updateMod.isPending || deleteMod.isPending || updateStatus.isPending}
             />
             <VersionUploadForm
                 modId={data.mod.modId} // Still use modId for version upload

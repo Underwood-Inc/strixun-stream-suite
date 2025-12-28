@@ -66,6 +66,8 @@ export interface ModMetadata {
     status: ModStatus;
     statusHistory?: ModStatusHistory[];
     reviewComments?: ModReviewComment[];
+    variants?: ModVariant[]; // Variants for the mod
+    gameId?: string; // Associated game ID (sub-category)
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
     // Use authorId to lookup displayName via /auth/user/:userId if needed
 }
@@ -98,6 +100,22 @@ export interface ModDetailResponse {
     versions: ModVersion[];
 }
 
+export interface ModVariant {
+    variantId: string;
+    name: string;
+    description?: string;
+    file?: File; // For uploads
+    fileUrl?: string; // For existing variants
+    fileName?: string;
+    fileSize?: number;
+    version?: string;
+    changelog?: string;
+    gameVersions?: string[];
+    dependencies?: ModDependency[];
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export interface ModUploadRequest {
     title: string;
     description: string;
@@ -109,6 +127,9 @@ export interface ModUploadRequest {
     dependencies?: ModDependency[];
     visibility: ModVisibility;
     thumbnail?: string;
+    status?: ModStatus; // Allow setting status (e.g., 'draft')
+    variants?: ModVariant[]; // Variants for the mod
+    gameId?: string; // Associated game ID (sub-category)
 }
 
 export interface ModUpdateRequest {
@@ -118,6 +139,8 @@ export interface ModUpdateRequest {
     tags?: string[];
     visibility?: ModVisibility;
     thumbnail?: string;
+    status?: ModStatus; // Allow updating status (e.g., 'draft' to 'pending')
+    variants?: ModVariant[]; // Update variants
 }
 
 export interface VersionUploadRequest {

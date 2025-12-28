@@ -172,45 +172,30 @@ export async function handleUploadMod(
             });
         }
 
-        // SECURITY: Files are already encrypted by the client
-        // Store encrypted files in R2 as-is (encryption at rest)
-        // Files are decrypted on-the-fly during download
-        const isEncrypted = file.name.endsWith('.encrypted') || file.type === 'application/json';
-        let originalFileName = file.name;
+        // Validate file extension
+        const { getAllowedFileExtensions } = await import('../admin/settings.js');
+        const allowedExtensions = await getAllowedFileExtensions(env);
         
-        if (!isEncrypted) {
-            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        let originalFileName = file.name;
         
         // Remove .encrypted suffix if present to get original filename
         if (originalFileName.endsWith('.encrypted')) {
             originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
         }
         
-        // Get encrypted file data (already encrypted by client - store as-is)
-        let encryptedData: string;
-        let encryptedJson: any;
-        try {
-            encryptedData = await file.text();
-            encryptedJson = JSON.parse(encryptedData);
-            
-            // Verify it's a valid encrypted structure
-            if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
-                throw new Error('Invalid encrypted file format');
-            }
-        } catch (error) {
-            console.error('Encrypted file validation error:', error);
-            const rfcError = createError(request, 400, 'Invalid Encrypted File', 'The uploaded file does not appear to be properly encrypted. Please ensure the file is encrypted before upload.');
+        // Get file extension
+        const fileExtension = originalFileName.includes('.') 
+            ? originalFileName.substring(originalFileName.lastIndexOf('.'))
+            : '';
+        
+        // Validate extension
+        if (!fileExtension || !allowedExtensions.includes(fileExtension.toLowerCase())) {
+            const rfcError = createError(
+                request, 
+                400, 
+                'Invalid File Type', 
+                `File type "${fileExtension}" is not allowed. Allowed extensions: ${allowedExtensions.join(', ')}`
+            );
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -221,6 +206,12 @@ export async function handleUploadMod(
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
+        }
+
+        // SECURITY: Files are already encrypted by the client
+        // Store encrypted files in R2 as-is (encryption at rest)
+        // Files are decrypted on-the-fly during download
+        // Support both binary encryption (v4) and legacy JSON encryption (v3)
         }
         
         // Get JWT token for temporary decryption (to calculate hash)
@@ -239,22 +230,64 @@ export async function handleUploadMod(
             });
         }
         
+        // Check file format: binary encrypted (v4) or legacy JSON encrypted (v3)
+        const fileBuffer = await file.arrayBuffer();
+        const fileBytes = new Uint8Array(fileBuffer);
+        
+        // Check for binary format (version 4): first byte should be 4
+        const isBinaryEncrypted = fileBytes.length >= 4 && fileBytes[0] === 4;
+        const isLegacyEncrypted = file.type === 'application/json' || 
+                                  (fileBytes.length > 0 && fileBytes[0] === 0x7B); // '{' for JSON
+        
+        if (!isBinaryEncrypted && !isLegacyEncrypted) {
+            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
         // Temporarily decrypt to calculate file hash (for integrity verification)
         let fileHash: string;
         let fileSize: number;
+        let encryptionFormat: string;
+        
         try {
-            const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-            
-            // Convert base64 back to binary for hash calculation
-            const binaryString = atob(decryptedBase64);
-            const fileBytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                fileBytes[i] = binaryString.charCodeAt(i);
+            if (isBinaryEncrypted) {
+                // Binary encrypted format - decrypt directly
+                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                fileSize = decryptedBytes.length;
+                fileHash = await calculateFileHash(decryptedBytes);
+                encryptionFormat = 'binary-v4';
+            } else {
+                // Legacy JSON encrypted format
+                const encryptedData = await file.text();
+                const encryptedJson = JSON.parse(encryptedData);
+                
+                // Verify it's a valid encrypted structure
+                if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
+                    throw new Error('Invalid encrypted file format');
+                }
+                
+                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                
+                // Convert base64 back to binary for hash calculation
+                const binaryString = atob(decryptedBase64);
+                const fileBytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    fileBytes[i] = binaryString.charCodeAt(i);
+                }
+                fileSize = fileBytes.length;
+                fileHash = await calculateFileHash(fileBytes);
+                encryptionFormat = 'json-v3';
             }
-            fileSize = fileBytes.length;
-            
-            // Calculate hash from decrypted data
-            fileHash = await calculateFileHash(fileBytes);
         } catch (error) {
             console.error('File decryption error during upload:', error);
             const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated and the file was encrypted with your token.');
@@ -349,11 +382,24 @@ export async function handleUploadMod(
         const normalizedModId = normalizeModId(modId);
         const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${fileExtension}`);
         
-        // Store encrypted file data as-is (the original encrypted JSON from client)
-        const encryptedFileBytes = new TextEncoder().encode(encryptedData);
+        // Store encrypted file data as-is (binary or JSON format)
+        let encryptedFileBytes: Uint8Array;
+        let contentType: string;
+        
+        if (isBinaryEncrypted) {
+            // Binary encrypted format - store directly
+            encryptedFileBytes = fileBytes;
+            contentType = 'application/octet-stream';
+        } else {
+            // Legacy JSON encrypted format
+            const encryptedData = await file.text();
+            encryptedFileBytes = new TextEncoder().encode(encryptedData);
+            contentType = 'application/json';
+        }
+        
         await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
-                contentType: 'application/json', // Stored as encrypted JSON
+                contentType: contentType,
                 cacheControl: 'private, no-cache', // Don't cache encrypted files
             },
             customMetadata: {
@@ -362,6 +408,7 @@ export async function handleUploadMod(
                 uploadedBy: auth.userId,
                 uploadedAt: now,
                 encrypted: 'true', // Mark as encrypted
+                encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
                 originalFileName,
                 originalContentType: 'application/zip', // Original file type
                 sha256: fileHash, // Hash of decrypted file for verification
@@ -391,9 +438,17 @@ export async function handleUploadMod(
         };
 
         // Upload thumbnail first (before creating mod metadata) so we can use the slug
-        const thumbnailUrl = metadata.thumbnail 
-            ? await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId)
-            : undefined;
+        // Support both binary file upload (preferred) and legacy base64
+        const thumbnailFile = formData.get('thumbnail') as File | null;
+        let thumbnailUrl: string | undefined;
+        
+        if (thumbnailFile) {
+            // Binary file upload (optimized - no base64 overhead)
+            thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
+        } else if (metadata.thumbnail) {
+            // Legacy base64 upload (backward compatibility)
+            thumbnailUrl = await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId);
+        }
 
         // Fetch author display name from auth API during upload
         // CRITICAL: Auth API has no public user lookup endpoint, so we must store it here
@@ -533,7 +588,104 @@ export async function handleUploadMod(
 }
 
 /**
- * Handle thumbnail upload (base64 to R2)
+ * Get image extension from MIME type
+ */
+function getImageExtension(mimeType: string): string {
+    const mimeToExt: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+    };
+    return mimeToExt[mimeType.toLowerCase()] || 'png';
+}
+
+/**
+ * Handle thumbnail upload (binary file to R2)
+ * Validates image format and ensures it's renderable
+ * Optimized version - no base64 overhead
+ */
+async function handleThumbnailBinaryUpload(
+    thumbnailFile: File,
+    modId: string,
+    slug: string,
+    request: Request,
+    env: Env,
+    customerId: string | null
+): Promise<string> {
+    try {
+        // Validate file type
+        if (!thumbnailFile.type.startsWith('image/')) {
+            throw new Error('File must be an image');
+        }
+        
+        // Check file size (2 MB limit)
+        const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2 MB
+        if (thumbnailFile.size > MAX_THUMBNAIL_SIZE) {
+            throw new Error(`Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
+        }
+        
+        // Validate image type (only allow common web-safe formats)
+        const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+        const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+        if (!imageType || !allowedTypes.includes(imageType)) {
+            throw new Error(`Unsupported image type: ${imageType}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
+        
+        // Read file as binary
+        const imageBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
+        
+        // Basic validation: Check minimum file size (at least 100 bytes)
+        if (imageBuffer.length < 100) {
+            throw new Error('Image file is too small or corrupted');
+        }
+        
+        // Validate image headers for common formats
+        // JPEG: FF D8 FF
+        // PNG: 89 50 4E 47
+        // GIF: 47 49 46 38
+        // WebP: 52 49 46 46 (RIFF) followed by WEBP
+        const isValidImage = 
+            (imageType === 'jpeg' || imageType === 'jpg') && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF ||
+            imageType === 'png' && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47 ||
+            imageType === 'gif' && imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x38 ||
+            imageType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
+        
+        if (!isValidImage) {
+            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image`);
+        }
+        
+        // Upload to R2
+        const normalizedModId = normalizeModId(modId);
+        const extension = getImageExtension(thumbnailFile.type);
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${extension}`);
+        await env.MODS_R2.put(r2Key, imageBuffer, {
+            httpMetadata: {
+                contentType: thumbnailFile.type,
+                cacheControl: 'public, max-age=31536000',
+            },
+            customMetadata: {
+                modId,
+                extension: extension,
+                validated: 'true', // Mark as validated for rendering
+            },
+        });
+        
+        // Return API proxy URL using slug for consistency
+        const requestUrl = new URL(request.url);
+        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            : `https://mods-api.idling.app`;  // Production
+        return `${API_BASE_URL}/mods/${slug}/thumbnail`;
+    } catch (error) {
+        console.error('Thumbnail binary upload error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Handle thumbnail upload (base64 to R2) - Legacy support
  * Validates image format and ensures it's renderable
  */
 async function handleThumbnailUpload(

@@ -28,14 +28,22 @@ export async function handleListAllMods(
         // CRITICAL: Admin needs to see ALL mods across ALL customer scopes, not just their own
         const allModIds = new Set<string>();
 
-        // Get global public list
+        // Get global public list FIRST
+        // CRITICAL: Mods in the global list are approved/published public mods
+        // These should NOT be collected again from customer lists to prevent duplicates
         const globalListKey = 'mods_list_public';
         const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+        const globalModIdsSet = new Set<string>();
         if (globalListData) {
-            globalListData.forEach(id => allModIds.add(id));
+            globalListData.forEach(id => {
+                allModIds.add(id);
+                globalModIdsSet.add(id);
+            });
         }
 
         // Get mods from ALL customer scopes (admin needs to see everything)
+        // CRITICAL: Only collect mod IDs from customer lists that are NOT already in the global list
+        // This prevents duplicates - approved mods are in global list, so skip them from customer lists
         // Use KV.list() to find all customer mod lists
         // Store modId -> customerId mapping for efficient lookup
         const modIdToCustomerId = new Map<string, string | null>();
@@ -43,6 +51,7 @@ export async function handleListAllMods(
         let cursor: string | undefined;
         let totalCustomerLists = 0;
         let totalModIdsFromCustomers = 0;
+        let skippedDuplicates = 0;
         
         do {
             const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
@@ -62,6 +71,13 @@ export async function handleListAllMods(
                     if (customerListData && Array.isArray(customerListData)) {
                         console.log('[AdminList] Customer list has', customerListData.length, 'mods');
                         customerListData.forEach(id => {
+                            // CRITICAL: Skip mod IDs that are already in the global list
+                            // This prevents duplicates - approved mods are handled via global list
+                            if (globalModIdsSet.has(id)) {
+                                skippedDuplicates++;
+                                return; // Skip this mod ID - it's already in global list
+                            }
+                            
                             allModIds.add(id);
                             totalModIdsFromCustomers++;
                             // Store mapping for efficient lookup
@@ -78,12 +94,14 @@ export async function handleListAllMods(
         console.log('[AdminList] Collected mod IDs:', {
             fromGlobal: globalListData?.length || 0,
             fromCustomers: totalModIdsFromCustomers,
+            skippedDuplicates,
             totalCustomerLists,
             totalUniqueModIds: allModIds.size
         });
 
         // Fetch all mod metadata
         // CRITICAL: Search across ALL customer scopes, not just admin's customerId
+        // Since we've already prevented duplicate mod IDs during collection, we don't need additional deduplication
         const mods: ModMetadata[] = [];
         const { normalizeModId } = await import('../../utils/customer.js');
         
@@ -91,7 +109,7 @@ export async function handleListAllMods(
             // Normalize modId (strip mod_ prefix if present)
             const normalizedModId = normalizeModId(modId);
             
-            // Try to find mod in global scope first
+            // Try to find mod in global scope first (for approved/published public mods)
             let mod: ModMetadata | null = null;
             const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;

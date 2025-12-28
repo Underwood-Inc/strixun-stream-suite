@@ -18,21 +18,7 @@ export async function handleApproveUser(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         // Parse request (may include email for metadata)
         const requestData = await request.json().catch(() => ({})) as { email?: string };
         const email = requestData.email || '';
@@ -81,21 +67,7 @@ export async function handleRevokeUser(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         await revokeUserUpload(userId, env);
 
         const corsHeaders = createCORSHeaders(request, {
@@ -139,21 +111,7 @@ export async function handleListApprovedUsers(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         const approvedUsers = await getApprovedUploaders(env);
 
         const corsHeaders = createCORSHeaders(request, {

@@ -211,3 +211,320 @@ export async function decryptWithJWT(
   }
 }
 
+// ============ Binary Encryption API (Optimized for File Storage) ============
+
+/**
+ * Compress data using gzip (default compression for Cloudflare Workers)
+ * 
+ * @param data - Data to compress
+ * @returns Compressed data as Uint8Array
+ */
+async function compressData(data: Uint8Array & { buffer: ArrayBuffer }): Promise<Uint8Array> {
+  const stream = new CompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  const reader = stream.readable.getReader();
+  
+  // Write data to compression stream (data is already typed with ArrayBuffer)
+  writer.write(data);
+  writer.close();
+  
+  // Read compressed chunks
+  const chunks: Uint8Array[] = [];
+  let done = false;
+  while (!done) {
+    const { value, done: readerDone } = await reader.read();
+    done = readerDone;
+    if (value) {
+      chunks.push(value);
+    }
+  }
+  
+  // Combine chunks into single Uint8Array
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  return result;
+}
+
+/**
+ * Decompress gzip data
+ * 
+ * @param compressedData - Compressed data to decompress
+ * @returns Decompressed data as Uint8Array
+ */
+async function decompressData(compressedData: Uint8Array): Promise<Uint8Array> {
+  const stream = new DecompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  const reader = stream.readable.getReader();
+  
+  // Write compressed data to decompression stream
+  // Convert to ArrayBuffer if needed to satisfy BufferSource type
+  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
+  if (compressedData.buffer instanceof ArrayBuffer) {
+    dataBuffer = compressedData as Uint8Array & { buffer: ArrayBuffer };
+  } else {
+    // SharedArrayBuffer - need to create a copy
+    const arrayBuffer = compressedData.buffer.slice(compressedData.byteOffset, compressedData.byteOffset + compressedData.byteLength) as unknown as ArrayBuffer;
+    dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
+  }
+  writer.write(dataBuffer);
+  writer.close();
+  
+  // Read decompressed chunks
+  const chunks: Uint8Array[] = [];
+  let done = false;
+  while (!done) {
+    const { value, done: readerDone } = await reader.read();
+    done = readerDone;
+    if (value) {
+      chunks.push(value);
+    }
+  }
+  
+  // Combine chunks into single Uint8Array
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  return result;
+}
+
+/**
+ * Encrypt binary data (ArrayBuffer) directly without base64/JSON overhead
+ * 
+ * This function is optimized for file encryption, eliminating the 40-45% overhead
+ * from base64 encoding and JSON wrapping. It stores encrypted binary data with
+ * a minimal metadata header.
+ * 
+ * **Compression is enabled by default** to maximize Cloudflare free tier efficiency.
+ * Data is compressed with gzip before encryption to reduce storage and bandwidth.
+ * 
+ * Format (Version 5):
+ * [1 byte version][1 byte compressed][1 byte saltLen][1 byte ivLen][1 byte hashLen]
+ * [salt (16 bytes)][iv (12 bytes)][tokenHash (32 bytes)][encryptedData (variable)]
+ * 
+ * @param data - Binary data to encrypt (ArrayBuffer or Uint8Array)
+ * @param token - JWT token for key derivation
+ * @returns Encrypted binary data with metadata header (Uint8Array)
+ * 
+ * @throws Error if token is invalid or encryption fails
+ */
+export async function encryptBinaryWithJWT(
+  data: ArrayBuffer | Uint8Array,
+  token: string
+): Promise<Uint8Array> {
+  if (!token || token.length < 10) {
+    throw new Error('Valid JWT token is required for encryption');
+  }
+
+  // Ensure dataBuffer is a Uint8Array with ArrayBuffer (not ArrayBufferLike)
+  // This prevents type errors with crypto.subtle.encrypt which requires BufferSource
+  // Optimize: avoid unnecessary copies when possible
+  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
+  if (data instanceof ArrayBuffer) {
+    // Direct ArrayBuffer - no copy needed
+    dataBuffer = new Uint8Array(data) as Uint8Array & { buffer: ArrayBuffer };
+  } else {
+    // Uint8Array input - check if buffer is ArrayBuffer (not SharedArrayBuffer)
+    // Only create copy if necessary (SharedArrayBuffer or non-zero offset/length)
+    if (data.buffer instanceof SharedArrayBuffer || 
+        data.byteOffset !== 0 || 
+        data.byteLength !== data.buffer.byteLength) {
+      // Need to create a copy - slice() always returns ArrayBuffer
+      const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+      dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
+    } else {
+      // Can use directly - buffer is ArrayBuffer and covers full range
+      // Type assertion needed because TypeScript can't infer ArrayBuffer vs SharedArrayBuffer
+      dataBuffer = new Uint8Array(data.buffer as ArrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
+    }
+  }
+
+  // Generate random salt and IV
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+
+  // Derive key from token
+  const key = await deriveKeyFromToken(token, salt);
+
+  // Hash token for verification
+  const tokenHashHex = await hashToken(token);
+  const tokenHash = new Uint8Array(32); // SHA-256 = 32 bytes
+  for (let i = 0; i < 32; i++) {
+    tokenHash[i] = parseInt(tokenHashHex.substr(i * 2, 2), 16);
+  }
+
+  // CRITICAL: Compress data before encryption (default, always enabled)
+  // This maximizes Cloudflare free tier efficiency by reducing storage and bandwidth
+  const compressedData = await compressData(dataBuffer);
+  
+  // Only use compression if it actually reduces size (compression overhead is ~18 bytes for gzip)
+  // For very small data, compression might increase size
+  const useCompression = compressedData.length < dataBuffer.length - 18;
+  const dataToEncrypt: Uint8Array & { buffer: ArrayBuffer } = useCompression 
+    ? (compressedData as Uint8Array & { buffer: ArrayBuffer })
+    : dataBuffer;
+
+  // Encrypt binary data directly
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv },
+    key,
+    dataToEncrypt
+  );
+
+  const encryptedArray = new Uint8Array(encrypted);
+
+  // Build binary format: [header][salt][iv][tokenHash][encryptedData]
+  // Version 5: Added compression flag
+  const headerSize = 5; // version + compressed + saltLen + ivLen + hashLen
+  const totalSize = headerSize + salt.length + iv.length + tokenHash.length + encryptedArray.length;
+  const result = new Uint8Array(totalSize);
+  let offset = 0;
+
+  // Header
+  result[offset++] = 5; // Version 5: binary format with compression support
+  result[offset++] = useCompression ? 1 : 0; // Compression flag (1 = compressed, 0 = uncompressed)
+  result[offset++] = salt.length;
+  result[offset++] = iv.length;
+  result[offset++] = tokenHash.length;
+
+  // Salt
+  result.set(salt, offset);
+  offset += salt.length;
+
+  // IV
+  result.set(iv, offset);
+  offset += iv.length;
+
+  // Token hash
+  result.set(tokenHash, offset);
+  offset += tokenHash.length;
+
+  // Encrypted data
+  result.set(encryptedArray, offset);
+
+  return result;
+}
+
+/**
+ * Decrypt binary encrypted data
+ * 
+ * Supports both Version 4 (uncompressed) and Version 5 (with compression) formats
+ * for backward compatibility.
+ * 
+ * @param encryptedBinary - Binary encrypted data with header (ArrayBuffer or Uint8Array)
+ * @param token - JWT token for decryption
+ * @returns Decrypted binary data (Uint8Array)
+ * 
+ * @throws Error if token doesn't match or decryption fails
+ */
+export async function decryptBinaryWithJWT(
+  encryptedBinary: ArrayBuffer | Uint8Array,
+  token: string
+): Promise<Uint8Array> {
+  if (!token || token.length < 10) {
+    throw new Error('Valid JWT token is required for decryption');
+  }
+
+  const data = encryptedBinary instanceof ArrayBuffer 
+    ? new Uint8Array(encryptedBinary) 
+    : encryptedBinary;
+
+  if (data.length < 4) {
+    throw new Error('Invalid encrypted binary format: too short');
+  }
+
+  // Parse header
+  let offset = 0;
+  const version = data[offset++];
+  
+  // Support both Version 4 (legacy, no compression) and Version 5 (with compression)
+  if (version !== 4 && version !== 5) {
+    throw new Error(`Unsupported binary encryption version: ${version}`);
+  }
+
+  // Version 5 has compression flag, Version 4 doesn't
+  let isCompressed = false;
+  if (version === 5) {
+    isCompressed = data[offset++] === 1;
+  }
+
+  const saltLength = data[offset++];
+  const ivLength = data[offset++];
+  const tokenHashLength = data[offset++];
+
+  // Validate lengths
+  if (saltLength !== SALT_LENGTH || ivLength !== IV_LENGTH || tokenHashLength !== 32) {
+    throw new Error('Invalid encrypted binary format: invalid header lengths');
+  }
+
+  // Extract components
+  const salt = data.slice(offset, offset + saltLength);
+  offset += saltLength;
+
+  const iv = data.slice(offset, offset + ivLength);
+  offset += ivLength;
+
+  const storedTokenHash = data.slice(offset, offset + tokenHashLength);
+  offset += tokenHashLength;
+
+  const encryptedData = data.slice(offset);
+
+  // Verify token hash
+  const tokenHashHex = await hashToken(token);
+  const expectedTokenHash = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    expectedTokenHash[i] = parseInt(tokenHashHex.substr(i * 2, 2), 16);
+  }
+
+  // Constant-time comparison
+  let hashMatch = true;
+  for (let i = 0; i < 32; i++) {
+    if (storedTokenHash[i] !== expectedTokenHash[i]) {
+      hashMatch = false;
+    }
+  }
+
+  if (!hashMatch) {
+    throw new Error(
+      'Decryption failed - token does not match. ' +
+      'Only authenticated users (with email OTP access) can decrypt this data.'
+    );
+  }
+
+  // Derive key from token
+  const key = await deriveKeyFromToken(token, salt);
+
+  // Decrypt
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      encryptedData
+    );
+
+    const decryptedData = new Uint8Array(decrypted);
+
+    // Decompress if data was compressed (Version 5 with compression flag)
+    if (isCompressed) {
+      return await decompressData(decryptedData);
+    }
+
+    return decryptedData;
+  } catch (error) {
+    throw new Error(
+      'Decryption failed - incorrect token or corrupted data. ' +
+      'Only authenticated users (with email OTP access) can decrypt this data.'
+    );
+  }
+}
+

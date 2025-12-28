@@ -96,3 +96,22 @@ export type {
   FingerprintHash,
 } from './fingerprint.js';
 
+// Re-export route protection utilities
+export {
+  protectAdminRoute,
+  withAdminProtection,
+  isSuperAdminEmail,
+  isAdminEmail,
+  getSuperAdminEmails,
+  getAdminEmails,
+  verifySuperAdminKey,
+  createUnauthorizedResponse,
+  createForbiddenResponse,
+} from './route-protection.js';
+
+export type {
+  AdminLevel,
+  RouteProtectionEnv,
+  RouteProtectionResult,
+} from './route-protection.js';
+

@@ -67,7 +67,7 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         return null;
     }
     
-    // First, try API key verification (for backward compatibility)
+    // Try API key verification (for backward compatibility)
     const apiKeyAuth = await verifyApiKey(token, env);
     if (apiKeyAuth) {
         return apiKeyAuth;
@@ -140,9 +140,32 @@ async function handleAdminRoute(
         };
     }
     
+    // If requireSuperAdmin passed but auth is null, check if it's a service-to-service call with SUPER_ADMIN_API_KEY
     if (!auth) {
-        // Try to get more context from JWT token for better error message
+        // Verify this is actually a SUPER_ADMIN_API_KEY call (not a JWT that failed other checks)
+        const { verifySuperAdmin } = await import('../utils/super-admin.js');
         const authHeader = request.headers.get('Authorization');
+        let isSuperAdminKey = false;
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            isSuperAdminKey = verifySuperAdmin(token, env);
+        } else {
+            const apiKey = request.headers.get('X-OTP-API-Key');
+            if (apiKey) {
+                isSuperAdminKey = verifySuperAdmin(apiKey, env);
+            }
+        }
+        
+        if (isSuperAdminKey) {
+            // Service-to-service call with SUPER_ADMIN_API_KEY - allow with null customerId
+            // The handler accepts null customerId and will perform system-wide operations
+            const handlerResponse = await handler(request, env, null);
+            return { response: handlerResponse, customerId: null };
+        }
+        
+        // Not a service-to-service call - require normal authentication
+        // Try to get more context from JWT token for better error message
         let errorMessage = 'Authentication required. Please log in to access the dashboard.';
         
         if (authHeader && authHeader.startsWith('Bearer ')) {

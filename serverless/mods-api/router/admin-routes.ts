@@ -2,55 +2,39 @@
  * Admin Routes
  * Handles admin endpoints for mod triage and management
  * All admin routes require super-admin authentication
+ * 
+ * Uses shared route protection system for consistent, secure access control
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { wrapWithEncryption, createCORSHeaders } from '@strixun/api-framework';
+import { protectAdminRoute, type RouteProtectionEnv, type AuthResult } from '@strixun/api-framework';
+import { verifyJWT } from '../utils/auth.js';
 import { createError } from '../utils/errors.js';
-import { authenticateRequest } from '../utils/auth.js';
-import { isSuperAdminEmail } from '../utils/admin.js';
-import { wrapWithEncryption } from '@strixun/api-framework';
 
 /**
  * Handle admin routes
+ * All routes are protected at the API level using shared protection system
  */
 export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     try {
-        // Authenticate request
-        const auth = await authenticateRequest(request, env);
-        if (!auth) {
-            const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
+        // Protect route with super-admin requirement
+        // This ensures API-level protection - no data is returned if unauthorized
+        const protection = await protectAdminRoute(
+            request,
+            env,
+            'super-admin', // All mods-api admin routes require super-admin
+            verifyJWT
+        );
+
+        // If not allowed, return error immediately (prevents any data download)
+        if (!protection.allowed || !protection.auth) {
             return {
-                response: new Response(JSON.stringify(rfcError), {
-                    status: 401,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                }),
+                response: protection.error || new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
                 customerId: null
             };
         }
 
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return {
-                response: new Response(JSON.stringify(rfcError), {
-                    status: 403,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                }),
-                customerId: auth.customerId || null
-            };
-        }
+        const auth = protection.auth;
 
         const pathSegments = path.split('/').filter(Boolean);
         console.log('[AdminRoutes] Processing request', { path, pathSegments, method: request.method, pathSegmentsLength: pathSegments.length });
@@ -170,6 +154,20 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /admin/settings - Get admin settings
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'GET') {
+            const { handleGetSettings } = await import('../handlers/admin/settings.js');
+            const response = await handleGetSettings(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: PUT /admin/settings - Update admin settings
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'PUT') {
+            const { handleUpdateSettings } = await import('../handlers/admin/settings.js');
+            const response = await handleUpdateSettings(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
         // 404 for unknown admin routes
         return null;
     } catch (error: any) {
@@ -191,9 +189,10 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     }
 }
 
-interface Env {
+interface Env extends RouteProtectionEnv {
     MODS_KV: KVNamespace;
     SUPER_ADMIN_EMAILS?: string;
+    ADMIN_EMAILS?: string; // Regular admin emails (for future use)
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
     [key: string]: any;

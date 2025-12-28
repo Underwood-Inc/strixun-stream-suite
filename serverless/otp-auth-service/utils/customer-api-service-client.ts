@@ -4,10 +4,10 @@
  * Service-to-service client for making internal requests to customer-api
  * Used during OTP verification when no user JWT exists yet
  * Uses SERVICE_API_KEY for authentication instead of JWT
- * Uses the shared API framework for HTTPS enforcement, retry, etc.
+ * Uses the shared service-to-service client library
  */
 
-import { createAPIClient } from '@strixun/api-framework/client';
+import { createServiceClient } from '../../shared/service-client/index.js';
 
 interface CustomerData {
     customerId: string;
@@ -50,21 +50,10 @@ function getCustomerApiUrl(env: Env): string {
 }
 
 /**
- * Create API client for service-to-service calls with SERVICE_API_KEY
+ * Create service client for service-to-service calls with SERVICE_API_KEY
  */
 function createServiceApiClient(env: Env) {
-    if (!env.SERVICE_API_KEY) {
-        console.error('[Customer API Service Client] SERVICE_API_KEY is missing in environment');
-        throw new Error('SERVICE_API_KEY is required for service-to-service requests');
-    }
-    
-    return createAPIClient({
-        baseURL: getCustomerApiUrl(env),
-        defaultHeaders: {
-            'Content-Type': 'application/json',
-            'X-Service-Key': env.SERVICE_API_KEY,
-        },
-        timeout: 30000,
+    return createServiceClient(getCustomerApiUrl(env), env, {
         retry: {
             maxAttempts: 3,
             backoff: 'exponential',
@@ -78,9 +67,9 @@ function createServiceApiClient(env: Env) {
  */
 export async function getCustomerByEmailService(email: string, env: Env): Promise<CustomerData | null> {
     try {
-        const api = createServiceApiClient(env);
+        const client = createServiceApiClient(env);
         const encodedEmail = encodeURIComponent(email.toLowerCase().trim());
-        const response = await api.get<any>(`/customer/by-email/${encodedEmail}`);
+        const response = await client.get<any>(`/customer/by-email/${encodedEmail}`);
         
         if (response.status === 404) {
             return null;
@@ -119,8 +108,8 @@ export async function getCustomerByEmailService(email: string, env: Env): Promis
  */
 export async function createCustomerService(customerData: Partial<CustomerData>, env: Env): Promise<CustomerData> {
     try {
-        const api = createServiceApiClient(env);
-        const response = await api.post<any>('/customer', customerData);
+        const client = createServiceApiClient(env);
+        const response = await client.post<any>('/customer', customerData);
         
         if (response.status !== 200 || !response.data) {
             const error = response.data as { detail?: string; error?: string; message?: string } | undefined;
@@ -157,8 +146,8 @@ export async function createCustomerService(customerData: Partial<CustomerData>,
  */
 export async function getCustomerService(customerId: string, env: Env): Promise<CustomerData | null> {
     try {
-        const api = createServiceApiClient(env);
-        const response = await api.get<any>(`/customer/${customerId}`);
+        const client = createServiceApiClient(env);
+        const response = await client.get<any>(`/customer/${customerId}`);
         
         if (response.status === 404) {
             return null;
@@ -184,9 +173,9 @@ export async function getCustomerService(customerId: string, env: Env): Promise<
  */
 export async function updateCustomerService(customerId: string, updates: Partial<CustomerData>, env: Env): Promise<CustomerData> {
     try {
-        const api = createServiceApiClient(env);
+        const client = createServiceApiClient(env);
         // For service calls, we need to specify customerId in the path
-        const response = await api.put<any>(`/customer/${customerId}`, updates);
+        const response = await client.put<any>(`/customer/${customerId}`, updates);
         
         if (response.status === 404) {
             throw new Error('Customer not found');

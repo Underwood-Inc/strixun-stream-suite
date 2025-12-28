@@ -84,3 +84,8 @@ storybook-static
 *temp*
 CONTEXT_SUMMARY.md
 *PROMPT*
+*COMPLETE*
+
+# Explicitly include PANDA_CORE directory (do not ignore)
+!__╠═══ PANDA_CORE ═══╣__/
+!__╠═══ PANDA_CORE ═══╣__/**

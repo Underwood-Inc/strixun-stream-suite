@@ -53,49 +53,48 @@ async function listAllUsers(env: Env): Promise<User[]> {
     // This ensures we get ALL users across the entire system, not just mods-hub users
     console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
     try {
+        const { createServiceClient } = await import('../../../shared/service-client/index.js');
         const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
-        // Use SUPER_ADMIN_API_KEY for service-to-service calls (required for /admin/users endpoint)
-        // This allows mods-api to call OTP auth service's admin endpoints
-        const token = env.SUPER_ADMIN_API_KEY || env.SERVICE_API_KEY;
+        const client = createServiceClient(authApiUrl, env);
         
-        const response = await fetch(`${authApiUrl}/admin/users`, {
-            method: 'GET',
-            headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
-                'Content-Type': 'application/json',
-            },
-            // CRITICAL: Prevent caching of service-to-service API calls
-            // Even server-side calls should not be cached to ensure fresh data
-            cache: 'no-store',
-        });
+        const response = await client.get<{ users: Array<{
+            userId: string;
+            displayName: string | null;
+            customerId: string | null;
+            createdAt: string | null;
+            lastLogin: string | null;
+        }>; total: number }>('/admin/users');
         
-        if (response.ok) {
-            const data = await response.json() as { users: Array<{
-                userId: string;
-                displayName: string | null;
-                customerId: string | null;
-                createdAt: string | null;
-                lastLogin: string | null;
-            }>; total: number };
+        if (response.status === 200 && response.data) {
             // Convert to User format
-            users.push(...data.users.map(u => ({
-                userId: u.userId,
-                email: '', // Not returned by admin endpoint for security
-                displayName: u.displayName,
-                customerId: u.customerId,
-                createdAt: u.createdAt,
-                lastLogin: u.lastLogin,
-            })));
-            console.log('[UserManagement] Loaded all users via service call:', {
-                total: users.length,
-                authApiUrl
-            });
+            if (response.data.users && Array.isArray(response.data.users)) {
+                users.push(...response.data.users.map(u => ({
+                    userId: u.userId,
+                    email: '', // Not returned by admin endpoint for security
+                    displayName: u.displayName,
+                    customerId: u.customerId,
+                    createdAt: u.createdAt,
+                    lastLogin: u.lastLogin,
+                })));
+                console.log('[UserManagement] Loaded all users via service call:', {
+                    total: users.length,
+                    authApiUrl,
+                    responseUserCount: response.data.users.length,
+                    responseTotal: response.data.total
+                });
+            } else {
+                console.warn('[UserManagement] Service response missing users array:', {
+                    dataKeys: response.data ? Object.keys(response.data) : null,
+                    hasUsers: 'users' in (response.data || {}),
+                    usersIsArray: response.data?.users ? Array.isArray(response.data.users) : false
+                });
+            }
         } else {
-            const errorText = await response.text();
             console.error('[UserManagement] Service call failed:', {
                 status: response.status,
                 statusText: response.statusText,
-                error: errorText
+                error: typeof response.data === 'object' ? JSON.stringify(response.data).substring(0, 500) : String(response.data).substring(0, 500),
+                authApiUrl
             });
             // If service call fails, try direct KV access as fallback
             if (env.OTP_AUTH_KV) {
@@ -658,6 +657,8 @@ interface Env {
     MODS_KV: KVNamespace;
     OTP_AUTH_KV?: KVNamespace; // Optional - for direct access if available
     AUTH_API_URL?: string; // For service-to-service calls
+    SUPER_ADMIN_API_KEY?: string; // For service-to-service calls to OTP auth service
+    SERVICE_API_KEY?: string; // Fallback for service-to-service calls
     SUPER_ADMIN_EMAILS?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;

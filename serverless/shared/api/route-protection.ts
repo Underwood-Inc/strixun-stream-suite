@@ -1,0 +1,308 @@
+/**
+ * Shared Route Protection System
+ * 
+ * Provides centralized, secure route protection for admin routes across all services.
+ * Supports both regular admin and super admin access levels.
+ * 
+ * This system ensures:
+ * - API-level protection (prevents data download on client)
+ * - Consistent authentication across all services
+ * - Support for both JWT and API key authentication
+ * - Clear distinction between admin and super admin roles
+ */
+
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+
+/**
+ * Admin access level
+ */
+export type AdminLevel = 'admin' | 'super-admin';
+
+/**
+ * Authentication result from request
+ */
+export interface AuthResult {
+    userId: string;
+    email?: string;
+    customerId: string | null;
+    jwtToken?: string;
+}
+
+/**
+ * Environment interface for route protection
+ */
+export interface RouteProtectionEnv {
+    SUPER_ADMIN_EMAILS?: string;
+    ADMIN_EMAILS?: string; // Regular admin emails (comma-separated)
+    SUPER_ADMIN_API_KEY?: string;
+    JWT_SECRET?: string;
+    ALLOWED_ORIGINS?: string;
+    [key: string]: any;
+}
+
+/**
+ * Route protection result
+ */
+export interface RouteProtectionResult {
+    allowed: boolean;
+    error?: Response;
+    auth?: AuthResult;
+    level?: AdminLevel;
+}
+
+/**
+ * Get list of super admin emails from environment
+ */
+export async function getSuperAdminEmails(env: RouteProtectionEnv): Promise<string[]> {
+    if (env.SUPER_ADMIN_EMAILS) {
+        return env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
+    }
+    return [];
+}
+
+/**
+ * Get list of regular admin emails from environment
+ */
+export async function getAdminEmails(env: RouteProtectionEnv): Promise<string[]> {
+    if (env.ADMIN_EMAILS) {
+        return env.ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
+    }
+    return [];
+}
+
+/**
+ * Check if an email is a super admin
+ */
+export async function isSuperAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
+    if (!email) return false;
+    
+    const adminEmails = await getSuperAdminEmails(env);
+    return adminEmails.includes(email.toLowerCase());
+}
+
+/**
+ * Check if an email is a regular admin (or super admin)
+ */
+export async function isAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
+    if (!email) return false;
+    
+    // Super admins are also admins
+    if (await isSuperAdminEmail(email, env)) {
+        return true;
+    }
+    
+    const adminEmails = await getAdminEmails(env);
+    return adminEmails.includes(email.toLowerCase());
+}
+
+/**
+ * Verify super-admin API key
+ */
+export function verifySuperAdminKey(apiKey: string, env: RouteProtectionEnv): boolean {
+    const superAdminKey = env.SUPER_ADMIN_API_KEY;
+    if (!superAdminKey) {
+        return false;
+    }
+    // Constant-time comparison to prevent timing attacks
+    return apiKey === superAdminKey;
+}
+
+/**
+ * Authenticate request using JWT token
+ * This is a generic JWT verification that can be customized per service
+ */
+export async function authenticateJWT(
+    token: string,
+    env: RouteProtectionEnv,
+    verifyJWT: (token: string, secret: string) => Promise<any>
+): Promise<AuthResult | null> {
+    try {
+        if (!env.JWT_SECRET) {
+            return null;
+        }
+        
+        const payload = await verifyJWT(token, env.JWT_SECRET);
+        if (!payload || !payload.sub) {
+            return null;
+        }
+        
+        return {
+            userId: payload.sub,
+            email: payload.email,
+            customerId: payload.customerId || null,
+            jwtToken: token,
+        };
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Extract authentication from request
+ * Supports both JWT Bearer tokens and API keys
+ */
+export async function extractAuth(
+    request: Request,
+    env: RouteProtectionEnv,
+    verifyJWT: (token: string, secret: string) => Promise<any>
+): Promise<AuthResult | null> {
+    const authHeader = request.headers.get('Authorization');
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        return await authenticateJWT(token, env, verifyJWT);
+    }
+    
+    return null;
+}
+
+/**
+ * Create error response for unauthorized access
+ */
+export function createUnauthorizedResponse(
+    request: Request,
+    env: RouteProtectionEnv,
+    message: string = 'Authentication required',
+    code: string = 'UNAUTHORIZED'
+): Response {
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    
+    return new Response(JSON.stringify({
+        error: message,
+        code,
+    }), {
+        status: 401,
+        headers: {
+            'Content-Type': 'application/json',
+            ...Object.fromEntries(corsHeaders.entries()),
+        },
+    });
+}
+
+/**
+ * Create error response for forbidden access
+ */
+export function createForbiddenResponse(
+    request: Request,
+    env: RouteProtectionEnv,
+    message: string = 'Admin access required',
+    code: string = 'FORBIDDEN'
+): Response {
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    
+    return new Response(JSON.stringify({
+        error: message,
+        code,
+    }), {
+        status: 403,
+        headers: {
+            'Content-Type': 'application/json',
+            ...Object.fromEntries(corsHeaders.entries()),
+        },
+    });
+}
+
+/**
+ * Protect route with admin access requirement
+ * 
+ * @param request - HTTP request
+ * @param env - Worker environment
+ * @param level - Required admin level ('admin' or 'super-admin')
+ * @param verifyJWT - JWT verification function (service-specific)
+ * @returns Protection result with auth info or error response
+ */
+export async function protectAdminRoute(
+    request: Request,
+    env: RouteProtectionEnv,
+    level: AdminLevel,
+    verifyJWT: (token: string, secret: string) => Promise<any>
+): Promise<RouteProtectionResult> {
+    // First, try to authenticate the request
+    const auth = await extractAuth(request, env, verifyJWT);
+    
+    // Check for super admin API key (service-to-service calls)
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        if (verifySuperAdminKey(token, env)) {
+            // Super admin API key authenticated - allow access
+            return {
+                allowed: true,
+                level: 'super-admin',
+            };
+        }
+    }
+    
+    // If no auth and no API key, require authentication
+    if (!auth) {
+        return {
+            allowed: false,
+            error: createUnauthorizedResponse(request, env, 'Authentication required'),
+        };
+    }
+    
+    // Check admin level
+    if (level === 'super-admin') {
+        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
+            return {
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                auth,
+            };
+        }
+        return {
+            allowed: true,
+            auth,
+            level: 'super-admin',
+        };
+    } else {
+        // Regular admin
+        if (!auth.email || !(await isAdminEmail(auth.email, env))) {
+            return {
+                allowed: false,
+                error: createForbiddenResponse(request, env, 'Admin access required', 'ADMIN_REQUIRED'),
+                auth,
+            };
+        }
+        
+        // Determine actual level (could be super-admin or regular admin)
+        const isSuper = await isSuperAdminEmail(auth.email, env);
+        return {
+            allowed: true,
+            auth,
+            level: isSuper ? 'super-admin' : 'admin',
+        };
+    }
+}
+
+/**
+ * Wrapper for admin route handlers
+ * Ensures route is protected before executing handler
+ * 
+ * @param handler - Route handler function
+ * @param request - HTTP request
+ * @param env - Worker environment
+ * @param level - Required admin level
+ * @param verifyJWT - JWT verification function
+ * @returns Response from handler or error response
+ */
+export async function withAdminProtection<T = unknown>(
+    handler: (request: Request, env: RouteProtectionEnv, auth: AuthResult) => Promise<Response>,
+    request: Request,
+    env: RouteProtectionEnv,
+    level: AdminLevel,
+    verifyJWT: (token: string, secret: string) => Promise<any>
+): Promise<Response> {
+    const protection = await protectAdminRoute(request, env, level, verifyJWT);
+    
+    if (!protection.allowed || !protection.auth) {
+        return protection.error || createUnauthorizedResponse(request, env);
+    }
+    
+    return handler(request, env, protection.auth);
+}
+

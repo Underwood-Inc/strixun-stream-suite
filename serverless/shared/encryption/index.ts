@@ -24,6 +24,8 @@
 export {
   encryptWithJWT,
   decryptWithJWT,
+  encryptBinaryWithJWT,
+  decryptBinaryWithJWT,
 } from './jwt-encryption.js';
 
 // Multi-stage encryption

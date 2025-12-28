@@ -21,21 +21,7 @@ export async function handleAdminDeleteMod(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         // Get mod metadata - admin needs to search ALL customer scopes, not just their own
         // Normalize modId (strip mod_ prefix if present)
         const normalizedModId = normalizeModId(modId);

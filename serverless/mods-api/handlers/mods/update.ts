@@ -110,8 +110,24 @@ export async function handleUpdateMod(
             });
         }
 
-        // Parse update request
-        const updateData = await request.json() as ModUpdateRequest;
+        // Parse update request - support both JSON and multipart/form-data
+        let updateData: ModUpdateRequest;
+        const contentType = request.headers.get('content-type') || '';
+        
+        if (contentType.includes('multipart/form-data')) {
+            // Handle multipart form data (for binary thumbnail uploads)
+            const formData = await request.formData();
+            const metadataJson = formData.get('metadata') as string | null;
+            if (metadataJson) {
+                updateData = JSON.parse(metadataJson) as ModUpdateRequest;
+            } else {
+                // If no metadata, create empty update (thumbnail only)
+                updateData = {} as ModUpdateRequest;
+            }
+        } else {
+            // Handle JSON body (legacy support)
+            updateData = await request.json() as ModUpdateRequest;
+        }
 
         // Track visibility change for global list management
         const wasPublic = mod.visibility === 'public';
@@ -132,7 +148,24 @@ export async function handleUpdateMod(
         if (updateData.visibility !== undefined) mod.visibility = updateData.visibility;
         mod.updatedAt = new Date().toISOString();
 
-        // Handle thumbnail update
+        // Handle thumbnail update - support both binary file upload and legacy base64
+        // Reuse contentType declared earlier at line 115
+        if (contentType.includes('multipart/form-data')) {
+            // Check for binary thumbnail file upload
+            const formData = await request.formData();
+            const thumbnailFile = formData.get('thumbnail') as File | null;
+            if (thumbnailFile) {
+                try {
+                    // Use current slug (may have been updated if title changed)
+                    mod.thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, mod.slug, request, env, auth.customerId);
+                } catch (error) {
+                    console.error('Thumbnail binary update error:', error);
+                    // Continue without thumbnail update
+                }
+            }
+        }
+        
+        // Legacy base64 thumbnail support
         if (updateData.thumbnail) {
             try {
                 // Use current slug (may have been updated if title changed)
@@ -212,7 +245,104 @@ export async function handleUpdateMod(
 }
 
 /**
- * Handle thumbnail upload (base64 to R2)
+ * Get image extension from MIME type
+ */
+function getImageExtension(mimeType: string): string {
+    const mimeToExt: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+    };
+    return mimeToExt[mimeType.toLowerCase()] || 'png';
+}
+
+/**
+ * Handle thumbnail upload (binary file to R2)
+ * Validates image format and ensures it's renderable
+ * Optimized version - no base64 overhead
+ */
+async function handleThumbnailBinaryUpload(
+    thumbnailFile: File,
+    modId: string,
+    slug: string,
+    request: Request,
+    env: Env,
+    customerId: string | null
+): Promise<string> {
+    try {
+        // Validate file type
+        if (!thumbnailFile.type.startsWith('image/')) {
+            throw new Error('File must be an image');
+        }
+        
+        // Check file size (2 MB limit)
+        const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2 MB
+        if (thumbnailFile.size > MAX_THUMBNAIL_SIZE) {
+            throw new Error(`Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
+        }
+        
+        // Validate image type (only allow common web-safe formats)
+        const allowedTypes = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+        const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+        if (!imageType || !allowedTypes.includes(imageType)) {
+            throw new Error(`Unsupported image type: ${imageType}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
+        
+        // Read file as binary
+        const imageBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
+        
+        // Basic validation: Check minimum file size (at least 100 bytes)
+        if (imageBuffer.length < 100) {
+            throw new Error('Image file is too small or corrupted');
+        }
+        
+        // Validate image headers for common formats
+        // JPEG: FF D8 FF
+        // PNG: 89 50 4E 47
+        // GIF: 47 49 46 38
+        // WebP: 52 49 46 46 (RIFF) followed by WEBP
+        const isValidImage = 
+            (imageType === 'jpeg' || imageType === 'jpg') && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF ||
+            imageType === 'png' && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47 ||
+            imageType === 'gif' && imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x38 ||
+            imageType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
+        
+        if (!isValidImage) {
+            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image`);
+        }
+        
+        // Upload to R2
+        const normalizedModId = normalizeModId(modId);
+        const extension = getImageExtension(thumbnailFile.type);
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${extension}`);
+        await env.MODS_R2.put(r2Key, imageBuffer, {
+            httpMetadata: {
+                contentType: thumbnailFile.type,
+                cacheControl: 'public, max-age=31536000',
+            },
+            customMetadata: {
+                modId,
+                extension: extension,
+                validated: 'true', // Mark as validated for rendering
+            },
+        });
+        
+        // Return API proxy URL using slug for consistency
+        const requestUrl = new URL(request.url);
+        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            : `https://mods-api.idling.app`;  // Production
+        return `${API_BASE_URL}/mods/${slug}/thumbnail`;
+    } catch (error) {
+        console.error('Thumbnail binary upload error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Handle thumbnail upload (base64 to R2) - Legacy support
  * Validates image format and ensures it's renderable
  */
 async function handleThumbnailUpload(

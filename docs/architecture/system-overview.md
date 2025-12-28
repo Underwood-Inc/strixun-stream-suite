@@ -206,6 +206,35 @@ sequenceDiagram
     WS-->>Panel: Update UI
 ```
 
+### File Encryption & Compression Flow
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant Browser as 🌐 Browser
+    participant Worker as ☁️ Cloudflare Worker
+    participant Storage as 💾 R2/KV
+    
+    Note over User,Storage: Upload (Client-Side Processing)
+    User->>Browser: Select File (100 MB)
+    Browser->>Browser: Read ArrayBuffer
+    Browser->>Browser: Compress Gzip (~70 MB)<br/>Client CPU
+    Browser->>Browser: Encrypt AES-GCM (~75 MB)<br/>Client CPU
+    Browser->>Worker: Upload Compressed + Encrypted
+    Worker->>Storage: Store (75 MB saved!)
+    
+    Note over User,Storage: Download (Server-Side Processing)
+    User->>Browser: Request File
+    Browser->>Worker: GET /download
+    Worker->>Storage: Retrieve Compressed + Encrypted
+    Worker->>Worker: Decrypt AES-GCM<br/>Server CPU
+    Worker->>Worker: Decompress Gzip<br/>Server CPU
+    Worker->>Browser: Return Original (100 MB)
+    Browser->>User: Display File
+    
+    Note over Browser,Storage: Benefits:<br/>Zero server CPU on upload<br/>25% storage savings<br/>25% bandwidth savings
+```
+
 ### Cloud Storage Flow
 
 ```mermaid

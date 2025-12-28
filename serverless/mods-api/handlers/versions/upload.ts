@@ -100,52 +100,13 @@ export async function handleUploadVersion(
         // SECURITY: Files are already encrypted by the client
         // Store encrypted files in R2 as-is (encryption at rest)
         // Files are decrypted on-the-fly during download
-        const isEncrypted = file.name.endsWith('.encrypted') || file.type === 'application/json';
-        let originalFileName = file.name;
+        // Support both binary encryption (v4) and legacy JSON encryption (v3)
         
-        if (!isEncrypted) {
-            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        let originalFileName = file.name;
         
         // Remove .encrypted suffix if present to get original filename
         if (originalFileName.endsWith('.encrypted')) {
             originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
-        }
-        
-        // Get encrypted file data (already encrypted by client - store as-is)
-        let encryptedData: string;
-        let encryptedJson: any;
-        try {
-            encryptedData = await file.text();
-            encryptedJson = JSON.parse(encryptedData);
-            
-            // Verify it's a valid encrypted structure
-            if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
-                throw new Error('Invalid encrypted file format');
-            }
-        } catch (error) {
-            console.error('Encrypted file validation error:', error);
-            const rfcError = createError(request, 400, 'Invalid Encrypted File', 'The uploaded file does not appear to be properly encrypted. Please ensure the file is encrypted before upload.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
         }
         
         // Get JWT token for temporary decryption (to calculate hash)
@@ -164,22 +125,64 @@ export async function handleUploadVersion(
             });
         }
         
+        // Check file format: binary encrypted (v4) or legacy JSON encrypted (v3)
+        const fileBuffer = await file.arrayBuffer();
+        const fileBytes = new Uint8Array(fileBuffer);
+        
+        // Check for binary format (version 4): first byte should be 4
+        const isBinaryEncrypted = fileBytes.length >= 4 && fileBytes[0] === 4;
+        const isLegacyEncrypted = file.type === 'application/json' || 
+                                  (fileBytes.length > 0 && fileBytes[0] === 0x7B); // '{' for JSON
+        
+        if (!isBinaryEncrypted && !isLegacyEncrypted) {
+            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
         // Temporarily decrypt to calculate file hash (for integrity verification)
         let fileHash: string;
         let fileSize: number;
+        let encryptionFormat: string;
+        
         try {
-            const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-            
-            // Convert base64 back to binary for hash calculation
-            const binaryString = atob(decryptedBase64);
-            const fileBytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                fileBytes[i] = binaryString.charCodeAt(i);
+            if (isBinaryEncrypted) {
+                // Binary encrypted format - decrypt directly
+                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                fileSize = decryptedBytes.length;
+                fileHash = await calculateFileHash(decryptedBytes);
+                encryptionFormat = 'binary-v4';
+            } else {
+                // Legacy JSON encrypted format
+                const encryptedData = await file.text();
+                const encryptedJson = JSON.parse(encryptedData);
+                
+                // Verify it's a valid encrypted structure
+                if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
+                    throw new Error('Invalid encrypted file format');
+                }
+                
+                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                
+                // Convert base64 back to binary for hash calculation
+                const binaryString = atob(decryptedBase64);
+                const fileBytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    fileBytes[i] = binaryString.charCodeAt(i);
+                }
+                fileSize = fileBytes.length;
+                fileHash = await calculateFileHash(fileBytes);
+                encryptionFormat = 'json-v3';
             }
-            fileSize = fileBytes.length;
-            
-            // Calculate hash from decrypted data
-            fileHash = await calculateFileHash(fileBytes);
         } catch (error) {
             console.error('File decryption error during upload:', error);
             const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated and the file was encrypted with your token.');
@@ -238,11 +241,24 @@ export async function handleUploadVersion(
         // Use normalized modId for R2 key consistency
         const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${fileExtension}`);
         
-        // Store encrypted file data as-is (the original encrypted JSON from client)
-        const encryptedFileBytes = new TextEncoder().encode(encryptedData);
+        // Store encrypted file data as-is (binary or JSON format)
+        let encryptedFileBytes: Uint8Array;
+        let contentType: string;
+        
+        if (isBinaryEncrypted) {
+            // Binary encrypted format - store directly
+            encryptedFileBytes = fileBytes;
+            contentType = 'application/octet-stream';
+        } else {
+            // Legacy JSON encrypted format
+            const encryptedData = await file.text();
+            encryptedFileBytes = new TextEncoder().encode(encryptedData);
+            contentType = 'application/json';
+        }
+        
         await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
-                contentType: 'application/json', // Stored as encrypted JSON
+                contentType: contentType,
                 cacheControl: 'private, no-cache', // Don't cache encrypted files
             },
             customMetadata: {
@@ -251,6 +267,7 @@ export async function handleUploadVersion(
                 uploadedBy: auth.userId,
                 uploadedAt: now,
                 encrypted: 'true', // Mark as encrypted
+                encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
                 originalFileName,
                 originalContentType: 'application/zip', // Original file type
                 sha256: fileHash, // Hash of decrypted file for verification

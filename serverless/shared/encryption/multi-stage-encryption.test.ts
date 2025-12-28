@@ -4,6 +4,9 @@
  * Tests order-independent decryption, all parties required, and various scenarios
  */
 
+/**
+ * @vitest-environment node
+ */
 import { describe, it, expect } from 'vitest';
 import {
   encryptMultiStage,

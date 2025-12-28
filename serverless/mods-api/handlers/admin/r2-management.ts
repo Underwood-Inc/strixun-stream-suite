@@ -44,21 +44,7 @@ export async function handleListR2Files(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         const url = new URL(request.url);
         const prefix = url.searchParams.get('prefix') || '';
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '1000', 10), 10000);
@@ -136,21 +122,7 @@ export async function handleDetectDuplicates(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         console.log('[R2Duplicates] Starting duplicate detection scan...');
 
         // Step 1: List all R2 files
@@ -388,21 +360,7 @@ export async function handleDeleteR2File(
     key?: string
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         // Handle bulk delete
         if (request.method === 'POST' && !key) {
             const body = await request.json() as { keys: string[] };

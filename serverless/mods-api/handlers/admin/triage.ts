@@ -20,21 +20,7 @@ export async function handleUpdateModStatus(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Verify admin access
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
-            const rfcError = createError(request, 403, 'Forbidden', 'Admin access required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
+        // Route-level protection ensures user is super admin
         // Get mod metadata
         // CRITICAL: Admin can approve mods from ANY customer, so we must search all scopes
         // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
@@ -167,12 +153,17 @@ export async function handleUpdateModStatus(
 
         // Update global public list based on status change
         // CRITICAL: Approved mods should be public! Add them to the public list.
+        // Reuse globalModKey declared earlier at line 46
         const globalListKey = 'mods_list_public';
         const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
         
+        // Determine if mod should be in global scope (approved/published and public)
+        const shouldBeInGlobalScope = mod.visibility === 'public' && (newStatus === 'approved' || newStatus === 'published');
+        const wasInGlobalScope = mod.visibility === 'public' && (oldStatus === 'approved' || oldStatus === 'published');
+        
         // Add to public list when approved or published (if public visibility)
-        if (mod.visibility === 'public' && (newStatus === 'approved' || newStatus === 'published')) {
-            if (oldStatus !== 'approved' && oldStatus !== 'published') {
+        if (shouldBeInGlobalScope) {
+            if (!wasInGlobalScope) {
                 // Add to global list when first approved/published
                 if (!globalModsList || !globalModsList.includes(normalizedModId)) {
                     const updatedGlobalList = [...(globalModsList || []), normalizedModId];
@@ -180,38 +171,12 @@ export async function handleUpdateModStatus(
                 }
             }
             
-            // Always store in global scope for approved/published public mods
-            const globalModKey = `mod_${normalizedModId}`;
-            await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
-        } else if ((oldStatus === 'approved' || oldStatus === 'published') && 
-                   (newStatus !== 'approved' && newStatus !== 'published')) {
-            // Remove from global list when unapproved/unpublished/delisted
-            if (globalModsList && globalModsList.includes(normalizedModId)) {
-                const updatedGlobalList = globalModsList.filter(id => id !== normalizedModId);
-                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
-                
-                // Delete global mod metadata (it will still exist in customer scope)
-                const globalModKey = `mod_${normalizedModId}`;
-                await env.MODS_KV.delete(globalModKey);
-            }
-        }
-
-        // Save updated mod
-        // CRITICAL: Save to mod's original customer scope, NOT admin's customer scope
-        // This prevents duplication - mod stays in uploader's customer scope
-        if (modCustomerId) {
-            const modCustomerKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}`);
-            await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
-        }
-        
-        // Also update global scope if public (for public browsing)
-        if (mod.visibility === 'public') {
-            const globalModKey = `mod_${normalizedModId}`;
+            // Store in global scope for approved/published public mods
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
             
             // CRITICAL: Copy all versions to global scope when mod is approved/published and public
             // This ensures badges and downloads work without auth for public mods
-            if ((newStatus === 'approved' || newStatus === 'published') && mod.customerId) {
+            if (mod.customerId) {
                 const versionsListKey = getCustomerKey(mod.customerId, `mod_${normalizedModId}_versions`);
                 const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
                 
@@ -231,6 +196,24 @@ export async function handleUpdateModStatus(
                     }
                 }
             }
+        } else if (wasInGlobalScope && !shouldBeInGlobalScope) {
+            // Remove from global list when unapproved/unpublished/delisted
+            if (globalModsList && globalModsList.includes(normalizedModId)) {
+                const updatedGlobalList = globalModsList.filter(id => id !== normalizedModId);
+                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+                
+                // Delete global mod metadata (it will still exist in customer scope)
+                await env.MODS_KV.delete(globalModKey);
+            }
+        }
+
+        // Save updated mod to customer scope
+        // CRITICAL: Always save to mod's original customer scope, NOT admin's customer scope
+        // This ensures the mod remains accessible in its original location
+        // The mod will also exist in global scope if approved/published and public
+        if (modCustomerId) {
+            const modCustomerKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}`);
+            await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
         }
 
         const corsHeaders = createCORSHeaders(request, {
