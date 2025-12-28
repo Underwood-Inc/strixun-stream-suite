@@ -17,6 +17,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
       "@shared-components/*": ["./*"],
@@ -26,6 +27,7 @@
   },
   "include": [
     "**/*.ts",
+    "**/*.tsx",
     "**/*.svelte",
     "**/*.d.ts",
     ".storybook/**/*"
