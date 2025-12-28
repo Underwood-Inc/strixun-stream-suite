@@ -164,15 +164,15 @@ if (otpData.otp !== otp) {
 }
 ```
 
-**Issue:** String comparison may leak timing information, though the impact is minimal for 6-digit codes.
+**Issue:** String comparison may leak timing information, though the impact is minimal for 9-digit codes.
 
 **Impact:**
 - **LOW** - Theoretical timing attack possible
-- Not practical for 6-digit codes but not constant-time
+- Not practical for 9-digit codes but not constant-time
 
 **Recommendation:**
 - Use constant-time comparison (though not critical for this use case)
-- Current implementation is acceptable for 6-digit OTPs
+- Current implementation is acceptable for 9-digit OTPs
 
 **Status:** 🟢 **ACCEPTABLE** (but could be improved)
 
@@ -181,7 +181,7 @@ if (otpData.otp !== otp) {
 ## ✅ SECURITY STRENGTHS
 
 ### 1. **Strong OTP Security** ✅
-- ✅ 6-digit codes (1,000,000 combinations)
+- ✅ 9-digit codes (1,000,000,000 combinations)
 - ✅ Cryptographically secure random generation (`crypto.getRandomValues`)
 - ✅ 10-minute expiration
 - ✅ Single-use (deleted after verification)
@@ -202,7 +202,7 @@ if (otpData.otp !== otp) {
 
 ### 4. **Input Validation** ✅
 - ✅ Email format validation
-- ✅ OTP format validation (6 digits)
+- ✅ OTP format validation (9 digits)
 - ✅ JSON parsing error handling
 - ✅ Type checking
 

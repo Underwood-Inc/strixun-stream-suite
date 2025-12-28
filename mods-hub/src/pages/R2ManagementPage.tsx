@@ -7,6 +7,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
+import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { listR2Files, detectDuplicates, deleteR2File, bulkDeleteR2Files } from '../services/api';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
@@ -19,7 +20,7 @@ const PageContainer = styled.div`
   gap: ${spacing.xl};
 `;
 
-const Header = styled.div`
+const PageHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -459,8 +460,9 @@ export function R2ManagementPage() {
 
     return (
         <PageContainer>
-            <Header>
-                <Title>R2 Storage Management</Title>
+            <AdminNavigation />
+            <PageHeader>
+                <Title>R2 Management</Title>
                 <Button
                     variant="primary"
                     onClick={() => refetchDuplicates()}
@@ -468,7 +470,7 @@ export function R2ManagementPage() {
                 >
                     Refresh Scan
                 </Button>
-            </Header>
+            </PageHeader>
 
             {duplicatesData && (
                 <SummaryCard>

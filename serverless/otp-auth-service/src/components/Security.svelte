@@ -4,7 +4,7 @@
     <div class="security-grid">
       <div class="security-item">
         <h3>🔐 Cryptographically Secure</h3>
-        <p>6-digit OTP codes generated using cryptographically secure random number generators. 1 million possible combinations.</p>
+        <p>9-digit OTP codes generated using cryptographically secure random number generators. 1 billion possible combinations.</p>
       </div>
       <div class="security-item">
         <h3>⏱️ Time-Limited</h3>

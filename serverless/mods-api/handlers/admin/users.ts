@@ -43,42 +43,130 @@ interface UserListResponse {
 
 /**
  * List all users from OTP auth service
- * Aggregates data from OTP auth service, Customer Service, and Mods API
+ * Always uses service-to-service call to ensure we get ALL users system-wide
+ * (not just users scoped to mods hub)
  */
 async function listAllUsers(env: Env): Promise<User[]> {
     const users: User[] = [];
     
-    // Check if we have OTP_AUTH_KV available (for direct access)
-    if (env.OTP_AUTH_KV) {
-        // Direct KV access - list all users
-        const customerPrefix = 'customer_';
-        let cursor: string | undefined;
+    // Always use service-to-service call to OTP auth service
+    // This ensures we get ALL users across the entire system, not just mods-hub users
+    console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
+    try {
+        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        // Use SUPER_ADMIN_API_KEY for service-to-service calls (required for /admin/users endpoint)
+        // This allows mods-api to call OTP auth service's admin endpoints
+        const token = env.SUPER_ADMIN_API_KEY || env.SERVICE_API_KEY;
         
-        do {
-            const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
-            
-            for (const key of listResult.keys) {
-                // Look for user keys: customer_{id}_user_{emailHash}
-                if (key.name.includes('_user_')) {
-                    try {
-                        const user = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as User | null;
-                        if (user && user.userId) {
-                            users.push(user);
+        const response = await fetch(`${authApiUrl}/admin/users`, {
+            method: 'GET',
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json() as { users: Array<{
+                userId: string;
+                displayName: string | null;
+                customerId: string | null;
+                createdAt: string | null;
+                lastLogin: string | null;
+            }>; total: number };
+            // Convert to User format
+            users.push(...data.users.map(u => ({
+                userId: u.userId,
+                email: '', // Not returned by admin endpoint for security
+                displayName: u.displayName,
+                customerId: u.customerId,
+                createdAt: u.createdAt,
+                lastLogin: u.lastLogin,
+            })));
+            console.log('[UserManagement] Loaded all users via service call:', {
+                total: users.length,
+                authApiUrl
+            });
+        } else {
+            const errorText = await response.text();
+            console.error('[UserManagement] Service call failed:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorText
+            });
+            // If service call fails, try direct KV access as fallback
+            if (env.OTP_AUTH_KV) {
+                console.log('[UserManagement] Falling back to direct KV access');
+                const customerPrefix = 'customer_';
+                let cursor: string | undefined;
+                
+                do {
+                    const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
+                    
+                    for (const key of listResult.keys) {
+                        // Look for user keys: customer_{id}_user_{emailHash}
+                        if (key.name.includes('_user_')) {
+                            try {
+                                const user = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as User | null;
+                                if (user && user.userId) {
+                                    // Extract customerId from key name if not in user object
+                                    if (!user.customerId) {
+                                        const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
+                                        if (match) {
+                                            user.customerId = match[1];
+                                        }
+                                    }
+                                    users.push(user);
+                                }
+                            } catch (error) {
+                                console.warn('[UserManagement] Failed to parse user:', key.name, error);
+                                continue;
+                            }
                         }
-                    } catch (error) {
-                        // Skip invalid entries
-                        continue;
+                    }
+                    
+                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                } while (cursor);
+                
+                console.log('[UserManagement] Fallback KV access loaded:', users.length, 'users');
+            }
+        }
+    } catch (error) {
+        console.error('[UserManagement] Service-to-service call error:', error);
+        // If service call fails completely, try direct KV access as fallback
+        if (env.OTP_AUTH_KV) {
+            console.log('[UserManagement] Falling back to direct KV access due to error');
+            const customerPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
+                
+                for (const key of listResult.keys) {
+                    if (key.name.includes('_user_')) {
+                        try {
+                            const user = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as User | null;
+                            if (user && user.userId) {
+                                if (!user.customerId) {
+                                    const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
+                                    if (match) {
+                                        user.customerId = match[1];
+                                    }
+                                }
+                                users.push(user);
+                            }
+                        } catch (error) {
+                            console.warn('[UserManagement] Failed to parse user:', key.name, error);
+                            continue;
+                        }
                     }
                 }
-            }
+                
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
             
-            cursor = listResult.listComplete ? undefined : listResult.cursor;
-        } while (cursor);
-    } else {
-        // Service-to-service call to OTP auth service
-        // Note: This requires an admin endpoint in OTP auth service
-        // For now, we'll return empty and log a warning
-        console.warn('[UserManagement] OTP_AUTH_KV not available and service-to-service call not implemented');
+            console.log('[UserManagement] Fallback KV access loaded:', users.length, 'users');
+        }
     }
     
     return users;

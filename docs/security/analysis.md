@@ -71,7 +71,7 @@ function isValidDeviceId(deviceId) {
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  2. Server generates 6-digit OTP (valid 10 minutes)          │
+│  2. Server generates 9-digit OTP (valid 10 minutes)          │
 │     - Store in KV: otp_{email}_{timestamp}                  │
 │     - Send email via Resend API                             │
 │     - Rate limit: 3 requests per email per hour              │
@@ -147,7 +147,7 @@ const response = await fetch('https://api.resend.com/emails', {
 ## 🔒 Security Features
 
 ### 1. OTP Generation
-- **6-digit numeric code** (1,000,000 combinations)
+- **9-digit numeric code** (1,000,000,000 combinations)
 - **Cryptographically secure random** (Web Crypto API)
 - **10-minute expiration** (stored in KV with TTL)
 - **Single-use only** (deleted after verification)
@@ -372,7 +372,7 @@ Response:
 // serverless/worker.js
 
 /**
- * Generate secure 6-digit OTP
+ * Generate secure 9-digit OTP
  */
 function generateOTP() {
   const array = new Uint32Array(1);

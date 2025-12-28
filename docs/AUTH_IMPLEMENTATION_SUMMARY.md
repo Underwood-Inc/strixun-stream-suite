@@ -10,7 +10,7 @@
 
 1. **POST `/auth/request-otp`** - Request OTP code
    - Validates email address
-   - Generates secure 6-digit OTP
+   - Generates secure 9-digit OTP
    - Stores OTP in KV (10-minute expiration)
    - Sends email via Resend
    - Rate limiting (3 requests per email per hour)
@@ -42,7 +42,7 @@
 ## 🔒 Security Features Implemented
 
 ### OTP Security
-- ✅ **6-digit numeric codes** (1,000,000 combinations)
+- ✅ **9-digit numeric codes** (1,000,000,000 combinations)
 - ✅ **Cryptographically secure random** generation
 - ✅ **10-minute expiration** (auto-deleted from KV)
 - ✅ **Single-use only** (deleted after verification)

@@ -159,7 +159,7 @@ await fetch('https://otp-auth-service.workers.dev/admin/config/email', {
 
 ### Available Template Variables
 
-- `{{otp}}` - The 6-digit OTP code
+- `{{otp}}` - The 9-digit OTP code
 - `{{expiresIn}}` - Expiration time in minutes
 - `{{appName}}` - Your app/company name
 - `{{userEmail}}` - User's email address

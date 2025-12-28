@@ -297,6 +297,12 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         return handleAdminRoute(adminHandlers.handleTestOTP, request, env, auth);
     }
     
+    // User Management endpoints
+    if (path === '/admin/users' && request.method === 'GET') {
+        const auth = await authenticateRequest(request, env);
+        return handleAdminRoute(adminHandlers.handleListUsers, request, env, auth);
+    }
+    
     // GDPR endpoints
     const exportUserMatch = path.match(/^\/admin\/users\/([^\/]+)\/export$/);
     if (exportUserMatch && request.method === 'GET') {

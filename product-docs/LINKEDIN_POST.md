@@ -85,7 +85,7 @@ A unified, web-based control panel that serves as the central hub for all stream
 **Location:** `serverless/otp-auth-service/`
 
 Passwordless authentication system with enterprise-grade security:
-- **Email-Based OTP:** 6-digit codes sent via Resend API
+- **Email-Based OTP:** 9-digit codes sent via Resend API
 - **JWT Tokens:** 30-day expiration with automatic refresh
 - **Rate Limiting:** 3 requests per email per hour
 - **Session Management:** KV-based session storage

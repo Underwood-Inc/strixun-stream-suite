@@ -9,18 +9,18 @@ import { getCorsHeaders } from '../utils/cors.js';
 import { getJWTSecret, hashEmail, verifyJWT } from '../utils/auth.js';
 
 /**
- * Generate secure 6-digit OTP (cryptographically secure, no modulo bias)
- * @returns {string} 6-digit OTP code
+ * Generate secure 9-digit OTP (cryptographically secure, no modulo bias)
+ * @returns {string} 9-digit OTP code
  */
 function generateOTP() {
     // Use 2 Uint32 values to get 64 bits, eliminating modulo bias
     const array = new Uint32Array(2);
     crypto.getRandomValues(array);
     // Combine two 32-bit values for 64-bit range (0 to 2^64-1)
-    // Then modulo 1,000,000 for 6-digit code
-    // This eliminates modulo bias since 2^64 is much larger than 1,000,000
-    const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % 1000000;
-    return value.toString().padStart(6, '0');
+    // Then modulo 1,000,000,000 for 9-digit code
+    // This eliminates modulo bias since 2^64 is much larger than 1,000,000,000
+    const value = (Number(array[0]) * 0x100000000 + Number(array[1])) % 1000000000;
+    return value.toString().padStart(9, '0');
 }
 
 /**
@@ -290,8 +290,8 @@ export async function handleVerifyOTP(request, env) {
             });
         }
         
-        if (!otp || !/^\d{6}$/.test(otp)) {
-            return new Response(JSON.stringify({ error: 'Valid 6-digit OTP required' }), {
+        if (!otp || !/^\d{9}$/.test(otp)) {
+            return new Response(JSON.stringify({ error: 'Valid 9-digit OTP required' }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
@@ -349,8 +349,8 @@ export async function handleVerifyOTP(request, env) {
         }
         
         // Verify OTP using constant-time comparison to prevent timing attacks
-        const expectedOtp = String(otpData.otp).padStart(6, '0');
-        const providedOtp = String(otp).padStart(6, '0');
+        const expectedOtp = String(otpData.otp).padStart(9, '0');
+        const providedOtp = String(otp).padStart(9, '0');
         
         // Constant-time string comparison
         let isValid = expectedOtp.length === providedOtp.length;

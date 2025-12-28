@@ -283,7 +283,7 @@ graph TB
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| Email OTP | 6-digit numeric code via email | ✅ Implemented |
+| Email OTP | 9-digit numeric code via email | ✅ Implemented |
 | Passwordless Login | No passwords required | ✅ Implemented |
 | JWT Tokens | 30-day expiration tokens | ✅ Implemented |
 | Token Refresh | Automatic token refresh | ✅ Implemented |
@@ -297,7 +297,7 @@ graph TB
 | Twitch Account Attachment | OAuth-based Twitch linking | ✅ Implemented |
 
 **Business Rules:**
-- OTP codes: 6 digits, cryptographically random
+- OTP codes: 9 digits, cryptographically random
 - OTP expiration: 10 minutes
 - OTP attempts: Maximum 5 attempts
 - Rate limit: 3 OTP requests per email per hour
@@ -472,7 +472,7 @@ graph TB
 
 | Rule | Description | Enforcement |
 |------|-------------|-------------|
-| OTP Format | 6 digits, numeric only | Generation logic |
+| OTP Format | 9 digits, numeric only | Generation logic |
 | OTP Expiration | 10 minutes | KV TTL |
 | OTP Attempts | Maximum 5 attempts | Counter tracking |
 | Rate Limiting | 3 requests per email per hour | KV counter |

@@ -15,7 +15,7 @@ This audit reviews the OTP authentication service for security vulnerabilities, 
 
 1. **Cryptographically Secure OTP Generation**
    - ✅ Uses `crypto.getRandomValues()` with proper modulo bias elimination
-   - ✅ 6-digit codes (1,000,000 combinations)
+   - ✅ 9-digit codes (1,000,000,000 combinations)
    - ✅ Single-use OTP codes (deleted after verification)
 
 2. **JWT Security**
@@ -25,7 +25,7 @@ This audit reviews the OTP authentication service for security vulnerabilities, 
 
 3. **Input Validation**
    - ✅ Email format validation (RFC-compliant regex)
-   - ✅ OTP format validation (6-digit numeric)
+   - ✅ OTP format validation (9-digit numeric)
    - ✅ Proper error responses (RFC 7807 Problem Details)
 
 4. **Multi-Tenant Isolation**

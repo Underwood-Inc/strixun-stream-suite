@@ -56,7 +56,7 @@
 
 ### Core Authentication
 - ✅ Email-based OTP authentication (no passwords)
-- ✅ 6-digit cryptographically secure OTP codes
+- ✅ 9-digit cryptographically secure OTP codes
 - ✅ 10-minute OTP expiration
 - ✅ Single-use OTP codes
 - ✅ 5 attempt limit per OTP

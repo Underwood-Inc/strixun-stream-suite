@@ -11,7 +11,7 @@ This guide outlines everything you need to transform your current OTP auth imple
 ### What You Have ✅
 - ✅ Working OTP authentication flow (request → verify → JWT)
 - ✅ Rate limiting (3 requests/hour per email)
-- ✅ Secure OTP generation (6-digit, cryptographically random)
+- ✅ Secure OTP generation (9-digit, cryptographically random)
 - ✅ JWT token management (30-day expiration)
 - ✅ Session management with KV storage
 - ✅ Email delivery via Resend

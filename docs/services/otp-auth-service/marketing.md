@@ -160,7 +160,7 @@ Auth that works the first time. [View Documentation →](#)
 > Our free-tier OTP Auth API gives you enterprise-grade passwordless authentication in under 10 minutes. No infrastructure, no servers, no security headaches—just a simple REST API that works with any framework.
 
 **Proof Points:**
-- ✅ Cryptographically secure 6-digit OTP codes
+- ✅ Cryptographically secure 9-digit OTP codes
 - ✅ JWT tokens with 7-hour expiration
 - ✅ Rate limiting (3 requests/email/hour)
 - ✅ Multi-tenant customer isolation

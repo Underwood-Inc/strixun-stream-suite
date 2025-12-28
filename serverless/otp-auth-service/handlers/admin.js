@@ -35,3 +35,8 @@ export {
     handleDeleteUserData, handleExportUserData, handleGetAuditLogs
 } from './admin/gdpr.js';
 
+// User Management
+export {
+    handleListUsers
+} from './admin/list-users.js';
+

@@ -13,11 +13,12 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '../../../shared-components/search-query-parser/AdvancedSearchInput';
 import type { Column } from '../../../shared-components/virtualized-table/VirtualizedTable';
 import { VirtualizedTable } from '../../../shared-components/virtualized-table/VirtualizedTable';
+import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { AdminStats } from '../components/admin/AdminStats';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useAdminDeleteMod, useAdminModsList, useUpdateModStatus } from '../hooks/useMods';
@@ -37,19 +38,19 @@ const PageContainer = styled.div`
   overflow: hidden;
 `;
 
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: ${spacing.md};
-`;
-
 const Title = styled.h1`
   font-size: 2rem;
   font-weight: 700;
   color: ${colors.text};
   margin: 0;
+`;
+
+const PageHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${spacing.md};
 `;
 
 const Filters = styled.div`
@@ -184,7 +185,6 @@ const TableContainer = styled.div`
 `;
 
 export function AdminPanel() {
-    const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -417,22 +417,9 @@ export function AdminPanel() {
 
     return (
         <PageContainer>
-            <Header>
-                <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
-                    <Title>Admin Panel - Mod Triage</Title>
-                    <Button
-                        onClick={() => navigate('/admin/users')}
-                        variant="secondary"
-                    >
-                        User Management
-                    </Button>
-                    <Button
-                        onClick={() => navigate('/admin/r2')}
-                        variant="secondary"
-                    >
-                        R2 Management
-                    </Button>
-                </div>
+            <AdminNavigation />
+            <PageHeader>
+                <Title>Mod Triage</Title>
                 <Filters>
                     <SearchContainer>
                         <AdvancedSearchInput
@@ -452,7 +439,7 @@ export function AdminPanel() {
                         <option value="archived">Archived</option>
                     </Select>
                 </Filters>
-            </Header>
+            </PageHeader>
 
             <AdminStats mods={data?.mods || []} filteredMods={filteredMods} />
 

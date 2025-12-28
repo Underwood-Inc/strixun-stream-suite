@@ -1064,7 +1064,7 @@ export default `<!DOCTYPE html>
             <div class="security-grid">
                 <div class="security-item">
                     <h3>🔐 Cryptographically Secure</h3>
-                    <p>6-digit OTP codes generated using cryptographically secure random number generators. 1 million possible combinations.</p>
+                    <p>9-digit OTP codes generated using cryptographically secure random number generators. 1 billion possible combinations.</p>
                 </div>
                 <div class="security-item">
                     <h3>⏱️ Time-Limited</h3>
@@ -1170,7 +1170,7 @@ async function login() {
   alert('Check your email for the OTP code!');
   
   // User enters OTP
-  const otp = prompt('Enter 6-digit OTP:');
+  const otp = prompt('Enter 9-digit OTP:');
   
   // Verify OTP
   const user = await verifyOTP(email, otp);
@@ -1344,7 +1344,7 @@ export default LoginForm;</code></pre>
     &lt;input
       type="text"
       bind:value={otp}
-      placeholder="123456"
+      placeholder="123456789"
       maxlength="9"
       disabled={loading}
     /&gt;
@@ -1563,7 +1563,7 @@ graph TB
                     <h4>Data Flow</h4>
                     <ol>
                         <li>Client requests OTP by sending email address</li>
-                        <li>Worker generates cryptographically secure 6-digit code</li>
+                        <li>Worker generates cryptographically secure 9-digit code</li>
                         <li>OTP stored in KV with 10-minute TTL</li>
                         <li>Email sent via Resend/SendGrid with OTP code</li>
                         <li>User receives email and enters code</li>

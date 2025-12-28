@@ -66,7 +66,7 @@ The Mods Hub is a mod hosting platform similar to Modrinth, built with React, Ty
 #### Authentication
 - ✅ **Login Page** (`/login`)
   - OTP-based authentication
-  - Email verification with 6-digit code
+  - Email verification with 9-digit code
   - JWT token generation (30-day expiration)
   - Session restoration via IP address
 

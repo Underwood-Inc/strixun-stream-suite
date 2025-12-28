@@ -12,6 +12,12 @@ compatibility_flags = ["nodejs_compat"]
 binding = "MODS_KV"
 id = "0d3dafe0994046c6a47146c6bd082ad3"
 
+# KV Namespace for OTP auth data (shared with otp-auth-service)
+# This allows mods-api to access user data directly
+[[kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
 # R2 Bucket for mod files
 # Created via: wrangler r2 bucket create "mods-storage"
 [[r2_buckets]]

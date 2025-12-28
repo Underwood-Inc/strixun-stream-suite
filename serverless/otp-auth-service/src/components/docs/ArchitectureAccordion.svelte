@@ -31,7 +31,7 @@
 <h4>Data Flow</h4>
 <ol>
   <li>Client requests OTP by sending email address</li>
-  <li>Worker generates cryptographically secure 6-digit code</li>
+  <li>Worker generates cryptographically secure 9-digit code</li>
   <li>OTP stored in KV with 10-minute TTL</li>
   <li>Email sent via Resend/SendGrid with OTP code</li>
   <li>User receives email and enters code</li>

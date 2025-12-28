@@ -244,7 +244,7 @@ sequenceDiagram
     User->>Client: Enter Email
     Client->>Auth: POST /auth/request-otp
     Auth->>Auth: Validate Email
-    Auth->>Auth: Generate 6-Digit OTP
+    Auth->>Auth: Generate 9-Digit OTP
     Auth->>KV: Store OTP (10min TTL)
     Auth->>Email: Send OTP Email
     Email-->>User: OTP Code

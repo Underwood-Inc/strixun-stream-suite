@@ -317,7 +317,7 @@ This document contains all user stories organized by epic/phase for implementing
 **So that** I can personalize emails with user and app data
 
 **Acceptance Criteria:**
-- [ ] Support variable: `{{otp}}` - The 6-digit OTP code
+- [ ] Support variable: `{{otp}}` - The 9-digit OTP code
 - [ ] Support variable: `{{expiresIn}}` - Expiration time in minutes
 - [ ] Support variable: `{{appName}}` - Customer's app name (from config)
 - [ ] Support variable: `{{userEmail}}` - User's email address
@@ -923,7 +923,7 @@ This document contains all user stories organized by epic/phase for implementing
 **Acceptance Criteria:**
 - [ ] Send verification email on signup
 - [ ] Include verification link: `https://otpauth.com/verify?token={token}`
-- [ ] Include verification code in email (6-digit code)
+- [ ] Include verification code in email (9-digit code)
 - [ ] Support both link and code verification
 - [ ] Create `POST /signup/verify` endpoint
 - [ ] Accept token or code

@@ -45,7 +45,7 @@ export default JSON.parse(`{
       "post": {
         "tags": ["Authentication"],
         "summary": "Request OTP code",
-        "description": "Request a 6-digit OTP code to be sent to the specified email address",
+        "description": "Request a 9-digit OTP code to be sent to the specified email address",
         "operationId": "requestOTP",
         "requestBody": {
           "required": true,

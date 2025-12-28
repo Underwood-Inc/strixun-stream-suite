@@ -31,7 +31,7 @@ const response = await fetch(`${API_URL}/auth/request-otp`, {
 **Server-Side:**
 1. ✅ Validates email format
 2. ✅ Checks rate limit (3 requests per email per hour)
-3. ✅ Generates secure 6-digit OTP
+3. ✅ Generates secure 9-digit OTP
 4. ✅ Stores OTP in KV (10-minute expiration)
 5. ✅ Sends email via Resend with OTP code
 6. ✅ Returns success response
@@ -68,14 +68,14 @@ If you didn't request this, please ignore this email.
 
 **User Action:**
 - User checks email inbox
-- Copies the 6-digit code
+- Copies the 9-digit code
 
 ---
 
 ### **Step 3: User Verifies OTP**
 
 **User Action:**
-- User enters the 6-digit OTP code in the login UI
+- User enters the 9-digit OTP code in the login UI
 - Clicks "Verify" or "Login"
 
 **Client-Side:**
@@ -272,7 +272,7 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 ## 🛡️ Security Features
 
 ### **OTP Security:**
-- ✅ 6-digit numeric codes (1,000,000 combinations)
+- ✅ 9-digit numeric codes (1,000,000,000 combinations)
 - ✅ Cryptographically secure random generation
 - ✅ 10-minute expiration
 - ✅ Single-use only (deleted after verification)
@@ -363,7 +363,7 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 
 1. **Create Login UI Component** (`src/components/auth/Login.svelte`)
    - Email input
-   - OTP input (6 digits)
+   - OTP input (9 digits)
    - Send/Verify buttons
    - Error messages
    - Loading states

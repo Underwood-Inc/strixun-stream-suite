@@ -12,11 +12,11 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '../../../shared-components/search-query-parser/AdvancedSearchInput';
 import type { Column } from '../../../shared-components/virtualized-table/VirtualizedTable';
 import { VirtualizedTable } from '../../../shared-components/virtualized-table/VirtualizedTable';
+import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useUpdateUser, useUsersList } from '../hooks/useUsers';
 import { colors, spacing } from '../theme/index';
@@ -34,7 +34,7 @@ const PageContainer = styled.div`
   overflow: hidden;
 `;
 
-const Header = styled.div`
+const PageHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -171,7 +171,6 @@ const StatValue = styled.div`
 `;
 
 export function UserManagementPage() {
-    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -361,22 +360,9 @@ export function UserManagementPage() {
 
     return (
         <PageContainer>
-            <Header>
-                <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
-                    <Title>User Management</Title>
-                    <Button
-                        onClick={() => navigate('/admin')}
-                        variant="secondary"
-                    >
-                        Mod Triage
-                    </Button>
-                    <Button
-                        onClick={() => navigate('/admin/r2')}
-                        variant="secondary"
-                    >
-                        R2 Management
-                    </Button>
-                </div>
+            <AdminNavigation />
+            <PageHeader>
+                <Title>User Management</Title>
                 <Filters>
                     <SearchContainer>
                         <AdvancedSearchInput
@@ -386,7 +372,7 @@ export function UserManagementPage() {
                         />
                     </SearchContainer>
                 </Filters>
-            </Header>
+            </PageHeader>
 
             <StatsContainer>
                 <StatItem>
