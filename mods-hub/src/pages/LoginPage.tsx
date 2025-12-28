@@ -10,7 +10,10 @@ import type { LoginSuccessData } from '../../../shared-components/otp-login/core
 
 import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 
-const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
+// Use proxy in development (via Vite), direct URL in production
+const AUTH_API_URL = import.meta.env.DEV 
+  ? '/auth-api'  // Vite proxy in development
+  : (import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app');
 
 export function LoginPage() {
     const navigate = useNavigate();

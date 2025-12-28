@@ -14,6 +14,22 @@ export default defineConfig({
   server: {
     port: 3001,
     open: true,
+    // Proxy API requests to avoid CORS issues in development
+    // This matches the pattern used in other projects (e.g., otp-auth-service dashboard)
+    proxy: {
+      '/mods-api': {
+        target: 'https://mods-api.idling.app',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/mods-api/, ''),
+        secure: true,
+      },
+      '/auth-api': {
+        target: 'https://auth.idling.app',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth-api/, ''),
+        secure: true,
+      },
+    },
   },
   build: {
     outDir: 'dist',

@@ -7,7 +7,11 @@
 import { createAPIClient } from '@strixun/api-framework/client';
 import type { ModStatus, ModReviewComment } from '../types/mod';
 
-const API_BASE_URL = import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app';
+// Use proxy in development (via Vite), direct URL in production
+// This matches the pattern used in other projects (e.g., otp-auth-service dashboard)
+const API_BASE_URL = import.meta.env.DEV 
+  ? '/mods-api'  // Vite proxy in development
+  : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
 
 /**
  * Get auth token from storage
@@ -49,7 +53,10 @@ function getAuthToken(): string | null {
  * Refresh auth token by restoring session from backend
  */
 async function refreshAuthToken(): Promise<string | null> {
-    const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
+    // Use proxy in development (via Vite), direct URL in production
+    const AUTH_API_URL = import.meta.env.DEV 
+      ? '/auth-api'  // Vite proxy in development
+      : (import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app');
     
     try {
         // Use the API framework client which already handles secureFetch internally

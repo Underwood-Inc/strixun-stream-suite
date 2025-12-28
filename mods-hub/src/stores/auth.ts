@@ -25,7 +25,10 @@ interface AuthState {
     fetchUserInfo: () => Promise<void>;
 }
 
-const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
+// Use proxy in development (via Vite), direct URL in production
+const AUTH_API_URL = import.meta.env.DEV 
+  ? '/auth-api'  // Vite proxy in development
+  : (import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app');
 
 /**
  * Restore session from backend based on IP address
