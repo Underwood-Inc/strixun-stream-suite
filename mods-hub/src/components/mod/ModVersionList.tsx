@@ -86,12 +86,12 @@ const DownloadButton = styled.a`
 `;
 
 interface ModVersionListProps {
-    modId: string;
+    modSlug: string;
     versions: ModVersion[];
     isUploader?: boolean;
 }
 
-export function ModVersionList({ modId, versions, isUploader = false }: ModVersionListProps) {
+export function ModVersionList({ modSlug, versions, isUploader = false }: ModVersionListProps) {
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -126,14 +126,14 @@ export function ModVersionList({ modId, versions, isUploader = false }: ModVersi
                         </Meta>
                         {version.sha256 && (
                             <IntegrityBadge 
-                                modId={modId} 
+                                modId={modSlug} 
                                 versionId={version.versionId}
                                 showCopyButton={isUploader}
                             />
                         )}
                     </VersionInfo>
                     <DownloadButton
-                        href={getDownloadUrl(modId, version.versionId)}
+                        href={getDownloadUrl(modSlug, version.versionId)}
                         download
                     >
                         Download

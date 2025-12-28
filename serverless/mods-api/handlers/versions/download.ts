@@ -129,10 +129,8 @@ export async function handleDownloadVersion(
             version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
         }
 
-        // Check version belongs to mod - support both modId formats
-        const versionModId = version.modId;
-        const modModId = mod.modId;
-        if (!version || (versionModId !== modModId && versionModId !== cleanModId && versionModId !== modIdOrSlug)) {
+        // Check version belongs to mod - version.modId must match mod.modId (source of truth)
+        if (!version || version.modId !== mod.modId) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -161,12 +159,14 @@ export async function handleDownloadVersion(
         }
         
         // Save mod back to the appropriate scope
+        // Use mod.modId to get the correct key (handle both mod_xxx and just xxx formats)
+        const modIdForKey = mod.modId.startsWith('mod_') ? mod.modId.substring(4) : mod.modId;
         if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${modIdForKey}`);
             await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
         }
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${modIdForKey}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
         }
 

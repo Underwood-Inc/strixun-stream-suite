@@ -128,7 +128,7 @@ export function ModDetailPage() {
                             <>
                                 <span>•</span>
                                 <IntegrityBadge 
-                                    modId={mod.modId} 
+                                    modId={mod.slug} 
                                     versionId={latestVersion.versionId}
                                     showCopyButton={isUploader}
                                 />
@@ -143,7 +143,7 @@ export function ModDetailPage() {
                 </Info>
             </Header>
 
-            <ModVersionList modId={mod.modId} versions={versions} isUploader={isUploader} />
+            <ModVersionList modSlug={mod.slug} versions={versions} isUploader={isUploader} />
             
             {isUploader && (
                 <ModAnalytics mod={mod} versions={versions} />

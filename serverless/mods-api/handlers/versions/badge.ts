@@ -8,6 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
+import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
@@ -56,26 +57,48 @@ function generateBadge(verified: boolean, hash: string, style: 'flat' | 'flat-sq
 
 /**
  * Handle badge request
+ * Supports both modId (legacy) and slug (new) patterns
  */
 export async function handleBadge(
     request: Request,
     env: Env,
-    modId: string,
+    modIdOrSlug: string,
     versionId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { userId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata - check both global scope and customer scope
+        // Get mod metadata - try multiple lookup strategies for legacy compatibility
         let mod: ModMetadata | null = null;
         
-        // First try global scope (for public mods)
-        const globalModKey = `mod_${modId}`;
-        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
+        const cleanModId = modIdOrSlug.startsWith('mod_') ? modIdOrSlug.substring(4) : modIdOrSlug;
         
-        // If not found and authenticated, check customer scope
-        if (!mod && auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        // Check customer scope first if authenticated
+        if (auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${cleanModId}`);
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Fall back to global scope if not found
+        if (!mod) {
+            const globalModKey = `mod_${cleanModId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Strategy 2: If not found by modId, try slug lookup (new pattern)
+        if (!mod) {
+            mod = await findModBySlug(modIdOrSlug, env, auth);
+        }
+        
+        // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
+        if (!mod && modIdOrSlug.startsWith('mod_')) {
+            if (auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, modIdOrSlug);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
+            if (!mod) {
+                mod = await env.MODS_KV.get(modIdOrSlug, { type: 'json' }) as ModMetadata | null;
+            }
         }
 
         if (!mod) {
@@ -125,7 +148,8 @@ export async function handleBadge(
             version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
         }
 
-        if (!version || version.modId !== modId) {
+        // Check version belongs to mod (compare with mod.modId, not the input parameter)
+        if (!version || version.modId !== mod.modId) {
             return new Response('Version not found', { status: 404 });
         }
 
