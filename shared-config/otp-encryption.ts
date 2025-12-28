@@ -38,11 +38,20 @@
 export function getOtpEncryptionKey(): string | undefined {
   // Priority 1: Environment variable (build-time injection - SECURE)
   // This is the PRIMARY and RECOMMENDED method
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-    const env = (import.meta as any).env;
-    const envKey = env.VITE_SERVICE_ENCRYPTION_KEY;
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const envKey = import.meta.env.VITE_SERVICE_ENCRYPTION_KEY;
     if (envKey && typeof envKey === 'string' && envKey.length >= 32) {
       return envKey;
+    }
+    // Debug logging for production troubleshooting
+    if (typeof window !== 'undefined' && import.meta.env.DEV === false) {
+      console.warn('[getOtpEncryptionKey] VITE_SERVICE_ENCRYPTION_KEY not found in import.meta.env', {
+        hasImportMeta: typeof import.meta !== 'undefined',
+        hasEnv: !!import.meta.env,
+        envKeyType: typeof envKey,
+        envKeyLength: envKey?.length || 0,
+        envKeys: Object.keys(import.meta.env || {}).filter(k => k.startsWith('VITE_'))
+      });
     }
   }
 

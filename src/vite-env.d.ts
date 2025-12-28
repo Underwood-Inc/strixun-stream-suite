@@ -3,6 +3,15 @@
 
 // Global type definitions for the application
 
+interface ImportMetaEnv {
+  readonly VITE_SERVICE_ENCRYPTION_KEY?: string; // CRITICAL: OTP encryption key for encrypting requests (must match SERVICE_ENCRYPTION_KEY on server)
+  // Add other env variables as needed
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare global {
   interface Window {
     // Storage system
