@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { calculateFileHash, formatStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
@@ -45,7 +45,9 @@ export async function handleUploadVersion(
         }
 
         // Get mod metadata
-        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modId);
+        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
 
         if (!mod) {
@@ -233,7 +235,8 @@ export async function handleUploadVersion(
         // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
         // Files are decrypted on-the-fly during download
         const fileExtension = originalFileName.split('.').pop() || 'zip';
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${fileExtension}`);
+        // Use normalized modId for R2 key consistency
+        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${fileExtension}`);
         
         // Store encrypted file data as-is (the original encrypted JSON from client)
         const encryptedFileBytes = new TextEncoder().encode(encryptedData);
@@ -281,7 +284,7 @@ export async function handleUploadVersion(
         await env.MODS_KV.put(versionKey, JSON.stringify(version));
 
         // Add version to mod's version list (customer scope)
-        const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+        const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
         const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
         const updatedVersionsList = [...(versionsList || []), versionId];
         await env.MODS_KV.put(versionsListKey, JSON.stringify(updatedVersionsList));
@@ -293,9 +296,9 @@ export async function handleUploadVersion(
 
         // Also update in global scope if mod is public
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             const globalVersionKey = `version_${versionId}`;
-            const globalVersionsListKey = `mod_${modId}_versions`;
+            const globalVersionsListKey = `mod_${normalizedModId}_versions`;
             
             await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
             

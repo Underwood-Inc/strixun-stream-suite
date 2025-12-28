@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { hasUploadPermission } from '../../utils/admin.js';
 import { calculateFileHash, formatStrixunHash } from '../../utils/hash.js';
@@ -36,7 +36,9 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
     if (globalModsList) {
         for (const modId of globalModsList) {
             if (excludeModId && modId === excludeModId) continue;
-            const globalModKey = `mod_${modId}`;
+            // Normalize modId for key lookup
+            const normalizedListModId = normalizeModId(modId);
+            const globalModKey = `mod_${normalizedListModId}`;
             const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             if (mod && mod.slug === slug) {
                 return true;
@@ -272,7 +274,9 @@ export async function handleUploadMod(
         // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
         // Files are decrypted on-the-fly during download
         const fileExtension = originalFileName.split('.').pop() || 'zip';
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${fileExtension}`);
+        // Use normalized modId for R2 key consistency
+        const normalizedModId = normalizeModId(modId);
+        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${fileExtension}`);
         
         // Store encrypted file data as-is (the original encrypted JSON from client)
         const encryptedFileBytes = new TextEncoder().encode(encryptedData);
@@ -344,9 +348,11 @@ export async function handleUploadMod(
         };
 
         // Store in KV
-        const modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modId);
+        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-        const versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+        const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
 
         // Store mod and version in customer scope
@@ -470,7 +476,9 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)
         // Get the mod to get its slug
-        const modKey = `mod_${modId}`;
+        // Use normalized modId for key lookup
+        const normalizedModId = normalizeModId(modId);
+        const modKey = `mod_${normalizedModId}`;
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
         const slug = mod?.slug || modId; // Fallback to modId if mod not found yet
         const API_BASE_URL = 'https://mods-api.idling.app';

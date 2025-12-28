@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata } from '../../types/mod.js';
 
@@ -30,17 +30,39 @@ export async function handleThumbnail(
         // If slug lookup failed, try direct modId lookup
         if (!mod) {
             console.log('[Thumbnail] Strategy 2: Trying modId lookup:', { modId });
-            // First try global scope (for public mods)
-            const globalModKey = `mod_${modId}`;
-            console.log('[Thumbnail] Checking global scope:', { globalModKey });
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            // Strategy 2a: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
+            // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+            const normalizedModId = normalizeModId(modId);
             
-            // If not found and authenticated, check customer scope
-            if (!mod && auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+            // Check customer scope first if authenticated
+            if (auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 console.log('[Thumbnail] Checking customer scope:', { customerModKey });
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
+            
+            // Fall back to global scope if not found
+            if (!mod) {
+                const globalModKey = `mod_${normalizedModId}`;
+                console.log('[Thumbnail] Checking global scope:', { globalModKey });
+                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            }
+            
+            // Strategy 2b: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
+            // This is now redundant since normalizeModId handles it, but keeping for backward compatibility
+            if (!mod && modId.startsWith('mod_')) {
+                console.log('[Thumbnail] Strategy 2b: Trying full modId (legacy):', { modId });
+                // Use normalized version for consistency
+                if (auth?.customerId) {
+                    const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+                    mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                }
+                if (!mod) {
+                    const globalModKey = `mod_${normalizedModId}`;
+                    mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+                }
+            }
+            
             if (mod) console.log('[Thumbnail] Found mod by modId:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
         }
 
@@ -67,30 +89,27 @@ export async function handleThumbnail(
         // Only super admins can bypass these checks
         if (!isAdmin) {
             // For non-super users: ONLY public, published mods are allowed
-            // Legacy mods without proper fields are filtered out
-            
-            // Check visibility: MUST be 'public'
-            if (mod.visibility !== 'public') {
-                // Only show private/unlisted mods to their author
-                if (mod.authorId !== auth?.userId) {
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 404,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
+            // Legacy mods without visibility field are treated as public
+            const modVisibility = mod.visibility || 'public';
+            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
+                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 404,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
             }
             
-            // Check status: MUST be 'published'
-            // Legacy mods without status field are filtered out (undefined !== 'published')
-            if (mod.status !== 'published') {
-                // Only show non-published mods to their author
+            // Check status: only allow downloads of published mods to public, admins and authors can download all statuses
+            // Legacy mods without status field are treated as published
+            const modStatus = mod.status || 'published';
+            if (modStatus !== 'published') {
+                // Only allow downloads of non-published mods to admins or the author
                 if (mod.authorId !== auth?.userId) {
                     const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
                     const corsHeaders = createCORSHeaders(request, {
@@ -107,7 +126,8 @@ export async function handleThumbnail(
             }
         } else {
             // Super admins: check visibility but allow all statuses
-            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+            const modVisibility = mod.visibility || 'public';
+            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -144,9 +164,10 @@ export async function handleThumbnail(
         // Thumbnails are stored as: customer_xxx/thumbnails/modId.ext
         // Use mod's customerId (not auth customerId) to ensure correct scope
         // Use mod.modId (actual modId) not the URL parameter (which might be a slug)
+        // Strip mod_ prefix if present (thumbnails are stored without the prefix)
         const customerId = mod.customerId || null;
-        const actualModId = mod.modId;
-        console.log('[Thumbnail] Looking up R2 file:', { customerId, actualModId });
+        const actualModId = mod.modId.startsWith('mod_') ? mod.modId.substring(4) : mod.modId;
+        console.log('[Thumbnail] Looking up R2 file:', { customerId, actualModId, originalModId: mod.modId });
         
         // Try common image extensions to find the actual file
         // This handles cases where extension wasn't stored in metadata

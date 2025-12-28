@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 
@@ -55,13 +55,16 @@ export async function handleListMods(
             // Try to find mod in global scope first, then customer scope
             let mod: ModMetadata | null = null;
             
+            // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+            const normalizedModId = normalizeModId(modId);
+            
             // Check global/public scope (no customer prefix)
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             
             // If not found and authenticated, check customer scope
             if (!mod && auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
             

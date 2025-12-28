@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
 import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
@@ -29,12 +29,13 @@ export async function handleDownloadVersion(
         let mod: ModMetadata | null = null;
         
         // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
-        const cleanModId = modIdOrSlug.startsWith('mod_') ? modIdOrSlug.substring(4) : modIdOrSlug;
-        console.log('[Download] Strategy 1: Trying modId lookup:', { cleanModId, original: modIdOrSlug });
+        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modIdOrSlug);
+        console.log('[Download] Strategy 1: Trying modId lookup:', { normalizedModId, original: modIdOrSlug });
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${cleanModId}`);
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
             console.log('[Download] Checking customer scope:', { customerModKey });
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             if (mod) console.log('[Download] Found mod in customer scope:', { modId: mod.modId, slug: mod.slug });
@@ -42,7 +43,7 @@ export async function handleDownloadVersion(
         
         // Fall back to global scope if not found
         if (!mod) {
-            const globalModKey = `mod_${cleanModId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             console.log('[Download] Checking global scope:', { globalModKey });
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             if (mod) console.log('[Download] Found mod in global scope:', { modId: mod.modId, slug: mod.slug });
@@ -56,14 +57,17 @@ export async function handleDownloadVersion(
         }
         
         // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
+        // This is now redundant since normalizeModId handles it, but keeping for backward compatibility
         if (!mod && modIdOrSlug.startsWith('mod_')) {
-            console.log('[Download] Strategy 3: Trying full modId:', { modIdOrSlug });
+            console.log('[Download] Strategy 3: Trying full modId (legacy):', { modIdOrSlug });
+            // Use normalized version for consistency
             if (auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, modIdOrSlug);
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
             if (!mod) {
-                mod = await env.MODS_KV.get(modIdOrSlug, { type: 'json' }) as ModMetadata | null;
+                const globalModKey = `mod_${normalizedModId}`;
+                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             }
             if (mod) console.log('[Download] Found mod by full modId:', { modId: mod.modId, slug: mod.slug });
         }
@@ -188,14 +192,14 @@ export async function handleDownloadVersion(
         }
         
         // Save mod back to the appropriate scope
-        // Use mod.modId to get the correct key (handle both mod_xxx and just xxx formats)
-        const modIdForKey = mod.modId.startsWith('mod_') ? mod.modId.substring(4) : mod.modId;
+        // Normalize modId to ensure consistent key generation
+        const normalizedModIdForKey = normalizeModId(mod.modId);
         if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modIdForKey}`);
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModIdForKey}`);
             await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
         }
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modIdForKey}`;
+            const globalModKey = `mod_${normalizedModIdForKey}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
         }
 

@@ -29,3 +29,13 @@ export function getCustomerR2Key(customerId: string | null, key: string): string
     return key;
 }
 
+/**
+ * Normalize modId by stripping 'mod_' prefix if present
+ * This ensures consistent key generation regardless of whether modId includes the prefix
+ * @param modId - Mod ID (may or may not include 'mod_' prefix)
+ * @returns Normalized mod ID without 'mod_' prefix
+ */
+export function normalizeModId(modId: string): string {
+    return modId.startsWith('mod_') ? modId.substring(4) : modId;
+}
+

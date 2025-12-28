@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
 import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
@@ -71,17 +71,18 @@ export async function handleBadge(
         let mod: ModMetadata | null = null;
         
         // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
-        const cleanModId = modIdOrSlug.startsWith('mod_') ? modIdOrSlug.substring(4) : modIdOrSlug;
+        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modIdOrSlug);
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${cleanModId}`);
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // Fall back to global scope if not found
         if (!mod) {
-            const globalModKey = `mod_${cleanModId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
         
@@ -91,13 +92,16 @@ export async function handleBadge(
         }
         
         // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
+        // This is now redundant since normalizeModId handles it, but keeping for backward compatibility
         if (!mod && modIdOrSlug.startsWith('mod_')) {
+            // Use normalized version for consistency
             if (auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, modIdOrSlug);
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
             if (!mod) {
-                mod = await env.MODS_KV.get(modIdOrSlug, { type: 'json' }) as ModMetadata | null;
+                const globalModKey = `mod_${normalizedModId}`;
+                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             }
         }
 
@@ -113,24 +117,25 @@ export async function handleBadge(
         // Only super admins can bypass these checks
         if (!isAdmin) {
             // For non-super users: ONLY public, published mods are allowed
-            // Check visibility: MUST be 'public'
-            if (mod.visibility !== 'public') {
-                // Only show private/unlisted mods to their author
-                if (mod.authorId !== auth?.userId) {
-                    return new Response('Mod not found', { status: 404 });
-                }
+            // Legacy mods without visibility field are treated as public
+            const modVisibility = mod.visibility || 'public';
+            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
+                return new Response('Mod not found', { status: 404 });
             }
             
-            // Check status: MUST be 'published'
-            if (mod.status !== 'published') {
-                // Only show non-published mods to their author
+            // Check status: only allow badges of published mods to public, admins and authors can see all statuses
+            // Legacy mods without status field are treated as published
+            const modStatus = mod.status || 'published';
+            if (modStatus !== 'published') {
+                // Only allow badges of non-published mods to admins or the author
                 if (mod.authorId !== auth?.userId) {
                     return new Response('Mod not found', { status: 404 });
                 }
             }
         } else {
             // Super admins: check visibility but allow all statuses
-            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+            const modVisibility = mod.visibility || 'public';
+            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
                 return new Response('Mod not found', { status: 404 });
             }
         }
