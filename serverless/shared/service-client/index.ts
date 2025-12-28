@@ -325,16 +325,15 @@ export class ServiceClient {
                     requestInit.body = requestBody;
                 }
                 
-                // Debug logging for authentication issues
-                const authHeaderName = this.getAuthHeaderName();
-                const authHeaderValue = headers.get(authHeaderName);
+                // Debug logging for authentication issues (reuse variables declared earlier)
+                const retrievedAuthHeaderValue = headers.get(authHeaderName);
                 console.log('[ServiceClient] Making request', {
                     method,
                     url,
-                    hasAuthHeader: !!authHeaderValue,
+                    hasAuthHeader: !!retrievedAuthHeaderValue,
                     authHeaderName: authHeaderName,
-                    authHeaderValueLength: authHeaderValue?.length || 0,
-                    authHeaderValuePreview: authHeaderValue ? `${authHeaderValue.substring(0, 8)}...` : 'missing',
+                    authHeaderValueLength: retrievedAuthHeaderValue?.length || 0,
+                    authHeaderValuePreview: retrievedAuthHeaderValue ? `${retrievedAuthHeaderValue.substring(0, 8)}...` : 'missing',
                     hasIntegrityHeader: headers.has('X-Strixun-Request-Integrity'),
                     allHeaders: Array.from(headers.entries()).map(([k]) => k),
                 });
