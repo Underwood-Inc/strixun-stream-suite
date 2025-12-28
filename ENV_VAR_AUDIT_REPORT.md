@@ -149,9 +149,15 @@ The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 
 ## Remaining Tasks
 
-1. [ ] Verify `NETWORK_INTEGRITY_KEYPHRASE` is set in all workers that use service client
-2. [ ] Update documentation to clarify frontend vs backend naming
+1. [x] Verify `NETWORK_INTEGRITY_KEYPHRASE` is set in all workers that use service client
+   - [x] Added to `deploy-otp-auth.yml` workflow
+   - [x] Added to `deploy-customer-api.yml` workflow
+   - [x] Added to `deploy-mods-api.yml` workflow
+   - [x] Added to `deploy-manager.yml` workflow (for otp-auth, customer-api, and mods-api)
+2. [x] Update documentation to clarify frontend vs backend naming
+   - [x] Updated `ENV_SETUP_GUIDE.md` with naming convention section
 3. [ ] Add validation to prevent setting `VITE_*` variables in workers
+   - **Note**: This would require runtime validation in worker code. Currently handled by documentation and code review.
 
 ## Testing Checklist
 

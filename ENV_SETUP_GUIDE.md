@@ -81,6 +81,24 @@ ls -la serverless/url-shortener/app/.env
 - [SUCCESS] Use the same key in all 3 locations
 - [SUCCESS] Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
 
+## Frontend vs Backend Naming Convention
+
+**IMPORTANT**: Frontend and backend use different variable names for the same encryption key:
+
+### Frontend (Vite Applications)
+- **Variable Name**: `VITE_SERVICE_ENCRYPTION_KEY`
+- **Location**: `.env` files in frontend app directories
+- **Why**: Vite requires the `VITE_` prefix for environment variables to be exposed to the client
+- **Example**: `VITE_SERVICE_ENCRYPTION_KEY=your-key-here`
+
+### Backend (Cloudflare Workers)
+- **Variable Name**: `SERVICE_ENCRYPTION_KEY`
+- **Location**: Cloudflare Worker secrets (set via `wrangler secret put`)
+- **Why**: Workers don't use the `VITE_` prefix (that's only for Vite)
+- **Example**: `wrangler secret put SERVICE_ENCRYPTION_KEY`
+
+**CRITICAL**: Both must have the **SAME VALUE**, but different names for their respective environments. The frontend `VITE_SERVICE_ENCRYPTION_KEY` value must match the backend `SERVICE_ENCRYPTION_KEY` value.
+
 ## Current SERVICE_ENCRYPTION_KEY
 
 ```
