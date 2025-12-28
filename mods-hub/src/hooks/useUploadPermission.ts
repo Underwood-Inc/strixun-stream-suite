@@ -24,22 +24,42 @@ import * as api from '../services/api';
 export function useUploadPermission() {
     const { user, isAuthenticated } = useAuthStore();
     
-    const { data, isLoading } = useQuery({
-        queryKey: ['uploadPermission', user?.userId],
+    // Ensure we have a valid token before making the request
+    const hasValidToken = isAuthenticated && !!user?.token && user.token.trim().length > 0;
+    
+    const { data, isLoading, error } = useQuery({
+        queryKey: ['uploadPermission', user?.userId, user?.token ? 'has-token' : 'no-token'],
         queryFn: async () => {
+            // Double-check token before making request
+            if (!user?.token) {
+                throw new Error('No authentication token available');
+            }
             const result = await api.checkUploadPermission();
             return result;
         },
-        enabled: isAuthenticated && !!user?.userId,
+        enabled: hasValidToken && !!user?.userId,
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-        retry: 1,
+        retry: (failureCount, error) => {
+            // Don't retry on 401 errors (authentication failures)
+            if (error && typeof error === 'object' && 'status' in error && error.status === 401) {
+                return false;
+            }
+            // Retry other errors once
+            return failureCount < 1;
+        },
         retryDelay: 1000,
     });
+    
+    // Log errors for debugging
+    if (error) {
+        console.error('[useUploadPermission] Error checking permission:', error);
+    }
     
     return {
         hasPermission: data?.hasPermission ?? false,
         isLoading,
         isAuthenticated,
+        error,
     };
 }
 

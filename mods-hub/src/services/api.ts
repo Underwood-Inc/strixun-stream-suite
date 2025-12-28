@@ -20,6 +20,8 @@ export const API_BASE_URL = import.meta.env.DEV
  * Create API client instance with auth token getter
  * Reads token from Zustand persisted auth store (localStorage['auth-storage'])
  * Uses dynamic import to avoid circular dependencies
+ * 
+ * CRITICAL: Token getter must always check multiple sources to ensure token is found
  */
 const createClient = () => {
     return createAPIClient({
@@ -29,52 +31,80 @@ const createClient = () => {
         },
         auth: {
             tokenGetter: async () => {
-                if (typeof window !== 'undefined') {
-                    try {
-                        // Try to get token from Zustand store directly (preferred method)
-                        // Dynamic import to avoid circular dependencies
-                        const { useAuthStore } = await import('../stores/auth');
-                        const store = useAuthStore.getState();
-                        if (store.user?.token) {
-                            return store.user.token;
-                        }
-                    } catch (error) {
-                        // If store import fails, fall back to localStorage parsing
-                        console.debug('[API] Could not access auth store directly, falling back to localStorage:', error);
-                    }
-                    
-                    try {
-                        // Fallback: Read from Zustand persisted store in localStorage
-                        // Auth store uses 'auth-storage' key and stores: { user: { token: '...', ... } }
-                        const authStorage = localStorage.getItem('auth-storage');
-                        if (authStorage) {
-                            const parsed = JSON.parse(authStorage);
-                            // Zustand persist with partialize stores as { user: { token: '...' } }
-                            if (parsed?.user?.token) {
-                                return parsed.user.token;
-                            }
-                            // Some Zustand versions might wrap in state: { state: { user: { token: '...' } } }
-                            if (parsed?.state?.user?.token) {
-                                return parsed.state.user.token;
-                            }
-                        }
-                    } catch (error) {
-                        console.warn('[API] Failed to parse auth storage:', error);
-                    }
-                    
-                    // Final fallback to legacy keys for backwards compatibility
-                    return localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+                if (typeof window === 'undefined') {
+                    return null;
                 }
+
+                // Priority 1: Try to get token from Zustand store directly (most reliable)
+                try {
+                    const { useAuthStore } = await import('../stores/auth');
+                    const store = useAuthStore.getState();
+                    if (store.user?.token) {
+                        const token = store.user.token.trim();
+                        if (token && token.length > 0) {
+                            console.debug('[API] Token retrieved from Zustand store');
+                            return token;
+                        }
+                    }
+                } catch (error) {
+                    console.debug('[API] Could not access auth store directly:', error);
+                }
+                
+                // Priority 2: Read directly from localStorage (works even if store isn't hydrated)
+                try {
+                    const authStorage = localStorage.getItem('auth-storage');
+                    if (authStorage) {
+                        const parsed = JSON.parse(authStorage);
+                        // Zustand persist with partialize stores as { user: { token: '...' } }
+                        let token: string | null = null;
+                        if (parsed?.user?.token) {
+                            token = parsed.user.token;
+                        } else if (parsed?.state?.user?.token) {
+                            // Some Zustand versions might wrap in state
+                            token = parsed.state.user.token;
+                        }
+                        
+                        if (token) {
+                            const trimmedToken = token.trim();
+                            if (trimmedToken && trimmedToken.length > 0) {
+                                console.debug('[API] Token retrieved from localStorage');
+                                return trimmedToken;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[API] Failed to parse auth storage:', error);
+                }
+                
+                // Priority 3: Legacy keys for backwards compatibility
+                const legacyToken = localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+                if (legacyToken) {
+                    const trimmedToken = legacyToken.trim();
+                    if (trimmedToken && trimmedToken.length > 0) {
+                        console.debug('[API] Token retrieved from legacy storage');
+                        return trimmedToken;
+                    }
+                }
+                
+                console.warn('[API] No token found in any storage location');
                 return null;
             },
             onTokenExpired: () => {
                 if (typeof window !== 'undefined') {
+                    console.warn('[API] Token expired, clearing auth state');
                     // Clear Zustand persisted store
                     localStorage.removeItem('auth-storage');
                     // Clear legacy keys for backwards compatibility
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('access_token');
+                    // Dispatch logout event
                     window.dispatchEvent(new CustomEvent('auth:logout'));
+                    // Also clear the store if possible
+                    import('../stores/auth').then(({ useAuthStore }) => {
+                        useAuthStore.getState().logout();
+                    }).catch(() => {
+                        // Ignore errors if store isn't available
+                    });
                 }
             },
         },

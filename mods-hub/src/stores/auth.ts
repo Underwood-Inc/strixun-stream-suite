@@ -41,7 +41,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
-            timeout: 5000, // 5 second timeout for session restoration
+            timeout: 10000, // Increased to 10 seconds for session restoration
         });
         
         const response = await authClient.post<{ restored: boolean; access_token?: string; token?: string; userId?: string; sub?: string; email?: string; displayName?: string | null; expiresAt?: string }>('/auth/restore-session', {});
@@ -112,7 +112,7 @@ async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean; di
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
-            timeout: 5000,
+            timeout: 10000, // Increased to 10 seconds to handle slower responses
             auth: {
                 tokenGetter: () => token,
             },
@@ -268,6 +268,16 @@ export const useAuthStore = create<AuthState>()(
                 if (state) {
                     // CRITICAL: Set isAuthenticated and isSuperAdmin from restored user
                     if (state.user) {
+                        // Validate token exists and is not empty
+                        if (!state.user.token || state.user.token.trim().length === 0) {
+                            console.warn('[Auth] User found in storage but token is missing or empty, clearing auth state');
+                            state.user = null;
+                            state.isAuthenticated = false;
+                            state.isSuperAdmin = false;
+                            state.restoreSession();
+                            return;
+                        }
+                        
                         // Update derived state from persisted user
                         state.isAuthenticated = true;
                         state.isSuperAdmin = state.user.isSuperAdmin || false;
@@ -276,6 +286,7 @@ export const useAuthStore = create<AuthState>()(
                         const isExpired = state.user.expiresAt && new Date(state.user.expiresAt) <= new Date();
                         
                         if (isExpired) {
+                            console.log('[Auth] Token expired, attempting to restore session');
                             // Token expired, try to restore from backend
                             // restoreSession will only clear user if backend restore fails AND token is expired
                             state.restoreSession();
@@ -283,6 +294,7 @@ export const useAuthStore = create<AuthState>()(
                             // Token is valid - user is authenticated!
                             // Just refresh admin status in background, don't clear user
                             console.log('[Auth] User authenticated from localStorage, token valid until:', state.user.expiresAt);
+                            console.log('[Auth] Token length:', state.user.token.length);
                             if (state.user.token) {
                                 // Don't await - let it run in background, don't block hydration
                                 state.fetchUserInfo().catch(err => {
@@ -292,6 +304,7 @@ export const useAuthStore = create<AuthState>()(
                         }
                     } else {
                         // No user in localStorage - try to restore from backend (IP-based session sharing)
+                        console.log('[Auth] No user in storage, attempting to restore session from backend');
                         state.restoreSession();
                     }
                 }

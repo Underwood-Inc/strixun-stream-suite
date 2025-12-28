@@ -55,8 +55,14 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-HTTP(S) requests (chrome-extension://, file://, etc.)
   // These cause "Request scheme 'chrome-extension' is unsupported" errors
-  const url = new URL(event.request.url);
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  try {
+    const url = new URL(event.request.url);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return; // Skip entirely - don't try to cache or fetch
+    }
+  } catch (error) {
+    // If URL parsing fails, skip this request entirely
+    console.debug('[SW] Invalid URL, skipping:', event.request.url);
     return;
   }
 
@@ -64,7 +70,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('/mods-api') || 
       event.request.url.includes('/auth-api') ||
       event.request.url.includes('api.')) {
-    return;
+    return; // Let browser handle API requests directly
   }
 
   event.respondWith(
@@ -86,15 +92,24 @@ self.addEventListener('fetch', (event) => {
             // Clone the response for caching
             const responseToCache = response.clone();
 
-            // Only cache HTTP(S) responses
-            if (url.protocol === 'http:' || url.protocol === 'https:') {
-              caches.open(RUNTIME_CACHE)
-                .then((cache) => {
-                  cache.put(event.request, responseToCache).catch((error) => {
-                    // Silently ignore cache errors (e.g., for chrome-extension:// URLs)
-                    console.debug('[SW] Cache put failed (non-critical):', error);
+            // Only cache HTTP(S) responses - double-check before caching
+            try {
+              const url = new URL(event.request.url);
+              if (url.protocol === 'http:' || url.protocol === 'https:') {
+                caches.open(RUNTIME_CACHE)
+                  .then((cache) => {
+                    // Wrap in try-catch to handle any cache errors gracefully
+                    return cache.put(event.request, responseToCache);
+                  })
+                  .catch((error) => {
+                    // Silently ignore cache errors (e.g., for unsupported schemes)
+                    // This prevents console errors for chrome-extension:// URLs that slip through
+                    console.debug('[SW] Cache put failed (non-critical):', error.message);
                   });
-                });
+              }
+            } catch (error) {
+              // If URL parsing fails during caching, just skip caching
+              console.debug('[SW] Failed to parse URL for caching:', error.message);
             }
 
             return response;
@@ -106,6 +121,16 @@ self.addEventListener('fetch', (event) => {
               return caches.match('/index.html');
             }
           });
+      })
+      .catch((error) => {
+        // If cache match fails, just let the browser handle it
+        console.debug('[SW] Cache match failed, letting browser handle request:', error.message);
+        return fetch(event.request).catch(() => {
+          // If fetch also fails, return offline page for documents
+          if (event.request.destination === 'document') {
+            return caches.match('/index.html');
+          }
+        });
       })
   );
 });
