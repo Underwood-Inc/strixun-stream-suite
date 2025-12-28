@@ -302,22 +302,47 @@ export class ServiceClient {
                     // Get response body text for integrity verification
                     const responseText = await response.text();
                     
+                    console.log('[ServiceClient] Response received', {
+                      status: response.status,
+                      statusText: response.statusText,
+                      bodyLength: responseText.length,
+                      hasIntegrityHeader: response.headers.has('X-Strixun-Response-Integrity'),
+                      integrityHeader: response.headers.get('X-Strixun-Response-Integrity')?.substring(0, 50) || 'missing',
+                      allHeaders: Array.from(response.headers.entries()).map(([k]) => k),
+                      integrityEnabled: this.config.integrity.enabled,
+                      verifyResponse: this.config.integrity.verifyResponse
+                    });
+                    
                     // Verify response integrity (baked-in security feature)
                     // CRITICAL: All service-to-service responses MUST include integrity header
                     if (this.config.integrity.enabled && this.config.integrity.verifyResponse) {
+                        console.log('[ServiceClient] Verifying response integrity');
                         const verification = await this.verifyResponseIntegrity(
                             response.status,
                             responseText,
                             response.headers
                         );
                         
+                        console.log('[ServiceClient] Integrity verification result', {
+                          verified: verification.verified,
+                          error: verification.error
+                        });
+                        
                         if (!verification.verified) {
                             if (this.config.integrity.throwOnFailure) {
+                                console.error('[ServiceClient] Integrity verification FAILED - throwing error');
                                 throw new Error(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             } else {
                                 console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             }
+                        } else {
+                            console.log('[ServiceClient] Integrity verification PASSED');
                         }
+                    } else {
+                        console.log('[ServiceClient] Integrity verification skipped', {
+                          enabled: this.config.integrity.enabled,
+                          verifyResponse: this.config.integrity.verifyResponse
+                        });
                     }
                     
                     // Parse response

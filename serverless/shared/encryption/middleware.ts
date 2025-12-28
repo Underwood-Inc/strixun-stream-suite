@@ -192,25 +192,73 @@ export async function wrapWithEncryption(
   // If no auth token, return unencrypted (but still set header to false for clarity)
   // This is likely a service-to-service call - add integrity header
   if (!auth?.jwtToken || auth.userId === 'service') {
+    console.log('[wrapWithEncryption] Service-to-service call detected', {
+      hasJwtToken: !!auth?.jwtToken,
+      userId: auth?.userId,
+      hasRequest: !!request,
+      hasEnv: !!env,
+      responseStatus: handlerResponse.status,
+      responseOk: handlerResponse.ok
+    });
+    
     // Add integrity header for service-to-service calls (CRITICAL for security)
     if (request && env) {
         try {
+            console.log('[wrapWithEncryption] Calling wrapResponseWithIntegrity', {
+              url: request.url,
+              method: request.method,
+              hasAuth: !!auth,
+              userId: auth?.userId
+            });
+            
             const { wrapResponseWithIntegrity } = await import('../service-client/integrity-response.js');
             const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth ?? null, env);
-            // Ensure X-Encrypted header is set
+            
+            // Check if integrity header was added
+            const integrityHeader = responseWithIntegrity.headers.get('X-Strixun-Response-Integrity');
+            console.log('[wrapWithEncryption] Response from wrapResponseWithIntegrity', {
+              hasIntegrityHeader: !!integrityHeader,
+              integrityHeaderLength: integrityHeader?.length || 0,
+              status: responseWithIntegrity.status,
+              allHeaders: Array.from(responseWithIntegrity.headers.entries())
+            });
+            
+            // Ensure X-Encrypted header is set (wrapResponseWithIntegrity already added integrity header)
+            // Read the body once (addResponseIntegrityHeader already converted it to string)
+            const bodyText = await responseWithIntegrity.text();
             const finalHeaders = new Headers(responseWithIntegrity.headers);
             finalHeaders.set('X-Encrypted', 'false');
-            // Return the response directly - wrapResponseWithIntegrity already created a new Response with the body
+            
+            // Verify integrity header is still present after header copy
+            const finalIntegrityHeader = finalHeaders.get('X-Strixun-Response-Integrity');
+            console.log('[wrapWithEncryption] Final response headers', {
+              hasIntegrityHeader: !!finalIntegrityHeader,
+              integrityHeaderLength: finalIntegrityHeader?.length || 0,
+              allHeaders: Array.from(finalHeaders.entries())
+            });
+            
+            // Create new response with integrity header preserved and X-Encrypted added
+            const finalResponse = new Response(bodyText, {
+                status: responseWithIntegrity.status,
+                statusText: responseWithIntegrity.statusText,
+                headers: finalHeaders,
+            });
+            
+            // Final verification
+            const finalCheck = finalResponse.headers.get('X-Strixun-Response-Integrity');
+            console.log('[wrapWithEncryption] Final response created', {
+              hasIntegrityHeader: !!finalCheck,
+              integrityHeaderLength: finalCheck?.length || 0,
+              status: finalResponse.status
+            });
+            
             return {
-                response: new Response(responseWithIntegrity.body, {
-                    status: responseWithIntegrity.status,
-                    statusText: responseWithIntegrity.statusText,
-                    headers: finalHeaders,
-                }),
+                response: finalResponse,
                 customerId: auth?.customerId || null,
             };
         } catch (error) {
             console.error('[NetworkIntegrity] Failed to add integrity header to service response:', error);
+            console.error('[NetworkIntegrity] Error stack:', error instanceof Error ? error.stack : 'No stack');
             // If integrity header addition fails, we MUST fail the request for security
             throw new Error(`[NetworkIntegrity] Failed to add integrity header: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -218,7 +266,11 @@ export async function wrapWithEncryption(
     
     // If no request/env provided, we CANNOT proceed without integrity headers for service calls
     // This is a security violation
-    console.error('[NetworkIntegrity] Service-to-service call detected but request/env not provided for integrity header');
+    console.error('[NetworkIntegrity] Service-to-service call detected but request/env not provided for integrity header', {
+      hasRequest: !!request,
+      hasEnv: !!env,
+      userId: auth?.userId
+    });
     throw new Error('[NetworkIntegrity] Service-to-service calls require request and env to add integrity headers');
   }
 
