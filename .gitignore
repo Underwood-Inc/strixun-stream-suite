@@ -12,6 +12,7 @@ dev-dist/
 
 # Auto-generated assets (may contain secrets)
 **/app-assets.ts
+**/app-assets.js
 
 # TypeScript
 *.tsbuildinfo
