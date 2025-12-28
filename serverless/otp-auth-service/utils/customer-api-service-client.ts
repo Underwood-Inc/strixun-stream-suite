@@ -72,6 +72,15 @@ function createServiceApiClient(env: Env) {
         );
     }
     
+    // Debug logging to verify env vars are present
+    console.log('[Customer API Service Client] Creating service client', {
+        hasServiceApiKey: !!env.SERVICE_API_KEY,
+        serviceApiKeyLength: env.SERVICE_API_KEY?.length || 0,
+        hasNetworkIntegrityKeyphrase: !!env.NETWORK_INTEGRITY_KEYPHRASE,
+        networkIntegrityKeyphraseLength: env.NETWORK_INTEGRITY_KEYPHRASE?.length || 0,
+        customerApiUrl: getCustomerApiUrl(env),
+    });
+    
     return createServiceClient(getCustomerApiUrl(env), env, {
         retry: {
             maxAttempts: 3,

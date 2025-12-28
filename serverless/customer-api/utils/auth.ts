@@ -78,7 +78,25 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
 export async function authenticateServiceRequest(request: Request, env: Env): Promise<AuthResult | null> {
     try {
         const serviceKey = request.headers.get('X-Service-Key');
-        if (!serviceKey || !env.SERVICE_API_KEY) {
+        
+        // Debug logging for authentication issues
+        console.log('[Customer API Auth] Service authentication attempt', {
+            hasServiceKeyHeader: !!serviceKey,
+            serviceKeyLength: serviceKey?.length || 0,
+            serviceKeyPreview: serviceKey ? `${serviceKey.substring(0, 8)}...` : 'missing',
+            hasEnvServiceApiKey: !!env.SERVICE_API_KEY,
+            envServiceApiKeyLength: env.SERVICE_API_KEY?.length || 0,
+            envServiceApiKeyPreview: env.SERVICE_API_KEY ? `${env.SERVICE_API_KEY.substring(0, 8)}...` : 'missing',
+            allHeaders: Array.from(request.headers.entries()).map(([k]) => k),
+        });
+        
+        if (!serviceKey) {
+            console.warn('[Customer API Auth] X-Service-Key header is missing');
+            return null;
+        }
+        
+        if (!env.SERVICE_API_KEY) {
+            console.error('[Customer API Auth] SERVICE_API_KEY is not configured in customer-api worker. Set it via: wrangler secret put SERVICE_API_KEY');
             return null;
         }
 
@@ -88,6 +106,10 @@ export async function authenticateServiceRequest(request: Request, env: Env): Pr
         const envKeyBytes = encoder.encode(env.SERVICE_API_KEY);
         
         if (serviceKeyBytes.length !== envKeyBytes.length) {
+            console.warn('[Customer API Auth] Service key length mismatch', {
+                receivedLength: serviceKeyBytes.length,
+                expectedLength: envKeyBytes.length,
+            });
             return null;
         }
 
@@ -97,9 +119,12 @@ export async function authenticateServiceRequest(request: Request, env: Env): Pr
         }
 
         if (!match) {
+            console.warn('[Customer API Auth] Service key does not match. Keys must be identical in both otp-auth-service and customer-api workers.');
             return null;
         }
 
+        console.log('[Customer API Auth] Service authentication successful');
+        
         // Service authentication successful
         // Return a service auth result (no user JWT, but authenticated)
         return {
@@ -109,7 +134,7 @@ export async function authenticateServiceRequest(request: Request, env: Env): Pr
             jwtToken: '' // No JWT for service calls
         };
     } catch (error) {
-        console.error('Service authentication error:', error);
+        console.error('[Customer API Auth] Service authentication error:', error);
         return null;
     }
 }

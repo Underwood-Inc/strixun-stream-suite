@@ -269,6 +269,23 @@ export class ServiceClient {
                     }
                 }
                 
+                // Add body if present (needed before integrity headers)
+                let requestBody: string | null = null;
+                if (options.body !== undefined) {
+                    if (typeof options.body === 'string') {
+                        requestBody = options.body;
+                    } else {
+                        requestBody = JSON.stringify(options.body);
+                    }
+                }
+                
+                // CRITICAL: Add request integrity headers for service-to-service calls
+                // This is required for network integrity verification
+                if (this.config.integrity.enabled && this.config.integrity.verifyRequest) {
+                    const urlObj = new URL(url);
+                    await this.addRequestIntegrityHeaders(method, urlObj.pathname + urlObj.search, requestBody, headers);
+                }
+                
                 // Build request
                 const requestInit: RequestInit = {
                     method,
@@ -278,14 +295,24 @@ export class ServiceClient {
                     cache: 'no-store',
                 };
                 
-                // Add body if present
-                if (options.body !== undefined) {
-                    if (typeof options.body === 'string') {
-                        requestInit.body = options.body;
-                    } else {
-                        requestInit.body = JSON.stringify(options.body);
-                    }
+                // Add body to request
+                if (requestBody !== null) {
+                    requestInit.body = requestBody;
                 }
+                
+                // Debug logging for authentication issues
+                const authHeaderName = this.getAuthHeaderName();
+                const authHeaderValue = headers.get(authHeaderName);
+                console.log('[ServiceClient] Making request', {
+                    method,
+                    url,
+                    hasAuthHeader: !!authHeaderValue,
+                    authHeaderName: authHeaderName,
+                    authHeaderValueLength: authHeaderValue?.length || 0,
+                    authHeaderValuePreview: authHeaderValue ? `${authHeaderValue.substring(0, 8)}...` : 'missing',
+                    hasIntegrityHeader: headers.has('X-Strixun-Request-Integrity'),
+                    allHeaders: Array.from(headers.entries()).map(([k]) => k),
+                });
                 
                 // Make request with timeout
                 const controller = new AbortController();
