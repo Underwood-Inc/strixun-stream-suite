@@ -51,7 +51,8 @@ function generateOGImage(mod: ModMetadata, thumbnailUrl?: string): string {
     const categoryDisplay = escapeXml(getCategoryDisplayName(mod.category));
     const title = escapeXml(truncateText(mod.title, 50));
     const description = escapeXml(truncateText(mod.description.replace(/\n/g, ' ').replace(/\*\*/g, '').replace(/\*/g, ''), 120));
-    const authorEmail = escapeXml(truncateText(mod.authorEmail, 30));
+    // CRITICAL: Never display email - use displayName or "Unknown User"
+    const authorName = escapeXml(truncateText(mod.authorDisplayName || 'Unknown User', 30));
     
     // Theme colors matching Strixun Stream Suite
     const bgColor = '#1a1a1a';
@@ -116,7 +117,7 @@ function generateOGImage(mod: ModMetadata, thumbnailUrl?: string): string {
     <g transform="translate(0, 280)">
       <!-- Author -->
       <circle cx="12" cy="12" r="8" fill="${accentColor}"/>
-      <text x="28" y="16" fill="${textSecondary}" font-size="20" font-weight="500" font-family="system-ui, -apple-system, sans-serif">${authorEmail}</text>
+      <text x="28" y="16" fill="${textSecondary}" font-size="20" font-weight="500" font-family="system-ui, -apple-system, sans-serif">${authorName}</text>
       
       <!-- Downloads -->
       <g transform="translate(320, 0)">

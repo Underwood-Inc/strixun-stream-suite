@@ -115,29 +115,22 @@ export async function handleBadge(
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
 
-        // CRITICAL: Enforce strict visibility and status filtering
-        // Only super admins can bypass these checks
-        if (!isAdmin) {
-            // For non-super users: ONLY public, published mods are allowed
-            // Legacy mods without visibility field are treated as public
-            const modVisibility = mod.visibility || 'public';
-            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
-                return new Response('Mod not found', { status: 404 });
-            }
-            
-            // Check status: only allow badges of published/approved mods to public, admins and authors can see all statuses
-            // Legacy mods without status field are treated as published
-            const modStatus = mod.status || 'published';
-            if (modStatus !== 'published' && modStatus !== 'approved') {
-                // Only allow badges of non-published/approved mods to admins or the author
-                if (mod.authorId !== auth?.userId) {
-                    return new Response('Mod not found', { status: 404 });
-                }
-            }
-        } else {
-            // Super admins: check visibility but allow all statuses
-            const modVisibility = mod.visibility || 'public';
-            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
+        // CRITICAL: Enforce visibility and status filtering
+        // Badges are often loaded as images without auth, so we need to be more permissive
+        const isAuthor = mod.authorId === auth?.userId;
+        const modVisibility = mod.visibility || 'public';
+        const modStatus = mod.status || 'published';
+        
+        // Visibility check: private mods only visible to author or admin
+        if (modVisibility === 'private' && !isAuthor && !isAdmin) {
+            return new Response('Mod not found', { status: 404 });
+        }
+        
+        // Status check: allow badges for published/approved mods to everyone
+        // For pending/changes_requested/denied, only allow to author or admin
+        // This allows badges to work for pending mods when viewed by the author
+        if (modStatus !== 'published' && modStatus !== 'approved') {
+            if (!isAuthor && !isAdmin) {
                 return new Response('Mod not found', { status: 404 });
             }
         }

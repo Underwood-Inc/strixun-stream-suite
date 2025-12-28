@@ -382,11 +382,73 @@ export async function uploadVersion(
 /**
  * Download version
  * Accepts either modId or slug (backend supports both)
+ * Returns a URL that can be used in an <a> tag (for non-encrypted files or public downloads)
  */
 export function getDownloadUrl(modIdOrSlug: string, versionId: string): string {
     const url = `${API_BASE_URL}/mods/${modIdOrSlug}/versions/${versionId}/download`;
     console.log('[API] getDownloadUrl called:', { modIdOrSlug, versionId, url });
     return url;
+}
+
+/**
+ * Download version with authentication
+ * Handles encrypted file downloads that require JWT token for decryption
+ * Creates a blob URL and triggers download
+ */
+export async function downloadVersion(
+    modIdOrSlug: string,
+    versionId: string,
+    fileName?: string
+): Promise<void> {
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('Authentication required - please log in to download files');
+    }
+
+    const url = `${API_BASE_URL}/mods/${modIdOrSlug}/versions/${versionId}/download`;
+    
+    try {
+        // Use fetch with auth header for encrypted downloads
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Authentication required - please log in to download files');
+            }
+            const errorText = await response.text();
+            let errorMessage = 'Failed to download file';
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.detail || errorJson.title || errorMessage;
+            } catch {
+                errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+
+        // Get the file as a blob
+        const blob = await response.blob();
+        
+        // Create a blob URL and trigger download
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName || `mod-${modIdOrSlug}-${versionId}.jar`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL after a short delay
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (error) {
+        console.error('[Download] Failed to download version:', error);
+        throw error;
+    }
 }
 
 /**

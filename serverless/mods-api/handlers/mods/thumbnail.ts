@@ -83,53 +83,34 @@ export async function handleThumbnail(
             });
         }
 
-        // Check if user is super admin
+        // CRITICAL: Enforce visibility and status filtering
+        // Thumbnails are often loaded as images without auth, so we need to be more permissive
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAuthor = mod.authorId === auth?.userId;
+        const modVisibility = mod.visibility || 'public';
+        const modStatus = mod.status || 'published';
         
-        // CRITICAL: Enforce strict visibility and status filtering
-        // Only super admins can bypass these checks
-        if (!isAdmin) {
-            // For non-super users: ONLY public, published mods are allowed
-            // Legacy mods without visibility field are treated as public
-            const modVisibility = mod.visibility || 'public';
-            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
-                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 404,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-            
-            // Check status: only allow viewing thumbnails of published mods to public, admins and authors can view all statuses
-            // Legacy mods without status field are treated as published
-            const modStatus = mod.status || 'published';
-            if (modStatus !== 'published' && modStatus !== 'approved') {
-                // Only allow viewing thumbnails of non-published mods to admins or the author
-                if (mod.authorId !== auth?.userId) {
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 404,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
-            }
-        } else {
-            // Super admins: check visibility but allow all statuses
-            const modVisibility = mod.visibility || 'public';
-            if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
+        // Visibility check: private mods only visible to author or admin
+        if (modVisibility === 'private' && !isAuthor && !isAdmin) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Status check: allow thumbnails for published/approved mods to everyone
+        // For pending/changes_requested/denied, only allow to author or admin
+        // This allows thumbnails to work for pending mods when viewed by the author
+        if (modStatus !== 'published' && modStatus !== 'approved') {
+            if (!isAuthor && !isAdmin) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

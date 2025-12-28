@@ -20,9 +20,8 @@ export type ModStatus =
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
-    authorId: string;
-    authorEmail: string;
-    authorDisplayName?: string | null; // Randomly generated username/display name
+    authorId: string; // userId from OTP auth service
+    authorDisplayName?: string | null; // Display name from customer account (never use email)
     title: string;
     description: string;
     category: ModCategory;
@@ -34,10 +33,12 @@ export interface ModMetadata {
     downloadCount: number;
     visibility: ModVisibility;
     featured: boolean;
-    customerId: string | null;
+    customerId: string | null; // Customer ID for data scoping (from OTP auth)
     status: ModStatus; // Review/triage status
     statusHistory?: ModStatusHistory[]; // History of status changes
     reviewComments?: ModReviewComment[]; // Comments from admins/uploader
+    // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
+    // Use authorId to lookup displayName via /auth/user/:userId if needed
 }
 
 /**
@@ -138,9 +139,10 @@ export interface ModListResponse {
 export interface ModStatusHistory {
     status: ModStatus;
     changedBy: string; // User ID who changed the status
-    changedByEmail?: string;
+    changedByDisplayName?: string | null; // Display name (never use email)
     changedAt: string;
     reason?: string; // Optional reason for status change
+    // CRITICAL: changedByEmail is NOT stored - email is ONLY for OTP authentication
 }
 
 /**
@@ -148,11 +150,12 @@ export interface ModStatusHistory {
  */
 export interface ModReviewComment {
     commentId: string;
-    authorId: string;
-    authorEmail: string;
+    authorId: string; // User ID from OTP auth service
+    authorDisplayName?: string | null; // Display name (never use email)
     content: string;
     createdAt: string;
     isAdmin: boolean; // True if comment is from admin
+    // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
 }
 
 /**

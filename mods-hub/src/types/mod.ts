@@ -29,29 +29,28 @@ export type ModStatus =
 
 export interface ModStatusHistory {
     status: ModStatus;
-    changedBy: string;
-    changedByEmail?: string;
-    changedByDisplayName?: string | null;
+    changedBy: string; // User ID from OTP auth service
+    changedByDisplayName?: string | null; // Display name (never use email)
     changedAt: string;
     reason?: string;
+    // CRITICAL: changedByEmail is NOT stored - email is ONLY for OTP authentication
 }
 
 export interface ModReviewComment {
     commentId: string;
-    authorId: string;
-    authorEmail: string;
-    authorDisplayName?: string | null;
+    authorId: string; // User ID from OTP auth service
+    authorDisplayName?: string | null; // Display name (never use email)
     content: string;
     createdAt: string;
     isAdmin: boolean;
+    // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
 }
 
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
-    authorId: string;
-    authorEmail: string;
-    authorDisplayName?: string | null; // Randomly generated username/display name
+    authorId: string; // User ID from OTP auth service
+    authorDisplayName?: string | null; // Display name from customer account (never use email)
     title: string;
     description: string;
     category: ModCategory;
@@ -63,10 +62,12 @@ export interface ModMetadata {
     downloadCount: number;
     visibility: ModVisibility;
     featured: boolean;
-    customerId: string | null;
+    customerId: string | null; // Customer ID for data scoping (from OTP auth)
     status: ModStatus;
     statusHistory?: ModStatusHistory[];
     reviewComments?: ModReviewComment[];
+    // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
+    // Use authorId to lookup displayName via /auth/user/:userId if needed
 }
 
 export interface ModVersion {
@@ -129,13 +130,13 @@ export interface VersionUploadRequest {
 export interface ModRating {
     ratingId: string;
     modId: string;
-    userId: string;
-    userEmail: string;
-    userDisplayName?: string | null;
+    userId: string; // User ID from OTP auth service
+    userDisplayName?: string | null; // Display name (never use email)
     rating: number; // 1-5
     comment?: string;
     createdAt: string;
     updatedAt?: string;
+    // CRITICAL: userEmail is NOT stored - email is ONLY for OTP authentication
 }
 
 export interface ModRatingsResponse {

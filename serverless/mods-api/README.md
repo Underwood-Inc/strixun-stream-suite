@@ -113,8 +113,8 @@ curl https://mods-api.idling.app/mods/MOD_ID/versions/VERSION_ID/download
 ```typescript
 {
   modId: string;
-  authorId: string;
-  authorEmail: string;
+  authorId: string; // User ID from OTP auth service
+  authorDisplayName?: string | null; // Display name (never use email)
   title: string;
   description: string;
   category: 'script' | 'overlay' | 'theme' | 'asset' | 'plugin' | 'other';
@@ -126,7 +126,8 @@ curl https://mods-api.idling.app/mods/MOD_ID/versions/VERSION_ID/download
   downloadCount: number;
   visibility: 'public' | 'unlisted' | 'private';
   featured: boolean;
-  customerId: string | null;
+  customerId: string | null; // Customer ID for data scoping
+  // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
 }
 ```
 

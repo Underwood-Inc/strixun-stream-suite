@@ -117,13 +117,46 @@ export async function handleUpdateModStatus(
         mod.updatedAt = new Date().toISOString();
 
         // Add to status history
+        // CRITICAL: Never store email - email is ONLY for OTP authentication
+        // Fetch displayName from auth API if available
+        let changedByDisplayName: string | null = null;
+        try {
+            const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                const token = authHeader.substring(7);
+                const response = await fetch(`${authApiUrl}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                if (response.ok) {
+                    const responseData = await response.json();
+                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
+                    let userData: { displayName?: string | null; [key: string]: any };
+                    if (isEncrypted) {
+                        const { decryptWithJWT } = await import('@strixun/api-framework');
+                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
+                    } else {
+                        userData = responseData;
+                    }
+                    changedByDisplayName = userData?.displayName || null;
+                }
+            }
+        } catch (error) {
+            console.warn('[Triage] Failed to fetch displayName for status history:', error);
+        }
+        
         if (!mod.statusHistory) {
             mod.statusHistory = [];
         }
         const statusEntry: ModStatusHistory = {
             status: newStatus,
-            changedBy: auth.userId,
-            changedByEmail: auth.email,
+            changedBy: auth.userId, // userId from OTP auth service
+            changedByDisplayName, // Display name (never use email)
             changedAt: new Date().toISOString(),
             reason: reason,
         };
@@ -332,10 +365,43 @@ export async function handleAddReviewComment(
         if (!mod.reviewComments) {
             mod.reviewComments = [];
         }
+        // CRITICAL: Never store email - email is ONLY for OTP authentication
+        // Fetch displayName from auth API if available
+        let authorDisplayName: string | null = null;
+        try {
+            const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                const token = authHeader.substring(7);
+                const response = await fetch(`${authApiUrl}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                if (response.ok) {
+                    const responseData = await response.json();
+                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
+                    let userData: { displayName?: string | null; [key: string]: any };
+                    if (isEncrypted) {
+                        const { decryptWithJWT } = await import('@strixun/api-framework');
+                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
+                    } else {
+                        userData = responseData;
+                    }
+                    authorDisplayName = userData?.displayName || null;
+                }
+            }
+        } catch (error) {
+            console.warn('[Triage] Failed to fetch displayName for comment:', error);
+        }
+        
         const comment: ModReviewComment = {
             commentId: `comment_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
-            authorId: auth.userId,
-            authorEmail: auth.email || '',
+            authorId: auth.userId, // userId from OTP auth service
+            authorDisplayName, // Display name (never use email)
             content: commentData.content.trim(),
             createdAt: new Date().toISOString(),
             isAdmin: isAdmin || false,

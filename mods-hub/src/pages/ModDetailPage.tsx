@@ -12,7 +12,7 @@ import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
-import { getDownloadUrl } from '../services/api';
+import { downloadVersion } from '../services/api';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 
@@ -93,21 +93,27 @@ const Actions = styled.div`
   margin-top: ${spacing.md};
 `;
 
-const DownloadButton = styled.a`
+const DownloadButton = styled.button`
   padding: ${spacing.md} ${spacing.lg};
   background: ${colors.accent};
   color: ${colors.bg};
+  border: none;
   border-radius: 4px;
   font-weight: 600;
   font-size: 1rem;
-  text-decoration: none;
+  cursor: pointer;
   transition: background 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: ${spacing.sm};
   
-  &:hover {
+  &:hover:not(:disabled) {
     background: ${colors.accentHover};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
@@ -117,6 +123,8 @@ export function ModDetailPage() {
     const { user } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
     const [thumbnailError, setThumbnailError] = useState(false);
+    const [downloading, setDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState<string | null>(null);
     
     // Fetch ratings for this mod
     const { data: ratingsData } = useModRatings(data?.mod.modId || '');
@@ -139,6 +147,23 @@ export function ModDetailPage() {
 
     const handleThumbnailError = () => {
         setThumbnailError(true);
+    };
+
+    const handleDownload = async () => {
+        if (!latestVersion) return;
+        
+        setDownloading(true);
+        setDownloadError(null);
+        
+        try {
+            await downloadVersion(mod.slug, latestVersion.versionId, latestVersion.fileName || `mod-${mod.slug}-v${latestVersion.version}.jar`);
+        } catch (error: any) {
+            console.error('[ModDetailPage] Download failed:', error);
+            setDownloadError(error.message || 'Failed to download file');
+            setTimeout(() => setDownloadError(null), 5000);
+        } finally {
+            setDownloading(false);
+        }
     };
 
     return (
@@ -180,11 +205,22 @@ export function ModDetailPage() {
                     </Tags>
                     {latestVersion && (
                         <Actions>
+                            {downloadError && (
+                                <div style={{ 
+                                    padding: spacing.sm, 
+                                    background: `${colors.danger}20`, 
+                                    color: colors.danger, 
+                                    borderRadius: 4,
+                                    fontSize: '0.875rem'
+                                }}>
+                                    {downloadError}
+                                </div>
+                            )}
                             <DownloadButton
-                                href={getDownloadUrl(mod.slug, latestVersion.versionId)}
-                                download
+                                onClick={handleDownload}
+                                disabled={downloading}
                             >
-                                Download Latest Version (v{latestVersion.version})
+                                {downloading ? 'Downloading...' : `Download Latest Version (v${latestVersion.version})`}
                             </DownloadButton>
                         </Actions>
                     )}

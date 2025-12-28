@@ -323,12 +323,12 @@ export async function handleSubmitModRating(
         const ratingId = generateRatingId();
         const now = new Date().toISOString();
         
+        // CRITICAL: Never store email - email is ONLY for OTP authentication
         const rating: ModRating = {
             ratingId,
             modId: normalizedStoredModId, // Use normalized modId from the found mod
-            userId: auth.userId,
-            userEmail: auth.email || '',
-            userDisplayName,
+            userId: auth.userId, // userId from OTP auth service
+            userDisplayName, // Display name fetched from /auth/me (never use email)
             rating: body.rating,
             comment: body.comment,
             createdAt: now,

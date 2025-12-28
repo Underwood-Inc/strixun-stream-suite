@@ -11,8 +11,7 @@ import type { ModMetadata } from '../types/mod';
  * Searches across:
  * - Title
  * - Description
- * - Author email
- * - Author display name
+ * - Author display name (never search by email)
  * - Category
  * - Tags (joined)
  * - Status
@@ -31,8 +30,7 @@ export function filterModsBySearchQuery(mods: ModMetadata[], query: string): Mod
       {
         title: mod.title,
         description: mod.description,
-        authorEmail: mod.authorEmail,
-        authorDisplayName: mod.authorDisplayName || '',
+        authorDisplayName: mod.authorDisplayName || '', // Never search by email
         category: mod.category,
         tags: mod.tags.join(' '),
         status: mod.status

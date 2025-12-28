@@ -31,8 +31,10 @@ const Modal = styled.div`
     border: 1px solid ${colors.border};
     border-radius: 8px;
     padding: ${spacing.xl};
-    max-width: 500px;
+    max-width: 600px;
     width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: ${spacing.lg};
@@ -50,6 +52,9 @@ const Message = styled.p`
     color: ${colors.textSecondary};
     line-height: 1.6;
     margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 `;
 
 const ConfirmationSection = styled.div`
@@ -81,6 +86,12 @@ const ConfirmationText = styled.div`
     border: 1px solid ${colors.border};
     font-weight: 600;
     letter-spacing: 0.5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    white-space: pre-wrap;
+    max-width: 100%;
+    overflow: hidden;
 `;
 
 const Input = styled.input<{ hasError?: boolean }>`

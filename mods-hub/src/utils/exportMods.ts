@@ -15,7 +15,8 @@ export function exportModsToCSV(mods: ModMetadata[], filename: string = 'mods-ex
   
   const headers = [
     'Title',
-    'Author Email',
+    'Author Display Name',
+    'Author ID',
     'Status',
     'Category',
     'Tags',
@@ -28,7 +29,8 @@ export function exportModsToCSV(mods: ModMetadata[], filename: string = 'mods-ex
   
   const rows = mods.map(mod => [
     mod.title,
-    mod.authorEmail,
+    mod.authorDisplayName || 'Unknown User',
+    mod.authorId, // userId from OTP auth (never export email)
     mod.status,
     mod.category,
     mod.tags.join('; '),

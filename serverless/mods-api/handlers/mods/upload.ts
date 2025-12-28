@@ -397,6 +397,7 @@ export async function handleUploadMod(
 
         // Fetch author display name from auth API during upload
         // CRITICAL: Auth API has no public user lookup endpoint, so we must store it here
+        // NOTE: /auth/me returns encrypted responses that need to be decrypted
         let authorDisplayName: string | null = null;
         try {
             const authHeader = request.headers.get('Authorization');
@@ -411,21 +412,41 @@ export async function handleUploadMod(
                     },
                 });
                 if (response.ok) {
-                    const userData = await response.json() as { displayName?: string | null; [key: string]: any };
-                    authorDisplayName = userData.displayName || null;
+                    const responseData = await response.json();
+                    
+                    // Check if response is encrypted (has X-Encrypted header or encrypted field)
+                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
+                    
+                    let userData: { displayName?: string | null; [key: string]: any };
+                    if (isEncrypted) {
+                        // Decrypt the response using JWT token
+                        const { decryptWithJWT } = await import('@strixun/api-framework');
+                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
+                    } else {
+                        userData = responseData;
+                    }
+                    
+                    authorDisplayName = userData?.displayName || null;
+                    console.log('[Upload] Fetched authorDisplayName:', { authorDisplayName, hasDisplayName: !!authorDisplayName });
+                } else {
+                    console.warn('[Upload] /auth/me returned non-200 status:', response.status);
                 }
             }
         } catch (error) {
             console.warn('[Upload] Failed to fetch displayName from auth service:', error);
         }
+        
+        // CRITICAL: Never use authorEmail as fallback - email is ONLY for authentication
+        // If displayName is null, UI will show "Unknown User"
 
         // Create mod metadata with initial status
+        // CRITICAL: Never store email - email is ONLY for OTP authentication
         const mod: ModMetadata = {
             modId,
             slug,
-            authorId: auth.userId,
-            authorEmail: auth.email || '',
-            authorDisplayName, // Store display name (auth API has no public user lookup)
+            authorId: auth.userId, // userId from OTP auth service
+            authorDisplayName, // Display name fetched from /auth/me (never use email)
             title: metadata.title,
             description: metadata.description || '',
             category: metadata.category,
@@ -437,12 +458,12 @@ export async function handleUploadMod(
             downloadCount: 0,
             visibility: metadata.visibility || 'public',
             featured: false,
-            customerId: auth.customerId,
+            customerId: auth.customerId, // Customer ID for data scoping
             status: 'pending', // New mods start as pending review
             statusHistory: [{
                 status: 'pending',
                 changedBy: auth.userId,
-                changedByEmail: auth.email,
+                changedByDisplayName: authorDisplayName, // Use displayName, never email
                 changedAt: now,
             }],
             reviewComments: [],
