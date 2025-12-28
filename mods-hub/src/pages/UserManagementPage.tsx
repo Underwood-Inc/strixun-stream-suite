@@ -36,9 +36,7 @@ const PageContainer = styled.div`
 
 const PageHeader = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: ${spacing.md};
 `;
 
@@ -49,19 +47,55 @@ const Title = styled.h1`
   margin: 0;
 `;
 
-const Filters = styled.div`
+const FiltersSection = styled.div`
   display: flex;
   gap: ${spacing.md};
   align-items: center;
   flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-end;
+  padding: ${spacing.md};
+  background: ${colors.bgSecondary};
+  border-radius: 8px;
+  border: 1px solid ${colors.border};
 `;
 
 const SearchContainer = styled.div`
   min-width: 300px;
   flex: 1;
   max-width: 500px;
+`;
+
+const ApiStatusBar = styled.div`
+  display: flex;
+  gap: ${spacing.md};
+  align-items: center;
+  padding: ${spacing.sm} ${spacing.md};
+  background: ${colors.bgTertiary};
+  border-radius: 4px;
+  font-size: 0.75rem;
+`;
+
+const StatusIndicator = styled.span<{ status: 'loading' | 'success' | 'error' }>`
+  display: inline-flex;
+  align-items: center;
+  gap: ${spacing.xs};
+  
+  &::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${props => {
+      if (props.status === 'loading') return colors.warning;
+      if (props.status === 'error') return colors.danger;
+      return colors.success;
+    }};
+    animation: ${props => props.status === 'loading' ? 'pulse 1.5s ease-in-out infinite' : 'none'};
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
 `;
 
 const Toolbar = styled.div`
@@ -110,6 +144,15 @@ const PermissionBadge = styled.span<{ hasPermission: boolean }>`
   color: ${props => props.hasPermission ? colors.success : colors.textSecondary};
 `;
 
+const AccountTypeBadge = styled.span<{ type: 'free' | 'subscription' }>`
+  padding: ${spacing.xs} ${spacing.sm};
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: ${props => props.type === 'subscription' ? `${colors.accent}20` : `${colors.bgTertiary}`};
+  color: ${props => props.type === 'subscription' ? colors.accent : colors.textSecondary};
+`;
+
 const ActionGroup = styled.div`
   display: flex;
   gap: ${spacing.xs};
@@ -139,6 +182,21 @@ const TableContainer = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: ${colors.bgSecondary};
+  border-radius: 8px;
+  border: 1px solid ${colors.border};
+  overflow: hidden;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: ${spacing.xxl};
+  text-align: center;
+  color: ${colors.textSecondary};
+  min-height: 400px;
 `;
 
 const StatsContainer = styled.div`
@@ -201,8 +259,14 @@ export function UserManagementPage() {
         let sorted = [...filtered];
         if (sortConfig) {
             sorted.sort((a, b) => {
-                const aVal = a[sortConfig.key as keyof UserListItem];
-                const bVal = b[sortConfig.key as keyof UserListItem];
+                let aVal: any = a[sortConfig.key as keyof UserListItem];
+                let bVal: any = b[sortConfig.key as keyof UserListItem];
+                
+                // Handle computed accountType column
+                if (sortConfig.key === 'accountType') {
+                    aVal = a.customerId ? 'subscription' : 'free';
+                    bVal = b.customerId ? 'subscription' : 'free';
+                }
                 
                 // Handle null/undefined values
                 if (aVal == null && bVal == null) return 0;
@@ -261,6 +325,17 @@ export function UserManagementPage() {
             width: '250px',
             sortable: true,
             render: (user) => user.displayName || 'Unknown User',
+        },
+        {
+            key: 'accountType',
+            label: 'Account Type',
+            width: '150px',
+            sortable: true,
+            render: (user) => (
+                <AccountTypeBadge type={user.customerId ? 'subscription' : 'free'}>
+                    {user.customerId ? 'Subscription' : 'Free'}
+                </AccountTypeBadge>
+            ),
         },
         {
             key: 'userId',
@@ -347,23 +422,34 @@ export function UserManagementPage() {
         },
     ], [handleTogglePermission, updateUser]);
 
-    if (isLoading) return <Loading>Loading users...</Loading>;
-    if (error) return <Error>Failed to load users: {(error as Error).message}</Error>;
-
     const selectedCount = selectedIds.size;
     const hasSelection = selectedCount > 0;
     
     // Calculate stats
-    const totalUsers = sortedUsers.length;
+    const totalUsers = data?.users.length || 0;
+    const filteredUsersCount = sortedUsers.length;
     const approvedUsers = sortedUsers.filter(u => u.hasUploadPermission).length;
     const totalMods = sortedUsers.reduce((sum, u) => sum + u.modCount, 0);
+
+    // Determine API status
+    const apiStatus = isLoading ? 'loading' : error ? 'error' : 'success';
+    const apiStatusText = isLoading 
+        ? 'Loading users...' 
+        : error 
+        ? `Error: ${(error as Error).message}` 
+        : `Loaded ${totalUsers} user${totalUsers !== 1 ? 's' : ''}`;
 
     return (
         <PageContainer>
             <AdminNavigation />
             <PageHeader>
                 <Title>User Management</Title>
-                <Filters>
+                <ApiStatusBar>
+                    <StatusIndicator status={apiStatus}>
+                        API Status: {apiStatusText}
+                    </StatusIndicator>
+                </ApiStatusBar>
+                <FiltersSection>
                     <SearchContainer>
                         <AdvancedSearchInput
                             value={searchQuery}
@@ -371,21 +457,25 @@ export function UserManagementPage() {
                             placeholder='Search users... (use "quotes" for exact, space for AND, | for OR)'
                         />
                     </SearchContainer>
-                </Filters>
+                </FiltersSection>
             </PageHeader>
 
             <StatsContainer>
                 <StatItem>
                     <StatLabel>Total Users</StatLabel>
-                    <StatValue>{totalUsers.toLocaleString()}</StatValue>
+                    <StatValue>{isLoading ? '...' : totalUsers.toLocaleString()}</StatValue>
+                </StatItem>
+                <StatItem>
+                    <StatLabel>Filtered Results</StatLabel>
+                    <StatValue>{isLoading ? '...' : filteredUsersCount.toLocaleString()}</StatValue>
                 </StatItem>
                 <StatItem>
                     <StatLabel>Approved Uploaders</StatLabel>
-                    <StatValue>{approvedUsers.toLocaleString()}</StatValue>
+                    <StatValue>{isLoading ? '...' : approvedUsers.toLocaleString()}</StatValue>
                 </StatItem>
                 <StatItem>
                     <StatLabel>Total Mods</StatLabel>
-                    <StatValue>{totalMods.toLocaleString()}</StatValue>
+                    <StatValue>{isLoading ? '...' : totalMods.toLocaleString()}</StatValue>
                 </StatItem>
                 <StatItem>
                     <StatLabel>Selected</StatLabel>
@@ -425,7 +515,23 @@ export function UserManagementPage() {
             </Toolbar>
 
             <TableContainer>
-                {sortedUsers.length > 0 ? (
+                {isLoading ? (
+                    <EmptyState>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⏳</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>Loading users...</div>
+                        <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>Fetching data from API</div>
+                    </EmptyState>
+                ) : error ? (
+                    <EmptyState>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⚠️</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs, color: colors.danger }}>
+                            Failed to load users
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
+                            {(error as Error).message || 'An error occurred while fetching users'}
+                        </div>
+                    </EmptyState>
+                ) : sortedUsers.length > 0 ? (
                     <VirtualizedTable
                         data={sortedUsers}
                         columns={columns}
@@ -439,12 +545,21 @@ export function UserManagementPage() {
                         colors={colors}
                     />
                 ) : (
-                    <Loading>
-                        {searchQuery.trim() 
-                            ? `No users found matching "${searchQuery}"`
-                            : 'No users found'
-                        }
-                    </Loading>
+                    <EmptyState>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>👤</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>
+                            {searchQuery.trim() 
+                                ? `No users found matching "${searchQuery}"`
+                                : 'No users found'
+                            }
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
+                            {searchQuery.trim() 
+                                ? 'Try adjusting your search query'
+                                : 'No user data available'
+                            }
+                        </div>
+                    </EmptyState>
                 )}
             </TableContainer>
 

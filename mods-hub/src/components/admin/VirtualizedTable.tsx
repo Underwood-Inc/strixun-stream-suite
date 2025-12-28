@@ -60,7 +60,8 @@ const HeaderCell = styled.div<{ $sortable?: boolean; $sorted?: 'asc' | 'desc' | 
 
 const TableBody = styled.div`
   flex: 1;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 `;
 
 const Row = styled.div<{ $selected?: boolean; $hover?: boolean }>`
@@ -141,6 +142,54 @@ export function VirtualizedTable<T extends Record<string, any>>({
   const gridTemplateColumns = useMemo(() => {
     return columns.map(col => col.width || '1fr').join(' ');
   }, [columns]);
+
+  // Calculate total content width for horizontal scrolling
+  const totalContentWidth = useMemo(() => {
+    let total = 0;
+    if (onSelectionChange) {
+      total += 50; // Checkbox column
+    }
+    
+    let hasFrOrPercent = false;
+    let frCount = 0;
+    
+    columns.forEach(col => {
+      if (col.width) {
+        // Parse width (e.g., "300px" -> 300)
+        const match = col.width.match(/(\d+(?:\.\d+)?)(px|fr|%)/);
+        if (match) {
+          const value = parseFloat(match[1]);
+          const unit = match[2];
+          if (unit === 'px') {
+            total += value;
+          } else if (unit === 'fr') {
+            hasFrOrPercent = true;
+            frCount += value;
+          } else if (unit === '%') {
+            hasFrOrPercent = true;
+            // For %, estimate based on container width (use a reasonable default)
+            total += (value / 100) * 1200; // Estimate based on typical container width
+          }
+        } else {
+          // If no unit, assume pixels
+          total += parseFloat(col.width) || 150;
+        }
+      } else {
+        // No width specified, use default
+        hasFrOrPercent = true;
+        frCount += 1;
+      }
+    });
+    
+    // If we have fr units, estimate their total width
+    if (hasFrOrPercent && frCount > 0) {
+      // Estimate: remaining space after fixed columns, or default if all are fr
+      const estimatedFrWidth = total > 0 ? (total / (columns.length - frCount)) * frCount : 150 * frCount;
+      total += estimatedFrWidth;
+    }
+    
+    return Math.max(total, 1000); // Minimum width to ensure scrolling works
+  }, [columns, onSelectionChange]);
   
   // Handle row selection
   const handleSelect = useCallback((item: T, checked: boolean) => {
@@ -179,9 +228,18 @@ export function VirtualizedTable<T extends Record<string, any>>({
     const isSelected = selectedIds.has(id);
     const isHovered = hoveredIndex === index;
     
+    // Override width to span full content width for proper hover
+    const rowStyleWithWidth = {
+      ...style,
+      width: `${totalContentWidth}px`,
+      minWidth: `${totalContentWidth}px`,
+      gridTemplateColumns,
+      display: 'grid',
+    };
+    
     return (
       <Row
-        style={{ ...style, gridTemplateColumns, display: 'grid' }}
+        style={rowStyleWithWidth}
         $selected={isSelected}
         $hover={isHovered}
         onClick={() => onRowClick?.(item, index)}
@@ -208,7 +266,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
         ))}
       </Row>
     );
-  }, [data, columns, gridTemplateColumns, selectedIds, hoveredIndex, onRowClick, onSelectionChange, getItemId, handleSelect]);
+  }, [data, columns, gridTemplateColumns, selectedIds, hoveredIndex, onRowClick, onSelectionChange, getItemId, handleSelect, totalContentWidth]);
   
   // Adjust header grid if selection is enabled
   const headerGridColumns = useMemo(() => {
@@ -219,7 +277,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
   
   return (
     <TableContainer style={{ height: `${height}px` }}>
-      <TableHeader style={{ gridTemplateColumns: headerGridColumns }}>
+      <TableHeader style={{ gridTemplateColumns: headerGridColumns, width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
         {onSelectionChange && (
           <HeaderCell style={{ width: '50px', minWidth: '50px', justifyContent: 'center' }}>
             <Checkbox

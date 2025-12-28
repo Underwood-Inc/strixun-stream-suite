@@ -99,6 +99,54 @@ export function VirtualizedTable<T extends Record<string, any>>({
   const gridTemplateColumns = useMemo(() => {
     return columns.map(col => col.width || '1fr').join(' ');
   }, [columns]);
+
+  // Calculate total content width for horizontal scrolling
+  const totalContentWidth = useMemo(() => {
+    let total = 0;
+    if (onSelectionChange) {
+      total += 50; // Checkbox column
+    }
+    
+    let hasFrOrPercent = false;
+    let frCount = 0;
+    
+    columns.forEach(col => {
+      if (col.width) {
+        // Parse width (e.g., "300px" -> 300)
+        const match = col.width.match(/(\d+(?:\.\d+)?)(px|fr|%)/);
+        if (match) {
+          const value = parseFloat(match[1]);
+          const unit = match[2];
+          if (unit === 'px') {
+            total += value;
+          } else if (unit === 'fr') {
+            hasFrOrPercent = true;
+            frCount += value;
+          } else if (unit === '%') {
+            hasFrOrPercent = true;
+            // For %, estimate based on container width (use a reasonable default)
+            total += (value / 100) * 1200; // Estimate based on typical container width
+          }
+        } else {
+          // If no unit, assume pixels
+          total += parseFloat(col.width) || 150;
+        }
+      } else {
+        // No width specified, use default
+        hasFrOrPercent = true;
+        frCount += 1;
+      }
+    });
+    
+    // If we have fr units, estimate their total width
+    if (hasFrOrPercent && frCount > 0) {
+      // Estimate: remaining space after fixed columns, or default if all are fr
+      const estimatedFrWidth = total > 0 ? (total / (columns.length - frCount)) * frCount : 150 * frCount;
+      total += estimatedFrWidth;
+    }
+    
+    return Math.max(total, 1000); // Minimum width to ensure scrolling works
+  }, [columns, onSelectionChange]);
   
   // Handle row selection
   const handleSelect = useCallback((item: T, checked: boolean) => {
@@ -143,11 +191,18 @@ export function VirtualizedTable<T extends Record<string, any>>({
         ? colors.bgTertiary 
         : 'transparent';
     
+    // Override width to span full content width for proper hover
+    const rowStyleWithWidth = {
+      ...style,
+      width: `${totalContentWidth}px`,
+      minWidth: `${totalContentWidth}px`,
+      ...rowStyle,
+    };
+    
     return (
       <div
         style={{
-          ...style,
-          ...rowStyle,
+          ...rowStyleWithWidth,
           display: 'grid',
           gridTemplateColumns: onSelectionChange ? `50px ${gridTemplateColumns}` : gridTemplateColumns,
           borderBottom: `1px solid ${colors.border}`,
@@ -211,7 +266,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
         ))}
       </div>
     );
-  }, [data, columns, gridTemplateColumns, selectedIds, hoveredIndex, onRowClick, onSelectionChange, getItemId, handleSelect, colors, rowStyle, rowClassName, cellStyle, cellClassName]);
+  }, [data, columns, gridTemplateColumns, selectedIds, hoveredIndex, onRowClick, onSelectionChange, getItemId, handleSelect, colors, rowStyle, rowClassName, cellStyle, cellClassName, totalContentWidth]);
   
   // Adjust header grid if selection is enabled
   const headerGridColumns = useMemo(() => {
@@ -234,6 +289,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
         borderRadius: '8px',
         overflow: 'hidden',
         height: `${height}px`,
+        position: 'relative',
         ...containerStyle,
       }}
       className={className}
@@ -247,6 +303,8 @@ export function VirtualizedTable<T extends Record<string, any>>({
           top: 0,
           zIndex: 10,
           gridTemplateColumns: headerGridColumns,
+          width: `${totalContentWidth}px`,
+          minWidth: `${totalContentWidth}px`,
           ...headerStyle,
         }}
         className={headerClassName}
@@ -339,7 +397,7 @@ export function VirtualizedTable<T extends Record<string, any>>({
           );
         })}
       </div>
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden' }}>
         <FixedSizeList
           ref={listRef}
           height={height - 50} // Subtract header height
