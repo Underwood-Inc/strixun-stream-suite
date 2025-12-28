@@ -51,15 +51,15 @@
 <div class="advanced-search-input">
   <div class="advanced-search-input__wrapper">
     <span class="advanced-search-input__icon">🔍</span>
-    <input
-      type="text"
-      class="advanced-search-input__field"
-      {id}={inputId}
-      bind:this={inputElement}
-      {placeholder}
-      {value}
-      on:input={handleInput}
-    />
+      <input
+        type="text"
+        class="advanced-search-input__field"
+        id={inputId}
+        bind:this={inputElement}
+        {placeholder}
+        {value}
+        on:input={handleInput}
+      />
     {#if value.trim()}
       <button
         class="advanced-search-input__clear"

@@ -26,7 +26,7 @@ const NOUNS = [
  * Get a random element from an array
  */
 function randomElement<T>(array: readonly T[]): T {
-    return array[Math.floor(Math.random() * array.length];
+    return array[Math.floor(Math.random() * array.length)];
 }
 
 /**
