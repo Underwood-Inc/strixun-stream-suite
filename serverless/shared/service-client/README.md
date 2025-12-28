@@ -10,6 +10,7 @@ Reusable, agnostic library for making authenticated service-to-service API calls
 - **Type-Safe**: Full TypeScript support with generic types
 - **Error Handling**: Comprehensive error handling with detailed error messages
 - **Timeout Support**: Configurable request timeouts
+- **Network Traffic Integrity Verification**: **Baked-in security feature** - All requests and responses are automatically verified using HMAC-SHA256 signatures to detect tampering, MITM attacks, and other security issues
 
 ## Usage
 
@@ -155,6 +156,52 @@ const client = createServiceClient(authApiUrl, env);
 const response = await client.get('/admin/users');
 ```
 
+## Network Traffic Integrity (Baked-In Security)
+
+**All network requests and responses are automatically verified for integrity** using HMAC-SHA256 signatures. This is a **baked-in security feature** that cannot be disabled.
+
+### How It Works
+
+1. **Request Integrity**: Every request includes an `X-Strixun-Request-Integrity` header with an HMAC-SHA256 signature of the request (method, path, body, timestamp)
+2. **Response Integrity**: Every response is verified against an `X-Strixun-Response-Integrity` header with an HMAC-SHA256 signature of the response (status, body)
+3. **Automatic Tamper Detection**: Any modification to request or response data is immediately detected
+4. **MITM Protection**: Man-in-the-middle attacks that modify traffic are detected
+
+### Configuration
+
+Set `NETWORK_INTEGRITY_KEYPHRASE` in your environment:
+
+```bash
+# Cloudflare Workers
+wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
+
+# Local development (.env file)
+NETWORK_INTEGRITY_KEYPHRASE=your-secret-keyphrase-here
+```
+
+**Important**: Use a strong, unique keyphrase in production. The same keyphrase must be used across all services that communicate with each other.
+
+### What Gets Verified
+
+- ✅ Request method, path, and body
+- ✅ Response status code and body
+- ✅ Request timestamp (prevents replay attacks)
+- ❌ Headers (not included in signature - can vary)
+
+### Error Handling
+
+By default, integrity failures throw an error. You can configure this behavior:
+
+```typescript
+const client = new ServiceClient({
+    baseURL: 'https://api.example.com',
+    auth: { serviceKey: '...' },
+    integrity: {
+        throwOnFailure: false, // Log warning instead of throwing
+    },
+});
+```
+
 ## Best Practices
 
 1. **Use SUPER_ADMIN_API_KEY for admin operations**: When you need system-wide access
@@ -162,6 +209,7 @@ const response = await client.get('/admin/users');
 3. **Always handle errors**: Wrap service calls in try-catch blocks
 4. **Use type parameters**: Specify response types for better type safety
 5. **Configure timeouts appropriately**: Longer timeouts for complex operations
+6. **Set NETWORK_INTEGRITY_KEYPHRASE in production**: Use a strong, unique keyphrase shared across all services
 
 ## Examples
 

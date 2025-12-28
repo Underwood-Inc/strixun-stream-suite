@@ -18,8 +18,8 @@ describe('ActivityLog Component - Real Store Integration', () => {
   });
 
   it('should display log entries when added to store', async () => {
-    // Render component with container to avoid SSR context issues
-    const { container } = render(ActivityLog, { container: document.body });
+    // Render component - testing-library handles cleanup automatically
+    const { container } = render(ActivityLog);
     
     // Add a log entry directly to the store (no mocks)
     addLogEntry('Test log message', 'info', 'TEST');

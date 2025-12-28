@@ -181,20 +181,32 @@
   }
 
   onDestroy(() => {
-    const divider = document.getElementById('logDivider');
-    if (divider) {
-      divider.removeEventListener('mousedown', handleResizeStart);
+    // Cleanup event listeners and observers
+    // Testing-library's cleanup() will handle component unmounting,
+    // but we need to clean up our event listeners
+    try {
+      if (typeof document !== 'undefined') {
+        const divider = document.getElementById('logDivider');
+        if (divider) {
+          divider.removeEventListener('mousedown', handleResizeStart);
+        }
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', handleResizeEnd);
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        if (document.body) {
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+        }
+      }
+    } catch (error) {
+      // Ignore errors during cleanup (e.g., in test environment)
+      // This can happen if cleanup is called multiple times or in SSR context
     }
-    if (resizeObserver) {
-      resizeObserver.disconnect();
-    }
-    document.removeEventListener('mousemove', handleResize);
-    document.removeEventListener('mouseup', handleResizeEnd);
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-    }
-    document.body.style.userSelect = '';
-    document.body.style.cursor = '';
   });
 
   function toggleCollapse(): void {

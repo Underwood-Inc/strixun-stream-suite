@@ -264,7 +264,7 @@ describe('Route Protection System', () => {
     });
 
     describe('createUnauthorizedResponse', () => {
-        it('should create 401 response with correct headers', () => {
+        it('should create 401 response with correct headers', async () => {
             const request = new Request('https://api.example.com/admin/settings', {
                 method: 'GET',
             });
@@ -272,14 +272,14 @@ describe('Route Protection System', () => {
             const response = createUnauthorizedResponse(request, mockEnv, 'Custom message', 'CUSTOM_CODE');
 
             expect(response.status).toBe(401);
-            const data = JSON.parse(response.body as string);
+            const data = await response.json();
             expect(data.error).toBe('Custom message');
             expect(data.code).toBe('CUSTOM_CODE');
         });
     });
 
     describe('createForbiddenResponse', () => {
-        it('should create 403 response with correct headers', () => {
+        it('should create 403 response with correct headers', async () => {
             const request = new Request('https://api.example.com/admin/settings', {
                 method: 'GET',
             });
@@ -287,7 +287,7 @@ describe('Route Protection System', () => {
             const response = createForbiddenResponse(request, mockEnv, 'Custom forbidden message', 'FORBIDDEN_CODE');
 
             expect(response.status).toBe(403);
-            const data = JSON.parse(response.body as string);
+            const data = await response.json();
             expect(data.error).toBe('Custom forbidden message');
             expect(data.code).toBe('FORBIDDEN_CODE');
         });

@@ -7,7 +7,8 @@ export default defineConfig({
     hot: !process.env.VITEST,
     compilerOptions: {
       // Disable SSR for tests to avoid context issues
-      generate: 'dom'
+      generate: 'dom',
+      hydratable: false
     }
   })],
   test: {

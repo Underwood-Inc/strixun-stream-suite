@@ -10,7 +10,7 @@ import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { hasUploadPermission } from '../../utils/admin.js';
-import { calculateFileHash, formatStrixunHash } from '../../utils/hash.js';
+import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
 
 /**
@@ -264,7 +264,7 @@ export async function handleUploadMod(
                 const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
                 const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
                 fileSize = decryptedBytes.length;
-                fileHash = await calculateFileHash(decryptedBytes);
+                fileHash = await calculateStrixunHash(decryptedBytes, env);
                 encryptionFormat = 'binary-v4';
             } else {
                 // Legacy JSON encrypted format
@@ -285,7 +285,7 @@ export async function handleUploadMod(
                     fileBytes[i] = binaryString.charCodeAt(i);
                 }
                 fileSize = fileBytes.length;
-                fileHash = await calculateFileHash(fileBytes);
+                fileHash = await calculateStrixunHash(fileBytes, env);
                 encryptionFormat = 'json-v3';
             }
         } catch (error) {

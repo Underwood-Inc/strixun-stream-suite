@@ -520,6 +520,43 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth || undefined);
         }
 
+        // Route: POST /mods/:slug/versions/:versionId/validate or POST /:slug/versions/:versionId/validate - Validate file against uploaded version
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'validate' && request.method === 'POST') {
+            const slugOrModId = pathSegments[0];
+            const versionId = pathSegments[2];
+            
+            // Resolve slug to modId
+            const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
+            let modId = slugOrModId;
+            const looksLikeSlug = !slugOrModId.startsWith('mod_') && slugOrModId.length < 30;
+            if (looksLikeSlug) {
+                const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
+                if (resolvedModId) {
+                    modId = resolvedModId;
+                } else {
+                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return {
+                        response: new Response(JSON.stringify(rfcError), {
+                            status: 404,
+                            headers: {
+                                'Content-Type': 'application/problem+json',
+                                ...Object.fromEntries(corsHeaders.entries()),
+                            },
+                        }),
+                        customerId: auth?.customerId || null
+                    };
+                }
+            }
+            
+            const { handleValidateVersion } = await import('../handlers/versions/validate.js');
+            const response = await handleValidateVersion(request, env, modId, versionId, auth);
+            return await wrapWithEncryption(response, auth || undefined);
+        }
+
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'badge' && request.method === 'GET') {

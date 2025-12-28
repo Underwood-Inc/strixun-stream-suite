@@ -12,6 +12,8 @@
  * - Error handling and retry logic
  * - Type-safe request/response handling
  * - Configurable timeouts and retries
+ * - Network traffic integrity verification (HMAC-SHA256 signatures)
+ * - Automatic tamper detection on all requests/responses
  */
 
 export interface ServiceClientConfig {
@@ -60,6 +62,24 @@ export interface ServiceClientConfig {
      * Additional default headers
      */
     defaultHeaders?: Record<string, string>;
+    
+    /**
+     * Network integrity configuration
+     * Integrity checks are ALWAYS enabled - this is a security feature baked into the library
+     */
+    integrity?: {
+        /**
+         * Secret keyphrase for HMAC signing (from NETWORK_INTEGRITY_KEYPHRASE env var)
+         * If not provided, will use NETWORK_INTEGRITY_KEYPHRASE from environment
+         * Falls back to dev keyphrase if not set (development only)
+         */
+        keyphrase?: string;
+        
+        /**
+         * Throw error on integrity failure (default: true)
+         */
+        throwOnFailure?: boolean;
+    };
 }
 
 export interface ServiceRequestOptions {
@@ -98,6 +118,7 @@ export interface ServiceResponse<T = any> {
 
 export class ServiceClient {
     private config: Required<ServiceClientConfig>;
+    private integrityKeyphrase: string;
     
     constructor(config: ServiceClientConfig) {
         // Validate auth config
@@ -107,6 +128,16 @@ export class ServiceClient {
         
         if (config.auth.superAdminKey && config.auth.serviceKey) {
             throw new Error('ServiceClient: Cannot use both superAdminKey and serviceKey. Use one or the other.');
+        }
+        
+        // Get integrity keyphrase - always required (baked-in security feature)
+        // Priority: config > env var > dev fallback
+        this.integrityKeyphrase = config.integrity?.keyphrase || 
+            (typeof process !== 'undefined' ? process.env?.NETWORK_INTEGRITY_KEYPHRASE : undefined) ||
+            'strixun:network-integrity:dev-fallback';
+        
+        if (this.integrityKeyphrase === 'strixun:network-integrity:dev-fallback') {
+            console.warn('[ServiceClient] Using dev fallback for NETWORK_INTEGRITY_KEYPHRASE - set NETWORK_INTEGRITY_KEYPHRASE in production!');
         }
         
         // Set defaults
@@ -126,6 +157,10 @@ export class ServiceClient {
             defaultHeaders: {
                 'Content-Type': 'application/json',
                 ...config.defaultHeaders,
+            },
+            integrity: {
+                keyphrase: this.integrityKeyphrase,
+                throwOnFailure: config.integrity?.throwOnFailure !== false,
             },
         };
     }
@@ -219,6 +254,21 @@ export class ServiceClient {
                     }
                 }
                 
+                // Prepare body for integrity calculation
+                let requestBody: string | ArrayBuffer | null = null;
+                if (options.body !== undefined) {
+                    if (typeof options.body === 'string') {
+                        requestBody = options.body;
+                    } else {
+                        requestBody = JSON.stringify(options.body);
+                    }
+                }
+                
+                // Add network integrity headers (baked-in security feature)
+                const urlObj = new URL(path, this.config.baseURL);
+                const pathWithQuery = urlObj.pathname + urlObj.search;
+                await this.addRequestIntegrityHeaders(method, pathWithQuery, requestBody, headers);
+                
                 // Build request
                 const requestInit: RequestInit = {
                     method,
@@ -229,12 +279,8 @@ export class ServiceClient {
                 };
                 
                 // Add body if present
-                if (options.body !== undefined) {
-                    if (typeof options.body === 'string') {
-                        requestInit.body = options.body;
-                    } else {
-                        requestInit.body = JSON.stringify(options.body);
-                    }
+                if (requestBody !== null) {
+                    requestInit.body = requestBody;
                 }
                 
                 // Make request with timeout
@@ -249,19 +295,36 @@ export class ServiceClient {
                     
                     clearTimeout(timeoutId);
                     
+                    // Get response body text for integrity verification
+                    const responseText = await response.text();
+                    
+                    // Verify response integrity (baked-in security feature)
+                    const verification = await this.verifyResponseIntegrity(
+                        response.status,
+                        responseText,
+                        response.headers
+                    );
+                    
+                    if (!verification.verified) {
+                        if (this.config.integrity.throwOnFailure) {
+                            throw new Error(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
+                        } else {
+                            console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
+                        }
+                    }
+                    
                     // Parse response
                     let data: T;
                     const contentType = response.headers.get('content-type');
                     
                     if (contentType?.includes('application/json')) {
-                        const text = await response.text();
                         try {
-                            data = JSON.parse(text) as T;
+                            data = JSON.parse(responseText) as T;
                         } catch (parseError) {
-                            throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}. Response: ${text.substring(0, 500)}`);
+                            throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}. Response: ${responseText.substring(0, 500)}`);
                         }
                     } else {
-                        data = (await response.text()) as unknown as T;
+                        data = responseText as unknown as T;
                     }
                     
                     // Check if we should retry
@@ -340,17 +403,44 @@ export class ServiceClient {
     async delete<T = any>(path: string, options?: Omit<ServiceRequestOptions, 'method' | 'body'>): Promise<ServiceResponse<T>> {
         return this.request<T>(path, { ...options, method: 'DELETE' });
     }
+    
+    /**
+     * Add request integrity headers (baked-in security feature)
+     */
+    private async addRequestIntegrityHeaders(
+        method: string,
+        path: string,
+        body: string | ArrayBuffer | null,
+        headers: Headers
+    ): Promise<void> {
+        const { addRequestIntegrityHeaders } = await import('./integrity.js');
+        await addRequestIntegrityHeaders(method, path, body, headers, this.integrityKeyphrase);
+    }
+    
+    /**
+     * Verify response integrity (baked-in security feature)
+     */
+    private async verifyResponseIntegrity(
+        status: number,
+        body: string | ArrayBuffer,
+        responseHeaders: Headers
+    ): Promise<{ verified: boolean; error?: string }> {
+        const { verifyResponseIntegrityFromHeaders } = await import('./integrity.js');
+        return verifyResponseIntegrityFromHeaders(status, body, responseHeaders, this.integrityKeyphrase);
+    }
 }
 
 /**
  * Create a service client from environment variables
  * Automatically detects which auth method to use based on available env vars
+ * Network integrity checks are automatically enabled (baked-in security feature)
  */
 export function createServiceClient(
     baseURL: string,
     env: {
         SUPER_ADMIN_API_KEY?: string;
         SERVICE_API_KEY?: string;
+        NETWORK_INTEGRITY_KEYPHRASE?: string;
         [key: string]: any;
     },
     config?: Partial<ServiceClientConfig>
@@ -368,6 +458,10 @@ export function createServiceClient(
     return new ServiceClient({
         baseURL,
         auth,
+        integrity: {
+            keyphrase: env.NETWORK_INTEGRITY_KEYPHRASE,
+            ...config?.integrity,
+        },
         ...config,
     });
 }
