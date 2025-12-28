@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { calculateFileHash, formatStrixunHash } from '../../utils/hash.js';
+import { calculateFileHash, formatStrixunHash } from '../utils/hash.js';
 
 // Determine environment from NODE_ENV or TEST_ENV
 const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev' | 'prod';

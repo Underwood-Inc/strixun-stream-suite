@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
-import { createJWT } from '../../../otp-auth-service/utils/crypto.js';
+import { createJWT } from '../../otp-auth-service/utils/crypto.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -53,8 +53,9 @@ describe('Encryption/Decryption Flow Integration', () => {
             const encryptedData = await encryptWithJWT(originalData, token);
 
             expect(encryptedData).toBeDefined();
-            expect(encryptedData).not.toEqual(JSON.stringify(originalData));
-            expect(typeof encryptedData).toBe('string');
+            expect(encryptedData).not.toEqual(originalData);
+            expect(typeof encryptedData).toBe('object');
+            expect(encryptedData.encrypted).toBe(true);
 
             // Step 2: Decrypt request body (simulating API receiving encrypted request)
             const decryptedData = await decryptWithJWT(encryptedData, token);

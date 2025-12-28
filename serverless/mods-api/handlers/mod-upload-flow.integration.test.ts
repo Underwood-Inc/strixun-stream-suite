@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { calculateFileHash, formatStrixunHash } from '../../utils/hash.js';
-import { createJWT } from '../../../otp-auth-service/utils/crypto.js';
+import { calculateFileHash, formatStrixunHash } from '../utils/hash.js';
+import { createJWT } from '../../otp-auth-service/utils/crypto.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({

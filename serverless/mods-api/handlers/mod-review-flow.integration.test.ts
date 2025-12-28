@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createJWT } from '../../../otp-auth-service/utils/crypto.js';
-import { isSuperAdminEmail } from '../../utils/admin.js';
+import { createJWT } from '../../otp-auth-service/utils/crypto.js';
+import { isSuperAdminEmail } from '../utils/admin.js';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
@@ -118,7 +118,7 @@ describe('Mod Review Flow Integration', () => {
             }, mockEnv.JWT_SECRET);
 
             // Admin should be able to review mod
-            const isAdmin = await require('../../utils/admin.js').isSuperAdminEmail(adminEmail, mockEnv);
+            const isAdmin = await require('../utils/admin.js').isSuperAdminEmail(adminEmail, mockEnv);
             expect(isAdmin).toBe(true);
         });
 

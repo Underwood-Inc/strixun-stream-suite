@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { authenticateRequest } from '../../utils/auth.js';
-import { createJWT } from '../../../otp-auth-service/utils/crypto.js';
+import { createJWT } from '../../otp-auth-service/utils/crypto.js';
 
 // Mock external dependencies
 vi.mock('../../utils/admin.js', () => ({
@@ -124,13 +124,14 @@ describe('Authentication Flow Integration', () => {
             const email = 'user@example.com';
             const customerId = 'cust_abc';
 
-            const token = await createJWT(
-                userId,
-                email,
-                customerId,
-                mockEnv.JWT_SECRET,
-                7 * 60 * 60
-            );
+            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60); // 7 hours
+            const token = await createJWT({
+                sub: userId,
+                email: email,
+                customerId: customerId,
+                exp: exp,
+                iat: Math.floor(Date.now() / 1000),
+            }, mockEnv.JWT_SECRET);
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',

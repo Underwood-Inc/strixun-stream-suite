@@ -52,6 +52,7 @@ describe('File Download Integrity', () => {
         vi.clearAllMocks();
         
         mockEnv.MODS_KV.get = vi.fn();
+        mockEnv.MODS_KV.put = vi.fn().mockResolvedValue(undefined);
         mockEnv.MODS_KV.list = vi.fn().mockResolvedValue({ keys: [], listComplete: true, cursor: undefined });
         mockEnv.MODS_R2.get = vi.fn();
         

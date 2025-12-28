@@ -19,12 +19,6 @@ vi.mock('../../utils/hash.js', () => ({
     formatStrixunHash: vi.fn((hash) => `strixun:sha256:${hash}`),
     parseStrixunHash: vi.fn(),
 }));
-vi.mock('../../utils/hash.js', () => ({
-    calculateStrixunHash: vi.fn(),
-    verifyStrixunHash: vi.fn(),
-    formatStrixunHash: vi.fn((hash) => `strixun:sha256:${hash}`),
-    parseStrixunHash: vi.fn(),
-}));
 
 describe('File Verification Handler', () => {
     const mockEnv = {
@@ -106,7 +100,7 @@ describe('File Verification Handler', () => {
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.verified).toBe(true);
-            expect(data.currentHash).toBe(storedHash);
+            expect(data.actualHash).toBe(`strixun:sha256:${storedHash}`);
         });
 
         it('should verify file for authenticated user', async () => {
@@ -157,10 +151,10 @@ describe('File Verification Handler', () => {
                 null
             );
 
-            expect(response.status).toBe(200);
+            expect(response.status).toBe(400);
             const data = await response.json();
             expect(data.verified).toBe(false);
-            expect(data.currentHash).toBe(tamperedHash);
+            expect(data.actualHash).toBe(`strixun:sha256:${tamperedHash}`);
             expect(data.expectedHash).toBeDefined();
         });
 

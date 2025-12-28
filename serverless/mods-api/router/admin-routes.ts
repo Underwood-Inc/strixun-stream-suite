@@ -29,8 +29,17 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
 
         // If not allowed, return error immediately (prevents any data download)
         if (!protection.allowed || !protection.auth) {
+            // protectAdminRoute always returns an error when allowed is false
+            // Use the error response from protection (which has correct status: 401 for auth, 403 for permission)
+            if (protection.error) {
+                return {
+                    response: protection.error,
+                    customerId: null
+                };
+            }
+            // Fallback (should never happen, but handle gracefully)
             return {
-                response: protection.error || new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+                response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
                 customerId: null
             };
         }
