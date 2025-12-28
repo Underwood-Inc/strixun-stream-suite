@@ -290,7 +290,7 @@ export async function protectAdminRoute(
  * @param verifyJWT - JWT verification function
  * @returns Response from handler or error response
  */
-export async function withAdminProtection<T = unknown>(
+export async function withAdminProtection(
     handler: (request: Request, env: RouteProtectionEnv, auth: AuthResult) => Promise<Response>,
     request: Request,
     env: RouteProtectionEnv,

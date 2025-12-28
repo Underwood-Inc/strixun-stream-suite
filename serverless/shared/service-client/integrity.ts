@@ -59,24 +59,6 @@ export interface IntegrityHeaders {
 }
 
 /**
- * Get network integrity keyphrase from environment
- */
-function getNetworkIntegrityKeyphrase(env?: { NETWORK_INTEGRITY_KEYPHRASE?: string }): string {
-    if (env?.NETWORK_INTEGRITY_KEYPHRASE) {
-        return env.NETWORK_INTEGRITY_KEYPHRASE;
-    }
-    
-    // Fallback for development (should not be used in production)
-    if (typeof process !== 'undefined' && process.env?.NETWORK_INTEGRITY_KEYPHRASE) {
-        return process.env.NETWORK_INTEGRITY_KEYPHRASE;
-    }
-    
-    // Last resort fallback (development only - should warn in production)
-    console.warn('[NetworkIntegrity] NETWORK_INTEGRITY_KEYPHRASE not set, using default (development only)');
-    return 'strixun:network-integrity:dev-fallback';
-}
-
-/**
  * Calculate HMAC-SHA256 signature of data
  */
 async function calculateHMACSignature(
