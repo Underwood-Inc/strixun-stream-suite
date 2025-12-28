@@ -110,6 +110,35 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /admin/r2/files - List all R2 files
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && request.method === 'GET') {
+            const { handleListR2Files } = await import('../handlers/admin/r2-management.js');
+            const response = await handleListR2Files(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: GET /admin/r2/duplicates - Detect duplicate and orphaned files
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'duplicates' && request.method === 'GET') {
+            const { handleDetectDuplicates } = await import('../handlers/admin/r2-management.js');
+            const response = await handleDetectDuplicates(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: DELETE /admin/r2/files/:key - Delete single R2 file
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && request.method === 'DELETE') {
+            const key = decodeURIComponent(pathSegments[3]);
+            const { handleDeleteR2File } = await import('../handlers/admin/r2-management.js');
+            const response = await handleDeleteR2File(request, env, auth, key);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: POST /admin/r2/files/delete - Bulk delete R2 files
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && pathSegments[3] === 'delete' && request.method === 'POST') {
+            const { handleDeleteR2File } = await import('../handlers/admin/r2-management.js');
+            const response = await handleDeleteR2File(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
         // 404 for unknown admin routes
         return null;
     } catch (error: any) {

@@ -9,29 +9,28 @@ import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
-import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
  * Handle download version request
- * Supports both modId (legacy) and slug (new) patterns
+ * CRITICAL: modId parameter must be the actual modId, not a slug
+ * Slug-to-modId resolution should happen in the router before calling this handler
  */
 export async function handleDownloadVersion(
     request: Request,
     env: Env,
-    modIdOrSlug: string,
+    modId: string,
     versionId: string,
     auth: { userId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
-    console.log('[Download] handleDownloadVersion called:', { modIdOrSlug, versionId, hasAuth: !!auth, customerId: auth?.customerId });
+    console.log('[Download] handleDownloadVersion called:', { modId, versionId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
-        // Get mod metadata - try multiple lookup strategies for legacy compatibility
+        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
         
-        // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(modIdOrSlug);
-        console.log('[Download] Strategy 1: Trying modId lookup:', { normalizedModId, original: modIdOrSlug });
+        const normalizedModId = normalizeModId(modId);
+        console.log('[Download] Looking up mod by modId:', { normalizedModId, original: modId });
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
@@ -49,31 +48,48 @@ export async function handleDownloadVersion(
             if (mod) console.log('[Download] Found mod in global scope:', { modId: mod.modId, slug: mod.slug });
         }
         
-        // Strategy 2: If not found by modId, try slug lookup (new pattern)
+        // If still not found, search all customer scopes (for cross-customer access to public mods)
         if (!mod) {
-            console.log('[Download] Strategy 2: Trying slug lookup:', { modIdOrSlug });
-            mod = await findModBySlug(modIdOrSlug, env, auth);
-            if (mod) console.log('[Download] Found mod by slug:', { modId: mod.modId, slug: mod.slug });
-        }
-        
-        // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
-        // This is now redundant since normalizeModId handles it, but keeping for backward compatibility
-        if (!mod && modIdOrSlug.startsWith('mod_')) {
-            console.log('[Download] Strategy 3: Trying full modId (legacy):', { modIdOrSlug });
-            // Use normalized version for consistency
-            if (auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-            }
-            if (!mod) {
-                const globalModKey = `mod_${normalizedModId}`;
-                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-            }
-            if (mod) console.log('[Download] Found mod by full modId:', { modId: mod.modId, slug: mod.slug });
+            console.log('[Download] Mod not found in expected scopes, searching all customer scopes');
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        
+                        if (customerId) {
+                            const customerModsList = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+                            
+                            if (customerModsList) {
+                                for (const listModId of customerModsList) {
+                                    const normalizedListModId = normalizeModId(listModId);
+                                    if (normalizedListModId === normalizedModId) {
+                                        const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                                        mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                                        if (mod) {
+                                            console.log('[Download] Found mod in customer scope:', { customerId, modId: mod.modId });
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (mod) break;
+                            }
+                        }
+                    }
+                }
+                
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         if (!mod) {
-            console.error('[Download] Mod not found after all strategies:', { modIdOrSlug, versionId });
+            console.error('[Download] Mod not found:', { modId, versionId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

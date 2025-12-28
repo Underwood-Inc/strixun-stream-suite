@@ -13,6 +13,7 @@ import { handleRequestOTP } from '../handlers/auth/request-otp.js';
 import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleSessionByIP } from '../handlers/auth/session-by-ip.js';
 import { handleRestoreSession } from '../handlers/auth/restore-session.js';
+import { handleUserLookup } from '../handlers/auth/user-lookup.js';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -133,6 +134,15 @@ export async function handleAuthRoutes(
     if (path === '/auth/restore-session' && request.method === 'POST') {
         // restore-session doesn't require API key authentication (it's for unauthenticated session restoration)
         return { response: await handleRestoreSession(request, env), customerId: null };
+    }
+    
+    // Public user lookup endpoint - GET /auth/user/:userId
+    // Returns public user info (displayName) by userId for service-to-service communication
+    const userLookupMatch = path.match(/^\/auth\/user\/([^\/]+)$/);
+    if (userLookupMatch && request.method === 'GET') {
+        const userId = userLookupMatch[1];
+        // This is a public endpoint - no authentication required
+        return { response: await handleUserLookup(request, env, userId), customerId: null };
     }
     
     return null; // Route not matched

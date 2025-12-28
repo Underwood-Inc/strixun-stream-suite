@@ -7,7 +7,6 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { findModBySlug } from '../../utils/slug.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
@@ -17,7 +16,7 @@ import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod
 export async function handleGetModReview(
     request: Request,
     env: Env,
-    slug: string,
+    modId: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
@@ -36,20 +35,43 @@ export async function handleGetModReview(
             });
         }
 
-        // Find mod by slug
-        let mod = await findModBySlug(slug, env, auth);
+        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        let mod: ModMetadata | null = null;
+        const normalizedModId = normalizeModId(modId);
         
-        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
+        // Check customer scope first
+        if (auth.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Fall back to global scope if not found
         if (!mod) {
-            // Check global/public scope (no customer prefix)
-            const globalModKey = `mod_${slug}`;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // If still not found, search all customer scopes
+        if (!mod) {
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
             
-            // If not found and authenticated, check customer scope
-            if (!mod && auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${slug}`);
-                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-            }
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (mod) break;
+                        }
+                    }
+                }
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
         
         if (!mod) {
@@ -95,8 +117,8 @@ export async function handleGetModReview(
         }
         
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(mod.modId);
-        const modId = normalizedModId;
+        const normalizedStoredModId = normalizeModId(mod.modId);
+        const modId = normalizedStoredModId;
 
         // Get all versions - try global scope first, then mod's customer scope
         // CRITICAL: Use mod.customerId (where mod was uploaded), not auth.customerId

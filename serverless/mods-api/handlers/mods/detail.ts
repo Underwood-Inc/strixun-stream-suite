@@ -7,16 +7,17 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
  * Handle get mod detail request
+ * CRITICAL: modId parameter must be the actual modId, not a slug
+ * Slug-to-modId resolution should happen in the router before calling this handler
  */
 export async function handleGetModDetail(
     request: Request,
     env: Env,
-    slug: string,
+    modId: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
@@ -24,36 +25,55 @@ export async function handleGetModDetail(
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
         
-        // Find mod by slug
-        let mod = await findModBySlug(slug, env, auth);
+        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        let mod: ModMetadata | null = null;
+        const normalizedModId = normalizeModId(modId);
         
-        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility for legacy mods)
-        // BUT: Still enforce visibility/status filtering
+        // Check customer scope first if authenticated
+        if (auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Fall back to global scope if not found
         if (!mod) {
-            // Check global/public scope (no customer prefix)
-            const globalModKey = `mod_${slug}`;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // If still not found, search all customer scopes (for cross-customer access)
+        if (!mod) {
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
             
-            // If not found and authenticated, check customer scope
-            if (!mod && auth?.customerId) {
-                // Normalize slug (which might be a modId) to match storage format
-                const { normalizeModId } = await import('../../utils/customer.js');
-                const normalizedSlug = normalizeModId(slug);
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedSlug}`);
-                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-            }
-            
-            // CRITICAL: Filter legacy mods that don't meet visibility/status requirements
-            // Legacy mods without visibility/status fields are treated as public/published
-            if (mod && !isAdmin) {
-                const modVisibility = mod.visibility || 'public';
-                const modStatus = mod.status || 'published';
-                // For non-super users: ONLY public, published mods are allowed
-                if (modVisibility !== 'public' || modStatus !== 'published') {
-                    // Only allow if user is the author
-                    if (mod.authorId !== auth?.userId) {
-                        mod = null; // Filter out - don't show to non-authors
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (mod) break;
+                        }
                     }
+                }
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
+        }
+        
+        // CRITICAL: Filter mods that don't meet visibility/status requirements
+        if (mod && !isAdmin) {
+            const modVisibility = mod.visibility || 'public';
+            const modStatus = mod.status || 'published';
+            // For non-super users: ONLY public, published/approved mods are allowed
+            const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
+            if (modVisibility !== 'public' || !isAllowedStatus) {
+                // Only allow if user is the author
+                if (mod.authorId !== auth?.userId) {
+                    mod = null; // Filter out - don't show to non-authors
                 }
             }
         }
@@ -78,8 +98,7 @@ export async function handleGetModDetail(
         }
         
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(mod.modId);
-        const modId = normalizedModId;
+        const normalizedStoredModId = normalizeModId(mod.modId);
 
         // isAdmin already checked above
         const isAuthor = mod.authorId === auth?.userId;
@@ -115,11 +134,12 @@ export async function handleGetModDetail(
                 }
             }
             
-            // Check status: MUST be 'published'
+            // Check status: MUST be 'published' or 'approved'
             // Legacy mods without status field are treated as published
             const modStatus = mod.status || 'published';
-            if (modStatus !== 'published') {
-                // Only show non-published mods to their author
+            const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
+            if (!isAllowedStatus) {
+                // Only show non-published/approved mods to their author
                 if (!isAuthor) {
                     const rfcError = createError(
                         request,
@@ -166,18 +186,19 @@ export async function handleGetModDetail(
         let versionIds: string[] = [];
         
         // Check global scope first
-        const globalVersionsKey = `mod_${modId}_versions`;
+        // Use normalizedStoredModId (from mod.modId) to ensure we're using the correct modId
+        const globalVersionsKey = `mod_${normalizedStoredModId}_versions`;
         const globalVersionsData = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
         if (globalVersionsData) {
             versionIds = globalVersionsData;
         } else if (mod.customerId) {
             // Fall back to mod's customer scope (where it was uploaded)
-            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${modId}_versions`);
+            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${normalizedStoredModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         } else if (auth?.customerId) {
             // Last resort: try auth user's customer scope (for backward compatibility)
-            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${normalizedStoredModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         }

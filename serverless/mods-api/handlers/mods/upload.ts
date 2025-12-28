@@ -26,7 +26,8 @@ export function generateSlug(title: string): string {
 }
 
 /**
- * Check if slug already exists
+ * Check if slug already exists - searches ALL scopes (global + all customer scopes)
+ * CRITICAL: Slugs must be globally unique across all scopes
  */
 export async function slugExists(slug: string, env: Env, excludeModId?: string): Promise<boolean> {
     // Check in global scope (public mods)
@@ -35,7 +36,11 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
     
     if (globalModsList) {
         for (const modId of globalModsList) {
-            if (excludeModId && modId === excludeModId) continue;
+            if (excludeModId) {
+                const normalizedExclude = normalizeModId(excludeModId);
+                const normalizedList = normalizeModId(modId);
+                if (normalizedExclude === normalizedList) continue;
+            }
             // Normalize modId for key lookup
             const normalizedListModId = normalizeModId(modId);
             const globalModKey = `mod_${normalizedListModId}`;
@@ -46,10 +51,45 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
         }
     }
     
-    // Also check customer scopes for private mods
-    // Note: This is a simplified check. In production, you'd want a slug index in KV
-    // For now, we check all customer lists (this could be expensive at scale)
-    // TODO: Implement slug index for better performance
+    // CRITICAL: Search ALL customer scopes to ensure global uniqueness
+    const customerListPrefix = 'customer_';
+    let cursor: string | undefined;
+    
+    do {
+        const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+        
+        for (const key of listResult.keys) {
+            // Look for customer mod lists: customer_{id}_mods_list
+            if (key.name.endsWith('_mods_list')) {
+                const customerModsList = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+                
+                if (customerModsList) {
+                    for (const modId of customerModsList) {
+                        if (excludeModId) {
+                            const normalizedExclude = normalizeModId(excludeModId);
+                            const normalizedList = normalizeModId(modId);
+                            if (normalizedExclude === normalizedList) continue;
+                        }
+                        
+                        const normalizedModId = normalizeModId(modId);
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            
+                            if (mod && mod.slug === slug) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        cursor = listResult.listComplete ? undefined : listResult.cursor;
+    } while (cursor);
     
     return false;
 }
@@ -269,7 +309,38 @@ export async function handleUploadMod(
         const now = new Date().toISOString();
 
         // Generate unique slug
-        const slug = await generateUniqueSlug(metadata.title, env);
+        // CRITICAL: Check if slug/title already exists - REJECT duplicates, don't auto-increment
+        const baseSlug = generateSlug(metadata.title);
+        if (!baseSlug) {
+            const rfcError = createError(request, 400, 'Invalid Title', 'Title must contain valid characters for slug generation');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Check if slug already exists - reject if it does
+        if (await slugExists(baseSlug, env)) {
+            const rfcError = createError(request, 409, 'Slug Already Exists', `A mod with the title "${metadata.title}" (slug: "${baseSlug}") already exists. Please choose a different title.`);
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 409,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const slug = baseSlug; // Use the base slug - no auto-incrementing
 
         // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
         // Files are decrypted on-the-fly during download
@@ -324,14 +395,37 @@ export async function handleUploadMod(
             ? await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId)
             : undefined;
 
+        // Fetch author display name from auth API during upload
+        // CRITICAL: Auth API has no public user lookup endpoint, so we must store it here
+        let authorDisplayName: string | null = null;
+        try {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                const token = authHeader.substring(7);
+                const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+                const response = await fetch(`${authApiUrl}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                if (response.ok) {
+                    const userData = await response.json() as { displayName?: string | null; [key: string]: any };
+                    authorDisplayName = userData.displayName || null;
+                }
+            }
+        } catch (error) {
+            console.warn('[Upload] Failed to fetch displayName from auth service:', error);
+        }
+
         // Create mod metadata with initial status
-        // Display name will be fetched when mods are retrieved, not stored
         const mod: ModMetadata = {
             modId,
             slug,
             authorId: auth.userId,
             authorEmail: auth.email || '',
-            authorDisplayName: null, // Will be fetched on display, not stored
+            authorDisplayName, // Store display name (auth API has no public user lookup)
             title: metadata.title,
             description: metadata.description || '',
             category: metadata.category,

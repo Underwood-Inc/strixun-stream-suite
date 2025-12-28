@@ -4,29 +4,45 @@
 
 /**
  * Fetch display name for a user by userId
- * Note: This requires the auth API to support user lookup by userId
- * For now, we'll try to fetch from /auth/user/:userId if available
- * Otherwise, we'll return null and the frontend can handle it
+ * Uses the public /auth/user/:userId endpoint in the auth API
  */
 export async function fetchDisplayNameByUserId(userId: string, env: Env): Promise<string | null> {
+    if (!userId) {
+        console.warn('[DisplayName] Empty userId provided');
+        return null;
+    }
+    
     try {
         const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        const url = `${authApiUrl}/auth/user/${userId}`;
         
-        // Try to fetch user info by userId
-        // The auth API might have a public endpoint for this
-        const response = await fetch(`${authApiUrl}/auth/user/${userId}`, {
+        console.log('[DisplayName] Fetching displayName for userId:', { userId, url });
+        
+        // Call the public user lookup endpoint
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
         });
         
+        console.log('[DisplayName] Response status:', { userId, status: response.status, ok: response.ok });
+        
         if (response.ok) {
-            const userData = await response.json() as { displayName?: string | null; [key: string]: any };
-            return userData.displayName || null;
+            const userData = await response.json() as { displayName?: string | null; userId?: string; [key: string]: any };
+            const displayName = userData.displayName || null;
+            console.log('[DisplayName] Found displayName:', { userId, displayName, hasDisplayName: !!displayName });
+            return displayName;
+        } else if (response.status === 404) {
+            // User not found - return null (not an error)
+            console.warn('[DisplayName] User not found (404):', { userId, url });
+            return null;
+        } else {
+            console.error('[DisplayName] Unexpected response status:', { userId, status: response.status, url });
+            return null;
         }
     } catch (error) {
-        console.warn('[DisplayName] Failed to fetch displayName for userId:', userId, error);
+        console.error('[DisplayName] Failed to fetch displayName for userId:', { userId, error: error instanceof Error ? error.message : String(error) });
     }
     return null;
 }

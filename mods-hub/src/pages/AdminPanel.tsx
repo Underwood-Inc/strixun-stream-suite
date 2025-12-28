@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '../../../shared-components/search-query-parser/AdvancedSearchInput';
 import type { Column } from '../../../shared-components/virtualized-table/VirtualizedTable';
@@ -184,6 +184,7 @@ const TableContainer = styled.div`
 `;
 
 export function AdminPanel() {
+    const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -417,7 +418,15 @@ export function AdminPanel() {
     return (
         <PageContainer>
             <Header>
-                <Title>Admin Panel - Mod Triage</Title>
+                <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
+                    <Title>Admin Panel - Mod Triage</Title>
+                    <Button
+                        onClick={() => navigate('/admin/r2')}
+                        variant="secondary"
+                    >
+                        R2 Management
+                    </Button>
+                </div>
                 <Filters>
                     <SearchContainer>
                         <AdvancedSearchInput

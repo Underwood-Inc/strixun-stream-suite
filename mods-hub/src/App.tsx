@@ -6,6 +6,7 @@ import { ModUploadPage } from './pages/ModUploadPage';
 import { ModManagePage } from './pages/ModManagePage';
 import { ModReviewPage } from './pages/ModReviewPage';
 import { AdminPanel } from './pages/AdminPanel';
+import { R2ManagementPage } from './pages/R2ManagementPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
@@ -70,6 +71,14 @@ export function App() {
                         element={
                             <AdminRoute>
                                 <AdminPanel />
+                            </AdminRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/admin/r2" 
+                        element={
+                            <AdminRoute>
+                                <R2ManagementPage />
                             </AdminRoute>
                         } 
                     />

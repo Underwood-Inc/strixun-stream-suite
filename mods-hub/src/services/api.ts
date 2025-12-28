@@ -504,6 +504,92 @@ export async function checkUploadPermission(): Promise<{ hasPermission: boolean;
     };
 }
 
+/**
+ * R2 Management API functions (admin only)
+ */
+
+export interface R2FileInfo {
+    key: string;
+    size: number;
+    uploaded: Date;
+    contentType?: string;
+    customMetadata?: Record<string, string>;
+    isOrphaned?: boolean;
+    associatedModId?: string;
+    associatedVersionId?: string;
+}
+
+export interface R2FilesListResponse {
+    files: R2FileInfo[];
+    total: number;
+    cursor?: string;
+    hasMore: boolean;
+}
+
+export interface DuplicateGroup {
+    files: R2FileInfo[];
+    count: number;
+    totalSize: number;
+    recommendedKeep?: string;
+}
+
+export interface DuplicatesResponse {
+    summary: {
+        totalFiles: number;
+        referencedFiles: number;
+        orphanedFiles: number;
+        orphanedSize: number;
+        duplicateGroups: number;
+        duplicateWastedSize: number;
+    };
+    orphanedFiles: R2FileInfo[];
+    duplicateGroups: DuplicateGroup[];
+}
+
+/**
+ * List all R2 files (admin only)
+ */
+export async function listR2Files(params: {
+    prefix?: string;
+    limit?: number;
+    cursor?: string;
+}): Promise<R2FilesListResponse> {
+    const response = await api.get<R2FilesListResponse>('/admin/r2/files', params);
+    return response.data;
+}
+
+/**
+ * Detect duplicate and orphaned files (admin only)
+ */
+export async function detectDuplicates(): Promise<DuplicatesResponse> {
+    const response = await api.get<DuplicatesResponse>('/admin/r2/duplicates');
+    return response.data;
+}
+
+/**
+ * Delete R2 file(s) (admin only)
+ */
+export async function deleteR2File(key: string): Promise<{ deleted: boolean; key: string }> {
+    const response = await api.delete<{ deleted: boolean; key: string }>(`/admin/r2/files/${encodeURIComponent(key)}`);
+    return response.data;
+}
+
+/**
+ * Bulk delete R2 files (admin only)
+ */
+export async function bulkDeleteR2Files(keys: string[]): Promise<{
+    deleted: number;
+    failed: number;
+    results: Array<{ key: string; deleted: boolean; error?: string }>;
+}> {
+    const response = await api.post<{
+        deleted: number;
+        failed: number;
+        results: Array<{ key: string; deleted: boolean; error?: string }>;
+    }>('/admin/r2/files/delete', { keys });
+    return response.data;
+}
+
 // Import types for use in function signatures
 import type { 
     ModListResponse, 

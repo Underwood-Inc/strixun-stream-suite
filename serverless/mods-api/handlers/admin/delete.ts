@@ -185,18 +185,30 @@ export async function handleAdminDeleteMod(
             }
         }
 
-        // Delete thumbnail if exists - use mod's customer scope (not admin's)
-        if (mod.thumbnailUrl) {
-            try {
-                // Try multiple extensions since we don't know which one was used
-                const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-                for (const ext of extensions) {
-                    const thumbnailKey = getCustomerR2Key(modCustomerId, `thumbnails/${normalizedModId}.${ext}`);
-                    await env.MODS_R2.delete(thumbnailKey);
+        // Delete thumbnail if exists - CRITICAL: Delete from BOTH customer scope AND global scope
+        // Thumbnails may exist in both places if mod was approved/published
+        try {
+            const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+            for (const ext of extensions) {
+                // Delete from customer scope
+                if (modCustomerId) {
+                    const customerThumbnailKey = getCustomerR2Key(modCustomerId, `thumbnails/${normalizedModId}.${ext}`);
+                    try {
+                        await env.MODS_R2.delete(customerThumbnailKey);
+                    } catch (error) {
+                        // Ignore if not found
+                    }
                 }
-            } catch (error) {
-                console.error('Failed to delete thumbnail:', error);
+                // Delete from global scope (no customer prefix)
+                const globalThumbnailKey = `thumbnails/${normalizedModId}.${ext}`;
+                try {
+                    await env.MODS_R2.delete(globalThumbnailKey);
+                } catch (error) {
+                    // Ignore if not found
+                }
             }
+        } catch (error) {
+            console.error('Failed to delete thumbnail:', error);
         }
 
         // Delete mod metadata - use mod's customer scope (not admin's)

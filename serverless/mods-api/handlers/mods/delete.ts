@@ -8,7 +8,6 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
-import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
@@ -17,7 +16,7 @@ import type { ModMetadata, ModVersion } from '../../types/mod.js';
 export async function handleDeleteMod(
     request: Request,
     env: Env,
-    slug: string,
+    modId: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
@@ -36,45 +35,51 @@ export async function handleDeleteMod(
             });
         }
 
-        // Find mod by slug first (slug is usually a short string like "compressy")
-        let mod = await findModBySlug(slug, env, auth);
+        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        let mod: ModMetadata | null = null;
+        const normalizedModId = normalizeModId(modId);
         let modKey: string | null = null;
         
-        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
-        // This handles cases where modId is passed instead of slug (e.g., "mod_1766914931857_26vz5vx9fvw")
+        // Try customer scope first
+        modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+        mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        console.log('[DeleteMod] Customer scope lookup:', { modKey, found: !!mod });
+        
+        // If not found in customer scope, try global scope (for public mods)
         if (!mod) {
-            // Check if input looks like a modId (starts with "mod_" or is a long alphanumeric string)
-            const looksLikeModId = slug.startsWith('mod_') || slug.length > 20;
+            const globalModKey = `mod_${normalizedModId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            console.log('[DeleteMod] Global scope lookup:', { globalModKey, found: !!mod });
+            if (mod) {
+                modKey = globalModKey; // Use global key for deletion
+            }
+        }
+        
+        // If still not found, search all customer scopes
+        if (!mod) {
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
             
-            if (looksLikeModId) {
-                // Normalize the input - strip mod_ prefix if present
-                const normalizedModId = normalizeModId(slug);
-                console.log('[DeleteMod] Treating input as modId:', { original: slug, normalized: normalizedModId });
-                
-                // Try customer scope first
-                modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-                mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-                console.log('[DeleteMod] Customer scope lookup:', { modKey, found: !!mod });
-                
-                // If not found in customer scope, try global scope (for public mods)
-                if (!mod) {
-                    const globalModKey = `mod_${normalizedModId}`;
-                    mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-                    console.log('[DeleteMod] Global scope lookup:', { globalModKey, found: !!mod });
-                    if (mod) {
-                        modKey = globalModKey; // Use global key for deletion
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (mod) {
+                                modKey = customerModKey;
+                                console.log('[DeleteMod] Found mod in customer scope:', { customerId, modId: mod.modId, modKey });
+                                break;
+                            }
+                        }
                     }
                 }
-            }
-        } else {
-            // Found by slug, determine the correct key based on mod's customerId
-            const normalizedModId = normalizeModId(mod.modId);
-            if (mod.customerId) {
-                modKey = getCustomerKey(mod.customerId, `mod_${normalizedModId}`);
-            } else {
-                modKey = `mod_${normalizedModId}`;
-            }
-            console.log('[DeleteMod] Found mod by slug:', { slug, modId: mod.modId, modKey });
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
         
         if (!mod) {

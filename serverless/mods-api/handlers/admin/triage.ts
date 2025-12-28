@@ -36,15 +36,44 @@ export async function handleUpdateModStatus(
         }
 
         // Get mod metadata
-        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        // CRITICAL: Admin can approve mods from ANY customer, so we must search all scopes
+        // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
         const normalizedModId = normalizeModId(modId);
         let mod: ModMetadata | null = null;
-        const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-        mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-
+        let modCustomerId: string | null = null;
+        
+        // Try global scope first (for already-approved mods)
+        const globalModKey = `mod_${normalizedModId}`;
+        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        if (mod) {
+            modCustomerId = mod.customerId || null;
+        }
+        
+        // If not found, search all customer scopes to find where the mod was uploaded
         if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (candidateMod) {
+                                mod = candidateMod;
+                                modCustomerId = customerId;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         if (!mod) {
@@ -132,7 +161,14 @@ export async function handleUpdateModStatus(
         }
 
         // Save updated mod
-        await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
+        // CRITICAL: Save to mod's original customer scope, NOT admin's customer scope
+        // This prevents duplication - mod stays in uploader's customer scope
+        if (modCustomerId) {
+            const modCustomerKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}`);
+            await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
+        }
+        
+        // Also update global scope if public (for public browsing)
         if (mod.visibility === 'public') {
             const globalModKey = `mod_${normalizedModId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
@@ -204,15 +240,44 @@ export async function handleAddReviewComment(
 ): Promise<Response> {
     try {
         // Get mod metadata
-        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        // CRITICAL: Admin can comment on mods from ANY customer, so we must search all scopes
+        // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
         const normalizedModId = normalizeModId(modId);
         let mod: ModMetadata | null = null;
-        const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-        mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-
+        let modCustomerId: string | null = null;
+        
+        // Try global scope first (for already-approved mods)
+        const globalModKey = `mod_${normalizedModId}`;
+        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        if (mod) {
+            modCustomerId = mod.customerId || null;
+        }
+        
+        // If not found, search all customer scopes to find where the mod was uploaded
         if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (candidateMod) {
+                                mod = candidateMod;
+                                modCustomerId = customerId;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         if (!mod) {
@@ -279,7 +344,14 @@ export async function handleAddReviewComment(
         mod.updatedAt = new Date().toISOString();
 
         // Save updated mod
-        await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
+        // CRITICAL: Save to mod's original customer scope, NOT admin's customer scope
+        // This prevents duplication - mod stays in uploader's customer scope
+        if (modCustomerId) {
+            const modCustomerKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}`);
+            await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
+        }
+        
+        // Also update global scope if public (for public browsing)
         if (mod.visibility === 'public') {
             const globalModKey = `mod_${normalizedModId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));

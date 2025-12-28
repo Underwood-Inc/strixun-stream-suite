@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { findModBySlug } from '../../utils/slug.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 
 /**
@@ -140,16 +140,54 @@ function generateOGImage(mod: ModMetadata, thumbnailUrl?: string): string {
 
 /**
  * Handle OG image request
+ * CRITICAL: modId parameter must be the actual modId, not a slug
+ * Slug-to-modId resolution should happen in the router before calling this handler
  */
 export async function handleOGImage(
     request: Request,
     env: Env,
-    slug: string,
+    modId: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Find mod by slug using the utility function
-        const mod = await findModBySlug(slug, env, auth);
+        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        let mod: ModMetadata | null = null;
+        const normalizedModId = normalizeModId(modId);
+        
+        // Check customer scope first if authenticated
+        if (auth?.customerId) {
+            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // Fall back to global scope if not found
+        if (!mod) {
+            const globalModKey = `mod_${normalizedModId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        }
+        
+        // If still not found, search all customer scopes (for cross-customer access)
+        if (!mod) {
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (mod) break;
+                        }
+                    }
+                }
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
+        }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');

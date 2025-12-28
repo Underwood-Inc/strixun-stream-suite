@@ -6,8 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
-import { findModBySlug } from '../../utils/slug.js';
+import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { generateUniqueSlug } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 // handleThumbnailUpload is defined locally in this file
@@ -19,7 +18,7 @@ import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 export async function handleUpdateMod(
     request: Request,
     env: Env,
-    slug: string,
+    modId: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
@@ -38,30 +37,48 @@ export async function handleUpdateMod(
             });
         }
 
-        // Find mod by slug
-        let mod = await findModBySlug(slug, env, auth);
-        
-        // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
+        // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        let mod: ModMetadata | null = null;
+        const normalizedModId = normalizeModId(modId);
         let modKey: string;
+        
+        // Try customer scope first
+        modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+        mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        
+        // If not found in customer scope, try global scope (for public mods)
         if (!mod) {
-            // Try customer scope first
-            modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
-            mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-            
-            // If not found in customer scope, try global scope (for public mods)
-            if (!mod) {
-                const globalModKey = `mod_${slug}`;
-                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-                if (mod) {
-                    modKey = getCustomerKey(auth.customerId, `mod_${slug}`); // Still use customer key for primary storage
-                }
-            } else {
-                modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+            const globalModKey = `mod_${normalizedModId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            if (mod) {
+                modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`); // Use customer key for storage
             }
-        } else {
-            // Found by slug, determine the correct key
-            const modId = mod.modId;
-            modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        }
+        
+        // If still not found, search all customer scopes
+        if (!mod) {
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            if (mod) {
+                                modKey = customerModKey;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (mod) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         if (!mod) {
