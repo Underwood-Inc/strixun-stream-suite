@@ -11,7 +11,7 @@ import { IndexedDBCache } from './indexeddb';
 export class CacheManager {
   private memoryCache: MemoryCache;
   private indexedDBCache: IndexedDBCache;
-  private enabled: boolean;
+  public readonly enabled: boolean;
 
   constructor(enabled: boolean = true) {
     this.enabled = enabled;

@@ -7,7 +7,7 @@
  * @module services/chat/roomSplitting
  */
 
-import type { RoomMetadata, PartyRoomMetadata } from '../../types/chat';
+import type { PartyRoomMetadata } from '../../types/chat';
 import { authenticatedFetch } from '../../stores/auth';
 
 export interface RoomSplittingConfig {

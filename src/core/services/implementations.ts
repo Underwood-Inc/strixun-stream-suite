@@ -12,7 +12,6 @@ import { encryptedStorage } from './encrypted-storage';
 import { storage } from '../../modules/storage';
 import { connected, currentScene, sources, textSources, connectionState, isReady } from '../../stores/connection';
 import type { ConnectionStateService } from './interfaces';
-import { navigateTo } from '../../stores/navigation';
 
 // ============ Storage Service Implementation ============
 

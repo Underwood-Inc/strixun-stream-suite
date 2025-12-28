@@ -42,6 +42,9 @@ interface StorageInterface {
   setRaw(key: string, value: string): void;
   flush(): Promise<void>;
   isReady(): boolean;
+  clear(): void;
+  has(key: string): boolean;
+  keys(): string[];
   _snapshotDebounce: ReturnType<typeof setTimeout> | null;
 }
 
@@ -361,6 +364,46 @@ export const storage: StorageInterface = {
    */
   isReady(): boolean {
     return true; // Always ready after init, may be using fallback
+  },
+  
+  /**
+   * Clear all storage
+   */
+  clear(): void {
+    try {
+      storageCache = {};
+      // Clear IndexedDB
+      if (idbInstance) {
+        const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        store.clear();
+      }
+      // Clear localStorage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(STORAGE_PREFIX)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (e) {
+      console.error('[Storage] Clear error:', e);
+    }
+  },
+  
+  /**
+   * Check if a key exists in storage
+   */
+  has(key: string): boolean {
+    return key in storageCache;
+  },
+  
+  /**
+   * Get all storage keys
+   */
+  keys(): string[] {
+    return Object.keys(storageCache);
   },
   
   // Internal debounce timer

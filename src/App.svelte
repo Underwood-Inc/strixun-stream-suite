@@ -26,7 +26,6 @@
   import { currentPage } from './stores/navigation';
   import { domInterferenceDetected } from './stores/dom-interference';
   
-  let pageWrapper: HTMLDivElement;
   let hasCompletedPostAuthInit = false;
   
   // Initialize app on mount

@@ -13,7 +13,6 @@
  * - Secure: SRTP (built-in) + application-layer encryption
  */
 
-import type { WebRTCService } from './webrtc';
 
 export interface VOIPConfig {
   /**
@@ -213,10 +212,10 @@ export class VOIPService {
   /**
    * Create peer connection for VOIP
    * 
-   * @param roomId - Room ID
-   * @param userId - Local user ID
+   * @param _roomId - Room ID (reserved for future use)
+   * @param _userId - Local user ID (reserved for future use)
    */
-  async createConnection(roomId: string, userId: string): Promise<void> {
+  async createConnection(_roomId: string, _userId: string): Promise<void> {
     if (this.peerConnection) {
       throw new Error('Connection already exists');
     }
@@ -249,7 +248,7 @@ export class VOIPService {
         // Update connection quality based on state
         if (state === 'connected') {
           this.state.connectionQuality = 100;
-        } else if (state === 'connecting') {
+        } else if (state === 'connecting' || state === 'checking') {
           this.state.connectionQuality = 50;
         } else {
           this.state.connectionQuality = 0;
@@ -262,7 +261,7 @@ export class VOIPService {
       const state = this.peerConnection?.iceConnectionState;
       if (state === 'connected' || state === 'completed') {
         this.state.connectionQuality = 100;
-      } else if (state === 'checking' || state === 'connecting') {
+      } else if (state === 'checking' || (state as string) === 'connecting') {
         this.state.connectionQuality = 50;
       } else {
         this.state.connectionQuality = 0;

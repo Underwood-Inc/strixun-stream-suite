@@ -1,4 +1,4 @@
-<script module>
+<script lang="ts" module>
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import LogEntry from './LogEntry.svelte';
   import type { LogEntry as LogEntryType } from '../../stores/activity-log';

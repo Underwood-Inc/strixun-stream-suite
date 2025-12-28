@@ -8,7 +8,7 @@
  * - Overflow handling for excess toasts
  */
 
-import { writable, derived, get } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { getToastConfig } from '../config/toast.config';
 
 // ============ Types ============
@@ -113,7 +113,8 @@ export const visibleToasts = derived(toastQueue, ($queue) => {
  */
 export const overflowToasts = derived(toastQueue, ($queue) => {
   const config = getToastConfig();
-  const visible = $queue.filter(t => t.visible && !t.inOverflow).slice(0, config.maxVisible);
+  // Filter visible toasts (used for determining overflow)
+  $queue.filter(t => t.visible && !t.inOverflow).slice(0, config.maxVisible);
   const overflow = $queue.filter(t => t.visible && t.inOverflow);
   
   // Update overflow indices for 3D positioning

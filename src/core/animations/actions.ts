@@ -165,11 +165,9 @@ function buildAnimationConfig(
   }
   
   // Handle transforms
-  let hasTransform = false;
   if (validPresetProps.translateX !== undefined || validPresetProps.translateY !== undefined || 
       validPresetProps.scale !== undefined || validPresetProps.rotate !== undefined ||
       validPresetProps.rotateX !== undefined || validPresetProps.rotateY !== undefined) {
-    hasTransform = true;
     for (let i = 0; i < keyframeCount; i++) {
       keyframes[i].transform = buildTransform(i);
     }
@@ -186,7 +184,6 @@ function buildAnimationConfig(
     if (custom.translateX !== undefined || custom.translateY !== undefined || 
         custom.scale !== undefined || custom.rotate !== undefined ||
         custom.rotateX !== undefined || custom.rotateY !== undefined) {
-      hasTransform = true;
       for (let i = 0; i < keyframeCount; i++) {
         keyframes[i].transform = buildTransform(i, true);
       }
@@ -288,9 +285,6 @@ export const animate: Action<HTMLElement, AnimationConfig | AnimationPreset | st
     };
   }
   
-  // Merge with custom config
-  const easingName = effectiveConfig.easing ?? presetConfig.easing ?? 'easeOutCubic';
-
   // Play animation based on trigger
   function playAnimation(): void {
     // Cancel existing animation if any
@@ -362,7 +356,8 @@ export const animate: Action<HTMLElement, AnimationConfig | AnimationPreset | st
       currentEffectiveConfig.onStart?.();
       
       // Create animation using Web Animations API
-      const anim = node.animate(keyframes, options);
+      // Cast keyframes to Keyframe[] for Web Animations API compatibility
+      const anim = node.animate(keyframes as Keyframe[], options);
       animationInstance = anim;
       
       // Track progress

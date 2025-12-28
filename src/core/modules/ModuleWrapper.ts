@@ -19,11 +19,9 @@
  * ```
  */
 
-import { ServiceRegistry } from '../services/ServiceRegistry';
 import { ModuleRegistry } from '../services/ModuleRegistry';
 import { ModuleCommunicator } from '../communication/ModuleCommunicator';
 import { EventBus } from '../events/EventBus';
-import type { ModuleService } from '../services/interfaces';
 
 export interface ModuleWrapperOptions {
   dependencies?: Record<string, any>;
@@ -120,7 +118,7 @@ export class ModuleWrapper {
     newModule: any
   ): any {
     return new Proxy({}, {
-      get(target, prop: string) {
+      get(_target, prop: string) {
         // Try new module first
         if (prop in newModule) {
           return newModule[prop];
@@ -138,7 +136,7 @@ export class ModuleWrapper {
         return undefined;
       },
       
-      has(target, prop: string) {
+      has(_target, prop: string) {
         return prop in newModule || prop in legacyModule;
       }
     });

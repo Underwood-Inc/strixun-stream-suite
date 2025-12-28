@@ -8,7 +8,6 @@
  */
 
 import { authenticatedFetch, getApiUrl } from '../stores/auth';
-import { encrypt } from '../core/services/encryption';
 
 export interface TwitchAccountData {
   /**

@@ -7,7 +7,7 @@
 
   import { onMount } from 'svelte';
   import { TwitchAttachmentService, type TwitchAccountData } from '../../services/twitchAttachment';
-  import { getAuthToken, user, setAuth } from '../../stores/auth';
+  import { user, setAuth } from '../../stores/auth';
   import { getTwitchClientId, getTwitchOAuthCallback } from '../../modules/twitch-api';
   import { showToast } from '../../stores/toast-queue';
   import { getApiUrl } from '../../stores/auth';

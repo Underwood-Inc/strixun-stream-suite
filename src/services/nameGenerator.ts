@@ -282,20 +282,6 @@ function generateNamePattern(
 }
 
 /**
- * Generate a random integer between min and max (inclusive)
- */
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-/**
- * Pick a random element from an array
- */
-function randomElement<T>(array: readonly T[]): T {
-  return array[Math.floor(Math.random() * array.length)];
-}
-
-/**
  * Generate a random display name
  * 
  * Supports millions of combinations:
@@ -369,7 +355,8 @@ export async function generateName(
      'adjective-adjective-noun', 'adjective-noun-noun'];
   
   for (const fallbackPattern of fallbackPatterns) {
-    if (fallbackPattern === pattern && pattern !== 'random') continue;
+    // Skip if this is the same as the primary pattern (unless primary was 'random')
+    if (fallbackPattern === pattern) continue;
     
     for (let i = 0; i < 5; i++) {
       name = generateNamePattern(fallbackPattern, adjectives, nouns, maxWords);

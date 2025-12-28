@@ -1,4 +1,4 @@
-<script module>
+<script lang="ts" module>
   import { defineMeta } from '@storybook/addon-svelte-csf';
   import TruncatedText from './TruncatedText.svelte';
 

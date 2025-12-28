@@ -57,10 +57,10 @@ export class ModuleAdapter {
 
     // Create proxy for dynamic module access
     const moduleProxy = new Proxy({}, {
-      get: (target, prop: string) => {
+      get: (_target, prop: string) => {
         return this.moduleRegistry.get(prop);
       },
-      has: (target, prop: string) => {
+      has: (_target, prop: string) => {
         return this.moduleRegistry.has(prop);
       }
     });

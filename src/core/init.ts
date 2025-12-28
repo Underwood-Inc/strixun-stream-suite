@@ -19,7 +19,7 @@ export async function initializeCore(): Promise<void> {
   initializeServices();
 
   // Initialize module adapter for legacy compatibility
-  const adapter = getModuleAdapter();
+  getModuleAdapter();
 
   // Setup event logging (optional, for debugging)
   // Only enable if explicitly requested via environment variable
