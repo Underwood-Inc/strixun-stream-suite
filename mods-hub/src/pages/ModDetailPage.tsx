@@ -128,7 +128,7 @@ export function ModDetailPage() {
                             <>
                                 <span>•</span>
                                 <IntegrityBadge 
-                                    modId={mod.slug} 
+                                    modId={mod.modId} 
                                     versionId={latestVersion.versionId}
                                     showCopyButton={isUploader}
                                 />

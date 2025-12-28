@@ -126,14 +126,14 @@ export function ModVersionList({ modSlug, versions, isUploader = false }: ModVer
                         </Meta>
                         {version.sha256 && (
                             <IntegrityBadge 
-                                modId={modSlug} 
+                                modId={version.modId} 
                                 versionId={version.versionId}
                                 showCopyButton={isUploader}
                             />
                         )}
                     </VersionInfo>
                     <DownloadButton
-                        href={getDownloadUrl(modSlug, version.versionId)}
+                        href={getDownloadUrl(version.modId, version.versionId)}
                         download
                     >
                         Download

@@ -463,6 +463,7 @@ async function handleThumbnailUpload(
             },
             customMetadata: {
                 modId,
+                extension: normalizedType, // Store extension for easy retrieval
                 validated: 'true', // Mark as validated for rendering
             },
         });

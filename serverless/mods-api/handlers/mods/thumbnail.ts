@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { findModBySlug } from '../../utils/slug.js';
 import type { ModMetadata } from '../../types/mod.js';
 
 /**
@@ -19,17 +20,21 @@ export async function handleThumbnail(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata - check both customer scope and global scope
-        let mod: ModMetadata | null = null;
+        // Get mod metadata - modId parameter might be a slug or actual modId
+        // Try slug lookup first (more common for public URLs), then fall back to direct modId lookup
+        let mod: ModMetadata | null = await findModBySlug(modId, env, auth);
         
-        // First try global scope (for public mods)
-        const globalModKey = `mod_${modId}`;
-        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-        
-        // If not found and authenticated, check customer scope
-        if (!mod && auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        // If slug lookup failed, try direct modId lookup
+        if (!mod) {
+            // First try global scope (for public mods)
+            const globalModKey = `mod_${modId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            
+            // If not found and authenticated, check customer scope
+            if (!mod && auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
         }
 
         if (!mod) {
@@ -125,42 +130,30 @@ export async function handleThumbnail(
         }
 
         // Reconstruct R2 key from mod metadata
-        // Thumbnails are stored as: cust_xxx/thumbnails/mod_xxx.png
-        // Try to extract from thumbnailUrl if it's an old format, otherwise reconstruct
-        let r2Key: string;
-        try {
-            const url = new URL(mod.thumbnailUrl);
-            // If it's an API URL (new format), reconstruct the R2 key
-            if (url.hostname.includes('mods-api.idling.app')) {
-                // Reconstruct: use customerId from mod or try to find it
-                const customerId = mod.customerId || auth?.customerId || null;
-                // Try common image extensions
-                const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-                for (const ext of extensions) {
-                    r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${ext}`);
-                    const testFile = await env.MODS_R2.get(r2Key);
-                    if (testFile) {
-                        break;
-                    }
-                }
-                // If still not found, use png as default
-                if (!r2Key || !(await env.MODS_R2.get(r2Key))) {
-                    r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.png`);
-                }
-            } else {
-                // Old format: extract from URL path
-                r2Key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-            }
-        } catch {
-            // If URL parsing fails, reconstruct from modId
-            const customerId = mod.customerId || auth?.customerId || null;
-            r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.png`);
-        }
-
-        // Get thumbnail from R2
-        const thumbnail = await env.MODS_R2.get(r2Key);
+        // Thumbnails are stored as: customer_xxx/thumbnails/modId.ext
+        // Use mod's customerId (not auth customerId) to ensure correct scope
+        // Use mod.modId (actual modId) not the URL parameter (which might be a slug)
+        const customerId = mod.customerId || null;
+        const actualModId = mod.modId;
         
-        if (!thumbnail) {
+        // Try common image extensions to find the actual file
+        // This handles cases where extension wasn't stored in metadata
+        const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+        let r2Key: string | null = null;
+        let thumbnail: R2ObjectBody | null = null;
+        
+        for (const ext of extensions) {
+            const testKey = getCustomerR2Key(customerId, `thumbnails/${actualModId}.${ext}`);
+            const testFile = await env.MODS_R2.get(testKey);
+            if (testFile) {
+                r2Key = testKey;
+                thumbnail = testFile;
+                break;
+            }
+        }
+        
+        // If not found, return 404
+        if (!r2Key || !thumbnail) {
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
