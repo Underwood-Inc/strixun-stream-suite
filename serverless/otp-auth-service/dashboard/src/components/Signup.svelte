@@ -1,6 +1,6 @@
 <script lang="ts">
   import { apiClient } from '$lib/api-client';
-  import type { LoginSuccessData } from '@shared-components/otp-login/core';
+  import type { LoginSuccessData } from '@shared-components/otp-login/dist/svelte';
 
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : '';
 

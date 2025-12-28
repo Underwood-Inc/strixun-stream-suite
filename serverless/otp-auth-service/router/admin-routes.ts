@@ -12,6 +12,7 @@ import { verifyApiKey } from '../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../utils/crypto.js';
 import { getCustomerKey, getCustomerByEmail } from '../services/customer.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
+import { wrapWithEncryption } from '../../shared/encryption/middleware.js';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
 import * as publicHandlers from '../handlers/public.js';
@@ -198,36 +199,11 @@ async function handleAdminRoute(
     // Get handler response
     const handlerResponse = await handler(request, env, auth.customerId);
     
-    // If JWT token is present, encrypt the response (only for dashboard/JWT auth)
-    // Uses shared encryption suite from serverless/shared/encryption
-    if ('jwtToken' in auth && auth.jwtToken && handlerResponse.ok) {
-        try {
-            const { encryptWithJWT } = await import('@strixun/api-framework');
-            const responseData = await handlerResponse.json();
-            const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
-            
-            // Preserve original headers and add encryption flag
-            const headers = new Headers(handlerResponse.headers);
-            headers.set('Content-Type', 'application/json');
-            headers.set('X-Encrypted', 'true'); // Flag to indicate encrypted response
-            
-            return {
-                response: new Response(JSON.stringify(encrypted), {
-                    status: handlerResponse.status,
-                    statusText: handlerResponse.statusText,
-                    headers: headers,
-                }),
-                customerId: auth.customerId
-            };
-        } catch (error) {
-            console.error('Failed to encrypt response:', error);
-            // Return unencrypted response if encryption fails (shouldn't happen)
-            return { response: handlerResponse, customerId: auth.customerId };
-        }
-    }
-    
-    // For API key auth or non-OK responses, return as-is (no encryption)
-    return { response: handlerResponse, customerId: auth.customerId };
+    // Use shared middleware for encryption and integrity headers
+    // This automatically:
+    // - Encrypts responses if JWT token is present
+    // - Adds integrity headers for service-to-service calls (SUPER_ADMIN_API_KEY)
+    return await wrapWithEncryption(handlerResponse, auth, request, env);
 }
 
 /**

@@ -43,7 +43,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && request.method === 'GET') {
             const { handleListAllMods } = await import('../handlers/admin/list.js');
             const response = await handleListAllMods(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /admin/mods/:modId/status - Update mod status
@@ -51,7 +51,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const modId = pathSegments[2];
             const { handleUpdateModStatus } = await import('../handlers/admin/triage.js');
             const response = await handleUpdateModStatus(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /admin/mods/:modId/comments - Add review comment
@@ -59,14 +59,14 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const modId = pathSegments[2];
             const { handleAddReviewComment } = await import('../handlers/admin/triage.js');
             const response = await handleAddReviewComment(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/approvals - List approved uploaders
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'approvals' && request.method === 'GET') {
             const { handleListApprovedUsers } = await import('../handlers/admin/approvals.js');
             const response = await handleListApprovedUsers(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /admin/approvals/:userId - Approve user for uploads
@@ -74,7 +74,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const userId = pathSegments[2];
             const { handleApproveUser } = await import('../handlers/admin/approvals.js');
             const response = await handleApproveUser(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: DELETE /admin/approvals/:userId - Revoke user upload permission
@@ -82,7 +82,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const userId = pathSegments[2];
             const { handleRevokeUser } = await import('../handlers/admin/approvals.js');
             const response = await handleRevokeUser(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: DELETE /admin/mods/:modId - Delete mod (admin only, bypasses author check)
@@ -91,21 +91,21 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             console.log('[AdminRoutes] DELETE /admin/mods/:modId matched', { modId, pathSegments, method: request.method });
             const { handleAdminDeleteMod } = await import('../handlers/admin/delete.js');
             const response = await handleAdminDeleteMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/r2/files - List all R2 files
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && request.method === 'GET') {
             const { handleListR2Files } = await import('../handlers/admin/r2-management.js');
             const response = await handleListR2Files(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/r2/duplicates - Detect duplicate and orphaned files
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'duplicates' && request.method === 'GET') {
             const { handleDetectDuplicates } = await import('../handlers/admin/r2-management.js');
             const response = await handleDetectDuplicates(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: DELETE /admin/r2/files/:key - Delete single R2 file
@@ -113,21 +113,21 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const key = decodeURIComponent(pathSegments[3]);
             const { handleDeleteR2File } = await import('../handlers/admin/r2-management.js');
             const response = await handleDeleteR2File(request, env, auth, key);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /admin/r2/files/delete - Bulk delete R2 files
         if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && pathSegments[3] === 'delete' && request.method === 'POST') {
             const { handleDeleteR2File } = await import('../handlers/admin/r2-management.js');
             const response = await handleDeleteR2File(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/users - List all users
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'GET') {
             const { handleListUsers } = await import('../handlers/admin/users.js');
             const response = await handleListUsers(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/users/:userId - Get user details
@@ -135,7 +135,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const userId = pathSegments[2];
             const { handleGetUserDetails } = await import('../handlers/admin/users.js');
             const response = await handleGetUserDetails(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: PUT /admin/users/:userId - Update user
@@ -143,7 +143,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const userId = pathSegments[2];
             const { handleUpdateUser } = await import('../handlers/admin/users.js');
             const response = await handleUpdateUser(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/users/:userId/mods - Get user's mods
@@ -151,21 +151,21 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             const userId = pathSegments[2];
             const { handleGetUserMods } = await import('../handlers/admin/users.js');
             const response = await handleGetUserMods(request, env, userId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /admin/settings - Get admin settings
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'GET') {
             const { handleGetSettings } = await import('../handlers/admin/settings.js');
             const response = await handleGetSettings(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: PUT /admin/settings - Update admin settings
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'PUT') {
             const { handleUpdateSettings } = await import('../handlers/admin/settings.js');
             const response = await handleUpdateSettings(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // 404 for unknown admin routes

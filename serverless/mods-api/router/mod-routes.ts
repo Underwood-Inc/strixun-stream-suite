@@ -106,7 +106,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUploadMod(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
@@ -129,7 +129,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetUserPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetUserPermissions(request, env, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
@@ -155,7 +155,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth || undefined);
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: GET /mods/:slug or GET /:slug - Get mod detail (by slug)
@@ -180,7 +180,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleGetModDetail(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth || undefined);
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: PATCH /mods/:slug or PATCH /:slug - Update mod (by slug)
@@ -221,7 +221,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUpdateMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: DELETE /mods/:slug or DELETE /:slug - Delete mod (by slug)
@@ -262,7 +262,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleDeleteMod(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug/ratings or GET /:slug/ratings - Get ratings for a mod
@@ -288,7 +288,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth || undefined);
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: POST /mods/:slug/ratings or POST /:slug/ratings - Submit a rating for a mod
@@ -330,7 +330,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleSubmitModRating } = await import('../handlers/mods/ratings.js');
             const response = await handleSubmitModRating(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /mods/:slug/versions or POST /:slug/versions - Upload new version
@@ -371,7 +371,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 };
             }
             const response = await handleUploadVersion(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug/thumbnail or GET /:slug/thumbnail - Get thumbnail
@@ -517,7 +517,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleVerifyVersion } = await import('../handlers/versions/verify.js');
             const response = await handleVerifyVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth || undefined);
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: POST /mods/:slug/versions/:versionId/validate or POST /:slug/versions/:versionId/validate - Validate file against uploaded version
@@ -554,7 +554,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleValidateVersion } = await import('../handlers/versions/validate.js');
             const response = await handleValidateVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth || undefined);
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge

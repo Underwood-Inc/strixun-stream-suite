@@ -152,16 +152,31 @@ export function createEncryptionWrapper<T extends (...args: any[]) => Promise<Re
  *   auth: AuthResult
  * ): Promise<RouteResult> {
  *   const handlerResponse = await handler(request, env, auth);
- *   return await wrapWithEncryption(handlerResponse, auth);
+ *   return await wrapWithEncryption(handlerResponse, auth, request, env);
  * }
  * ```
  */
 export async function wrapWithEncryption(
   handlerResponse: Response,
-  auth: AuthResult | null | undefined
+  auth: AuthResult | null | undefined,
+  request?: Request,
+  env?: { NETWORK_INTEGRITY_KEYPHRASE?: string; [key: string]: any }
 ): Promise<RouteResult> {
   // Don't encrypt if response is not OK
   if (!handlerResponse.ok) {
+    // Still add integrity header for service-to-service error responses
+    if (request && env && (!auth?.jwtToken || auth.userId === 'service')) {
+      try {
+        const { wrapResponseWithIntegrity } = await import('../service-client/integrity-response.js');
+        const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth, env);
+        return {
+          response: responseWithIntegrity,
+          customerId: auth?.customerId || null,
+        };
+      } catch (error) {
+        console.error('Failed to add integrity header to error response:', error);
+      }
+    }
     return {
       response: handlerResponse,
       customerId: auth?.customerId || null,
@@ -169,16 +184,33 @@ export async function wrapWithEncryption(
   }
 
   // If no auth token, return unencrypted (but still set header to false for clarity)
-  if (!auth?.jwtToken) {
+  // This is likely a service-to-service call - add integrity header
+  if (!auth?.jwtToken || auth.userId === 'service') {
     const headers = new Headers(handlerResponse.headers);
     headers.set('X-Encrypted', 'false');
+    
+    // Add integrity header for service-to-service calls
+    if (request && env) {
+      try {
+        const { wrapResponseWithIntegrity } = await import('../service-client/integrity-response.js');
+        const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth, env);
+        return {
+          response: responseWithIntegrity,
+          customerId: auth?.customerId || null,
+        };
+      } catch (error) {
+        console.error('Failed to add integrity header to service response:', error);
+        // Fall through to return response without integrity header
+      }
+    }
+    
     return {
       response: new Response(handlerResponse.body, {
         status: handlerResponse.status,
         statusText: handlerResponse.statusText,
         headers: headers,
       }),
-      customerId: null,
+      customerId: auth?.customerId || null,
     };
   }
 
@@ -242,12 +274,16 @@ export async function wrapWithEncryption(
     headers.set('Content-Type', 'application/json');
     headers.set('X-Encrypted', 'true');
 
+    const encryptedResponse = new Response(JSON.stringify(encrypted), {
+      status: handlerResponse.status,
+      statusText: handlerResponse.statusText,
+      headers: headers,
+    });
+
+    // For JWT-encrypted responses, we don't add integrity header
+    // (integrity is only for service-to-service calls)
     return {
-      response: new Response(JSON.stringify(encrypted), {
-        status: handlerResponse.status,
-        statusText: handlerResponse.statusText,
-        headers: headers,
-      }),
+      response: encryptedResponse,
       customerId: auth.customerId || null,
     };
   } catch (error) {

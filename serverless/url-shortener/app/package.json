@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "pnpm --filter @strixun/otp-login build:svelte",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

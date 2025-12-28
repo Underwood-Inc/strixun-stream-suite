@@ -135,14 +135,18 @@ function parseIntegritySignature(header: string | null): string | null {
 
 /**
  * Calculate request integrity signature
- * Includes: method, path, body (if present), timestamp
+ * Includes: method, path, body (if present), timestamp, customerID (if present)
+ * 
+ * CRITICAL: customerID is included in the hash to ensure requests cannot be
+ * tampered with to access data from a different customer account.
  */
 export async function calculateRequestIntegrity(
     method: string,
     path: string,
     body: string | ArrayBuffer | null | undefined,
     keyphrase: string,
-    timestamp?: string
+    timestamp?: string,
+    customerId?: string | null
 ): Promise<string> {
     const timestampStr = timestamp || Date.now().toString();
     
@@ -152,6 +156,14 @@ export async function calculateRequestIntegrity(
         path,
         timestampStr,
     ];
+    
+    // CRITICAL: Include customerID in hash to prevent cross-customer data access
+    // This ensures that requests cannot be tampered with to access data from another customer
+    if (customerId) {
+        payloadParts.push(customerId);
+    } else {
+        payloadParts.push('null'); // Explicit null to prevent hash collision
+    }
     
     // Add body hash if present
     if (body !== null && body !== undefined) {
@@ -230,6 +242,9 @@ export async function verifyResponseIntegrity(
 
 /**
  * Add integrity headers to request
+ * 
+ * CRITICAL: Extracts customerID from JWT token or X-Customer-ID header
+ * and includes it in the integrity hash to prevent cross-customer data access.
  */
 export async function addRequestIntegrityHeaders(
     method: string,
@@ -238,11 +253,46 @@ export async function addRequestIntegrityHeaders(
     headers: Headers,
     keyphrase: string
 ): Promise<void> {
+    // Extract customerID from JWT token or X-Customer-ID header
+    let customerId: string | null = null;
+    
+    // Try X-Customer-ID header first
+    const customerIdHeader = headers.get('X-Customer-ID');
+    if (customerIdHeader) {
+        customerId = customerIdHeader;
+    }
+    
+    // Try to extract from JWT token if available
+    if (!customerId) {
+        const authHeader = headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                // Decode JWT payload (without verification - just for customerID extraction)
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                    const payloadB64 = parts[1];
+                    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+                    const payload = JSON.parse(payloadJson);
+                    customerId = payload.customerId || null;
+                }
+            } catch (error) {
+                // JWT decode failed - continue without customerID
+                console.warn('[Integrity] Failed to extract customerID from JWT:', error);
+            }
+        }
+    }
+    
     const timestamp = Date.now().toString();
-    const integritySignature = await calculateRequestIntegrity(method, path, body, keyphrase, timestamp);
+    const integritySignature = await calculateRequestIntegrity(method, path, body, keyphrase, timestamp, customerId);
     
     headers.set('X-Strixun-Request-Integrity', integritySignature);
     headers.set('X-Strixun-Request-Timestamp', timestamp);
+    
+    // Also set X-Customer-ID header if we extracted it from JWT (for server-side verification)
+    if (customerId && !customerIdHeader) {
+        headers.set('X-Customer-ID', customerId);
+    }
 }
 
 /**

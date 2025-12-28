@@ -115,7 +115,7 @@ export function Header() {
                             <NavLink to="/admin">Admin</NavLink>
                         )}
                         <Button variant="secondary" onClick={handleLogout}>
-                            Logout ({user?.email})
+                            Logout ({user?.displayName || 'User'})
                         </Button>
                     </>
                 ) : (

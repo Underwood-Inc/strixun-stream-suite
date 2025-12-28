@@ -5,6 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "prebuild": "pnpm --filter @strixun/otp-login build:react",
     "dev": "vite",
     "dev:api": "cd ../serverless/mods-api && pnpm dev",
     "dev:auth": "cd ../serverless/otp-auth-service && pnpm exec wrangler dev --port 8788",
@@ -12,7 +13,14 @@
     "dev:all": "concurrently -n frontend,api,auth,customer -c cyan,yellow,magenta,green \"pnpm dev\" \"pnpm dev:api\" \"pnpm dev:auth\" \"pnpm dev:customer\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:api": "vitest run src/services/api",
+    "test:api:watch": "vitest watch src/services/api",
+    "test:api:coverage": "vitest run --coverage src/services/api"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -35,7 +43,13 @@
     "vite": "^6.0.3",
     "@types/node": "^22.10.2",
     "@cloudflare/workers-types": "^4.20241127.0",
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "vitest": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "jsdom": "^25.0.1"
   }
 }
 

@@ -1,0 +1,103 @@
+name: Mods Hub Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mods-hub/**'
+      - '.github/workflows/mods-hub-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mods-hub/**'
+      - '.github/workflows/mods-hub-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test API Service
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run API service unit tests
+        working-directory: mods-hub
+        run: pnpm test:api
+      
+      - name: Run API service integration tests
+        working-directory: mods-hub
+        run: pnpm test:api
+      
+      - name: Generate coverage report
+        working-directory: mods-hub
+        run: pnpm test:api:coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./mods-hub/coverage/lcov.info
+          flags: mods-hub-api
+          name: mods-hub-api-coverage
+          fail_ci_if_error: true
+      
+      - name: Check coverage threshold
+        working-directory: mods-hub
+        run: |
+          if [ ! -f "coverage/coverage-summary.json" ]; then
+            echo "Coverage report not found!"
+            exit 1
+          fi
+          
+          # Check if coverage meets 100% threshold
+          COVERAGE=$(node -e "const data = require('./coverage/coverage-summary.json'); const api = data.total.lines.pct; console.log(api);")
+          
+          if (( $(echo "$COVERAGE < 100" | bc -l) )); then
+            echo "Coverage is $COVERAGE%, but 100% is required!"
+            exit 1
+          fi
+          
+          echo "Coverage is $COVERAGE% ✓"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build
+        working-directory: mods-hub
+        run: pnpm build
+

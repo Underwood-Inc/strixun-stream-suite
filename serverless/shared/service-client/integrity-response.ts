@@ -1,0 +1,150 @@
+/**
+ * Response Integrity Helper
+ * 
+ * Utility functions to add integrity headers to service-to-service API responses.
+ * This ensures that all responses from services include the X-Strixun-Response-Integrity
+ * header that ServiceClient expects for verification.
+ */
+
+import { calculateResponseIntegrity } from './integrity.js';
+
+/**
+ * Check if a request is a service-to-service call (API key auth, not JWT)
+ * @param request - HTTP request
+ * @param auth - Authentication result from the service
+ * @returns true if this is a service-to-service call
+ */
+export function isServiceToServiceCall(
+    request: Request,
+    auth: { userId?: string; jwtToken?: string; customerId?: string | null } | null
+): boolean {
+    // Check for service key header (X-Service-Key)
+    const serviceKey = request.headers.get('X-Service-Key');
+    if (serviceKey) {
+        return true;
+    }
+    
+    // Check for SUPER_ADMIN_API_KEY in Authorization header (Bearer token that's not a JWT)
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        // SUPER_ADMIN_API_KEY is typically a long random string, not a JWT
+        // JWT tokens have 3 parts separated by dots (header.payload.signature)
+        // If it doesn't have dots or has more than 3 parts, it's likely an API key
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            // Not a JWT format - likely an API key
+            return true;
+        }
+    }
+    
+    // If auth is null but we got here, check if it's a non-Bearer auth
+    if (!auth) {
+        if (authHeader && !authHeader.startsWith('Bearer ')) {
+            return true;
+        }
+        return false;
+    }
+    
+    // If userId is 'service', it's a service-to-service call
+    if (auth.userId === 'service') {
+        return true;
+    }
+    
+    // If there's no JWT token but auth exists, it's likely API key auth
+    if (!auth.jwtToken || auth.jwtToken === '') {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Add integrity header to a response for service-to-service calls
+ * @param response - HTTP response
+ * @param keyphrase - Network integrity keyphrase from environment
+ * @returns New response with integrity header added
+ */
+export async function addResponseIntegrityHeader(
+    response: Response,
+    keyphrase: string
+): Promise<Response> {
+    // Clone response to read body
+    const responseClone = response.clone();
+    
+    // Get response body text
+    let bodyText: string;
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType?.includes('application/json')) {
+        try {
+            const data = await responseClone.json();
+            bodyText = JSON.stringify(data);
+        } catch (error) {
+            // If JSON parsing fails, try text
+            bodyText = await responseClone.text();
+        }
+    } else {
+        bodyText = await responseClone.text();
+    }
+    
+    // Calculate integrity signature
+    const integrityHeader = await calculateResponseIntegrity(
+        response.status,
+        bodyText,
+        keyphrase
+    );
+    
+    // Create new headers with integrity header
+    const headers = new Headers(response.headers);
+    headers.set('X-Strixun-Response-Integrity', integrityHeader);
+    
+    // Return new response with integrity header
+    return new Response(bodyText, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: headers,
+    });
+}
+
+/**
+ * Get network integrity keyphrase from environment
+ * @param env - Worker environment
+ * @returns Keyphrase or dev fallback
+ */
+export function getNetworkIntegrityKeyphrase(env: { NETWORK_INTEGRITY_KEYPHRASE?: string }): string {
+    if (env.NETWORK_INTEGRITY_KEYPHRASE) {
+        return env.NETWORK_INTEGRITY_KEYPHRASE;
+    }
+    
+    // Fallback for development (should not be used in production)
+    console.warn('[NetworkIntegrity] Using dev fallback for NETWORK_INTEGRITY_KEYPHRASE - set NETWORK_INTEGRITY_KEYPHRASE in production!');
+    return 'strixun:network-integrity:dev-fallback';
+}
+
+/**
+ * Wrap a response with integrity header if it's a service-to-service call
+ * @param response - HTTP response
+ * @param request - HTTP request
+ * @param auth - Authentication result
+ * @param env - Worker environment
+ * @returns Response with integrity header if service-to-service, otherwise original response
+ */
+export async function wrapResponseWithIntegrity(
+    response: Response,
+    request: Request,
+    auth: { userId?: string; jwtToken?: string } | null,
+    env: { NETWORK_INTEGRITY_KEYPHRASE?: string }
+): Promise<Response> {
+    // Only add integrity header for service-to-service calls
+    if (!isServiceToServiceCall(request, auth)) {
+        return response;
+    }
+    
+    // Get keyphrase
+    const keyphrase = getNetworkIntegrityKeyphrase(env);
+    
+    // Add integrity header
+    return await addResponseIntegrityHeader(response, keyphrase);
+}
+

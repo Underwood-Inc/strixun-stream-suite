@@ -12,16 +12,28 @@ Framework-agnostic email OTP authentication component for the Strixun Stream Sui
 
 ## Installation
 
-The component is located in `shared-components/otp-login/`. No npm package needed - just import directly.
+The component is located in `shared-components/otp-login/`. **IMPORTANT**: Always import from `dist/` files, not source files.
+
+## Building the Library
+
+Before using the library, build it:
+
+```bash
+cd shared-components/otp-login
+pnpm build
+```
+
+This creates dist files for React, Svelte, and Vanilla JS.
 
 ## Usage
 
 ### Svelte
 
+**✅ CORRECT - Import from dist:**
 ```svelte
 <script>
-  import OtpLogin from '../../../shared-components/otp-login/svelte/OtpLogin.svelte';
-  import type { LoginSuccessData } from '../../../shared-components/otp-login/core';
+  import OtpLogin from '../../../shared-components/otp-login/dist/svelte';
+  import type { LoginSuccessData } from '../../../shared-components/otp-login/dist/svelte';
 
   function handleLoginSuccess(data: LoginSuccessData) {
     console.log('Logged in!', data);
@@ -67,8 +79,9 @@ The component is located in `shared-components/otp-login/`. No npm package neede
 
 ### Vanilla JavaScript/TypeScript
 
+**✅ CORRECT - Import from dist:**
 ```typescript
-import { OtpLoginCore } from './shared-components/otp-login/core';
+import { OtpLoginCore } from './shared-components/otp-login/dist/js';
 
 const login = new OtpLoginCore({
   apiUrl: 'https://auth.idling.app',

@@ -8,7 +8,7 @@
   "scripts": {
     "build:decrypt": "node scripts/bundle-decrypt.js",
     "build:otp-core": "node scripts/bundle-otp-core.js",
-    "build:otp-login": "pnpm --filter @strixun/otp-login build:core",
+    "build:otp-login": "pnpm --filter @strixun/otp-login build:vanilla",
     "build:app": "cd app && pnpm build && cd .. && node scripts/build-app.js",
     "build:all": "pnpm build:decrypt && pnpm build:otp-core && pnpm build:otp-login && pnpm build:app",
     "predeploy": "pnpm build:all",

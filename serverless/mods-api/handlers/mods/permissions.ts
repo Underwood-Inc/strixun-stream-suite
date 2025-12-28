@@ -30,7 +30,8 @@ export async function handleGetUserPermissions(
             hasUploadPermission: hasPermission,
             isSuperAdmin: isSuperAdmin,
             userId: auth.userId,
-            email: auth.email,
+            // CRITICAL: email is NEVER returned - it remains encrypted in the OTP auth service
+            // Use displayName from customer account for user identification
         }), {
             status: 200,
             headers: {

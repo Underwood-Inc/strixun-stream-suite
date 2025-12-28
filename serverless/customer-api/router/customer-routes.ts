@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
-import { encryptWithJWT } from '@strixun/api-framework';
+import { wrapWithEncryption } from '../../shared/encryption/middleware.js';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
 
 interface Env {
@@ -55,35 +55,11 @@ async function handleCustomerRoute(
     // Get handler response
     const handlerResponse = await handler(request, env, auth);
 
-    // If JWT token is present, encrypt the response (automatic E2E encryption)
-    // Service calls don't have JWT tokens, so skip encryption for service responses
-    if (auth?.jwtToken && handlerResponse.ok) {
-        try {
-            const responseData = await handlerResponse.json();
-            const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
-
-            // Preserve original headers and add encryption flag
-            const headers = new Headers(handlerResponse.headers);
-            headers.set('Content-Type', 'application/json');
-            headers.set('X-Encrypted', 'true'); // Flag to indicate encrypted response
-
-            return {
-                response: new Response(JSON.stringify(encrypted), {
-                    status: handlerResponse.status,
-                    statusText: handlerResponse.statusText,
-                    headers: headers,
-                }),
-                customerId: auth.customerId
-            };
-        } catch (error) {
-            console.error('Failed to encrypt response:', error);
-            // Return unencrypted response if encryption fails (shouldn't happen)
-            return { response: handlerResponse, customerId: auth.customerId };
-        }
-    }
-
-    // For non-OK responses, return as-is (no encryption)
-    return { response: handlerResponse, customerId: auth.customerId };
+    // Use shared middleware for encryption and integrity headers
+    // This automatically:
+    // - Encrypts responses if JWT token is present
+    // - Adds integrity headers for service-to-service calls
+    return await wrapWithEncryption(handlerResponse, auth, request, env);
 }
 
 /**

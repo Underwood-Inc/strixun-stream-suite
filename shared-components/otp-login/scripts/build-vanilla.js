@@ -1,7 +1,7 @@
 /**
- * Bundle OTP Login Core for Browser Use
+ * Build Vanilla JS OTP Login
  * 
- * Bundles the shared OtpLoginCore for use in standalone HTML
+ * Builds vanilla JavaScript/TypeScript output for use without frameworks
  */
 
 import { build } from 'esbuild';
@@ -14,14 +14,16 @@ const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '../..');
 const corePath = join(__dirname, '../core.ts');
-const outputFile = join(__dirname, '../dist/otp-core.js');
-const outputFileMin = join(__dirname, '../dist/otp-core.min.js');
+const outputDir = join(__dirname, '../dist/js');
+const outputFile = join(outputDir, 'otp-login-core.js');
+const outputFileMin = join(outputDir, 'otp-login-core.min.js');
+const outputFileESM = join(outputDir, 'otp-login-core.esm.js');
 
 // Ensure dist directory exists
-mkdirSync(join(__dirname, '../dist'), { recursive: true });
+mkdirSync(outputDir, { recursive: true });
 
 try {
-  // Build unminified version (for debugging)
+  // Build IIFE version (for browser globals)
   await build({
     entryPoints: [corePath],
     bundle: true,
@@ -36,14 +38,12 @@ try {
       'process.env.NODE_ENV': '"production"',
     },
     resolveExtensions: ['.ts', '.js', '.json'],
-    // Note: esbuild automatically resolves relative imports when bundle: true
-    // The core.ts imports from '../../shared-config/otp-config.js' which should resolve correctly
     banner: {
       js: '// Bundled OtpLoginCore from shared-components/otp-login/core.ts\n// This file is auto-generated - do not edit manually\n',
     },
   });
 
-  // Build minified version (for production CDN)
+  // Build minified IIFE version
   await build({
     entryPoints: [corePath],
     bundle: true,
@@ -58,11 +58,25 @@ try {
       'process.env.NODE_ENV': '"production"',
     },
     resolveExtensions: ['.ts', '.js', '.json'],
-    // Note: esbuild automatically resolves relative imports when bundle: true
-    // The core.ts imports from '../../shared-config/otp-config.js' which should resolve correctly
   });
 
-  // Read the bundled files and wrap them to expose to window
+  // Build ESM version (for modern browsers and bundlers)
+  await build({
+    entryPoints: [corePath],
+    bundle: true,
+    outfile: outputFileESM,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2020',
+    minify: false,
+    sourcemap: true,
+    define: {
+      'process.env.NODE_ENV': '"production"',
+    },
+    resolveExtensions: ['.ts', '.js', '.json'],
+  });
+
+  // Read the bundled files and wrap IIFE versions to expose to window
   const bundled = readFileSync(outputFile, 'utf-8');
   const bundledMin = readFileSync(outputFileMin, 'utf-8');
   
@@ -80,11 +94,12 @@ try {
   writeFileSync(outputFile, wrapBundle(bundled));
   writeFileSync(outputFileMin, wrapBundle(bundledMin));
   
-  console.log(`✅ Bundled OtpLoginCore:`);
-  console.log(`   - Development: ${outputFile}`);
-  console.log(`   - Production (minified): ${outputFileMin}`);
+  console.log(`✅ Built Vanilla JS OTP Login to ${outputDir}/`);
+  console.log(`   - IIFE (Development): otp-login-core.js`);
+  console.log(`   - IIFE (Production): otp-login-core.min.js`);
+  console.log(`   - ESM: otp-login-core.esm.js`);
 } catch (error) {
-  console.error('❌ Failed to bundle OtpLoginCore:', error);
+  console.error('❌ Failed to build Vanilla JS OTP Login:', error);
   process.exit(1);
 }
 

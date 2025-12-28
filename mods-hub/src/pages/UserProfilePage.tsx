@@ -174,8 +174,8 @@ export function UserProfilePage() {
                         <InfoValue>{user.displayName || 'Not set'}</InfoValue>
                     </InfoItem>
                     <InfoItem>
-                        <InfoLabel>Email</InfoLabel>
-                        <InfoValue>{user.email}</InfoValue>
+                        <InfoLabel>Display Name</InfoLabel>
+                        <InfoValue>{user.displayName || 'Not set'}</InfoValue>
                     </InfoItem>
                     <InfoItem>
                         <InfoLabel>User ID</InfoLabel>
