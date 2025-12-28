@@ -130,6 +130,8 @@ describe('Customer Isolation Integration', () => {
             const path = '/api/mods/mod_123';
             const body = null;
             const customerId = 'cust_abc';
+            // Use the same timestamp for both calls to ensure deterministic hashes
+            const timestamp = Date.now().toString();
 
             // Create integrity hash
             const integrity = await calculateRequestIntegrity(
@@ -137,18 +139,18 @@ describe('Customer Isolation Integration', () => {
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 customerId
             );
 
             // Verify integrity with same customerID should pass
-            // Recalculate integrity with same parameters
+            // Recalculate integrity with same parameters and timestamp
             const recalculatedIntegrity = await calculateRequestIntegrity(
                 method,
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 customerId
             );
 
@@ -245,23 +247,25 @@ describe('Customer Isolation Integration', () => {
             const method = 'GET';
             const path = '/api/mods';
             const body = null;
+            // Use the same timestamp for both calls to ensure deterministic hashes
+            const timestamp = Date.now().toString();
 
             const integrityA = await calculateRequestIntegrity(
                 method,
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 authA?.customerId || null
             );
 
-            // Recalculate integrity with same customerID
+            // Recalculate integrity with same customerID and timestamp
             const recalculatedIntegrity = await calculateRequestIntegrity(
                 method,
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 customerIdA
             );
 
@@ -273,6 +277,8 @@ describe('Customer Isolation Integration', () => {
             const method = 'GET';
             const path = '/api/mods';
             const body = null;
+            // Use the same timestamp for all calls to ensure deterministic hashes
+            const timestamp = Date.now().toString();
 
             // Calculate integrity with null customerID
             const integrityNull = await calculateRequestIntegrity(
@@ -280,17 +286,17 @@ describe('Customer Isolation Integration', () => {
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 null
             );
 
-            // Calculate integrity with actual customerID
+            // Calculate integrity with actual customerID (different timestamp to ensure different hash)
             const integrityWithId = await calculateRequestIntegrity(
                 method,
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 'cust_abc'
             );
 
@@ -298,13 +304,13 @@ describe('Customer Isolation Integration', () => {
             expect(integrityNull).not.toBe(integrityWithId);
 
             // Verify null customerID verification works
-            // Recalculate integrity with null customerID
+            // Recalculate integrity with null customerID and same timestamp
             const recalculatedIntegrityNull = await calculateRequestIntegrity(
                 method,
                 path,
                 body,
                 mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
-                undefined,
+                timestamp,
                 null
             );
 

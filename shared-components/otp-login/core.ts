@@ -279,7 +279,9 @@ export class OtpLoginCore {
 
     // Validate email
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.setState({ error: 'Please enter a valid email address' });
+      const errorMsg = 'Please enter a valid email address';
+      this.setState({ error: errorMsg });
+      this.config.onError?.(errorMsg);
       return;
     }
 
@@ -381,7 +383,7 @@ export class OtpLoginCore {
         const errorCode = data.errorCode || data.reason || data.code || 'unknown_error';
         
         // Check if this is a rate limit error (429)
-        if (response.status === 429 && data.reset_at) {
+        if (response.status === 429 && (data.reset_at || data.reset_at_iso)) {
           // Use server's authoritative retry_after value if available, otherwise calculate from reset_at
           // The server's retry_after is the source of truth and accounts for server clock time
           const secondsUntilReset = data.retry_after !== undefined 

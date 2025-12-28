@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const projectRoot = resolve(__dirname, '../..');
-const entryPath = resolve(__dirname, '../svelte/OtpLogin.svelte');
+const entryPath = resolve(__dirname, '../entry.ts');
 const outputDir = resolve(__dirname, '../dist/svelte');
 const svelteConfigPath = resolve(__dirname, '../svelte.config.js');
 
@@ -34,8 +34,6 @@ try {
       svelte({
         configFile: svelteConfigPath,
         compilerOptions: {
-          generate: 'dom',
-          hydratable: false,
           css: 'injected',
         },
         onwarn: (warning, handler) => {

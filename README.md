@@ -6,6 +6,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![OBS Studio](https://img.shields.io/badge/OBS%20Studio-28%2B-orange?style=for-the-badge&logo=obsstudio)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=for-the-badge)
+![Coverage](https://codecov.io/gh/Underwood-Inc/strixun-stream-suite/branch/master/graph/badge.svg)
 
 **A comprehensive OBS Studio production toolkit for professional streaming**
 

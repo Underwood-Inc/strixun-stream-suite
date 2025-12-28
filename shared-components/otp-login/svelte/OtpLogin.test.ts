@@ -7,11 +7,10 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte/svelte5';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tick } from 'svelte';
-import OtpLogin from './OtpLogin.svelte';
 import type { OtpLoginState, LoginSuccessData } from '../core';
 
 // Use hoisted to ensure mocks are set up before imports
-const { mockOtpLoginCore, getMockCoreInstance } = vi.hoisted(() => {
+const { mockOtpLoginCore, getMockCoreInstance, mockGetOtpEncryptionKey } = vi.hoisted(() => {
   let currentMockInstance: any = null;
   
   const mockCore = vi.fn((config: any) => {
@@ -43,9 +42,12 @@ const { mockOtpLoginCore, getMockCoreInstance } = vi.hoisted(() => {
     return currentMockInstance;
   });
   
+  const mockGetKey = vi.fn(() => 'a'.repeat(32));
+  
   return {
     mockOtpLoginCore: mockCore,
     getMockCoreInstance: () => currentMockInstance,
+    mockGetOtpEncryptionKey: mockGetKey,
   };
 });
 
@@ -57,8 +59,11 @@ vi.mock('../core', () => {
 
 // Mock getOtpEncryptionKey
 vi.mock('../../../shared-config/otp-encryption', () => ({
-  getOtpEncryptionKey: vi.fn(() => 'a'.repeat(32)),
+  getOtpEncryptionKey: mockGetOtpEncryptionKey,
 }));
+
+// Import component AFTER mocks are set up
+import OtpLogin from './OtpLogin.svelte';
 
 describe('OtpLogin Svelte Component', () => {
   const mockOnSuccess = vi.fn();
@@ -392,9 +397,9 @@ describe('OtpLogin Svelte Component', () => {
       // Wait for onMount to complete - use tick() to ensure Svelte has processed
       await tick();
       await waitFor(() => {
-        const instance = getMockCoreInstance();
-        expect(instance).toBeTruthy();
-        expect(instance?.subscribe).toHaveBeenCalled();
+        const coreInstance = getMockCoreInstance();
+        expect(coreInstance).toBeTruthy();
+        expect(coreInstance?.subscribe).toHaveBeenCalled();
       }, { timeout: 2000 });
       
       if ((mockCoreInstance as any)._callback) {
@@ -406,8 +411,8 @@ describe('OtpLogin Svelte Component', () => {
       const emailInput = screen.getByLabelText(/email/i);
       await fireEvent.input(emailInput, { target: { value: 'test@example.com' } });
 
-      const instance = getMockCoreInstance();
-      expect(instance?.setEmail).toHaveBeenCalledWith('test@example.com');
+      const finalInstance = getMockCoreInstance();
+      expect(finalInstance?.setEmail).toHaveBeenCalledWith('test@example.com');
     });
 
     it('should call requestOtp when submit button is clicked', async () => {
@@ -432,9 +437,9 @@ describe('OtpLogin Svelte Component', () => {
       // Wait for onMount to complete - use tick() to ensure Svelte has processed
       await tick();
       await waitFor(() => {
-        const instance = getMockCoreInstance();
-        expect(instance).toBeTruthy();
-        expect(instance?.subscribe).toHaveBeenCalled();
+        const coreInstance = getMockCoreInstance();
+        expect(coreInstance).toBeTruthy();
+        expect(coreInstance?.subscribe).toHaveBeenCalled();
       }, { timeout: 2000 });
       
       if ((mockCoreInstance as any)._callback) {
@@ -446,8 +451,8 @@ describe('OtpLogin Svelte Component', () => {
       const submitButton = screen.getByRole('button', { name: /request|send/i });
       await fireEvent.click(submitButton);
 
-      const instance = getMockCoreInstance();
-      expect(instance?.requestOtp).toHaveBeenCalled();
+      const finalInstance = getMockCoreInstance();
+      expect(finalInstance?.requestOtp).toHaveBeenCalled();
     });
 
     it('should call setOtp when OTP input changes', async () => {
@@ -472,9 +477,9 @@ describe('OtpLogin Svelte Component', () => {
       // Wait for onMount to complete - use tick() to ensure Svelte has processed
       await tick();
       await waitFor(() => {
-        const instance = getMockCoreInstance();
-        expect(instance).toBeTruthy();
-        expect(instance?.subscribe).toHaveBeenCalled();
+        const coreInstance = getMockCoreInstance();
+        expect(coreInstance).toBeTruthy();
+        expect(coreInstance?.subscribe).toHaveBeenCalled();
       }, { timeout: 2000 });
       
       if ((mockCoreInstance as any)._callback) {
@@ -488,8 +493,8 @@ describe('OtpLogin Svelte Component', () => {
         fireEvent.input(otpInput, { target: { value: '123456789' } });
       });
 
-      const instance = getMockCoreInstance();
-      expect(instance?.setOtp).toHaveBeenCalledWith('123456789');
+      const finalInstance = getMockCoreInstance();
+      expect(finalInstance?.setOtp).toHaveBeenCalledWith('123456789');
     });
 
     it('should call verifyOtp when OTP form is submitted', async () => {
@@ -514,9 +519,9 @@ describe('OtpLogin Svelte Component', () => {
       // Wait for onMount to complete - use tick() to ensure Svelte has processed
       await tick();
       await waitFor(() => {
-        const instance = getMockCoreInstance();
-        expect(instance).toBeTruthy();
-        expect(instance?.subscribe).toHaveBeenCalled();
+        const coreInstance = getMockCoreInstance();
+        expect(coreInstance).toBeTruthy();
+        expect(coreInstance?.subscribe).toHaveBeenCalled();
       }, { timeout: 2000 });
       
       if ((mockCoreInstance as any)._callback) {
@@ -530,8 +535,8 @@ describe('OtpLogin Svelte Component', () => {
         fireEvent.click(submitButton);
       });
 
-      const instance = getMockCoreInstance();
-      expect(instance?.verifyOtp).toHaveBeenCalled();
+      const finalInstance = getMockCoreInstance();
+      expect(finalInstance?.verifyOtp).toHaveBeenCalled();
     });
 
     it('should call goBack when back button is clicked', async () => {
@@ -556,9 +561,9 @@ describe('OtpLogin Svelte Component', () => {
       // Wait for onMount to complete - use tick() to ensure Svelte has processed
       await tick();
       await waitFor(() => {
-        const instance = getMockCoreInstance();
-        expect(instance).toBeTruthy();
-        expect(instance?.subscribe).toHaveBeenCalled();
+        const coreInstance = getMockCoreInstance();
+        expect(coreInstance).toBeTruthy();
+        expect(coreInstance?.subscribe).toHaveBeenCalled();
       }, { timeout: 2000 });
       
       if ((mockCoreInstance as any)._callback) {
@@ -572,8 +577,8 @@ describe('OtpLogin Svelte Component', () => {
         fireEvent.click(backButton);
       });
 
-      const instance = getMockCoreInstance();
-      expect(instance?.goBack).toHaveBeenCalled();
+      const finalInstance = getMockCoreInstance();
+      expect(finalInstance?.goBack).toHaveBeenCalled();
     });
   });
 
@@ -640,9 +645,9 @@ describe('OtpLogin Svelte Component', () => {
       
       await tick();
 
-      const instance = getMockCoreInstance();
+      const finalInstance = getMockCoreInstance();
       expect(unsubscribe).toHaveBeenCalled();
-      expect(instance?.destroy).toHaveBeenCalled();
+      expect(finalInstance?.destroy).toHaveBeenCalled();
     });
   });
 

@@ -1,0 +1,66 @@
+name: Test Coverage
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  test-coverage:
+    name: Run Tests with Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run all tests
+        run: pnpm test:all
+
+      - name: Generate root coverage
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Generate serverless coverage
+        run: |
+          pnpm --filter "./serverless/otp-auth-service" test:coverage || true
+          pnpm --filter "./serverless/mods-api" test:coverage || true
+          pnpm --filter "./serverless/twitch-api" test:coverage || true
+        continue-on-error: true
+
+      - name: Verify coverage files exist
+        run: |
+          echo "Checking for coverage files..."
+          find . -name "coverage-final.json" -type f || echo "No coverage files found"
+          find . -name "coverage-summary.json" -type f || echo "No coverage summary files found"
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: |
+            ./coverage/coverage-final.json
+            ./serverless/otp-auth-service/coverage/coverage-final.json
+            ./serverless/mods-api/coverage/coverage-final.json
+            ./serverless/twitch-api/coverage/coverage-final.json
+          flags: unittests
+          name: code-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+

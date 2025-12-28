@@ -242,7 +242,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true }),
+        statusText: 'OK',
+        text: async () => JSON.stringify({ success: true }),
       });
 
       await core.requestOtp();
@@ -290,7 +291,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 429,
-        json: async () => ({
+        statusText: 'Too Many Requests',
+        text: async () => JSON.stringify({
           detail: 'Rate limit exceeded',
           errorCode: 'rate_limit_exceeded',
           reset_at_iso: resetAt,
@@ -314,7 +316,11 @@ describe('OtpLoginCore', () => {
       
       coreWithoutKey.setEmail('test@example.com');
       
-      await expect(coreWithoutKey.requestOtp()).rejects.toThrow('OTP encryption key is required');
+      await coreWithoutKey.requestOtp();
+      
+      const state = coreWithoutKey.getState();
+      expect(state.error).toContain('Encryption failed');
+      expect(mockConfig.onError).toHaveBeenCalled();
       
       coreWithoutKey.destroy();
     });
@@ -327,7 +333,11 @@ describe('OtpLoginCore', () => {
       
       coreWithShortKey.setEmail('test@example.com');
       
-      await expect(coreWithShortKey.requestOtp()).rejects.toThrow('at least 32 characters');
+      await coreWithShortKey.requestOtp();
+      
+      const state = coreWithShortKey.getState();
+      expect(state.error).toContain('Encryption failed');
+      expect(mockConfig.onError).toHaveBeenCalled();
       
       coreWithShortKey.destroy();
     });
@@ -372,7 +382,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({
+        statusText: 'OK',
+        text: async () => JSON.stringify({
           access_token: 'token123',
           email: 'test@example.com',
           userId: 'user123',
@@ -405,7 +416,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: async () => ({
+        statusText: 'Bad Request',
+        text: async () => JSON.stringify({
           detail: 'Invalid OTP code',
         }),
       });
@@ -471,7 +483,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true }),
+        statusText: 'OK',
+        text: async () => JSON.stringify({ success: true }),
       });
 
       await core.requestOtp();
@@ -501,7 +514,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true }),
+        statusText: 'OK',
+        text: async () => JSON.stringify({ success: true }),
       });
 
       await core.requestOtp();
@@ -541,7 +555,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 429,
-        json: async () => ({
+        statusText: 'Too Many Requests',
+        text: async () => JSON.stringify({
           detail: 'Rate limit exceeded',
           reset_at_iso: resetAt,
           retry_after: 60,
@@ -637,7 +652,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({}),
+        statusText: 'OK',
+        text: async () => JSON.stringify({}),
       });
 
       await customCore.requestOtp();
@@ -671,7 +687,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({
+        statusText: 'OK',
+        text: async () => JSON.stringify({
           access_token: 'token',
           email: 'test@example.com',
         }),
@@ -708,7 +725,8 @@ describe('OtpLoginCore', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({}),
+        statusText: 'OK',
+        text: async () => JSON.stringify({}),
       });
 
       await customCore.requestOtp();

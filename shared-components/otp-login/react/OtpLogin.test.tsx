@@ -10,22 +10,48 @@ import { OtpLogin } from './OtpLogin';
 import type { OtpLoginState, LoginSuccessData } from '../core';
 import { OtpLoginCore } from '../core';
 
-// Mock the core
-vi.mock('../core', () => {
-  const mockCore = {
-    subscribe: vi.fn(() => () => {}), // Returns unsubscribe function
-    setEmail: vi.fn(),
-    setOtp: vi.fn(),
-    requestOtp: vi.fn(),
-    verifyOtp: vi.fn(),
-    goBack: vi.fn(),
-    reset: vi.fn(),
-    getState: vi.fn(),
-    destroy: vi.fn(),
-  };
-
+// Mock the core - use hoisted to ensure mocks are set up before imports
+const { mockOtpLoginCore, getMockCoreInstance } = vi.hoisted(() => {
+  let currentMockInstance: any = null;
+  
+  const mockCore = vi.fn(function OtpLoginCore(this: any, config: any) {
+    // Create a fresh mock instance each time OtpLoginCore is called
+    currentMockInstance = {
+      subscribe: vi.fn((callback: any) => {
+        // Store callback for manual triggering
+        (currentMockInstance as any)._callback = callback;
+        return () => {}; // Unsubscribe function
+      }),
+      setEmail: vi.fn(),
+      setOtp: vi.fn(),
+      requestOtp: vi.fn(),
+      verifyOtp: vi.fn(),
+      goBack: vi.fn(),
+      reset: vi.fn(),
+      getState: vi.fn(() => ({
+        step: 'email',
+        email: '',
+        otp: '',
+        loading: false,
+        error: null,
+        countdown: 0,
+        rateLimitResetAt: null,
+        rateLimitCountdown: 0,
+      })),
+      destroy: vi.fn(),
+    };
+    return currentMockInstance;
+  });
+  
   return {
-    OtpLoginCore: vi.fn(() => mockCore),
+    mockOtpLoginCore: mockCore,
+    getMockCoreInstance: () => currentMockInstance,
+  };
+});
+
+vi.mock('../core', () => {
+  return {
+    OtpLoginCore: mockOtpLoginCore,
   };
 });
 
@@ -52,34 +78,8 @@ describe('OtpLogin React Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Create a fresh mock instance for each test
-    mockCoreInstance = {
-      subscribe: vi.fn((callback) => {
-        // Store callback for manual triggering
-        (mockCoreInstance as any)._callback = callback;
-        return () => {}; // Unsubscribe function
-      }),
-      setEmail: vi.fn(),
-      setOtp: vi.fn(),
-      requestOtp: vi.fn(),
-      verifyOtp: vi.fn(),
-      goBack: vi.fn(),
-      reset: vi.fn(),
-      getState: vi.fn(() => ({
-        step: 'email',
-        email: '',
-        otp: '',
-        loading: false,
-        error: null,
-        countdown: 0,
-        rateLimitResetAt: null,
-        rateLimitCountdown: 0,
-      })),
-      destroy: vi.fn(),
-    };
-
-    (OtpLoginCore as any).mockImplementation(() => mockCoreInstance);
+    // Get the current mock instance (will be created when OtpLoginCore is called)
+    mockCoreInstance = getMockCoreInstance();
   });
 
   afterEach(() => {
@@ -90,7 +90,7 @@ describe('OtpLogin React Component', () => {
     it('should mount successfully with required props', () => {
       render(<OtpLogin {...defaultProps} />);
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
+      expect(mockOtpLoginCore).toHaveBeenCalledWith(
         expect.objectContaining({
           apiUrl: 'https://auth.example.com',
           onSuccess: mockOnSuccess,
@@ -109,7 +109,7 @@ describe('OtpLogin React Component', () => {
       const customKey = 'b'.repeat(32);
       render(<OtpLogin {...defaultProps} otpEncryptionKey={customKey} />);
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
+      expect(mockOtpLoginCore).toHaveBeenCalledWith(
         expect.objectContaining({
           otpEncryptionKey: customKey,
         })
@@ -161,7 +161,7 @@ describe('OtpLogin React Component', () => {
       
       render(<OtpLogin {...defaultProps} endpoints={endpoints} />);
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
+      expect(mockOtpLoginCore).toHaveBeenCalledWith(
         expect.objectContaining({ endpoints })
       );
     });
@@ -173,7 +173,7 @@ describe('OtpLogin React Component', () => {
       
       render(<OtpLogin {...defaultProps} customHeaders={customHeaders} />);
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
+      expect(mockOtpLoginCore).toHaveBeenCalledWith(
         expect.objectContaining({ customHeaders })
       );
     });
