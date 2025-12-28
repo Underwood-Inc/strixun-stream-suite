@@ -4,11 +4,11 @@
   "description": "Shared API framework for Strixun Stream Suite - Cloudflare Workers and browser support",
   "private": true,
   "type": "module",
-  "main": "./index.js",
-  "types": "./index.d.ts",
+  "main": "./index.ts",
+  "types": "./index.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
+      "types": "./index.ts",
       "default": "./index.ts"
     },
     "./enhanced": {

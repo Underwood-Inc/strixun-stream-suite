@@ -56,7 +56,7 @@ const SKIP_PATTERNS = [
 function getGitHubToken() {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
-    console.error('[ERROR] GITHUB_TOKEN environment variable is required');
+    console.error('❌ GITHUB_TOKEN environment variable is required');
     console.error('   Get a token from: https://github.com/settings/tokens');
     console.error('   Required scopes: repo (for private repos) or public_repo (for public repos)');
     process.exit(1);
@@ -94,7 +94,7 @@ function findMarkdownFiles(dir, baseDir = rootDir) {
     }
   } catch (error) {
     // Skip directories that don't exist or can't be read
-    console.warn(`[WARNING]  Skipping ${dir}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.warn(`⚠️  Skipping ${dir}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
   
   return files;
@@ -165,19 +165,32 @@ function fixWikiLinks(content, currentPath) {
 function cloneWikiRepo(wikiDir, token) {
   const authUrl = WIKI_REPO_URL.replace('https://', `https://${token}@`);
   
+  // Set environment variables to prevent any interactive prompts
+  const env = { 
+    ...process.env, 
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_ASKPASS: 'echo',
+    GIT_SSH_COMMAND: 'ssh -o BatchMode=yes'
+  };
+  
   if (existsSync(wikiDir)) {
-    console.log('[EMOJI] Updating existing wiki repository...');
+    console.log('[INFO]  Updating existing wiki repository...');
     try {
-      execSync('git pull', { cwd: wikiDir, stdio: 'inherit' });
+      // Update remote URL with token before pulling
+      execSync(`git remote set-url origin ${authUrl}`, { cwd: wikiDir });
+      // Configure git to prevent credential prompts
+      execSync('git config --local credential.helper ""', { cwd: wikiDir });
+      execSync('git config --local core.askPass ""', { cwd: wikiDir });
+      execSync('git pull', { cwd: wikiDir, stdio: 'inherit', env });
     } catch (error) {
       console.warn('[WARNING]  Could not pull, will clone fresh...');
       rmSync(wikiDir, { recursive: true, force: true });
-      execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit' });
+      execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit', env });
     }
   } else {
-    console.log('[EMOJI] Cloning wiki repository...');
+    console.log('[INFO]  Cloning wiki repository...');
     mkdirSync(dirname(wikiDir), { recursive: true });
-    execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit' });
+    execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit', env });
   }
 }
 
@@ -199,10 +212,10 @@ function copyDocsToWiki(sourceFiles, wikiDir) {
       
       // Write file
       writeFileSync(wikiFilePath, fixedContent, 'utf-8');
-      console.log(`[SUCCESS] Copied: ${wikiName}.md`);
+      console.log(`✅ Copied: ${wikiName}.md`);
       copied++;
     } catch (error) {
-      console.error(`[ERROR] Error copying ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`❌ Error copying ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
   
@@ -223,7 +236,7 @@ ${readmeContent}
 
 ---
 
-## [DOCS] Documentation Index
+## 📚 Documentation Index
 
 All documentation has been automatically migrated from the codebase to this wiki. Browse the pages on the right sidebar to explore:
 
@@ -245,9 +258,9 @@ All documentation has been automatically migrated from the codebase to this wiki
 
     const homePath = join(wikiDir, 'Home.md');
     writeFileSync(homePath, homeContent, 'utf-8');
-    console.log('[SUCCESS] Created: Home.md');
+    console.log('✅ Created: Home.md');
   } catch (error) {
-    console.error(`[ERROR] Error creating home page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(`❌ Error creating home page: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -263,13 +276,19 @@ function commitAndPush(wikiDir, token) {
     // Configure git to handle line endings properly
     execSync('git config core.autocrlf false', { cwd: wikiDir });
     
+    // CRITICAL: Disable all credential prompting and helpers
+    // This prevents Git from trying to prompt for password interactively
+    execSync('git config --local credential.helper ""', { cwd: wikiDir });
+    execSync('git config --local credential.helper store', { cwd: wikiDir });
+    execSync('git config --local core.askPass ""', { cwd: wikiDir });
+    
     // Add all files first (including untracked)
     execSync('git add -A', { cwd: wikiDir, stdio: 'inherit' });
     
     // Check if there are actually changes to commit (after adding)
     try {
       execSync('git diff --cached --quiet', { cwd: wikiDir });
-      console.log('[INFO]  No changes to commit (files may already be in wiki)');
+      console.log('ℹ️  No changes to commit (files may already be in wiki)');
       return true;
     } catch {
       // There are changes staged, proceed with commit
@@ -287,19 +306,43 @@ Generated by migrate-wiki script at ${new Date().toISOString()}`;
       stdio: 'inherit' 
     });
     
-    // Push (use origin remote which should already be set)
+    // Push using token in URL - GITHUB_TOKEN has automatic wiki permissions
+    // Build authenticated URL with token embedded
     const authUrl = WIKI_REPO_URL.replace('https://', `https://${token}@`);
-    // Update remote URL with token
+    
+    // Update remote URL with token before pushing
     execSync(`git remote set-url origin ${authUrl}`, { cwd: wikiDir });
-    execSync('git push origin master', { 
+    
+    // Set environment variables to prevent any interactive prompts
+    const env = { 
+      ...process.env, 
+      GIT_TERMINAL_PROMPT: '0',
+      GIT_ASKPASS: 'echo',
+      GIT_SSH_COMMAND: 'ssh -o BatchMode=yes'
+    };
+    
+    // Try to determine the default branch (could be master or main)
+    let defaultBranch = 'master';
+    try {
+      const branchOutput = execSync('git branch -r', { cwd: wikiDir, encoding: 'utf-8' });
+      if (branchOutput.includes('origin/main')) {
+        defaultBranch = 'main';
+      }
+    } catch {
+      // Default to master if we can't determine
+    }
+    
+    // Push to the determined branch
+    execSync(`git push origin ${defaultBranch}`, { 
       cwd: wikiDir, 
-      stdio: 'inherit' 
+      stdio: 'inherit',
+      env
     });
     
-    console.log('[SUCCESS] Pushed changes to wiki');
+    console.log('✅ Pushed changes to wiki');
     return true;
   } catch (error) {
-    console.error(`[ERROR] Error committing/pushing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(`❌ Error committing/pushing: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 }
@@ -308,15 +351,15 @@ Generated by migrate-wiki script at ${new Date().toISOString()}`;
  * Main migration function
  */
 async function main() {
-  console.log('[DEPLOY] Starting documentation migration to wiki...\n');
-  console.log('[NOTE] This will move ALL documentation files to the wiki.\n');
+  console.log('🚀 Starting documentation migration to wiki...\n');
+  console.log('📝 This will move ALL documentation files to the wiki.\n');
   
   const token = getGitHubToken();
   const wikiDir = join(rootDir, '.wiki-temp');
   
   try {
     // Find all markdown files
-    console.log('[EMOJI] Finding markdown files...');
+    console.log('📖 Finding markdown files...');
     const allFiles = [];
     
     for (const dir of DOC_DIRS) {
@@ -328,7 +371,7 @@ async function main() {
       }
     }
     
-    console.log(`\n[NOTE] Processing ${allFiles.length} files...\n`);
+    console.log(`\n📝 Processing ${allFiles.length} files...\n`);
     
     // Clone wiki repo
     cloneWikiRepo(wikiDir, token);
@@ -340,30 +383,30 @@ async function main() {
     
     // Copy documentation files
     const copied = copyDocsToWiki(allFiles, wikiDir);
-    console.log(`\n[CLIPBOARD] Copied ${copied} files to wiki\n`);
+    console.log(`\n📋 Copied ${copied} files to wiki\n`);
     
     // Commit and push
     const success = commitAndPush(wikiDir, token);
     
     if (success) {
-      console.log(`\n[FEATURE] Migration complete!`);
-      console.log(`[EMOJI] View your wiki at: https://github.com/${REPO_OWNER}/${REPO_NAME}/wiki`);
-      console.log(`\n[CLIPBOARD] Next steps:`);
+      console.log(`\n✨ Migration complete!`);
+      console.log(`📖 View your wiki at: https://github.com/${REPO_OWNER}/${REPO_NAME}/wiki`);
+      console.log(`\n📋 Next steps:`);
       console.log(`   1. Review the wiki to ensure all files migrated correctly`);
       console.log(`   2. Update any code references to point to wiki pages`);
       console.log(`   3. Consider removing migrated docs from codebase (keep only README.md)`);
       console.log(`   4. Update your workflow to maintain docs in wiki going forward`);
     } else {
-      console.error('\n[ERROR] Migration completed with errors');
+      console.error('\n❌ Migration completed with errors');
       process.exit(1);
     }
   } catch (error) {
-    console.error('[ERROR] Fatal error:', error);
+    console.error('❌ Fatal error:', error);
     process.exit(1);
   } finally {
     // Cleanup
     if (existsSync(wikiDir)) {
-      console.log('\n[EMOJI] Cleaning up temporary files...');
+      console.log('\n🧹 Cleaning up temporary files...');
       rmSync(wikiDir, { recursive: true, force: true });
     }
   }
@@ -371,7 +414,7 @@ async function main() {
 
 // Run if called directly
 main().catch(error => {
-  console.error('[ERROR] Fatal error:', error);
+  console.error('❌ Fatal error:', error);
   process.exit(1);
 });
 

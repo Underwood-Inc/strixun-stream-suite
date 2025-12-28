@@ -10,6 +10,7 @@
 import { getCorsHeaders } from '../../utils/cors.js';
 import { getCustomerKey } from '../../services/customer.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';
+import { MAX_PROFILE_PICTURE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 
 interface CloudflareEnv {
   OTP_AUTH_KV: KVNamespace;
@@ -112,11 +113,12 @@ export async function handleUploadProfilePicture(
       });
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (imageFile.size > maxSize) {
+    // Validate file size
+    const sizeValidation = validateFileSize(imageFile.size, MAX_PROFILE_PICTURE_SIZE);
+    if (!sizeValidation.valid) {
       return new Response(JSON.stringify({ 
         error: 'File too large',
-        detail: 'Profile picture must be less than 5MB'
+        detail: sizeValidation.error || `Profile picture must be less than ${MAX_PROFILE_PICTURE_SIZE / (1024 * 1024)}MB`
       }), {
         status: 400,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

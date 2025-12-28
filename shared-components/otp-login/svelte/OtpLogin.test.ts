@@ -6,26 +6,52 @@
 
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte/svelte5';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { tick } from 'svelte';
 import OtpLogin from './OtpLogin.svelte';
 import type { OtpLoginState, LoginSuccessData } from '../core';
-import { OtpLoginCore } from '../core';
 
-// Mock the core
-vi.mock('../core', () => {
-  const mockCore = {
-    subscribe: vi.fn(() => () => {}), // Returns unsubscribe function
-    setEmail: vi.fn(),
-    setOtp: vi.fn(),
-    requestOtp: vi.fn(),
-    verifyOtp: vi.fn(),
-    goBack: vi.fn(),
-    reset: vi.fn(),
-    getState: vi.fn(),
-    destroy: vi.fn(),
-  };
-
+// Use hoisted to ensure mocks are set up before imports
+const { mockOtpLoginCore, getMockCoreInstance } = vi.hoisted(() => {
+  let currentMockInstance: any = null;
+  
+  const mockCore = vi.fn((config: any) => {
+    // Create a fresh mock instance each time OtpLoginCore is called
+    currentMockInstance = {
+      subscribe: vi.fn((callback: any) => {
+        // Store callback for manual triggering
+        (currentMockInstance as any)._callback = callback;
+        return () => {}; // Unsubscribe function
+      }),
+      setEmail: vi.fn(),
+      setOtp: vi.fn(),
+      requestOtp: vi.fn(),
+      verifyOtp: vi.fn(),
+      goBack: vi.fn(),
+      reset: vi.fn(),
+      getState: vi.fn(() => ({
+        step: 'email',
+        email: '',
+        otp: '',
+        loading: false,
+        error: null,
+        countdown: 0,
+        rateLimitResetAt: null,
+        rateLimitCountdown: 0,
+      })),
+      destroy: vi.fn(),
+    };
+    return currentMockInstance;
+  });
+  
   return {
-    OtpLoginCore: vi.fn(() => mockCore),
+    mockOtpLoginCore: mockCore,
+    getMockCoreInstance: () => currentMockInstance,
+  };
+});
+
+vi.mock('../core', () => {
+  return {
+    OtpLoginCore: mockOtpLoginCore,
   };
 });
 
@@ -52,34 +78,8 @@ describe('OtpLogin Svelte Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Create a fresh mock instance for each test
-    mockCoreInstance = {
-      subscribe: vi.fn((callback) => {
-        // Store callback for manual triggering
-        (mockCoreInstance as any)._callback = callback;
-        return () => {}; // Unsubscribe function
-      }),
-      setEmail: vi.fn(),
-      setOtp: vi.fn(),
-      requestOtp: vi.fn(),
-      verifyOtp: vi.fn(),
-      goBack: vi.fn(),
-      reset: vi.fn(),
-      getState: vi.fn(() => ({
-        step: 'email',
-        email: '',
-        otp: '',
-        loading: false,
-        error: null,
-        countdown: 0,
-        rateLimitResetAt: null,
-        rateLimitCountdown: 0,
-      })),
-      destroy: vi.fn(),
-    };
-
-    (OtpLoginCore as any).mockImplementation(() => mockCoreInstance);
+    // Get the current mock instance (will be created when OtpLoginCore is called)
+    mockCoreInstance = getMockCoreInstance();
   });
 
   afterEach(() => {
@@ -87,36 +87,50 @@ describe('OtpLogin Svelte Component', () => {
   });
 
   describe('Component Mounting', () => {
-    it('should mount successfully with required props', () => {
+    it('should mount successfully with required props', async () => {
       render(OtpLogin, { props: defaultProps });
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiUrl: 'https://auth.example.com',
-          onSuccess: mockOnSuccess,
-          otpEncryptionKey: 'a'.repeat(32),
-        })
-      );
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOtpLoginCore).toHaveBeenCalledWith(
+          expect.objectContaining({
+            apiUrl: 'https://auth.example.com',
+            onSuccess: mockOnSuccess,
+            otpEncryptionKey: 'a'.repeat(32),
+          })
+        );
+      }, { timeout: 2000 });
     });
 
-    it('should subscribe to core state changes', () => {
+    it('should subscribe to core state changes', async () => {
       render(OtpLogin, { props: defaultProps });
       
-      expect(mockCoreInstance.subscribe).toHaveBeenCalled();
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
     });
 
-    it('should use encryption key from prop', () => {
+    it('should use encryption key from prop', async () => {
       const customKey = 'b'.repeat(32);
       render(OtpLogin, { props: { ...defaultProps, otpEncryptionKey: customKey } });
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
-        expect.objectContaining({
-          otpEncryptionKey: customKey,
-        })
-      );
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOtpLoginCore).toHaveBeenCalledWith(
+          expect.objectContaining({
+            otpEncryptionKey: customKey,
+          })
+        );
+      }, { timeout: 2000 });
     });
 
-    it('should call onError if encryption key is missing', () => {
+    it('should call onError if encryption key is missing', async () => {
       render(OtpLogin, { 
         props: { 
           ...defaultProps, 
@@ -124,13 +138,16 @@ describe('OtpLogin Svelte Component', () => {
         } 
       });
       
-      // Should call onError with encryption key error
-      expect(mockOnError).toHaveBeenCalledWith(
-        expect.stringContaining('OTP encryption key is required')
-      );
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOnError).toHaveBeenCalledWith(
+          expect.stringContaining('OTP encryption key is required')
+        );
+      }, { timeout: 2000 });
     });
 
-    it('should call onError if encryption key is too short', () => {
+    it('should call onError if encryption key is too short', async () => {
       render(OtpLogin, { 
         props: { 
           ...defaultProps, 
@@ -138,9 +155,13 @@ describe('OtpLogin Svelte Component', () => {
         } 
       });
       
-      expect(mockOnError).toHaveBeenCalledWith(
-        expect.stringContaining('at least 32 characters')
-      );
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOnError).toHaveBeenCalledWith(
+          expect.stringContaining('at least 32 characters')
+        );
+      }, { timeout: 2000 });
     });
   });
 
@@ -165,7 +186,7 @@ describe('OtpLogin Svelte Component', () => {
       expect(screen.getByText('Test subtitle')).toBeInTheDocument();
     });
 
-    it('should pass custom endpoints to core', () => {
+    it('should pass custom endpoints to core', async () => {
       const endpoints = {
         requestOtp: '/custom/request',
         verifyOtp: '/custom/verify',
@@ -175,12 +196,16 @@ describe('OtpLogin Svelte Component', () => {
         props: { ...defaultProps, endpoints } 
       });
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
-        expect.objectContaining({ endpoints })
-      );
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOtpLoginCore).toHaveBeenCalledWith(
+          expect.objectContaining({ endpoints })
+        );
+      }, { timeout: 2000 });
     });
 
-    it('should pass custom headers to core', () => {
+    it('should pass custom headers to core', async () => {
       const customHeaders = {
         'X-Custom-Header': 'custom-value',
       };
@@ -189,15 +214,27 @@ describe('OtpLogin Svelte Component', () => {
         props: { ...defaultProps, customHeaders } 
       });
       
-      expect(OtpLoginCore).toHaveBeenCalledWith(
-        expect.objectContaining({ customHeaders })
-      );
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOtpLoginCore).toHaveBeenCalledWith(
+          expect.objectContaining({ customHeaders })
+        );
+      }, { timeout: 2000 });
     });
   });
 
   describe('State Display', () => {
-    it('should display email form when step is email', () => {
-      mockCoreInstance.getState.mockReturnValue({
+    it('should display email form when step is email', async () => {
+      // Create instance first by rendering
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'email',
         email: '',
         otp: '',
@@ -207,20 +244,35 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
+      
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
       
       // Trigger state update
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       // Should show email input
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     });
 
     it('should display OTP form when step is otp', async () => {
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'otp',
         email: 'test@example.com',
         otp: '',
@@ -230,8 +282,6 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
       // Trigger state update
       if (mockCoreInstance._callback) {
@@ -243,8 +293,15 @@ describe('OtpLogin Svelte Component', () => {
       });
     });
 
-    it('should display loading state', () => {
-      mockCoreInstance.getState.mockReturnValue({
+    it('should display loading state', async () => {
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'email',
         email: '',
         otp: '',
@@ -254,21 +311,36 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       // Should show loading indicator (button disabled or loading text)
       const button = screen.getByRole('button');
       expect(button).toBeDisabled();
     });
 
-    it('should display error message', () => {
+    it('should display error message', async () => {
       const errorMessage = 'Test error message';
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'email',
         email: '',
         otp: '',
@@ -278,12 +350,20 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       expect(screen.getByText(errorMessage)).toBeInTheDocument();
     });
@@ -291,7 +371,14 @@ describe('OtpLogin Svelte Component', () => {
 
   describe('User Interactions', () => {
     it('should call setEmail when email input changes', async () => {
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'email',
         email: '',
         otp: '',
@@ -301,21 +388,37 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       const emailInput = screen.getByLabelText(/email/i);
       await fireEvent.input(emailInput, { target: { value: 'test@example.com' } });
 
-      expect(mockCoreInstance.setEmail).toHaveBeenCalledWith('test@example.com');
+      const instance = getMockCoreInstance();
+      expect(instance?.setEmail).toHaveBeenCalledWith('test@example.com');
     });
 
     it('should call requestOtp when submit button is clicked', async () => {
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'email',
         email: 'test@example.com',
         otp: '',
@@ -325,21 +428,37 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       const submitButton = screen.getByRole('button', { name: /request|send/i });
       await fireEvent.click(submitButton);
 
-      expect(mockCoreInstance.requestOtp).toHaveBeenCalled();
+      const instance = getMockCoreInstance();
+      expect(instance?.requestOtp).toHaveBeenCalled();
     });
 
     it('should call setOtp when OTP input changes', async () => {
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'otp',
         email: 'test@example.com',
         otp: '',
@@ -349,23 +468,39 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       await waitFor(() => {
         const otpInput = screen.getByLabelText(/otp/i);
         fireEvent.input(otpInput, { target: { value: '123456789' } });
       });
 
-      expect(mockCoreInstance.setOtp).toHaveBeenCalledWith('123456789');
+      const instance = getMockCoreInstance();
+      expect(instance?.setOtp).toHaveBeenCalledWith('123456789');
     });
 
     it('should call verifyOtp when OTP form is submitted', async () => {
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'otp',
         email: 'test@example.com',
         otp: '123456789',
@@ -375,23 +510,39 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       await waitFor(() => {
         const submitButton = screen.getByRole('button', { name: /verify|submit/i });
         fireEvent.click(submitButton);
       });
 
-      expect(mockCoreInstance.verifyOtp).toHaveBeenCalled();
+      const instance = getMockCoreInstance();
+      expect(instance?.verifyOtp).toHaveBeenCalled();
     });
 
     it('should call goBack when back button is clicked', async () => {
-      mockCoreInstance.getState.mockReturnValue({
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
+      instance.getState.mockReturnValue({
         step: 'otp',
         email: 'test@example.com',
         otp: '',
@@ -401,19 +552,28 @@ describe('OtpLogin Svelte Component', () => {
         rateLimitResetAt: null,
         rateLimitCountdown: 0,
       });
-
-      render(OtpLogin, { props: defaultProps });
       
-      if (mockCoreInstance._callback) {
-        mockCoreInstance._callback(mockCoreInstance.getState());
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        const instance = getMockCoreInstance();
+        expect(instance).toBeTruthy();
+        expect(instance?.subscribe).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      if ((mockCoreInstance as any)._callback) {
+        (mockCoreInstance as any)._callback(mockCoreInstance.getState());
       }
+      
+      await tick();
 
       await waitFor(() => {
         const backButton = screen.getByRole('button', { name: /back/i });
         fireEvent.click(backButton);
       });
 
-      expect(mockCoreInstance.goBack).toHaveBeenCalled();
+      const instance = getMockCoreInstance();
+      expect(instance?.goBack).toHaveBeenCalled();
     });
   });
 
@@ -454,21 +614,40 @@ describe('OtpLogin Svelte Component', () => {
   });
 
   describe('Cleanup', () => {
-    it('should unsubscribe and destroy core on unmount', () => {
+    it('should unsubscribe and destroy core on unmount', async () => {
+      render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      const instance = getMockCoreInstance();
       const unsubscribe = vi.fn();
-      mockCoreInstance.subscribe.mockReturnValue(unsubscribe);
+      instance.subscribe.mockReturnValue(unsubscribe);
 
       const { unmount } = render(OtpLogin, { props: defaultProps });
+      await tick();
+      await waitFor(() => {
+        expect(getMockCoreInstance()).toBeTruthy();
+      }, { timeout: 2000 });
+      
+      // Wait for onMount to complete
+      await waitFor(() => {
+        expect(mockCoreInstance.subscribe).toHaveBeenCalled();
+      });
       
       unmount();
+      
+      await tick();
 
+      const instance = getMockCoreInstance();
       expect(unsubscribe).toHaveBeenCalled();
-      expect(mockCoreInstance.destroy).toHaveBeenCalled();
+      expect(instance?.destroy).toHaveBeenCalled();
     });
   });
 
   describe('Success Callback', () => {
-    it('should call onSuccess when login succeeds', () => {
+    it('should call onSuccess when login succeeds', async () => {
       const successData: LoginSuccessData = {
         token: 'test-token',
         email: 'test@example.com',
@@ -477,8 +656,14 @@ describe('OtpLogin Svelte Component', () => {
 
       render(OtpLogin, { props: defaultProps });
       
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOtpLoginCore).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
       // Simulate success by calling the onSuccess passed to core
-      const coreCall = (OtpLoginCore as any).mock.calls[0][0];
+      const coreCall = mockOtpLoginCore.mock.calls[0][0];
       coreCall.onSuccess(successData);
 
       expect(mockOnSuccess).toHaveBeenCalledWith(successData);
@@ -486,10 +671,16 @@ describe('OtpLogin Svelte Component', () => {
   });
 
   describe('Error Callback', () => {
-    it('should call onError when login fails', () => {
+    it('should call onError when login fails', async () => {
       const errorMessage = 'Login failed';
 
       render(OtpLogin, { props: defaultProps });
+      
+      // Wait for onMount to complete - use tick() to ensure Svelte has processed
+      await tick();
+      await waitFor(() => {
+        expect(mockOtpLoginCore).toHaveBeenCalled();
+      }, { timeout: 2000 });
       
       // Simulate error by calling the onError passed to core
       const coreCall = (OtpLoginCore as any).mock.calls[0][0];

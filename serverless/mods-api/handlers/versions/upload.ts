@@ -10,6 +10,7 @@ import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
+import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
 
 /**
@@ -90,6 +91,27 @@ export async function handleUploadVersion(
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Validate file size
+        const sizeValidation = validateFileSize(file.size, MAX_VERSION_FILE_SIZE);
+        if (!sizeValidation.valid) {
+            const rfcError = createError(
+                request,
+                413,
+                'File Too Large',
+                sizeValidation.error || `File size exceeds maximum allowed size of ${MAX_VERSION_FILE_SIZE / (1024 * 1024)}MB`
+            );
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 413,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders.entries()),

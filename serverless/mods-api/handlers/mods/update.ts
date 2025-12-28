@@ -9,6 +9,7 @@ import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { generateUniqueSlug } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
+import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
@@ -277,10 +278,10 @@ async function handleThumbnailBinaryUpload(
             throw new Error('File must be an image');
         }
         
-        // Check file size (2 MB limit)
-        const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2 MB
-        if (thumbnailFile.size > MAX_THUMBNAIL_SIZE) {
-            throw new Error(`Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
+        // Check file size
+        const thumbnailSizeValidation = validateFileSize(thumbnailFile.size, MAX_THUMBNAIL_SIZE);
+        if (!thumbnailSizeValidation.valid) {
+            throw new Error(thumbnailSizeValidation.error || `Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
         }
         
         // Validate image type (only allow common web-safe formats)

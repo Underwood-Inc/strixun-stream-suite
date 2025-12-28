@@ -54,9 +54,30 @@ vi.mock('../handlers/admin/settings.js', () => ({
     handleUpdateSettings: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
 }));
 
-vi.mock('@strixun/api-framework', () => ({
-    wrapWithEncryption: vi.fn().mockImplementation(async (response) => response),
-}));
+vi.mock('@strixun/api-framework', async () => {
+    const actual = await vi.importActual('@strixun/api-framework');
+    return {
+        ...actual,
+        wrapWithEncryption: vi.fn().mockImplementation(async (response) => response),
+        protectAdminRoute: vi.fn().mockImplementation(async (request, env, level, verifyFn) => {
+            const authHeader = request.headers.get('Authorization');
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                return { allowed: false, response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }) };
+            }
+            const token = authHeader.substring(7);
+            const payload = await verifyFn(token, env.JWT_SECRET);
+            if (!payload) {
+                return { allowed: false, response: new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 }) };
+            }
+            const email = (payload as any).email;
+            const isSuperAdmin = env.SUPER_ADMIN_EMAILS?.split(',').map(e => e.trim()).includes(email);
+            if (level === 'super-admin' && !isSuperAdmin) {
+                return { allowed: false, response: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) };
+            }
+            return { allowed: true, auth: { userId: (payload as any).sub, email, customerId: (payload as any).customerId || null } };
+        }),
+    };
+});
 
 describe('Mods API Admin Routes', () => {
     const mockEnv = {

@@ -52,9 +52,19 @@ describe('File Download Integrity', () => {
         vi.clearAllMocks();
         
         mockEnv.MODS_KV.get = vi.fn();
+        mockEnv.MODS_KV.list = vi.fn().mockResolvedValue({ keys: [], listComplete: true, cursor: undefined });
         mockEnv.MODS_R2.get = vi.fn();
         
-        vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string) => {
+        vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
+            if (options?.type === 'json') {
+                if (key === 'mod_test-mod-123') {
+                    return Promise.resolve(mockMod);
+                }
+                if (key === 'version_version-123') {
+                    return Promise.resolve(mockVersion);
+                }
+                return Promise.resolve(null);
+            }
             if (key === 'mod_test-mod-123') {
                 return Promise.resolve(JSON.stringify(mockMod));
             }

@@ -49,8 +49,18 @@ describe('File Validation Handler', () => {
         vi.clearAllMocks();
         
         mockEnv.MODS_KV.get = vi.fn();
+        mockEnv.MODS_KV.list = vi.fn().mockResolvedValue({ keys: [], listComplete: true, cursor: undefined });
         
-        vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string) => {
+        vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
+            if (options?.type === 'json') {
+                if (key === 'mod_test-mod-123') {
+                    return Promise.resolve(mockMod);
+                }
+                if (key === 'version_version-123') {
+                    return Promise.resolve(mockVersion);
+                }
+                return Promise.resolve(null);
+            }
             if (key === 'mod_test-mod-123') {
                 return Promise.resolve(JSON.stringify(mockMod));
             }
@@ -266,7 +276,16 @@ describe('File Validation Handler', () => {
 
         it('should return 400 if version has no signature', async () => {
             const versionWithoutHash = { ...mockVersion, sha256: undefined };
-            vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string) => {
+            vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
+                if (options?.type === 'json') {
+                    if (key === 'mod_test-mod-123') {
+                        return Promise.resolve(mockMod);
+                    }
+                    if (key === 'version_version-123') {
+                        return Promise.resolve(versionWithoutHash);
+                    }
+                    return Promise.resolve(null);
+                }
                 if (key === 'version_version-123') {
                     return Promise.resolve(JSON.stringify(versionWithoutHash));
                 }

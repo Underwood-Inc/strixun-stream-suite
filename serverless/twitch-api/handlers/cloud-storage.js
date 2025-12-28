@@ -5,6 +5,7 @@
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
+import { MAX_CLOUD_SAVE_SIZE, formatFileSize } from '../utils/upload-limits.js';
 
 /**
  * Get cloud save storage key
@@ -80,10 +81,13 @@ export async function handleCloudSave(request, env, authenticateRequest) {
             metadata: body.metadata || {},
         };
 
-        // Validate payload size (KV limit is 25MB, we'll limit to 10MB for safety)
+        // Validate payload size (KV limit is 25MB, we limit to MAX_CLOUD_SAVE_SIZE for safety)
         const saveDataStr = JSON.stringify(saveData);
-        if (saveDataStr.length > 10 * 1024 * 1024) {
-            return new Response(JSON.stringify({ error: 'Save data too large (max 10MB)' }), {
+        if (saveDataStr.length > MAX_CLOUD_SAVE_SIZE) {
+            return new Response(JSON.stringify({ 
+                error: 'Save data too large',
+                detail: `Save data size (${formatFileSize(saveDataStr.length)}) exceeds maximum allowed size of ${formatFileSize(MAX_CLOUD_SAVE_SIZE)}`
+            }), {
                 status: 413,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });

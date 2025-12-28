@@ -11,6 +11,7 @@ import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/cu
 import { isEmailAllowed } from '../../utils/auth.js';
 import { hasUploadPermission } from '../../utils/admin.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
+import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
 
 /**
@@ -165,6 +166,27 @@ export async function handleUploadMod(
             });
             return new Response(JSON.stringify(rfcError), {
                 status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Validate file size
+        const sizeValidation = validateFileSize(file.size, MAX_MOD_FILE_SIZE);
+        if (!sizeValidation.valid) {
+            const rfcError = createError(
+                request,
+                413,
+                'File Too Large',
+                sizeValidation.error || `File size exceeds maximum allowed size of ${MAX_MOD_FILE_SIZE / (1024 * 1024)}MB`
+            );
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 413,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders.entries()),
@@ -620,10 +642,10 @@ async function handleThumbnailBinaryUpload(
             throw new Error('File must be an image');
         }
         
-        // Check file size (2 MB limit)
-        const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2 MB
-        if (thumbnailFile.size > MAX_THUMBNAIL_SIZE) {
-            throw new Error(`Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
+        // Check file size
+        const thumbnailSizeValidation = validateFileSize(thumbnailFile.size, MAX_THUMBNAIL_SIZE);
+        if (!thumbnailSizeValidation.valid) {
+            throw new Error(thumbnailSizeValidation.error || `Thumbnail file size must be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
         }
         
         // Validate image type (only allow common web-safe formats)

@@ -25,7 +25,6 @@ on:
       - 'mods-hub/**/*.md'
       - 'shared-components/**/*.md'
       # Also trigger if the migration script itself changes
-      - 'scripts/migrate-wiki.ts'
       - 'scripts/migrate-wiki.js'
       # Root level markdown files (like README.md changes that affect Home page)
       - 'README.md'
@@ -116,9 +115,8 @@ jobs:
             exit 1
           fi
           
-          # Run the migration script using tsx
-          # Use pnpm dlx to run tsx without installing it
-          pnpm dlx tsx scripts/migrate-wiki.ts || {
+          # Run the migration script using node
+          node scripts/migrate-wiki.js || {
             echo ""
             echo "❌ Wiki sync failed!"
             echo ""

@@ -10,11 +10,18 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleVerifyVersion } from './verify.js';
-import { calculateFileHash } from '../../utils/hash.js';
+import { calculateStrixunHash, verifyStrixunHash } from '../../utils/hash.js';
 
 // Mock dependencies
 vi.mock('../../utils/hash.js', () => ({
-    calculateFileHash: vi.fn(),
+    calculateStrixunHash: vi.fn(),
+    verifyStrixunHash: vi.fn(),
+    formatStrixunHash: vi.fn((hash) => `strixun:sha256:${hash}`),
+    parseStrixunHash: vi.fn(),
+}));
+vi.mock('../../utils/hash.js', () => ({
+    calculateStrixunHash: vi.fn(),
+    verifyStrixunHash: vi.fn(),
     formatStrixunHash: vi.fn((hash) => `strixun:sha256:${hash}`),
     parseStrixunHash: vi.fn(),
 }));
@@ -44,6 +51,9 @@ describe('File Verification Handler', () => {
 
     const mockFile = {
         arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
+        customMetadata: {
+            encrypted: 'false', // Not encrypted for tests
+        },
     };
 
     beforeEach(() => {
@@ -51,10 +61,20 @@ describe('File Verification Handler', () => {
         
         // Setup default mocks
         mockEnv.MODS_KV.get = vi.fn();
+        mockEnv.MODS_KV.list = vi.fn().mockResolvedValue({ keys: [], listComplete: true, cursor: undefined });
         mockEnv.MODS_R2.get = vi.fn().mockResolvedValue(mockFile);
         
         // Default: mod found
-        vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string) => {
+        vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
+            if (options?.type === 'json') {
+                if (key === 'mod_test-mod-123') {
+                    return Promise.resolve(mockMod);
+                }
+                if (key === 'version_version-123') {
+                    return Promise.resolve(mockVersion);
+                }
+                return Promise.resolve(null);
+            }
             if (key === 'mod_test-mod-123') {
                 return Promise.resolve(JSON.stringify(mockMod));
             }
@@ -68,7 +88,8 @@ describe('File Verification Handler', () => {
     describe('Successful Verification', () => {
         it('should verify file with matching hash', async () => {
             const storedHash = 'a'.repeat(64);
-            vi.mocked(calculateFileHash).mockResolvedValue(storedHash);
+            vi.mocked(calculateStrixunHash).mockResolvedValue(storedHash);
+            vi.mocked(verifyStrixunHash).mockResolvedValue(true);
             
             const request = new Request('https://api.example.com/mods/test-mod/versions/version-123/verify', {
                 method: 'GET',
@@ -90,7 +111,8 @@ describe('File Verification Handler', () => {
 
         it('should verify file for authenticated user', async () => {
             const storedHash = 'a'.repeat(64);
-            vi.mocked(calculateFileHash).mockResolvedValue(storedHash);
+            vi.mocked(calculateStrixunHash).mockResolvedValue(storedHash);
+            vi.mocked(verifyStrixunHash).mockResolvedValue(true);
             
             const request = new Request('https://api.example.com/mods/test-mod/versions/version-123/verify', {
                 method: 'GET',
@@ -120,7 +142,8 @@ describe('File Verification Handler', () => {
             const storedHash = 'a'.repeat(64);
             const tamperedHash = 'b'.repeat(64);
             
-            vi.mocked(calculateFileHash).mockResolvedValue(tamperedHash);
+            vi.mocked(calculateStrixunHash).mockResolvedValue(tamperedHash);
+            vi.mocked(verifyStrixunHash).mockResolvedValue(false);
             
             const request = new Request('https://api.example.com/mods/test-mod/versions/version-123/verify', {
                 method: 'GET',
@@ -145,11 +168,21 @@ describe('File Verification Handler', () => {
             const storedHash = 'A'.repeat(64); // Uppercase
             const currentHash = 'a'.repeat(64); // Lowercase
             
-            vi.mocked(calculateFileHash).mockResolvedValue(currentHash);
+            vi.mocked(calculateStrixunHash).mockResolvedValue(currentHash);
+            vi.mocked(verifyStrixunHash).mockResolvedValue(true);
             
             // Update version with uppercase hash
             const versionWithUppercase = { ...mockVersion, sha256: storedHash };
-            vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string) => {
+            vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
+                if (options?.type === 'json') {
+                    if (key === 'mod_test-mod-123') {
+                        return Promise.resolve(mockMod);
+                    }
+                    if (key === 'version_version-123') {
+                        return Promise.resolve(versionWithUppercase);
+                    }
+                    return Promise.resolve(null);
+                }
                 if (key === 'version_version-123') {
                     return Promise.resolve(JSON.stringify(versionWithUppercase));
                 }
@@ -194,11 +227,17 @@ describe('File Verification Handler', () => {
         });
 
         it('should return 404 if version not found', async () => {
-            vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string) => {
+            vi.mocked(mockEnv.MODS_KV.get).mockImplementation((key: string, options?: any) => {
+                if (options?.type === 'json') {
+                    if (key === 'mod_test-mod-123') {
+                        return Promise.resolve(mockMod);
+                    }
+                    return Promise.resolve(null); // Version not found
+                }
                 if (key === 'mod_test-mod-123') {
                     return Promise.resolve(JSON.stringify(mockMod));
                 }
-                return Promise.resolve(null); // Version not found
+                return Promise.resolve(null);
             });
             
             const request = new Request('https://api.example.com/mods/test-mod/versions/version-123/verify', {

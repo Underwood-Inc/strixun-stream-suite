@@ -115,3 +115,17 @@ export type {
   RouteProtectionResult,
 } from './route-protection.js';
 
+// Re-export upload limits utilities
+export {
+  BASE_UPLOAD_LIMIT,
+  DEFAULT_UPLOAD_LIMITS,
+  getUploadLimits,
+  formatFileSize,
+  validateFileSize,
+  createFileSizeValidator,
+} from './upload-limits.js';
+
+export type {
+  UploadLimitsConfig,
+} from './upload-limits.js';
+

@@ -232,6 +232,24 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows and deployment
 
+#### Development Scripts
+
+Run all build and check scripts across all projects to verify everything compiles correctly:
+
+```bash
+pnpm check:all
+```
+
+This script runs:
+- Root project: TypeScript checks, linting, and build
+- Control Panel: TypeScript build and linting
+- Mods Hub: TypeScript build and linting
+- OTP Login: All build variants (vanilla, React, Svelte)
+- OTP Auth Service: Svelte checks and build
+- OTP Auth Dashboard: Svelte checks and build
+- OTP Auth SDK: TypeScript build
+- URL Shortener App: Vite build
+
 See [docs/README.md](./docs/README.md) for a complete documentation index.
 
 ---
