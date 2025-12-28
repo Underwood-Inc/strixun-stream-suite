@@ -348,8 +348,7 @@ export async function handleUploadMod(
         };
 
         // Store in KV
-        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(modId);
+        // Use normalized modId (already computed above) to ensure consistent key generation
         const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
         const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
