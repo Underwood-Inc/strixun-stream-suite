@@ -14,6 +14,7 @@ interface Env {
     CUSTOMER_KV: KVNamespace;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
+    NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }
 
@@ -40,16 +41,15 @@ async function handleCustomerRoute(
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
-        return {
-            response: new Response(JSON.stringify(rfcError), {
-                status: 401,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            }),
-            customerId: null
-        };
+        const errorResponse = new Response(JSON.stringify(rfcError), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
+        return await wrapWithEncryption(errorResponse, null, request, env);
     }
 
     // Get handler response
@@ -145,16 +145,15 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
-        return {
-            response: new Response(JSON.stringify(rfcError), {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            }),
-            customerId: null
-        };
+        const errorResponse = new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+        // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
+        return await wrapWithEncryption(errorResponse, auth, request, env);
     }
 }
 

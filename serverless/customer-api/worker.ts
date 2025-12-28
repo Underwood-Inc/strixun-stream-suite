@@ -16,6 +16,7 @@ interface Env {
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
+    NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }
 
