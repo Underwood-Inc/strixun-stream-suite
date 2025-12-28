@@ -16,6 +16,7 @@
     type LogType
   } from '../../stores/activity-log';
   import AdvancedSearchInput from '../../../shared-components/search-query-parser/AdvancedSearchInput.svelte';
+  import Tooltip from './Tooltip.svelte';
   
   const logTypes: LogType[] = ['info', 'success', 'error', 'warning', 'debug'];
   
