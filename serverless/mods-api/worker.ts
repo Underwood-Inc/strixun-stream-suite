@@ -62,24 +62,30 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
     const origin = request.headers.get('Origin');
     const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
     
-    // Check if we're in development (not production)
-    // If ENVIRONMENT is not set, assume development (common in local dev)
-    const isProduction = env.ENVIRONMENT === 'production';
+    // Always allow localhost for development (even in production mode)
+    // This ensures local development works without needing to configure ALLOWED_ORIGINS
     const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
     
-    // If no origins configured OR if localhost in non-production, allow all
-    // This ensures localhost works in development without needing to configure ALLOWED_ORIGINS
+    // If no origins configured, allow all (including localhost)
+    // If localhost is detected, always allow it (for development)
     let effectiveOrigins = allowedOrigins.length > 0 ? allowedOrigins : ['*'];
-    if (!isProduction && isLocalhost && !allowedOrigins.includes('*') && !allowedOrigins.some(o => {
-        if (o === '*') return true;
-        if (o.endsWith('*')) {
-            const prefix = o.slice(0, -1);
-            return origin && origin.startsWith(prefix);
+    
+    // Always allow localhost for development (even if not in allowedOrigins)
+    if (isLocalhost) {
+        // Check if localhost is already in allowedOrigins
+        const localhostAllowed = allowedOrigins.some(o => {
+            if (o === '*' || o === origin) return true;
+            if (o.endsWith('*')) {
+                const prefix = o.slice(0, -1);
+                return origin && origin.startsWith(prefix);
+            }
+            return false;
+        });
+        
+        // If localhost not explicitly allowed, add wildcard or the specific origin
+        if (!localhostAllowed) {
+            effectiveOrigins = ['*']; // Allow all for localhost development
         }
-        return origin === o;
-    })) {
-        // Add wildcard to allowed origins for localhost in development
-        effectiveOrigins = ['*'];
     }
     
     // Use framework CORS headers (returns Headers object, convert to Record)
@@ -93,14 +99,40 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
         headers[key] = value;
     });
     
-    // Ensure Access-Control-Allow-Origin is set (critical for CORS)
-    if (!headers['Access-Control-Allow-Origin'] && origin) {
-        // If no origin header was set but we have an origin, allow it in development
-        if (!isProduction && isLocalhost) {
+    // CRITICAL: Ensure Access-Control-Allow-Origin is always set
+    // If framework didn't set it, set it explicitly
+    if (!headers['Access-Control-Allow-Origin']) {
+        if (isLocalhost && origin) {
+            // Always allow localhost origin explicitly
             headers['Access-Control-Allow-Origin'] = origin;
         } else if (effectiveOrigins.includes('*')) {
             headers['Access-Control-Allow-Origin'] = '*';
+        } else if (origin && effectiveOrigins.includes(origin)) {
+            headers['Access-Control-Allow-Origin'] = origin;
+        } else if (origin) {
+            // Check for wildcard patterns
+            const matched = effectiveOrigins.find(o => {
+                if (o.endsWith('*')) {
+                    const prefix = o.slice(0, -1);
+                    return origin.startsWith(prefix);
+                }
+                return false;
+            });
+            headers['Access-Control-Allow-Origin'] = matched || origin;
+        } else {
+            headers['Access-Control-Allow-Origin'] = '*';
         }
+    }
+    
+    // Ensure all required CORS headers are present
+    if (!headers['Access-Control-Allow-Methods']) {
+        headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+    }
+    if (!headers['Access-Control-Allow-Headers']) {
+        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token';
+    }
+    if (!headers['Access-Control-Max-Age']) {
+        headers['Access-Control-Max-Age'] = '86400';
     }
     
     return headers;
