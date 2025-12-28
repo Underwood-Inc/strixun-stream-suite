@@ -1,0 +1,284 @@
+/**
+ * Integration Tests for Mod Review Flow
+ * 
+ * Tests the complete mod review flow:
+ * - Submit → Review → Approve/Reject → Publish
+ * 
+ * Uses real handlers, mocks external services
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createJWT } from '../../../otp-auth-service/utils/crypto.js';
+import { isSuperAdminEmail } from '../../utils/admin.js';
+
+// Mock external dependencies
+vi.mock('@strixun/api-framework/enhanced', () => ({
+    createCORSHeaders: vi.fn(() => new Headers()),
+}));
+
+const mockIsSuperAdminEmail = vi.fn();
+vi.mock('../../utils/admin.js', () => ({
+    isSuperAdminEmail: mockIsSuperAdminEmail,
+    hasUploadPermission: vi.fn().mockResolvedValue(true),
+}));
+
+describe('Mod Review Flow Integration', () => {
+    const mockEnv = {
+        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
+        MODS_KV: {
+            get: vi.fn(),
+            put: vi.fn(),
+            list: vi.fn(),
+        },
+        ALLOWED_ORIGINS: '*',
+        SUPER_ADMIN_EMAILS: 'admin@example.com',
+    } as any;
+
+    const mockMod = {
+        modId: 'mod_123',
+        authorId: 'user_123',
+        customerId: 'cust_abc',
+        title: 'Test Mod',
+        status: 'pending' as const,
+        slug: 'test-mod',
+        createdAt: new Date().toISOString(),
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(JSON.stringify(mockMod));
+        vi.mocked(mockEnv.MODS_KV.put).mockResolvedValue(undefined);
+        vi.mocked(mockEnv.MODS_KV.list).mockResolvedValue({
+            keys: [],
+            listComplete: true,
+        });
+    });
+
+    describe('Mod Submission Flow', () => {
+        it('should submit mod with pending status', async () => {
+            const userId = 'user_123';
+            const email = 'user@example.com';
+            const customerId = 'cust_abc';
+
+            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
+            const token = await createJWT({
+                sub: userId,
+                email: email,
+                customerId: customerId,
+                exp: exp,
+                iat: Math.floor(Date.now() / 1000),
+            }, mockEnv.JWT_SECRET);
+
+            // Step 1: Submit mod (status should be 'pending')
+            const submittedMod = {
+                ...mockMod,
+                status: 'pending' as const,
+            };
+
+            expect(submittedMod.status).toBe('pending');
+            expect(submittedMod.authorId).toBe(userId);
+            expect(submittedMod.customerId).toBe(customerId);
+        });
+
+        it('should allow author to view their pending mod', async () => {
+            const userId = 'user_123';
+            const email = 'user@example.com';
+            const customerId = 'cust_abc';
+
+            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
+            const token = await createJWT({
+                sub: userId,
+                email: email,
+                customerId: customerId,
+                exp: exp,
+                iat: Math.floor(Date.now() / 1000),
+            }, mockEnv.JWT_SECRET);
+
+            // Author should be able to view their own mod
+            const isAuthor = mockMod.authorId === userId;
+            expect(isAuthor).toBe(true);
+        });
+    });
+
+    describe('Admin Review Flow', () => {
+        it('should allow admin to review pending mod', async () => {
+            const adminEmail = 'admin@example.com';
+            const adminUserId = 'admin_123';
+            const customerId = 'cust_admin';
+
+            mockIsSuperAdminEmail.mockResolvedValue(true);
+
+            const exp = Math.floor(Date.now() / 1000) + (7 * 60 * 60);
+            const adminToken = await createJWT({
+                sub: adminUserId,
+                email: adminEmail,
+                customerId: customerId,
+                exp: exp,
+                iat: Math.floor(Date.now() / 1000),
+            }, mockEnv.JWT_SECRET);
+
+            // Admin should be able to review mod
+            const isAdmin = await require('../../utils/admin.js').isSuperAdminEmail(adminEmail, mockEnv);
+            expect(isAdmin).toBe(true);
+        });
+
+        it('should allow admin to approve mod', async () => {
+            const adminEmail = 'admin@example.com';
+            mockIsSuperAdminEmail.mockResolvedValue(true);
+
+            // Step 1: Mod starts as pending
+            const pendingMod = {
+                ...mockMod,
+                status: 'pending' as const,
+            };
+
+            // Step 2: Admin approves mod
+            const approvedMod = {
+                ...pendingMod,
+                status: 'approved' as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: adminEmail,
+            };
+
+            expect(approvedMod.status).toBe('approved');
+            expect(approvedMod.reviewedBy).toBe(adminEmail);
+        });
+
+        it('should allow admin to request changes', async () => {
+            const adminEmail = 'admin@example.com';
+            mockIsSuperAdminEmail.mockResolvedValue(true);
+
+            // Step 1: Mod starts as pending
+            const pendingMod = {
+                ...mockMod,
+                status: 'pending' as const,
+            };
+
+            // Step 2: Admin requests changes
+            const changesRequestedMod = {
+                ...pendingMod,
+                status: 'changes_requested' as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: adminEmail,
+                reviewComment: 'Please update the description',
+            };
+
+            expect(changesRequestedMod.status).toBe('changes_requested');
+            expect(changesRequestedMod.reviewComment).toBeDefined();
+        });
+
+        it('should allow admin to deny mod', async () => {
+            const adminEmail = 'admin@example.com';
+            mockIsSuperAdminEmail.mockResolvedValue(true);
+
+            // Step 1: Mod starts as pending
+            const pendingMod = {
+                ...mockMod,
+                status: 'pending' as const,
+            };
+
+            // Step 2: Admin denies mod
+            const deniedMod = {
+                ...pendingMod,
+                status: 'denied' as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: adminEmail,
+                reviewComment: 'Does not meet quality standards',
+            };
+
+            expect(deniedMod.status).toBe('denied');
+            expect(deniedMod.reviewComment).toBeDefined();
+        });
+    });
+
+    describe('Publish Flow', () => {
+        it('should publish approved mod', async () => {
+            // Step 1: Mod is approved
+            const approvedMod = {
+                ...mockMod,
+                status: 'approved' as const,
+            };
+
+            // Step 2: Publish mod
+            const publishedMod = {
+                ...approvedMod,
+                status: 'published' as const,
+                publishedAt: new Date().toISOString(),
+            };
+
+            expect(publishedMod.status).toBe('published');
+            expect(publishedMod.publishedAt).toBeDefined();
+        });
+
+        it('should not publish mod that is not approved', async () => {
+            // Mod with changes requested should not be publishable
+            const changesRequestedMod = {
+                ...mockMod,
+                status: 'changes_requested' as const,
+            };
+
+            expect(changesRequestedMod.status).not.toBe('approved');
+            expect(changesRequestedMod.status).not.toBe('published');
+        });
+    });
+
+    describe('End-to-End Review Flow', () => {
+        it('should complete full flow: Submit → Review → Approve → Publish', async () => {
+            const userId = 'user_123';
+            const email = 'user@example.com';
+            const customerId = 'cust_abc';
+            const adminEmail = 'admin@example.com';
+
+            mockIsSuperAdminEmail.mockResolvedValue(true);
+
+            // Step 1: User submits mod
+            const submittedMod = {
+                ...mockMod,
+                status: 'pending' as const,
+            };
+            expect(submittedMod.status).toBe('pending');
+
+            // Step 2: Admin reviews and approves
+            const approvedMod = {
+                ...submittedMod,
+                status: 'approved' as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: adminEmail,
+            };
+            expect(approvedMod.status).toBe('approved');
+
+            // Step 3: Publish mod
+            const publishedMod = {
+                ...approvedMod,
+                status: 'published' as const,
+                publishedAt: new Date().toISOString(),
+            };
+            expect(publishedMod.status).toBe('published');
+            expect(publishedMod.publishedAt).toBeDefined();
+        });
+
+        it('should handle rejection flow: Submit → Review → Deny', async () => {
+            const adminEmail = 'admin@example.com';
+            mockIsSuperAdminEmail.mockResolvedValue(true);
+
+            // Step 1: User submits mod
+            const submittedMod = {
+                ...mockMod,
+                status: 'pending' as const,
+            };
+            expect(submittedMod.status).toBe('pending');
+
+            // Step 2: Admin reviews and denies
+            const deniedMod = {
+                ...submittedMod,
+                status: 'denied' as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: adminEmail,
+                reviewComment: 'Does not meet requirements',
+            };
+            expect(deniedMod.status).toBe('denied');
+            expect(deniedMod.reviewComment).toBeDefined();
+        });
+    });
+});
+

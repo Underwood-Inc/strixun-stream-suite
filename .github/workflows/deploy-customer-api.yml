@@ -128,6 +128,9 @@ jobs:
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY
           fi
+          if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
+          fi
         continue-on-error: true
       
       - name: Get KV Namespace ID

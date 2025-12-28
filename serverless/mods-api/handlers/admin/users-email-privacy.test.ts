@@ -4,7 +4,7 @@
  * Only displayName and emailHash (for admin reference) are returned
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleListUsers, handleGetUserDetails } from './users.js';
 
 // Mock dependencies
@@ -32,9 +32,31 @@ vi.mock('../../utils/errors.js', () => ({
 
 import { getApprovedUploaders } from '../../utils/admin.js';
 
+// Mock the service client to avoid actual network calls
+vi.mock('../../../shared/service-client/index.js', () => ({
+    createServiceClient: vi.fn(() => ({
+        get: vi.fn().mockResolvedValue({
+            status: 200,
+            data: {
+                users: [
+                    {
+                        userId: 'user_123',
+                        displayName: 'CoolUser123',
+                        customerId: 'cust_abc',
+                        createdAt: '2024-01-01T00:00:00Z',
+                        lastLogin: '2024-01-02T00:00:00Z',
+                    },
+                ],
+                total: 1,
+            },
+        }),
+    })),
+}));
+
 describe('Email Privacy in Admin User Handlers', () => {
     const mockEnv = {
         ALLOWED_ORIGINS: '*',
+        AUTH_API_URL: 'https://auth.idling.app',
         MODS_KV: {
             get: vi.fn(),
             list: vi.fn(),
@@ -48,22 +70,18 @@ describe('Email Privacy in Admin User Handlers', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         
-        // Mock OTP auth service response (service-to-service call)
-        global.fetch = vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({
-                users: [
-                    {
-                        userId: 'user_123',
-                        email: 'user@example.com', // Internal only - never returned
-                        displayName: 'CoolUser123',
-                        customerId: 'cust_abc',
-                        createdAt: '2024-01-01T00:00:00Z',
-                        lastLogin: '2024-01-02T00:00:00Z',
-                    },
-                ],
-            }),
-        });
+        // Mock KV operations to return empty immediately (prevents hanging on cursor loops)
+        vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(null);
+        vi.mocked(mockEnv.MODS_KV.list).mockResolvedValue({
+            keys: [],
+            listComplete: true,
+        } as any);
+        
+        vi.mocked(mockEnv.OTP_AUTH_KV.get).mockResolvedValue(null);
+        vi.mocked(mockEnv.OTP_AUTH_KV.list).mockResolvedValue({
+            keys: [],
+            listComplete: true,
+        } as any);
     });
 
     describe('handleListUsers', () => {
@@ -117,19 +135,23 @@ describe('Email Privacy in Admin User Handlers', () => {
         });
 
         it('should handle null displayName gracefully', async () => {
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: true,
-                json: async () => ({
-                    users: [
-                        {
-                            userId: 'user_123',
-                            email: 'user@example.com',
-                            displayName: null,
-                            customerId: 'cust_abc',
-                        },
-                    ],
+            // Mock service client for this specific test
+            const { createServiceClient } = await import('../../../shared/service-client/index.js');
+            vi.mocked(createServiceClient).mockReturnValueOnce({
+                get: vi.fn().mockResolvedValue({
+                    status: 200,
+                    data: {
+                        users: [
+                            {
+                                userId: 'user_123',
+                                displayName: null,
+                                customerId: 'cust_abc',
+                            },
+                        ],
+                        total: 1,
+                    },
                 }),
-            });
+            } as any);
 
             vi.mocked(getApprovedUploaders).mockResolvedValue([]);
 
@@ -161,19 +183,23 @@ describe('Email Privacy in Admin User Handlers', () => {
                 listComplete: true,
             });
 
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: true,
-                json: async () => ({
-                    users: [
-                        {
-                            userId: 'user_123',
-                            email: 'user@example.com', // Internal only
-                            displayName: 'CoolUser123',
-                            customerId: 'cust_abc',
-                        },
-                    ],
+            // Mock service client for this specific test
+            const { createServiceClient } = await import('../../../shared/service-client/index.js');
+            vi.mocked(createServiceClient).mockReturnValueOnce({
+                get: vi.fn().mockResolvedValue({
+                    status: 200,
+                    data: {
+                        users: [
+                            {
+                                userId: 'user_123',
+                                displayName: 'CoolUser123',
+                                customerId: 'cust_abc',
+                            },
+                        ],
+                        total: 1,
+                    },
                 }),
-            });
+            } as any);
 
             const mockRequest = new Request('https://example.com/admin/users/user_123', {
                 method: 'GET',
@@ -212,19 +238,23 @@ describe('Email Privacy in Admin User Handlers', () => {
                 listComplete: true,
             });
 
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: true,
-                json: async () => ({
-                    users: [
-                        {
-                            userId: 'user_123',
-                            email: 'user@example.com',
-                            displayName: 'CoolUser123',
-                            customerId: 'cust_abc',
-                        },
-                    ],
+            // Mock service client for this specific test
+            const { createServiceClient } = await import('../../../shared/service-client/index.js');
+            vi.mocked(createServiceClient).mockReturnValueOnce({
+                get: vi.fn().mockResolvedValue({
+                    status: 200,
+                    data: {
+                        users: [
+                            {
+                                userId: 'user_123',
+                                displayName: 'CoolUser123',
+                                customerId: 'cust_abc',
+                            },
+                        ],
+                        total: 1,
+                    },
                 }),
-            });
+            } as any);
 
             const mockRequest = new Request('https://example.com/admin/users/user_123', {
                 method: 'GET',

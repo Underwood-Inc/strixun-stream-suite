@@ -290,6 +290,67 @@
 - Use absolute imports with path aliases: `@/components`, `@/stores`
 - Never import business logic into UI components
 
+## Text and Symbol Rules - CRITICAL
+
+### NEVER Use Emojis or Unicode Symbols
+- **ABSOLUTE PROHIBITION**: Never use emojis (✅, ⚠️, ❌, 🔒, etc.) or Unicode symbols in code, scripts, or console output
+- **Why**: Emojis cause character encoding issues in terminals, PowerShell, older systems, and many development environments
+- **Solution**: Always use ASCII-compatible text symbols or plain text
+- **Exception**: None. This rule applies to all code, scripts, documentation, and console output
+
+### ✅ CORRECT - ASCII-Compatible Symbols (ALWAYS USE):
+```powershell
+# PowerShell scripts
+Write-Host "[SUCCESS] Operation completed" -ForegroundColor Green
+Write-Host "[WARNING] This is a warning" -ForegroundColor Yellow
+Write-Host "[ERROR] Operation failed" -ForegroundColor Red
+Write-Host "[INFO] Processing..." -ForegroundColor Cyan
+```
+
+```typescript
+// TypeScript/JavaScript
+console.log('[SUCCESS] All services configured successfully!');
+console.warn('[WARNING] Some services failed');
+console.error('[ERROR] Invalid input');
+```
+
+```markdown
+# Documentation
+- [SUCCESS] Feature implemented
+- [WARNING] Deprecated feature
+- [ERROR] Known issue
+- [INFO] Additional information
+```
+
+### ❌ WRONG - Emojis/Unicode (DO NOT USE):
+```powershell
+# WRONG - Emojis cause encoding issues
+Write-Host "✅ All services configured successfully!"
+Write-Host "⚠️ Some services failed"
+```
+
+```typescript
+// WRONG - Emojis may not display correctly
+console.log('✅ All services configured successfully!');
+console.warn('⚠️ Some services failed');
+```
+
+### ASCII Symbol Alternatives
+- Success: `[SUCCESS]`, `[OK]`, `[PASS]`, `+`, `*`
+- Warning: `[WARNING]`, `[WARN]`, `!`, `*`
+- Error: `[ERROR]`, `[FAIL]`, `[FAILED]`, `X`, `-`
+- Info: `[INFO]`, `[NOTE]`, `i`, `>`
+- Checkmark: `[OK]`, `[PASS]`, `+`, `*`
+- Cross/X: `[FAIL]`, `[ERROR]`, `X`, `-`
+
+### Preferred Format
+Always use bracketed text labels for status indicators:
+- `[SUCCESS]` instead of ✅
+- `[WARNING]` instead of ⚠️
+- `[ERROR]` instead of ❌
+- `[INFO]` instead of ℹ️
+- `[SECURITY]` instead of 🔒
+
 ## General Code Quality
 
 ### Naming Conventions
@@ -319,7 +380,7 @@
 - **Solution**: Use proper semantic HTML - if you need a link, use an `<a>` tag
 - **Exception**: None. This rule has no exceptions.
 
-### ❌ WRONG - href on non-anchor elements (DO NOT USE):
+### [WRONG] - href on non-anchor elements (DO NOT USE):
 ```svelte
 <!-- WRONG: href on a div -->
 <div href="https://example.com">Link</div>
@@ -334,7 +395,7 @@
 <Card href="https://example.com">Link</Card>
 ```
 
-### ✅ CORRECT - Use anchor tags for links (ALWAYS USE):
+### [CORRECT] - Use anchor tags for links (ALWAYS USE):
 ```svelte
 <!-- CORRECT: href on an anchor tag -->
 <a href="https://example.com" target="_blank" rel="noopener noreferrer">Link</a>
