@@ -4,10 +4,8 @@
  */
 
 import { useParams } from 'react-router-dom';
-import { useModsList } from '../hooks/useMods';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
-import { ModCard } from '../components/mod/ModCard';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -52,17 +50,6 @@ const SectionTitle = styled.h2`
   margin: 0;
 `;
 
-const ModsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: ${spacing.lg};
-`;
-
-const Loading = styled.div`
-  text-align: center;
-  padding: ${spacing.xxl};
-  color: ${colors.textSecondary};
-`;
 
 const Error = styled.div`
   text-align: center;

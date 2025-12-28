@@ -38,10 +38,6 @@ const StatLabel = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const StatChange = styled.div<{ $positive?: boolean }>`
-  font-size: 0.75rem;
-  color: ${props => props.$positive ? colors.success : colors.textSecondary};
-`;
 
 export interface AdminStatsProps {
   mods: ModMetadata[];

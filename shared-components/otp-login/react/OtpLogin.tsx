@@ -431,7 +431,7 @@ export function OtpLogin({
             </div>
             <input
               type="tel"
-              placeholder="Enter OTP code"
+              placeholder={OTP_PLACEHOLDER}
               value={state.otp}
               onChange={handleOtpChange}
               onKeyDown={(e) => handleKeyPress(e, handleVerifyOtp)}
@@ -441,7 +441,6 @@ export function OtpLogin({
               pattern={OTP_HTML_PATTERN}
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder={OTP_PLACEHOLDER}
               style={{
                 padding: '12px',
                 border: '1px solid var(--border, #ddd)',

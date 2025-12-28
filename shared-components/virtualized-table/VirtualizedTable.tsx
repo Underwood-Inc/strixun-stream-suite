@@ -353,5 +353,3 @@ export function VirtualizedTable<T extends Record<string, any>>({
     </div>
   );
 }
-
-``

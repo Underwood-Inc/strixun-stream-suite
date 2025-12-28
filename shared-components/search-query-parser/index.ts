@@ -49,7 +49,7 @@ export function parseSearchQuery(query: string): SearchQueryResult {
   
   // Extract quoted exact phrases
   const exactPhrases: string[] = [];
-  let processedQuery = trimmed.replace(/"([^"]+)"/g, (match, phrase) => {
+  let processedQuery = trimmed.replace(/"([^"]+)"/g, (_match, phrase) => {
     exactPhrases.push(phrase.toLowerCase());
     return '';
   });
