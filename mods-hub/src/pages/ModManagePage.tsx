@@ -96,7 +96,7 @@ export function ModManagePage() {
         return (
             <Unauthorized>
                 <UnauthorizedTitle>Permission Denied</UnauthorizedTitle>
-                <UnauthorizedMessage>You can only manage mods that you uploaded. This mod belongs to {data.mod.authorEmail}.</UnauthorizedMessage>
+                <UnauthorizedMessage>You can only manage mods that you uploaded. This mod belongs to {data.mod.authorDisplayName || 'Unknown User'}.</UnauthorizedMessage>
             </Unauthorized>
         );
     }

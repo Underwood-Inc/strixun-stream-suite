@@ -316,10 +316,11 @@ export function AdminPanel() {
             ),
         },
         {
-            key: 'authorEmail',
+            key: 'authorDisplayName',
             label: 'Author',
             width: '200px',
             sortable: true,
+            render: (mod) => mod.authorDisplayName || 'Unknown User',
         },
         {
             key: 'status',

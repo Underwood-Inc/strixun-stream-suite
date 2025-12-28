@@ -31,6 +31,7 @@ export interface ModStatusHistory {
     status: ModStatus;
     changedBy: string;
     changedByEmail?: string;
+    changedByDisplayName?: string | null;
     changedAt: string;
     reason?: string;
 }
@@ -39,6 +40,7 @@ export interface ModReviewComment {
     commentId: string;
     authorId: string;
     authorEmail: string;
+    authorDisplayName?: string | null;
     content: string;
     createdAt: string;
     isAdmin: boolean;
@@ -129,6 +131,7 @@ export interface ModRating {
     modId: string;
     userId: string;
     userEmail: string;
+    userDisplayName?: string | null;
     rating: number; // 1-5
     comment?: string;
     createdAt: string;

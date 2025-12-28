@@ -240,7 +240,7 @@ export function ModReviewPage() {
                     <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
                         <StatusBadge status={mod.status}>{mod.status}</StatusBadge>
                         <span style={{ color: colors.textMuted, fontSize: '0.875rem' }}>
-                            By {mod.authorEmail}
+                            By {mod.authorDisplayName || 'Unknown User'}
                         </span>
                     </div>
                 </Info>
@@ -287,7 +287,7 @@ export function ModReviewPage() {
                             <Comment key={comment.commentId} isAdmin={comment.isAdmin}>
                                 <CommentHeader>
                                     <CommentAuthor>
-                                        {comment.isAdmin ? '👑 Admin' : comment.authorEmail}
+                                        {comment.isAdmin ? '👑 Admin' : (comment.authorDisplayName || 'Unknown User')}
                                     </CommentAuthor>
                                     <CommentDate>
                                         {new Date(comment.createdAt).toLocaleString()}
@@ -323,7 +323,7 @@ export function ModReviewPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing.xs }}>
                                     <StatusBadge status={entry.status}>{entry.status}</StatusBadge>
                                     <span style={{ color: colors.textMuted, fontSize: '0.75rem' }}>
-                                        {new Date(entry.changedAt).toLocaleString()} by {entry.changedByEmail || entry.changedBy}
+                                        {new Date(entry.changedAt).toLocaleString()} by {entry.changedByDisplayName || entry.changedBy || 'Unknown User'}
                                     </span>
                                 </div>
                                 {entry.reason && (

@@ -365,7 +365,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                     {ratings.slice(0, 10).map((rating) => (
                         <Review key={rating.ratingId}>
                             <ReviewHeader>
-                                <ReviewAuthor>{rating.userEmail}</ReviewAuthor>
+                                <ReviewAuthor>{rating.userDisplayName || 'Unknown User'}</ReviewAuthor>
                                 <ReviewDate>{new Date(rating.createdAt).toLocaleDateString()}</ReviewDate>
                             </ReviewHeader>
                             <ReviewRating>{renderStars(rating.rating)}</ReviewRating>

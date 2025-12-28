@@ -108,6 +108,7 @@ async function fetchEmailFromAuthService(token: string, env: Env): Promise<strin
     return undefined;
 }
 
+
 /**
  * Authenticate request and extract user info
  * Returns auth object with userId, customerId, and jwtToken

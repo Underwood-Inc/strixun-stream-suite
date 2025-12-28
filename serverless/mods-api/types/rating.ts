@@ -7,6 +7,7 @@ export interface ModRating {
     modId: string;
     userId: string;
     userEmail: string;
+    userDisplayName?: string | null;
     rating: number; // 1-5
     comment?: string;
     createdAt: string;

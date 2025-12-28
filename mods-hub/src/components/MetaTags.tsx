@@ -74,7 +74,8 @@ export function ModMetaTags({ mod, baseUrl }: MetaTagsProps) {
     const imageUrl = ogImageUrl; // Use OG image endpoint for rich preview
     
     // Build a rich description with mod details
-    const richDescription = `${description} | ${categoryDisplay} mod by ${mod.authorEmail} | ${mod.downloadCount} downloads | Latest version: ${mod.latestVersion}`;
+    const authorName = mod.authorDisplayName || 'Unknown User';
+    const richDescription = `${description} | ${categoryDisplay} mod by ${authorName} | ${mod.downloadCount} downloads | Latest version: ${mod.latestVersion}`;
 
     return (
         <Helmet>
@@ -113,7 +114,7 @@ export function ModMetaTags({ mod, baseUrl }: MetaTagsProps) {
             <meta name="apple-mobile-web-app-title" content="Stream Suite Mods" />
 
             {/* Article-specific tags for better categorization */}
-            <meta property="article:author" content={mod.authorEmail} />
+            <meta property="article:author" content={mod.authorDisplayName || 'Unknown User'} />
             <meta property="article:published_time" content={mod.createdAt} />
             <meta property="article:modified_time" content={mod.updatedAt} />
             <meta property="article:section" content={categoryDisplay} />

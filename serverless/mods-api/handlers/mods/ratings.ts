@@ -10,6 +10,29 @@ import { getCustomerKey } from '../../utils/customer.js';
 import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../types/rating.js';
 
 /**
+ * Fetch user displayName from auth service
+ */
+async function fetchUserDisplayName(token: string, env: Env): Promise<string | null> {
+    try {
+        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        const response = await fetch(`${authApiUrl}/auth/me`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        if (response.ok) {
+            const userData = await response.json() as { displayName?: string | null; [key: string]: any };
+            return userData.displayName || null;
+        }
+    } catch (error) {
+        console.warn('[Ratings] Failed to fetch displayName from auth service:', error);
+    }
+    return null;
+}
+
+/**
  * Generate a unique rating ID
  */
 function generateRatingId(): string {
@@ -196,6 +219,10 @@ export async function handleSubmitModRating(
             });
         }
         
+        // Get user displayName from auth service (once, reuse for both create and update)
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        const userDisplayName = jwtToken ? await fetchUserDisplayName(jwtToken, env) : null;
+        
         // Check if user has already rated this mod
         const ratingsListKey = getCustomerKey(null, `mod_${modId}_ratings`);
         const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
@@ -209,6 +236,7 @@ export async function handleSubmitModRating(
                 // User has already rated - update existing rating
                 const updatedRating: ModRating = {
                     ...existingRating,
+                    userDisplayName: userDisplayName || existingRating.userDisplayName || null,
                     rating: body.rating,
                     comment: body.comment || existingRating.comment,
                     updatedAt: new Date().toISOString(),
@@ -239,6 +267,7 @@ export async function handleSubmitModRating(
             modId,
             userId: auth.userId,
             userEmail: auth.email || '',
+            userDisplayName,
             rating: body.rating,
             comment: body.comment,
             createdAt: now,
