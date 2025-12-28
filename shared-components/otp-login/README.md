@@ -91,7 +91,7 @@ login.subscribe((state) => {
 login.setEmail('user@example.com');
 await login.requestOtp();
 
-login.setOtp('123456');
+login.setOtp('123456789');
 await login.verifyOtp();
 ```
 
@@ -108,7 +108,7 @@ new OtpLoginCore(config: OtpLoginConfig)
 #### Methods
 
 - `setEmail(email: string)` - Set email address
-- `setOtp(otp: string)` - Set OTP code (auto-filters to 6 digits)
+- `setOtp(otp: string)` - Set OTP code (auto-filters to 9 digits)
 - `requestOtp()` - Request OTP code
 - `verifyOtp()` - Verify OTP code
 - `goBack()` - Go back to email step

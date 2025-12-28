@@ -256,6 +256,32 @@ export function useAddReviewComment() {
 }
 
 /**
+ * Admin delete mod mutation (admin only, bypasses author check)
+ */
+export function useAdminDeleteMod() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: (modId: string) => api.adminDeleteMod(modId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: modKeys.adminList({}) });
+            queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            addNotification({
+                message: 'Mod deleted successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to delete mod',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
  * Get mod ratings query
  */
 export function useModRatings(modId: string) {

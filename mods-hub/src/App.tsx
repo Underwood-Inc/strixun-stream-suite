@@ -11,6 +11,9 @@ import { UserProfilePage } from './pages/UserProfilePage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { Layout } from './components/layout/Layout';
+import { ProtectedRoute } from './components/routing/ProtectedRoute';
+import { AdminRoute } from './components/routing/AdminRoute';
+import { UploadPermissionRoute } from './components/routing/UploadPermissionRoute';
 
 function ConditionalLayout({ children }: { children: React.ReactNode }) {
     const location = useLocation();
@@ -30,17 +33,66 @@ export function App() {
                 <Routes>
                     <Route path="/" element={<ModListPage />} />
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/upload" element={<ModUploadPage />} />
-                    <Route path="/dashboard" element={<UserDashboardPage />} />
-                    <Route path="/profile" element={<UserProfilePage />} />
-                    <Route path="/manage/:slug" element={<ModManagePage />} />
-                    <Route path="/admin" element={<AdminPanel />} />
+                    <Route 
+                        path="/upload" 
+                        element={
+                            <UploadPermissionRoute>
+                                <ModUploadPage />
+                            </UploadPermissionRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/dashboard" 
+                        element={
+                            <ProtectedRoute>
+                                <UserDashboardPage />
+                            </ProtectedRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/profile" 
+                        element={
+                            <ProtectedRoute>
+                                <UserProfilePage />
+                            </ProtectedRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/manage/:slug" 
+                        element={
+                            <UploadPermissionRoute>
+                                <ModManagePage />
+                            </UploadPermissionRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/admin" 
+                        element={
+                            <AdminRoute>
+                                <AdminPanel />
+                            </AdminRoute>
+                        } 
+                    />
                     {/* Support both /users/:username and /:username for user profiles (for subdomain and non-subdomain) */}
                     <Route path="/users/:username" element={<PublicUserProfilePage />} />
                     {/* Support both /mods/:slug (for non-subdomain deployments) and /:slug (for mods. subdomain) */}
-                    <Route path="/mods/:slug/review" element={<ModReviewPage />} />
+                    <Route 
+                        path="/mods/:slug/review" 
+                        element={
+                            <ProtectedRoute>
+                                <ModReviewPage />
+                            </ProtectedRoute>
+                        } 
+                    />
                     <Route path="/mods/:slug" element={<ModDetailPage />} />
-                    <Route path="/:slug/review" element={<ModReviewPage />} />
+                    <Route 
+                        path="/:slug/review" 
+                        element={
+                            <ProtectedRoute>
+                                <ModReviewPage />
+                            </ProtectedRoute>
+                        } 
+                    />
                     <Route path="/:slug" element={<ModDetailPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

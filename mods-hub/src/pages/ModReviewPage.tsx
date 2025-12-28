@@ -4,8 +4,8 @@
  * Only accessible to admins and the mod uploader
  */
 
-import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useModReview, useAddReviewComment, useUpdateModStatus } from '../hooks/useMods';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
@@ -180,6 +180,7 @@ const Error = styled.div`
 
 export function ModReviewPage() {
     const { slug } = useParams<{ slug: string }>();
+    const navigate = useNavigate();
     const [commentText, setCommentText] = useState('');
 
     const { data, isLoading, error } = useModReview(slug || '');
@@ -194,13 +195,42 @@ export function ModReviewPage() {
         setCommentText('');
     };
 
+    // Redirect if user doesn't have permission (not admin and not uploader)
+    useEffect(() => {
+        if (!isLoading && data) {
+            const { mod } = data;
+            const isAdmin = isSuperAdmin || false;
+            const isUploader = user?.userId === mod.authorId;
+            
+            if (!isAdmin && !isUploader) {
+                navigate('/', { replace: true });
+            }
+        }
+    }, [isLoading, data, isSuperAdmin, user, navigate]);
+
     if (isLoading) return <Loading>Loading review...</Loading>;
-    if (error) return <Error>Failed to load review: {(error as Error).message}</Error>;
-    if (!data) return <Error>Review not found</Error>;
+    if (error) {
+        // If error is 403 or 404, redirect to home
+        if (error instanceof Error && (error.message.includes('403') || error.message.includes('404'))) {
+            navigate('/', { replace: true });
+            return null;
+        }
+        return <Error>Failed to load review: {(error as Error).message}</Error>;
+    }
+    if (!data) {
+        navigate('/', { replace: true });
+        return null;
+    }
 
     const { mod } = data;
     const isAdmin = isSuperAdmin || false;
     const isUploader = user?.userId === mod.authorId;
+
+    // Final check - redirect if still no permission (shouldn't happen due to useEffect, but safety check)
+    if (!isAdmin && !isUploader) {
+        navigate('/', { replace: true });
+        return null;
+    }
 
     return (
         <PageContainer>

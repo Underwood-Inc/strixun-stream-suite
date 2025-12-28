@@ -100,6 +100,14 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: DELETE /admin/mods/:modId - Delete mod (admin only, bypasses author check)
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && request.method === 'DELETE') {
+            const modId = pathSegments[2];
+            const { handleAdminDeleteMod } = await import('../handlers/admin/delete.js');
+            const response = await handleAdminDeleteMod(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
         // 404 for unknown admin routes
         return null;
     } catch (error: any) {

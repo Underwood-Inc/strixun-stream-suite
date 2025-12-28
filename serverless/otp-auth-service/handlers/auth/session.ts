@@ -131,6 +131,32 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
         }
         
+        // CRITICAL: Verify session still exists (user might have logged out)
+        // This prevents /auth/me from returning user data after logout
+        const userId = payload.userId || payload.sub;
+        if (userId) {
+            const sessionKey = getCustomerKey(customerId, `session_${userId}`);
+            const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
+            
+            if (!sessionData) {
+                // Session was deleted (user logged out)
+                return new Response(JSON.stringify({ error: 'Session not found. Please log in again.' }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
+            }
+            
+            // Verify session hasn't expired
+            const expiresAt = new Date(sessionData.expiresAt);
+            if (expiresAt <= new Date()) {
+                // Session expired
+                return new Response(JSON.stringify({ error: 'Session expired. Please log in again.' }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                });
+            }
+        }
+        
         // Reset preferences TTL on access to keep it in sync with user data
         const { getUserPreferences, storeUserPreferences } = await import('../../services/user-preferences.js');
         const preferences = await getUserPreferences(user.userId, customerId, env);
@@ -238,12 +264,21 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             
             // Get session to find IP address for cleanup
             const sessionData = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as SessionData | null;
+            
+            // Delete IP-to-session mapping for this user from all IPs
+            // We need to delete from the current session's IP, but also check if there are other sessions
+            // Since we can't list all IPs, we'll delete from the known IP and rely on session restore
+            // to validate sessions exist before restoring
             if (sessionData?.ipAddress) {
-                // Delete IP-to-session mapping
+                // Delete IP-to-session mapping for this user from this IP
                 await deleteIPSessionMapping(sessionData.ipAddress, userId, env);
             }
             
+            // CRITICAL: Delete the session itself - this prevents /auth/me and session restore
+            // from working with this session
             await env.OTP_AUTH_KV.delete(sessionKey);
+            
+            console.log(`[Logout] ✅ Deleted session for user: ${userId}, customerId: ${customerId}`);
         }
         
         return new Response(JSON.stringify({ 

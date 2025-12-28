@@ -7,6 +7,7 @@
 
 import { writable, derived, get } from 'svelte/store';
 import { createFilterState } from './filter-state';
+import { matchesSearchQuery as matchesSearchQueryUtil } from '../../shared-components/search-query-parser/index.js';
 
 export type LogType = 'info' | 'success' | 'error' | 'warning' | 'debug';
 
@@ -60,7 +61,10 @@ export const visibleLogEntries = derived(
     const searchQuery = filters.searchQuery?.trim() || '';
     if (searchQuery) {
       filtered = filtered.filter(entry => {
-        return matchesSearchQuery(entry, searchQuery);
+        const message = entry.message.toLowerCase();
+        const flair = entry.flair?.toLowerCase() || '';
+        const searchText = `${message} ${flair}`;
+        return matchesSearchQueryUtil(searchText, searchQuery);
       });
     }
     
@@ -68,47 +72,6 @@ export const visibleLogEntries = derived(
   }
 );
 
-/**
- * Advanced search query matching
- */
-function matchesSearchQuery(entry: LogEntry, query: string): boolean {
-  const message = entry.message.toLowerCase();
-  const flair = entry.flair?.toLowerCase() || '';
-  const searchText = `${message} ${flair}`;
-  
-  // Handle quoted exact phrases
-  const quotedPhrases: string[] = [];
-  let processedQuery = query.replace(/"([^"]+)"/g, (match, phrase) => {
-    quotedPhrases.push(phrase.toLowerCase());
-    return '';
-  });
-  
-  // Check exact phrases first
-  for (const phrase of quotedPhrases) {
-    if (!searchText.includes(phrase)) {
-      return false;
-    }
-  }
-  
-  processedQuery = processedQuery.trim();
-  if (!processedQuery) {
-    return quotedPhrases.length > 0;
-  }
-  
-  // Split by | for OR groups, then by space for AND within groups
-  const orGroups = processedQuery.split('|').map(g => g.trim()).filter(g => g);
-  
-  return orGroups.some(orGroup => {
-    const andTerms = orGroup.split(/\s+/).filter(t => t);
-    return andTerms.every(term => {
-      if (term.endsWith('*')) {
-        const prefix = term.slice(0, -1).toLowerCase();
-        return searchText.includes(prefix);
-      }
-      return searchText.includes(term.toLowerCase());
-    });
-  });
-}
 
 /**
  * Add a log entry - SIMPLIFIED, DIRECT, WORKS

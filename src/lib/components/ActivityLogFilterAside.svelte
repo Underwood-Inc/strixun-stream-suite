@@ -15,7 +15,7 @@
     toggleLogTypeFilter,
     type LogType
   } from '../../stores/activity-log';
-  import Tooltip from './Tooltip.svelte';
+  import AdvancedSearchInput from '../../../shared-components/search-query-parser/AdvancedSearchInput.svelte';
   
   const logTypes: LogType[] = ['info', 'success', 'error', 'warning', 'debug'];
   
@@ -314,30 +314,12 @@
     <!-- Search at the top -->
     <div class="filter-aside__section">
       <h3 class="filter-aside__title">Search</h3>
-      <div class="filter-aside__search">
-        <input
-          type="text"
-          class="filter-aside__search-input"
-          placeholder='Search... (use "quotes" for exact, space for AND, | for OR)'
-          value={$logFilters.searchQuery}
-          on:input={(e) => setLogSearchQuery(e.currentTarget.value)}
-        />
-        {#if $logFilters.searchQuery.trim()}
-          <Tooltip text="Clear search" position="bottom">
-            <button
-              class="filter-aside__search-clear"
-              on:click={clearLogSearch}
-              type="button"
-              aria-label="Clear search"
-            >
-              ✕
-            </button>
-          </Tooltip>
-        {/if}
-      </div>
-      <div class="filter-aside__search-hint">
-        <small>Use quotes for exact phrases, space for AND, | for OR</small>
-      </div>
+      <AdvancedSearchInput
+        value={$logFilters.searchQuery}
+        onInput={(value) => setLogSearchQuery(value)}
+        onClear={clearLogSearch}
+        placeholder='Search... (use "quotes" for exact, space for AND, | for OR)'
+      />
     </div>
     
     <!-- Filter by Type -->

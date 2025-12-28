@@ -152,16 +152,61 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         
         console.log(`[Restore Session] Found ${sessions.length} active session(s) for IP: ${requestIP}`);
 
-        // Use the first active session (most recent)
-        // In practice, there should only be one session per IP for same-device restoration
-        const sessionMapping = sessions[0];
+        // CRITICAL: Validate all sessions exist before using them
+        // Filter out sessions that have been deleted (e.g., after logout)
+        const validSessions: typeof sessions = [];
+        for (const sessionMapping of sessions) {
+            const sessionData = await env.OTP_AUTH_KV.get(sessionMapping.sessionKey, { type: 'json' }) as SessionData | null;
+            if (sessionData) {
+                // Verify session hasn't expired
+                const expiresAt = new Date(sessionData.expiresAt);
+                if (expiresAt > new Date()) {
+                    validSessions.push(sessionMapping);
+                }
+            }
+        }
         
-        // Get the actual session data
+        // If no valid sessions found, clean up the IP index and return
+        if (validSessions.length === 0) {
+            // All sessions in index were deleted or expired - clean up the index
+            // Use the same hashing function as the IP session index service
+            const encoder = new TextEncoder();
+            const data = encoder.encode(requestIP);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const ipHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            const indexKey = `ip_session_${ipHash}`;
+            await env.OTP_AUTH_KV.delete(indexKey);
+            
+            await recordIPRequest(requestIP, null, env, true);
+            
+            console.log(`[Restore Session] All sessions for IP ${requestIP} were deleted or expired`);
+            
+            return new Response(JSON.stringify({
+                restored: false,
+                message: 'No active session found for this IP address'
+            }), {
+                status: 200,
+                headers: { 
+                    ...getCorsHeaders(env, request), 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store',
+                    'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
+                    'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
+                    'X-RateLimit-Reset': rateLimit.resetAt,
+                },
+            });
+        }
+        
+        // Use the first valid session (most recent)
+        // In practice, there should only be one session per IP for same-device restoration
+        const sessionMapping = validSessions[0];
+        
+        // Get the actual session data (we already validated it exists above)
         const sessionData = await env.OTP_AUTH_KV.get(sessionMapping.sessionKey, { type: 'json' }) as SessionData | null;
         
+        // Double-check session still exists (race condition protection)
         if (!sessionData) {
-            // Session was deleted but index still has it (race condition)
-            // Record successful request
             await recordIPRequest(requestIP, null, env, true);
             
             return new Response(JSON.stringify({

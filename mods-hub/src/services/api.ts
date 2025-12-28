@@ -422,6 +422,13 @@ export async function revokeUser(userId: string): Promise<{ success: boolean; us
 }
 
 /**
+ * Delete mod as admin (admin only, bypasses author check)
+ */
+export async function adminDeleteMod(modId: string): Promise<void> {
+    await api.delete(`/admin/mods/${modId}`);
+}
+
+/**
  * Rating API functions
  */
 

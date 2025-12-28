@@ -1,0 +1,23 @@
+{
+  "name": "@strixun/search-query-parser",
+  "version": "1.0.0",
+  "description": "Human-friendly search query parser with support for exact phrases, AND/OR logic, and wildcards",
+  "main": "index.ts",
+  "types": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./svelte": "./AdvancedSearchInput.svelte",
+    "./react": "./AdvancedSearchInput.tsx"
+  },
+  "keywords": [
+    "search",
+    "query",
+    "parser",
+    "filter",
+    "svelte",
+    "react"
+  ],
+  "author": "Strixun",
+  "license": "MIT"
+}
+
