@@ -2,7 +2,10 @@
 
 ## The Problem
 
-You're getting 401 Unauthorized errors when `otp-auth-service` tries to call `customer-api`. This means the `SERVICE_API_KEY` values don't match between the two services.
+You're getting 401 Unauthorized errors when `otp-auth-service` tries to call `customer-api`. Based on the logs, there are TWO issues:
+
+1. **Service-to-Service Auth**: The `X-Service-Key` header is not being received by `customer-api` (logs show `hasServiceKeyHeader: false`)
+2. **Frontend Encryption Key**: The frontend doesn't have `VITE_SERVICE_ENCRYPTION_KEY` set, causing OTP encryption to fail
 
 ## Why We Can't Verify Secrets Match
 
@@ -164,12 +167,44 @@ When prompted for `SERVICE_API_KEY`, enter the SAME key you want to use for both
 - [ ] Both services redeployed after setting secrets
 - [ ] Check logs to verify keys match (compare previews)
 
+## Frontend Encryption Key Issue
+
+The browser logs show:
+```
+[OtpLogin] [ERROR] CRITICAL ERROR: otpEncryptionKey is missing!
+```
+
+This means `VITE_SERVICE_ENCRYPTION_KEY` is not set in your frontend build environment.
+
+### How to Fix
+
+1. **Set the key in your `.env` file** (root of the project):
+   ```bash
+   VITE_SERVICE_ENCRYPTION_KEY=your-key-here
+   ```
+
+2. **Or set it in your build environment** (CI/CD):
+   - Add `VITE_SERVICE_ENCRYPTION_KEY` as a GitHub secret
+   - Use it in your build workflow
+
+3. **Rebuild the frontend**:
+   ```bash
+   pnpm build
+   ```
+
+4. **Verify the key matches the server**:
+   - Frontend: `VITE_SERVICE_ENCRYPTION_KEY` (in `.env`)
+   - Backend: `SERVICE_ENCRYPTION_KEY` (Cloudflare Workers secret)
+   - **They must be the SAME value**
+
 ## Summary
 
 The debug logging will tell you exactly what's wrong. Look for:
 1. **Missing keys** - one service doesn't have the secret set
 2. **Mismatched keys** - the previews don't match (different values)
 3. **Length mismatches** - keys are different lengths (definitely don't match)
+4. **Header not being sent** - `X-Service-Key` header missing in request (check `[ServiceClient] Setting auth header` logs)
+5. **Frontend key missing** - `VITE_SERVICE_ENCRYPTION_KEY` not set in build environment
 
 The logs are your best diagnostic tool since we can't read secret values directly.
 

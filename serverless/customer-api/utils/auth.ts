@@ -77,7 +77,22 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
  */
 export async function authenticateServiceRequest(request: Request, env: Env): Promise<AuthResult | null> {
     try {
-        const serviceKey = request.headers.get('X-Service-Key');
+        // Check for X-Service-Key header (primary method)
+        let serviceKey = request.headers.get('X-Service-Key');
+        
+        // Also check Authorization header in case it's being sent there
+        if (!serviceKey) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                // Extract token from Bearer token
+                serviceKey = authHeader.substring(7);
+                console.log('[Customer API Auth] Found service key in Authorization header (Bearer token)');
+            } else if (authHeader && !authHeader.startsWith('Bearer ')) {
+                // Might be the service key directly in Authorization header
+                serviceKey = authHeader;
+                console.log('[Customer API Auth] Found service key in Authorization header (direct)');
+            }
+        }
         
         // Debug logging for authentication issues
         console.log('[Customer API Auth] Service authentication attempt', {

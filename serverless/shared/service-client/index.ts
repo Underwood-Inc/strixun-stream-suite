@@ -260,7 +260,32 @@ export class ServiceClient {
                 const headers = new Headers(this.config.defaultHeaders);
                 
                 // Add authentication header
-                headers.set(this.getAuthHeaderName(), this.getAuthHeader());
+                const authHeaderName = this.getAuthHeaderName();
+                const authHeaderValue = this.getAuthHeader();
+                console.log('[ServiceClient] Setting auth header', {
+                    authHeaderName,
+                    authHeaderValueLength: authHeaderValue.length,
+                    authHeaderValuePreview: authHeaderValue.substring(0, 8) + '...',
+                    hasSuperAdminKey: !!this.config.auth.superAdminKey,
+                    hasServiceKey: !!this.config.auth.serviceKey,
+                    serviceKeyHeader: this.config.auth.serviceKeyHeader,
+                });
+                headers.set(authHeaderName, authHeaderValue);
+                
+                // Verify header was set correctly
+                const verifyHeader = headers.get(authHeaderName);
+                if (!verifyHeader) {
+                    console.error('[ServiceClient] CRITICAL: Auth header was not set!', {
+                        authHeaderName,
+                        allHeaders: Array.from(headers.entries()).map(([k]) => k),
+                    });
+                } else {
+                    console.log('[ServiceClient] Auth header verified', {
+                        authHeaderName,
+                        headerValueLength: verifyHeader.length,
+                        headerValuePreview: verifyHeader.substring(0, 8) + '...',
+                    });
+                }
                 
                 // Add custom headers
                 if (options.headers) {
