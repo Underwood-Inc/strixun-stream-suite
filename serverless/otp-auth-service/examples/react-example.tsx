@@ -82,15 +82,15 @@ const OTPAuthComponent: React.FC = () => {
       ) : (
         <div>
           <h2>Enter OTP Code</h2>
-          <p>Check your email for the 6-digit code</p>
+          <p>Check your email for the 9-digit code</p>
           <input
             type="text"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            placeholder="123456"
-            maxLength={6}
+            placeholder="123456789"
+            maxLength={9}
           />
-          <button onClick={handleVerifyOTP} disabled={loading || otp.length !== 6}>
+          <button onClick={handleVerifyOTP} disabled={loading || otp.length !== 9}>
             {loading ? 'Verifying...' : 'Verify OTP'}
           </button>
           <button onClick={() => setStep('email')}>Back</button>

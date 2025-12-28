@@ -130,42 +130,45 @@ export async function handleDownloadVersion(
             }
         }
 
-        // Get version metadata - check both customer scope and global scope
+        // Get version metadata - check global scope first, then customer scopes
         // CRITICAL: Use mod's customerId (not auth customerId) to find version
         // Versions are stored with the mod's customerId, not the downloader's customerId
         let version: ModVersion | null = null;
         console.log('[Download] Looking up version:', { versionId, modId: mod.modId, modCustomerId: mod.customerId, authCustomerId: auth?.customerId });
         
-        // Check mod's customer scope first (where version was stored)
-        if (mod.customerId) {
+        // Check global scope first (for published public mods)
+        const globalVersionKey = `version_${versionId}`;
+        console.log('[Download] Checking global scope for version:', { globalVersionKey });
+        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        if (version) console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
+        
+        // If not found in global scope, check mod's customer scope (where version was uploaded)
+        if (!version && mod.customerId) {
             const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
             console.log('[Download] Checking mod customer scope for version:', { modCustomerVersionKey });
             version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
             if (version) console.log('[Download] Found version in mod customer scope:', { versionId: version.versionId, modId: version.modId });
         }
         
-        // Also check auth customer scope (in case they match or for cross-customer access)
+        // Last resort: check auth customer scope (for backward compatibility)
         if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
             const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
             console.log('[Download] Checking auth customer scope for version:', { authCustomerVersionKey });
             version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
             if (version) console.log('[Download] Found version in auth customer scope:', { versionId: version.versionId, modId: version.modId });
         }
-        
-        // Fall back to global scope if not found
-        if (!version) {
-            const globalVersionKey = `version_${versionId}`;
-            console.log('[Download] Checking global scope for version:', { globalVersionKey });
-            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
-            if (version) console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
-        }
 
         // Check version belongs to mod - version.modId must match mod.modId (source of truth)
-        if (!version || version.modId !== mod.modId) {
+        // Normalize both modIds before comparison to handle cases where one has mod_ prefix and the other doesn't
+        const normalizedVersionModId = version ? normalizeModId(version.modId) : null;
+        const normalizedModModId = normalizeModId(mod.modId);
+        if (!version || normalizedVersionModId !== normalizedModModId) {
             console.error('[Download] Version not found or mismatch:', { 
                 hasVersion: !!version, 
-                versionModId: version?.modId, 
+                versionModId: version?.modId,
+                normalizedVersionModId,
                 expectedModId: mod.modId,
+                normalizedModModId,
                 versionId 
             });
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');

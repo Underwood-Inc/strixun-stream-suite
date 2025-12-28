@@ -1140,7 +1140,7 @@
             <div class="security-grid">
                 <div class="security-item">
                     <h3>🔐 Cryptographically Secure</h3>
-                    <p>6-digit OTP codes generated using cryptographically secure random number generators. 1 million possible combinations.</p>
+                    <p>9-digit OTP codes generated using cryptographically secure random number generators. 1 billion possible combinations.</p>
                 </div>
                 <div class="security-item">
                     <h3>⏱️ Time-Limited</h3>
@@ -1288,8 +1288,8 @@
       
       &lt;div id="otp-step" style="display: none;"&gt;
         &lt;div class="form-group"&gt;
-          &lt;label for="otp"&gt;Enter 6-digit OTP&lt;/label&gt;
-          &lt;input type="text" id="otp" placeholder="123456" maxlength="6" pattern="[0-9]{6}"&gt;
+          &lt;label for="otp"&gt;Enter 9-digit OTP&lt;/label&gt;
+          &lt;input type="text" id="otp" placeholder="123456789" maxlength="9" pattern="[0-9]{9}"&gt;
         &lt;/div&gt;
         &lt;button id="verify-otp-btn" onclick="handleVerifyOTP()"&gt;Verify OTP&lt;/button&gt;
         &lt;button class="back-button" onclick="goBack()"&gt;Back to Email&lt;/button&gt;
@@ -1388,8 +1388,8 @@
       const button = document.getElementById('verify-otp-btn');
       
       const otp = otpInput.value.trim();
-      if (otp.length !== 6) {
-        errorDiv.textContent = 'Please enter a 6-digit OTP';
+      if (otp.length !== 9) {
+        errorDiv.textContent = 'Please enter a 9-digit OTP';
         return;
       }
       
@@ -1524,8 +1524,8 @@ function LoginForm() {
 
   const verifyOTP = async (e) => {
     e?.preventDefault();
-    if (otp.length !== 6) {
-      setError('Please enter a 6-digit OTP');
+    if (otp.length !== 9) {
+      setError('Please enter a 9-digit OTP');
       return;
     }
     
@@ -1608,13 +1608,13 @@ function LoginForm() {
         ) : (
           &lt;form onSubmit={verifyOTP}&gt;
             &lt;div style={styles.formGroup}&gt;
-              &lt;label style={styles.label}&gt;Enter 6-digit OTP&lt;/label&gt;
+              &lt;label style={styles.label}&gt;Enter 9-digit OTP&lt;/label&gt;
               &lt;input
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\\D/g, ''))}
-                placeholder="123456"
-                maxLength={6}
+                placeholder="123456789"
+                maxLength={9}
                 style={styles.input}
                 disabled={loading}
                 required
@@ -1623,7 +1623,7 @@ function LoginForm() {
             {error && &lt;div style={styles.error}&gt;{error}&lt;/div&gt;}
             &lt;button 
               type="submit" 
-              disabled={loading || otp.length !== 6} 
+              disabled={loading || otp.length !== 9} 
               style={styles.button}
             &gt;
               {loading ? 'Verifying...' : 'Verify OTP'}
@@ -1796,8 +1796,8 @@ export default LoginForm;</code></pre>
   }
 
   async function verifyOTP() {
-    if (otp.length !== 6) {
-      error = 'Please enter a 6-digit OTP';
+    if (otp.length !== 9) {
+      error = 'Please enter a 9-digit OTP';
       return;
     }
     
@@ -1841,7 +1841,7 @@ export default LoginForm;</code></pre>
   }
 
   function handleOtpInput(e) {
-    otp = e.target.value.replace(/\\D/g, '').slice(0, 6);
+    otp = e.target.value.replace(/\\D/g, '').slice(0, 9);
   }
 &lt;/script&gt;
 
@@ -1877,14 +1877,14 @@ export default LoginForm;</code></pre>
       &lt;h1&gt;Enter OTP&lt;/h1&gt;
       &lt;form on:submit|preventDefault={verifyOTP}&gt;
         &lt;div class="form-group"&gt;
-          &lt;label for="otp"&gt;Enter 6-digit OTP&lt;/label&gt;
+          &lt;label for="otp"&gt;Enter 9-digit OTP&lt;/label&gt;
           &lt;input
             id="otp"
             type="text"
             value={otp}
             on:input={handleOtpInput}
-            placeholder="123456"
-            maxlength="6"
+            placeholder="123456789"
+            maxlength="9"
             disabled={loading}
             required
           /&gt;
@@ -1892,7 +1892,7 @@ export default LoginForm;</code></pre>
         {#if error}
           &lt;div class="error"&gt;{error}&lt;/div&gt;
         {/if}
-        &lt;button type="submit" disabled={loading || otp.length !== 6} class="button"&gt;
+        &lt;button type="submit" disabled={loading || otp.length !== 9} class="button"&gt;
           {loading ? 'Verifying...' : 'Verify OTP'}
         &lt;/button&gt;
         &lt;button type="button" on:click={goBack} class="button back-button"&gt;
@@ -2222,7 +2222,7 @@ graph TB
                     <h4>Data Flow</h4>
                     <ol>
                         <li>Client requests OTP by sending email address</li>
-                        <li>Worker generates cryptographically secure 6-digit code</li>
+                        <li>Worker generates cryptographically secure 9-digit code</li>
                         <li>OTP stored in KV with 10-minute TTL</li>
                         <li>Email sent via Resend/SendGrid with OTP code</li>
                         <li>User receives email and enters code</li>

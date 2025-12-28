@@ -8,6 +8,7 @@ yarn.lock
 dist/
 build/
 *.local
+dev-dist/
 
 # Auto-generated assets (may contain secrets)
 **/app-assets.ts
@@ -17,6 +18,38 @@ build/
 # TypeScript compiled output (Vite handles compilation)
 **/src/**/*.js
 **/src/**/*.js.map
+
+# Cloudflare Workers / Wrangler
+.wrangler/
+.wrangler-temp/
+**/.wrangler/
+**/.wrangler-temp/
+.dev.vars
+**/.dev.vars
+
+# Compiled Worker files (generated from TypeScript)
+# Note: These patterns target serverless/ directory structure
+serverless/**/worker.js
+serverless/**/router.js
+serverless/**/handlers/**/*.js
+serverless/**/services/**/*.js
+serverless/**/utils/**/*.js
+serverless/**/router/**/*.js
+serverless/**/shared/**/*.js
+
+# Backup files
+*.backup
+**/*.backup
+
+# Source maps (generated files)
+# Exclude source maps in serverless directory (generated from TypeScript)
+serverless/**/*.js.map
+serverless/**/handlers/**/*.js.map
+serverless/**/services/**/*.js.map
+serverless/**/utils/**/*.js.map
+serverless/**/router/**/*.js.map
+serverless/**/shared/**/*.js.map
+serverless/**/dashboard/**/*.js.map
 
 # IDE
 .vscode/

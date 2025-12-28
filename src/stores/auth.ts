@@ -70,20 +70,13 @@ export const authRequired: Readable<boolean> = derived(
 
 /**
  * Save authentication state to storage
- * Uses sessionStorage for tokens (more secure, cleared on browser close)
+ * Stores everything in regular storage for persistence across reloads
  */
 function saveAuthState(userData: User | null): void {
   if (userData) {
-    // Store user data in regular storage (for persistence)
+    // Store user data in regular storage (for persistence across reloads)
+    // Token is included in userData, so no need for separate token storage
     storage.set('auth_user', userData);
-    // Store token in sessionStorage (more secure, cleared on browser close)
-    // This reduces XSS attack window since tokens are cleared when browser closes
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.setItem('auth_token', userData.token);
-    } else {
-      // Fallback to regular storage if sessionStorage unavailable
-      storage.set('auth_token', userData.token);
-    }
     
     // Extract CSRF token and isSuperAdmin from JWT payload
     const payload = decodeJWTPayload(userData.token);
@@ -99,11 +92,7 @@ function saveAuthState(userData: User | null): void {
     csrfToken.set(csrf || null);
   } else {
     storage.remove('auth_user');
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.removeItem('auth_token');
-    } else {
-      storage.remove('auth_token');
-    }
+    storage.remove('auth_token'); // Clean up any old token storage
     isAuthenticated.set(false);
     user.set(null);
     token.set(null);
@@ -269,8 +258,9 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
         return true;
       }
 
-      // Other status codes - assume invalid to be safe
-      return false;
+      // Other status codes - assume valid to avoid clearing auth on server errors
+      console.warn('[Auth] Token validation returned unexpected status:', response.status, '- assuming valid');
+      return true;
     } catch (fetchError) {
       clearTimeout(timeoutId);
       // If aborted, it's a timeout - assume valid to avoid blocking initialization
@@ -278,9 +268,9 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
         console.warn('[Auth] Token validation timed out, assuming valid to avoid blocking initialization');
         return true;
       }
-      // Other errors - assume invalid to be safe
-      console.warn('[Auth] Token validation error:', fetchError);
-      return false;
+      // Other errors (network issues, etc.) - assume valid to avoid clearing auth on temporary issues
+      console.warn('[Auth] Token validation error (assuming valid to avoid clearing auth):', fetchError);
+      return true;
     }
   } catch (error) {
     // Silently fail - don't block initialization if validation fails
@@ -299,21 +289,15 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
 export async function loadAuthState(): Promise<void> {
   try {
     const userData = storage.get('auth_user') as User | null;
-    // Try sessionStorage first (more secure), fallback to regular storage
-    let savedToken: string | null = null;
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      savedToken = sessionStorage.getItem('auth_token');
-    }
-    if (!savedToken) {
-      savedToken = storage.getRaw('auth_token') as string | null;
-    }
     
-    if (userData && savedToken && typeof savedToken === 'string' && 'expiresAt' in userData && typeof userData.expiresAt === 'string') {
+    // Token is stored in userData, no need to check separate token storage
+    if (userData && userData.token && 'expiresAt' in userData && typeof userData.expiresAt === 'string') {
       // Check if token is expired locally first (fast check)
       if (new Date(userData.expiresAt) > new Date()) {
         // Token not expired locally - validate with backend to check if blacklisted
         // This ensures we detect tokens that were blacklisted on other domains
-        const isValid = await validateTokenWithBackend(savedToken);
+        // BUT: Don't clear auth on network errors - only clear if explicitly invalid
+        const isValid = await validateTokenWithBackend(userData.token);
         
         if (!isValid) {
           // Token is blacklisted or invalid - clear auth state
@@ -324,15 +308,9 @@ export async function loadAuthState(): Promise<void> {
           return;
         }
 
-        // Token is valid - proceed with normal flow
-        // Update token in sessionStorage if we loaded from regular storage
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-          sessionStorage.setItem('auth_token', savedToken);
-          // Remove from regular storage if it was there
-          storage.remove('auth_token');
-        }
+        // Token is valid - restore auth state
         // Extract CSRF token and isSuperAdmin from JWT payload before saving
-        const payload = decodeJWTPayload(savedToken);
+        const payload = decodeJWTPayload(userData.token);
         const csrf = payload?.csrf as string | undefined;
         const isSuperAdmin = payload?.isSuperAdmin === true;
         if (csrf) {
@@ -341,23 +319,33 @@ export async function loadAuthState(): Promise<void> {
         // Update userData with isSuperAdmin from JWT if not already set
         const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
         saveAuthState(updatedUserData as User);
+        console.log('[Auth] ✅ User authenticated from storage, token valid until:', userData.expiresAt);
         return;
       } else {
-        // Token expired, clear auth
-        saveAuthState(null);
+        // Token expired, try to restore from backend before clearing
+        console.log('[Auth] Token expired, attempting to restore from backend');
+        const restored = await restoreSessionFromBackend();
+        if (!restored) {
+          // Backend restore failed, clear auth
+          saveAuthState(null);
+        }
+        return;
       }
-    } else {
-      saveAuthState(null);
     }
 
-    // If no valid token found, try to restore session from backend
+    // No userData found - try to restore session from backend
     // This enables cross-application session sharing for the same device/IP
-    if (!savedToken || !userData) {
+    if (!userData) {
       await restoreSessionFromBackend();
     }
   } catch (error) {
     console.error('[Auth] Failed to load auth state:', error);
-    saveAuthState(null);
+    // Don't clear auth on error - might be a temporary network issue
+    // Only clear if we truly have no userData
+    const userData = storage.get('auth_user') as User | null;
+    if (!userData) {
+      saveAuthState(null);
+    }
   }
 }
 

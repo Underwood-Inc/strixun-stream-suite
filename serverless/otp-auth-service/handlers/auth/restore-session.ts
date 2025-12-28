@@ -395,9 +395,14 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         });
     } catch (error: any) {
         console.error('[Restore Session] Error:', error);
+        console.error('[Restore Session] Error stack:', error?.stack);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
         return new Response(JSON.stringify({ 
             error: 'Failed to restore session',
-            message: env.ENVIRONMENT === 'development' ? error.message : undefined
+            message: isDev ? errorMessage : undefined,
+            detail: isDev ? (error?.stack || errorMessage) : undefined,
+            hint: errorMessage.includes('JWT_SECRET') ? 'JWT_SECRET environment variable is required. Set it via: wrangler secret put JWT_SECRET' : undefined
         }), {
             status: 500,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

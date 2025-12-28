@@ -25,7 +25,9 @@ export async function findModBySlug(
     
     if (globalModsList) {
         for (const modId of globalModsList) {
-            const globalModKey = `mod_${modId}`;
+            // Normalize modId to match how it was stored (with normalizeModId)
+            const normalizedModId = normalizeModId(modId);
+            const globalModKey = `mod_${normalizedModId}`;
             const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             if (mod && mod.slug === slug) {
                 // CRITICAL: Filter legacy mods that don't meet visibility/status requirements
@@ -64,6 +66,48 @@ export async function findModBySlug(
                 }
             }
         }
+    }
+    
+    // CRITICAL: If not found and no auth (e.g., badges loading as images), search ALL customer scopes
+    // This is needed because approved mods aren't in the public list yet
+    if (!auth) {
+        const customerListPrefix = 'customer_';
+        let cursor: string | undefined;
+        
+        do {
+            const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+            
+            for (const key of listResult.keys) {
+                // Look for customer mod lists: customer_{id}_mods_list
+                if (key.name.endsWith('_mods_list')) {
+                    const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                    const customerId = match ? match[1] : null;
+                    
+                    if (customerId) {
+                        const customerModsList = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+                        
+                        if (customerModsList) {
+                            for (const modId of customerModsList) {
+                                const normalizedModId = normalizeModId(modId);
+                                const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                                const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                                
+                                if (mod && mod.slug === slug) {
+                                    // For public badges/images: only return public, approved/published mods
+                                    const modVisibility = mod.visibility || 'public';
+                                    const modStatus = mod.status || 'published';
+                                    if (modVisibility === 'public' && (modStatus === 'published' || modStatus === 'approved')) {
+                                        return mod;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            cursor = listResult.listComplete ? undefined : listResult.cursor;
+        } while (cursor);
     }
     
     return null;

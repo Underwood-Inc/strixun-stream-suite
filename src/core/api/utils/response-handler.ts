@@ -50,8 +50,30 @@ export async function handleResponse<T = unknown>(
         if (token) {
           try {
             console.log('[ResponseHandler] Decrypting encrypted response...');
+            // CRITICAL: Extract thumbnailUrls before decryption (they're at top level of encrypted object)
+            const thumbnailUrls = (data as any)?.thumbnailUrls;
             data = await decryptWithJWT(data as any, token) as T;
             console.log('[ResponseHandler] Successfully decrypted response');
+            
+            // Merge thumbnailUrls back into decrypted data if they were excluded from encryption
+            if (thumbnailUrls && typeof thumbnailUrls === 'object' && data && typeof data === 'object') {
+              const decryptedData = data as any;
+              
+              // Handle mod list responses
+              if (Array.isArray(decryptedData.mods)) {
+                decryptedData.mods.forEach((mod: any, index: number) => {
+                  const key = `mods.${index}`;
+                  if (thumbnailUrls[key] && typeof thumbnailUrls[key] === 'string') {
+                    mod.thumbnailUrl = thumbnailUrls[key];
+                  }
+                });
+              }
+              
+              // Handle single mod responses
+              if (decryptedData.mod && thumbnailUrls.mod && typeof thumbnailUrls.mod === 'string') {
+                decryptedData.mod.thumbnailUrl = thumbnailUrls.mod;
+              }
+            }
           } catch (error) {
             console.error('[ResponseHandler] Failed to decrypt response:', error);
             throw createError(

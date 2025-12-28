@@ -101,8 +101,8 @@ export const vanillaJsExample = `<!DOCTYPE html>
       
       <div id="otp-step" style="display: none;">
         <div class="form-group">
-          <label for="otp">Enter 6-digit OTP</label>
-          <input type="text" id="otp" placeholder="123456" maxlength="6" pattern="[0-9]{6}">
+          <label for="otp">Enter 9-digit OTP</label>
+          <input type="text" id="otp" placeholder="123456789" maxlength="9" pattern="[0-9]{9}">
         </div>
         <button id="verify-otp-btn" onclick="handleVerifyOTP()">Verify OTP</button>
         <button class="back-button" onclick="goBack()">Back to Email</button>
@@ -201,8 +201,8 @@ export const vanillaJsExample = `<!DOCTYPE html>
       const button = document.getElementById('verify-otp-btn');
       
       const otp = otpInput.value.trim();
-      if (otp.length !== 6) {
-        errorDiv.textContent = 'Please enter a 6-digit OTP';
+      if (otp.length !== 9) {
+        errorDiv.textContent = 'Please enter a 9-digit OTP';
         return;
       }
       
@@ -331,8 +331,8 @@ function LoginForm() {
 
   const verifyOTP = async (e) => {
     e?.preventDefault();
-    if (otp.length !== 6) {
-      setError('Please enter a 6-digit OTP');
+    if (otp.length !== 9) {
+      setError('Please enter a 9-digit OTP');
       return;
     }
     
@@ -415,13 +415,13 @@ function LoginForm() {
         ) : (
           <form onSubmit={verifyOTP}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Enter 6-digit OTP</label>
+              <label style={styles.label}>Enter 9-digit OTP</label>
               <input
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\\D/g, ''))}
-                placeholder="123456"
-                maxLength={6}
+                placeholder="123456789"
+                maxLength={9}
                 style={styles.input}
                 disabled={loading}
                 required
@@ -430,7 +430,7 @@ function LoginForm() {
             {error && <div style={styles.error}>{error}</div>}
             <button 
               type="submit" 
-              disabled={loading || otp.length !== 6} 
+              disabled={loading || otp.length !== 9} 
               style={styles.button}
             >
               {loading ? 'Verifying...' : 'Verify OTP'}
@@ -595,8 +595,8 @@ export const svelteExample = `<!-- LoginForm.svelte -->
   }
 
   async function verifyOTP() {
-    if (otp.length !== 6) {
-      error = 'Please enter a 6-digit OTP';
+    if (otp.length !== 9) {
+      error = 'Please enter a 9-digit OTP';
       return;
     }
     
@@ -640,7 +640,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
   }
 
   function handleOtpInput(e) {
-    otp = e.target.value.replace(/\\D/g, '').slice(0, 6);
+    otp = e.target.value.replace(/\\D/g, '').slice(0, 9);
   }
 </script>
 
@@ -676,14 +676,14 @@ export const svelteExample = `<!-- LoginForm.svelte -->
       <h1>Enter OTP</h1>
       <form on:submit|preventDefault={verifyOTP}>
         <div class="form-group">
-          <label for="otp">Enter 6-digit OTP</label>
+          <label for="otp">Enter 9-digit OTP</label>
           <input
             id="otp"
             type="text"
             value={otp}
             on:input={handleOtpInput}
-            placeholder="123456"
-            maxlength="6"
+            placeholder="123456789"
+            maxlength="9"
             disabled={loading}
             required
           />
@@ -691,7 +691,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
         {#if error}
           <div class="error">{error}</div>
         {/if}
-        <button type="submit" disabled={loading || otp.length !== 6} class="button">
+        <button type="submit" disabled={loading || otp.length !== 9} class="button">
           {loading ? 'Verifying...' : 'Verify OTP'}
         </button>
         <button type="button" on:click={goBack} class="button back-button">

@@ -36,24 +36,95 @@ export async function handleAdminDeleteMod(
             });
         }
 
-        // Get mod metadata - check both customer scope and global scope
+        // Get mod metadata - admin needs to search ALL customer scopes, not just their own
+        // Normalize modId (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modId);
         let mod: ModMetadata | null = null;
-        let modKey: string;
+        let modKey: string | null = null;
+        let modCustomerId: string | null = null;
         
-        // Try customer scope first
-        modKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-        mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Try global scope first
+        const globalModKey = `mod_${normalizedModId}`;
+        mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+        if (mod) {
+            modKey = globalModKey;
+            modCustomerId = null; // Global scope
+            console.log('[AdminDelete] Found mod in global scope:', { modId: mod.modId, slug: mod.slug });
+        }
         
-        // If not found in customer scope, try global scope
+        // If not found in global scope, search ALL customer scopes
+        // Try direct lookup first (faster), then fall back to list-based search
         if (!mod) {
-            const globalModKey = `mod_${modId}`;
-            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-            if (mod) {
-                modKey = globalModKey; // Use global key for deletion
+            console.log('[AdminDelete] Searching all customer scopes for mod:', { normalizedModId, originalModId: modId });
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            let found = false;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    // Look for customer mod keys directly: customer_{id}_mod_{normalizedModId}
+                    if (key.name.includes(`_mod_${normalizedModId}`) || key.name.includes(`_mod_${modId}`)) {
+                        const candidateMod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
+                        if (candidateMod) {
+                            // Verify it's the right mod by comparing modId (normalized)
+                            const candidateNormalizedId = normalizeModId(candidateMod.modId);
+                            if (candidateNormalizedId === normalizedModId) {
+                                mod = candidateMod;
+                                modKey = key.name;
+                                // Extract customerId from key name
+                                const match = key.name.match(/^customer_([^_/]+)[_/]mod_/);
+                                modCustomerId = match ? match[1] : null;
+                                found = true;
+                                console.log('[AdminDelete] Found mod in customer scope (direct lookup):', { customerId: modCustomerId, modId: mod.modId, slug: mod.slug });
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (found) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor && !found);
+            
+            // Fallback: search through customer lists if direct lookup failed
+            if (!mod) {
+                cursor = undefined;
+                do {
+                    const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                    for (const key of listResult.keys) {
+                        if (key.name.endsWith('_mods_list')) {
+                            // Extract customerId from key name
+                            const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                            const customerId = match ? match[1] : null;
+                            
+                            if (customerId) {
+                                // Try direct fetch from customer scope
+                                const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                                const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                                
+                                if (candidateMod) {
+                                    // Verify it's the right mod by comparing modId (normalized)
+                                    const candidateNormalizedId = normalizeModId(candidateMod.modId);
+                                    if (candidateNormalizedId === normalizedModId) {
+                                        mod = candidateMod;
+                                        modKey = customerModKey;
+                                        modCustomerId = customerId;
+                                        found = true;
+                                        console.log('[AdminDelete] Found mod in customer scope (list search):', { customerId, modId: mod.modId, slug: mod.slug });
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (found) break;
+                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                } while (cursor && !found);
             }
         }
 
-        if (!mod) {
+        if (!mod || !modKey) {
+            console.error('[AdminDelete] Mod not found:', { modId, normalizedModId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -69,34 +140,36 @@ export async function handleAdminDeleteMod(
 
         // Admin can delete any mod - no author check needed
 
-        // Get all versions - check both customer scope and global scope
-        let versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
-        let versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+        // Get all versions - use the mod's customer scope (not admin's)
+        let versionsListKey: string;
+        let versionsList: string[] | null = null;
         
-        // If not found in customer scope, try global scope
-        if (!versionsList) {
-            const globalVersionsKey = `mod_${modId}_versions`;
-            versionsList = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
-            if (versionsList) {
-                versionsListKey = globalVersionsKey;
-            }
+        if (modCustomerId) {
+            // Mod is in a specific customer scope
+            versionsListKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}_versions`);
+            versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+        } else {
+            // Mod is in global scope
+            versionsListKey = `mod_${normalizedModId}_versions`;
+            versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
         }
         
         const versionIds = versionsList || [];
 
         // Delete all version files from R2 and metadata from KV
+        // Use mod's customer scope (not admin's)
         for (const versionId of versionIds) {
-            // Try customer scope first
-            let versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-            let version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+            let versionKey: string;
+            let version: ModVersion | null = null;
             
-            // If not found, try global scope
-            if (!version) {
-                const globalVersionKey = `version_${versionId}`;
-                version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
-                if (version) {
-                    versionKey = globalVersionKey;
-                }
+            if (modCustomerId) {
+                // Version is in mod's customer scope
+                versionKey = getCustomerKey(modCustomerId, `version_${versionId}`);
+                version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+            } else {
+                // Version is in global scope
+                versionKey = `version_${versionId}`;
+                version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
             }
             
             if (version) {
@@ -107,24 +180,18 @@ export async function handleAdminDeleteMod(
                     console.error(`Failed to delete R2 file ${version.r2Key}:`, error);
                 }
                 
-                // Delete version metadata from both scopes
+                // Delete version metadata
                 await env.MODS_KV.delete(versionKey);
-                // Also try deleting from customer scope if we used global
-                if (versionKey.startsWith('version_') && !versionKey.includes('customer_')) {
-                    const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-                    await env.MODS_KV.delete(customerVersionKey);
-                }
             }
         }
 
-        // Delete thumbnail if exists
+        // Delete thumbnail if exists - use mod's customer scope (not admin's)
         if (mod.thumbnailUrl) {
             try {
                 // Try multiple extensions since we don't know which one was used
-                const normalizedModId = normalizeModId(modId);
                 const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
                 for (const ext of extensions) {
-                    const thumbnailKey = getCustomerR2Key(auth.customerId, `thumbnails/${normalizedModId}.${ext}`);
+                    const thumbnailKey = getCustomerR2Key(modCustomerId, `thumbnails/${normalizedModId}.${ext}`);
                     await env.MODS_R2.delete(thumbnailKey);
                 }
             } catch (error) {
@@ -132,45 +199,57 @@ export async function handleAdminDeleteMod(
             }
         }
 
-        // Delete mod metadata from both scopes if it exists
+        // Delete mod metadata - use mod's customer scope (not admin's)
         await env.MODS_KV.delete(modKey);
         await env.MODS_KV.delete(versionsListKey);
         
-        // Also delete from global scope if it exists there
-        const globalModKey = `mod_${modId}`;
-        const globalVersionsKey = `mod_${modId}_versions`;
+        // Also try deleting from global scope (in case it exists there too)
+        // Reuse globalModKey declared earlier (line 47)
+        const globalVersionsKey = `mod_${normalizedModId}_versions`;
         if (modKey !== globalModKey) {
-            // Only delete global if we didn't already delete it
             await env.MODS_KV.delete(globalModKey);
         }
         if (versionsListKey !== globalVersionsKey) {
-            // Only delete global if we didn't already delete it
             await env.MODS_KV.delete(globalVersionsKey);
         }
 
-        // Remove from customer-specific list
-        const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
-        const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
-        if (modsList) {
-            const updatedList = modsList.filter(id => id !== modId);
-            await env.MODS_KV.put(modsListKey, JSON.stringify(updatedList));
+        // Remove from mod's customer-specific list (not admin's)
+        // Need to remove both normalized and original modId formats
+        if (modCustomerId) {
+            const modsListKey = getCustomerKey(modCustomerId, 'mods_list');
+            const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
+            if (modsList) {
+                const updatedList = modsList.filter(id => {
+                    const normalizedListId = normalizeModId(id);
+                    return normalizedListId !== normalizedModId && id !== modId;
+                });
+                await env.MODS_KV.put(modsListKey, JSON.stringify(updatedList));
+            }
         }
 
         // Remove from global public list if it was public
+        // Need to remove both normalized and original modId formats
         if (mod.visibility === 'public') {
             const globalListKey = 'mods_list_public';
             const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
             if (globalModsList) {
-                const updatedGlobalList = globalModsList.filter(id => id !== modId);
+                const updatedGlobalList = globalModsList.filter(id => {
+                    const normalizedListId = normalizeModId(id);
+                    return normalizedListId !== normalizedModId && id !== modId;
+                });
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
             }
         }
 
         // Also remove from admin list if it exists
+        // Need to remove both normalized and original modId formats
         const adminListKey = 'mods_list_admin';
         const adminModsList = await env.MODS_KV.get(adminListKey, { type: 'json' }) as string[] | null;
         if (adminModsList) {
-            const updatedAdminList = adminModsList.filter(id => id !== modId);
+            const updatedAdminList = adminModsList.filter(id => {
+                const normalizedListId = normalizeModId(id);
+                return normalizedListId !== normalizedModId && id !== modId;
+            });
             await env.MODS_KV.put(adminListKey, JSON.stringify(updatedAdminList));
         }
 

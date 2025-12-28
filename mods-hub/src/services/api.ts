@@ -9,41 +9,30 @@ import type { ModStatus, ModReviewComment } from '../types/mod';
 
 // Use proxy in development (via Vite), direct URL in production
 // This matches the pattern used in other projects (e.g., otp-auth-service dashboard)
-const API_BASE_URL = import.meta.env.DEV 
+export const API_BASE_URL = import.meta.env.DEV 
   ? '/mods-api'  // Vite proxy in development
   : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
 
 /**
- * Get auth token from storage
- * Checks both sessionStorage and the auth store
+ * Get auth token from auth store
+ * Token is stored in the user object in localStorage via Zustand persist
  */
 function getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
     
-    // First check sessionStorage (most reliable)
-    const sessionToken = sessionStorage.getItem('auth_token');
-    if (sessionToken) {
-        return sessionToken;
-    }
-    
-    // Fallback to localStorage
-    const localToken = localStorage.getItem('auth_token');
-    if (localToken) {
-        return localToken;
-    }
-    
-    // Last resort: check auth store (might be in memory)
+    // Get token from auth store (user object in localStorage)
+    // The auth store persists the user object which contains the token
     try {
-        const { useAuthStore } = require('../stores/auth');
-        const store = useAuthStore.getState();
-        if (store.user?.token) {
-            // Sync it back to sessionStorage for consistency
-            sessionStorage.setItem('auth_token', store.user.token);
-            return store.user.token;
+        // Read directly from localStorage where Zustand persists the auth store
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+            const parsed = JSON.parse(authStorage);
+            if (parsed?.state?.user?.token) {
+                return parsed.state.user.token;
+            }
         }
-    } catch (err) {
-        // Auth store might not be available, that's okay
-        console.error({err: err instanceof Error ? err.message : String(err)});
+    } catch (error) {
+        console.debug('[API] Failed to read token from auth store:', error);
     }
     
     return null;
@@ -86,11 +75,9 @@ async function refreshAuthToken(): Promise<string | null> {
         const isRestored = data?.restored !== false; // Default to true if not explicitly false
         
         if (token && isRestored) {
-            // Update token in storage
-            if (typeof window !== 'undefined' && window.sessionStorage) {
-                sessionStorage.setItem('auth_token', token);
-                console.log('[API] Token stored in sessionStorage');
-            }
+            // Token will be stored in auth store when restoreSession is called
+            // This function is called by the auth store's restoreSession, so it will handle storage
+            console.log('[API] Token restored, auth store will handle storage');
             
             // Update auth store if available
             try {
@@ -211,6 +198,15 @@ export async function listMods(params: {
         if (!response.data) {
             console.error('[API] Response missing data property:', response);
             throw new Error('Invalid response format: missing data property');
+        }
+        
+        // Check if we got HTML instead of JSON (common when proxy is misconfigured or wrangler isn't running)
+        if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
+            console.error('[API] Received HTML instead of JSON - this usually means:');
+            console.error('[API] 1. Wrangler dev server is not running on port 8787');
+            console.error('[API] 2. Vite proxy is not working (try restarting Vite)');
+            console.error('[API] 3. Request URL:', response.url || 'unknown');
+            throw new Error('API returned HTML instead of JSON. Make sure:\n1. Wrangler dev server is running: cd serverless/mods-api && pnpm dev\n2. Vite dev server has been restarted after config changes\n3. Both servers are running (use: pnpm dev:all)');
         }
         
         // Log thumbnail URLs for debugging

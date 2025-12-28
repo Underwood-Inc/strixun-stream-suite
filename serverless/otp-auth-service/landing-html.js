@@ -1256,10 +1256,10 @@ function LoginForm() {
             type="text"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            placeholder="123456"
-            maxLength={6}
+            placeholder="123456789"
+            maxLength={9}
           />
-          <button onClick={verifyOTP} disabled={loading || otp.length !== 6}>
+          <button onClick={verifyOTP} disabled={loading || otp.length !== 9}>
             {loading ? 'Verifying...' : 'Verify OTP'}
           </button>
           <button onClick={() => setStep('email')}>Back</button>
@@ -1345,10 +1345,10 @@ export default LoginForm;</code></pre>
       type="text"
       bind:value={otp}
       placeholder="123456"
-      maxlength="6"
+      maxlength="9"
       disabled={loading}
     /&gt;
-    &lt;button on:click={verifyOTP} disabled={loading || otp.length !== 6}&gt;
+    &lt;button on:click={verifyOTP} disabled={loading || otp.length !== 9}&gt;
       {loading ? 'Verifying...' : 'Verify OTP'}
     &lt;/button&gt;
     &lt;button on:click={() => step = 'email'}&gt;Back&lt;/button&gt;

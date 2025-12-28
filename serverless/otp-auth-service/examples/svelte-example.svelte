@@ -86,15 +86,15 @@
 {:else}
   <div class="auth-form">
     <h2>Enter OTP Code</h2>
-    <p>Check your email for the 6-digit code</p>
+    <p>Check your email for the 9-digit code</p>
     <input
       type="text"
       bind:value={otp}
-      placeholder="123456"
-      maxlength="6"
+      placeholder="123456789"
+      maxlength="9"
       disabled={loading}
     />
-    <button on:click={handleVerifyOTP} disabled={loading || otp.length !== 6}>
+    <button on:click={handleVerifyOTP} disabled={loading || otp.length !== 9}>
       {loading ? 'Verifying...' : 'Verify OTP'}
     </button>
     <button on:click={() => step = 'email'}>Back</button>

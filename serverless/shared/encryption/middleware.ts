@@ -201,7 +201,38 @@ export async function wrapWithEncryption(
 
     // Parse and encrypt
     const responseData = await handlerResponse.json();
+    
+    // CRITICAL: Exclude thumbnailUrl from encryption - it's a public URL that browsers need to fetch directly
+    // Extract thumbnailUrls before encryption and store them separately
+    let thumbnailUrlsMap: Record<string, string> | null = null;
+    if (responseData && typeof responseData === 'object') {
+      thumbnailUrlsMap = {};
+      
+      // Handle mod list responses (array of mods)
+      if (Array.isArray(responseData.mods)) {
+        responseData.mods.forEach((mod: any, index: number) => {
+          if (mod && mod.thumbnailUrl && typeof mod.thumbnailUrl === 'string') {
+            thumbnailUrlsMap![`mods.${index}`] = mod.thumbnailUrl;
+            // Temporarily remove to exclude from encryption
+            delete mod.thumbnailUrl;
+          }
+        });
+      }
+      
+      // Handle single mod responses
+      if (responseData.mod && responseData.mod.thumbnailUrl && typeof responseData.mod.thumbnailUrl === 'string') {
+        thumbnailUrlsMap['mod'] = responseData.mod.thumbnailUrl;
+        delete responseData.mod.thumbnailUrl;
+      }
+    }
+    
     const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
+    
+    // Add thumbnailUrls at top level (outside encrypted data) so they remain accessible
+    // The frontend will need to merge them back after decryption
+    if (thumbnailUrlsMap && Object.keys(thumbnailUrlsMap).length > 0) {
+      (encrypted as any).thumbnailUrls = thumbnailUrlsMap;
+    }
 
     // Create encrypted response - ALWAYS set X-Encrypted header
     const headers = new Headers(handlerResponse.headers);

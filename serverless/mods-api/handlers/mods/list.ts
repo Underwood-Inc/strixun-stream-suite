@@ -150,6 +150,19 @@ export async function handleListMods(
         // Sort by updatedAt (newest first)
         mods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
+        // Fetch display names for all unique authors
+        const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId))];
+        const { fetchDisplayNamesByUserIds } = await import('../../utils/displayName.js');
+        const displayNames = await fetchDisplayNamesByUserIds(uniqueAuthorIds, env);
+        
+        // Map display names to mods
+        mods.forEach(mod => {
+            const displayName = displayNames.get(mod.authorId);
+            if (displayName) {
+                mod.authorDisplayName = displayName;
+            }
+        });
+
         // Paginate
         const start = (page - 1) * pageSize;
         const end = start + pageSize;

@@ -25,19 +25,58 @@ export async function handleThumbnail(
         // Try slug lookup first (more common for public URLs), then fall back to direct modId lookup
         console.log('[Thumbnail] Strategy 1: Trying slug lookup:', { modId });
         let mod: ModMetadata | null = await findModBySlug(modId, env, auth);
-        if (mod) console.log('[Thumbnail] Found mod by slug:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
+        if (mod) {
+            console.log('[Thumbnail] Found mod by slug:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
+        } else {
+            // If slug lookup failed, try searching ALL customer scopes (thumbnails are public assets)
+            console.log('[Thumbnail] Slug lookup failed, searching all customer scopes:', { modId });
+            
+            // Search all customer mod lists for this slug
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            let found = false;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const customerListData = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+                        if (customerListData) {
+                            // Extract customerId from key name
+                            const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                            const customerId = match ? match[1] : null;
+                            
+                            // Check each mod in this customer's list
+                            for (const listModId of customerListData) {
+                                const normalizedListModId = normalizeModId(listModId);
+                                const customerModKey = getCustomerKey(customerId, `mod_${normalizedListModId}`);
+                                const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                                
+                                if (candidateMod && candidateMod.slug === modId) {
+                                    mod = candidateMod;
+                                    found = true;
+                                    console.log('[Thumbnail] Found mod in customer scope:', { customerId, modId: mod.modId, slug: mod.slug });
+                                    break;
+                                }
+                            }
+                            if (found) break;
+                        }
+                    }
+                }
+                if (found) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor && !found);
+        }
         
-        // If slug lookup failed, try direct modId lookup
+        // If still not found, try direct modId lookup (fallback)
         if (!mod) {
             console.log('[Thumbnail] Strategy 2: Trying modId lookup:', { modId });
-            // Strategy 2a: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
-            // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
             const normalizedModId = normalizeModId(modId);
             
-            // Check customer scope first if authenticated
+            // Check authenticated user's customer scope first
             if (auth?.customerId) {
                 const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-                console.log('[Thumbnail] Checking customer scope:', { customerModKey });
+                console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
             
@@ -48,19 +87,33 @@ export async function handleThumbnail(
                 mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             }
             
-            // Strategy 2b: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
-            // This is now redundant since normalizeModId handles it, but keeping for backward compatibility
-            if (!mod && modId.startsWith('mod_')) {
-                console.log('[Thumbnail] Strategy 2b: Trying full modId (legacy):', { modId });
-                // Use normalized version for consistency
-                if (auth?.customerId) {
-                    const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-                    mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                }
-                if (!mod) {
-                    const globalModKey = `mod_${normalizedModId}`;
-                    mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-                }
+            // If still not found, search all customer scopes by modId
+            if (!mod) {
+                console.log('[Thumbnail] Searching all customer scopes by modId:', { normalizedModId });
+                const customerListPrefix = 'customer_';
+                let cursor: string | undefined;
+                let found = false;
+                
+                do {
+                    const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                    for (const key of listResult.keys) {
+                        if (key.name.endsWith('_mods_list')) {
+                            const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                            const customerId = match ? match[1] : null;
+                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                            
+                            if (candidateMod) {
+                                mod = candidateMod;
+                                found = true;
+                                console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId });
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                } while (cursor && !found);
             }
             
             if (mod) console.log('[Thumbnail] Found mod by modId:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });

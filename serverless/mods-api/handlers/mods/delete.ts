@@ -36,29 +36,45 @@ export async function handleDeleteMod(
             });
         }
 
-        // Find mod by slug
+        // Find mod by slug first (slug is usually a short string like "compressy")
         let mod = await findModBySlug(slug, env, auth);
+        let modKey: string | null = null;
         
         // Fallback: if slug lookup fails, try treating it as modId (backward compatibility)
-        let modKey: string;
+        // This handles cases where modId is passed instead of slug (e.g., "mod_1766914931857_26vz5vx9fvw")
         if (!mod) {
-            // Try customer scope first
-            modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
-            mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+            // Check if input looks like a modId (starts with "mod_" or is a long alphanumeric string)
+            const looksLikeModId = slug.startsWith('mod_') || slug.length > 20;
             
-            // If not found in customer scope, try global scope (for public mods)
-            if (!mod) {
-                const globalModKey = `mod_${slug}`;
-                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-                if (mod) {
-                    modKey = globalModKey; // Use global key for deletion
+            if (looksLikeModId) {
+                // Normalize the input - strip mod_ prefix if present
+                const normalizedModId = normalizeModId(slug);
+                console.log('[DeleteMod] Treating input as modId:', { original: slug, normalized: normalizedModId });
+                
+                // Try customer scope first
+                modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+                mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+                console.log('[DeleteMod] Customer scope lookup:', { modKey, found: !!mod });
+                
+                // If not found in customer scope, try global scope (for public mods)
+                if (!mod) {
+                    const globalModKey = `mod_${normalizedModId}`;
+                    mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+                    console.log('[DeleteMod] Global scope lookup:', { globalModKey, found: !!mod });
+                    if (mod) {
+                        modKey = globalModKey; // Use global key for deletion
+                    }
                 }
-            } else {
-                modKey = getCustomerKey(auth.customerId, `mod_${slug}`);
             }
         } else {
-            // Found by slug, determine the correct key
-            modKey = getCustomerKey(auth.customerId, `mod_${mod.modId}`);
+            // Found by slug, determine the correct key based on mod's customerId
+            const normalizedModId = normalizeModId(mod.modId);
+            if (mod.customerId) {
+                modKey = getCustomerKey(mod.customerId, `mod_${normalizedModId}`);
+            } else {
+                modKey = `mod_${normalizedModId}`;
+            }
+            console.log('[DeleteMod] Found mod by slug:', { slug, modId: mod.modId, modKey });
         }
         
         if (!mod) {

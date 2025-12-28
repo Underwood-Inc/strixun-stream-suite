@@ -234,7 +234,7 @@
     {:else if step === 'verify'}
       <form class="signup-form" onsubmit={handleVerify}>
         <div class="signup-field">
-          <label for="signup-code" class="signup-label">6-Digit Verification Code</label>
+          <label for="signup-code" class="signup-label">9-Digit Verification Code</label>
           <input
             type="tel"
             id="signup-code"
@@ -242,8 +242,8 @@
             required
             autocomplete="one-time-code"
             inputmode="numeric"
-            maxlength="6"
-            placeholder="123456"
+            maxlength="9"
+            placeholder="123456789"
             bind:value={verificationCode}
             disabled={loading}
             autofocus
@@ -264,7 +264,7 @@
           <button
             type="submit"
             class="signup-button signup-button--primary"
-            disabled={loading || verificationCode.length !== 6}
+            disabled={loading || verificationCode.length !== 9}
           >
             {loading ? 'Verifying...' : 'Verify & Complete'}
           </button>

@@ -70,44 +70,31 @@ export async function handleBadge(
         // Get mod metadata - try multiple lookup strategies for legacy compatibility
         let mod: ModMetadata | null = null;
         
-        // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
+        // Strategy 1: Try slug lookup first (new pattern - searches all scopes)
+        mod = await findModBySlug(modIdOrSlug, env, auth);
+        
+        // Strategy 2: If not found by slug, try direct modId lookup (legacy pattern: mod_xxx or just xxx)
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(modIdOrSlug);
-        
-        // Check customer scope first if authenticated
-        if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // Fall back to global scope if not found
         if (!mod) {
+            const normalizedModId = normalizeModId(modIdOrSlug);
+            
+            // Check global scope first (for published mods)
             const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-        }
-        
-        // Strategy 2: If not found by modId, try slug lookup (new pattern)
-        if (!mod) {
-            mod = await findModBySlug(modIdOrSlug, env, auth);
-        }
-        
-        // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
-        // This is now redundant since normalizeModId handles it, but keeping for backward compatibility
-        if (!mod && modIdOrSlug.startsWith('mod_')) {
-            // Use normalized version for consistency
-            if (auth?.customerId) {
+            
+            // Fall back to customer scope if authenticated and not found in global
+            if (!mod && auth?.customerId) {
                 const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-            }
-            if (!mod) {
-                const globalModKey = `mod_${normalizedModId}`;
-                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             }
         }
 
         if (!mod) {
+            console.error('[Badge] Mod not found:', { modIdOrSlug, hasAuth: !!auth });
             return new Response('Mod not found', { status: 404 });
         }
+        
+        console.log('[Badge] Mod found:', { modId: mod.modId, slug: mod.slug, status: mod.status, visibility: mod.visibility, customerId: mod.customerId });
 
         // Check if user is super admin
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
@@ -141,28 +128,37 @@ export async function handleBadge(
         }
 
         // Get version metadata - use mod's customerId (not auth customerId)
+        // CRITICAL: Versions are stored in the mod's customer scope (where mod was uploaded)
         let version: ModVersion | null = null;
         
-        // Check mod's customer scope first (where version was stored)
-        if (mod.customerId) {
+        // Check global scope first (for published mods)
+        const globalVersionKey = `version_${versionId}`;
+        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        
+        // If not found, check mod's customer scope (where version was uploaded)
+        // This is critical for badges loaded without auth (as images)
+        if (!version && mod.customerId) {
             const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
             version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
         }
         
-        // Also check auth customer scope (in case they match)
+        // Last resort: check auth customer scope (for backward compatibility)
         if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
             const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
             version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
         }
-        
-        // Fall back to global scope
-        if (!version) {
-            const globalVersionKey = `version_${versionId}`;
-            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
-        }
 
         // Check version belongs to mod (compare with mod.modId, not the input parameter)
-        if (!version || version.modId !== mod.modId) {
+        // Normalize both modIds before comparison to handle cases where one has mod_ prefix and the other doesn't
+        if (!version) {
+            console.error('[Badge] Version not found:', { versionId, modId: mod.modId, modCustomerId: mod.customerId, hasAuth: !!auth });
+            return new Response('Version not found', { status: 404 });
+        }
+        
+        const normalizedVersionModId = normalizeModId(version.modId);
+        const normalizedModModId = normalizeModId(mod.modId);
+        if (normalizedVersionModId !== normalizedModModId) {
+            console.error('[Badge] Version modId mismatch:', { versionModId: version.modId, normalizedVersionModId, modModId: mod.modId, normalizedModModId });
             return new Response('Version not found', { status: 404 });
         }
 

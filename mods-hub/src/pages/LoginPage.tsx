@@ -48,10 +48,8 @@ export function LoginPage() {
 
         setUser(userData);
 
-        // Store token in sessionStorage
-        if (data.token) {
-            sessionStorage.setItem('auth_token', data.token);
-        }
+        // Token is stored in user object, which is persisted to localStorage via Zustand
+        // No need for separate sessionStorage
 
         // Fetch admin status after login
         const { useAuthStore } = await import('../stores/auth');

@@ -44,9 +44,22 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
         
         // Route: GET /mods or GET / - List mods
+        // CRITICAL: Don't encrypt public mod list - it's public data and thumbnailUrls need to remain accessible
+        // The list endpoint already filters by status/visibility, so encryption isn't needed for security
         if (pathSegments.length === 0 && request.method === 'GET') {
             const response = await handleListMods(request, env, auth);
-            return await wrapWithEncryption(response, auth || undefined);
+            // Return unencrypted response - public mod list doesn't need encryption
+            // This ensures thumbnailUrls remain as plain strings that browsers can use
+            const headers = new Headers(response.headers);
+            headers.set('X-Encrypted', 'false');
+            return {
+                response: new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: headers,
+                }),
+                customerId: auth?.customerId || null,
+            };
         }
 
         // Route: POST /mods or POST / - Upload new mod

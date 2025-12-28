@@ -126,7 +126,7 @@ export function ModVersionList({ modSlug, versions, isUploader = false }: ModVer
                         </Meta>
                         {version.sha256 && (
                             <IntegrityBadge 
-                                modId={version.modId} 
+                                slug={modSlug}
                                 versionId={version.versionId}
                                 showCopyButton={isUploader}
                             />

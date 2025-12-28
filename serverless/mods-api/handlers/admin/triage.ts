@@ -5,9 +5,9 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
-import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment } from '../../types/mod.js';
+import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment, ModVersion } from '../../types/mod.js';
 
 /**
  * Update mod status
@@ -36,12 +36,14 @@ export async function handleUpdateModStatus(
         }
 
         // Get mod metadata
+        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modId);
         let mod: ModMetadata | null = null;
-        const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
 
         if (!mod) {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
 
@@ -99,27 +101,32 @@ export async function handleUpdateModStatus(
         mod.statusHistory.push(statusEntry);
 
         // Update global public list based on status change
+        // CRITICAL: Approved mods should be public! Add them to the public list.
         const globalListKey = 'mods_list_public';
         const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
         
-        if (newStatus === 'published' && oldStatus !== 'published') {
-            // Add to global list when publishing
-            if (!globalModsList || !globalModsList.includes(modId)) {
-                const updatedGlobalList = [...(globalModsList || []), modId];
-                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+        // Add to public list when approved or published (if public visibility)
+        if (mod.visibility === 'public' && (newStatus === 'approved' || newStatus === 'published')) {
+            if (oldStatus !== 'approved' && oldStatus !== 'published') {
+                // Add to global list when first approved/published
+                if (!globalModsList || !globalModsList.includes(normalizedModId)) {
+                    const updatedGlobalList = [...(globalModsList || []), normalizedModId];
+                    await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+                }
             }
             
-            // Also store in global scope
-            const globalModKey = `mod_${modId}`;
+            // Always store in global scope for approved/published public mods
+            const globalModKey = `mod_${normalizedModId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
-        } else if (oldStatus === 'published' && newStatus !== 'published') {
-            // Remove from global list when unpublishing/delisting
-            if (globalModsList && globalModsList.includes(modId)) {
-                const updatedGlobalList = globalModsList.filter(id => id !== modId);
+        } else if ((oldStatus === 'approved' || oldStatus === 'published') && 
+                   (newStatus !== 'approved' && newStatus !== 'published')) {
+            // Remove from global list when unapproved/unpublished/delisted
+            if (globalModsList && globalModsList.includes(normalizedModId)) {
+                const updatedGlobalList = globalModsList.filter(id => id !== normalizedModId);
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
                 
                 // Delete global mod metadata (it will still exist in customer scope)
-                const globalModKey = `mod_${modId}`;
+                const globalModKey = `mod_${normalizedModId}`;
                 await env.MODS_KV.delete(globalModKey);
             }
         }
@@ -127,8 +134,31 @@ export async function handleUpdateModStatus(
         // Save updated mod
         await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+            
+            // CRITICAL: Copy all versions to global scope when mod is approved/published and public
+            // This ensures badges and downloads work without auth for public mods
+            if ((newStatus === 'approved' || newStatus === 'published') && mod.customerId) {
+                const versionsListKey = getCustomerKey(mod.customerId, `mod_${normalizedModId}_versions`);
+                const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+                
+                if (versionsList) {
+                    const globalVersionsListKey = `mod_${normalizedModId}_versions`;
+                    await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(versionsList));
+                    
+                    // Copy each version to global scope
+                    for (const versionId of versionsList) {
+                        const customerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
+                        const version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+                        
+                        if (version) {
+                            const globalVersionKey = `version_${versionId}`;
+                            await env.MODS_KV.put(globalVersionKey, JSON.stringify(version));
+                        }
+                    }
+                }
+            }
         }
 
         const corsHeaders = createCORSHeaders(request, {
@@ -174,12 +204,14 @@ export async function handleAddReviewComment(
 ): Promise<Response> {
     try {
         // Get mod metadata
+        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modId);
         let mod: ModMetadata | null = null;
-        const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+        const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
 
         if (!mod) {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
 
@@ -249,7 +281,7 @@ export async function handleAddReviewComment(
         // Save updated mod
         await env.MODS_KV.put(customerModKey, JSON.stringify(mod));
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = `mod_${normalizedModId}`;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
         }
 

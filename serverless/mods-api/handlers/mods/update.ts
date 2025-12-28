@@ -10,7 +10,7 @@ import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
 import { findModBySlug } from '../../utils/slug.js';
 import { generateUniqueSlug } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
-import { handleThumbnailUpload } from './upload.js';
+// handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
 /**
@@ -119,7 +119,7 @@ export async function handleUpdateMod(
         if (updateData.thumbnail) {
             try {
                 // Use current slug (may have been updated if title changed)
-                mod.thumbnailUrl = await handleThumbnailUpload(updateData.thumbnail, modId, mod.slug, env, auth.customerId);
+                mod.thumbnailUrl = await handleThumbnailUpload(updateData.thumbnail, modId, mod.slug, request, env, auth.customerId);
             } catch (error) {
                 console.error('Thumbnail update error:', error);
                 // Continue without thumbnail update
@@ -202,6 +202,7 @@ async function handleThumbnailUpload(
     base64Data: string,
     modId: string,
     slug: string,
+    request: Request,
     env: Env,
     customerId: string | null
 ): Promise<string> {
@@ -262,7 +263,11 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug (thumbnails should be served through API, not direct R2)
         // Slug is passed as parameter to avoid race condition
-        const API_BASE_URL = 'https://mods-api.idling.app';
+        // Use request URL to determine base URL dynamically
+        const requestUrl = new URL(request.url);
+        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            : `https://mods-api.idling.app`;  // Production
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);

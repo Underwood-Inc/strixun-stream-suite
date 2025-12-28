@@ -105,7 +105,9 @@ export function UserDashboardPage() {
         if (!modToDelete) return;
         
         try {
-            await deleteMod.mutateAsync(modToDelete.modId);
+            // Use slug if available (preferred), otherwise fall back to modId
+            const identifier = modToDelete.slug || modToDelete.modId;
+            await deleteMod.mutateAsync(identifier);
             setModToDelete(null);
             setIsModalOpen(false);
         } catch (error) {

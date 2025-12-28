@@ -43,15 +43,31 @@ export function useModsList(filters: {
                 const result = await api.listMods(filters);
                 console.log('[useModsList] Query result:', result);
                 
-                // CRITICAL: Frontend safety filter - only return approved mods
+                // Validate response structure
+                if (!result || typeof result !== 'object') {
+                    console.error('[useModsList] Invalid response format:', typeof result, result);
+                    throw new Error('Invalid API response format');
+                }
+                
+                if (!Array.isArray(result.mods)) {
+                    console.error('[useModsList] Response missing mods array:', result);
+                    throw new Error('API response missing mods array');
+                }
+                
+                // CRITICAL: Frontend safety filter - only return approved mods for public browsing
+                // BUT: If filtering by authorId (user viewing their own mods), show ALL statuses
                 // This is a defense-in-depth measure in case backend filtering fails
                 // The browse page should NEVER show denied/pending/archived mods
-                const approvedMods = result.mods.filter(mod => mod.status === 'approved');
+                // But users should see their own pending mods in their dashboard
+                const shouldFilterByStatus = !filters.authorId; // Only filter if NOT viewing own mods
+                const filteredMods = shouldFilterByStatus 
+                    ? result.mods.filter(mod => mod.status === 'approved')
+                    : result.mods; // Show all mods when viewing own mods
                 
                 return {
                     ...result,
-                    mods: approvedMods,
-                    total: approvedMods.length, // Update total to reflect filtered count
+                    mods: filteredMods,
+                    total: filteredMods.length, // Update total to reflect filtered count
                 };
             } catch (error) {
                 console.error('[useModsList] Query error:', error);
@@ -93,7 +109,11 @@ export function useUploadMod() {
             thumbnail?: File;
         }) => api.uploadMod(file, metadata, thumbnail),
         onSuccess: () => {
+            // Invalidate all list queries and force refetch
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: modKeys.adminList({}) });
+            // Force refetch all active queries
+            queryClient.refetchQueries({ queryKey: modKeys.lists() });
             addNotification({
                 message: 'Mod uploaded successfully!',
                 type: 'success',

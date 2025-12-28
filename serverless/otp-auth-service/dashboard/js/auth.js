@@ -69,7 +69,7 @@ export class LoginComponent {
             
             if (otpInput) {
                 otpInput.addEventListener('input', (e) => {
-                    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9);
                 });
                 otpInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !this.loading) {
@@ -157,7 +157,7 @@ export class LoginComponent {
             <form onsubmit="return false;">
                 <div style="margin-bottom: var(--spacing-lg);">
                     <label for="login-otp" style="display: block; margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
-                        6-Digit OTP Code
+                        9-Digit OTP Code
                     </label>
                     <input
                         type="text"
@@ -165,9 +165,9 @@ export class LoginComponent {
                         required
                         autocomplete="one-time-code"
                         inputmode="numeric"
-                        pattern="[0-9]{6}"
-                        maxlength="6"
-                        placeholder="123456"
+                        pattern="[0-9]{9}"
+                        maxlength="9"
+                        placeholder="123456789"
                         disabled="${this.loading}"
                         style="
                             width: 100%;
@@ -275,8 +275,8 @@ export class LoginComponent {
         const otpInput = this.container.querySelector('#login-otp');
         const otp = otpInput?.value.trim();
         
-        if (!otp || otp.length !== 6) {
-            this.error = 'Please enter a valid 6-digit OTP code';
+        if (!otp || otp.length !== 9) {
+            this.error = 'Please enter a valid 9-digit OTP code';
             this.render();
             return;
         }

@@ -78,11 +78,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
                 isSuperAdmin: false, // Will be fetched separately
             };
             
-            // Store token in sessionStorage
-            if (typeof window !== 'undefined' && window.sessionStorage) {
-                sessionStorage.setItem('auth_token', user.token);
-            }
-            
+            // Token is stored in user object, which is persisted to localStorage
             console.log('[Auth] ✅ Session restored from backend for user:', user.email);
             return user;
         }
@@ -175,12 +171,8 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
     isAuthenticated: false,
     isSuperAdmin: false,
     setUser: (user: User | null) => {
-        // Store token in sessionStorage when setting user
-        if (user && typeof window !== 'undefined' && window.sessionStorage) {
-            sessionStorage.setItem('auth_token', user.token);
-        } else if (!user && typeof window !== 'undefined') {
-            sessionStorage.removeItem('auth_token');
-        }
+        // Token is stored in the user object in localStorage via Zustand persist
+        // No need for separate sessionStorage - it gets cleared on reload anyway
         set({ 
             user, 
             isAuthenticated: !!user,
@@ -188,9 +180,7 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
         });
     },
     logout: () => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('auth_token');
-        }
+        // Token is in user object, clearing user will clear it
         set({ user: null, isAuthenticated: false, isSuperAdmin: false });
     },
     fetchUserInfo: async () => {
@@ -216,11 +206,12 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
     restoreSession: async () => {
         const currentUser = get().user;
         
-        // If we already have a user, check if token is still valid
-        if (currentUser) {
-            const token = sessionStorage.getItem('auth_token');
-            // If token matches and not expired, we're good - just refresh admin status
-            if (token === currentUser.token && currentUser.expiresAt && new Date(currentUser.expiresAt) > new Date()) {
+        // If we already have a user with a valid (non-expired) token, don't clear them
+        // Just refresh admin status in background
+        if (currentUser && currentUser.token && currentUser.expiresAt) {
+            const isExpired = new Date(currentUser.expiresAt) <= new Date();
+            
+            if (!isExpired) {
                 // Token is valid, just refresh admin status in background
                 fetchUserInfo(currentUser.token).then(userInfo => {
                     if (userInfo) {
@@ -233,13 +224,14 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                 }).catch(err => {
                     console.debug('[Auth] Background admin status refresh failed (non-critical):', err);
                 });
-                return; // Already authenticated with valid token
+                return; // Already authenticated with valid token - don't clear!
             }
-            // Token mismatch or expired - clear and restore
-            set({ user: null, isAuthenticated: false });
+            // Token is expired - try to restore from backend, but don't clear user yet
+            // Only clear if backend restore fails
         }
         
         // Try to restore from backend (IP-based session sharing)
+        // This only runs if we don't have a user, or the user's token is expired
         const restoredUser = await restoreSessionFromBackend();
         if (restoredUser) {
             set({ user: restoredUser, isAuthenticated: true, isSuperAdmin: false });
@@ -255,7 +247,12 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                 // If fetchUserInfo fails, keep the user but log the issue
                 console.warn('[Auth] Failed to fetch admin status after restore, but keeping user authenticated');
             }
+        } else if (currentUser && currentUser.expiresAt && new Date(currentUser.expiresAt) <= new Date()) {
+            // Backend restore failed AND token is expired - only now clear the user
+            console.log('[Auth] Token expired and backend restore failed, clearing auth state');
+            set({ user: null, isAuthenticated: false, isSuperAdmin: false });
         }
+        // If backend restore failed but we have a valid user, keep them logged in
     },
 });
 
@@ -269,36 +266,33 @@ export const useAuthStore = create<AuthState>()(
             // After hydration, restore session if needed
             onRehydrateStorage: () => (state) => {
                 if (state) {
-                    // After Zustand hydrates, check if we need to restore session
-                    const token = typeof window !== 'undefined' ? sessionStorage.getItem('auth_token') : null;
+                    // CRITICAL: Set isAuthenticated and isSuperAdmin from restored user
                     if (state.user) {
-                        // If we have a user but token doesn't match, restore
-                        if (token !== state.user.token) {
-                            if (token) {
-                                // Update user token to match sessionStorage (preserve displayName)
-                                state.setUser({ ...state.user, token });
-                            } else {
-                                // No token in sessionStorage, try to restore
-                                state.restoreSession();
-                            }
-                        } else if (state.user.expiresAt && new Date(state.user.expiresAt) <= new Date()) {
-                            // Token expired, restore session
+                        // Update derived state from persisted user
+                        state.isAuthenticated = true;
+                        state.isSuperAdmin = state.user.isSuperAdmin || false;
+                        
+                        // Check if token is expired
+                        const isExpired = state.user.expiresAt && new Date(state.user.expiresAt) <= new Date();
+                        
+                        if (isExpired) {
+                            // Token expired, try to restore from backend
+                            // restoreSession will only clear user if backend restore fails AND token is expired
                             state.restoreSession();
+                        } else {
+                            // Token is valid - user is authenticated!
+                            // Just refresh admin status in background, don't clear user
+                            console.log('[Auth] User authenticated from localStorage, token valid until:', state.user.expiresAt);
+                            if (state.user.token) {
+                                // Don't await - let it run in background, don't block hydration
+                                state.fetchUserInfo().catch(err => {
+                                    console.debug('[Auth] Background fetchUserInfo failed (non-critical):', err);
+                                });
+                            }
                         }
-                    } else if (token) {
-                        // We have a token but no user - restore session
-                        state.restoreSession();
                     } else {
-                        // No user and no token - try to restore from backend
+                        // No user in localStorage - try to restore from backend (IP-based session sharing)
                         state.restoreSession();
-                    }
-                    
-                    // If we have a user, fetch admin status (but don't clear user if it fails)
-                    if (state.user && state.user.token) {
-                        // Don't await - let it run in background, don't block hydration
-                        state.fetchUserInfo().catch(err => {
-                            console.debug('[Auth] Background fetchUserInfo failed (non-critical):', err);
-                        });
                     }
                 }
             },

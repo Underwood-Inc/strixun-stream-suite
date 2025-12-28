@@ -25,6 +25,7 @@ export async function handleListAllMods(
         const search = url.searchParams.get('search');
 
         // Get all mod IDs from all sources
+        // CRITICAL: Admin needs to see ALL mods across ALL customer scopes, not just their own
         const allModIds = new Set<string>();
 
         // Get global public list
@@ -34,27 +35,96 @@ export async function handleListAllMods(
             globalListData.forEach(id => allModIds.add(id));
         }
 
-        // Get customer-specific mods
-        if (auth.customerId) {
-            const customerListKey = getCustomerKey(auth.customerId, 'mods_list');
-            const customerListData = await env.MODS_KV.get(customerListKey, { type: 'json' }) as string[] | null;
-            if (customerListData) {
-                customerListData.forEach(id => allModIds.add(id));
+        // Get mods from ALL customer scopes (admin needs to see everything)
+        // Use KV.list() to find all customer mod lists
+        // Store modId -> customerId mapping for efficient lookup
+        const modIdToCustomerId = new Map<string, string | null>();
+        const customerListPrefix = 'customer_';
+        let cursor: string | undefined;
+        let totalCustomerLists = 0;
+        let totalModIdsFromCustomers = 0;
+        
+        do {
+            const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+            console.log('[AdminList] KV.list() returned', listResult.keys.length, 'keys');
+            
+            for (const key of listResult.keys) {
+                // Look for keys matching pattern: customer_{id}_mods_list
+                if (key.name.endsWith('_mods_list')) {
+                    totalCustomerLists++;
+                    // Extract customerId from key name: customer_{id}_mods_list
+                    // Handle both patterns: customer_{id}_mods_list and customer_{id}/mods_list
+                    const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                    const customerId = match ? match[1] : null;
+                    console.log('[AdminList] Found customer list:', { key: key.name, customerId });
+                    
+                    const customerListData = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+                    if (customerListData && Array.isArray(customerListData)) {
+                        console.log('[AdminList] Customer list has', customerListData.length, 'mods');
+                        customerListData.forEach(id => {
+                            allModIds.add(id);
+                            totalModIdsFromCustomers++;
+                            // Store mapping for efficient lookup
+                            if (customerId) {
+                                modIdToCustomerId.set(id, customerId);
+                            }
+                        });
+                    }
+                }
             }
-        }
+            cursor = listResult.listComplete ? undefined : listResult.cursor;
+        } while (cursor);
+        
+        console.log('[AdminList] Collected mod IDs:', {
+            fromGlobal: globalListData?.length || 0,
+            fromCustomers: totalModIdsFromCustomers,
+            totalCustomerLists,
+            totalUniqueModIds: allModIds.size
+        });
 
         // Fetch all mod metadata
+        // CRITICAL: Search across ALL customer scopes, not just admin's customerId
         const mods: ModMetadata[] = [];
+        const { normalizeModId } = await import('../../utils/customer.js');
+        
         for (const modId of allModIds) {
-            // Try to find mod in global scope first, then customer scope
-            let mod: ModMetadata | null = null;
+            // Normalize modId (strip mod_ prefix if present)
+            const normalizedModId = normalizeModId(modId);
             
-            const globalModKey = `mod_${modId}`;
+            // Try to find mod in global scope first
+            let mod: ModMetadata | null = null;
+            const globalModKey = `mod_${normalizedModId}`;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             
-            if (!mod && auth.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            // If not found in global scope, try the customer scope we found during list collection
+            if (!mod) {
+                const customerId = modIdToCustomerId.get(modId);
+                if (customerId) {
+                    const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                    mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                }
+            }
+            
+            // Fallback: if still not found, search all customer scopes (shouldn't happen, but safety net)
+            if (!mod) {
+                const customerModPrefix = 'customer_';
+                let cursor: string | undefined;
+                let found = false;
+                do {
+                    const listResult = await env.MODS_KV.list({ prefix: customerModPrefix, cursor });
+                    for (const key of listResult.keys) {
+                        // Look for keys matching pattern: customer_*_mod_{normalizedModId}
+                        if (key.name.endsWith(`_mod_${normalizedModId}`)) {
+                            mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
+                            if (mod) {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                    cursor = listResult.listComplete ? undefined : listResult.cursor;
+                } while (cursor && !found);
             }
             
             if (!mod) continue;

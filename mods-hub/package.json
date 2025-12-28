@@ -6,6 +6,10 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:api": "cd ../serverless/mods-api && pnpm dev",
+    "dev:auth": "cd ../serverless/otp-auth-service && pnpm exec wrangler dev --port 8788",
+    "dev:customer": "cd ../serverless/customer-api && pnpm exec wrangler dev --port 8789",
+    "dev:all": "concurrently -n frontend,api,auth,customer -c cyan,yellow,magenta,green \"pnpm dev\" \"pnpm dev:api\" \"pnpm dev:auth\" \"pnpm dev:customer\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint ."
@@ -30,7 +34,8 @@
     "typescript": "~5.7.2",
     "vite": "^6.0.3",
     "@types/node": "^22.10.2",
-    "@cloudflare/workers-types": "^4.20241127.0"
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "concurrently": "^9.2.1"
   }
 }
 

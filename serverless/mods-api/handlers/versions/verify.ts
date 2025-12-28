@@ -96,7 +96,10 @@ export async function handleVerifyVersion(
         }
 
         // Check version belongs to mod - use mod.modId (source of truth), not the input parameter
-        if (!version || version.modId !== mod.modId) {
+        // Normalize both modIds before comparison to handle cases where one has mod_ prefix and the other doesn't
+        const normalizedVersionModId = version ? normalizeModId(version.modId) : null;
+        const normalizedModModId = normalizeModId(mod.modId);
+        if (!version || normalizedVersionModId !== normalizedModModId) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

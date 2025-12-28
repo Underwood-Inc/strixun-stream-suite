@@ -9,8 +9,10 @@ import { GlobalStyle } from './theme';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
+      staleTime: 0, // Data is immediately stale - always refetch
+      gcTime: 0, // Don't keep data in cache
+      refetchOnWindowFocus: true, // Refetch when window regains focus
+      refetchOnMount: 'always', // Always refetch when component mounts
     },
   },
 });

@@ -321,15 +321,17 @@ export async function handleUploadMod(
 
         // Upload thumbnail first (before creating mod metadata) so we can use the slug
         const thumbnailUrl = metadata.thumbnail 
-            ? await handleThumbnailUpload(metadata.thumbnail, modId, slug, env, auth.customerId)
+            ? await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId)
             : undefined;
 
         // Create mod metadata with initial status
+        // Display name will be fetched when mods are retrieved, not stored
         const mod: ModMetadata = {
             modId,
             slug,
             authorId: auth.userId,
             authorEmail: auth.email || '',
+            authorDisplayName: null, // Will be fetched on display, not stored
             title: metadata.title,
             description: metadata.description || '',
             category: metadata.category,
@@ -423,6 +425,7 @@ async function handleThumbnailUpload(
     base64Data: string,
     modId: string,
     slug: string,
+    request: Request,
     env: Env,
     customerId: string | null
 ): Promise<string> {
@@ -483,7 +486,11 @@ async function handleThumbnailUpload(
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)
         // Slug is passed as parameter to avoid race condition (mod not stored yet)
-        const API_BASE_URL = 'https://mods-api.idling.app';
+        // Use request URL to determine base URL dynamically
+        const requestUrl = new URL(request.url);
+        const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            : `https://mods-api.idling.app`;  // Production
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);
