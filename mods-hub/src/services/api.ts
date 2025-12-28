@@ -18,7 +18,8 @@ export const API_BASE_URL = import.meta.env.DEV
 
 /**
  * Create API client instance with auth token getter
- * Uses localStorage for token storage (same as auth store)
+ * Reads token from Zustand persisted auth store (localStorage['auth-storage'])
+ * Uses dynamic import to avoid circular dependencies
  */
 const createClient = () => {
     return createAPIClient({
@@ -27,15 +28,50 @@ const createClient = () => {
             'Content-Type': 'application/json',
         },
         auth: {
-            tokenGetter: () => {
+            tokenGetter: async () => {
                 if (typeof window !== 'undefined') {
-                    // Try to get token from localStorage (same key as auth store uses)
+                    try {
+                        // Try to get token from Zustand store directly (preferred method)
+                        // Dynamic import to avoid circular dependencies
+                        const { useAuthStore } = await import('../stores/auth');
+                        const store = useAuthStore.getState();
+                        if (store.user?.token) {
+                            return store.user.token;
+                        }
+                    } catch (error) {
+                        // If store import fails, fall back to localStorage parsing
+                        console.debug('[API] Could not access auth store directly, falling back to localStorage:', error);
+                    }
+                    
+                    try {
+                        // Fallback: Read from Zustand persisted store in localStorage
+                        // Auth store uses 'auth-storage' key and stores: { user: { token: '...', ... } }
+                        const authStorage = localStorage.getItem('auth-storage');
+                        if (authStorage) {
+                            const parsed = JSON.parse(authStorage);
+                            // Zustand persist with partialize stores as { user: { token: '...' } }
+                            if (parsed?.user?.token) {
+                                return parsed.user.token;
+                            }
+                            // Some Zustand versions might wrap in state: { state: { user: { token: '...' } } }
+                            if (parsed?.state?.user?.token) {
+                                return parsed.state.user.token;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[API] Failed to parse auth storage:', error);
+                    }
+                    
+                    // Final fallback to legacy keys for backwards compatibility
                     return localStorage.getItem('auth_token') || localStorage.getItem('access_token');
                 }
                 return null;
             },
             onTokenExpired: () => {
                 if (typeof window !== 'undefined') {
+                    // Clear Zustand persisted store
+                    localStorage.removeItem('auth-storage');
+                    // Clear legacy keys for backwards compatibility
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('access_token');
                     window.dispatchEvent(new CustomEvent('auth:logout'));

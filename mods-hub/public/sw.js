@@ -53,6 +53,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip non-HTTP(S) requests (chrome-extension://, file://, etc.)
+  // These cause "Request scheme 'chrome-extension' is unsupported" errors
+  const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
   // Skip API requests - always use network
   if (event.request.url.includes('/mods-api') || 
       event.request.url.includes('/auth-api') ||
@@ -79,10 +86,16 @@ self.addEventListener('fetch', (event) => {
             // Clone the response for caching
             const responseToCache = response.clone();
 
-            caches.open(RUNTIME_CACHE)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
+            // Only cache HTTP(S) responses
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+              caches.open(RUNTIME_CACHE)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache).catch((error) => {
+                    // Silently ignore cache errors (e.g., for chrome-extension:// URLs)
+                    console.debug('[SW] Cache put failed (non-critical):', error);
+                  });
+                });
+            }
 
             return response;
           })
