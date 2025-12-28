@@ -17,7 +17,8 @@
   },
   "include": [
     "worker.ts",
-    "**/*.ts"
+    "**/*.ts",
+    "**/*.js"
   ],
   "exclude": [
     "node_modules",
