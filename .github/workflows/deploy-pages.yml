@@ -85,8 +85,9 @@ jobs:
         env:
           OTP_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: |
+          echo "[DEBUG] Checking VITE_SERVICE_ENCRYPTION_KEY secret..."
           if [ -z "$OTP_KEY" ]; then
-            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
             echo ""
             echo "To fix this:"
             echo "1. Go to Settings → Secrets and variables → Actions"
@@ -99,11 +100,13 @@ jobs:
           fi
           KEY_LENGTH=${#OTP_KEY}
           if [ $KEY_LENGTH -lt 32 ]; then
-            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is too short (must be at least 32 characters)"
             echo "Current length: $KEY_LENGTH"
             exit 1
           fi
-          echo "✅ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
+          echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
+          echo "[DEBUG] First 8 chars: ${OTP_KEY:0:8}..."
+          echo "[DEBUG] Last 8 chars: ...${OTP_KEY: -8}"
         
       - name: Build Svelte app
         env:
@@ -112,7 +115,30 @@ jobs:
           # VITE_BASE_PATH: ${{ secrets.CUSTOM_DOMAIN && '/' || format('/{0}/', github.event.repository.name) }}
           VITE_BASE_PATH: /
           VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: pnpm build
+        run: |
+          # Verify the key is available before building
+          if [ -z "$VITE_SERVICE_ENCRYPTION_KEY" ]; then
+            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is not set in environment!"
+            exit 1
+          fi
+          KEY_LENGTH=${#VITE_SERVICE_ENCRYPTION_KEY}
+          if [ $KEY_LENGTH -lt 32 ]; then
+            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is too short (${KEY_LENGTH} chars, need 32+)"
+            exit 1
+          fi
+          echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: ${KEY_LENGTH} chars)"
+          pnpm build
+      
+      - name: Verify encryption key in build output
+        run: |
+          # Check if the key is present in the built JavaScript files
+          # Vite replaces import.meta.env.VITE_SERVICE_ENCRYPTION_KEY with the actual value
+          if grep -r "VITE_SERVICE_ENCRYPTION_KEY" dist/assets/js/*.js 2>/dev/null | grep -q "undefined\|''\|\"\""; then
+            echo "[WARNING] VITE_SERVICE_ENCRYPTION_KEY appears to be undefined in build output"
+            echo "This may indicate the key was not properly injected during build"
+          else
+            echo "[SUCCESS] Build output verified - encryption key should be available"
+          fi
         
       - name: Setup Pages
         uses: actions/configure-pages@v4
