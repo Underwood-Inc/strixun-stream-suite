@@ -88,11 +88,16 @@ export async function handleListMods(
             if (authorId && mod.authorId !== authorId) continue;
             if (featured && !mod.featured) continue;
             
+            // CRITICAL: When querying by authorId, always show the author's mods regardless of status/visibility
+            // This allows users to see their own mods (including pending ones) in their dashboard
+            const isAuthorQuery = !!authorId && mod.authorId === authorId;
+            
             // CRITICAL: Enforce strict visibility and status filtering
             // When visibility='public', ALWAYS exclude non-approved mods (even for admins)
             // This ensures the public browsing page NEVER shows denied/pending/archived mods
+            // EXCEPT: When querying by authorId, show all of the author's mods
             
-            if (visibility === 'public') {
+            if (visibility === 'public' && !isAuthorQuery) {
                 // For public browsing: ONLY approved mods with public visibility
                 // This applies to BOTH regular users AND admins
                 // Denied, pending, archived, draft, and changes_requested mods are excluded

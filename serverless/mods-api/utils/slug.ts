@@ -33,11 +33,10 @@ export async function findModBySlug(
                 if (!isAdmin) {
                     const modStatus = mod.status || 'published';
                     // For non-super users: ONLY public, published mods are allowed
-                    if (mod.visibility !== 'public' || modStatus !== 'published') {
-                        // Only allow if user is the author
-                        if (mod.authorId !== auth?.userId) {
-                            continue; // Skip this mod, don't return it
-                        }
+                    // BUT: Authors can always see their own mods regardless of status
+                    const isAuthor = mod.authorId === auth?.userId;
+                    if ((mod.visibility !== 'public' || modStatus !== 'published') && !isAuthor) {
+                        continue; // Skip this mod, don't return it
                     }
                 }
                 return mod;

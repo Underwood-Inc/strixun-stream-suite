@@ -6,7 +6,8 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { findModBySlug } from '../../utils/slug.js';
 import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../types/rating.js';
 
 /**
@@ -50,14 +51,23 @@ export async function handleGetModRatings(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod to verify it exists and check visibility
-        const modKey = getCustomerKey(null, `mod_${modId}`); // Check global scope first
-        let mod = await env.MODS_KV.get(modKey, { type: 'json' });
+        // Try to find mod by slug first (in case modId is actually a slug)
+        let mod = await findModBySlug(modId, env, auth);
         
-        // If not in global scope, check customer scope
-        if (!mod && auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' });
+        // If not found by slug, try treating it as modId (with normalization)
+        if (!mod) {
+            // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+            const normalizedModId = normalizeModId(modId);
+            
+            // Check global/public scope (no customer prefix)
+            const globalModKey = `mod_${normalizedModId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as any;
+            
+            // If not found and authenticated, check customer scope
+            if (!mod && auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as any;
+            }
         }
         
         if (!mod) {
@@ -92,8 +102,9 @@ export async function handleGetModRatings(
             }
         }
         
-        // Get ratings list key
-        const ratingsListKey = getCustomerKey(null, `mod_${modId}_ratings`);
+        // Get ratings list key (use normalized modId from the found mod)
+        const normalizedModId = normalizeModId(mod.modId);
+        const ratingsListKey = getCustomerKey(null, `mod_${normalizedModId}_ratings`);
         const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
         const ratingIds = ratingsListJson || [];
         
@@ -181,13 +192,23 @@ export async function handleSubmitModRating(
             });
         }
         
-        // Get mod to verify it exists
-        const modKey = getCustomerKey(null, `mod_${modId}`);
-        let mod = await env.MODS_KV.get(modKey, { type: 'json' });
+        // Try to find mod by slug first (in case modId is actually a slug)
+        let mod = await findModBySlug(modId, env, auth);
         
-        if (!mod && auth.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
-            mod = await env.MODS_KV.get(customerModKey, { type: 'json' });
+        // If not found by slug, try treating it as modId (with normalization)
+        if (!mod) {
+            // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
+            const normalizedModId = normalizeModId(modId);
+            
+            // Check global/public scope (no customer prefix)
+            const globalModKey = `mod_${normalizedModId}`;
+            mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as any;
+            
+            // If not found and authenticated, check customer scope
+            if (!mod && auth.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as any;
+            }
         }
         
         if (!mod) {
@@ -223,8 +244,9 @@ export async function handleSubmitModRating(
         const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
         const userDisplayName = jwtToken ? await fetchUserDisplayName(jwtToken, env) : null;
         
-        // Check if user has already rated this mod
-        const ratingsListKey = getCustomerKey(null, `mod_${modId}_ratings`);
+        // Check if user has already rated this mod (use normalized modId from the found mod)
+        const normalizedModId = normalizeModId(mod.modId);
+        const ratingsListKey = getCustomerKey(null, `mod_${normalizedModId}_ratings`);
         const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
         const ratingIds = ratingsListJson || [];
         
@@ -264,7 +286,7 @@ export async function handleSubmitModRating(
         
         const rating: ModRating = {
             ratingId,
-            modId,
+            modId: normalizedModId, // Use normalized modId
             userId: auth.userId,
             userEmail: auth.email || '',
             userDisplayName,
