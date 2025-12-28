@@ -37,10 +37,11 @@ export async function handleListMods(
         const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
         const globalModIds = globalListData || [];
 
-        // Only get customer-specific mods if user is super admin
-        // Super admins need to see everything, regular users only see public mods
+        // Get customer-specific mods if:
+        // 1. User is super admin (needs to see everything), OR
+        // 2. User is querying by authorId (needs to see their own mods, including pending ones in customer scope)
         let customerModIds: string[] = [];
-        if (isAdmin && auth?.customerId) {
+        if (auth?.customerId && (isAdmin || authorId)) {
             const customerListKey = getCustomerKey(auth.customerId, 'mods_list');
             const customerListData = await env.MODS_KV.get(customerListKey, { type: 'json' }) as string[] | null;
             customerModIds = customerListData || [];
