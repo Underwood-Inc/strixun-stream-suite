@@ -85,15 +85,13 @@ export async function handleListMods(
             if (featured && !mod.featured) continue;
             
             // CRITICAL: Enforce strict visibility and status filtering
-            // When visibility='public', ALWAYS exclude non-published mods (even for admins)
-            // This ensures the public browsing page NEVER shows disabled/deleted/archived mods
-            
-            // Statuses that should NEVER appear in public browsing (visibility='public')
-            const excludedStatuses: string[] = ['pending', 'denied', 'archived', 'draft', 'changes_requested'];
+            // When visibility='public', ALWAYS exclude non-approved mods (even for admins)
+            // This ensures the public browsing page NEVER shows denied/pending/archived mods
             
             if (visibility === 'public') {
-                // For public browsing: ONLY published mods with public visibility
+                // For public browsing: ONLY approved mods with public visibility
                 // This applies to BOTH regular users AND admins
+                // Denied, pending, archived, draft, and changes_requested mods are excluded
                 
                 // Check visibility: MUST be 'public'
                 // Legacy mods without visibility field are treated as public
@@ -105,12 +103,12 @@ export async function handleListMods(
                     }
                 }
                 
-                // Check status: MUST be 'published' (exclude all non-published statuses)
-                // This is CRITICAL - even admins should not see non-published mods in public browsing
-                // Legacy mods without status field are treated as published
-                const modStatus = mod.status || 'published';
-                if (modStatus !== 'published') {
-                    // Only show non-published mods to their author
+                // Check status: MUST be 'approved' (exclude all non-approved statuses)
+                // This is CRITICAL - even admins should not see non-approved mods in public browsing
+                // Only approved mods should appear in the public browse page
+                // Legacy mods without status field are excluded (must be explicitly approved)
+                if (!mod.status || mod.status !== 'approved') {
+                    // Only show non-approved mods to their author (for profile pages)
                     if (mod.authorId !== auth?.userId) {
                         continue;
                     }
@@ -124,11 +122,12 @@ export async function handleListMods(
                     if (modVisibility !== 'public' && mod.authorId !== auth?.userId) {
                         continue;
                     }
-                    // Non-admins can only see published mods or their own mods
-                    // Legacy mods without status field are treated as published
-                    const modStatus = mod.status || 'published';
-                    if (modStatus !== 'published' && mod.authorId !== auth?.userId) {
-                        continue;
+                    // Non-admins can only see approved mods or their own mods
+                    // Legacy mods without status field are excluded (must be explicitly approved)
+                    if (!mod.status || mod.status !== 'approved') {
+                        if (mod.authorId !== auth?.userId) {
+                            continue;
+                        }
                     }
                 } else {
                     // Super admins with visibility='all' can see everything

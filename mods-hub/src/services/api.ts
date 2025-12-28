@@ -174,6 +174,7 @@ if (typeof (api as any).getConfig === 'function') {
 
 /**
  * List mods
+ * Always fetches fresh data - caching disabled for this endpoint
  */
 export async function listMods(params: {
     page?: number;
@@ -188,7 +189,11 @@ export async function listMods(params: {
         console.log('[API] Fetching mods list with params:', params);
         console.log('[API] Base URL:', API_BASE_URL);
         console.log('[API] Calling api.get()...');
-        const response = await api.get<ModListResponse>('/mods', params);
+        // Disable caching for mods list - always fetch fresh data
+        // By not passing cache config, the API client will bypass all caching
+        const response = await api.get<ModListResponse>('/mods', params, {
+            cache: undefined, // Explicitly disable caching for this request
+        });
         console.log('[API] Response received:', response);
         if (!response.data) {
             console.error('[API] Response missing data property:', response);

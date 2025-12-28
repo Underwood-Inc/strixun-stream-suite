@@ -53,6 +53,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         }
 
         const pathSegments = path.split('/').filter(Boolean);
+        console.log('[AdminRoutes] Processing request', { path, pathSegments, method: request.method, pathSegmentsLength: pathSegments.length });
 
         // Route: GET /admin/mods - List all mods (for triage)
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && request.method === 'GET') {
@@ -103,6 +104,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         // Route: DELETE /admin/mods/:modId - Delete mod (admin only, bypasses author check)
         if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && request.method === 'DELETE') {
             const modId = pathSegments[2];
+            console.log('[AdminRoutes] DELETE /admin/mods/:modId matched', { modId, pathSegments, method: request.method });
             const { handleAdminDeleteMod } = await import('../handlers/admin/delete.js');
             const response = await handleAdminDeleteMod(request, env, modId, auth);
             return await wrapWithEncryption(response, auth);

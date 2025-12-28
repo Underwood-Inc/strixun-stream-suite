@@ -135,8 +135,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     const path = url.pathname;
 
     try {
-        // Health check
-        if (path === '/health' || path === '/') {
+        // Health check (only at /health, not at root to allow root-level mod routes)
+        if (path === '/health') {
             return await handleHealth(env, request);
         }
 
@@ -148,7 +148,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
             }
         }
 
-        // Handle mod routes
+        // Handle mod routes (supports both /mods/* and root-level paths for subdomain routing)
         const modResult = await handleModRoutes(request, path, env);
         if (modResult) {
             return modResult.response;

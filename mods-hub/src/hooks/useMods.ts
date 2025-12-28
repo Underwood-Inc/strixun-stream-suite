@@ -23,6 +23,8 @@ export const modKeys = {
 
 /**
  * List mods query
+ * Always fetches fresh data - no caching
+ * CRITICAL: Only returns mods with status 'approved' - filters out denied/pending/etc
  */
 export function useModsList(filters: {
     page?: number;
@@ -40,7 +42,17 @@ export function useModsList(filters: {
             try {
                 const result = await api.listMods(filters);
                 console.log('[useModsList] Query result:', result);
-                return result;
+                
+                // CRITICAL: Frontend safety filter - only return approved mods
+                // This is a defense-in-depth measure in case backend filtering fails
+                // The browse page should NEVER show denied/pending/archived mods
+                const approvedMods = result.mods.filter(mod => mod.status === 'approved');
+                
+                return {
+                    ...result,
+                    mods: approvedMods,
+                    total: approvedMods.length, // Update total to reflect filtered count
+                };
             } catch (error) {
                 console.error('[useModsList] Query error:', error);
                 throw error;
@@ -48,6 +60,11 @@ export function useModsList(filters: {
         },
         retry: 1,
         retryDelay: 1000,
+        // Always fetch fresh data - disable all caching
+        staleTime: 0, // Data is immediately stale, will refetch
+        gcTime: 0, // Don't keep data in cache (formerly cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
+        refetchOnWindowFocus: true, // Refetch when window regains focus
     });
 }
 

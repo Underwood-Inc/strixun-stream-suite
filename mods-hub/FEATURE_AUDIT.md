@@ -278,6 +278,7 @@ draft → pending → approved → published
 - `GET /admin/mods` - List all mods (all statuses)
 - `POST /admin/mods/:modId/status` - Update mod status
 - `POST /admin/mods/:modId/comments` - Add review comment
+- `DELETE /admin/mods/:modId` - Delete mod (admin only, bypasses author check)
 - `GET /admin/approvals` - List approved uploaders
 - `POST /admin/approvals/:userId` - Approve user for uploads
 - `DELETE /admin/approvals/:userId` - Revoke user upload permission

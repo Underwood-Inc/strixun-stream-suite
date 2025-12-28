@@ -19,10 +19,15 @@ import { wrapWithEncryption } from '@strixun/api-framework';
 
 /**
  * Handle mod routes
+ * Supports both /mods/* and root-level paths (for subdomain routing)
  */
 export async function handleModRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
-    // Only handle /mods/* routes
-    if (!path.startsWith('/mods')) {
+    // Handle both /mods/* and root-level paths (but not /admin or /health)
+    // This allows the API to work both at /mods/* and at root level for subdomain routing
+    const isModsPath = path.startsWith('/mods');
+    const isRootPath = !path.startsWith('/admin') && !path.startsWith('/health');
+    
+    if (!isModsPath && !isRootPath) {
         return null;
     }
 
@@ -30,17 +35,22 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
     const auth = await authenticateRequest(request, env);
 
     try {
-        // Parse path segments
-        const pathSegments = path.split('/').filter(Boolean);
+        // Parse path segments and normalize (remove 'mods' prefix if present)
+        let pathSegments = path.split('/').filter(Boolean);
         
-        // Route: GET /mods - List mods
-        if (pathSegments.length === 1 && pathSegments[0] === 'mods' && request.method === 'GET') {
+        // If path starts with /mods, remove 'mods' from segments to normalize
+        if (pathSegments[0] === 'mods') {
+            pathSegments = pathSegments.slice(1);
+        }
+        
+        // Route: GET /mods or GET / - List mods
+        if (pathSegments.length === 0 && request.method === 'GET') {
             const response = await handleListMods(request, env, auth);
             return await wrapWithEncryption(response, auth || undefined);
         }
 
-        // Route: POST /mods - Upload new mod
-        if (pathSegments.length === 1 && pathSegments[0] === 'mods' && request.method === 'POST') {
+        // Route: POST /mods or POST / - Upload new mod
+        if (pathSegments.length === 0 && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to upload mods');
                 const corsHeaders = createCORSHeaders(request, {
@@ -61,8 +71,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: GET /mods/permissions/me - Get current user's upload permissions
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[1] === 'permissions' && pathSegments[2] === 'me' && request.method === 'GET') {
+        // Route: GET /mods/permissions/me or GET /permissions/me - Get current user's upload permissions
+        if (pathSegments.length === 2 && pathSegments[0] === 'permissions' && pathSegments[1] === 'me' && request.method === 'GET') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
                 const corsHeaders = createCORSHeaders(request, {
@@ -84,23 +94,23 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: GET /mods/:slug/review - Get mod review page (admin/uploader only)
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'review' && request.method === 'GET') {
-            const slug = pathSegments[1];
+        // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
+        if (pathSegments.length === 2 && pathSegments[1] === 'review' && request.method === 'GET') {
+            const slug = pathSegments[0];
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, slug, auth);
             return await wrapWithEncryption(response, auth || undefined);
         }
 
-        // Route: GET /mods/:slug - Get mod detail (by slug)
-        if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'GET') {
-            const slug = pathSegments[1];
+        // Route: GET /mods/:slug or GET /:slug - Get mod detail (by slug)
+        if (pathSegments.length === 1 && request.method === 'GET') {
+            const slug = pathSegments[0];
             const response = await handleGetModDetail(request, env, slug, auth);
             return await wrapWithEncryption(response, auth || undefined);
         }
 
-        // Route: PATCH /mods/:slug - Update mod (by slug)
-        if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'PATCH') {
+        // Route: PATCH /mods/:slug or PATCH /:slug - Update mod (by slug)
+        if (pathSegments.length === 1 && request.method === 'PATCH') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
                 const corsHeaders = createCORSHeaders(request, {
@@ -117,13 +127,13 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            const slug = pathSegments[1];
+            const slug = pathSegments[0];
             const response = await handleUpdateMod(request, env, slug, auth);
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: DELETE /mods/:slug - Delete mod (by slug)
-        if (pathSegments.length === 2 && pathSegments[0] === 'mods' && request.method === 'DELETE') {
+        // Route: DELETE /mods/:slug or DELETE /:slug - Delete mod (by slug)
+        if (pathSegments.length === 1 && request.method === 'DELETE') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
                 const corsHeaders = createCORSHeaders(request, {
@@ -140,21 +150,21 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            const slug = pathSegments[1];
+            const slug = pathSegments[0];
             const response = await handleDeleteMod(request, env, slug, auth);
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: GET /mods/:modId/ratings - Get ratings for a mod
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'ratings' && request.method === 'GET') {
-            const modId = pathSegments[1];
+        // Route: GET /mods/:modId/ratings or GET /:modId/ratings - Get ratings for a mod
+        if (pathSegments.length === 2 && pathSegments[1] === 'ratings' && request.method === 'GET') {
+            const modId = pathSegments[0];
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
             return await wrapWithEncryption(response, auth || undefined);
         }
 
-        // Route: POST /mods/:modId/ratings - Submit a rating for a mod
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'ratings' && request.method === 'POST') {
+        // Route: POST /mods/:modId/ratings or POST /:modId/ratings - Submit a rating for a mod
+        if (pathSegments.length === 2 && pathSegments[1] === 'ratings' && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to submit ratings');
                 const corsHeaders = createCORSHeaders(request, {
@@ -171,14 +181,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            const modId = pathSegments[1];
+            const modId = pathSegments[0];
             const { handleSubmitModRating } = await import('../handlers/mods/ratings.js');
             const response = await handleSubmitModRating(request, env, modId, auth);
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: POST /mods/:modId/versions - Upload new version
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && request.method === 'POST') {
+        // Route: POST /mods/:modId/versions or POST /:modId/versions - Upload new version
+        if (pathSegments.length === 2 && pathSegments[1] === 'versions' && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
                 const corsHeaders = createCORSHeaders(request, {
@@ -195,53 +205,52 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     customerId: null
                 };
             }
-            const modId = pathSegments[1];
+            const modId = pathSegments[0];
             const response = await handleUploadVersion(request, env, modId, auth);
             return await wrapWithEncryption(response, auth);
         }
 
-        // Route: GET /mods/:modId/thumbnail - Get thumbnail
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'thumbnail' && request.method === 'GET') {
-            const modId = pathSegments[1];
+        // Route: GET /mods/:modId/thumbnail or GET /:modId/thumbnail - Get thumbnail
+        if (pathSegments.length === 2 && pathSegments[1] === 'thumbnail' && request.method === 'GET') {
+            const modId = pathSegments[0];
             const response = await handleThumbnail(request, env, modId, auth);
             // Don't encrypt binary image data
             return { response, customerId: auth?.customerId || null };
         }
 
-        // Route: GET /mods/:slug/og-image - Get Open Graph preview image
-        if (pathSegments.length === 3 && pathSegments[0] === 'mods' && pathSegments[2] === 'og-image' && request.method === 'GET') {
-            const slug = pathSegments[1];
+        // Route: GET /mods/:slug/og-image or GET /:slug/og-image - Get Open Graph preview image
+        if (pathSegments.length === 2 && pathSegments[1] === 'og-image' && request.method === 'GET') {
+            const slug = pathSegments[0];
             const response = await handleOGImage(request, env, slug, auth);
             // Don't encrypt image data
             return { response, customerId: auth?.customerId || null };
         }
 
-        // Route: GET /mods/:modId/versions/:versionId/download - Download version
-        // Path: /mods/:modId/versions/:versionId/download
-        // pathSegments = ['mods', modId, 'versions', versionId, 'download']
-        if (pathSegments.length === 5 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && pathSegments[4] === 'download' && request.method === 'GET') {
-            const modId = pathSegments[1];
-            const versionId = pathSegments[3];
+        // Route: GET /mods/:modId/versions/:versionId/download or GET /:modId/versions/:versionId/download - Download version
+        // Normalized pathSegments = [modId, 'versions', versionId, 'download']
+        if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'download' && request.method === 'GET') {
+            const modId = pathSegments[0];
+            const versionId = pathSegments[2];
             const response = await handleDownloadVersion(request, env, modId, versionId, auth);
             // Downloads are binary files - DO NOT encrypt, return as-is
             return { response, customerId: auth?.customerId || null };
         }
 
-        // Route: GET /mods/:modId/versions/:versionId/verify - Verify file integrity
-        // Path: /mods/:modId/versions/:versionId/verify
-        if (pathSegments.length === 5 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && pathSegments[4] === 'verify' && request.method === 'GET') {
-            const modId = pathSegments[1];
-            const versionId = pathSegments[3];
+        // Route: GET /mods/:modId/versions/:versionId/verify or GET /:modId/versions/:versionId/verify - Verify file integrity
+        // Normalized pathSegments = [modId, 'versions', versionId, 'verify']
+        if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'verify' && request.method === 'GET') {
+            const modId = pathSegments[0];
+            const versionId = pathSegments[2];
             const { handleVerifyVersion } = await import('../handlers/versions/verify.js');
             const response = await handleVerifyVersion(request, env, modId, versionId, auth);
             return await wrapWithEncryption(response, auth || undefined);
         }
 
-        // Route: GET /mods/:modId/versions/:versionId/badge - Get integrity badge
-        // Path: /mods/:modId/versions/:versionId/badge
-        if (pathSegments.length === 5 && pathSegments[0] === 'mods' && pathSegments[2] === 'versions' && pathSegments[4] === 'badge' && request.method === 'GET') {
-            const modId = pathSegments[1];
-            const versionId = pathSegments[3];
+        // Route: GET /mods/:modId/versions/:versionId/badge or GET /:modId/versions/:versionId/badge - Get integrity badge
+        // Normalized pathSegments = [modId, 'versions', versionId, 'badge']
+        if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'badge' && request.method === 'GET') {
+            const modId = pathSegments[0];
+            const versionId = pathSegments[2];
             const { handleBadge } = await import('../handlers/versions/badge.js');
             const response = await handleBadge(request, env, modId, versionId, auth);
             // Badges are SVG images - DO NOT encrypt
