@@ -69,7 +69,7 @@ export async function handleDownloadVersion(
         }
 
         if (!mod) {
-            console.error('[Download] Mod not found after all strategies:', { modIdOrSlug, versionId }); {
+            console.error('[Download] Mod not found after all strategies:', { modIdOrSlug, versionId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
