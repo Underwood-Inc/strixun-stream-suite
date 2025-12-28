@@ -1,16 +1,16 @@
 # Worker Organization Structure
 
-> **Per-worker code organization for Cloudflare Workers** 🏗️✨
+> **Per-worker code organization for Cloudflare Workers** [EMOJI][EMOJI][FEATURE]
 
 ---
 
-## 📋 Overview
+## [CLIPBOARD] Overview
 
 All workers are now organized with clear per-worker structure, making it easy to identify which code belongs to which worker.
 
 ---
 
-## 🏗️ Worker Structure
+## [EMOJI][EMOJI] Worker Structure
 
 ### Twitch API Worker (`serverless/twitch-api/`)
 
@@ -139,7 +139,7 @@ serverless/url-shortener/
 - `GET /list` - List user's URLs
 - `DELETE /:code` - Delete short URL
 
-**Status:** ⚠️ Needs organization (utilities inline in worker.js)
+**Status:** [WARNING] Needs organization (utilities inline in worker.js)
 
 ---
 
@@ -164,11 +164,11 @@ serverless/chat-signaling/
 **Endpoints:**
 - WebRTC signaling endpoints
 
-**Status:** ⚠️ Needs organization (utilities inline in worker.js)
+**Status:** [WARNING] Needs organization (utilities inline in worker.js)
 
 ---
 
-## 📦 Shared Code
+## [PACKAGE] Shared Code
 
 ### Shared Utilities (`serverless/shared/`)
 
@@ -188,9 +188,9 @@ serverless/shared/
 
 ---
 
-## 🔄 Migration Status
+## [SYNC] Migration Status
 
-### ✅ Completed
+### [SUCCESS] Completed
 
 - [x] Twitch API Worker - Fully organized
   - [x] Handlers moved to `twitch-api/handlers/`
@@ -209,7 +209,7 @@ serverless/shared/
 - [x] OTP Auth Service - Already organized
   - [x] Well-structured from start
 
-### ⚠️ Needs Organization
+### [WARNING] Needs Organization
 
 - [ ] URL Shortener
   - [ ] Extract CORS utilities to `utils/cors.js`
@@ -225,7 +225,7 @@ serverless/shared/
 
 ---
 
-## 📝 Import Patterns
+## [NOTE] Import Patterns
 
 ### Twitch API Worker
 
@@ -266,7 +266,7 @@ import { initializeServiceTypes } from '../shared/types.js';
 
 ---
 
-## 🎯 Benefits
+## [TARGET] Benefits
 
 1. **Clear Ownership** - Easy to see which code belongs to which worker
 2. **Better Organization** - Handlers, utils, and routers are clearly separated
@@ -276,7 +276,7 @@ import { initializeServiceTypes } from '../shared/types.js';
 
 ---
 
-## 📚 Related Documentation
+## [DOCS] Related Documentation
 
 - [Game API Audit](./GAME_API_AUDIT.md)
 - [Deployment Guide](./DEPLOYMENT.md)

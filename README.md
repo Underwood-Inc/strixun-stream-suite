@@ -1,4 +1,4 @@
-# 🎬 Strixun's Stream Suite
+# [EMOJI] Strixun's Stream Suite
 
 <div align="center">
 
@@ -11,26 +11,26 @@
 
 *Source animations, layout presets, text cycling, and Twitch integration - all in one powerful suite*
 
-[🚀 Quick Start](#-quick-start) • [📖 Documentation](#-documentation) • [🐛 Issues](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [💬 Discussions](https://github.com/Underwood-Inc/strixun-stream-suite/discussions)
+[[DEPLOY] Quick Start](#-quick-start) • [[EMOJI] Documentation](#-documentation) • [[BUG] Issues](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [[CHAT] Discussions](https://github.com/Underwood-Inc/strixun-stream-suite/discussions)
 
 </div>
 
 ---
 
-## ✨ What Is This?
+## [FEATURE] What Is This?
 
 **Strixun's Stream Suite** is a professional streaming toolkit that helps content creators automate and enhance their live streams. It provides:
 
-- 🎭 **Source Animations** - Smooth fade, slide, zoom, and pop effects
-- 🔄 **Source Swaps** - Animated position swapping between sources
-- 📐 **Layout Presets** - Save and apply entire scene layouts instantly
-- 📝 **Text Cycler** - Cycle text with animated transitions
-- 🎬 **Twitch Clips Player** - Auto-play clips during BRB screens
-- 🎛️ **Unified Control Panel** - One dock to control everything
+- [EMOJI] **Source Animations** - Smooth fade, slide, zoom, and pop effects
+- [SYNC] **Source Swaps** - Animated position swapping between sources
+- [EMOJI] **Layout Presets** - Save and apply entire scene layouts instantly
+- [NOTE] **Text Cycler** - Cycle text with animated transitions
+- [EMOJI] **Twitch Clips Player** - Auto-play clips during BRB screens
+- [CONTROL] **Unified Control Panel** - One dock to control everything
 
 ---
 
-## 🚀 Quick Start
+## [DEPLOY] Quick Start
 
 ### For GitHub Pages Users (Recommended)
 
@@ -49,7 +49,7 @@ https://underwood-inc.github.io/strixun-stream-suite
 #### Step 2: Add to OBS Studio as a Dock
 
 1. Open **OBS Studio**
-2. Go to **View → Docks → Custom Browser Docks**
+2. Go to **View [EMOJI] Docks [EMOJI] Custom Browser Docks**
 3. Click **"+"** to add a new dock
 4. Enter a name (e.g., "Stream Suite")
 5. Paste your GitHub Pages URL: `https://underwood-inc.github.io/strixun-stream-suite`
@@ -60,19 +60,19 @@ https://underwood-inc.github.io/strixun-stream-suite
 The control panel will automatically attempt to connect to OBS via WebSocket. Make sure:
 
 - OBS Studio is running
-- WebSocket Server is enabled in **OBS → Tools → WebSocket Server Settings**
+- WebSocket Server is enabled in **OBS [EMOJI] Tools [EMOJI] WebSocket Server Settings**
 - Default port is **4455** (or configure custom port)
 
 #### Step 4: Install Scripts (First Time Only)
 
-1. In the control panel dock, click the **📥 Install** tab
+1. In the control panel dock, click the **[EMOJI] Install** tab
 2. Follow the installation wizard
 3. Restart OBS Studio when prompted
-4. Configure your scripts in the **📜 Scripts** tab
+4. Configure your scripts in the **[EMOJI] Scripts** tab
 
 ---
 
-## 📱 What You'll See
+## [MOBILE] What You'll See
 
 ### Initial Setup Flow
 
@@ -142,7 +142,7 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 ├─────────────────────────────────────────────────────────────┤
 │  File  Edit  View  Docks  Tools  Help                       │
 │                                                             │
-│  View → Docks → Custom Browser Docks → [+]                  │
+│  View [EMOJI] Docks [EMOJI] Custom Browser Docks [EMOJI] [+]                  │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Add Custom Browser Dock                               │ │
@@ -182,30 +182,30 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 
 ---
 
-## 🎯 Features
+## [TARGET] Features
 
 | Feature | Description |
 |---------|-------------|
-| **🎭 Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
-| **🔄 Source Swap** | Swap position and size of two sources with animation |
-| **📐 Source Layouts** | Save and apply layout presets with multi-source animation |
-| **📝 Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
-| **⚡ Quick Controls** | Hotkey to cycle aspect override mode |
-| **📜 Script Manager** | Unified dashboard for all animation scripts |
-| **🎛️ Control Panel** | Web-based dock UI to control everything |
-| **🎬 Twitch Clips Player** | Auto-play Twitch clips with chat command support |
-| **🎨 Scrollbar Customizer** | Free CDN-hosted tool to customize scrollbars on any website |
+| **[EMOJI] Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
+| **[SYNC] Source Swap** | Swap position and size of two sources with animation |
+| **[EMOJI] Source Layouts** | Save and apply layout presets with multi-source animation |
+| **[NOTE] Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
+| **[PERF] Quick Controls** | Hotkey to cycle aspect override mode |
+| **[EMOJI] Script Manager** | Unified dashboard for all animation scripts |
+| **[CONTROL] Control Panel** | Web-based dock UI to control everything |
+| **[EMOJI] Twitch Clips Player** | Auto-play Twitch clips with chat command support |
+| **[UI] Scrollbar Customizer** | Free CDN-hosted tool to customize scrollbars on any website |
 
 ---
 
-## 📋 Requirements
+## [CLIPBOARD] Requirements
 
 - **OBS Studio 28+** (includes WebSocket support)
 - **No additional plugins needed** - works out of the box!
 
 ---
 
-## 🔧 Manual Installation (Alternative)
+## [CONFIG] Manual Installation (Alternative)
 
 If you prefer to install scripts manually:
 
@@ -214,20 +214,20 @@ If you prefer to install scripts manually:
    - **Windows:** `%AppData%\obs-studio\basic\scripts\`
    - **macOS:** `~/Library/Application Support/obs-studio/basic/scripts/`
    - **Linux:** `~/.config/obs-studio/basic/scripts/`
-3. **In OBS:** `Tools → Scripts → + → Select all .lua files`
+3. **In OBS:** `Tools [EMOJI] Scripts [EMOJI] + [EMOJI] Select all .lua files`
 4. **Add the control panel** as a Custom Browser Dock (use local file path or GitHub Pages URL)
 
 ---
 
-## 📖 Documentation
+## [EMOJI] Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
-### 📘 For Everyone
+### [EMOJI] For Everyone
 - **[Product Overview](./docs/PRODUCT_OVERVIEW.md)** - Understand what Strixun Stream Suite does (non-technical)
 - **[Scrollbar Customizer](./serverless/SCROLLBAR_CUSTOMIZER.md)** - Free CDN tool to customize scrollbars on any website (super beginner-friendly!)
 
-### 🔧 For Developers
+### [CONFIG] For Developers
 - **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture
 - **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows and deployment
@@ -236,15 +236,15 @@ See [docs/README.md](./docs/README.md) for a complete documentation index.
 
 ---
 
-## 🐛 Troubleshooting
+## [BUG] Troubleshooting
 
 **Scripts not appearing in OBS?**
 - Ensure `.lua` files are in the correct scripts folder
 - Restart OBS after adding scripts
-- Check `Tools → Scripts` for error messages
+- Check `Tools [EMOJI] Scripts` for error messages
 
 **Control panel not connecting?**
-- Verify OBS WebSocket Server is enabled (`Tools → WebSocket Server Settings`)
+- Verify OBS WebSocket Server is enabled (`Tools [EMOJI] WebSocket Server Settings`)
 - Check that port 4455 is not blocked by firewall
 - Try restarting OBS Studio
 
@@ -254,12 +254,12 @@ See [docs/README.md](./docs/README.md) for a complete documentation index.
 - Click "Refresh Sources" in script settings
 
 **Sources drifting out of position?**
-- Click "🎯 Recapture Home Positions" in source_animations settings
+- Click "[TARGET] Recapture Home Positions" in source_animations settings
 - This resets the canonical transform cache
 
 ---
 
-## 📜 Version History
+## [EMOJI] Version History
 
 ### Control Panel
 - **v1.3.0** - Current version
@@ -273,7 +273,7 @@ See [docs/README.md](./docs/README.md) for a complete documentation index.
 
 ---
 
-## 📄 License
+## [FILE] License
 
 MIT License - feel free to use and modify.
 
@@ -283,8 +283,8 @@ MIT License - feel free to use and modify.
 
 <div align="center">
 
-**Made with ❤️ for the streaming community**
+**Made with [EMOJI][EMOJI] for the streaming community**
 
-[⭐ Star this repo](https://github.com/Underwood-Inc/strixun-stream-suite) • [🐛 Report Bug](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [💡 Request Feature](https://github.com/Underwood-Inc/strixun-stream-suite/issues)
+[[EMOJI] Star this repo](https://github.com/Underwood-Inc/strixun-stream-suite) • [[BUG] Report Bug](https://github.com/Underwood-Inc/strixun-stream-suite/issues) • [[IDEA] Request Feature](https://github.com/Underwood-Inc/strixun-stream-suite/issues)
 
 </div>

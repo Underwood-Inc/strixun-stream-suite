@@ -11,7 +11,7 @@
   <h1>{title}</h1>
   <p>
     {description}
-    <strong style="color: var(--accent);">{highlightText}</strong> 🐼
+    <strong style="color: var(--accent);">{highlightText}</strong> [EMOJI]
   </p>
   <div class="hero-cta">
     <a href={dashboardLink} class="btn btn-primary">Developer Dashboard</a>

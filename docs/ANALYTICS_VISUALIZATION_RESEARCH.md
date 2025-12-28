@@ -7,7 +7,7 @@
 
 ---
 
-## 📊 Current State Analysis
+## [ANALYTICS] Current State Analysis
 
 ### Existing Analytics Data Available
 
@@ -45,7 +45,7 @@ The OTP Auth service already tracks comprehensive analytics:
 
 ---
 
-## 🔍 Charting Library Research
+## [SEARCH] Charting Library Research
 
 ### Evaluation Criteria
 
@@ -59,15 +59,15 @@ The OTP Auth service already tracks comprehensive analytics:
 
 ---
 
-## 📦 Library Options Analysis
+## [PACKAGE] Library Options Analysis
 
-### Option 1: Observable Plot ⭐ **RECOMMENDED**
+### Option 1: Observable Plot [EMOJI] **RECOMMENDED**
 
 **Bundle Size**: ~30KB gzipped  
 **License**: ISC (MIT-like)  
 **GitHub**: https://github.com/observablehq/plot
 
-#### Pros ✅
+#### Pros [SUCCESS]
 - **Extremely lightweight** - One of the smallest charting libraries
 - **Fully CSS-themeable** - Uses CSS variables and custom properties
 - **Unopinionated styling** - No default styles, full control
@@ -77,7 +77,7 @@ The OTP Auth service already tracks comprehensive analytics:
 - **Time-series optimized** - Excellent for analytics dashboards
 - **SVG-based** - Scalable, themeable via CSS
 
-#### Cons ❌
+#### Cons [ERROR]
 - **Learning curve** - Different API than traditional charting libs
 - **Documentation** - Good but requires understanding of data structure
 - **No built-in animations** - Can add with CSS transitions
@@ -112,14 +112,14 @@ const chart = Plot.plot({
 **License**: MIT  
 **GitHub**: https://github.com/frappe/charts
 
-#### Pros ✅
+#### Pros [SUCCESS]
 - **Lightweight** - Small bundle size
 - **Simple API** - Easy to use
 - **Themeable** - CSS variable support
 - **Good documentation** - Clear examples
 - **Svelte wrapper available** - `svelte-frappe-charts`
 
-#### Cons ❌
+#### Cons [ERROR]
 - **Less flexible** - More opinionated than Observable Plot
 - **Limited chart types** - Fewer options than Plot
 - **Maintenance** - Less active development
@@ -147,14 +147,14 @@ const chart = new Chart({
 **License**: MIT  
 **GitHub**: https://github.com/chartjs/Chart.js
 
-#### Pros ✅
+#### Pros [SUCCESS]
 - **Very popular** - Large community, extensive docs
 - **Feature rich** - Many chart types and plugins
 - **Themeable** - Can use CSS variables
 - **Svelte wrapper** - `svelte-chartjs` available
 - **Animations** - Built-in smooth animations
 
-#### Cons ❌
+#### Cons [ERROR]
 - **Larger bundle** - Heavier than alternatives
 - **More opinionated** - Default styles need overriding
 - **Plugin system** - Can bloat bundle if not careful
@@ -167,12 +167,12 @@ const chart = new Chart({
 **License**: BSD-3-Clause  
 **GitHub**: https://github.com/d3/d3
 
-#### Pros ✅
+#### Pros [SUCCESS]
 - **Ultimate flexibility** - Complete control
 - **Powerful** - Industry standard for data visualization
 - **Unopinionated** - No default styles
 
-#### Cons ❌
+#### Cons [ERROR]
 - **Heavy** - Large bundle size
 - **Steep learning curve** - Complex API
 - **Time-consuming** - Requires more code
@@ -185,24 +185,24 @@ const chart = new Chart({
 **Bundle Size**: ~70KB gzipped  
 **License**: MIT
 
-#### Cons ❌
+#### Cons [ERROR]
 - **React-only** - Not suitable for Svelte
 - **Heavy** - Large bundle size
 - **Not recommended** - Wrong framework
 
 ---
 
-## 🎯 Recommendation: Observable Plot
+## [TARGET] Recommendation: Observable Plot
 
 ### Why Observable Plot?
 
-1. **Lightweight** ✅ - Smallest bundle size (~30KB)
-2. **Unopinionated** ✅ - Full CSS control, no default styles
-3. **CSS Variables** ✅ - Native support for CSS custom properties
-4. **Svelte Compatible** ✅ - Framework agnostic, works perfectly
-5. **TypeScript** ✅ - Written in TypeScript, full type support
-6. **Time-Series** ✅ - Optimized for analytics dashboards
-7. **Maintained** ✅ - Active development by Observable team
+1. **Lightweight** [SUCCESS] - Smallest bundle size (~30KB)
+2. **Unopinionated** [SUCCESS] - Full CSS control, no default styles
+3. **CSS Variables** [SUCCESS] - Native support for CSS custom properties
+4. **Svelte Compatible** [SUCCESS] - Framework agnostic, works perfectly
+5. **TypeScript** [SUCCESS] - Written in TypeScript, full type support
+6. **Time-Series** [SUCCESS] - Optimized for analytics dashboards
+7. **Maintained** [SUCCESS] - Active development by Observable team
 
 ### Implementation Approach
 
@@ -267,7 +267,7 @@ Based on analytics data available:
 
 ---
 
-## 📈 Recommended Visualizations
+## [METRICS] Recommended Visualizations
 
 ### 1. Overview Dashboard
 - **Line Chart**: OTP Requests & Verifications (30-day trend)
@@ -297,7 +297,7 @@ Based on analytics data available:
 
 ---
 
-## 🎨 Theming Strategy
+## [UI] Theming Strategy
 
 ### CSS Variables Integration
 
@@ -350,18 +350,18 @@ const chartTheme = {
 
 ---
 
-## 📦 Bundle Size Comparison
+## [PACKAGE] Bundle Size Comparison
 
 | Library | Bundle Size (gzipped) | Tree-shakeable | Dependencies |
 |---------|---------------------|----------------|--------------|
-| **Observable Plot** | ~30KB | ✅ Yes | Minimal |
-| Frappe Charts | ~45KB | ⚠️ Partial | Low |
-| Chart.js | ~60KB | ⚠️ Partial | Medium |
-| D3.js | ~80KB+ | ✅ Yes | High |
+| **Observable Plot** | ~30KB | [SUCCESS] Yes | Minimal |
+| Frappe Charts | ~45KB | [WARNING] Partial | Low |
+| Chart.js | ~60KB | [WARNING] Partial | Medium |
+| D3.js | ~80KB+ | [SUCCESS] Yes | High |
 
 ---
 
-## 🚀 Implementation Plan
+## [DEPLOY] Implementation Plan
 
 ### Phase 1: Setup & Basic Charts
 1. Install `@observablehq/plot`
@@ -383,7 +383,7 @@ const chartTheme = {
 
 ---
 
-## 🔧 Alternative: Custom SVG Charts
+## [CONFIG] Alternative: Custom SVG Charts
 
 If bundle size is critical, consider lightweight custom SVG components:
 
@@ -401,17 +401,17 @@ If bundle size is critical, consider lightweight custom SVG components:
 
 ---
 
-## ✅ Final Recommendation
+## [SUCCESS] Final Recommendation
 
 **Use Observable Plot** for the following reasons:
 
-1. ✅ **Lightweight** - Smallest bundle size
-2. ✅ **Unopinionated** - Full CSS control
-3. ✅ **CSS Variables** - Native support
-4. ✅ **Svelte Compatible** - Framework agnostic
-5. ✅ **TypeScript** - Full type support
-6. ✅ **Maintained** - Active development
-7. ✅ **Powerful** - Handles all chart types needed
+1. [SUCCESS] **Lightweight** - Smallest bundle size
+2. [SUCCESS] **Unopinionated** - Full CSS control
+3. [SUCCESS] **CSS Variables** - Native support
+4. [SUCCESS] **Svelte Compatible** - Framework agnostic
+5. [SUCCESS] **TypeScript** - Full type support
+6. [SUCCESS] **Maintained** - Active development
+7. [SUCCESS] **Powerful** - Handles all chart types needed
 
 ### Next Steps
 
@@ -423,7 +423,7 @@ If bundle size is critical, consider lightweight custom SVG components:
 
 ---
 
-## 📚 Resources
+## [DOCS] Resources
 
 - **Observable Plot Docs**: https://observablehq.com/plot/
 - **Observable Plot GitHub**: https://github.com/observablehq/plot
@@ -432,7 +432,7 @@ If bundle size is critical, consider lightweight custom SVG components:
 
 ---
 
-## 🎯 Questions to Consider
+## [TARGET] Questions to Consider
 
 1. **Bundle Size Priority**: Is 30KB acceptable, or do we need smaller?
 2. **Chart Complexity**: Do we need advanced features (zoom, pan, brush)?
@@ -442,5 +442,5 @@ If bundle size is critical, consider lightweight custom SVG components:
 
 ---
 
-**Status**: ⏸️ **AWAITING APPROVAL** - Ready for implementation once approved
+**Status**: [EMOJI][EMOJI] **AWAITING APPROVAL** - Ready for implementation once approved
 

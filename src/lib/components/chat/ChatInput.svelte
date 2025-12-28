@@ -165,7 +165,7 @@
           disabled={disabled}
           type="button"
         >
-          😀
+          [EMOJI]
         </button>
         {#if showEmotePicker}
           <EmotePicker on:select={handleEmoteSelect} on:close={() => (showEmotePicker = false)} />

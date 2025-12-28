@@ -426,7 +426,7 @@ export function ModUploadForm({
                         </FileInfo>
                     ) : (
                         <>
-                            <div>📁 Drop mod file here or click to browse</div>
+                            <div>[FOLDER] Drop mod file here or click to browse</div>
                             <DragDropText>Supports .lua, .js, .zip, and other mod file formats</DragDropText>
                         </>
                     )}
@@ -544,7 +544,7 @@ export function ModUploadForm({
                         </FileInfo>
                     ) : (
                         <>
-                            <div>🖼️ Drop thumbnail image here or click to browse</div>
+                            <div>[EMOJI][EMOJI] Drop thumbnail image here or click to browse</div>
                             <DragDropText>Supports .png, .jpg, .webp</DragDropText>
                         </>
                     )}

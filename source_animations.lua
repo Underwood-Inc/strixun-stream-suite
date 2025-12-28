@@ -809,7 +809,7 @@ end
 
 local function add_easing_list(props, id, label)
     local list = obs.obs_properties_add_list(props, id, label, obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(list, "Ease Out ★", "ease_out")
+    obs.obs_property_list_add_string(list, "Ease Out [EMOJI]", "ease_out")
     obs.obs_property_list_add_string(list, "Ease In/Out", "ease_in_out")
     obs.obs_property_list_add_string(list, "Ease In", "ease_in")
     obs.obs_property_list_add_string(list, "Linear", "linear")
@@ -868,7 +868,7 @@ function script_properties()
     -- Add source
     obs.obs_properties_add_text(props, "h3", "═══════════ ADD SOURCE ═══════════", obs.OBS_TEXT_INFO)
     
-    obs.obs_properties_add_button(props, "refresh_btn", "🔄 Refresh Sources",
+    obs.obs_properties_add_button(props, "refresh_btn", "[SYNC] Refresh Sources",
         function(props, p) 
             update_visibility_cache()
             return true 
@@ -891,7 +891,7 @@ function script_properties()
     obs.obs_properties_add_bool(props, "new_animate_show", "Animate on SHOW")
     obs.obs_properties_add_bool(props, "new_animate_hide", "Animate on HIDE")
     
-    obs.obs_properties_add_button(props, "add_btn", "➕ Add/Update Source",
+    obs.obs_properties_add_button(props, "add_btn", "[ADD] Add/Update Source",
         function(props, p)
             if settings_ref == nil then return false end
             local name = obs.obs_data_get_string(settings_ref, "new_source")
@@ -927,7 +927,7 @@ function script_properties()
         obs.obs_property_list_add_string(remove_list, name, name)
     end
     
-    obs.obs_properties_add_button(props, "remove_btn", "❌ Remove Source",
+    obs.obs_properties_add_button(props, "remove_btn", "[ERROR] Remove Source",
         function(props, p)
             if settings_ref == nil then return false end
             local name = obs.obs_data_get_string(settings_ref, "remove_source")
@@ -958,7 +958,7 @@ function script_properties()
     -- Status
     obs.obs_properties_add_text(props, "h5", "═══════════ STATUS ═══════════", obs.OBS_TEXT_INFO)
     
-    obs.obs_properties_add_button(props, "list_btn", "📋 List Configured Sources",
+    obs.obs_properties_add_button(props, "list_btn", "[CLIPBOARD] List Configured Sources",
         function(props, p)
             log_info("=== Configured Sources ===")
             local count = 0
@@ -972,7 +972,7 @@ function script_properties()
             return false
         end)
     
-    obs.obs_properties_add_button(props, "recapture_btn", "🎯 Recapture Home Positions",
+    obs.obs_properties_add_button(props, "recapture_btn", "[TARGET] Recapture Home Positions",
         function(props, p)
             log_info("Recapturing home positions for all sources...")
             canonical_transforms = {}

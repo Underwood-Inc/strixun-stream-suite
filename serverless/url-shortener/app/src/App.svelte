@@ -78,7 +78,7 @@
   {:else if !isAuthenticated}
     <div class="auth-container">
       <div class="auth-header">
-        <h1>🔗 URL Shortener</h1>
+        <h1>[LINK] URL Shortener</h1>
         <p>Strixun Stream Suite - Create and manage short URLs with secure OTP authentication</p>
       </div>
       <OtpLogin

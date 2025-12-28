@@ -294,7 +294,7 @@
 <div class="twitch-connect">
   <div class="twitch-connect__header">
     <h3 class="twitch-connect__title">
-      <span>🎮</span>
+      <span>[EMOJI]</span>
       <span>Twitch Account</span>
     </h3>
     {#if attachedAccount}

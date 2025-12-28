@@ -64,11 +64,11 @@ try {
     },
   });
 
-  console.log(`✅ Built React OTP Login components to ${outputDir}/`);
+  console.log(`[SUCCESS] Built React OTP Login components to ${outputDir}/`);
   console.log(`   - ES Module: otp-login.js`);
   console.log(`   - CommonJS: otp-login.cjs`);
 } catch (error) {
-  console.error('❌ Failed to build React OTP Login components:', error);
+  console.error('[ERROR] Failed to build React OTP Login components:', error);
   process.exit(1);
 }
 

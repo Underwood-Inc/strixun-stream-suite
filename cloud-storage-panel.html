@@ -261,21 +261,21 @@
             <div class="device-id-value" id="deviceIdDisplay">Loading...</div>
             <div id="sharedKeyInfo" style="margin-top: 8px; padding: 8px; background: rgba(67, 233, 123, 0.1); border-radius: 4px; display: none;">
                 <div style="font-size: 12px; color: #43e97b;">
-                    🔑 Shared Key Active: <span id="sharedKeyValue" style="font-weight: 600;"></span>
+                    [KEY] Shared Key Active: <span id="sharedKeyValue" style="font-weight: 600;"></span>
                 </div>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
                 <button class="save-slot-btn" style="background: #00b8d4; flex: 1; min-width: 140px;" id="btnCopyDeviceId">
-                    📋 Copy Device ID
+                    [CLIPBOARD] Copy Device ID
                 </button>
                 <button class="save-slot-btn" style="background: #667eea; flex: 1; min-width: 140px;" id="btnImportDeviceId">
-                    📥 Import Device ID
+                    [EMOJI] Import Device ID
                 </button>
                 <button class="save-slot-btn" style="background: #43e97b; flex: 1; min-width: 140px;" id="btnShareLink">
-                    🔗 Share Link
+                    [LINK] Share Link
                 </button>
                 <button class="save-slot-btn" style="background: #f093fb; flex: 1; min-width: 140px;" id="btnSetSharedKey">
-                    🔑 Shared Key
+                    [KEY] Shared Key
                 </button>
             </div>
         </div>
@@ -292,19 +292,19 @@
         
         <div class="cloud-actions">
             <button class="cloud-button btn-save" id="btnSaveToCloud">
-                <span>💾</span>
+                <span>[EMOJI]</span>
                 <span>Save to Cloud</span>
             </button>
             <button class="cloud-button btn-load" id="btnLoadFromCloud">
-                <span>📥</span>
+                <span>[EMOJI]</span>
                 <span>Load from Cloud</span>
             </button>
             <button class="cloud-button btn-list" id="btnListSaves">
-                <span>📋</span>
+                <span>[CLIPBOARD]</span>
                 <span>List Saves</span>
             </button>
             <button class="cloud-button btn-auto-sync" id="btnToggleAutoSync">
-                <span>🔄</span>
+                <span>[SYNC]</span>
                 <span>Auto-Sync: OFF</span>
             </button>
         </div>
@@ -377,11 +377,11 @@
                     note: 'Manual save from control panel',
                 });
                 
-                showStatus(`✅ Saved to cloud: ${slot} (${formatBytes(result.size)})`, 'success');
+                showStatus(`[SUCCESS] Saved to cloud: ${slot} (${formatBytes(result.size)})`, 'success');
                 updateSyncStatus();
                 await handleListSaves();
             } catch (error) {
-                showStatus(`❌ Failed to save: ${error.message}`, 'error');
+                showStatus(`[ERROR] Failed to save: ${error.message}`, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -403,10 +403,10 @@
                 const saveData = await CloudStorage.loadFromCloud(slot);
                 CloudStorage.applyCloudSave(saveData, false);
                 
-                showStatus(`✅ Loaded from cloud: ${slot}`, 'success');
+                showStatus(`[SUCCESS] Loaded from cloud: ${slot}`, 'success');
                 updateSyncStatus();
             } catch (error) {
-                showStatus(`❌ Failed to load: ${error.message}`, 'error');
+                showStatus(`[ERROR] Failed to load: ${error.message}`, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -447,7 +447,7 @@
                 
                 slotsSection.style.display = 'block';
             } catch (error) {
-                showStatus(`❌ Failed to list saves: ${error.message}`, 'error');
+                showStatus(`[ERROR] Failed to list saves: ${error.message}`, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -473,10 +473,10 @@
             
             if (isEnabled) {
                 btn.classList.add('active');
-                btn.innerHTML = '<span>🔄</span><span>Auto-Sync: ON</span>';
+                btn.innerHTML = '<span>[SYNC]</span><span>Auto-Sync: ON</span>';
             } else {
                 btn.classList.remove('active');
-                btn.innerHTML = '<span>🔄</span><span>Auto-Sync: OFF</span>';
+                btn.innerHTML = '<span>[SYNC]</span><span>Auto-Sync: OFF</span>';
             }
         }
         
@@ -503,10 +503,10 @@
             
             try {
                 await CloudStorage.deleteCloudSave(slot);
-                showStatus(`✅ Deleted save: ${slot}`, 'success');
+                showStatus(`[SUCCESS] Deleted save: ${slot}`, 'success');
                 await handleListSaves();
             } catch (error) {
-                showStatus(`❌ Failed to delete: ${error.message}`, 'error');
+                showStatus(`[ERROR] Failed to delete: ${error.message}`, 'error');
             }
         }
         
@@ -542,12 +542,12 @@
             try {
                 const exportData = CloudStorage.exportDeviceId();
                 await exportData.copyToClipboard();
-                showStatus('✅ Device ID copied to clipboard!', 'success');
+                showStatus('[SUCCESS] Device ID copied to clipboard!', 'success');
             } catch (error) {
                 // Fallback for older browsers
                 const deviceId = CloudStorage.getDeviceId();
                 prompt('Copy this Device ID:', deviceId);
-                showStatus('📋 Device ID ready to copy', 'info');
+                showStatus('[CLIPBOARD] Device ID ready to copy', 'info');
             }
         }
         
@@ -563,12 +563,12 @@
             try {
                 CloudStorage.importDeviceId(importedId.trim());
                 document.getElementById('deviceIdDisplay').textContent = importedId.trim();
-                showStatus('✅ Device ID imported! Reloading saves...', 'success');
+                showStatus('[SUCCESS] Device ID imported! Reloading saves...', 'success');
                 
                 // Reload save list with new device ID
                 await handleListSaves();
             } catch (error) {
-                showStatus(`❌ Failed to import: ${error.message}`, 'error');
+                showStatus(`[ERROR] Failed to import: ${error.message}`, 'error');
             }
         }
         
@@ -580,21 +580,21 @@
                 // Try to copy URL
                 if (navigator.clipboard) {
                     await navigator.clipboard.writeText(shareUrl);
-                    showStatus('✅ Share link copied! Send it to your other device.', 'success');
+                    showStatus('[SUCCESS] Share link copied! Send it to your other device.', 'success');
                 } else {
                     prompt('Share this link with your other device:', shareUrl);
-                    showStatus('📋 Share link ready to copy', 'info');
+                    showStatus('[CLIPBOARD] Share link ready to copy', 'info');
                 }
                 
                 // Show instructions
                 setTimeout(() => {
                     showStatus(
-                        'ℹ️ Open this link on another device to automatically import the Device ID',
+                        '[INFO] Open this link on another device to automatically import the Device ID',
                         'info'
                     );
                 }, 3000);
             } catch (error) {
-                showStatus(`❌ Failed to create share link: ${error.message}`, 'error');
+                showStatus(`[ERROR] Failed to create share link: ${error.message}`, 'error');
             }
         }
     </script>

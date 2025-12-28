@@ -1,20 +1,20 @@
-# 🎯 Custom P2P Chat Client - Architecture Proposal
+# [TARGET] Custom P2P Chat Client - Architecture Proposal
 
-**Ahoy there, ye brave developer!** 🧙‍♂️⚓ This here be the comprehensive proposal for buildin' a custom peer-to-peer chat client that be decoupled, agnostic, and scalable as the seven seas!
+**Ahoy there, ye brave developer!** [EMOJI]‍[EMOJI][EMOJI][EMOJI] This here be the comprehensive proposal for buildin' a custom peer-to-peer chat client that be decoupled, agnostic, and scalable as the seven seas!
 
-## 📋 Overview
+## [CLIPBOARD] Overview
 
 We're buildin' a **standalone chat service** that can be embedded in yer dashboard or any configured domain. It'll support:
-- ✅ **7TV emotes** natively
-- ✅ **Custom emojis** exclusive to yer domain
-- ✅ **End-to-end encryption** (leveragin' existing system)
-- ✅ **Peer-to-peer architecture** (minimal server dependency)
-- ✅ **Room/channel management** for streamers
-- ✅ **Platform-agnostic** (works anywhere)
+- [SUCCESS] **7TV emotes** natively
+- [SUCCESS] **Custom emojis** exclusive to yer domain
+- [SUCCESS] **End-to-end encryption** (leveragin' existing system)
+- [SUCCESS] **Peer-to-peer architecture** (minimal server dependency)
+- [SUCCESS] **Room/channel management** for streamers
+- [SUCCESS] **Platform-agnostic** (works anywhere)
 
 ---
 
-## 🏗️ Architecture Design
+## [EMOJI][EMOJI] Architecture Design
 
 ### Core Principles
 
@@ -35,7 +35,7 @@ We're buildin' a **standalone chat service** that can be embedded in yer dashboa
 
 ---
 
-## 🔧 Technical Architecture
+## [CONFIG] Technical Architecture
 
 ### 1. Peer-to-Peer Communication (WebRTC)
 
@@ -75,7 +75,7 @@ User A (Signaler)          Signaling Server          User B (Joiner)
 ### 2. Room Management
 
 **Room Lifecycle:**
-1. **Room Creation**: Broadcaster creates room → Gets room ID
+1. **Room Creation**: Broadcaster creates room [EMOJI] Gets room ID
 2. **Room Discovery**: Active rooms stored in KV (minimal metadata)
 3. **Room Joining**: Users join via room ID or broadcaster username
 4. **Room Cleanup**: Room removed from KV when last user leaves
@@ -228,7 +228,7 @@ interface CustomEmoji {
 
 ---
 
-## 📁 Project Structure
+## [FOLDER] Project Structure
 
 ```
 chat-service/
@@ -266,7 +266,7 @@ chat-service/
 
 ---
 
-## 🔐 Security Considerations
+## [AUTH] Security Considerations
 
 ### Authentication
 - Use existing Cloudflare OAuth (JWT tokens)
@@ -290,7 +290,7 @@ chat-service/
 
 ---
 
-## 🚀 Implementation Phases
+## [DEPLOY] Implementation Phases
 
 ### Phase 1: Core Infrastructure
 - [ ] WebRTC connection management
@@ -325,7 +325,7 @@ chat-service/
 
 ---
 
-## 💰 Cost Analysis
+## [EMOJI] Cost Analysis
 
 ### Cloudflare Worker (Signaling)
 - **Free Tier**: 100,000 requests/day
@@ -345,18 +345,18 @@ chat-service/
 
 ---
 
-## 🎯 Success Criteria
+## [TARGET] Success Criteria
 
-1. ✅ **Decoupled**: Chat service works independently
-2. ✅ **Agnostic**: Can be embedded in any domain
-3. ✅ **Scalable**: Handles 100+ concurrent rooms
-4. ✅ **Performant**: <100ms message latency
-5. ✅ **Secure**: E2E encryption verified
-6. ✅ **Feature-Complete**: 7TV emotes + custom emojis working
+1. [SUCCESS] **Decoupled**: Chat service works independently
+2. [SUCCESS] **Agnostic**: Can be embedded in any domain
+3. [SUCCESS] **Scalable**: Handles 100+ concurrent rooms
+4. [SUCCESS] **Performant**: <100ms message latency
+5. [SUCCESS] **Secure**: E2E encryption verified
+6. [SUCCESS] **Feature-Complete**: 7TV emotes + custom emojis working
 
 ---
 
-## 🔮 Future Enhancements
+## [EMOJI] Future Enhancements
 
 - Voice/video chat (WebRTC media streams)
 - File sharing (P2P file transfer)
@@ -374,5 +374,5 @@ chat-service/
 4. Integrate with existing OAuth system
 5. Build UI components in Svelte
 
-**Let's build this thing!** ⚓🧙‍♂️
+**Let's build this thing!** [EMOJI][EMOJI]‍[EMOJI][EMOJI]
 

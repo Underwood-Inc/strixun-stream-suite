@@ -132,7 +132,7 @@
   <div class="card status-card" id="dashboardStatusCard">
     <div id="dashboardScriptStatus">
       <div class="script-status-item" class:missing={!$connected}>
-        <span class="script-status-item__icon">🔌</span>
+        <span class="script-status-item__icon">[EMOJI]</span>
         <div class="script-status-item__content">
           <span class="script-status-item__name">OBS Connection</span>
           <span class="script-status-item__badge" class:badge-online={$connected} class:badge-offline={!$connected}>
@@ -152,7 +152,7 @@
               }} 
               class="btn-link"
             >
-              ⚙️ Go to Setup
+              [SETTINGS] Go to Setup
             </button>
             <span class="action-hint">to connect to OBS WebSocket</span>
           </div>
@@ -166,7 +166,7 @@
               }} 
               class="btn-link"
             >
-              📥 Install Scripts
+              [EMOJI] Install Scripts
             </button>
             <span class="action-hint">if you haven't already</span>
           </div>
@@ -191,7 +191,7 @@
               on:click={handleCycleAspect}
               disabled={!$connected}
             >
-              🔄 Cycle Aspect
+              [SYNC] Cycle Aspect
             </button>
           </Tooltip>
           <Tooltip 
@@ -204,7 +204,7 @@
               on:click={handleRefreshScenes}
               disabled={!$connected}
             >
-              🔃 Refresh
+              [EMOJI] Refresh
             </button>
           </Tooltip>
         </div>

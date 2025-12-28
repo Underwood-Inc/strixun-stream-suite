@@ -50,7 +50,7 @@
 
 <div class="advanced-search-input">
   <div class="advanced-search-input__wrapper">
-    <span class="advanced-search-input__icon">🔍</span>
+    <span class="advanced-search-input__icon">[SEARCH]</span>
       <input
         type="text"
         class="advanced-search-input__field"
@@ -68,7 +68,7 @@
         aria-label="Clear search"
         title="Clear search"
       >
-        ✕
+        [EMOJI]
       </button>
     {/if}
   </div>

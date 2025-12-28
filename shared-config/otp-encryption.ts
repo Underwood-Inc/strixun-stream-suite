@@ -47,7 +47,7 @@ export function getOtpEncryptionKey(): string | undefined {
   }
 
   // Priority 2: Window function (runtime injection - DEVELOPMENT ONLY)
-  // ⚠️ SECURITY WARNING: This fallback is for development/testing ONLY.
+  // [WARNING] SECURITY WARNING: This fallback is for development/testing ONLY.
   // NEVER use runtime injection in production - it exposes the key in plain text.
   // The URL shortener previously used runtime injection and it was a CRITICAL security vulnerability.
   // Always use VITE_SERVICE_ENCRYPTION_KEY at build time instead.

@@ -1,54 +1,61 @@
 /**
- * CORS headers utility
- * Handles cross-origin requests with customer-specific origin allowlists
+ * CORS utilities for mods-api
+ * Provides localhost detection for development
  */
+
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 
 /**
- * Get CORS headers for cross-origin requests
- * @param env - Worker environment
- * @param request - HTTP request
- * @returns CORS headers object
+ * Get effective allowed origins with localhost detection
+ * Always allows localhost for development, even if not in ALLOWED_ORIGINS
  */
-export function getCorsHeaders(env: Env, request: Request): Record<string, string> {
+function getEffectiveAllowedOrigins(
+    request: Request,
+    env: { ALLOWED_ORIGINS?: string }
+): string[] {
     const origin = request.headers.get('Origin');
+    const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
     
-    // Get allowed origins from environment variable
-    const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : [];
+    // Always allow localhost for development (even in production mode)
+    // This ensures local development works without needing to configure ALLOWED_ORIGINS
+    const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
     
-    // If no origins configured, allow all (for development only)
-    // In production, you MUST set ALLOWED_ORIGINS via: wrangler secret put ALLOWED_ORIGINS
-    let allowOrigin = '*'; // Default fallback
+    // If no origins configured, allow all (including localhost)
+    // If localhost is detected, always allow it (for development)
+    let effectiveOrigins = allowedOrigins.length > 0 ? allowedOrigins : ['*'];
     
-    if (allowedOrigins.length > 0) {
-        // Check for exact match or wildcard patterns
-        const matchedOrigin = allowedOrigins.find(allowed => {
-            if (allowed === '*') return true;
-            if (allowed.endsWith('*')) {
-                const prefix = allowed.slice(0, -1);
+    // Always allow localhost for development (even if not in allowedOrigins)
+    if (isLocalhost) {
+        // Check if localhost is already in allowedOrigins
+        const localhostAllowed = allowedOrigins.some(o => {
+            if (o === '*' || o === origin) return true;
+            if (o.endsWith('*')) {
+                const prefix = o.slice(0, -1);
                 return origin && origin.startsWith(prefix);
             }
-            return origin === allowed;
+            return false;
         });
-        allowOrigin = matchedOrigin === '*' ? '*' : (matchedOrigin || null);
+        
+        // If localhost not explicitly allowed, add wildcard or the specific origin
+        if (!localhostAllowed) {
+            effectiveOrigins = ['*']; // Allow all for localhost development
+        }
     }
     
-    return {
-        'Access-Control-Allow-Origin': allowOrigin || 'null',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token',
-        'Access-Control-Allow-Credentials': allowOrigin !== '*' ? 'true' : 'false',
-        'Access-Control-Max-Age': '86400',
-        // Security headers
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'X-XSS-Protection': '1; mode=block',
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'",
-    };
+    return effectiveOrigins;
 }
 
-interface Env {
-    ALLOWED_ORIGINS?: string;
-    [key: string]: any;
+/**
+ * Create CORS headers with localhost detection
+ * This wrapper ensures localhost is always allowed for development
+ */
+export function createCORSHeadersWithLocalhost(
+    request: Request,
+    env: { ALLOWED_ORIGINS?: string }
+): Headers {
+    const effectiveOrigins = getEffectiveAllowedOrigins(request, env);
+    
+    return createCORSHeaders(request, {
+        allowedOrigins: effectiveOrigins,
+    });
 }
-

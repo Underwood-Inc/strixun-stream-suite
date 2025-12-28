@@ -6,7 +6,8 @@
  * Uses shared route protection system for consistent, secure access control
  */
 
-import { wrapWithEncryption, createCORSHeaders } from '@strixun/api-framework';
+import { wrapWithEncryption } from '@strixun/api-framework';
+import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
 import { protectAdminRoute, type RouteProtectionEnv, type AuthResult } from '@strixun/api-framework';
 import { verifyJWT } from '../utils/auth.js';
 import { createError } from '../utils/errors.js';
@@ -173,9 +174,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     } catch (error: any) {
         console.error('Admin routes error:', error);
         const rfcError = createError(request, 500, 'Internal Server Error', 'An error occurred while processing the admin request');
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
+        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         return {
             response: new Response(JSON.stringify(rfcError), {
                 status: 500,

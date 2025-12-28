@@ -323,13 +323,13 @@
 <div class="notes-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <Tooltip text="Notes & Notebooks | This feature is incomplete and still in progress" level="warning" position="bottom">
     <div class="wip-banner wip">
-      ⚠️ Work in Progress - This feature is incomplete and still in progress
+      [WARNING] Work in Progress - This feature is incomplete and still in progress
     </div>
   </Tooltip>
   {#if !$isAuthenticated}
     <div class="auth-required">
       <div class="auth-required-content">
-        <h1>📝 Notes & Notebooks</h1>
+        <h1>[NOTE] Notes & Notebooks</h1>
         <p>Sign in to access your notes and notebooks</p>
         <button class="btn btn-primary" on:click={() => showLoginModal = true}>
           Sign In
@@ -340,7 +340,7 @@
     <div class="notebook-list">
       <div class="notebook-list-header">
         <div>
-          <h1>📝 Notes & Notebooks</h1>
+          <h1>[NOTE] Notes & Notebooks</h1>
           <p class="user-info">Signed in as {$user?.email}</p>
         </div>
         <div class="header-actions">
@@ -349,7 +349,7 @@
             on:click={loadNotebooks}
             disabled={isLoading}
           >
-            {isLoading ? 'Loading...' : '🔄 Refresh'}
+            {isLoading ? 'Loading...' : '[SYNC] Refresh'}
           </button>
           <button 
             class="btn btn-primary" 
@@ -410,7 +410,7 @@
   {:else}
     <div class="notebook-editor">
       <div class="editor-header">
-        <button class="btn btn-secondary" on:click={goBack}>← Back</button>
+        <button class="btn btn-secondary" on:click={goBack}>[EMOJI] Back</button>
         <h2>{currentNotebook?.metadata.title || 'Untitled'}</h2>
         <div class="editor-actions">
           <button 

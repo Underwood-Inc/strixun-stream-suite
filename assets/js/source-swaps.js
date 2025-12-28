@@ -438,7 +438,7 @@
         
         isSwapping = true;
         const style = document.getElementById('swapStyle').value;
-        dependencies.log(`Swapping ${nameA} ↔ ${nameB} (${style})...`, 'info');
+        dependencies.log(`Swapping ${nameA} [EMOJI] ${nameB} (${style})...`, 'info');
         
         try {
             const tA = await getTransform(idA);
@@ -625,7 +625,7 @@
                 }).catch(e => console.warn('[Swap] Could not set bounds type for B:', e));
             }
             
-            dependencies.log(`Swapped ${nameA} ↔ ${nameB}`, 'success');
+            dependencies.log(`Swapped ${nameA} [EMOJI] ${nameB}`, 'success');
         } catch (e) {
             dependencies.log('Swap error: ' + e, 'error');
         }
@@ -646,7 +646,7 @@
             return; 
         }
         
-        const name = prompt('Config name:', `${nameA} ↔ ${nameB}`);
+        const name = prompt('Config name:', `${nameA} [EMOJI] ${nameB}`);
         if (!name) return;
         
         swapConfigs.push({ name, sourceA: nameA, sourceB: nameB });
@@ -845,11 +845,11 @@
                 <div class="source-item">
                     <div>
                         <div class="name">${c.name}</div>
-                        <div class="type">${c.sourceA} ↔ ${c.sourceB}</div>
+                        <div class="type">${c.sourceA} [EMOJI] ${c.sourceB}</div>
                     </div>
                     <div style="display:flex;gap:4px">
                         <button onclick="loadSwapConfig(${i})">▶</button>
-                        <button onclick="deleteSwapConfig(${i})">✕</button>
+                        <button onclick="deleteSwapConfig(${i})">[EMOJI]</button>
                     </div>
                 </div>
             `).join('');
@@ -870,7 +870,7 @@
         if (!grid) return;
         
         if (swapConfigs.length === 0) {
-            grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to 🔄 tab to create one.</div>';
+            grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to [SYNC] tab to create one.</div>';
             return;
         }
         grid.innerHTML = swapConfigs.map((c, i) => 

@@ -14,10 +14,10 @@ The OTP Auth Service requires super-admin authentication for all admin endpoints
 1. **Navigate to Workers & Pages**
    - Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
    - Select your account
-   - Go to **Workers & Pages** → **otp-auth-service**
+   - Go to **Workers & Pages** [EMOJI] **otp-auth-service**
 
 2. **Set Environment Variables**
-   - Click on **Settings** → **Variables and Secrets**
+   - Click on **Settings** [EMOJI] **Variables and Secrets**
    - Scroll to **Environment Variables** section
 
 3. **Add Super Admin Configuration**

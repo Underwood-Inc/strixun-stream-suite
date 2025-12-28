@@ -1,4 +1,4 @@
-# API Documentation 📡
+# API Documentation [EMOJI]
 
 Complete API reference and usage guides for Strixun Stream Suite.
 

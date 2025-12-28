@@ -1,4 +1,4 @@
-# Account Recovery System 🔄
+# Account Recovery System [SYNC]
 
 ## Overview
 
@@ -32,33 +32,33 @@ The account recovery system ensures that customer accounts persist indefinitely 
 
 ```
 1. User signs in/up with email: user@example.com
-   ↓
+   [EMOJI]
 2. ensureCustomerAccount() is called:
    - Checks for existing customer by email
    - Finds customer account: cust_abc123
    - Reactivates customer if status was 'suspended' or 'cancelled'
    - Returns recovered customerId: cust_abc123
-   ↓
+   [EMOJI]
 3. getOrCreateUser() is called with recovered customerId:
    - User account doesn't exist (was deleted/expired)
    - Creates new user account with recovered customerId
    - Links user to existing customer account
-   ↓
+   [EMOJI]
 4. Result:
-   - Customer account: ✅ Recovered and reactivated
-   - User account: ✅ Recreated with recovered customerId
-   - Customer information: ✅ Retained indefinitely
+   - Customer account: [SUCCESS] Recovered and reactivated
+   - User account: [SUCCESS] Recreated with recovered customerId
+   - Customer information: [SUCCESS] Retained indefinitely
 ```
 
 ### Scenario: Both Accounts Exist
 
 ```
 1. User signs in with email: user@example.com
-   ↓
+   [EMOJI]
 2. ensureCustomerAccount() finds existing customer
    - Returns existing customerId
    - Reactivates if needed
-   ↓
+   [EMOJI]
 3. getOrCreateUser() finds existing user
    - Updates lastLogin timestamp
    - Resets TTL (extends account lifetime)
@@ -69,19 +69,19 @@ The account recovery system ensures that customer accounts persist indefinitely 
 
 ```
 1. User signs up with email: newuser@example.com
-   ↓
+   [EMOJI]
 2. ensureCustomerAccount() finds no existing customer
    - Creates new customer account
    - Stores email-to-customerId mapping (no TTL)
    - Returns new customerId
-   ↓
+   [EMOJI]
 3. getOrCreateUser() finds no existing user
    - Creates new user account (1-year TTL)
    - Links to new customer account
-   ↓
+   [EMOJI]
 4. Result:
-   - Customer account: ✅ Created (persists indefinitely)
-   - User account: ✅ Created (1-year TTL)
+   - Customer account: [SUCCESS] Created (persists indefinitely)
+   - User account: [SUCCESS] Created (1-year TTL)
 ```
 
 ---
@@ -245,17 +245,17 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 1. **Email Lookup:**
    ```
-   email_to_customer_{emailHash} → customerId
+   email_to_customer_{emailHash} [EMOJI] customerId
    ```
 
 2. **Customer Recovery:**
    ```
-   customer_{customerId} → CustomerData
+   customer_{customerId} [EMOJI] CustomerData
    ```
 
 3. **User Recreation:**
    ```
-   cust_{customerId}_user_{emailHash} → UserData (new, 1-year TTL)
+   cust_{customerId}_user_{emailHash} [EMOJI] UserData (new, 1-year TTL)
    ```
 
 ---
@@ -394,7 +394,7 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 ---
 
-**Status:** ✅ **IMPLEMENTED**
+**Status:** [SUCCESS] **IMPLEMENTED**
 **Last Updated:** 2024-12-19
 **Files Modified:**
 - `serverless/otp-auth-service/services/customer.ts`

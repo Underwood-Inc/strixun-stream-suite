@@ -2,7 +2,7 @@
 # Bash script to set SERVICE_ENCRYPTION_KEY in all workers
 # Usage: ./set-service-encryption-key.sh
 
-echo "🔒 Setting SERVICE_ENCRYPTION_KEY for all workers..."
+echo "[SECURITY] Setting SERVICE_ENCRYPTION_KEY for all workers..."
 echo ""
 
 # Prompt for the key (hidden input)
@@ -10,12 +10,12 @@ read -sp "Enter SERVICE_ENCRYPTION_KEY (input will be hidden): " key
 echo ""
 
 if [ -z "$key" ]; then
-    echo "❌ Error: Key cannot be empty"
+    echo "[ERROR] Error: Key cannot be empty"
     exit 1
 fi
 
 if [ ${#key} -lt 32 ]; then
-    echo "❌ Error: Key must be at least 32 characters"
+    echo "[ERROR] Error: Key must be at least 32 characters"
     exit 1
 fi
 
@@ -41,7 +41,7 @@ for worker in "${workers[@]}"; do
     worker_path="serverless/$worker"
     
     if [ ! -d "$worker_path" ]; then
-        echo "⚠️  Skipping $worker (directory not found)"
+        echo "[WARNING]  Skipping $worker (directory not found)"
         continue
     fi
     
@@ -53,10 +53,10 @@ for worker in "${workers[@]}"; do
         echo "$key" | wrangler secret put SERVICE_ENCRYPTION_KEY
         
         if [ $? -eq 0 ]; then
-            echo "  ✅ Success"
+            echo "  [SUCCESS] Success"
             ((success_count++))
         else
-            echo "  ❌ Failed"
+            echo "  [ERROR] Failed"
             ((fail_count++))
         fi
     )
@@ -64,13 +64,13 @@ done
 
 echo ""
 echo "Summary:"
-echo "  ✅ Success: $success_count"
-echo "  ❌ Failed: $fail_count"
+echo "  [SUCCESS] Success: $success_count"
+echo "  [ERROR] Failed: $fail_count"
 echo ""
 
 if [ $fail_count -eq 0 ]; then
-    echo "🎉 All workers configured successfully!"
+    echo "[EMOJI] All workers configured successfully!"
 else
-    echo "⚠️  Some workers failed. Please check the errors above."
+    echo "[WARNING]  Some workers failed. Please check the errors above."
 fi
 

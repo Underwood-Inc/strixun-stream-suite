@@ -159,7 +159,7 @@
   
   function handleCopyUrl(): void {
     App.copyUrl();
-    copyStatus = '✓ Copied to clipboard!';
+    copyStatus = '[EMOJI] Copied to clipboard!';
     setTimeout(() => { copyStatus = ''; }, 2000);
   }
   
@@ -417,12 +417,12 @@
   <div class="card">
     <h3>Add as OBS Dock</h3>
     <p style="color:var(--muted);margin-bottom:12px;font-size:0.9em">
-      In OBS: <strong>View → Docks → Custom Browser Docks</strong><br>
+      In OBS: <strong>View [EMOJI] Docks [EMOJI] Custom Browser Docks</strong><br>
       Click + and paste this URL:
     </p>
     <div class="url-box">
       <input type="text" id="dockUrl" bind:value={dockUrl} readonly>
-      <button on:click={handleCopyUrl}>📋 Copy</button>
+      <button on:click={handleCopyUrl}>[CLIPBOARD] Copy</button>
     </div>
     <p style="color:var(--muted);margin-top:8px;font-size:0.85em" id="copyStatus">
       {copyStatus}
@@ -433,7 +433,7 @@
   <div class="card">
     <h3>OBS WebSocket Setup</h3>
     <ol style="color:var(--muted);padding-left:20px;font-size:0.9em;line-height:2">
-      <li>In OBS: <strong>Tools → WebSocket Server Settings</strong></li>
+      <li>In OBS: <strong>Tools [EMOJI] WebSocket Server Settings</strong></li>
       <li>Check "Enable WebSocket server"</li>
       <li>Note the port (default: 4455)</li>
       <li>Set password if desired</li>
@@ -443,7 +443,7 @@
   
   <!-- Twitch API Settings Card -->
   <div class="card">
-    <h3>🎮 Twitch API Settings</h3>
+    <h3>[EMOJI] Twitch API Settings</h3>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
       Get credentials from 
       <button on:click={handleOpenTwitchConsole} class="btn-link">dev.twitch.tv/console</button>
@@ -452,14 +452,14 @@
     <label>Twitch Client ID <span style="color:var(--muted);font-weight:normal">(Optional - Auto-configured)</span></label>
     <input type="text" id="twitchClientId" bind:value={twitchClientId} placeholder="Auto-configured from deployment">
     <p class="hint" style="margin-top:4px;font-size:0.75em">
-      ✨ Auto-configured during deployment. Only override if using a different Twitch app.
+      [FEATURE] Auto-configured during deployment. Only override if using a different Twitch app.
       <span id="autoDetectedClientId" style="display:block;margin-top:4px;color:var(--success)"></span>
     </p>
     
     <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
     <input type="text" id="twitchApiServer" bind:value={twitchApiServer} placeholder="Auto-detected from deployment config">
     <p class="hint" style="margin-top:4px;font-size:0.75em">
-      ✨ Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
+      [FEATURE] Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
       <span id="autoDetectedApiUrl" style="display:block;margin-top:4px;color:var(--success)"></span>
     </p>
     
@@ -468,15 +468,15 @@
       <code style="display:block;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px;word-break:break-all;user-select:all">
         https://streamkit.idling.app/twitch_auth_callback.html
       </code>
-      <p style="color:var(--muted);margin-top:4px">☝️ Add this URL to your Twitch app's OAuth Redirect URLs</p>
+      <p style="color:var(--muted);margin-top:4px">[EMOJI][EMOJI] Add this URL to your Twitch app's OAuth Redirect URLs</p>
     </div>
     
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <button on:click={handleSaveTwitchSettings} style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer">
-        💾 Save Settings
+        [EMOJI] Save Settings
       </button>
       <button on:click={handleTestTwitchApi} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer">
-        🔌 Test Connection
+        [EMOJI] Test Connection
       </button>
     </div>
     <div id="twitchApiStatus" style="margin-top:8px;font-size:0.8em;text-align:center;color:var(--muted)"></div>
@@ -500,7 +500,7 @@
   <Tooltip text="Cross-Client Sync | This feature is currently in testing" level="info" position="top">
     <StatusFlair status="in-testing">
       <div class="card">
-      <h3>🔄 Cross-Client Sync</h3>
+      <h3>[SYNC] Cross-Client Sync</h3>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
       Sync configs between OBS dock and remote browser panels via WebSocket.
     </p>
@@ -511,7 +511,7 @@
         level={$connected ? 'log' : 'warning'}
       >
         <button class="btn-primary btn-block" class:requires-connection={true} disabled={!$connected} on:click={handleRequestStorageFromOBS}>
-          📥 Pull Storage from OBS Dock
+          [EMOJI] Pull Storage from OBS Dock
         </button>
       </Tooltip>
       <Tooltip 
@@ -520,7 +520,7 @@
         level={$connected ? 'log' : 'warning'}
       >
         <button class="btn-block" class:requires-connection={true} disabled={!$connected} style="background:var(--border)" on:click={handleManualStorageSync}>
-          📡 Push Storage to Other Clients
+          [EMOJI] Push Storage to Other Clients
         </button>
       </Tooltip>
     </div>
@@ -540,12 +540,12 @@
   <Tooltip text="Data & Backup | This feature is currently in testing" level="info" position="top">
     <StatusFlair status="in-testing">
       <div class="card">
-      <h3>💾 Data & Backup</h3>
+      <h3>[EMOJI] Data & Backup</h3>
     
     <!-- Storage Engine Status -->
     <div id="storageEngineStatus" style="display:flex;gap:12px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.85em">
-      <span id="idbStatus">⏳ IndexedDB</span>
-      <span id="lsStatus">⏳ localStorage</span>
+      <span id="idbStatus">[EMOJI] IndexedDB</span>
+      <span id="lsStatus">[EMOJI] localStorage</span>
     </div>
     
     <!-- Data Categories -->
@@ -554,27 +554,27 @@
       <div style="display:grid;gap:6px">
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportSwaps" bind:checked={exportSwaps} style="width:auto;margin:0">
-          <span>🔄 Swap Configs</span>
+          <span>[SYNC] Swap Configs</span>
           <span id="swapCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportLayouts" bind:checked={exportLayouts} style="width:auto;margin:0">
-          <span>📐 Layout Presets</span>
+          <span>[EMOJI] Layout Presets</span>
           <span id="layoutCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportTextCyclers" bind:checked={exportTextCyclers} style="width:auto;margin:0">
-          <span>📝 Text Cycler Configs</span>
+          <span>[NOTE] Text Cycler Configs</span>
           <span id="textCyclerCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportUIState" bind:checked={exportUIState} style="width:auto;margin:0">
-          <span>⚙️ UI Preferences</span>
+          <span>[SETTINGS] UI Preferences</span>
           <span style="margin-left:auto;color:var(--muted);font-size:0.9em">(dropdowns, settings)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportCredentials" bind:checked={exportCredentials} style="width:auto;margin:0">
-          <span>🔐 Connection Settings</span>
+          <span>[AUTH] Connection Settings</span>
           <span style="margin-left:auto;color:var(--warning);font-size:0.8em">(host/port only)</span>
         </label>
       </div>
@@ -583,25 +583,25 @@
     <!-- Action Buttons -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       <button on:click={App.exportSelectedData} style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500">
-        📤 Export Selected
+        [EMOJI] Export Selected
       </button>
       <button on:click={App.importDataWithOptions} style="padding:10px;background:var(--accent);border:none;color:#000;border-radius:6px;cursor:pointer;font-weight:500">
-        📥 Import Backup
+        [EMOJI] Import Backup
       </button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button on:click={App.forceStorageSync} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        🔄 Force Sync
+        [SYNC] Force Sync
       </button>
       <button on:click={App.copyBackupToClipboard} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        📋 Copy as JSON
+        [CLIPBOARD] Copy as JSON
       </button>
     </div>
     
     <!-- Info -->
     <div style="margin-top:10px;padding:8px;background:rgba(255,200,0,0.1);border-radius:6px;border-left:3px solid var(--warning)">
       <p style="font-size:0.75em;color:var(--warning);margin:0">
-        ⚠️ <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!
+        [WARNING] <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!
       </p>
     </div>
     
@@ -615,7 +615,7 @@
   <Tooltip text="Cloud Backup | This feature is currently in testing" level="info" position="top">
     <StatusFlair status="in-testing">
       <div class="card">
-      <h3>☁️ Cloud Backup</h3>
+      <h3>[EMOJI][EMOJI] Cloud Backup</h3>
     
     {#if !$isAuthenticated}
       <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px">
@@ -627,7 +627,7 @@
         on:click={() => showLoginModal = true}
         style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500"
       >
-        🔐 Sign In to Use Cloud Backup
+        [AUTH] Sign In to Use Cloud Backup
       </button>
     {:else}
       <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
@@ -656,7 +656,7 @@
             disabled={isSavingToCloud}
             style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500;opacity:{isSavingToCloud ? 0.5 : 1}"
           >
-            {isSavingToCloud ? 'Saving...' : '💾 Save to Cloud'}
+            {isSavingToCloud ? 'Saving...' : '[EMOJI] Save to Cloud'}
           </button>
         </div>
       </div>
@@ -712,7 +712,7 @@
         disabled={isLoadingCloudSaves}
         style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em;width:100%"
       >
-        🔄 Refresh List
+        [SYNC] Refresh List
       </button>
     {/if}
       </div>
@@ -739,7 +739,7 @@
   <Tooltip text="Version | This feature is currently in testing" level="info" position="top">
     <StatusFlair status="in-testing">
       <div class="card">
-      <h3>📦 Version</h3>
+      <h3>[PACKAGE] Version</h3>
     <div id="versionInfo" style="font-size:0.9em">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
         <span style="color:var(--muted)">Local Version:</span>
@@ -755,10 +755,10 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <button on:click={handleCheckForUpdates} style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        🔄 Check Updates
+        [SYNC] Check Updates
       </button>
       <button on:click={handleOpenGitHubRepo} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        🐙 Open GitHub
+        [EMOJI] Open GitHub
       </button>
     </div>
     <div style="margin-top:10px;font-size:0.75em;color:var(--muted);text-align:center">

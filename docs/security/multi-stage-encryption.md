@@ -1,10 +1,10 @@
-# Multi-Stage Encryption Architecture 🔒
+# Multi-Stage Encryption Architecture [SECURITY]
 
 > **Comprehensive diagram and explanation of multi-stage encryption system and two-stage implementation for user sensitive information**
 
 ---
 
-## 📊 Architecture Diagram
+## [ANALYTICS] Architecture Diagram
 
 ### Multi-Stage Encryption Flow (Order-Independent)
 
@@ -97,7 +97,7 @@ graph TB
 
 ---
 
-## 🎯 Core Concepts
+## [TARGET] Core Concepts
 
 ### Multi-Stage Encryption (General)
 
@@ -117,7 +117,7 @@ graph TB
 
 ---
 
-## 🔐 Two-Stage Encryption Implementation
+## [AUTH] Two-Stage Encryption Implementation
 
 ### Overview
 
@@ -128,7 +128,7 @@ Two-stage encryption is a specialized case of multi-stage encryption designed fo
 #### Stage 1: Owner's JWT Encryption
 
 ```
-Plain Data → encryptWithJWT(data, ownerToken) → Stage 1 Encrypted
+Plain Data [EMOJI] encryptWithJWT(data, ownerToken) [EMOJI] Stage 1 Encrypted
 ```
 
 **Details:**
@@ -147,7 +147,7 @@ const stage1Encrypted = await encryptWithJWT(data, userToken);
 #### Stage 2: Request Key Encryption
 
 ```
-Stage 1 Encrypted → Encrypt with Request Key → Stage 2 Encrypted
+Stage 1 Encrypted [EMOJI] Encrypt with Request Key [EMOJI] Stage 2 Encrypted
 ```
 
 **Details:**
@@ -176,8 +176,8 @@ const stage2Encrypted = await crypto.subtle.encrypt(
 Two-stage encryption uses **nested decryption** (not master key approach):
 
 ```
-Stage 2 Encrypted → Decrypt with Request Key → Stage 1 Encrypted
-Stage 1 Encrypted → Decrypt with Owner's JWT → Plain Data
+Stage 2 Encrypted [EMOJI] Decrypt with Request Key [EMOJI] Stage 1 Encrypted
+Stage 1 Encrypted [EMOJI] Decrypt with Owner's JWT [EMOJI] Plain Data
 ```
 
 **Requirements:**
@@ -214,12 +214,12 @@ For multi-stage encryption with 3+ parties, the system uses **master key archite
 
 ```
 For EACH party (order doesn't matter):
-  Encrypted Master Key → Decrypt with Party's Key → Master Key
+  Encrypted Master Key [EMOJI] Decrypt with Party's Key [EMOJI] Master Key
   
 Verify ALL parties can decrypt (all master keys must match)
   
 Once ALL parties verified:
-  Master Key → Decrypt Data → Plain Data
+  Master Key [EMOJI] Decrypt Data [EMOJI] Plain Data
 ```
 
 **Requirements:**
@@ -236,7 +236,7 @@ Once ALL parties verified:
 
 ---
 
-## 🏗️ Implementation Architecture
+## [EMOJI][EMOJI] Implementation Architecture
 
 ### Function Hierarchy
 
@@ -244,13 +244,13 @@ Once ALL parties verified:
 
 ```
 encryptTwoStage(data, ownerToken, requestKey)
-    ↓
+    [EMOJI]
 1. Stage 1: encryptWithJWT(data, ownerToken)
-   → Stage 1 Encrypted Data
-    ↓
+   [EMOJI] Stage 1 Encrypted Data
+    [EMOJI]
 2. Stage 2: encryptWithKey(stage1Data, requestKey, 'request-key')
-   → Stage 2 Encrypted Data (contains encrypted Stage 1)
-    ↓
+   [EMOJI] Stage 2 Encrypted Data (contains encrypted Stage 1)
+    [EMOJI]
 TwoStageEncryptedData { stage1, stage2 }
 ```
 
@@ -258,14 +258,14 @@ TwoStageEncryptedData { stage1, stage2 }
 
 ```
 encryptMultiStage(data, parties)
-    ↓
+    [EMOJI]
 1. Generate random master key (32 bytes)
-2. Encrypt data with master key → Encrypted Data
+2. Encrypt data with master key [EMOJI] Encrypted Data
 3. For each party (parallel, not nested):
-   - Encrypt master key with party's key → Encrypted Master Key
-    ↓
+   - Encrypt master key with party's key [EMOJI] Encrypted Master Key
+    [EMOJI]
 encryptWithKey() for each party (parallel encryption)
-    ↓
+    [EMOJI]
 encryptWithJWT() for JWT keys
 PBKDF2 + AES-GCM for request keys / custom keys
 ```
@@ -299,22 +299,22 @@ interface TwoStageEncryptedData {
 
 ---
 
-## 🔄 Real-World Usage Flow
+## [SYNC] Real-World Usage Flow
 
 ### API Response Flow
 
 ```
 1. API Handler (GET /auth/me)
-   ↓
+   [EMOJI]
 2. Check User Preferences (emailVisibility)
-   ↓
+   [EMOJI]
 3a. If 'private': encryptTwoStage(userId, ownerToken, requestKey)
 3b. If 'public': Return plain userId (router will encrypt)
-   ↓
+   [EMOJI]
 4. Response includes doubleEncrypted userId field
-   ↓
+   [EMOJI]
 5. Router automatically encrypts ENTIRE response with requester's JWT
-   ↓
+   [EMOJI]
 6. Client receives triple-layer protection:
    - Router encryption (requester's JWT)
    - Stage 2 encryption (request key)
@@ -355,23 +355,23 @@ interface TwoStageEncryptedData {
 
 ---
 
-## 🔒 Security Properties
+## [SECURITY] Security Properties
 
 ### Three Layers of Protection
 
-1. **🔒 Router-Level Encryption**
+1. **[SECURITY] Router-Level Encryption**
    - **Key:** Requester's JWT token
    - **Protection:** Only authenticated requester can decrypt the response
    - **Scope:** Entire API response
    - **Automatic:** Handled by router middleware
 
-2. **🔒 Stage 2 Encryption (Request Key)**
+2. **[SECURITY] Stage 2 Encryption (Request Key)**
    - **Key:** Approved request key
    - **Protection:** Requires owner approval to access
    - **Scope:** Sensitive fields (userId/email)
    - **Control:** Owner must approve request to get request key
 
-3. **🔒 Stage 1 Encryption (Owner's JWT)**
+3. **[SECURITY] Stage 1 Encryption (Owner's JWT)**
    - **Key:** Data owner's JWT token
    - **Protection:** Only the data owner can decrypt
    - **Scope:** Sensitive fields (userId/email)
@@ -387,7 +387,7 @@ interface TwoStageEncryptedData {
 
 ---
 
-## 📝 Code Examples
+## [NOTE] Code Examples
 
 ### Encrypting User Email
 
@@ -459,7 +459,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
 
 ---
 
-## 🎓 Key Takeaways
+## [EMOJI] Key Takeaways
 
 1. **Multi-stage encryption** (3+ parties) uses master key architecture - random master key encrypts data, each party encrypts master key independently
 2. **Order-independent decryption** (Version 3+, multi-stage) - can decrypt in ANY order for 3+ parties
@@ -473,7 +473,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
 
 ---
 
-## 📚 Related Files
+## [DOCS] Related Files
 
 - **Implementation:** `serverless/shared/encryption/multi-stage-encryption.ts`
 - **JWT Encryption:** `serverless/shared/encryption/jwt-encryption.ts`

@@ -4,13 +4,13 @@ A standalone, agnostic utility that prevents horizontal layout shift when scroll
 
 ## Features
 
-- ✅ Works on any element (not just body/html)
-- ✅ Automatic scrollbar detection
-- ✅ CSS variable-based compensation
-- ✅ Zero dependencies
-- ✅ Can be used globally or per-element
-- ✅ Works with any CSS framework
-- ✅ Available via CDN or as a local module
+- [SUCCESS] Works on any element (not just body/html)
+- [SUCCESS] Automatic scrollbar detection
+- [SUCCESS] CSS variable-based compensation
+- [SUCCESS] Zero dependencies
+- [SUCCESS] Can be used globally or per-element
+- [SUCCESS] Works with any CSS framework
+- [SUCCESS] Available via CDN or as a local module
 
 ## CDN Usage
 
@@ -230,11 +230,11 @@ function addContent() {
 
 ## Browser Support
 
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Mobile browsers
-- ⚠️ Internet Explorer 11 (limited - ResizeObserver polyfill recommended)
+- [SUCCESS] Chrome/Edge (latest)
+- [SUCCESS] Firefox (latest)
+- [SUCCESS] Safari (latest)
+- [SUCCESS] Mobile browsers
+- [WARNING] Internet Explorer 11 (limited - ResizeObserver polyfill recommended)
 
 ## Performance
 

@@ -14,7 +14,7 @@
  * 1. Handler double-encrypts sensitive field (userId/email) with owner's JWT + request key
  * 2. Handler returns response with double-encrypted field: { id, customerId, userId: { doubleEncrypted: true, ... } }
  * 3. Router automatically encrypts ENTIRE response with requester's JWT
- * 4. Client decrypts router encryption → gets response with double-encrypted userId
+ * 4. Client decrypts router encryption [EMOJI] gets response with double-encrypted userId
  * 5. To decrypt userId: Need BOTH owner's JWT + approved request key
  * 
  * IMPORTANT:

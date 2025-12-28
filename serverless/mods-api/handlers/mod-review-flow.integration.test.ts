@@ -2,7 +2,7 @@
  * Integration Tests for Mod Review Flow
  * 
  * Tests the complete mod review flow:
- * - Submit → Review → Approve/Reject → Publish
+ * - Submit [EMOJI] Review [EMOJI] Approve/Reject [EMOJI] Publish
  * 
  * Uses real handlers, mocks external services
  */
@@ -223,7 +223,7 @@ describe('Mod Review Flow Integration', () => {
     });
 
     describe('End-to-End Review Flow', () => {
-        it('should complete full flow: Submit → Review → Approve → Publish', async () => {
+        it('should complete full flow: Submit [EMOJI] Review [EMOJI] Approve [EMOJI] Publish', async () => {
             const userId = 'user_123';
             const email = 'user@example.com';
             const customerId = 'cust_abc';
@@ -257,7 +257,7 @@ describe('Mod Review Flow Integration', () => {
             expect(publishedMod.publishedAt).toBeDefined();
         });
 
-        it('should handle rejection flow: Submit → Review → Deny', async () => {
+        it('should handle rejection flow: Submit [EMOJI] Review [EMOJI] Deny', async () => {
             const adminEmail = 'admin@example.com';
             mockIsSuperAdminEmail.mockResolvedValue(true);
 

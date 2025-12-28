@@ -1,13 +1,13 @@
 # Modern Stack Proposal - 2025
 
-## 🎯 Goals
+## [TARGET] Goals
 1. **Lightweight UI Framework** - Component-based, reactive, small bundle
 2. **TypeScript Migration** - Type safety, better tooling, maintainability
 3. **CSS Pre-processor** - Variables, nesting, mixins, better organization
 
-## 🏗️ Recommended Stack (2025)
+## [EMOJI][EMOJI] Recommended Stack (2025)
 
-### Option 1: **Svelte** ⭐ RECOMMENDED
+### Option 1: **Svelte** [EMOJI] RECOMMENDED
 **Why Svelte:**
 - **Zero runtime** - Compiles to vanilla JS (smallest bundle)
 - **TypeScript-first** - Excellent TS support
@@ -37,7 +37,7 @@
 
 **Best for**: Complex reactive apps, modern patterns
 
-## 📦 Recommended Setup
+## [PACKAGE] Recommended Setup
 
 ### **Svelte + TypeScript + Sass + Vite**
 
@@ -47,7 +47,7 @@
 - **Sass/SCSS**: Mature, powerful, widely supported
 - **Vite**: Lightning-fast builds, HMR, perfect for development
 
-## 🚀 Implementation Plan
+## [DEPLOY] Implementation Plan
 
 ### Phase 1: Project Setup
 
@@ -240,7 +240,7 @@ $colors: (
 #### 5.1 Incremental TypeScript Migration
 
 **Step 1**: Add TypeScript, keep JS files
-- Rename `.js` → `.ts` gradually
+- Rename `.js` [EMOJI] `.ts` gradually
 - Add type annotations incrementally
 - Use `// @ts-check` for gradual typing
 
@@ -256,7 +256,7 @@ $colors: (
 
 #### 5.2 Svelte Component Migration
 
-**Current HTML structure** → **Svelte components**:
+**Current HTML structure** [EMOJI] **Svelte components**:
 
 ```svelte
 <!-- Before: control_panel.html -->
@@ -303,7 +303,7 @@ export const isReady = derived(
 );
 ```
 
-## 📊 Migration Timeline
+## [ANALYTICS] Migration Timeline
 
 ### Week 1: Setup & Foundation
 - [ ] Set up Vite + Svelte + TypeScript
@@ -327,7 +327,7 @@ export const isReady = derived(
 - [ ] Performance optimization
 - [ ] Documentation
 
-## 🎯 Benefits
+## [TARGET] Benefits
 
 ### Bundle Size Comparison
 
@@ -360,7 +360,7 @@ export const isReady = derived(
    - Fast builds
    - Optimized production bundles
 
-## 🔧 Build Output
+## [CONFIG] Build Output
 
 **Development**:
 - Fast HMR
@@ -373,7 +373,7 @@ export const isReady = derived(
 - Code splitting (if needed)
 - Optimized CSS
 
-## 📝 Example: Converting a Module
+## [NOTE] Example: Converting a Module
 
 ### Before (JavaScript)
 
@@ -425,7 +425,7 @@ export function updateStorageStatus(): StorageStatus {
 
 <div class="storage-status">
   <span class:ready={status.idb}>
-    {status.idb ? '✅' : '❌'} IndexedDB
+    {status.idb ? '[SUCCESS]' : '[ERROR]'} IndexedDB
   </span>
 </div>
 
@@ -440,7 +440,7 @@ export function updateStorageStatus(): StorageStatus {
 </style>
 ```
 
-## 🚀 Quick Start Commands
+## [DEPLOY] Quick Start Commands
 
 ```bash
 # Install dependencies
@@ -459,7 +459,7 @@ npm run check
 npm run lint
 ```
 
-## 💡 Recommendation
+## [IDEA] Recommendation
 
 **Go with Svelte + TypeScript + Sass + Vite**
 

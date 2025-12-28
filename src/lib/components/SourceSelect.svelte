@@ -143,7 +143,7 @@
     {#if isOpen}
       <div class="source-select__dropdown">
         <div class="source-select__search">
-          <span class="source-select__search-icon">🔍</span>
+          <span class="source-select__search-icon">[SEARCH]</span>
           <input
             type="text"
             class="source-select__search-input"
@@ -158,7 +158,7 @@
               class="source-select__search-clear"
               on:click={clearSearch}
             >
-              ✕
+              [EMOJI]
             </button>
           {/if}
         </div>

@@ -20,11 +20,11 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
 
 if (!version) {
-  console.error('❌ No version found in package.json');
+  console.error('[ERROR] No version found in package.json');
   process.exit(1);
 }
 
-console.log(`📦 Current version: ${version}`);
+console.log(`[PACKAGE] Current version: ${version}`);
 
 // Read README.md
 const readmePath = join(rootDir, 'README.md');
@@ -36,7 +36,7 @@ const badgePattern = /!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-[
 
 // Check if badge exists
 if (!badgePattern.test(readmeContent)) {
-  console.error('❌ Version badge not found in README.md');
+  console.error('[ERROR] Version badge not found in README.md');
   console.error('   Expected pattern: ![Version](https://img.shields.io/badge/version-X.X.X-blue?style=for-the-badge&logo=github)');
   process.exit(1);
 }
@@ -47,11 +47,11 @@ const updatedContent = readmeContent.replace(badgePattern, newBadge);
 
 // Check if content actually changed
 if (readmeContent === updatedContent) {
-  console.log('ℹ️  Version badge already up to date');
+  console.log('[INFO]  Version badge already up to date');
   process.exit(0);
 }
 
 // Write updated README.md
 writeFileSync(readmePath, updatedContent, 'utf-8');
-console.log(`✅ Updated version badge to ${version}`);
+console.log(`[SUCCESS] Updated version badge to ${version}`);
 

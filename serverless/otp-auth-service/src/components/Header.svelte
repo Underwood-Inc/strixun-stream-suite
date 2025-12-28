@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let logo: string = '🔐 OTP Auth API';
+  export let logo: string = '[AUTH] OTP Auth API';
   export let dashboardLink: string = '/dashboard';
   export let getStartedLink: string = '#code-examples';
   export let docsLink: string = '#docs';

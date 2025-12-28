@@ -1,10 +1,10 @@
 # Idle Game System Architecture
 
-> **Comprehensive idle/mini-game system with RPG elements, loot boxes, and OTP integration** 🎮✨
+> **Comprehensive idle/mini-game system with RPG elements, loot boxes, and OTP integration** [EMOJI][FEATURE]
 
 ---
 
-## 🎯 Overview
+## [TARGET] Overview
 
 This document describes the architecture for an agnostic idle game overlay component that can be dropped into both applications. The system includes:
 
@@ -18,7 +18,7 @@ This document describes the architecture for an agnostic idle game overlay compo
 
 ---
 
-## 🏗️ Architecture
+## [EMOJI][EMOJI] Architecture
 
 ### Component Structure
 
@@ -47,7 +47,7 @@ shared-components/
 
 ---
 
-## 🎲 Loot System (Path of Exile Style)
+## [EMOJI] Loot System (Path of Exile Style)
 
 ### Prefix/Suffix Generation
 
@@ -117,7 +117,7 @@ interface LootTable {
 
 ---
 
-## 📦 Daily Loot Box System
+## [PACKAGE] Daily Loot Box System
 
 ### Retention Mechanics
 
@@ -159,7 +159,7 @@ interface DailyLootBox {
 
 ---
 
-## ⏱️ Idle Mechanics
+## [TIME] Idle Mechanics
 
 ### Offline Progress
 
@@ -197,7 +197,7 @@ interface IdleProgress {
 
 ---
 
-## 🎮 Gameplay Loops
+## [EMOJI] Gameplay Loops
 
 ### Quests
 
@@ -246,7 +246,7 @@ Time-limited events with unique rewards:
 
 ---
 
-## 🔐 OTP Integration
+## [AUTH] OTP Integration
 
 ### Save State Management
 
@@ -284,7 +284,7 @@ interface GameSaveState {
 
 ---
 
-## 🛒 Marketplace Integration
+## [EMOJI] Marketplace Integration
 
 Leverages existing marketplace system from `idling.app__UI`:
 
@@ -295,7 +295,7 @@ Leverages existing marketplace system from `idling.app__UI`:
 
 ---
 
-## 📊 Inventory System
+## [ANALYTICS] Inventory System
 
 ### Inventory Management
 
@@ -313,7 +313,7 @@ Leverages existing marketplace system from `idling.app__UI`:
 
 ---
 
-## 🎨 UI Components
+## [UI] UI Components
 
 ### Main Overlay
 
@@ -336,7 +336,7 @@ Leverages existing marketplace system from `idling.app__UI`:
 
 ---
 
-## 🔄 Integration Points
+## [SYNC] Integration Points
 
 ### With Existing Systems
 
@@ -358,7 +358,7 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## 📈 Performance Considerations
+## [METRICS] Performance Considerations
 
 ### Optimization
 
@@ -375,7 +375,7 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## 🧪 Testing Strategy
+## [TEST] Testing Strategy
 
 ### Unit Tests
 
@@ -397,9 +397,9 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## 📝 Implementation Phases
+## [NOTE] Implementation Phases
 
-### Phase 1: Core Systems ✅
+### Phase 1: Core Systems [SUCCESS]
 - [x] Loot generation system
 - [x] Daily loot boxes
 - [x] Idle mechanics
@@ -424,7 +424,7 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## 🚀 Future Enhancements
+## [DEPLOY] Future Enhancements
 
 - **Guild System** - Player groups and cooperation
 - **PvP** - Player vs. player combat

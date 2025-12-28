@@ -85,7 +85,7 @@ export class ApiKeysPage {
                         width: 90%;
                     ">
                         <h2 style="margin-bottom: var(--spacing-lg); color: var(--accent);">
-                            ⚠️ API Key Created
+                            [WARNING] API Key Created
                         </h2>
                         <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
                             Copy this API key now. You won't be able to see it again!
@@ -192,7 +192,7 @@ export class ApiKeysPage {
                         width: 90%;
                     ">
                         <h2 style="margin-bottom: var(--spacing-lg); color: var(--accent);">
-                            ⚠️ New API Key
+                            [WARNING] New API Key
                         </h2>
                         <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
                             Your API key has been rotated. Copy the new key now!
@@ -322,7 +322,7 @@ export class ApiKeysPage {
                     </h2>
                     ${this.apiKeys.length === 0 ? `
                         <div class="empty-state">
-                            <div class="empty-state__icon">🔑</div>
+                            <div class="empty-state__icon">[KEY]</div>
                             <p>No API keys yet</p>
                             <p style="margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--muted);">
                                 Create your first API key above to get started

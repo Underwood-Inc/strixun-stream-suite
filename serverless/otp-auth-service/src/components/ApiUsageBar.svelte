@@ -69,7 +69,7 @@
 {#if visible}
   <div class="api-usage-bar">
     <div class="api-usage-header">
-      <div class="api-usage-title">📊 API Usage</div>
+      <div class="api-usage-title">[ANALYTICS] API Usage</div>
       <div class="api-usage-stats">
         <div class="api-usage-stat">
           <span class="api-usage-stat-label">Daily:</span>

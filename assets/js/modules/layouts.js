@@ -426,13 +426,13 @@ function renderSavedLayouts() {
         return `
             <div class="config-item">
                 <div class="config-item__header">
-                    <span class="config-item__name">📐 ${preset.name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                    <span class="config-item__name">[EMOJI] ${preset.name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
                     <span class="config-item__meta">${sourceCount} sources • ${age}</span>
                 </div>
                 <div class="config-item__actions">
-                    <button onclick="applyLayout(${originalIndex})" class="btn-primary btn-sm">▶️ Apply</button>
-                    <button onclick="previewLayout(${originalIndex})" class="btn-secondary btn-sm">👁️</button>
-                    <button onclick="deleteLayout(${originalIndex})" class="btn-danger btn-sm">🗑️</button>
+                    <button onclick="applyLayout(${originalIndex})" class="btn-primary btn-sm">▶[EMOJI] Apply</button>
+                    <button onclick="previewLayout(${originalIndex})" class="btn-secondary btn-sm">[EMOJI][EMOJI]</button>
+                    <button onclick="deleteLayout(${originalIndex})" class="btn-danger btn-sm">[DELETE]</button>
                 </div>
             </div>
         `;
@@ -452,7 +452,7 @@ function previewLayout(index) {
     const sourceNames = Object.keys(preset.sources);
     for (const name of sourceNames.slice(0, 5)) {
         const s = preset.sources[name];
-        log(`  • ${name}: (${Math.round(s.positionX)}, ${Math.round(s.positionY)}) ${s.visible ? '👁️' : '🚫'}`, 'info');
+        log(`  • ${name}: (${Math.round(s.positionX)}, ${Math.round(s.positionY)}) ${s.visible ? '[EMOJI][EMOJI]' : '[EMOJI]'}`, 'info');
     }
     if (sourceNames.length > 5) {
         log(`  ... and ${sourceNames.length - 5} more`, 'info');

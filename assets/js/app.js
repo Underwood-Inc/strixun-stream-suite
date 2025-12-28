@@ -19,7 +19,7 @@ function updateStorageStatus() {
     
     if (idbEl) {
         const idbReady = window.SSS_Storage ? window.SSS_Storage.idbReady() : false;
-        idbEl.textContent = idbReady ? '✅ IndexedDB' : '❌ IndexedDB';
+        idbEl.textContent = idbReady ? '[SUCCESS] IndexedDB' : '[ERROR] IndexedDB';
         idbEl.style.color = idbReady ? 'var(--success)' : 'var(--danger)';
     }
     
@@ -31,7 +31,7 @@ function updateStorageStatus() {
                 return true;
             } catch (e) { return false; }
         })();
-        lsEl.textContent = lsWorks ? '✅ localStorage' : '❌ localStorage';
+        lsEl.textContent = lsWorks ? '[SUCCESS] localStorage' : '[ERROR] localStorage';
         lsEl.style.color = lsWorks ? 'var(--success)' : 'var(--danger)';
     }
     
@@ -359,7 +359,7 @@ async function offerRecovery() {
     const age = new Date() - new Date(recovery.timestamp);
     const ageStr = age < 3600000 ? `${Math.round(age/60000)} minutes` : `${Math.round(age/3600000)} hours`;
     
-    const msg = `🔄 Recovery Data Found!
+    const msg = `[SYNC] Recovery Data Found!
 
 Your configs appear empty, but we found a backup from ${ageStr} ago:
 • ${recovery.swapConfigs?.length || 0} swap configs
@@ -547,7 +547,7 @@ function copyUrl() {
     document.execCommand('copy');
     const copyStatus = document.getElementById('copyStatus');
     if (copyStatus) {
-        copyStatus.textContent = '✓ Copied to clipboard!';
+        copyStatus.textContent = '[EMOJI] Copied to clipboard!';
         setTimeout(() => { copyStatus.textContent = ''; }, 2000);
     }
 }
@@ -561,7 +561,7 @@ function renderDashSwaps() {
     if (!grid) return;
     const swapConfigs = window.SourceSwaps ? window.SourceSwaps.getConfigs() : [];
     if (swapConfigs.length === 0) {
-        grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to 🔄 tab to create one.</div>';
+        grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to [SYNC] tab to create one.</div>';
         return;
     }
     grid.innerHTML = swapConfigs.map((c, i) => 

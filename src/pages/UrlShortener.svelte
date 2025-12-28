@@ -262,14 +262,14 @@
 <div class="url-shortener-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <Tooltip text="URL Shortener | This feature is currently in testing" level="info" position="bottom">
     <div class="testing-banner in-testing">
-      🧪 IN TESTING - This feature is currently in testing
+      [TEST] IN TESTING - This feature is currently in testing
     </div>
   </Tooltip>
 
   {#if !$isAuthenticated}
     <div class="auth-required">
       <div class="auth-required-content">
-        <h1>🔗 URL Shortener</h1>
+        <h1>[LINK] URL Shortener</h1>
         <p>Sign in to create and manage short URLs</p>
         <button class="btn btn-primary" on:click={() => showLoginModal = true}>
           Sign In
@@ -280,7 +280,7 @@
     <div class="url-shortener-content">
       <div class="header">
         <div>
-          <h1>🔗 URL Shortener</h1>
+          <h1>[LINK] URL Shortener</h1>
           <p class="user-info">Signed in as {$user?.email}</p>
         </div>
         <div class="header-actions">
@@ -289,7 +289,7 @@
             on:click={loadUrls}
             disabled={isLoading}
           >
-            {isLoading ? 'Loading...' : '🔄 Refresh'}
+            {isLoading ? 'Loading...' : '[SYNC] Refresh'}
           </button>
           <button class="btn btn-secondary" on:click={handleLogout}>
             Logout
@@ -354,7 +354,7 @@
                         on:click={() => copyToClipboard(urlItem.shortUrl)}
                         title="Copy to clipboard"
                       >
-                        📋
+                        [CLIPBOARD]
                       </button>
                     </div>
                     <div class="url-original">
@@ -373,7 +373,7 @@
                     on:click={() => deleteUrl(urlItem.shortCode)}
                     title="Delete"
                   >
-                    🗑️
+                    [DELETE]
                   </button>
                 </div>
               </div>

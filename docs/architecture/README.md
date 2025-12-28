@@ -1,4 +1,4 @@
-# Architecture 🏗️
+# Architecture [EMOJI][EMOJI]
 
 Complete system architecture documentation for Strixun Stream Suite.
 

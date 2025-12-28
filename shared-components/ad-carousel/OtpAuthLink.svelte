@@ -18,7 +18,7 @@
   rel="noopener noreferrer"
   class="otp-auth-link"
 >
-  🔐 Secured by OTP Auth
+  [AUTH] Secured by OTP Auth
 </a>
 
 <style lang="scss">

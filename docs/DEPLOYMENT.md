@@ -22,8 +22,8 @@ This document covers deployment procedures, CI/CD workflows, environment configu
 
 Strixun Stream Suite uses a **dual-deployment strategy**:
 
-1. **Frontend (Static Assets)** → GitHub Pages
-2. **Backend (API)** → Cloudflare Workers
+1. **Frontend (Static Assets)** [EMOJI] GitHub Pages
+2. **Backend (API)** [EMOJI] Cloudflare Workers
 
 ```mermaid
 flowchart TB
@@ -107,7 +107,7 @@ const TWITCH_CLIENT_ID = 'your_client_id';
 | Secret | Description | How to Get |
 |--------|-------------|------------|
 | `TWITCH_CLIENT_ID` | Twitch app client ID | [Twitch Developer Console](https://dev.twitch.tv/console/apps) |
-| `CF_WORKERS_SUBDOMAIN` | Cloudflare Workers subdomain | Cloudflare Dashboard → Workers → Overview |
+| `CF_WORKERS_SUBDOMAIN` | Cloudflare Workers subdomain | Cloudflare Dashboard [EMOJI] Workers [EMOJI] Overview |
 
 **Workflow Output:**
 
@@ -143,10 +143,10 @@ flowchart LR
 
 | Secret | Description | How to Get |
 |--------|-------------|------------|
-| `CF_API_TOKEN` | Cloudflare API token | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) → Create Token → "Edit Workers" template |
-| `CF_ACCOUNT_ID` | Cloudflare account ID | Cloudflare Dashboard → Workers → Overview (right sidebar) |
+| `CF_API_TOKEN` | Cloudflare API token | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) [EMOJI] Create Token [EMOJI] "Edit Workers" template |
+| `CF_ACCOUNT_ID` | Cloudflare account ID | Cloudflare Dashboard [EMOJI] Workers [EMOJI] Overview (right sidebar) |
 | `TWITCH_CLIENT_ID` | Twitch app client ID | [Twitch Developer Console](https://dev.twitch.tv/console/apps) |
-| `TWITCH_CLIENT_SECRET` | Twitch app client secret | [Twitch Developer Console](https://dev.twitch.tv/console/apps) → Your App → New Secret |
+| `TWITCH_CLIENT_SECRET` | Twitch app client secret | [Twitch Developer Console](https://dev.twitch.tv/console/apps) [EMOJI] Your App [EMOJI] New Secret |
 
 **Deployment Process:**
 
@@ -247,8 +247,8 @@ wrangler kv namespace create "TWITCH_CACHE"
 
 **Output:**
 ```
-🌀  Creating namespace with title "TWITCH_CACHE"
-✨  Success!
+[EMOJI]  Creating namespace with title "TWITCH_CACHE"
+[FEATURE]  Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "TWITCH_CACHE", id = "66b9a4425cb7492fbae8f690780cd0ae" }
 ```
@@ -273,8 +273,8 @@ wrangler deploy
 
 **Output:**
 ```
-✨  Compiled Worker successfully
-✨  Successfully published your Worker to the following routes:
+[FEATURE]  Compiled Worker successfully
+[FEATURE]  Successfully published your Worker to the following routes:
   - strixun-twitch-api.your-name.workers.dev
 ```
 
@@ -295,7 +295,7 @@ The workflow automatically handles deployment when you push to `main` or `master
    - GitHub Pages enabled
 
 2. **Repository Settings**
-   - Settings → Pages → Source: **GitHub Actions**
+   - Settings [EMOJI] Pages [EMOJI] Source: **GitHub Actions**
 
 ### Automatic Deployment
 
@@ -308,11 +308,11 @@ The `deploy-pages.yml` workflow automatically deploys on push to `main` or `mast
 If you need to deploy manually:
 
 1. **Enable GitHub Pages:**
-   - Repository Settings → Pages
+   - Repository Settings [EMOJI] Pages
    - Source: **GitHub Actions**
 
 2. **Trigger Workflow:**
-   - Actions tab → "Deploy to GitHub Pages" → Run workflow
+   - Actions tab [EMOJI] "Deploy to GitHub Pages" [EMOJI] Run workflow
 
 ### Custom Domain (Optional)
 
@@ -325,7 +325,7 @@ If you need to deploy manually:
    - Add CNAME record pointing to `{username}.github.io`
 
 3. **Update GitHub Pages settings:**
-   - Settings → Pages → Custom domain
+   - Settings [EMOJI] Pages [EMOJI] Custom domain
 
 ---
 
@@ -442,12 +442,12 @@ Visit: `https://{username}.github.io/{repo}/`
 
 **Error:** `Error: Resource not accessible by integration`
 - **Solution:** Check repository permissions
-- **Verify:** Settings → Actions → General → Workflow permissions
+- **Verify:** Settings [EMOJI] Actions [EMOJI] General [EMOJI] Workflow permissions
 
 #### Secrets Not Set
 
 **Error:** `Missing required secret: TWITCH_CLIENT_ID`
-- **Solution:** Add secrets in GitHub Settings → Secrets and variables → Actions
+- **Solution:** Add secrets in GitHub Settings [EMOJI] Secrets and variables [EMOJI] Actions
 - **Verify:** Secrets are named exactly as required
 
 ### Runtime Issues

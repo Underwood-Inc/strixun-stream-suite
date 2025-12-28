@@ -1,10 +1,10 @@
-# API Architecture Compliance - Root Config Fields 🔒⚓
+# API Architecture Compliance - Root Config Fields [SECURITY][EMOJI]
 
 > **Ensuring all responses include `id` and `customerId` per enhanced API architecture, even when encrypted**
 
 ---
 
-## ✅ Current Implementation
+## [SUCCESS] Current Implementation
 
 ### How It Works
 
@@ -12,8 +12,8 @@
    ```javascript
    // handlers/admin/customers.js
    return new Response(JSON.stringify({
-       id: requestId,           // ✅ Always included
-       customerId: customer.customerId, // ✅ Always included
+       id: requestId,           // [SUCCESS] Always included
+       customerId: customer.customerId, // [SUCCESS] Always included
        name: customer.name,
        email: customer.email,
        // ... other fields
@@ -25,19 +25,19 @@
    // router/admin-routes.ts
    const responseData = await handlerResponse.json();
    const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
-   // ✅ Entire object encrypted, including id and customerId
+   // [SUCCESS] Entire object encrypted, including id and customerId
    ```
 
 3. **Client Decrypts:**
    ```typescript
    // dashboard/src/lib/api-client.ts
    const decrypted = await decryptWithJWT(encryptedData, token);
-   // ✅ Returns: { id, customerId, ...customerData }
+   // [SUCCESS] Returns: { id, customerId, ...customerData }
    ```
 
 ---
 
-## 🔐 Encryption Behavior
+## [AUTH] Encryption Behavior
 
 ### Two Types of Encryption
 
@@ -66,7 +66,7 @@ Handler Response:
     stage2: {...}             // Encrypted with request key
   }
 }
-    ↓
+    [EMOJI]
 Router Encrypts (entire object with user's JWT):
 {
   version: 3,
@@ -77,21 +77,21 @@ Router Encrypts (entire object with user's JWT):
   tokenHash: "...",
   data: "<encrypted_base64>"  // Contains id, customerId, name, and double-encrypted email
 }
-    ↓
+    [EMOJI]
 Client Receives Encrypted Blob
-    ↓
+    [EMOJI]
 Client Decrypts with JWT Token:
 {
-  id: "req_123...",           // ✅ Available (single-encrypted)
-  customerId: "cust_abc...",  // ✅ Available (single-encrypted)
-  name: "John",               // ✅ Available (single-encrypted)
-  email: {                    // ⚠️ Still double-encrypted
+  id: "req_123...",           // [SUCCESS] Available (single-encrypted)
+  customerId: "cust_abc...",  // [SUCCESS] Available (single-encrypted)
+  name: "John",               // [SUCCESS] Available (single-encrypted)
+  email: {                    // [WARNING] Still double-encrypted
     doubleEncrypted: true,
     stage1: {...},
     stage2: {...}
   }
 }
-    ↓
+    [EMOJI]
 To Decrypt Email (if approved request exists):
 1. Decrypt request key with requester's JWT
 2. Decrypt Stage 2 with request key
@@ -101,20 +101,20 @@ To Decrypt Email (if approved request exists):
 
 ---
 
-## ✅ Compliance Status
+## [SUCCESS] Compliance Status
 
 ### Current Handlers
 
 | Handler | Includes `id` | Includes `customerId` | Encrypted |
 |---------|--------------|---------------------|-----------|
-| `GET /admin/customers/me` | ✅ Yes | ✅ Yes | ✅ Yes (via router) |
-| `PUT /admin/customers/me` | ⚠️ Needs update | ✅ Yes | ✅ Yes (via router) |
-| `GET /auth/me` | ✅ Yes (userId) | ✅ Yes | ❌ No (public endpoint) |
-| `POST /auth/refresh` | ✅ Yes (userId) | ✅ Yes | ❌ No (public endpoint) |
+| `GET /admin/customers/me` | [SUCCESS] Yes | [SUCCESS] Yes | [SUCCESS] Yes (via router) |
+| `PUT /admin/customers/me` | [WARNING] Needs update | [SUCCESS] Yes | [SUCCESS] Yes (via router) |
+| `GET /auth/me` | [SUCCESS] Yes (userId) | [SUCCESS] Yes | [ERROR] No (public endpoint) |
+| `POST /auth/refresh` | [SUCCESS] Yes (userId) | [SUCCESS] Yes | [ERROR] No (public endpoint) |
 
 ---
 
-## 📋 Required Updates
+## [CLIPBOARD] Required Updates
 
 ### 1. Update All Admin Handlers
 
@@ -140,22 +140,22 @@ if (authHeader && authHeader.startsWith('Bearer ')) {
 const requestId = userId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 return new Response(JSON.stringify({
-    id: requestId,              // ✅ Always include
-    customerId: customerId,    // ✅ Always include
+    id: requestId,              // [SUCCESS] Always include
+    customerId: customerId,    // [SUCCESS] Always include
     // ... rest of response data
 }))
 ```
 
 ### 2. Future Phases Will:
 
-- ✅ **Phase 2 (User Preferences):** Include `id` and `customerId` in all preference responses
-- ✅ **Phase 3 (Display Name):** Include `id` and `customerId` in all display name responses
-- ✅ **Phase 4 (Customer Enhancement):** Include `id` and `customerId` in all customer responses
-- ✅ **Phase 5 (Request System):** Include `id` and `customerId` in all request responses
+- [SUCCESS] **Phase 2 (User Preferences):** Include `id` and `customerId` in all preference responses
+- [SUCCESS] **Phase 3 (Display Name):** Include `id` and `customerId` in all display name responses
+- [SUCCESS] **Phase 4 (Customer Enhancement):** Include `id` and `customerId` in all customer responses
+- [SUCCESS] **Phase 5 (Request System):** Include `id` and `customerId` in all request responses
 
 ---
 
-## 🔒 Encryption Compatibility
+## [SECURITY] Encryption Compatibility
 
 ### Why This Works
 
@@ -178,7 +178,7 @@ return new Response(JSON.stringify({
 
 ---
 
-## ✅ Verification Checklist
+## [SUCCESS] Verification Checklist
 
 For each handler, ensure:
 
@@ -192,15 +192,15 @@ For each handler, ensure:
 
 ---
 
-## 🎯 Next Steps
+## [TARGET] Next Steps
 
-1. ✅ **DONE:** Updated `GET /admin/customers/me` to include `id` and `customerId`
-2. ⏳ **TODO:** Update `PUT /admin/customers/me` to include `id` and `customerId`
-3. ⏳ **TODO:** Update all other admin handlers
-4. ⏳ **TODO:** Document pattern for future handlers
-5. ⏳ **TODO:** Add validation to ensure root config fields are always present
+1. [SUCCESS] **DONE:** Updated `GET /admin/customers/me` to include `id` and `customerId`
+2. [EMOJI] **TODO:** Update `PUT /admin/customers/me` to include `id` and `customerId`
+3. [EMOJI] **TODO:** Update all other admin handlers
+4. [EMOJI] **TODO:** Document pattern for future handlers
+5. [EMOJI] **TODO:** Add validation to ensure root config fields are always present
 
 ---
 
-**Status:** ✅ **COMPLIANT** - Encryption works with root config fields, they're included in encrypted responses and available after decryption.
+**Status:** [SUCCESS] **COMPLIANT** - Encryption works with root config fields, they're included in encrypted responses and available after decryption.
 

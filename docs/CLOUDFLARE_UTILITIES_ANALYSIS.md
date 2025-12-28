@@ -4,7 +4,7 @@
 
 ---
 
-## 📊 Cloudflare Free Tier Constraints Analysis
+## [ANALYTICS] Cloudflare Free Tier Constraints Analysis
 
 ### Current Limits (2025)
 | Resource | Free Tier Limit | Current Usage | Available |
@@ -14,12 +14,12 @@
 | **CPU Time/Request** | 10ms | <1ms (simple operations) | ~9ms+ |
 | **KV Storage** | 1GB | ~10-50MB (cloud saves) | ~950MB+ |
 | **KV Reads/Day** | 100,000 | ~500-2,000/day | ~98,000+ |
-| **KV Writes/Day** | 1,000 ⚠️ | ~10-50/day | ~950+ |
+| **KV Writes/Day** | 1,000 [WARNING] | ~10-50/day | ~950+ |
 | **Bandwidth** | Unlimited* | Minimal (JSON responses) | Unlimited* |
 
 *Bandwidth is unlimited on free tier, but requests are the constraint
 
-⚠️ **CRITICAL CONSTRAINT**: The 1,000 KV writes/day limit is the **most restrictive** factor. This includes writes, deletes, and list operations. For a notes/notebook system with auto-save, this requires careful optimization.
+[WARNING] **CRITICAL CONSTRAINT**: The 1,000 KV writes/day limit is the **most restrictive** factor. This includes writes, deletes, and list operations. For a notes/notebook system with auto-save, this requires careful optimization.
 
 ### Optimization Strategies
 1. **Aggressive Caching**: Cache all static assets and API responses
@@ -28,7 +28,7 @@
 4. **Lazy Loading**: Load resources only when needed
 5. **Compression**: Use KV for compressed data storage
 6. **Edge Caching**: Leverage Cloudflare's global CDN
-7. **KV Write Optimization** ⚠️: 
+7. **KV Write Optimization** [WARNING]: 
    - Debounce auto-saves aggressively (30s+ delay)
    - Use IndexedDB for local caching, sync on-demand
    - Batch multiple notebook updates into single write
@@ -37,16 +37,16 @@
 
 ---
 
-## 🎯 Utility #1: Rich Text Editor with Mermaid Support
+## [TARGET] Utility #1: Rich Text Editor with Mermaid Support
 
 ### Requirements
-- ✅ Rich text editing (notes/notebook functionality)
-- ✅ Mermaid diagram support (embedded charts)
-- ✅ Cloud sync via Cloudflare Workers
-- ✅ Bandwidth-efficient (minimal server requests)
-- ✅ Secure (device-based authentication)
+- [SUCCESS] Rich text editing (notes/notebook functionality)
+- [SUCCESS] Mermaid diagram support (embedded charts)
+- [SUCCESS] Cloud sync via Cloudflare Workers
+- [SUCCESS] Bandwidth-efficient (minimal server requests)
+- [SUCCESS] Secure (device-based authentication)
 
-### Library Recommendation: **Lexical by Meta** ⭐ (User Requested)
+### Library Recommendation: **Lexical by Meta** [EMOJI] (User Requested)
 
 **Why Lexical:**
 - **Modern & Performant**: Built by Meta/Facebook, actively maintained
@@ -57,7 +57,7 @@
 - **Bundle Size**: ~40-50KB gzipped (core + essentials)
 - **Mermaid Support**: Custom plugin required (not built-in)
 
-**⚠️ Svelte Integration Challenge:**
+**[WARNING] Svelte Integration Challenge:**
 - **React-First**: Lexical is designed for React (`@lexical/react`)
 - **No Native Svelte Support**: Requires custom integration
 - **Options**:
@@ -89,8 +89,8 @@
 │  │  │  Svelte Wrapper: Bridge reactivity          │ │  │
 │  │  └──────────────────────────────────────────────┘ │  │
 │  └──────────────────────────────────────────────────┘  │
-│                    ↓ Auto-save (debounced 30-60s)        │
-│                    ↓ Local-first (IndexedDB)             │
+│                    [EMOJI] Auto-save (debounced 30-60s)        │
+│                    [EMOJI] Local-first (IndexedDB)             │
 └────────────────────┼────────────────────────────────────┘
                      │
                      │ POST /notes/save (on-demand sync)
@@ -270,20 +270,20 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 - **Write Queuing**: Queue saves and batch them when possible
 
 ### Estimated Bandwidth & KV Usage
-- **Per Save**: ~10-50KB (compressed) → ~3-15KB actual
-- **Per Load**: ~10-50KB (compressed) → ~3-15KB actual
+- **Per Save**: ~10-50KB (compressed) [EMOJI] ~3-15KB actual
+- **Per Load**: ~10-50KB (compressed) [EMOJI] ~3-15KB actual
 - **KV Writes**: 1 write per save (with optimization: only on actual changes)
 - **Daily Usage Estimate**:
-  - **Optimistic** (manual saves only): ~10-20 saves/day = ~20 KV writes/day ✅
-  - **Moderate** (aggressive debouncing): ~50-100 saves/day = ~50-100 KV writes/day ✅
-  - **Heavy** (frequent editing): ~200-300 saves/day = ~200-300 KV writes/day ✅
-  - **Maximum** (before hitting limit): ~800-900 saves/day = ~800-900 KV writes/day ⚠️
+  - **Optimistic** (manual saves only): ~10-20 saves/day = ~20 KV writes/day [SUCCESS]
+  - **Moderate** (aggressive debouncing): ~50-100 saves/day = ~50-100 KV writes/day [SUCCESS]
+  - **Heavy** (frequent editing): ~200-300 saves/day = ~200-300 KV writes/day [SUCCESS]
+  - **Maximum** (before hitting limit): ~800-900 saves/day = ~800-900 KV writes/day [WARNING]
 - **Bandwidth**: ~1.5MB/day (well within limits)
 - **KV Writes**: With optimization, should stay well under 1,000/day limit
 
 ---
 
-## 💡 Additional Utility Ideas
+## [IDEA] Additional Utility Ideas
 
 ### Utility #2: Markdown to HTML Converter Service
 **Purpose**: Convert Markdown to HTML for web publishing
@@ -307,7 +307,7 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 **Implementation**:
 - Generate short codes (6-8 characters)
-- Store mappings in KV: `short_{code}` → `full_url`
+- Store mappings in KV: `short_{code}` [EMOJI] `full_url`
 - Edge caching for popular redirects
 - Analytics tracking (optional)
 
@@ -406,10 +406,10 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 ---
 
-## 🎯 Recommended Implementation Priority
+## [TARGET] Recommended Implementation Priority
 
 ### Phase 1: Core Utilities (Week 1-2)
-1. **Rich Text Editor with Mermaid** ⭐ (Highest priority)
+1. **Rich Text Editor with Mermaid** [EMOJI] (Highest priority)
    - Most requested feature
    - High user value
    - Moderate bandwidth usage
@@ -429,17 +429,17 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 ---
 
-## 🔒 Security Considerations
+## [SECURITY] Security Considerations
 
-⚠️ **CRITICAL**: The current device-based authentication is **NOT secure**. See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for detailed security review and proposed Email OTP authentication system.
+[WARNING] **CRITICAL**: The current device-based authentication is **NOT secure**. See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for detailed security review and proposed Email OTP authentication system.
 
-### Current System (⚠️ Insecure - Needs Replacement)
+### Current System ([WARNING] Insecure - Needs Replacement)
 - **Device-Based**: Uses `X-Device-ID` header (easily spoofable)
 - **No Real Authentication**: Device ID is just a string validation
 - **No User Identity**: Cannot verify who the user actually is
 - **No Access Control**: Anyone can access any device's data
 
-### Proposed System (✅ Secure - Recommended)
+### Proposed System ([SUCCESS] Secure - Recommended)
 - **Email OTP Authentication**: One-time passwords sent via email
 - **JWT Session Tokens**: Secure, expiring tokens for authenticated requests
 - **User Identity**: Verified email addresses
@@ -461,7 +461,7 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 ---
 
-## 📦 Dependencies
+## [PACKAGE] Dependencies
 
 ### Client-Side (Svelte)
 
@@ -497,26 +497,26 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 ---
 
-## 📈 Resource Usage Estimates
+## [METRICS] Resource Usage Estimates
 
 | Utility | Requests/Day | KV Writes/Day | Data/Day | Within Limits? |
 |---------|--------------|---------------|----------|----------------|
-| **Rich Text Editor** | ~100-500 | ~50-300* | ~1.5MB | ✅ Yes (with optimization) |
-| **URL Shortener** | ~50-200 | ~10-50 | ~100KB | ✅ Yes |
-| **Pastebin** | ~20-100 | ~20-100 | ~500KB | ✅ Yes |
-| **Markdown/QR/JSON** | 0 (client-side) | 0 | 0 | ✅ Yes |
-| **Total** | ~170-800 | ~80-450 | ~2.1MB | ✅ **Well within** |
+| **Rich Text Editor** | ~100-500 | ~50-300* | ~1.5MB | [SUCCESS] Yes (with optimization) |
+| **URL Shortener** | ~50-200 | ~10-50 | ~100KB | [SUCCESS] Yes |
+| **Pastebin** | ~20-100 | ~20-100 | ~500KB | [SUCCESS] Yes |
+| **Markdown/QR/JSON** | 0 (client-side) | 0 | 0 | [SUCCESS] Yes |
+| **Total** | ~170-800 | ~80-450 | ~2.1MB | [SUCCESS] **Well within** |
 
 *Rich Text Editor KV writes assume: aggressive debouncing (30s+), change detection, local-first architecture
 
 **Remaining Capacity**: 
-- ~99,200+ requests/day ✅
-- ~550-920 KV writes/day remaining ⚠️ (most critical constraint)
-- ~998MB KV storage ✅
+- ~99,200+ requests/day [SUCCESS]
+- ~550-920 KV writes/day remaining [WARNING] (most critical constraint)
+- ~998MB KV storage [SUCCESS]
 
 ---
 
-## 🚀 Next Steps
+## [DEPLOY] Next Steps
 
 1. **Review & Approve**: Review this analysis and prioritize utilities
 2. **Design Phase**: Create detailed component designs
@@ -527,7 +527,7 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 ---
 
-## 📝 Notes
+## [NOTE] Notes
 
 - All utilities leverage existing Cloudflare Workers infrastructure
 - No additional services or paid tiers required
@@ -544,7 +544,7 @@ export class MermaidNode extends DecoratorNode<HTMLElement> {
 
 ---
 
-## ⚠️ 2025 Update: Critical KV Write Limit Consideration
+## [WARNING] 2025 Update: Critical KV Write Limit Consideration
 
 The **1,000 KV writes/day** limit is the primary constraint for any storage-heavy utility. This includes:
 - Write operations (saving data)

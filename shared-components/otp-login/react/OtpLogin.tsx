@@ -55,7 +55,7 @@ export function OtpLogin({
     
     // CRITICAL: Verify encryption key is provided
     if (!encryptionKey) {
-      console.error('[OtpLogin] ❌ CRITICAL ERROR: otpEncryptionKey is missing!');
+      console.error('[OtpLogin] [ERROR] CRITICAL ERROR: otpEncryptionKey is missing!');
       console.error('[OtpLogin] This will cause encryption to fail. Key status:', {
         hasKey: !!encryptionKey,
         keyType: typeof encryptionKey,
@@ -70,7 +70,7 @@ export function OtpLogin({
     }
     
     if (encryptionKey.length < 32) {
-      console.error('[OtpLogin] ❌ CRITICAL ERROR: otpEncryptionKey is too short!', {
+      console.error('[OtpLogin] [ERROR] CRITICAL ERROR: otpEncryptionKey is too short!', {
         keyLength: encryptionKey.length,
         requiredLength: 32
       });
@@ -80,7 +80,7 @@ export function OtpLogin({
       return;
     }
     
-    console.log('[OtpLogin] ✅ Encryption key provided, length:', encryptionKey.length, otpEncryptionKey ? '(from prop)' : '(from VITE_SERVICE_ENCRYPTION_KEY)');
+    console.log('[OtpLogin] [SUCCESS] Encryption key provided, length:', encryptionKey.length, otpEncryptionKey ? '(from prop)' : '(from VITE_SERVICE_ENCRYPTION_KEY)');
     
     // Initialize core
     const core = new OtpLoginCore({

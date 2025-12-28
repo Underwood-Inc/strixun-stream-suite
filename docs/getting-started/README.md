@@ -1,4 +1,4 @@
-# Getting Started 🚀
+# Getting Started [DEPLOY]
 
 Welcome to Strixun Stream Suite! This section will help you get up and running quickly.
 

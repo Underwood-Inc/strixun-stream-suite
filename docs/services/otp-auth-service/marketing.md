@@ -31,14 +31,14 @@ Our free-tier OTP Auth API gives you enterprise-grade passwordless authenticatio
 - Teams that need authentication yesterday
 
 **Key Features:**
-- ✅ 3 OTP requests per email/hour (perfect for MVPs)
-- ✅ 10-minute OTP expiration
-- ✅ 7-hour JWT token sessions
-- ✅ Works with any framework
-- ✅ GDPR compliant out of the box
+- [SUCCESS] 3 OTP requests per email/hour (perfect for MVPs)
+- [SUCCESS] 10-minute OTP expiration
+- [SUCCESS] 7-hour JWT token sessions
+- [SUCCESS] Works with any framework
+- [SUCCESS] GDPR compliant out of the box
 
 **Call to Action:**
-Stop building authentication. Start building your product. [Get Started Free →](#)
+Stop building authentication. Start building your product. [Get Started Free [EMOJI]](#)
 
 ---
 
@@ -68,15 +68,15 @@ Our OTP Auth API provides enterprise-grade security features at startup-friendly
 - Teams migrating from legacy password systems
 
 **Key Features:**
-- ✅ Multi-tenant customer isolation
-- ✅ Per-tenant rate limiting and configuration
-- ✅ 90-day audit log retention
-- ✅ API key management for enterprise
-- ✅ Custom email templates and providers
-- ✅ IP allowlisting and CORS policies
+- [SUCCESS] Multi-tenant customer isolation
+- [SUCCESS] Per-tenant rate limiting and configuration
+- [SUCCESS] 90-day audit log retention
+- [SUCCESS] API key management for enterprise
+- [SUCCESS] Custom email templates and providers
+- [SUCCESS] IP allowlisting and CORS policies
 
 **Call to Action:**
-Upgrade your security without upgrading your budget. [Start Free →](#)
+Upgrade your security without upgrading your budget. [Start Free [EMOJI]](#)
 
 ---
 
@@ -106,15 +106,15 @@ Our OTP Auth API is built by developers, for developers. Simple REST endpoints, 
 - Teams that need working code, not marketing fluff
 
 **Key Features:**
-- ✅ Simple REST API (no SDKs required)
-- ✅ Working code examples in 3+ frameworks
-- ✅ Interactive Swagger UI documentation
-- ✅ RFC 7807 compliant error responses
-- ✅ OAuth 2.0 / OIDC compatible
-- ✅ TypeScript types available
+- [SUCCESS] Simple REST API (no SDKs required)
+- [SUCCESS] Working code examples in 3+ frameworks
+- [SUCCESS] Interactive Swagger UI documentation
+- [SUCCESS] RFC 7807 compliant error responses
+- [SUCCESS] OAuth 2.0 / OIDC compatible
+- [SUCCESS] TypeScript types available
 
 **Call to Action:**
-Auth that works the first time. [View Documentation →](#)
+Auth that works the first time. [View Documentation [EMOJI]](#)
 
 ---
 
@@ -124,15 +124,15 @@ Auth that works the first time. [View Documentation →](#)
 
 **Variation 1:**
 > **Free Passwordless Auth API**  
-> Launch faster. Ship secure authentication in 10 minutes. No passwords, no servers, no headaches. Works with React, Svelte, Vue. [Get Started Free →](#)
+> Launch faster. Ship secure authentication in 10 minutes. No passwords, no servers, no headaches. Works with React, Svelte, Vue. [Get Started Free [EMOJI]](#)
 
 **Variation 2:**
 > **Enterprise Security, Startup Price**  
-> OTP authentication with JWT tokens, rate limiting, and audit logs. Multi-tenant ready. Free tier available. [Start Building →](#)
+> OTP authentication with JWT tokens, rate limiting, and audit logs. Multi-tenant ready. Free tier available. [Start Building [EMOJI]](#)
 
 **Variation 3:**
 > **Auth That Actually Works**  
-> Simple REST API. Clear docs. Working examples. No SDKs required. Integrate in 5 minutes. [View Docs →](#)
+> Simple REST API. Clear docs. Working examples. No SDKs required. Integrate in 5 minutes. [View Docs [EMOJI]](#)
 
 ### Medium Form (Landing Pages/Blog Posts)
 
@@ -160,17 +160,17 @@ Auth that works the first time. [View Documentation →](#)
 > Our free-tier OTP Auth API gives you enterprise-grade passwordless authentication in under 10 minutes. No infrastructure, no servers, no security headaches—just a simple REST API that works with any framework.
 
 **Proof Points:**
-- ✅ Cryptographically secure 9-digit OTP codes
-- ✅ JWT tokens with 7-hour expiration
-- ✅ Rate limiting (3 requests/email/hour)
-- ✅ Multi-tenant customer isolation
-- ✅ 90-day audit log retention
-- ✅ GDPR compliant data export/deletion
-- ✅ Global edge deployment (sub-100ms response times)
-- ✅ Works with React, Svelte, Vue, Angular, or vanilla JS
+- [SUCCESS] Cryptographically secure 9-digit OTP codes
+- [SUCCESS] JWT tokens with 7-hour expiration
+- [SUCCESS] Rate limiting (3 requests/email/hour)
+- [SUCCESS] Multi-tenant customer isolation
+- [SUCCESS] 90-day audit log retention
+- [SUCCESS] GDPR compliant data export/deletion
+- [SUCCESS] Global edge deployment (sub-100ms response times)
+- [SUCCESS] Works with React, Svelte, Vue, Angular, or vanilla JS
 
 **Call to Action:**
-> Ready to ship faster? [Get started free →](#) No credit card required. Integrate in 10 minutes.
+> Ready to ship faster? [Get started free [EMOJI]](#) No credit card required. Integrate in 10 minutes.
 
 ---
 
@@ -240,7 +240,7 @@ Auth that works the first time. [View Documentation →](#)
 - **Time to First Integration:** How long until first API call
 - **Framework Usage:** Which frameworks are most popular
 - **Support Tickets:** Track common integration issues
-- **Upgrade Rate:** Free tier → paid tier conversion
+- **Upgrade Rate:** Free tier [EMOJI] paid tier conversion
 - **Retention:** Active users after 30/60/90 days
 
 ---

@@ -4,8 +4,8 @@
  * Returns the current user's upload permission status
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
+import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 
 /**
@@ -22,9 +22,7 @@ export async function handleGetUserPermissions(
         const hasPermission = await hasUploadPermission(auth.userId, auth.email, env);
         const isSuperAdmin = auth.email ? await isSuperAdminEmail(auth.email, env) : false;
         
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
+        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         
         return new Response(JSON.stringify({
             hasUploadPermission: hasPermission,
@@ -46,9 +44,7 @@ export async function handleGetUserPermissions(
             'Internal Server Error',
             'Failed to check user permissions'
         );
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
+        const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         return new Response(JSON.stringify(rfcError), {
             status: 500,
             headers: {

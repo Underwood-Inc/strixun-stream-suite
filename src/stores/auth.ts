@@ -194,7 +194,7 @@ async function restoreSessionFromBackend(): Promise<boolean> {
       };
       
       saveAuthState(userData);
-      console.log('[Auth] ✅ Session restored from backend for user:', userData.email);
+      console.log('[Auth] [SUCCESS] Session restored from backend for user:', userData.email);
       return true;
     }
 
@@ -319,7 +319,7 @@ export async function loadAuthState(): Promise<void> {
         // Update userData with isSuperAdmin from JWT if not already set
         const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
         saveAuthState(updatedUserData as User);
-        console.log('[Auth] ✅ User authenticated from storage, token valid until:', userData.expiresAt);
+        console.log('[Auth] [SUCCESS] User authenticated from storage, token valid until:', userData.expiresAt);
         return;
       } else {
         // Token expired, try to restore from backend before clearing

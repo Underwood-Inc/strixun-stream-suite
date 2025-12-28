@@ -3,8 +3,8 @@
  * Handles all mod hosting API endpoints
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../utils/errors.js';
+import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
 import { handleListMods } from '../handlers/mods/list.js';
 import { handleGetModDetail } from '../handlers/mods/detail.js';
 import { handleUploadMod } from '../handlers/mods/upload.js';
@@ -91,9 +91,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 0 && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to upload mods');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -113,9 +111,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 2 && pathSegments[0] === 'permissions' && pathSegments[1] === 'me' && request.method === 'GET') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -139,9 +135,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -165,9 +159,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -188,9 +180,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 1 && request.method === 'PATCH') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -206,9 +196,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -229,9 +217,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 1 && request.method === 'DELETE') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -247,9 +233,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -272,9 +256,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -296,9 +278,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 2 && pathSegments[1] === 'ratings' && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required to submit ratings');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -314,9 +294,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -338,9 +316,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 2 && pathSegments[1] === 'versions' && request.method === 'POST') {
             if (!auth) {
                 const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 401,
@@ -356,9 +332,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,
@@ -420,9 +394,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
             if (!modId) {
                 const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
+                const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                 return {
                     response: new Response(JSON.stringify(rfcError), {
                         status: 404,

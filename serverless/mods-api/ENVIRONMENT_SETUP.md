@@ -29,14 +29,14 @@ Create a `.env` file in the `serverless/mods-api` directory:
 FILE_INTEGRITY_KEYPHRASE=your-secret-keyphrase-here
 ```
 
-**⚠️ Important:** Never commit the `.env` file to git! It should be in `.gitignore`.
+**[WARNING] Important:** Never commit the `.env` file to git! It should be in `.gitignore`.
 
 #### GitHub Actions / CI/CD
 
 Add `FILE_INTEGRITY_KEYPHRASE` as a GitHub Secret:
 
 1. Go to your repository settings
-2. Navigate to "Secrets and variables" → "Actions"
+2. Navigate to "Secrets and variables" [EMOJI] "Actions"
 3. Click "New repository secret"
 4. Name: `FILE_INTEGRITY_KEYPHRASE`
 5. Value: Your secret keyphrase
@@ -77,5 +77,5 @@ If `FILE_INTEGRITY_KEYPHRASE` is not set:
 - A development fallback will be used (not secure for production)
 - File integrity verification will still work, but signatures can be forged
 
-**⚠️ Production Warning:** Always set `FILE_INTEGRITY_KEYPHRASE` in production environments!
+**[WARNING] Production Warning:** Always set `FILE_INTEGRITY_KEYPHRASE` in production environments!
 

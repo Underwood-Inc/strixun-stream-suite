@@ -1,4 +1,4 @@
-# 🔄 UI/UX Migration Tracking Document
+# [SYNC] UI/UX Migration Tracking Document
 
 ## Overview
 
@@ -9,7 +9,7 @@ This document tracks the migration of the Strixun Stream Suite control panel fro
 
 ---
 
-## 🏗️ Architecture Goals
+## [EMOJI][EMOJI] Architecture Goals
 
 | Goal | Description |
 |------|-------------|
@@ -22,7 +22,7 @@ This document tracks the migration of the Strixun Stream Suite control panel fro
 
 ---
 
-## 📦 Tech Stack
+## [PACKAGE] Tech Stack
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -34,7 +34,7 @@ This document tracks the migration of the Strixun Stream Suite control panel fro
 
 ---
 
-## 📁 New Project Structure
+## [FOLDER] New Project Structure
 
 ```
 control-panel/
@@ -109,13 +109,13 @@ control-panel/
 
 ---
 
-## 🔧 Services to Extract
+## [CONFIG] Services to Extract
 
 ### From `control_panel.html`:
 
 | Service | Lines | Status | Notes |
 |---------|-------|--------|-------|
-| `storage` | 963-1200 | 🟡 Partially Done | Already in `assets/js/storage.js` |
+| `storage` | 963-1200 | [YELLOW] Partially Done | Already in `assets/js/storage.js` |
 | `obs-websocket` | 2450-2600 | ⬜ Not Started | WebSocket connection, request/response |
 | `sources` | 2600-2900 | ⬜ Not Started | Source visibility, opacity |
 | `swaps` | 2950-3500 | ⬜ Not Started | Swap animations |
@@ -125,7 +125,7 @@ control-panel/
 
 ---
 
-## 🧱 Component Library
+## [EMOJI] Component Library
 
 ### Primitives (Base Components)
 
@@ -165,7 +165,7 @@ control-panel/
 
 ---
 
-## 🎨 Design Tokens
+## [UI] Design Tokens
 
 ```typescript
 // From existing CSS variables
@@ -208,7 +208,7 @@ const tokens = {
 
 ---
 
-## ✅ Migration Checklist
+## [SUCCESS] Migration Checklist
 
 ### Phase 1: Foundation
 - [x] Create `control-panel/` directory
@@ -263,7 +263,7 @@ const tokens = {
 
 ---
 
-## 🔄 Change Log
+## [SYNC] Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
@@ -276,7 +276,7 @@ const tokens = {
 
 ---
 
-## 📝 Notes
+## [NOTE] Notes
 
 ### Storage Compatibility
 The storage system MUST remain compatible with existing OBS dock functionality:
@@ -293,7 +293,7 @@ We'll use CSS variables in the theme for runtime theming capability, but styled-
 
 ---
 
-## 🚀 Getting Started (for continuation)
+## [DEPLOY] Getting Started (for continuation)
 
 ```bash
 cd control-panel

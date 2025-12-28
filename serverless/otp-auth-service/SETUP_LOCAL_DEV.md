@@ -121,10 +121,10 @@ pnpm dev:all
 ```
 serverless/
 ├── otp-auth-service/
-│   ├── .dev.vars          ← Create this file
-│   └── .dev.vars.example  ← Template
+│   ├── .dev.vars          [EMOJI] Create this file
+│   └── .dev.vars.example  [EMOJI] Template
 └── mods-api/
-    └── .dev.vars          ← Should also have JWT_SECRET
+    └── .dev.vars          [EMOJI] Should also have JWT_SECRET
 ```
 
 ## Next Steps

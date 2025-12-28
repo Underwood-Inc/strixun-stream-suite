@@ -167,7 +167,7 @@ export class OtpLoginCore {
     // If no encryption key provided, throw error (encryption is mandatory)
     // CRITICAL: Never send unencrypted data - always require encryption key
     if (!this.config.otpEncryptionKey) {
-      console.error('[OtpLoginCore] ❌ CRITICAL: OTP encryption key is missing!');
+      console.error('[OtpLoginCore] [ERROR] CRITICAL: OTP encryption key is missing!');
       console.error('[OtpLoginCore] Config:', {
         hasKey: !!this.config.otpEncryptionKey,
         keyLength: this.config.otpEncryptionKey?.length || 0,
@@ -178,14 +178,14 @@ export class OtpLoginCore {
 
     const serviceKey = this.config.otpEncryptionKey;
     if (serviceKey.length < 32) {
-      console.error('[OtpLoginCore] ❌ CRITICAL: OTP encryption key is too short!', {
+      console.error('[OtpLoginCore] [ERROR] CRITICAL: OTP encryption key is too short!', {
         keyLength: serviceKey.length,
         requiredLength: 32
       });
       throw new Error('OTP encryption key must be at least 32 characters long.');
     }
     
-    console.log('[OtpLoginCore] ✅ Encrypting request body with key length:', serviceKey.length);
+    console.log('[OtpLoginCore] [SUCCESS] Encrypting request body with key length:', serviceKey.length);
 
     try {
       // Constants matching server-side implementation
@@ -297,7 +297,7 @@ export class OtpLoginCore {
       try {
         encryptedBody = await this.encryptRequestBody({ email });
       } catch (encryptError) {
-        console.error('[OtpLoginCore] ❌ ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
+        console.error('[OtpLoginCore] [ERROR] ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
         console.error('[OtpLoginCore] Encryption error:', encryptError);
         this.setState({ 
           loading: false, 
@@ -311,7 +311,7 @@ export class OtpLoginCore {
       try {
         const parsed = JSON.parse(encryptedBody);
         if (!parsed.encrypted || parsed.encrypted !== true) {
-          console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
+          console.error('[OtpLoginCore] [ERROR] CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
           this.setState({ 
             loading: false, 
             error: 'Encryption validation failed. Request aborted for security.' 
@@ -319,13 +319,13 @@ export class OtpLoginCore {
           this.config.onError?.('Encryption validation failed.');
           return;
         }
-        console.log('[OtpLoginCore] ✅ Verified encrypted payload:', {
+        console.log('[OtpLoginCore] [SUCCESS] Verified encrypted payload:', {
           version: parsed.version,
           algorithm: parsed.algorithm,
           hasData: !!parsed.data
         });
       } catch (parseError) {
-        console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body is not valid JSON! Aborting.');
+        console.error('[OtpLoginCore] [ERROR] CRITICAL: Encrypted body is not valid JSON! Aborting.');
         this.setState({ 
           loading: false, 
           error: 'Encryption validation failed. Request aborted for security.' 
@@ -496,7 +496,7 @@ export class OtpLoginCore {
           otp,
         });
       } catch (encryptError) {
-        console.error('[OtpLoginCore] ❌ ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
+        console.error('[OtpLoginCore] [ERROR] ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
         console.error('[OtpLoginCore] Encryption error:', encryptError);
         this.setState({ 
           loading: false, 
@@ -510,7 +510,7 @@ export class OtpLoginCore {
       try {
         const parsed = JSON.parse(encryptedBody);
         if (!parsed.encrypted || parsed.encrypted !== true) {
-          console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
+          console.error('[OtpLoginCore] [ERROR] CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
           this.setState({ 
             loading: false, 
             error: 'Encryption validation failed. Request aborted for security.' 
@@ -518,13 +518,13 @@ export class OtpLoginCore {
           this.config.onError?.('Encryption validation failed.');
           return;
         }
-        console.log('[OtpLoginCore] ✅ Verified encrypted payload:', {
+        console.log('[OtpLoginCore] [SUCCESS] Verified encrypted payload:', {
           version: parsed.version,
           algorithm: parsed.algorithm,
           hasData: !!parsed.data
         });
       } catch (parseError) {
-        console.error('[OtpLoginCore] ❌ CRITICAL: Encrypted body is not valid JSON! Aborting.');
+        console.error('[OtpLoginCore] [ERROR] CRITICAL: Encrypted body is not valid JSON! Aborting.');
         this.setState({ 
           loading: false, 
           error: 'Encryption validation failed. Request aborted for security.' 

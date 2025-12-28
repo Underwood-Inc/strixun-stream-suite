@@ -319,13 +319,13 @@ curl https://auth.idling.app/auth/me \
 ## Compatibility
 
 This service is compatible with:
-- ✅ OAuth 2.0 clients
-- ✅ OpenID Connect (OIDC) clients
-- ✅ Any application that can make HTTP requests
-- ✅ Any language/framework (JavaScript, Python, Go, Rust, etc.)
-- ✅ Mobile apps (iOS, Android)
-- ✅ Desktop applications
-- ✅ Server-to-server authentication
+- [SUCCESS] OAuth 2.0 clients
+- [SUCCESS] OpenID Connect (OIDC) clients
+- [SUCCESS] Any application that can make HTTP requests
+- [SUCCESS] Any language/framework (JavaScript, Python, Go, Rust, etc.)
+- [SUCCESS] Mobile apps (iOS, Android)
+- [SUCCESS] Desktop applications
+- [SUCCESS] Server-to-server authentication
 
 ## Backward Compatibility
 

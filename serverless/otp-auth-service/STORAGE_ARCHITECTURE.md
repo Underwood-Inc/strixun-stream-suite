@@ -60,9 +60,9 @@ All keys use customer isolation via `getCustomerKey(customerId, key)` function.
 }
 ```
 
-**TTL:** 31536000 seconds (1 year) ⚠️ **ISSUE: User data expires after 1 year of inactivity**
+**TTL:** 31536000 seconds (1 year) [WARNING] **ISSUE: User data expires after 1 year of inactivity**
 
-**Location:** `services/customer.ts` → `getCustomerKey()`
+**Location:** `services/customer.ts` [EMOJI] `getCustomerKey()`
 
 ---
 
@@ -90,7 +90,7 @@ All keys use customer isolation via `getCustomerKey(customerId, key)` function.
 }
 ```
 
-**TTL:** 31536000 seconds (1 year) ✅ **Matches user data TTL for consistency**
+**TTL:** 31536000 seconds (1 year) [SUCCESS] **Matches user data TTL for consistency**
 
 **Location:** `services/user-preferences.ts`
 
@@ -176,7 +176,7 @@ otp-auth-service (Worker)
 
 ---
 
-## ⚠️ Recommended Architecture (Not Yet Implemented)
+## [WARNING] Recommended Architecture (Not Yet Implemented)
 
 According to audit documents, the recommended architecture is:
 
@@ -200,13 +200,13 @@ otp-auth-service (Worker)
 ```
 
 **Benefits:**
-- ✅ Decoupled architecture
-- ✅ Single concern per worker
-- ✅ Easier to scale
-- ✅ Better organization
-- ✅ Similar to game-api pattern
+- [SUCCESS] Decoupled architecture
+- [SUCCESS] Single concern per worker
+- [SUCCESS] Easier to scale
+- [SUCCESS] Better organization
+- [SUCCESS] Similar to game-api pattern
 
-**Status:** ❌ **NOT IMPLEMENTED** - All data still in `otp-auth-service` worker
+**Status:** [ERROR] **NOT IMPLEMENTED** - All data still in `otp-auth-service` worker
 
 ---
 
@@ -236,11 +236,11 @@ await env.OTP_AUTH_KV.put(key, JSON.stringify(data), {
 ## Summary
 
 **Current State:**
-- ✅ Single worker: `otp-auth-service`
-- ✅ Single KV namespace: `OTP_AUTH_KV`
-- ✅ All data stored in one place
-- ✅ Customer isolation via key prefixes
-- ❌ No dedicated customer API worker (recommended but not implemented)
+- [SUCCESS] Single worker: `otp-auth-service`
+- [SUCCESS] Single KV namespace: `OTP_AUTH_KV`
+- [SUCCESS] All data stored in one place
+- [SUCCESS] Customer isolation via key prefixes
+- [ERROR] No dedicated customer API worker (recommended but not implemented)
 
 **Storage Mechanism:**
 - **Type:** Cloudflare KV (Key-Value store)

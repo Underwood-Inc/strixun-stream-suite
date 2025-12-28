@@ -1,4 +1,4 @@
-# Guides 📖
+# Guides [EMOJI]
 
 How-to guides and tutorials for common tasks.
 

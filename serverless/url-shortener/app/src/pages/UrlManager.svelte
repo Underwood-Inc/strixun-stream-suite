@@ -160,7 +160,7 @@
   <header class="header">
     <div class="header-content">
       <div>
-        <h1>🔗 URL Shortener</h1>
+        <h1>[LINK] URL Shortener</h1>
         <p class="user-info">Signed in as: <strong>{userEmail}</strong></p>
       </div>
       <button class="btn btn-secondary" on:click={handleLogout}>
@@ -209,7 +209,7 @@
       <div class="urls-header">
         <h2>Your Short URLs</h2>
         <button class="btn btn-secondary" on:click={loadUrls} disabled={loading}>
-          🔄 Refresh
+          [SYNC] Refresh
         </button>
       </div>
       
@@ -229,7 +229,7 @@
                     on:click={() => copyToClipboard(url.shortUrl)}
                     title="Copy to clipboard"
                   >
-                    📋 Copy
+                    [CLIPBOARD] Copy
                   </button>
                 </div>
                 <button 
@@ -237,7 +237,7 @@
                   on:click={() => deleteUrl(url.shortCode)}
                   title="Delete"
                 >
-                  🗑️ Delete
+                  [DELETE] Delete
                 </button>
               </div>
               <div class="url-original">

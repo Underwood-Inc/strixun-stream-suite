@@ -2,7 +2,7 @@
  * Integration Tests for Mod Upload Flow
  * 
  * Tests the complete mod upload flow:
- * - Upload → Store → Verify integrity → Download
+ * - Upload [EMOJI] Store [EMOJI] Verify integrity [EMOJI] Download
  * 
  * Uses real hash calculation, mocks R2/KV
  */
@@ -137,7 +137,7 @@ describe('Mod Upload Flow Integration', () => {
     });
 
     describe('End-to-End Upload Flow', () => {
-        it('should complete full flow: Upload → Hash → Store → Verify', async () => {
+        it('should complete full flow: Upload [EMOJI] Hash [EMOJI] Store [EMOJI] Verify', async () => {
             const userId = 'user_123';
             const email = 'user@example.com';
             const customerId = 'cust_abc';

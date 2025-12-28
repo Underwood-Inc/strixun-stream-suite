@@ -6,21 +6,21 @@ The Strixun Stream Suite now features an **intelligent auto-configuration system
 
 ## How It Works
 
-### 🎯 Priority System
+### [TARGET] Priority System
 
 The configuration system uses a **4-tier priority fallback**:
 
 ```
 1. Manual Override (localStorage)
-   ↓
+   [EMOJI]
 2. Auto-Injected Config (deployment)
-   ↓
+   [EMOJI]
 3. Auto-Detection (pattern matching)
-   ↓
+   [EMOJI]
 4. Null (user configuration required)
 ```
 
-### 📦 Components
+### [PACKAGE] Components
 
 #### 1. `config.js` - Configuration Module
 
@@ -46,7 +46,7 @@ The `control_panel.html`:
 - Shows auto-detected URL in Setup tab
 - Allows manual override if needed
 
-## 🚀 Deployment Flow
+## [DEPLOY] Deployment Flow
 
 ```mermaid
 sequenceDiagram
@@ -66,11 +66,11 @@ sequenceDiagram
     Pages->>User: Return HTML + config.js
     User->>User: Auto-detect Worker URL
     User->>CF: Test /health endpoint
-    CF->>User: ✅ Healthy
-    User->>User: ✅ Ready to use!
+    CF->>User: [SUCCESS] Healthy
+    User->>User: [SUCCESS] Ready to use!
 ```
 
-## 📝 Configuration Methods
+## [NOTE] Configuration Methods
 
 ### Method 1: Zero-Config (Recommended)
 
@@ -84,7 +84,7 @@ sequenceDiagram
 2. GitHub Actions automatically deploys everything
 3. Open control panel from GitHub Pages URL
 4. System auto-detects Worker URL
-5. ✅ **Done!** No manual configuration needed
+5. [SUCCESS] **Done!** No manual configuration needed
 
 **Example URLs:**
 ```
@@ -102,10 +102,10 @@ Worker Auto-Detected: https://strixun-twitch-api.username.workers.dev
 
 **Steps:**
 1. Open control panel
-2. Go to **Setup** tab → **Twitch API Settings**
+2. Go to **Setup** tab [EMOJI] **Twitch API Settings**
 3. Enter your Worker URL in **API Server URL** field
 4. Click **Save Twitch Settings**
-5. ✅ Manual override applied
+5. [SUCCESS] Manual override applied
 
 **Example:**
 ```
@@ -131,7 +131,7 @@ window.STRIXUN_CONFIG = {
 };
 ```
 
-## 🔍 Testing & Validation
+## [SEARCH] Testing & Validation
 
 ### Health Check
 
@@ -140,14 +140,14 @@ The system automatically runs a health check on startup:
 ```javascript
 // Check console logs
 [Config] Using auto-injected API server: https://...
-✅ Worker API Health Check: PASSED
+[SUCCESS] Worker API Health Check: PASSED
 Worker Info: { status: 'healthy', ... }
 ```
 
 ### Manual Testing
 
 Test the API URL in the Setup tab:
-1. Go to **Setup** → **Twitch API Settings**
+1. Go to **Setup** [EMOJI] **Twitch API Settings**
 2. Click **Test API Connection**
 3. Verify status message
 
@@ -160,9 +160,9 @@ localStorage.setItem('debug_config', 'true');
 location.reload();
 ```
 
-## 🛠️ Troubleshooting
+## [EMOJI][EMOJI] Troubleshooting
 
-### ⚠️ "No API server configured"
+### [WARNING] "No API server configured"
 
 **Possible causes:**
 - Not deployed via GitHub Actions
@@ -174,7 +174,7 @@ location.reload();
 2. Manually configure in Setup tab
 3. Check `config.js` was properly injected
 
-### ⚠️ "Worker API Health Check: FAILED"
+### [WARNING] "Worker API Health Check: FAILED"
 
 **Possible causes:**
 - Worker not deployed yet
@@ -188,7 +188,7 @@ location.reload();
 3. Manually override URL in Setup tab
 4. Check browser console for detailed errors
 
-### ⚠️ Auto-detected URL is wrong
+### [WARNING] Auto-detected URL is wrong
 
 **Possible causes:**
 - Non-standard Worker naming
@@ -200,17 +200,17 @@ location.reload();
 2. Update `wrangler.toml` worker name
 3. Re-deploy to update auto-detection
 
-## 🔐 Security Notes
+## [AUTH] Security Notes
 
 ### No Secrets in config.js
 
 The `config.js` file is **public** and deployed to GitHub Pages. It contains:
-- ✅ Worker URL (public endpoint)
-- ✅ GitHub Pages URL (public)
-- ✅ Deployment metadata (non-sensitive)
-- ❌ **NO** Twitch secrets
-- ❌ **NO** API keys
-- ❌ **NO** credentials
+- [SUCCESS] Worker URL (public endpoint)
+- [SUCCESS] GitHub Pages URL (public)
+- [SUCCESS] Deployment metadata (non-sensitive)
+- [ERROR] **NO** Twitch secrets
+- [ERROR] **NO** API keys
+- [ERROR] **NO** credentials
 
 ### Secrets Management
 
@@ -232,7 +232,7 @@ This is safe because:
 - Rate limiting via Cloudflare
 - App Access Tokens cached securely in KV
 
-## 📊 Configuration State Diagram
+## [ANALYTICS] Configuration State Diagram
 
 ```mermaid
 stateDiagram-v2
@@ -259,7 +259,7 @@ stateDiagram-v2
     Error --> [*]
 ```
 
-## 🎓 Examples
+## [EMOJI] Examples
 
 ### Example 1: Zero-Config GitHub Pages Deployment
 
@@ -268,15 +268,15 @@ stateDiagram-v2
 git push origin main
 
 # 2. GitHub Actions runs
-# ✅ Worker deployed to Cloudflare
-# ✅ Pages deployed with injected config
+# [SUCCESS] Worker deployed to Cloudflare
+# [SUCCESS] Pages deployed with injected config
 
 # 3. Open in browser
 # https://username.github.io/strixun-stream-suite/control_panel.html
 
 # 4. Check console
 # [Config] Using auto-injected API server: https://strixun-twitch-api.username.workers.dev
-# ✅ Worker API Health Check: PASSED
+# [SUCCESS] Worker API Health Check: PASSED
 ```
 
 ### Example 2: Manual Override for Custom Domain
@@ -310,7 +310,7 @@ echo 'window.STRIXUN_CONFIG = { WORKER_API_URL: "http://localhost:8787", ... }' 
 # [Config] Using auto-injected API server: http://localhost:8787
 ```
 
-## 🔄 Migration from Old System
+## [SYNC] Migration from Old System
 
 If you have existing configs with per-config `apiServer` fields:
 
@@ -319,7 +319,7 @@ If you have existing configs with per-config `apiServer` fields:
 {
   id: 'clips_123',
   name: 'My Clips',
-  apiServer: 'https://my-worker.workers.dev', // ❌ Removed
+  apiServer: 'https://my-worker.workers.dev', // [ERROR] Removed
   channels: 'shroud,xqc',
   ...
 }
@@ -341,23 +341,23 @@ If you have existing configs with per-config `apiServer` fields:
 - Global config from Setup tab used instead
 - No data loss
 
-## 📚 Related Documentation
+## [DOCS] Related Documentation
 
 - [GitHub Actions Deployment](../.github/workflows/deploy-pages.yml)
 - [Cloudflare Worker Setup](../twitch_clips_player/serverless/SETUP.md)
 - [Control Panel Documentation](../README.md)
 - [Architecture Overview](../ARCHITECTURE.md)
 
-## 🤝 Contributing
+## [EMOJI] Contributing
 
 To improve the auto-configuration system:
 
-1. **Update detection logic** - `config.js` → `getWorkerApiUrl()`
+1. **Update detection logic** - `config.js` [EMOJI] `getWorkerApiUrl()`
 2. **Add new injection values** - `.github/workflows/deploy-pages.yml`
-3. **Enhance validation** - `config.js` → `testWorkerApi()`
-4. **Test thoroughly** - Local dev → GitHub Pages → Custom domains
+3. **Enhance validation** - `config.js` [EMOJI] `testWorkerApi()`
+4. **Test thoroughly** - Local dev [EMOJI] GitHub Pages [EMOJI] Custom domains
 
 ---
 
-**💡 Pro Tip:** The auto-configuration system is designed to "just work" for 95% of users. If you're in the 5% with custom needs, the manual override system gives you full control!
+**[IDEA] Pro Tip:** The auto-configuration system is designed to "just work" for 95% of users. If you're in the 5% with custom needs, the manual override system gives you full control!
 

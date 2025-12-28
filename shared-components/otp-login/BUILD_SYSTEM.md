@@ -118,30 +118,30 @@ Or use the IIFE version:
 
 ## Critical Rules
 
-### ❌ NEVER Import from Source
+### [ERROR] NEVER Import from Source
 
 **WRONG:**
 ```typescript
-// ❌ DON'T DO THIS
+// [ERROR] DON'T DO THIS
 import { OtpLogin } from '../../../shared-components/otp-login/react/OtpLogin';
 import OtpLogin from '../../../shared-components/otp-login/svelte/OtpLogin.svelte';
 ```
 
 **CORRECT:**
 ```typescript
-// ✅ DO THIS
+// [SUCCESS] DO THIS
 import { OtpLogin } from '../../../shared-components/otp-login/dist/react';
 import OtpLogin from '../../../shared-components/otp-login/dist/svelte';
 ```
 
-### ✅ Always Build Before Using
+### [SUCCESS] Always Build Before Using
 
 Projects must build the OTP library before their own builds. This ensures:
 1. Latest changes are included
 2. Proper bundling and optimization
 3. Consistent behavior across all projects
 
-### ✅ Single Source of Truth
+### [SUCCESS] Single Source of Truth
 
 - **One component** for login forms
 - **One component** for error displays

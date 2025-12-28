@@ -167,9 +167,9 @@ export async function createAuthToken(
             emailLower,
             env
         );
-        console.log(`[JWT Creation] ✅ Created session and IP mapping for user: ${emailLower} from IP: ${clientIP}`);
+        console.log(`[JWT Creation] [SUCCESS] Created session and IP mapping for user: ${emailLower} from IP: ${clientIP}`);
     } else {
-        console.warn(`[JWT Creation] ⚠️ Created session but could not create IP mapping (IP unknown) for user: ${emailLower}. SSO will not work for this session.`);
+        console.warn(`[JWT Creation] [WARNING] Created session but could not create IP mapping (IP unknown) for user: ${emailLower}. SSO will not work for this session.`);
     }
     
     // OAuth 2.0 Token Response (RFC 6749 Section 5.1)

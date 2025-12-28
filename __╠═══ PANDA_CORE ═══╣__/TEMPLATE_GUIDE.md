@@ -25,10 +25,10 @@ This template is based on the structure we use for comprehensive, user-friendly 
 - `[|]` - Separators, dividers
 
 **Examples:**
-- Instead of: `## 🎯 Section` → Use: `## [>] Section`
-- Instead of: `✅ Done` → Use: `[+] Done`
-- Instead of: `❌ Error` → Use: `[-] Error`
-- Instead of: `🚀 Quick Start` → Use: `[>] Quick Start`
+- Instead of: `## [TARGET] Section` [EMOJI] Use: `## [>] Section`
+- Instead of: `[SUCCESS] Done` [EMOJI] Use: `[+] Done`
+- Instead of: `[ERROR] Error` [EMOJI] Use: `[-] Error`
+- Instead of: `[DEPLOY] Quick Start` [EMOJI] Use: `[>] Quick Start`
 
 ### Progressive Disclosure
 The template follows a **progressive disclosure** pattern:
@@ -157,7 +157,7 @@ The template follows a **progressive disclosure** pattern:
 ### Headers
 - Use descriptive headers with ASCII symbols (e.g., [*], [>], [~], [=])
 - **NEVER use actual emojis** - use ASCII alternatives for cross-platform compatibility
-- Keep hierarchy clear (H1 → H2 → H3)
+- Keep hierarchy clear (H1 [EMOJI] H2 [EMOJI] H3)
 - Examples:
   - `## [*] Section Name` (for important sections)
   - `## [>] Quick Start` (for action-oriented sections)
@@ -174,7 +174,7 @@ The template follows a **progressive disclosure** pattern:
 - Use ASCII symbols for positive items: `[+]`, `[*]`, `[OK]`, or `[X]` (checkmark alternative)
 - Use ASCII symbols for negative items: `[-]`, `[!]`, `[X]`, or `[NO]`
 - Use bullets for neutral items: `-`, `*`, or `•`
-- **NEVER use emoji checkmarks (✅) or X marks (❌)** - they display inconsistently
+- **NEVER use emoji checkmarks ([SUCCESS]) or X marks ([ERROR])** - they display inconsistently
 - Keep items parallel in structure
 - Examples:
   - `[+] Feature works correctly`

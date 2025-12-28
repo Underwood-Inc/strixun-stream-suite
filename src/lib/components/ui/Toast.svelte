@@ -52,10 +52,10 @@
   
   // Default icons for each toast type
   const defaultIcons = {
-    success: '✓',
-    error: '✕',
+    success: '[EMOJI]',
+    error: '[EMOJI]',
     info: 'ℹ',
-    warning: '⚠'
+    warning: '[EMOJI]'
   };
   
   // Default labels for each toast type

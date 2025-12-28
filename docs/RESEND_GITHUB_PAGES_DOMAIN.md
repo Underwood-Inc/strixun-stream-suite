@@ -4,31 +4,31 @@
 
 ---
 
-## 🎯 Understanding Domain Verification
+## [TARGET] Understanding Domain Verification
 
 **Important**: Domain verification happens at the **DNS level** (your domain registrar), not in GitHub Pages itself. Here's how it works:
 
 ### Two Scenarios:
 
 1. **Custom Domain** (e.g., `yourdomain.com`)
-   - ✅ **Can verify** with Resend
+   - [SUCCESS] **Can verify** with Resend
    - DNS records added at your domain registrar
    - GitHub Pages just hosts the site
 
 2. **Default GitHub Pages** (e.g., `username.github.io`)
-   - ❌ **Cannot verify** (not your domain)
-   - ✅ **Can still use Resend** with default domain (`onboarding@resend.dev`)
+   - [ERROR] **Cannot verify** (not your domain)
+   - [SUCCESS] **Can still use Resend** with default domain (`onboarding@resend.dev`)
 
 ---
 
-## ✅ Scenario 1: Custom Domain Setup
+## [SUCCESS] Scenario 1: Custom Domain Setup
 
 If you have a custom domain connected to GitHub Pages, you can verify it with Resend.
 
 ### Step 1: Check Your Current Setup
 
 **Do you have a custom domain?**
-- Check your GitHub repository: **Settings → Pages → Custom domain**
+- Check your GitHub repository: **Settings [EMOJI] Pages [EMOJI] Custom domain**
 - If you see a custom domain (e.g., `yourdomain.com`), you can verify it
 - If you only see `username.github.io`, skip to Scenario 2
 
@@ -76,7 +76,7 @@ Your domain's DNS is managed by your **domain registrar** (where you bought the 
    ```
    1. Go to Cloudflare Dashboard
    2. Select your domain
-   3. Go to "DNS" → "Records"
+   3. Go to "DNS" [EMOJI] "Records"
    4. Click "Add record"
    5. Add each record Resend provided:
       - Type: TXT
@@ -107,7 +107,7 @@ Your domain's DNS is managed by your **domain registrar** (where you bought the 
 5. **Verify in Resend**
    - Go back to Resend dashboard
    - Click **"Verify"** next to your domain
-   - ✅ Should verify successfully!
+   - [SUCCESS] Should verify successfully!
 
 ### Step 4: Update Your Worker Code
 
@@ -122,7 +122,7 @@ const emailResponse = await fetch('https://api.resend.com/emails', {
         'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-        from: 'Strixun Stream Suite <noreply@yourdomain.com>', // ✅ Your verified domain
+        from: 'Strixun Stream Suite <noreply@yourdomain.com>', // [SUCCESS] Your verified domain
         to: email,
         subject: 'Your Verification Code',
         html: generateOTPEmailHTML(otp),
@@ -132,14 +132,14 @@ const emailResponse = await fetch('https://api.resend.com/emails', {
 
 ---
 
-## ⚠️ Scenario 2: No Custom Domain (github.io only)
+## [WARNING] Scenario 2: No Custom Domain (github.io only)
 
 If you're using the default GitHub Pages domain (`username.github.io`), you **cannot verify it** because:
 - It's GitHub's domain, not yours
 - You don't control its DNS records
 - GitHub won't let you add custom DNS records
 
-### But You Can Still Use Resend! ✅
+### But You Can Still Use Resend! [SUCCESS]
 
 **Use Resend's Default Domain:**
 - Resend provides: `onboarding@resend.dev`
@@ -157,7 +157,7 @@ const emailResponse = await fetch('https://api.resend.com/emails', {
         'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-        from: 'onboarding@resend.dev', // ✅ Resend's default domain
+        from: 'onboarding@resend.dev', // [SUCCESS] Resend's default domain
         to: email,
         subject: 'Your Verification Code',
         html: generateOTPEmailHTML(otp),
@@ -176,15 +176,15 @@ const emailResponse = await fetch('https://api.resend.com/emails', {
 
 ---
 
-## 🔍 How to Check Your Current Setup
+## [SEARCH] How to Check Your Current Setup
 
 ### Check GitHub Pages Domain
 
 1. Go to your GitHub repository
-2. Click **Settings** → **Pages**
+2. Click **Settings** [EMOJI] **Pages**
 3. Look at **"Custom domain"** field:
-   - **Has custom domain?** → Follow Scenario 1
-   - **Empty or shows github.io?** → Follow Scenario 2
+   - **Has custom domain?** [EMOJI] Follow Scenario 1
+   - **Empty or shows github.io?** [EMOJI] Follow Scenario 2
 
 ### Check Your Domain Registrar
 
@@ -197,9 +197,9 @@ const emailResponse = await fetch('https://api.resend.com/emails', {
    ```
 
 2. **Common scenarios:**
-   - **Cloudflare nameservers** → DNS managed in Cloudflare
-   - **Namecheap nameservers** → DNS managed in Namecheap
-   - **GoDaddy nameservers** → DNS managed in GoDaddy
+   - **Cloudflare nameservers** [EMOJI] DNS managed in Cloudflare
+   - **Namecheap nameservers** [EMOJI] DNS managed in Namecheap
+   - **GoDaddy nameservers** [EMOJI] DNS managed in GoDaddy
 
 3. **Where to add DNS records:**
    - Wherever your nameservers point
@@ -208,39 +208,39 @@ const emailResponse = await fetch('https://api.resend.com/emails', {
 
 ---
 
-## 📋 Quick Decision Tree
+## [CLIPBOARD] Quick Decision Tree
 
 ```
 Do you have a custom domain?
 │
-├─ YES → Can you access DNS settings?
+├─ YES [EMOJI] Can you access DNS settings?
 │   │
-│   ├─ YES → Add Resend DNS records → Verify domain ✅
+│   ├─ YES [EMOJI] Add Resend DNS records [EMOJI] Verify domain [SUCCESS]
 │   │
-│   └─ NO → Contact domain registrar or use onboarding@resend.dev
+│   └─ NO [EMOJI] Contact domain registrar or use onboarding@resend.dev
 │
-└─ NO → Use onboarding@resend.dev (no verification needed) ✅
+└─ NO [EMOJI] Use onboarding@resend.dev (no verification needed) [SUCCESS]
 ```
 
 ---
 
-## 🚀 Recommended Approach
+## [DEPLOY] Recommended Approach
 
 ### For Development/Testing:
-- ✅ **Use `onboarding@resend.dev`** (no setup needed)
-- ✅ Works immediately
-- ✅ Perfect for getting started
+- [SUCCESS] **Use `onboarding@resend.dev`** (no setup needed)
+- [SUCCESS] Works immediately
+- [SUCCESS] Perfect for getting started
 
 ### For Production:
-- ✅ **Get a custom domain** (if you don't have one)
+- [SUCCESS] **Get a custom domain** (if you don't have one)
   - Cost: ~$10-15/year (very affordable)
   - Options: Namecheap, Cloudflare, Google Domains
-- ✅ **Verify domain with Resend**
-- ✅ **Use `noreply@yourdomain.com`** for better deliverability
+- [SUCCESS] **Verify domain with Resend**
+- [SUCCESS] **Use `noreply@yourdomain.com`** for better deliverability
 
 ---
 
-## 💡 Pro Tips
+## [IDEA] Pro Tips
 
 1. **Start Simple**: Use `onboarding@resend.dev` to get started quickly
 2. **Upgrade Later**: Add custom domain verification when ready
@@ -250,7 +250,7 @@ Do you have a custom domain?
 
 ---
 
-## 🔧 Troubleshooting
+## [CONFIG] Troubleshooting
 
 ### "Domain verification failed"
 
@@ -280,7 +280,7 @@ Do you have a custom domain?
 
 ---
 
-## 📚 Additional Resources
+## [DOCS] Additional Resources
 
 - **Resend Domain Verification**: https://resend.com/docs/dashboard/domains/introduction
 - **GitHub Pages Custom Domain**: https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site
@@ -290,5 +290,5 @@ Do you have a custom domain?
 ---
 
 **Last Updated**: 2025-01-01  
-**Status**: Ready to Use ✅
+**Status**: Ready to Use [SUCCESS]
 

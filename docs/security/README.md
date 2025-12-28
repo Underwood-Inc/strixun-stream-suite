@@ -1,4 +1,4 @@
-# Security 🔒
+# Security [SECURITY]
 
 Security documentation, audits, and best practices.
 

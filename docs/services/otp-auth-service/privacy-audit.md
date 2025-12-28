@@ -1,10 +1,10 @@
-# Privacy & User Management System - Comprehensive Audit & Implementation Plan 🔒⚓
+# Privacy & User Management System - Comprehensive Audit & Implementation Plan [SECURITY][EMOJI]
 
 > **Complete audit of privacy features, user preferences, customer creation, and sensitive data access request system**
 
 ---
 
-## 📋 Executive Summary
+## [CLIPBOARD] Executive Summary
 
 This document provides a comprehensive audit of the privacy and user management system requirements, identifying what exists, what's missing, and what needs to be built to support:
 
@@ -18,82 +18,82 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-## ✅ What Exists (Current State)
+## [SUCCESS] What Exists (Current State)
 
-### 1. Display Name System ✅ **PARTIALLY COMPLETE**
+### 1. Display Name System [SUCCESS] **PARTIALLY COMPLETE**
 
 **Location:** `serverless/otp-auth-service/services/nameGenerator.ts`, `handlers/user/displayName.js`
 
 **What Works:**
-- ✅ Random display name generation (`generateUniqueDisplayName`)
-- ✅ Display name uniqueness checking (`isNameUnique`)
-- ✅ Display name reservation/release (`reserveDisplayName`, `releaseDisplayName`)
-- ✅ Display name validation (`validateDisplayName`, `sanitizeDisplayName`)
-- ✅ Display name stored in user object (`user.displayName`)
-- ✅ Display name auto-generated on user creation (in `verify-otp.ts`)
-- ✅ Display name update endpoint (`PUT /user/display-name`)
+- [SUCCESS] Random display name generation (`generateUniqueDisplayName`)
+- [SUCCESS] Display name uniqueness checking (`isNameUnique`)
+- [SUCCESS] Display name reservation/release (`reserveDisplayName`, `releaseDisplayName`)
+- [SUCCESS] Display name validation (`validateDisplayName`, `sanitizeDisplayName`)
+- [SUCCESS] Display name stored in user object (`user.displayName`)
+- [SUCCESS] Display name auto-generated on user creation (in `verify-otp.ts`)
+- [SUCCESS] Display name update endpoint (`PUT /user/display-name`)
 
 **What's Missing:**
-- ❌ Display name change history tracking ("previously known as")
-- ❌ Monthly change limit enforcement (once per month)
-- ❌ Display name regeneration endpoint
-- ❌ Display name history in user object
-- ❌ Tooltip support for "previously known as" display
+- [ERROR] Display name change history tracking ("previously known as")
+- [ERROR] Monthly change limit enforcement (once per month)
+- [ERROR] Display name regeneration endpoint
+- [ERROR] Display name history in user object
+- [ERROR] Tooltip support for "previously known as" display
 
 ---
 
-### 2. JWT Encryption System ✅ **COMPLETE**
+### 2. JWT Encryption System [SUCCESS] **COMPLETE**
 
 **Location:** `serverless/otp-auth-service/utils/jwt-encryption.js`
 
 **What Works:**
-- ✅ AES-GCM-256 encryption
-- ✅ PBKDF2 key derivation from JWT token
-- ✅ Token hash verification (prevents wrong token decryption)
-- ✅ Random salt and IV per encryption
-- ✅ No fallback decryption (secure - throws error if token doesn't match)
-- ✅ Client-side decryption (`dashboard/src/lib/jwt-decrypt.ts`)
+- [SUCCESS] AES-GCM-256 encryption
+- [SUCCESS] PBKDF2 key derivation from JWT token
+- [SUCCESS] Token hash verification (prevents wrong token decryption)
+- [SUCCESS] Random salt and IV per encryption
+- [SUCCESS] No fallback decryption (secure - throws error if token doesn't match)
+- [SUCCESS] Client-side decryption (`dashboard/src/lib/jwt-decrypt.ts`)
 
 **Security:**
-- ✅ **No fallbacks** - encryption is secure, throws error if token doesn't match
-- ✅ Token hash verification prevents unauthorized decryption
-- ✅ Only JWT token holder can decrypt (email OTP required)
+- [SUCCESS] **No fallbacks** - encryption is secure, throws error if token doesn't match
+- [SUCCESS] Token hash verification prevents unauthorized decryption
+- [SUCCESS] Only JWT token holder can decrypt (email OTP required)
 
 ---
 
-### 3. Customer Creation ✅ **PARTIALLY COMPLETE**
+### 3. Customer Creation [SUCCESS] **PARTIALLY COMPLETE**
 
 **Location:** `serverless/otp-auth-service/handlers/auth/customer-creation.ts`
 
 **What Works:**
-- ✅ Automatic customer creation (`ensureCustomerAccount`)
-- ✅ Customer lookup by email (`getCustomerByEmail`)
-- ✅ Customer storage in KV (`storeCustomer`)
-- ✅ Customer ID generation (`generateCustomerId`)
-- ✅ Basic customer data structure (plan, status, config)
+- [SUCCESS] Automatic customer creation (`ensureCustomerAccount`)
+- [SUCCESS] Customer lookup by email (`getCustomerByEmail`)
+- [SUCCESS] Customer storage in KV (`storeCustomer`)
+- [SUCCESS] Customer ID generation (`generateCustomerId`)
+- [SUCCESS] Basic customer data structure (plan, status, config)
 
 **What's Missing:**
-- ❌ Subscription management (subscriptions array)
-- ❌ Tier system (tier assignment)
-- ❌ Flair system (user flairs/badges)
-- ❌ Customer creation in dedicated customer DB (currently in OTP_AUTH_KV)
-- ❌ Customer creation verification in OTP flow (needs to check EVERY auth)
-- ❌ Random display name generation during customer creation
+- [ERROR] Subscription management (subscriptions array)
+- [ERROR] Tier system (tier assignment)
+- [ERROR] Flair system (user flairs/badges)
+- [ERROR] Customer creation in dedicated customer DB (currently in OTP_AUTH_KV)
+- [ERROR] Customer creation verification in OTP flow (needs to check EVERY auth)
+- [ERROR] Random display name generation during customer creation
 
 ---
 
-### 4. Obfuscation Animations ✅ **COMPLETE**
+### 4. Obfuscation Animations [SUCCESS] **COMPLETE**
 
 **Location:** `src/core/animations/presets.ts`, `text_cycler_display.html`, `src/modules/text-cycler.ts`
 
 **What Works:**
-- ✅ Obfuscate animation (Minecraft enchantment table style)
-- ✅ Typewriter animation
-- ✅ Glitch animation
-- ✅ Scramble animation
-- ✅ Wave animation
-- ✅ Fade animations
-- ✅ Slide animations
+- [SUCCESS] Obfuscate animation (Minecraft enchantment table style)
+- [SUCCESS] Typewriter animation
+- [SUCCESS] Glitch animation
+- [SUCCESS] Scramble animation
+- [SUCCESS] Wave animation
+- [SUCCESS] Fade animations
+- [SUCCESS] Slide animations
 
 **Available Animations:**
 - `obfuscate` - Scramble then reveal (left to right)
@@ -106,21 +106,21 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 5. Super Admin System ✅ **COMPLETE**
+### 5. Super Admin System [SUCCESS] **COMPLETE**
 
 **Location:** `serverless/otp-auth-service/utils/super-admin.js`, `SUPER_ADMIN_SETUP.md`
 
 **What Works:**
-- ✅ Super admin API key authentication
-- ✅ Super admin email list authentication
-- ✅ Super admin check in admin routes
-- ✅ Super admin can access all endpoints
+- [SUCCESS] Super admin API key authentication
+- [SUCCESS] Super admin email list authentication
+- [SUCCESS] Super admin check in admin routes
+- [SUCCESS] Super admin can access all endpoints
 
 ---
 
-## ❌ What's Missing (Required Features)
+## [ERROR] What's Missing (Required Features)
 
-### 1. Email Privacy System ❌ **NOT IMPLEMENTED**
+### 1. Email Privacy System [ERROR] **NOT IMPLEMENTED**
 
 **Requirements:**
 - Emails should NOT be rendered unless user makes them public
@@ -137,7 +137,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 2. User Preferences API ❌ **NOT IMPLEMENTED**
+### 2. User Preferences API [ERROR] **NOT IMPLEMENTED**
 
 **Requirements:**
 - User preferences storage
@@ -174,7 +174,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 3. Display Name History Tracking ❌ **NOT IMPLEMENTED**
+### 3. Display Name History Tracking [ERROR] **NOT IMPLEMENTED**
 
 **Requirements:**
 - Track all display name changes
@@ -199,7 +199,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 4. Customer Creation Enhancement ❌ **INCOMPLETE**
+### 4. Customer Creation Enhancement [ERROR] **INCOMPLETE**
 
 **Requirements:**
 - Check EVERY authentication for customer existence
@@ -241,7 +241,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 5. Sensitive Data Request System ❌ **NOT IMPLEMENTED**
+### 5. Sensitive Data Request System [ERROR] **NOT IMPLEMENTED**
 
 **Requirements:**
 - Super admin can request access to encrypted user data
@@ -278,7 +278,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 6. Customer Storage DB (Dedicated) ❌ **NOT IMPLEMENTED**
+### 6. Customer Storage DB (Dedicated) [ERROR] **NOT IMPLEMENTED**
 
 **Requirements:**
 - Dedicated customer KV namespace (like game-api pattern)
@@ -306,7 +306,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-### 7. OTP Auth Flow Customer Check ❌ **INCOMPLETE**
+### 7. OTP Auth Flow Customer Check [ERROR] **INCOMPLETE**
 
 **Requirements:**
 - Check EVERY authentication for customer existence
@@ -322,7 +322,7 @@ This document provides a comprehensive audit of the privacy and user management 
 
 ---
 
-## 🏗️ Architecture Recommendations
+## [EMOJI][EMOJI] Architecture Recommendations
 
 ### 1. Customer API Worker (Dedicated)
 
@@ -350,11 +350,11 @@ serverless/customer-api/
 ```
 
 **Benefits:**
-- ✅ Decoupled architecture
-- ✅ Single concern (customer data)
-- ✅ Easier to scale
-- ✅ Better organization
-- ✅ Similar to game-api pattern (familiar)
+- [SUCCESS] Decoupled architecture
+- [SUCCESS] Single concern (customer data)
+- [SUCCESS] Easier to scale
+- [SUCCESS] Better organization
+- [SUCCESS] Similar to game-api pattern (familiar)
 
 ---
 
@@ -420,7 +420,7 @@ interface User {
 
 ---
 
-## 📋 Implementation Plan
+## [CLIPBOARD] Implementation Plan
 
 ### Phase 1: Fix Immediate Issues (Week 1)
 
@@ -557,60 +557,60 @@ interface User {
 
 ---
 
-## 🔐 Security Considerations
+## [AUTH] Security Considerations
 
-### 1. Encryption Security ✅
+### 1. Encryption Security [SUCCESS]
 
 **Current State:**
-- ✅ No fallback decryption (secure)
-- ✅ Token hash verification
-- ✅ Only JWT token holder can decrypt
+- [SUCCESS] No fallback decryption (secure)
+- [SUCCESS] Token hash verification
+- [SUCCESS] Only JWT token holder can decrypt
 
 **Recommendations:**
-- ✅ Keep current implementation (no changes needed)
-- ✅ Ensure no fallback decryption in request system
-- ✅ Verify token hash in all decryption operations
+- [SUCCESS] Keep current implementation (no changes needed)
+- [SUCCESS] Ensure no fallback decryption in request system
+- [SUCCESS] Verify token hash in all decryption operations
 
 ---
 
-### 2. Privacy by Default ✅
+### 2. Privacy by Default [SUCCESS]
 
 **Implementation:**
-- ✅ Emails hidden by default
-- ✅ Only display name shown
-- ✅ Email visibility controlled by user preference
-- ✅ Super admin can request access (with approval)
+- [SUCCESS] Emails hidden by default
+- [SUCCESS] Only display name shown
+- [SUCCESS] Email visibility controlled by user preference
+- [SUCCESS] Super admin can request access (with approval)
 
 ---
 
 ### 3. Request System Security
 
 **Requirements:**
-- ✅ Super admin authentication required
-- ✅ Request expiration (time-limited)
-- ✅ Request approval required
-- ✅ Decryption key encrypted with requester's JWT
-- ✅ Audit logging for all requests
+- [SUCCESS] Super admin authentication required
+- [SUCCESS] Request expiration (time-limited)
+- [SUCCESS] Request approval required
+- [SUCCESS] Decryption key encrypted with requester's JWT
+- [SUCCESS] Audit logging for all requests
 
 ---
 
-## 📊 Data Flow Diagrams
+## [ANALYTICS] Data Flow Diagrams
 
 ### Customer Creation Flow
 
 ```
 User Login (OTP)
-    ↓
+    [EMOJI]
 Verify OTP
-    ↓
+    [EMOJI]
 Check Customer Exists (by email)
-    ↓
+    [EMOJI]
 [If Not Exists]
-    ↓
+    [EMOJI]
 Generate Customer ID
-    ↓
+    [EMOJI]
 Generate Random Display Name
-    ↓
+    [EMOJI]
 Create Customer Object:
   - customerId
   - email
@@ -618,20 +618,20 @@ Create Customer Object:
   - subscriptions: []
   - tier: 'free'
   - flairs: []
-    ↓
+    [EMOJI]
 Store in CUSTOMER_KV
-    ↓
+    [EMOJI]
 Create User Object:
   - userId
   - email
   - displayName (from customer)
   - displayNameHistory: [{name, changedAt, reason: 'auto-generated'}]
   - preferences: {emailVisibility: 'private', ...}
-    ↓
+    [EMOJI]
 Store in OTP_AUTH_KV
-    ↓
+    [EMOJI]
 Create JWT (includes customerId)
-    ↓
+    [EMOJI]
 Return JWT to User
 ```
 
@@ -639,63 +639,63 @@ Return JWT to User
 
 ```
 Super Admin Creates Request
-    ↓
+    [EMOJI]
 Request Stored (status: 'pending')
-    ↓
+    [EMOJI]
 [Optional] Notify User
-    ↓
+    [EMOJI]
 Super Admin Approves Request
-    ↓
+    [EMOJI]
 Generate Decryption Key
-    ↓
+    [EMOJI]
 Encrypt Key with Requester's JWT
-    ↓
+    [EMOJI]
 Store Request (status: 'approved', decryptionKey)
-    ↓
+    [EMOJI]
 Requester Retrieves Request
-    ↓
+    [EMOJI]
 Decrypt Key with Requester's JWT
-    ↓
+    [EMOJI]
 Use Key + User's JWT to Decrypt Data
-    ↓
+    [EMOJI]
 Return Decrypted Data
 ```
 
 ---
 
-## 🎯 Success Criteria
+## [TARGET] Success Criteria
 
 ### Phase 1 (Immediate Fixes)
-- ✅ Customer creation works in all auth flows
-- ✅ Customer data displays correctly in dashboard
-- ✅ Response format matches API client expectations
+- [SUCCESS] Customer creation works in all auth flows
+- [SUCCESS] Customer data displays correctly in dashboard
+- [SUCCESS] Response format matches API client expectations
 
 ### Phase 2 (User Preferences)
-- ✅ Email privacy works (hidden by default)
-- ✅ User can make email public
-- ✅ Email shown in tooltip when public
-- ✅ Preferences API functional
+- [SUCCESS] Email privacy works (hidden by default)
+- [SUCCESS] User can make email public
+- [SUCCESS] Email shown in tooltip when public
+- [SUCCESS] Preferences API functional
 
 ### Phase 3 (Display Name)
-- ✅ Display name history tracked
-- ✅ Monthly change limit enforced
-- ✅ Regeneration endpoint works
-- ✅ "Previously known as" shown in tooltips
+- [SUCCESS] Display name history tracked
+- [SUCCESS] Monthly change limit enforced
+- [SUCCESS] Regeneration endpoint works
+- [SUCCESS] "Previously known as" shown in tooltips
 
 ### Phase 4 (Customer Enhancement)
-- ✅ Customer created with subscriptions, tier, flairs
-- ✅ Random display name generated during creation
-- ✅ Dedicated customer KV namespace
+- [SUCCESS] Customer created with subscriptions, tier, flairs
+- [SUCCESS] Random display name generated during creation
+- [SUCCESS] Dedicated customer KV namespace
 
 ### Phase 5 (Request System)
-- ✅ Super admin can create requests
-- ✅ Two-stage encryption works
-- ✅ Request approval system functional
-- ✅ Data decryption with request works
+- [SUCCESS] Super admin can create requests
+- [SUCCESS] Two-stage encryption works
+- [SUCCESS] Request approval system functional
+- [SUCCESS] Data decryption with request works
 
 ---
 
-## 📝 Notes
+## [NOTE] Notes
 
 ### Obfuscation Animations
 
@@ -734,7 +734,7 @@ Return Decrypted Data
 
 ---
 
-**Status:** ⏸️ **AWAITING INSTRUCTIONS** - Ready to proceed with implementation
+**Status:** [EMOJI][EMOJI] **AWAITING INSTRUCTIONS** - Ready to proceed with implementation
 
 **Next Steps:**
 1. Review this audit

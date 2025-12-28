@@ -18,20 +18,20 @@ If this doesn't work, the worker itself has an issue.
 
 ## Step 2: Verify Route in Cloudflare Dashboard
 
-1. Go to **Cloudflare Dashboard** → **Workers & Pages**
+1. Go to **Cloudflare Dashboard** [EMOJI] **Workers & Pages**
 2. Click **strixun-url-shortener**
-3. Go to **Settings** → **Triggers** → **Routes**
+3. Go to **Settings** [EMOJI] **Triggers** [EMOJI] **Routes**
 4. Verify you see: `s.idling.app/*`
 5. Check that it shows as **Active** (not pending or error)
 
 ## Step 3: Verify DNS Record
 
-1. Go to **Cloudflare Dashboard** → **DNS** → **Records**
+1. Go to **Cloudflare Dashboard** [EMOJI] **DNS** [EMOJI] **Records**
 2. Look for a CNAME record:
    - **Type**: CNAME
    - **Name**: `s`
    - **Target**: `strixun-url-shortener.strixuns-script-suite.workers.dev`
-   - **Proxy status**: Proxied (orange cloud) ✅
+   - **Proxy status**: Proxied (orange cloud) [SUCCESS]
 
 If the DNS record doesn't exist:
 1. Click **Add record**
@@ -43,7 +43,7 @@ If the DNS record doesn't exist:
 
 ## Step 4: Check SSL Certificate
 
-1. Go to **Cloudflare Dashboard** → **SSL/TLS** → **Overview**
+1. Go to **Cloudflare Dashboard** [EMOJI] **SSL/TLS** [EMOJI] **Overview**
 2. Verify SSL/TLS encryption mode is set to **Full** or **Full (strict)**
 3. Wait 1-2 minutes for SSL certificate to provision (automatic)
 
@@ -93,9 +93,9 @@ Then try accessing `https://s.idling.app/health` in another terminal/browser.
 The route pattern must be **exactly**: `s.idling.app/*`
 
 Common mistakes:
-- ❌ `s.idling.app` (missing `/*`)
-- ❌ `s.idling.app/` (missing `*`)
-- ✅ `s.idling.app/*` (correct)
+- [ERROR] `s.idling.app` (missing `/*`)
+- [ERROR] `s.idling.app/` (missing `*`)
+- [SUCCESS] `s.idling.app/*` (correct)
 
 ## Step 9: Force Route Update
 
@@ -109,7 +109,7 @@ If route exists but not working:
 
 ## Step 10: Check Browser Console
 
-Open browser DevTools (F12) → Console tab, then visit `https://s.idling.app/health`
+Open browser DevTools (F12) [EMOJI] Console tab, then visit `https://s.idling.app/health`
 
 Look for:
 - Network errors

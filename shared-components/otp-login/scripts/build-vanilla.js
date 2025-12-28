@@ -94,12 +94,12 @@ try {
   writeFileSync(outputFile, wrapBundle(bundled));
   writeFileSync(outputFileMin, wrapBundle(bundledMin));
   
-  console.log(`✅ Built Vanilla JS OTP Login to ${outputDir}/`);
+  console.log(`[SUCCESS] Built Vanilla JS OTP Login to ${outputDir}/`);
   console.log(`   - IIFE (Development): otp-login-core.js`);
   console.log(`   - IIFE (Production): otp-login-core.min.js`);
   console.log(`   - ESM: otp-login-core.esm.js`);
 } catch (error) {
-  console.error('❌ Failed to build Vanilla JS OTP Login:', error);
+  console.error('[ERROR] Failed to build Vanilla JS OTP Login:', error);
   process.exit(1);
 }
 

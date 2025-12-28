@@ -176,14 +176,14 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">🎮</div>
+        <div class="logo">[EMOJI]</div>
         <h1>Strixun Stream Suite</h1>
         <p class="subtitle">Twitch Authorization</p>
         
         <div id="content">
             <!-- Content injected by JavaScript -->
             <div class="status loading">
-                <div class="status-icon">⏳</div>
+                <div class="status-icon">[EMOJI]</div>
                 <div class="status-text">Processing authorization...</div>
             </div>
         </div>
@@ -223,7 +223,7 @@
                 navigator.clipboard.writeText(token).then(() => {
                     const feedback = document.getElementById('copyFeedback');
                     if (feedback) {
-                        feedback.textContent = '✅ Copied to clipboard!';
+                        feedback.textContent = '[SUCCESS] Copied to clipboard!';
                         setTimeout(() => { feedback.textContent = ''; }, 3000);
                     }
                 }).catch(err => {
@@ -238,7 +238,7 @@
                         document.execCommand('copy');
                         const feedback = document.getElementById('copyFeedback');
                         if (feedback) {
-                            feedback.textContent = '✅ Copied to clipboard!';
+                            feedback.textContent = '[SUCCESS] Copied to clipboard!';
                             setTimeout(() => { feedback.textContent = ''; }, 3000);
                         }
                     } catch (e) {
@@ -257,11 +257,11 @@
                 if (display.dataset.masked === 'true') {
                     display.textContent = token;
                     display.dataset.masked = 'false';
-                    btn.textContent = '🙈 Hide';
+                    btn.textContent = '[EMOJI] Hide';
                 } else {
                     display.textContent = maskToken(token);
                     display.dataset.masked = 'true';
-                    btn.textContent = '👁️ Show';
+                    btn.textContent = '[EMOJI][EMOJI] Show';
                 }
             }
             
@@ -269,7 +269,7 @@
             function renderSuccess(data) {
                 contentEl.innerHTML = `
                     <div class="status success">
-                        <div class="status-icon">✅</div>
+                        <div class="status-icon">[SUCCESS]</div>
                         <div class="status-text">Authorization Successful!</div>
                     </div>
                     
@@ -280,17 +280,17 @@
                     </div>
                     
                     <div>
-                        <button onclick="window.copyToken('${data.accessToken}')">📋 Copy Token</button>
-                        <button class="secondary" id="toggleBtn" onclick="window.toggleTokenVisibility()">👁️ Show</button>
+                        <button onclick="window.copyToken('${data.accessToken}')">[CLIPBOARD] Copy Token</button>
+                        <button class="secondary" id="toggleBtn" onclick="window.toggleTokenVisibility()">[EMOJI][EMOJI] Show</button>
                     </div>
                     <div class="copy-feedback" id="copyFeedback"></div>
                     
                     <div class="instructions">
-                        <h3>📋 Next Steps</h3>
+                        <h3>[CLIPBOARD] Next Steps</h3>
                         <ol>
                             <li>Copy the token above</li>
                             <li>Go back to the Control Panel</li>
-                            <li>Navigate to <strong>Clips → Twitch Auth</strong></li>
+                            <li>Navigate to <strong>Clips [EMOJI] Twitch Auth</strong></li>
                             <li>Paste the token in the <strong>Access Token</strong> field</li>
                             <li>Save your clips config</li>
                         </ol>
@@ -302,7 +302,7 @@
             function renderError(error, description) {
                 contentEl.innerHTML = `
                     <div class="status error">
-                        <div class="status-icon">❌</div>
+                        <div class="status-icon">[ERROR]</div>
                         <div class="status-text">Authorization Failed</div>
                     </div>
                     
@@ -310,7 +310,7 @@
                     <p style="color: var(--muted); font-size: 0.9em;">${description || 'Please try again or check your Twitch application settings.'}</p>
                     
                     <div style="margin-top: 20px;">
-                        <button onclick="window.history.back()">← Go Back</button>
+                        <button onclick="window.history.back()">[EMOJI] Go Back</button>
                     </div>
                 `;
             }
@@ -319,7 +319,7 @@
             function renderNoToken() {
                 contentEl.innerHTML = `
                     <div class="status error">
-                        <div class="status-icon">⚠️</div>
+                        <div class="status-icon">[WARNING]</div>
                         <div class="status-text">No Token Found</div>
                     </div>
                     
@@ -329,12 +329,12 @@
                     </p>
                     
                     <div class="instructions">
-                        <h3>📋 How to get here properly</h3>
+                        <h3>[CLIPBOARD] How to get here properly</h3>
                         <ol>
                             <li>Open the Control Panel</li>
-                            <li>Go to <strong>Setup → Twitch API Settings</strong></li>
+                            <li>Go to <strong>Setup [EMOJI] Twitch API Settings</strong></li>
                             <li>Configure your Client ID and set this page as the OAuth Callback</li>
-                            <li>Go to <strong>Clips → Twitch Auth</strong></li>
+                            <li>Go to <strong>Clips [EMOJI] Twitch Auth</strong></li>
                             <li>Click <strong>"Get Access Token from Twitch"</strong></li>
                         </ol>
                     </div>

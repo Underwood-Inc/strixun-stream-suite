@@ -117,7 +117,7 @@ function getFilePriority(filePath: string): number {
 function getGitHubToken(): string {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
-    console.error('❌ GITHUB_TOKEN environment variable is required');
+    console.error('[ERROR] GITHUB_TOKEN environment variable is required');
     console.error('   Get a token from: https://github.com/settings/tokens');
     console.error('   Required scopes: repo (for private repos) or public_repo (for public repos)');
     process.exit(1);
@@ -155,7 +155,7 @@ function findMarkdownFiles(dir: string, baseDir: string = rootDir): string[] {
     }
   } catch (error) {
     // Skip directories that don't exist or can't be read
-    console.warn(`⚠️  Skipping ${dir}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.warn(`[WARNING]  Skipping ${dir}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
   
   return files;
@@ -261,18 +261,18 @@ function cloneWikiRepo(wikiDir: string, token: string): void {
   const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
   
   if (existsSync(wikiDir)) {
-    console.log('📥 Updating existing wiki repository...');
+    console.log('[EMOJI] Updating existing wiki repository...');
     try {
       // Update remote URL with token before pulling
       execSync(`git remote set-url origin ${authUrl}`, { cwd: wikiDir });
       execSync('git pull', { cwd: wikiDir, stdio: 'inherit', env });
     } catch (error) {
-      console.warn('⚠️  Could not pull, will clone fresh...');
+      console.warn('[WARNING]  Could not pull, will clone fresh...');
       rmSync(wikiDir, { recursive: true, force: true });
       execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit', env });
     }
   } else {
-    console.log('📥 Cloning wiki repository...');
+    console.log('[EMOJI] Cloning wiki repository...');
     mkdirSync(dirname(wikiDir), { recursive: true });
     execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit', env });
   }
@@ -452,7 +452,7 @@ function copyDocsToWiki(sourceFiles: string[], wikiDir: string): {
         try {
           const existingContent = readFileSync(wikiFilePath, 'utf-8');
           if (existingContent === fixedContent) {
-            console.log(`⏭️  Skipped (unchanged): ${wikiName}.md`);
+            console.log(`[EMOJI][EMOJI]  Skipped (unchanged): ${wikiName}.md`);
             skipped++;
             continue;
           }
@@ -466,15 +466,15 @@ function copyDocsToWiki(sourceFiles: string[], wikiDir: string): {
       
       // Write file
       writeFileSync(wikiFilePath, fixedContent, 'utf-8');
-      console.log(`✅ Copied: ${wikiName}.md`);
+      console.log(`[SUCCESS] Copied: ${wikiName}.md`);
       copied++;
     } catch (error) {
-      console.error(`❌ Error copying ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`[ERROR] Error copying ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
   
   // Print category summary
-  console.log(`\n📊 Files by category:`);
+  console.log(`\n[ANALYTICS] Files by category:`);
   const sortedCategories = Array.from(categoryGroups.entries())
     .sort((a, b) => {
       const priorityA = CATEGORY_MAP.find(c => c.prefix === a[0])?.priority || 999;
@@ -487,7 +487,7 @@ function copyDocsToWiki(sourceFiles: string[], wikiDir: string): {
   }
   
   if (skipped > 0) {
-    console.log(`\n⏭️  Skipped ${skipped} unchanged files`);
+    console.log(`\n[EMOJI][EMOJI]  Skipped ${skipped} unchanged files`);
   }
   
   return { copied, categoryMap };
@@ -498,27 +498,27 @@ function copyDocsToWiki(sourceFiles: string[], wikiDir: string): {
  */
 function getCategoryLabel(category: string): string {
   const categoryEmojis: Record<string, string> = {
-    'getting-started': '🚀',
-    'architecture': '🏗️',
-    'api': '📡',
-    'service': '🔧',
-    'service-otp-auth': '🔐',
-    'service-customer-api': '👤',
-    'service-url-shortener': '🔗',
-    'service-mods-api': '📦',
-    'service-chat-signaling': '💬',
-    'service-game-api': '🎮',
-    'service-twitch-api': '📺',
-    'development': '💻',
-    'deployment': '🚢',
-    'security': '🔒',
-    'guide': '📖',
-    'reference': '📚',
-    'product': '📋',
-    'serverless': '☁️',
-    'mods-hub': '🎯',
-    'shared-components': '🧩',
-    'docs': '📄',
+    'getting-started': '[DEPLOY]',
+    'architecture': '[EMOJI][EMOJI]',
+    'api': '[EMOJI]',
+    'service': '[CONFIG]',
+    'service-otp-auth': '[AUTH]',
+    'service-customer-api': '[USER]',
+    'service-url-shortener': '[LINK]',
+    'service-mods-api': '[PACKAGE]',
+    'service-chat-signaling': '[CHAT]',
+    'service-game-api': '[EMOJI]',
+    'service-twitch-api': '[EMOJI]',
+    'development': '[CODE]',
+    'deployment': '[EMOJI]',
+    'security': '[SECURITY]',
+    'guide': '[EMOJI]',
+    'reference': '[DOCS]',
+    'product': '[CLIPBOARD]',
+    'serverless': '[EMOJI][EMOJI]',
+    'mods-hub': '[TARGET]',
+    'shared-components': '[EMOJI]',
+    'docs': '[FILE]',
   };
   
   const emoji = categoryEmojis[category] || '';
@@ -554,7 +554,7 @@ ${sortedPages.map(page => `- [${page.title}](${page.name})`).join('\n')}
 
     const indexPath = join(wikiDir, `${indexName}.md`);
     writeFileSync(indexPath, indexContent, 'utf-8');
-    console.log(`✅ Created: ${indexName}.md`);
+    console.log(`[SUCCESS] Created: ${indexName}.md`);
   }
 }
 
@@ -612,7 +612,7 @@ function createSidebar(wikiDir: string, categoryMap: Map<string, Array<{ name: s
   
   const sidebarPath = join(wikiDir, '_Sidebar.md');
   writeFileSync(sidebarPath, sidebarLines.join('\n'), 'utf-8');
-  console.log('✅ Created: _Sidebar.md');
+  console.log('[SUCCESS] Created: _Sidebar.md');
 }
 
 /**
@@ -642,7 +642,7 @@ This wiki is automatically synced from the main repository. To update documentat
 
   const footerPath = join(wikiDir, '_Footer.md');
   writeFileSync(footerPath, footerContent, 'utf-8');
-  console.log('✅ Created: _Footer.md');
+  console.log('[SUCCESS] Created: _Footer.md');
 }
 
 /**
@@ -671,13 +671,13 @@ ${readmeContent}
 
 ---
 
-## 📚 Documentation Categories
+## [DOCS] Documentation Categories
 
 ${categoryLinks.join('\n')}
 
 ---
 
-## 🚀 Quick Start
+## [DEPLOY] Quick Start
 
 1. **New to the project?** Start with [Getting Started](getting-started-index)
 2. **Want to understand the system?** Check out [Architecture](architecture-index)
@@ -693,9 +693,9 @@ ${categoryLinks.join('\n')}
 
     const homePath = join(wikiDir, 'Home.md');
     writeFileSync(homePath, homeContent, 'utf-8');
-    console.log('✅ Created: Home.md');
+    console.log('[SUCCESS] Created: Home.md');
   } catch (error) {
-    console.error(`❌ Error creating home page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(`[ERROR] Error creating home page: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -716,7 +716,7 @@ function commitAndPush(wikiDir: string, token: string): boolean {
     // Check if there are changes
     try {
       execSync('git diff --quiet', { cwd: wikiDir });
-      console.log('ℹ️  No changes to commit');
+      console.log('[INFO]  No changes to commit');
       return true;
     } catch {
       // There are changes, proceed with commit
@@ -750,10 +750,10 @@ Generated by migrate-wiki script at ${new Date().toISOString()}`;
       env
     });
     
-    console.log('✅ Pushed changes to wiki');
+    console.log('[SUCCESS] Pushed changes to wiki');
     return true;
   } catch (error) {
-    console.error(`❌ Error committing/pushing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(`[ERROR] Error committing/pushing: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 }
@@ -762,15 +762,15 @@ Generated by migrate-wiki script at ${new Date().toISOString()}`;
  * Main migration function
  */
 async function main() {
-  console.log('🚀 Starting documentation migration to wiki...\n');
-  console.log('📝 This will move ALL documentation files to the wiki.\n');
+  console.log('[DEPLOY] Starting documentation migration to wiki...\n');
+  console.log('[NOTE] This will move ALL documentation files to the wiki.\n');
   
   const token = getGitHubToken();
   const wikiDir = join(rootDir, '.wiki-temp');
   
   try {
     // Find all markdown files
-    console.log('📖 Finding markdown files...');
+    console.log('[EMOJI] Finding markdown files...');
     const allFiles: string[] = [];
     
     for (const dir of DOC_DIRS) {
@@ -782,7 +782,7 @@ async function main() {
       }
     }
     
-    console.log(`\n📝 Processing ${allFiles.length} files...`);
+    console.log(`\n[NOTE] Processing ${allFiles.length} files...`);
     console.log(`   (Files will be organized by category and deduplicated)\n`);
     
     // Clone wiki repo
@@ -792,10 +792,10 @@ async function main() {
     // Copy documentation files (with sorting and deduplication)
     // This returns category map for navigation generation
     const { copied, categoryMap } = copyDocsToWiki(allFiles, wikiDir);
-    console.log(`\n📋 Copied ${copied} files to wiki\n`);
+    console.log(`\n[CLIPBOARD] Copied ${copied} files to wiki\n`);
     
     // Create navigation files
-    console.log('📑 Creating navigation files...\n');
+    console.log('[EMOJI] Creating navigation files...\n');
     createCategoryIndexPages(wikiDir, categoryMap);
     console.log('');
     createSidebar(wikiDir, categoryMap);
@@ -808,24 +808,24 @@ async function main() {
     const success = commitAndPush(wikiDir, token);
     
     if (success) {
-      console.log(`\n✨ Migration complete!`);
-      console.log(`📖 View your wiki at: https://github.com/${REPO_OWNER}/${REPO_NAME}/wiki`);
-      console.log(`\n📋 Next steps:`);
+      console.log(`\n[FEATURE] Migration complete!`);
+      console.log(`[EMOJI] View your wiki at: https://github.com/${REPO_OWNER}/${REPO_NAME}/wiki`);
+      console.log(`\n[CLIPBOARD] Next steps:`);
       console.log(`   1. Review the wiki to ensure all files migrated correctly`);
       console.log(`   2. Update any code references to point to wiki pages`);
       console.log(`   3. Consider removing migrated docs from codebase (keep only README.md)`);
       console.log(`   4. Update your workflow to maintain docs in wiki going forward`);
     } else {
-      console.error('\n❌ Migration completed with errors');
+      console.error('\n[ERROR] Migration completed with errors');
       process.exit(1);
     }
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    console.error('[ERROR] Fatal error:', error);
     process.exit(1);
   } finally {
     // Cleanup
     if (existsSync(wikiDir)) {
-      console.log('\n🧹 Cleaning up temporary files...');
+      console.log('\n[EMOJI] Cleaning up temporary files...');
       rmSync(wikiDir, { recursive: true, force: true });
     }
   }
@@ -834,7 +834,7 @@ async function main() {
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
-    console.error('❌ Fatal error:', error);
+    console.error('[ERROR] Fatal error:', error);
     process.exit(1);
   });
 }

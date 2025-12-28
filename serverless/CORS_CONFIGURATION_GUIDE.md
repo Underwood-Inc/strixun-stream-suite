@@ -1,13 +1,13 @@
-# CORS Configuration Guide 🔐
+# CORS Configuration Guide [AUTH]
 
 Complete guide for configuring CORS (Cross-Origin Resource Sharing) for all services in the Strixun Stream Suite.
 
 **Last Updated:** 2025-01-XX  
-**Status:** ✅ Production Ready
+**Status:** [SUCCESS] Production Ready
 
 ---
 
-## 📋 Overview
+## [CLIPBOARD] Overview
 
 This document provides **exact commands and values** to configure CORS for each service, ensuring all necessary communications are capable.
 
@@ -21,24 +21,24 @@ This document provides **exact commands and values** to configure CORS for each 
 
 ---
 
-## 🎯 Communication Matrix
+## [TARGET] Communication Matrix
 
 | From (Origin) | To (Service) | Purpose | Required CORS |
 |--------------|--------------|---------|---------------|
-| `mods.idling.app` | `mods-api.idling.app` | Frontend → API calls | ✅ **CRITICAL** |
-| `mods.idling.app` | `auth.idling.app` | Frontend → Login/Auth | ✅ **CRITICAL** |
-| `auth.idling.app` | `customer.idling.app` | Dashboard → Customer data | ✅ **CRITICAL** |
-| `auth.idling.app` | `mods-api.idling.app` | Auth verification | 🟠 HIGH |
-| `api.idling.app` | `mods-api.idling.app` | API integration | 🟠 HIGH |
-| `api.idling.app` | `customer.idling.app` | API integration | 🟠 HIGH |
-| `game.idling.app` | `mods-api.idling.app` | Game features | 🟡 MEDIUM |
-| `game.idling.app` | `customer.idling.app` | Game features | 🟡 MEDIUM |
-| `localhost:3001` | `mods-api.idling.app` | Local dev | ✅ **CRITICAL** |
-| `localhost:3001` | `auth.idling.app` | Local dev | ✅ **CRITICAL** |
+| `mods.idling.app` | `mods-api.idling.app` | Frontend [EMOJI] API calls | [SUCCESS] **CRITICAL** |
+| `mods.idling.app` | `auth.idling.app` | Frontend [EMOJI] Login/Auth | [SUCCESS] **CRITICAL** |
+| `auth.idling.app` | `customer.idling.app` | Dashboard [EMOJI] Customer data | [SUCCESS] **CRITICAL** |
+| `auth.idling.app` | `mods-api.idling.app` | Auth verification | [EMOJI] HIGH |
+| `api.idling.app` | `mods-api.idling.app` | API integration | [EMOJI] HIGH |
+| `api.idling.app` | `customer.idling.app` | API integration | [EMOJI] HIGH |
+| `game.idling.app` | `mods-api.idling.app` | Game features | [YELLOW] MEDIUM |
+| `game.idling.app` | `customer.idling.app` | Game features | [YELLOW] MEDIUM |
+| `localhost:3001` | `mods-api.idling.app` | Local dev | [SUCCESS] **CRITICAL** |
+| `localhost:3001` | `auth.idling.app` | Local dev | [SUCCESS] **CRITICAL** |
 
 ---
 
-## 🔧 Service-by-Service Configuration
+## [CONFIG] Service-by-Service Configuration
 
 ### 1. Mods API (`strixun-mods-api`)
 
@@ -190,7 +190,7 @@ curl -H "Origin: https://auth.idling.app" \
 
 ---
 
-## 🚀 Quick Setup Script
+## [DEPLOY] Quick Setup Script
 
 Run this script to configure all services at once:
 
@@ -225,19 +225,19 @@ fi
 echo -e "${YELLOW}Configuring mods-api...${NC}"
 cd serverless/mods-api
 echo "$ORIGINS" | wrangler secret put ALLOWED_ORIGINS
-echo -e "${GREEN}✓ mods-api configured${NC}\n"
+echo -e "${GREEN}[EMOJI] mods-api configured${NC}\n"
 
 # OTP Auth Service
 echo -e "${YELLOW}Configuring otp-auth-service...${NC}"
 cd ../otp-auth-service
 echo "$ORIGINS" | wrangler secret put ALLOWED_ORIGINS
-echo -e "${GREEN}✓ otp-auth-service configured${NC}\n"
+echo -e "${GREEN}[EMOJI] otp-auth-service configured${NC}\n"
 
 # Customer API
 echo -e "${YELLOW}Configuring customer-api...${NC}"
 cd ../customer-api
 echo "$ORIGINS" | wrangler secret put ALLOWED_ORIGINS
-echo -e "${GREEN}✓ customer-api configured${NC}\n"
+echo -e "${GREEN}[EMOJI] customer-api configured${NC}\n"
 
 echo -e "${GREEN}All services configured!${NC}"
 ```
@@ -251,36 +251,36 @@ chmod +x serverless/configure-cors.sh
 
 ---
 
-## 📊 Complete Origin Reference
+## [ANALYTICS] Complete Origin Reference
 
 ### Production Origins (All Services)
 
 | Origin | Service | Priority | Notes |
 |--------|---------|----------|-------|
-| `https://mods.idling.app` | All | 🔴 CRITICAL | Frontend (Mods Hub) |
-| `https://auth.idling.app` | All | 🔴 CRITICAL | Auth service (dashboard) |
-| `https://api.idling.app` | All | 🟠 HIGH | Main API worker |
-| `https://customer.idling.app` | All | 🟠 HIGH | Customer API |
-| `https://game.idling.app` | All | 🟠 HIGH | Game API |
-| `https://s.idling.app` | All | 🟡 MEDIUM | URL shortener |
-| `https://chat.idling.app` | All | 🟡 MEDIUM | Chat signaling |
-| `https://idling.app` | All | 🟠 HIGH | Root domain |
-| `https://www.idling.app` | All | 🟠 HIGH | WWW subdomain |
+| `https://mods.idling.app` | All | [RED] CRITICAL | Frontend (Mods Hub) |
+| `https://auth.idling.app` | All | [RED] CRITICAL | Auth service (dashboard) |
+| `https://api.idling.app` | All | [EMOJI] HIGH | Main API worker |
+| `https://customer.idling.app` | All | [EMOJI] HIGH | Customer API |
+| `https://game.idling.app` | All | [EMOJI] HIGH | Game API |
+| `https://s.idling.app` | All | [YELLOW] MEDIUM | URL shortener |
+| `https://chat.idling.app` | All | [YELLOW] MEDIUM | Chat signaling |
+| `https://idling.app` | All | [EMOJI] HIGH | Root domain |
+| `https://www.idling.app` | All | [EMOJI] HIGH | WWW subdomain |
 
 ### Development Origins (Additional)
 
 | Origin | Priority | Notes |
 |--------|----------|-------|
-| `http://localhost:5173` | 🔴 CRITICAL | Vite default port |
-| `http://localhost:3001` | 🔴 CRITICAL | Mods Hub React app port |
-| `http://localhost:3000` | 🟡 MEDIUM | Alternative dev port |
-| `http://localhost:5174` | 🟡 MEDIUM | Alternative Vite port |
-| `http://127.0.0.1:5173` | 🟡 MEDIUM | IP-based localhost |
-| `http://localhost:8080` | 🟢 LOW | Alternative dev port |
+| `http://localhost:5173` | [RED] CRITICAL | Vite default port |
+| `http://localhost:3001` | [RED] CRITICAL | Mods Hub React app port |
+| `http://localhost:3000` | [YELLOW] MEDIUM | Alternative dev port |
+| `http://localhost:5174` | [YELLOW] MEDIUM | Alternative Vite port |
+| `http://127.0.0.1:5173` | [YELLOW] MEDIUM | IP-based localhost |
+| `http://localhost:8080` | [GREEN] LOW | Alternative dev port |
 
 ---
 
-## ✅ Verification Checklist
+## [SUCCESS] Verification Checklist
 
 After configuring CORS, verify each service:
 
@@ -294,7 +294,7 @@ After configuring CORS, verify each service:
 
 ---
 
-## 🔍 Troubleshooting
+## [SEARCH] Troubleshooting
 
 ### Issue: CORS errors in browser console
 
@@ -322,7 +322,7 @@ After configuring CORS, verify each service:
 
 ---
 
-## 📝 Notes
+## [NOTE] Notes
 
 1. **Secrets are per-environment**: Production and development secrets are separate
 2. **No wildcards in production**: Always specify exact origins for security
@@ -332,18 +332,18 @@ After configuring CORS, verify each service:
 
 ---
 
-## 🔐 Security Best Practices
+## [AUTH] Security Best Practices
 
-1. ✅ **Never use `*` in production** - Always specify exact origins
-2. ✅ **Include protocol** - `https://` for production, `http://` for localhost
-3. ✅ **No trailing slashes** - Origins should not end with `/`
-4. ✅ **Case sensitive** - Origins are case-sensitive
-5. ✅ **Minimal origins** - Only include origins that actually need access
-6. ✅ **Separate dev/prod** - Use different configurations for dev and production
+1. [SUCCESS] **Never use `*` in production** - Always specify exact origins
+2. [SUCCESS] **Include protocol** - `https://` for production, `http://` for localhost
+3. [SUCCESS] **No trailing slashes** - Origins should not end with `/`
+4. [SUCCESS] **Case sensitive** - Origins are case-sensitive
+5. [SUCCESS] **Minimal origins** - Only include origins that actually need access
+6. [SUCCESS] **Separate dev/prod** - Use different configurations for dev and production
 
 ---
 
-**Status:** ✅ **COMPLETE**  
+**Status:** [SUCCESS] **COMPLETE**  
 **Last Updated:** 2025-01-XX  
 **Maintained By:** Strixun Stream Suite Team
 

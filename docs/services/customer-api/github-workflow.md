@@ -1,4 +1,4 @@
-# GitHub Workflow Setup for Customer API 🤖
+# GitHub Workflow Setup for Customer API [EMOJI]
 
 ## Overview
 
@@ -6,7 +6,7 @@ The Customer API has an automated GitHub Actions workflow that handles deploymen
 
 ---
 
-## ✅ What the Workflow Does
+## [SUCCESS] What the Workflow Does
 
 ### Automatic Steps
 
@@ -31,19 +31,19 @@ The Customer API has an automated GitHub Actions workflow that handles deploymen
 
 ---
 
-## 🔧 Required GitHub Secrets
+## [CONFIG] Required GitHub Secrets
 
 The workflow requires these secrets to be set in your GitHub repository:
 
 ### Required Secrets
 
-1. **`CF_API_TOKEN`** ✅ (Required)
+1. **`CF_API_TOKEN`** [SUCCESS] (Required)
    - Cloudflare API token with Workers edit permissions
-   - Get from: Cloudflare Dashboard → My Profile → API Tokens
+   - Get from: Cloudflare Dashboard [EMOJI] My Profile [EMOJI] API Tokens
 
-2. **`CF_ACCOUNT_ID`** ✅ (Required)
+2. **`CF_ACCOUNT_ID`** [SUCCESS] (Required)
    - Your Cloudflare account ID
-   - Get from: Cloudflare Dashboard → Right sidebar → Account ID
+   - Get from: Cloudflare Dashboard [EMOJI] Right sidebar [EMOJI] Account ID
 
 ### Optional Secrets (Recommended)
 
@@ -58,22 +58,22 @@ The workflow requires these secrets to be set in your GitHub repository:
 
 ---
 
-## 📋 Setup Steps
+## [CLIPBOARD] Setup Steps
 
 ### Step 1: Set Required GitHub Secrets
 
-Go to your GitHub repository → Settings → Secrets and variables → Actions → New repository secret
+Go to your GitHub repository [EMOJI] Settings [EMOJI] Secrets and variables [EMOJI] Actions [EMOJI] New repository secret
 
 **Set these secrets:**
 
 1. **`CF_API_TOKEN`**
    - Value: Your Cloudflare API token
-   - Get from: Cloudflare Dashboard → My Profile → API Tokens → Create Token
-   - Permissions needed: Account → Workers Scripts → Edit
+   - Get from: Cloudflare Dashboard [EMOJI] My Profile [EMOJI] API Tokens [EMOJI] Create Token
+   - Permissions needed: Account [EMOJI] Workers Scripts [EMOJI] Edit
 
 2. **`CF_ACCOUNT_ID`**
    - Value: Your Cloudflare account ID
-   - Get from: Cloudflare Dashboard → Right sidebar
+   - Get from: Cloudflare Dashboard [EMOJI] Right sidebar
 
 ### Step 2: Set Optional Secrets (Recommended)
 
@@ -100,7 +100,7 @@ Go to your GitHub repository → Settings → Secrets and variables → Actions 
 
 ---
 
-## 🚀 Workflow Triggers
+## [DEPLOY] Workflow Triggers
 
 The workflow automatically runs when:
 
@@ -109,13 +109,13 @@ The workflow automatically runs when:
 
 ### Manual Trigger
 
-1. Go to GitHub repository → Actions tab
+1. Go to GitHub repository [EMOJI] Actions tab
 2. Select "Deploy Customer API" workflow
-3. Click "Run workflow" → Select branch → Run
+3. Click "Run workflow" [EMOJI] Select branch [EMOJI] Run
 
 ---
 
-## 📊 Workflow Steps Breakdown
+## [ANALYTICS] Workflow Steps Breakdown
 
 ```yaml
 1. Checkout code
@@ -123,16 +123,16 @@ The workflow automatically runs when:
 3. Setup Node.js (v20)
 4. Install root dependencies
 5. Install customer-api dependencies
-6. Create KV namespace (if needed) ← AUTOMATIC
-7. Deploy worker ← AUTOMATIC
-8. Set secrets (if configured) ← AUTOMATIC
+6. Create KV namespace (if needed) [EMOJI] AUTOMATIC
+7. Deploy worker [EMOJI] AUTOMATIC
+8. Set secrets (if configured) [EMOJI] AUTOMATIC
 9. Get KV namespace ID (for summary)
 10. Deployment summary
 ```
 
 ---
 
-## ⚠️ Important Notes
+## [WARNING] Important Notes
 
 ### KV Namespace ID
 
@@ -154,13 +154,13 @@ The workflow automatically runs when:
 
 ---
 
-## 🔍 Verification
+## [SEARCH] Verification
 
 After deployment, verify:
 
 1. **Check workflow run:**
-   - Go to GitHub → Actions → Latest "Deploy Customer API" run
-   - Should show ✅ green checkmarks for all steps
+   - Go to GitHub [EMOJI] Actions [EMOJI] Latest "Deploy Customer API" run
+   - Should show [SUCCESS] green checkmarks for all steps
 
 2. **Test health endpoint:**
    ```bash
@@ -183,7 +183,7 @@ After deployment, verify:
 
 ---
 
-## 🐛 Troubleshooting
+## [BUG] Troubleshooting
 
 ### Workflow Fails: "KV namespace not found"
 
@@ -216,13 +216,13 @@ After deployment, verify:
 
 ---
 
-## 📝 Workflow File Location
+## [NOTE] Workflow File Location
 
 `.github/workflows/deploy-customer-api.yml`
 
 ---
 
-## 🔄 Comparison with Other Workflows
+## [SYNC] Comparison with Other Workflows
 
 This workflow follows the same pattern as:
 - `deploy-game-api.yml`
@@ -230,15 +230,15 @@ This workflow follows the same pattern as:
 - `deploy-otp-auth.yml`
 
 **Key Differences:**
-- ✅ Automatically creates KV namespace (like storybook creates Pages project)
-- ✅ Extracts and displays KV namespace ID in summary
-- ✅ Handles customer-api specific dependencies
+- [SUCCESS] Automatically creates KV namespace (like storybook creates Pages project)
+- [SUCCESS] Extracts and displays KV namespace ID in summary
+- [SUCCESS] Handles customer-api specific dependencies
 
 ---
 
-**Status:** ✅ **WORKFLOW CREATED**
+**Status:** [SUCCESS] **WORKFLOW CREATED**
 **Last Updated:** 2024-12-19
-**Auto-Deploys:** ✅ Yes (on push to main/master)
-**Auto-Creates:** ✅ KV namespace (if missing)
-**Auto-Sets Secrets:** ✅ Yes (if configured in GitHub)
+**Auto-Deploys:** [SUCCESS] Yes (on push to main/master)
+**Auto-Creates:** [SUCCESS] KV namespace (if missing)
+**Auto-Sets Secrets:** [SUCCESS] Yes (if configured in GitHub)
 

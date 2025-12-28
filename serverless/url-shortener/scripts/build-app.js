@@ -75,10 +75,10 @@ export default assets;
   
   const outputFileTS = outputFile.replace('.js', '.ts');
   writeFileSync(outputFileTS, assetsContent);
-  console.log(`✅ Built app assets to ${outputFileTS}`);
+  console.log(`[SUCCESS] Built app assets to ${outputFileTS}`);
   console.log(`   Found ${Object.keys(assets).length} files`);
 } catch (error) {
-  console.error('❌ Failed to build app:', error);
+  console.error('[ERROR] Failed to build app:', error);
   process.exit(1);
 }
 

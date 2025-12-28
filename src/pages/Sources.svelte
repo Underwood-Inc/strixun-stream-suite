@@ -125,7 +125,7 @@
   
   <!-- Opacity Control -->
   <div class="card">
-    <h3>🎚️ Opacity Control</h3>
+    <h3>[EMOJI][EMOJI] Opacity Control</h3>
     <label>Source</label>
     <SourceSelect
       bind:value={opacitySource}
@@ -145,17 +145,17 @@
       </div>
     </div>
     <div class="row" style="margin-top:12px">
-      <button on:click={handleApplyOpacity} style="flex:1">✅ Apply</button>
-      <button on:click={handleResetOpacity} class="btn-secondary" style="flex:1">🔄 Reset to 100%</button>
+      <button on:click={handleApplyOpacity} style="flex:1">[SUCCESS] Apply</button>
+      <button on:click={handleResetOpacity} class="btn-secondary" style="flex:1">[SYNC] Reset to 100%</button>
     </div>
     <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)">
-      💡 Setting to 100% removes the filter (no overhead)
+      [IDEA] Setting to 100% removes the filter (no overhead)
     </p>
   </div>
   
   <!-- Scene Browser -->
   <div class="card">
-    <h3>🎬 Scenes</h3>
+    <h3>[EMOJI] Scenes</h3>
     <SearchBox
       inputId="scenesSearchInput"
       placeholder="Search scenes..."
@@ -168,13 +168,13 @@
     />
       <div id="scenesList" class="config-list" style="max-height:200px;overflow-y:auto"></div>
     <button on:click={handleRefreshSceneList} class="btn-secondary" style="width:100%;margin-top:8px">
-      🔃 Refresh Scenes
+      [EMOJI] Refresh Scenes
     </button>
   </div>
   
   <!-- Source Browser -->
   <div class="card">
-    <h3>📦 Sources</h3>
+    <h3>[PACKAGE] Sources</h3>
     <p class="hint" id="sourcesSceneLabel" style="margin-bottom:8px">
       {#if $currentScene}
         Scene: {$currentScene}

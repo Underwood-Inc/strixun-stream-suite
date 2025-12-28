@@ -134,7 +134,7 @@ local function get_scene_source_names()
                 if source then
                     local name = obs.obs_source_get_name(source)
                     if name and name ~= "" then
-                        local display = prefix ~= "" and (prefix .. " → " .. name) or name
+                        local display = prefix ~= "" and (prefix .. " [EMOJI] " .. name) or name
                         table.insert(names, {display = display, name = name})
                     end
                     if obs.obs_sceneitem_is_group(item) then
@@ -573,7 +573,7 @@ function script_description()
 
 <h3>Features:</h3>
 <ul>
-<li>⚡ Temporary Aspect Override in settings!</li>
+<li>[PERF] Temporary Aspect Override in settings!</li>
 <li>Works for root sources and sources in groups</li>
 <li>Unlimited configurations with hotkeys</li>
 <li>No progressive shrinking</li>
@@ -605,7 +605,7 @@ function script_properties()
     obs.obs_properties_add_bool(props, "preserve_aspect", "Preserve Aspect Ratio (default)")
     
     -- Temporary override that supersedes ALL config settings
-    local override = obs.obs_properties_add_list(props, "temp_override", "⚡ Temporary Override", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_INT)
+    local override = obs.obs_properties_add_list(props, "temp_override", "[PERF] Temporary Override", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_INT)
     obs.obs_property_list_add_int(override, "Off (use config/global)", 0)
     obs.obs_property_list_add_int(override, "Force PRESERVE aspect", 1)
     obs.obs_property_list_add_int(override, "Force STRETCH to fill", 2)
@@ -614,7 +614,7 @@ function script_properties()
     
     -- Add config
     obs.obs_properties_add_text(props, "h2", "═══════════ ADD SWAP ═══════════", obs.OBS_TEXT_INFO)
-    obs.obs_properties_add_button(props, "refresh", "🔄 Refresh Sources", function() return true end)
+    obs.obs_properties_add_button(props, "refresh", "[SYNC] Refresh Sources", function() return true end)
     obs.obs_properties_add_text(props, "new_name", "Config Name", obs.OBS_TEXT_DEFAULT)
     
     local la = obs.obs_properties_add_list(props, "new_a", "Source A", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
@@ -626,7 +626,7 @@ function script_properties()
         obs.obs_property_list_add_string(lb, s.display, s.name)
     end
     
-    obs.obs_properties_add_button(props, "add_btn", "➕ Add Config", function()
+    obs.obs_properties_add_button(props, "add_btn", "[ADD] Add Config", function()
         if not settings_ref then return false end
         local n = obs.obs_data_get_string(settings_ref, "new_name")
         local a = obs.obs_data_get_string(settings_ref, "new_a")
@@ -649,9 +649,9 @@ function script_properties()
         obs.obs_properties_add_text(props, "none", "No configs yet. Add one above!", obs.OBS_TEXT_INFO)
     else
         for i, c in ipairs(swap_configs) do
-            local label = string.format("%d. %s: %s ↔ %s", i, c.name, c.source_a, c.source_b)
+            local label = string.format("%d. %s: %s [EMOJI] %s", i, c.name, c.source_a, c.source_b)
             obs.obs_properties_add_text(props, "cfg_" .. i, label, obs.OBS_TEXT_INFO)
-            obs.obs_properties_add_button(props, "swap_" .. i, "   🔄 Swap Now", function()
+            obs.obs_properties_add_button(props, "swap_" .. i, "   [SYNC] Swap Now", function()
                 execute_swap(c.source_a, c.source_b, c.name)
                 return false
             end)
@@ -676,7 +676,7 @@ function script_properties()
         obs.obs_property_list_add_string(eb, s.display, s.name)
     end
     
-    obs.obs_properties_add_button(props, "edit_btn", "✏️ Update Config", function()
+    obs.obs_properties_add_button(props, "edit_btn", "[EMOJI][EMOJI] Update Config", function()
         if not settings_ref then return false end
         local n = obs.obs_data_get_string(settings_ref, "edit_cfg")
         local a = obs.obs_data_get_string(settings_ref, "edit_a")
@@ -698,7 +698,7 @@ function script_properties()
     for _, c in ipairs(swap_configs) do
         obs.obs_property_list_add_string(rc, c.name, c.name)
     end
-    obs.obs_properties_add_button(props, "rem_btn", "❌ Remove", function()
+    obs.obs_properties_add_button(props, "rem_btn", "[ERROR] Remove", function()
         if not settings_ref then return false end
         local n = obs.obs_data_get_string(settings_ref, "rem_cfg")
         if n ~= "" and remove_config(n) then
@@ -710,7 +710,7 @@ function script_properties()
     
     -- Info
     obs.obs_properties_add_text(props, "h6", "═══════════ INFO ═══════════", obs.OBS_TEXT_INFO)
-    obs.obs_properties_add_text(props, "tip", "💡 Hotkeys: Settings → Hotkeys → 'Swap: [name]'", obs.OBS_TEXT_INFO)
+    obs.obs_properties_add_text(props, "tip", "[IDEA] Hotkeys: Settings [EMOJI] Hotkeys [EMOJI] 'Swap: [name]'", obs.OBS_TEXT_INFO)
     
     return props
 end

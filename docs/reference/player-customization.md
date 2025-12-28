@@ -1,10 +1,10 @@
 # Player Customization System Proposals
 
-> **Proposals for player customization leveraging existing avatar systems** 🎨✨
+> **Proposals for player customization leveraging existing avatar systems** [UI][FEATURE]
 
 ---
 
-## 🔍 Found Systems
+## [SEARCH] Found Systems
 
 ### 1. **DiceBear Adventurer** (Current Profile System)
 - **Location**: `idling.app__UI/src/app/components/avatar/Avatar.tsx`
@@ -22,9 +22,9 @@
 
 ---
 
-## 💡 Proposal Options
+## [IDEA] Proposal Options
 
-### **Option 1: Enhanced DiceBear Multi-Style System** ⭐ RECOMMENDED
+### **Option 1: Enhanced DiceBear Multi-Style System** [EMOJI] RECOMMENDED
 
 **Concept**: Use DiceBear's collection with multiple styles, allowing players to choose their preferred aesthetic.
 
@@ -43,16 +43,16 @@ interface CharacterAvatar {
 ```
 
 **Pros**:
-- ✅ Leverages existing DiceBear infrastructure
-- ✅ Multiple art styles (pixel-art, adventurer, etc.)
-- ✅ Deterministic (same seed = same avatar)
-- ✅ Easy to implement
-- ✅ Cached automatically
-- ✅ Works well for overlay (small size)
+- [SUCCESS] Leverages existing DiceBear infrastructure
+- [SUCCESS] Multiple art styles (pixel-art, adventurer, etc.)
+- [SUCCESS] Deterministic (same seed = same avatar)
+- [SUCCESS] Easy to implement
+- [SUCCESS] Cached automatically
+- [SUCCESS] Works well for overlay (small size)
 
 **Cons**:
-- ⚠️ Limited customization depth
-- ⚠️ Style-dependent options
+- [WARNING] Limited customization depth
+- [WARNING] Style-dependent options
 
 **Best For**: Quick implementation, consistent look, profile-style avatars
 
@@ -97,16 +97,16 @@ interface HybridCharacterAppearance {
 ```
 
 **Pros**:
-- ✅ Best of both worlds
-- ✅ Seed-based uniqueness + customization
-- ✅ Equipment visualization
-- ✅ Deep customization options
-- ✅ Pixel-art aesthetic fits idle game
+- [SUCCESS] Best of both worlds
+- [SUCCESS] Seed-based uniqueness + customization
+- [SUCCESS] Equipment visualization
+- [SUCCESS] Deep customization options
+- [SUCCESS] Pixel-art aesthetic fits idle game
 
 **Cons**:
-- ⚠️ More complex implementation
-- ⚠️ Requires sprite/asset management
-- ⚠️ Larger data structure
+- [WARNING] More complex implementation
+- [WARNING] Requires sprite/asset management
+- [WARNING] Larger data structure
 
 **Best For**: Rich customization, equipment visualization, pixel-art aesthetic
 
@@ -154,16 +154,16 @@ interface ProceduralCharacter {
 ```
 
 **Pros**:
-- ✅ Fully customizable
-- ✅ Unique to our game
-- ✅ Pixel-art optimized
-- ✅ Equipment integration
-- ✅ No external dependencies
+- [SUCCESS] Fully customizable
+- [SUCCESS] Unique to our game
+- [SUCCESS] Pixel-art optimized
+- [SUCCESS] Equipment integration
+- [SUCCESS] No external dependencies
 
 **Cons**:
-- ⚠️ Most development time
-- ⚠️ Requires art assets
-- ⚠️ Need to build generator
+- [WARNING] Most development time
+- [WARNING] Requires art assets
+- [WARNING] Need to build generator
 
 **Best For**: Unique identity, full control, pixel-art focus
 
@@ -204,35 +204,35 @@ interface ModularCharacter {
 ```
 
 **Pros**:
-- ✅ High-quality art
-- ✅ Consistent style
-- ✅ Easy to add new parts
-- ✅ Equipment integration
-- ✅ Professional look
+- [SUCCESS] High-quality art
+- [SUCCESS] Consistent style
+- [SUCCESS] Easy to add new parts
+- [SUCCESS] Equipment integration
+- [SUCCESS] Professional look
 
 **Cons**:
-- ⚠️ Requires art assets
-- ⚠️ Asset management
-- ⚠️ Larger file sizes
+- [WARNING] Requires art assets
+- [WARNING] Asset management
+- [WARNING] Larger file sizes
 
 **Best For**: Professional polish, consistent art style
 
 ---
 
-## 🎯 Recommendation Matrix
+## [TARGET] Recommendation Matrix
 
 | Feature | Option 1 | Option 2 | Option 3 | Option 4 |
 |---------|----------|----------|----------|----------|
-| **Development Speed** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
-| **Customization Depth** | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Equipment Integration** | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Art Quality** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Uniqueness** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Maintenance** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
+| **Development Speed** | [EMOJI][EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI] | [EMOJI][EMOJI] |
+| **Customization Depth** | [EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI] |
+| **Equipment Integration** | [EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI][EMOJI] |
+| **Art Quality** | [EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI][EMOJI] |
+| **Uniqueness** | [EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI] |
+| **Maintenance** | [EMOJI][EMOJI][EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI] | [EMOJI][EMOJI] | [EMOJI][EMOJI][EMOJI] |
 
 ---
 
-## 🎨 Visual Style Comparison
+## [UI] Visual Style Comparison
 
 ### Option 1: DiceBear Multi-Style
 - **Look**: Clean, modern, varied styles
@@ -256,27 +256,27 @@ interface ModularCharacter {
 
 ---
 
-## ✅ Selected: Pixel Editor System
+## [SUCCESS] Selected: Pixel Editor System
 
 **Decision**: Use the original pixel-style customizable system with pixel editor (Option 3 Enhanced)
 
 **Implementation**:
 - Canvas-based pixel art editor
 - Custom textures for head, torso, arms, legs
-- Subscription-tier access (basic → pro)
+- Subscription-tier access (basic [EMOJI] pro)
 - Equipment visualization overlays
 - Export/import pixel art
 - Color palette system
 
 ---
 
-## 🚀 Implementation Plan
+## [DEPLOY] Implementation Plan
 
 Now implementing:
-1. ✅ Pixel editor component with canvas drawing
-2. ✅ Character customization system
-3. ✅ End-game crafting integration
-4. ✅ Dungeon system
-5. ✅ Loot generation and idle mechanics
-6. ✅ Full integration
+1. [SUCCESS] Pixel editor component with canvas drawing
+2. [SUCCESS] Character customization system
+3. [SUCCESS] End-game crafting integration
+4. [SUCCESS] Dungeon system
+5. [SUCCESS] Loot generation and idle mechanics
+6. [SUCCESS] Full integration
 

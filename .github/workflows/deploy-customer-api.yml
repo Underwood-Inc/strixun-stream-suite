@@ -38,7 +38,10 @@ jobs:
         id: check_test
         working-directory: serverless/customer-api
         run: |
-          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+          # Check for actual test files or vitest/jest config
+          if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] || [ -f "jest.config.js" ] || [ -f "jest.config.ts" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          elif grep -q '"test"' package.json && ! grep -q 'Error: no test specified' package.json; then
             echo "has_tests=true" >> $GITHUB_OUTPUT
           else
             echo "has_tests=false" >> $GITHUB_OUTPUT

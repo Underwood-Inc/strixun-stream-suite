@@ -6,16 +6,16 @@ The route in `wrangler.toml` might not have been applied. Do this:
 
 ### Step 1: Add Route in Cloudflare Dashboard
 
-1. Go to **Cloudflare Dashboard** → **Workers & Pages**
+1. Go to **Cloudflare Dashboard** [EMOJI] **Workers & Pages**
 2. Click on **strixun-url-shortener**
-3. Go to **Settings** → **Triggers** → **Routes**
+3. Go to **Settings** [EMOJI] **Triggers** [EMOJI] **Routes**
 4. Click **Add Route**
 5. Enter: `s.idling.app/*`
 6. Click **Save**
 
 ### Step 2: Verify DNS Record
 
-1. Go to **Cloudflare Dashboard** → **DNS** → **Records**
+1. Go to **Cloudflare Dashboard** [EMOJI] **DNS** [EMOJI] **Records**
 2. Look for a CNAME record for `s` pointing to `strixun-url-shortener.strixuns-script-suite.workers.dev`
 3. If it doesn't exist, Cloudflare should create it automatically when you add the route
 4. If it still doesn't exist after a few minutes, create it manually:
@@ -49,9 +49,9 @@ Try moving the routes outside of any environment block (it's already there, so t
 
 ### Route Not Working After Adding in Dashboard
 
-1. **Check route is active**: Dashboard → Workers → strixun-url-shortener → Settings → Triggers → Routes
-2. **Check DNS**: Dashboard → DNS → Records (should see `s` CNAME)
-3. **Check SSL**: Dashboard → SSL/TLS → Overview (should show "Active Certificate")
+1. **Check route is active**: Dashboard [EMOJI] Workers [EMOJI] strixun-url-shortener [EMOJI] Settings [EMOJI] Triggers [EMOJI] Routes
+2. **Check DNS**: Dashboard [EMOJI] DNS [EMOJI] Records (should see `s` CNAME)
+3. **Check SSL**: Dashboard [EMOJI] SSL/TLS [EMOJI] Overview (should show "Active Certificate")
 4. **Test workers.dev URL**: `https://strixun-url-shortener.strixuns-script-suite.workers.dev/health` (should work)
 5. **Check worker logs**: `wrangler tail` to see if requests are reaching the worker
 

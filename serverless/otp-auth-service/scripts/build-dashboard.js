@@ -7,7 +7,7 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-console.log('🔨 Processing built files for embedding...');
+console.log('[EMOJI] Processing built files for embedding...');
 
 const rootDir = path.join(__dirname, '..');
 
@@ -15,7 +15,7 @@ const rootDir = path.join(__dirname, '..');
 function getEncryptionKey() {
   // First, check if it's already in the environment
   if (process.env.VITE_SERVICE_ENCRYPTION_KEY) {
-    console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in environment');
+    console.log('[SUCCESS] Found VITE_SERVICE_ENCRYPTION_KEY in environment');
     return process.env.VITE_SERVICE_ENCRYPTION_KEY;
   }
 
@@ -27,7 +27,7 @@ function getEncryptionKey() {
     if (match && match[1]) {
       const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
       if (key.length >= 32) {
-        console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in dashboard/.env');
+        console.log('[SUCCESS] Found VITE_SERVICE_ENCRYPTION_KEY in dashboard/.env');
         return key;
       }
     }
@@ -35,7 +35,7 @@ function getEncryptionKey() {
 
   // Try to get from Cloudflare Worker secrets using wrangler
   try {
-    console.log('🔍 Attempting to get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets...');
+    console.log('[SEARCH] Attempting to get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets...');
     const result = execSync('wrangler secret get VITE_SERVICE_ENCRYPTION_KEY 2>&1', {
       cwd: rootDir,
       encoding: 'utf8',
@@ -43,15 +43,15 @@ function getEncryptionKey() {
     });
     const key = result.trim();
     if (key && key.length >= 32 && !key.includes('error') && !key.includes('not found')) {
-      console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets');
+      console.log('[SUCCESS] Found VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets');
       return key;
     }
   } catch (error) {
     // wrangler secret get might fail if not authenticated or secret doesn't exist
-    console.warn('⚠️  Could not get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets');
+    console.warn('[WARNING]  Could not get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets');
   }
 
-  console.error('❌ VITE_SERVICE_ENCRYPTION_KEY not found!');
+  console.error('[ERROR] VITE_SERVICE_ENCRYPTION_KEY not found!');
   console.error('   Please set it in one of the following ways:');
   console.error('   1. Environment variable: export VITE_SERVICE_ENCRYPTION_KEY=your-key');
   console.error('   2. Dashboard .env file: echo "VITE_SERVICE_ENCRYPTION_KEY=your-key" > dashboard/.env');
@@ -69,7 +69,7 @@ const distDir = path.join(rootDir, 'dashboard', 'dist');
 
 // Verify dist directory exists
 if (!fs.existsSync(distDir)) {
-  console.error(`❌ Dashboard dist directory does not exist at: ${distDir}`);
+  console.error(`[ERROR] Dashboard dist directory does not exist at: ${distDir}`);
   console.error('   Build may have failed. Make sure to run: cd dashboard && pnpm build');
   process.exit(1);
 }
@@ -78,14 +78,14 @@ const files = {};
 
 function readDirectory(dir, basePath = '') {
   if (!fs.existsSync(dir)) {
-    console.warn(`⚠️  Directory does not exist: ${dir}`);
+    console.warn(`[WARNING]  Directory does not exist: ${dir}`);
     return;
   }
   
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   
   if (entries.length === 0) {
-    console.warn(`⚠️  Directory is empty: ${dir}`);
+    console.warn(`[WARNING]  Directory is empty: ${dir}`);
     return;
   }
   
@@ -105,9 +105,9 @@ function readDirectory(dir, basePath = '') {
           : content.toString('utf8');
         
         files[relativePath] = encoded;
-        console.log(`  📄 ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
+        console.log(`  [FILE] ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
       } catch (error) {
-        console.error(`❌ Failed to read file: ${fullPath}`, error.message);
+        console.error(`[ERROR] Failed to read file: ${fullPath}`, error.message);
       }
     }
   }
@@ -126,26 +126,26 @@ function getMimeType(filePath) {
   return 'application/octet-stream';
 }
 
-console.log(`📂 Reading dashboard dist directory: ${distDir}`);
+console.log(`[EMOJI] Reading dashboard dist directory: ${distDir}`);
 readDirectory(distDir);
 
 // Verify we have files to embed
 const fileCount = Object.keys(files).length;
 if (fileCount === 0) {
-  console.error('❌ No files found in dist directory. Build may have failed.');
+  console.error('[ERROR] No files found in dist directory. Build may have failed.');
   process.exit(1);
 }
 
-console.log(`📊 Found ${fileCount} files to embed`);
+console.log(`[ANALYTICS] Found ${fileCount} files to embed`);
 
 // Verify index.html exists
 if (!files['index.html']) {
-  console.error('❌ index.html not found in dist directory. Build may have failed.');
+  console.error('[ERROR] index.html not found in dist directory. Build may have failed.');
   process.exit(1);
 }
 
 // Generate dashboard-assets.js module
-console.log('📝 Generating assets module...');
+console.log('[NOTE] Generating assets module...');
 const startTime = Date.now();
 const output = `// Dashboard built files embedded as a module
 // This file is generated automatically when building the dashboard
@@ -156,11 +156,11 @@ export default ${JSON.stringify(files, null, 2)};
 `;
 
 const outputPath = path.join(__dirname, '..', 'dashboard-assets.js');
-console.log('💾 Writing assets module to disk...');
+console.log('[EMOJI] Writing assets module to disk...');
 fs.writeFileSync(outputPath, output);
 const writeTime = Date.now() - startTime;
-console.log(`⏱️  Generated in ${writeTime}ms`);
+console.log(`[TIME]  Generated in ${writeTime}ms`);
 
-console.log(`✅ Generated dashboard-assets.js (${Object.keys(files).length} files)`);
-console.log('🎉 Build complete!');
+console.log(`[SUCCESS] Generated dashboard-assets.js (${Object.keys(files).length} files)`);
+console.log('[EMOJI] Build complete!');
 

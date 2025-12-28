@@ -1,4 +1,4 @@
-# Customer Data Migration Guide 📦
+# Customer Data Migration Guide [PACKAGE]
 
 ## Overview
 
@@ -6,7 +6,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## ⚠️ Important Notes
+## [WARNING] Important Notes
 
 - **Backup First:** Always backup your KV data before migration
 - **Test Environment:** Test migration in a development environment first
@@ -15,7 +15,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## 📋 Pre-Migration Checklist
+## [CLIPBOARD] Pre-Migration Checklist
 
 - [ ] Customer-api worker is deployed and accessible
 - [ ] `CUSTOMER_KV` namespace is created and configured
@@ -26,7 +26,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## 🔍 Data to Migrate
+## [SEARCH] Data to Migrate
 
 ### Customer Records
 
@@ -63,7 +63,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## 🚀 Migration Methods
+## [DEPLOY] Migration Methods
 
 ### Method 1: Manual Migration Script (Recommended)
 
@@ -125,7 +125,7 @@ async function migrateCustomers() {
 
 ---
 
-## 📝 Migration Script Example
+## [NOTE] Migration Script Example
 
 ```typescript
 /**
@@ -196,10 +196,10 @@ async function migrateCustomerData(env: Env) {
       }
       
       migrated.push(customerId);
-      console.log(`✅ Migrated customer: ${customerId}`);
+      console.log(`[SUCCESS] Migrated customer: ${customerId}`);
       
     } catch (error) {
-      console.error(`❌ Failed to migrate customer ${customerId}:`, error);
+      console.error(`[ERROR] Failed to migrate customer ${customerId}:`, error);
       errors.push({
         customerId,
         error: error instanceof Error ? error.message : String(error),
@@ -208,12 +208,12 @@ async function migrateCustomerData(env: Env) {
   }
   
   // Summary
-  console.log(`\n📊 Migration Summary:`);
-  console.log(`✅ Migrated: ${migrated.length}`);
-  console.log(`❌ Errors: ${errors.length}`);
+  console.log(`\n[ANALYTICS] Migration Summary:`);
+  console.log(`[SUCCESS] Migrated: ${migrated.length}`);
+  console.log(`[ERROR] Errors: ${errors.length}`);
   
   if (errors.length > 0) {
-    console.log(`\n❌ Errors:`);
+    console.log(`\n[ERROR] Errors:`);
     errors.forEach(({ customerId, error }) => {
       console.log(`  - ${customerId}: ${error}`);
     });
@@ -225,7 +225,7 @@ async function migrateCustomerData(env: Env) {
 
 ---
 
-## ✅ Post-Migration Verification
+## [SUCCESS] Post-Migration Verification
 
 ### 1. Verify Customer Count
 
@@ -263,7 +263,7 @@ async function migrateCustomerData(env: Env) {
 
 ---
 
-## 🔄 Rollback Plan
+## [SYNC] Rollback Plan
 
 If migration fails or data is corrupted:
 
@@ -277,7 +277,7 @@ If migration fails or data is corrupted:
 
 ---
 
-## 📊 Migration Checklist
+## [ANALYTICS] Migration Checklist
 
 - [ ] Backup `OTP_AUTH_KV` data
 - [ ] Test migration script in development
@@ -292,7 +292,7 @@ If migration fails or data is corrupted:
 
 ---
 
-## 🐛 Common Issues
+## [BUG] Common Issues
 
 ### Issue: Customer Already Exists (409 Conflict)
 
@@ -320,7 +320,7 @@ If migration fails or data is corrupted:
 
 ---
 
-## 📝 Notes
+## [NOTE] Notes
 
 - **Zero Downtime:** Migration can be done with zero downtime using gradual migration method
 - **Data Integrity:** Always verify data integrity after migration
@@ -329,7 +329,7 @@ If migration fails or data is corrupted:
 
 ---
 
-**Status:** 📋 **GUIDE CREATED**
+**Status:** [CLIPBOARD] **GUIDE CREATED**
 **Last Updated:** 2024-12-19
 **Next Step:** Implement migration script based on your specific requirements
 
