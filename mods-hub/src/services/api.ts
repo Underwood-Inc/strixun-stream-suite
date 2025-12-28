@@ -133,9 +133,9 @@ const api = createAPIClient({
         backoff: 'exponential',
     },
     cache: {
-        enabled: true,
-        defaultStrategy: 'network-first',
-        defaultTTL: 5 * 60 * 1000, // 5 minutes
+        enabled: false, // Disabled by default - only enable for specific requests that need caching
+        defaultStrategy: 'network-only', // Never cache by default
+        defaultTTL: 0, // No TTL by default
     },
     offline: {
         enabled: false, // Disable offline queue to prevent blocking
@@ -411,11 +411,15 @@ export async function downloadVersion(
     
     try {
         // Use fetch with auth header for encrypted downloads
+        // NOTE: Downloads are versioned and immutable, so caching is safe and beneficial
+        // The backend returns Cache-Control: public, max-age=31536000 for downloads
         const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
+            // Allow caching for versioned downloads (immutable, versioned files)
+            cache: 'default', // Respects backend Cache-Control headers
         });
 
         if (!response.ok) {

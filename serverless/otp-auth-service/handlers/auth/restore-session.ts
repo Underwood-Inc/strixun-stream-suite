@@ -9,6 +9,7 @@
 
 import { getSessionsByIP } from '../../services/ip-session-index.js';
 import { getCorsHeaders } from '../../utils/cors.js';
+import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { getCustomerKey } from '../../services/customer.js';
 import { createAuthToken } from './jwt-creation.js';
 import { ensureCustomerAccount } from './customer-creation.js';
@@ -142,7 +143,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,
@@ -190,7 +191,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,
@@ -217,7 +218,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,
@@ -239,7 +240,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,
@@ -261,7 +262,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,
@@ -292,7 +293,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,
@@ -329,7 +330,7 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
                 headers: { 
                     ...getCorsHeaders(env, request), 
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
+                    ...getOtpCacheHeaders(),
                     'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                     'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',
                     'X-RateLimit-Reset': rateLimit.resetAt,

@@ -123,7 +123,7 @@ export class CacheManager {
       return executor();
     }
 
-    const strategy = config.strategy || 'network-first';
+    const strategy = config.strategy || 'network-only'; // Default to network-only (no cache)
     const cached = await this.get<T>(request, config);
 
     switch (strategy) {

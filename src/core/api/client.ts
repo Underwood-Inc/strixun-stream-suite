@@ -38,9 +38,9 @@ export class APIClient {
         retryableErrors: [408, 429, 500, 502, 503, 504],
       },
       cache: {
-        enabled: config.cache?.enabled ?? true,
-        defaultStrategy: config.cache?.defaultStrategy || 'network-first',
-        defaultTTL: config.cache?.defaultTTL || 5 * 60 * 1000,
+        enabled: config.cache?.enabled ?? false, // Disabled by default - opt-in only
+        defaultStrategy: config.cache?.defaultStrategy || 'network-only', // Never cache by default
+        defaultTTL: config.cache?.defaultTTL || 0, // No TTL by default
       },
       offline: {
         enabled: config.offline?.enabled ?? false,

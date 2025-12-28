@@ -96,6 +96,9 @@ class UrlShortenerApiClient {
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
+            // CRITICAL: Prevent caching of API calls
+            // This ensures fresh data and prevents stale responses after deployments
+            cache: 'no-store',
         });
 
         if (response.status === 401) {

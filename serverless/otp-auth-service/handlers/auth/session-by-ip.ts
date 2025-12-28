@@ -11,6 +11,7 @@ import { getClientIP, isValidIP } from '../../utils/ip.js';
 import { checkIPRateLimit, recordIPRequest } from '../../services/rate-limit.js';
 import { getCustomerCached, type GetCustomerFn } from '../../utils/cache.js';
 import { getCorsHeaders } from '../../utils/cors.js';
+import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { getJWTSecret, verifyJWT } from '../../utils/crypto.js';
 import { isSuperAdminEmail } from '../../utils/super-admin.js';
 
@@ -153,7 +154,7 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
             headers: { 
                 ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-store', // Don't cache session data
+                ...getOtpCacheHeaders(),
                 'Pragma': 'no-cache',
                 'X-RateLimit-Limit': rateLimit.ipLimit?.max?.toString() || '',
                 'X-RateLimit-Remaining': rateLimit.remaining?.toString() || '0',

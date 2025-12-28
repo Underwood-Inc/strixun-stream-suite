@@ -220,6 +220,8 @@ export class ProfilePictureService {
         'Authorization': `Bearer ${token}`,
       },
       body: formData,
+      // CRITICAL: Prevent caching of API calls
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -243,6 +245,8 @@ export class ProfilePictureService {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+        // CRITICAL: Prevent caching of API calls
+        cache: 'no-store',
       });
 
       if (response.status === 404) {
@@ -272,6 +276,8 @@ export class ProfilePictureService {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
+      // CRITICAL: Prevent caching of API calls
+      cache: 'no-store',
     });
 
     if (!response.ok) {

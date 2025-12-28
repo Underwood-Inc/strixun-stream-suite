@@ -53,7 +53,7 @@ export class EnhancedAPIClient extends APIClient {
       resetTimeout: 60000,
     });
     this.offlineQueue = new OfflineQueue(config.offline);
-    this.cacheManager = new CacheManager(config.cache?.enabled ?? true);
+    this.cacheManager = new CacheManager(config.cache?.enabled ?? false); // Disabled by default - opt-in only
     // this._batcher = new RequestBatcher();
     // this._debouncer = new RequestDebouncer();
     this.optimisticManager = new OptimisticUpdateManager();
@@ -74,9 +74,10 @@ export class EnhancedAPIClient extends APIClient {
     const controller = this.cancellationManager.getController(request.id);
     request.signal = request.signal || controller.signal;
 
-    // Check cache first
-    if (request.cache) {
-      console.log('[EnhancedAPIClient] Checking cache...');
+    // Check cache only if explicitly enabled for this request
+    // Default is no caching (cache disabled globally)
+    if (request.cache && this.cacheManager.enabled) {
+      console.log('[EnhancedAPIClient] Checking cache (explicitly enabled for this request)...');
       const cached = await this.cacheManager.get<T>(request, request.cache);
       if (cached) {
         console.log('[EnhancedAPIClient] Cache hit, returning cached response');

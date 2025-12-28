@@ -15,6 +15,7 @@ import {
 import { sendWebhook } from '../../services/webhooks.js';
 import { getCustomerCached } from '../../utils/cache.js';
 import { getCorsHeaders } from '../../utils/cors.js';
+import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { generateOTP, hashEmail } from '../../utils/crypto.js';
 import { getPlanLimits } from '../../utils/validation.js';
 import { createEmailErrorResponse, createInternalErrorResponse } from './otp-errors.js';
@@ -275,7 +276,11 @@ export async function handleRequestOTP(
             expiresIn: 600,
             remaining: rateLimit.remaining
         }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 
+                ...getCorsHeaders(env, request), 
+                ...getOtpCacheHeaders(),
+                'Content-Type': 'application/json' 
+            },
         });
     } catch (error: any) {
         console.error('OTP request error:', {

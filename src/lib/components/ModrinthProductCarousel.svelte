@@ -55,7 +55,9 @@
           {
             headers: {
               'User-Agent': 'StrixunStreamSuite/1.0 (https://github.com/strixun)'
-            }
+            },
+            // CRITICAL: Prevent caching of API calls
+            cache: 'no-store',
           }
         );
 

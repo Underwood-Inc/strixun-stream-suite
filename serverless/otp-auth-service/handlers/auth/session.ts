@@ -5,6 +5,7 @@
 
 import { getCustomerKey } from '../../services/customer.js';
 import { getCorsHeaders } from '../../utils/cors.js';
+import { getAuthCacheHeaders } from '../../utils/cache-headers.js';
 import { createJWT, getJWTSecret, hashEmail, verifyJWT } from '../../utils/crypto.js';
 import { buildCurrentUserResponse } from '../../utils/response-builder.js';
 import { ensureCustomerAccount } from './customer-creation.js';
@@ -199,7 +200,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             headers: { 
                 ...getCorsHeaders(env, request), 
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-store', // OAuth 2.0 requirement
+                ...getAuthCacheHeaders(),
                 'Pragma': 'no-cache',
             },
         });

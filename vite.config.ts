@@ -61,31 +61,73 @@ export default defineConfig({
     },
     workbox: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-      runtimeCaching: [{
-        urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
-        handler: 'CacheFirst',
-        options: {
-          cacheName: 'jsdelivr-cdn',
-          expiration: {
-            maxEntries: 10,
-            maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-          },
-          cacheableResponse: {
-            statuses: [0, 200]
+      runtimeCaching: [
+        // DEFAULT: All API calls - NEVER cache (NetworkOnly = always fetch from network)
+        // This ensures all API requests always go to the server, preventing stale data
+        {
+          urlPattern: /^https:\/\/.*\/(api|auth|admin|mods|customer|user|game|chat|url).*$/i,
+          handler: 'NetworkOnly',
+          options: {
+            // NetworkOnly handler doesn't use cache at all
+            // This ensures API requests always go to the server
+          }
+        },
+        // OTP/Auth endpoints - NEVER cache (explicit, more specific pattern)
+        {
+          urlPattern: /^https:\/\/.*\/auth\/(request-otp|verify-otp|restore-session|session|session-by-ip|logout|refresh|me).*$/i,
+          handler: 'NetworkOnly',
+          options: {
+            // NetworkOnly handler doesn't use cache at all
+            // This ensures OTP requests always go to the server
+          }
+        },
+        // Static assets from our domain - Cache first (images, fonts, etc.)
+        {
+          urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|otf)$/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'static-assets',
+            expiration: {
+              maxEntries: 100,
+              maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year - static assets are immutable
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
+            }
+          }
+        },
+        // CDN assets - Cache first (external CDNs like jsdelivr)
+        {
+          urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'jsdelivr-cdn',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
+            }
+          }
+        },
+        // Profile pictures from R2/CDN - Cache first (immutable, long cache)
+        {
+          urlPattern: /^https:\/\/.*\.(r2\.cloudflarestorage\.com|pub-[a-z0-9]+\.r2\.dev).*\.(webp|png|jpg|jpeg)$/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'profile-pictures',
+            expiration: {
+              maxEntries: 500,
+              maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year - profile pictures are immutable
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
+            }
           }
         }
-      }, {
-        urlPattern: /^https:\/\/.*\.twitch\.tv\/.*/i,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'twitch-api',
-          expiration: {
-            maxEntries: 50,
-            maxAgeSeconds: 60 * 5 // 5 minutes
-          },
-          networkTimeoutSeconds: 10
-        }
-      }]
+        // Note: Twitch API removed - should not be cached (use NetworkOnly default)
+      ]
     },
     devOptions: {
       enabled: false,

@@ -131,6 +131,9 @@ export async function handleUpdateModStatus(
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
+                    // CRITICAL: Prevent caching of service-to-service API calls
+                    // Even server-side calls should not be cached to ensure fresh data
+                    cache: 'no-store',
                 });
                 if (response.ok) {
                     const responseData = await response.json();
@@ -379,6 +382,9 @@ export async function handleAddReviewComment(
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
+                    // CRITICAL: Prevent caching of service-to-service API calls
+                    // Even server-side calls should not be cached to ensure fresh data
+                    cache: 'no-store',
                 });
                 if (response.ok) {
                     const responseData = await response.json();

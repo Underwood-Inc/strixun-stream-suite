@@ -165,18 +165,6 @@ const SelectionInfo = styled.div`
   padding: ${spacing.xs} ${spacing.sm};
 `;
 
-const Loading = styled.div`
-  text-align: center;
-  padding: ${spacing.xxl};
-  color: ${colors.textSecondary};
-`;
-
-const Error = styled.div`
-  text-align: center;
-  padding: ${spacing.xxl};
-  color: ${colors.danger};
-`;
-
 const TableContainer = styled.div`
   flex: 1;
   min-height: 0;
@@ -243,8 +231,8 @@ export function UserManagementPage() {
     const updateUser = useUpdateUser();
 
     // Filter and sort users - MEMOIZED for performance
-    const { filteredUsers, sortedUsers } = useMemo(() => {
-        if (isLoading || error || !data) return { filteredUsers: [], sortedUsers: [] };
+    const sortedUsers = useMemo(() => {
+        if (isLoading || error || !data) return [];
         
         let users = data.users;
         
@@ -253,10 +241,8 @@ export function UserManagementPage() {
             users = filterUsersBySearchQuery(users, searchQuery);
         }
         
-        const filtered = users;
-        
         // Sort users
-        let sorted = [...filtered];
+        let sorted = [...users];
         if (sortConfig) {
             sorted.sort((a, b) => {
                 let aVal: any = a[sortConfig.key as keyof UserListItem];
@@ -281,7 +267,7 @@ export function UserManagementPage() {
             });
         }
         
-        return { filteredUsers: filtered, sortedUsers: sorted };
+        return sorted;
     }, [data, searchQuery, sortConfig, isLoading, error]);
 
     // Handle sort

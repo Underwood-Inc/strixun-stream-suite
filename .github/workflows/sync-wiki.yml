@@ -4,11 +4,12 @@
 # when markdown files are changed on the master branch.
 #
 # The wiki is a separate git repository that GitHub creates automatically.
-# This workflow uses GITHUB_TOKEN which has automatic permissions to push to the wiki.
+# This workflow uses the built-in GITHUB_TOKEN which has automatic permissions to push to the wiki.
+# No custom tokens or secrets are required - the built-in token works for wiki access.
 #
 # Prerequisites:
 # 1. Enable Wikis in repository Settings → Features → Wikis
-# 2. Ensure workflow permissions allow read/write (Settings → Actions → General)
+# 2. Ensure workflow permissions allow read/write (Settings → Actions → General → Workflow permissions)
 # 3. The wiki repository will be created automatically on first sync
 
 name: Sync Documentation to Wiki
@@ -37,9 +38,11 @@ concurrency:
 
 # Sets permissions for GITHUB_TOKEN
 # GITHUB_TOKEN automatically has permissions to push to the wiki
+# Note: Wiki permissions are separate from repository permissions
 permissions:
   contents: read
   # Wiki write permissions are automatically granted to GITHUB_TOKEN
+  # No additional permissions needed for wiki access
 
 jobs:
   sync-wiki:
@@ -89,9 +92,10 @@ jobs:
       - name: Sync documentation to wiki
         if: steps.check-changes.outputs.should_sync == 'true'
         env:
-          # Use GITHUB_TOKEN (automatically provided) or fallback to custom token
-          # GITHUB_TOKEN should work for wikis, but if it doesn't, use a PAT with 'repo' scope
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.WIKI_SYNC_TOKEN }}
+          # Use the built-in GITHUB_TOKEN (automatically provided by GitHub Actions)
+          # This token has automatic permissions to push to the wiki repository
+          # No custom token needed - the built-in token works for wiki access
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🚀 Starting wiki sync..."
           echo ""
@@ -100,15 +104,15 @@ jobs:
           echo "Triggered by: ${{ github.actor }}"
           echo ""
           
-          # Verify token is set
+          # Verify token is set (should always be set by GitHub Actions)
           if [ -z "$GITHUB_TOKEN" ]; then
             echo "❌ ERROR: GITHUB_TOKEN is not set!"
             echo ""
             echo "GITHUB_TOKEN should be automatically provided by GitHub Actions."
-            echo "If you're seeing this error, you may need to:"
-            echo "1. Check repository settings → Actions → General → Workflow permissions"
+            echo "If you're seeing this error, check repository settings:"
+            echo "1. Go to Settings → Actions → General → Workflow permissions"
             echo "2. Ensure 'Read and write permissions' is enabled"
-            echo "3. Or set a custom WIKI_SYNC_TOKEN secret with 'repo' scope"
+            echo "3. The built-in GITHUB_TOKEN will then have wiki write access"
             exit 1
           fi
           
@@ -124,8 +128,14 @@ jobs:
             echo "   - Enable wikis and save"
             echo "   - Then re-run this workflow"
             echo ""
-            echo "2. Token permissions - ensure GITHUB_TOKEN has 'repo' scope"
-            echo "   Or set WIKI_SYNC_TOKEN secret with a Personal Access Token"
+            echo "2. Workflow permissions - ensure the workflow has write access:"
+            echo "   - Go to Settings → Actions → General → Workflow permissions"
+            echo "   - Select 'Read and write permissions'"
+            echo "   - The built-in GITHUB_TOKEN will automatically have wiki access"
+            echo ""
+            echo "3. If issues persist, check the wiki repository exists:"
+            echo "   - Visit: https://github.com/${{ github.repository }}/wiki"
+            echo "   - If it doesn't exist, enable wikis in repository settings"
             exit 1
           }
           

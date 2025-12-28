@@ -5,6 +5,7 @@
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
+import { getOtpCacheHeaders } from '../../utils/cache-headers.js';
 import { hashEmail, generateUserId, constantTimeEquals } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
 import {
@@ -379,9 +380,8 @@ export async function handleVerifyOTP(
         return new Response(JSON.stringify(tokenResponse), {
             headers: { 
                 ...getCorsHeaders(env, request), 
+                ...getOtpCacheHeaders(),
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-store', // OAuth 2.0 requirement
-                'Pragma': 'no-cache',
             },
         });
     } catch (error: any) {

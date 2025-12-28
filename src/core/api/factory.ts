@@ -35,9 +35,9 @@ export function createAPIClient(config: Partial<APIClientConfig> = {}): Enhanced
       retryableErrors: [408, 429, 500, 502, 503, 504],
     },
     cache: {
-      enabled: true,
-      defaultStrategy: 'network-first',
-      defaultTTL: 5 * 60 * 1000, // 5 minutes
+      enabled: false, // Disabled by default - only enable for specific requests that need caching
+      defaultStrategy: 'network-only', // Never cache by default
+      defaultTTL: 0, // No TTL by default
     },
     offline: {
       enabled: true,
