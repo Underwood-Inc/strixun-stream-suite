@@ -145,6 +145,10 @@
       handler();
     }
   }
+
+  // Computed values to avoid deeply nested conditionals in template
+  $: showEmailForm = state.step === 'email';
+  $: showOtpForm = state.step === 'otp';
 </script>
 
 {#if showAsModal}
@@ -165,19 +169,20 @@
             class="otp-login-close" 
             onclick={handleClose} 
             aria-label="Close"
-          >&times;</button>
+          >X</button>
         {/if}
       </div>
       <div class="otp-login-content">
         <ErrorDisplay {state} />
-        {#if state.step === 'email'}
+        {#if showEmailForm}
           <EmailForm 
             {state}
             onEmailChange={handleEmailChange}
             onRequestOtp={handleRequestOtp}
             onKeyPress={handleKeyPress}
           />
-        {:else}
+        {/if}
+        {#if showOtpForm}
           <OtpForm 
             {state}
             onOtpChange={handleOtpChange}
@@ -197,14 +202,15 @@
         <p class="otp-login-subtitle">{subtitle}</p>
       </div>
       <ErrorDisplay {state} />
-      {#if state.step === 'email'}
+      {#if showEmailForm}
         <EmailForm 
           {state}
           onEmailChange={handleEmailChange}
           onRequestOtp={handleRequestOtp}
           onKeyPress={handleKeyPress}
         />
-      {:else}
+      {/if}
+      {#if showOtpForm}
         <OtpForm 
           {state}
           onOtpChange={handleOtpChange}

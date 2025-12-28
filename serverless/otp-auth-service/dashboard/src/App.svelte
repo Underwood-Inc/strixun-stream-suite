@@ -3,7 +3,7 @@
   import type { Customer, User } from '$lib/types';
   import { onMount } from 'svelte';
   import Header from './components/Header.svelte';
-  import Login from './components/Login.svelte';
+  import LoginWrapper from './components/LoginWrapper.svelte';
   import Signup from './components/Signup.svelte';
   import Navigation from './components/Navigation.svelte';
   import Analytics from './pages/Analytics.svelte';
@@ -139,7 +139,7 @@
     </div>
   {:else if !isAuthenticated}
     {#if authView === 'login'}
-      <Login />
+      <LoginWrapper />
     {:else}
       <Signup />
     {/if}
