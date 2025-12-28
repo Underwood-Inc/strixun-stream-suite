@@ -89,6 +89,8 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
     }
     
     // Use framework CORS headers (returns Headers object, convert to Record)
+    // CRITICAL: Trust the framework's createCORSHeaders - it already handles all CORS logic correctly
+    // Do NOT manually set Access-Control-Allow-Origin as it causes duplicate headers
     const corsHeaders = createCORSHeaders(request, {
         allowedOrigins: effectiveOrigins,
     });
@@ -99,32 +101,8 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
         headers[key] = value;
     });
     
-    // CRITICAL: Ensure Access-Control-Allow-Origin is always set
-    // If framework didn't set it, set it explicitly
-    if (!headers['Access-Control-Allow-Origin']) {
-        if (isLocalhost && origin) {
-            // Always allow localhost origin explicitly
-            headers['Access-Control-Allow-Origin'] = origin;
-        } else if (effectiveOrigins.includes('*')) {
-            headers['Access-Control-Allow-Origin'] = '*';
-        } else if (origin && effectiveOrigins.includes(origin)) {
-            headers['Access-Control-Allow-Origin'] = origin;
-        } else if (origin) {
-            // Check for wildcard patterns
-            const matched = effectiveOrigins.find(o => {
-                if (o.endsWith('*')) {
-                    const prefix = o.slice(0, -1);
-                    return origin.startsWith(prefix);
-                }
-                return false;
-            });
-            headers['Access-Control-Allow-Origin'] = matched || origin;
-        } else {
-            headers['Access-Control-Allow-Origin'] = '*';
-        }
-    }
-    
-    // Ensure all required CORS headers are present
+    // The framework's createCORSHeaders already sets all required CORS headers
+    // Only add fallback headers if framework didn't set them (shouldn't happen, but safety check)
     if (!headers['Access-Control-Allow-Methods']) {
         headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
     }
