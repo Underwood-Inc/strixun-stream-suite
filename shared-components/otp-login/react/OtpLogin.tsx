@@ -207,7 +207,7 @@ export function OtpLogin({
                   height: '32px',
                 }}
               >
-                ×
+                {'\u00D7'}
               </button>
             )}
           </div>

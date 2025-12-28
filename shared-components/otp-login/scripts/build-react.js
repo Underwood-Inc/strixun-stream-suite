@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync, writeFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -64,9 +64,38 @@ try {
     },
   });
 
+  // Generate index.js re-export file (value exports only - no types in JS)
+  const indexContent = `/**
+ * React OTP Login Components
+ * 
+ * This file is auto-generated - do not edit manually
+ * Import from this file to use the built React components
+ */
+
+export { OtpLogin } from './otp-login.js';
+
+`;
+  writeFileSync(resolve(outputDir, 'index.js'), indexContent, 'utf-8');
+
+  // Generate index.d.ts type definition file
+  const indexDtsContent = `/**
+ * React OTP Login Components - Type Definitions
+ * 
+ * This file is auto-generated - do not edit manually
+ */
+
+export { OtpLogin } from './otp-login.js';
+export type { OtpLoginProps } from './otp-login.js';
+export type { LoginSuccessData, OtpLoginState, OtpLoginConfig } from '../../core.js';
+
+`;
+  writeFileSync(resolve(outputDir, 'index.d.ts'), indexDtsContent, 'utf-8');
+
   console.log(`[SUCCESS] Built React OTP Login components to ${outputDir}/`);
   console.log(`   - ES Module: otp-login.js`);
   console.log(`   - CommonJS: otp-login.cjs`);
+  console.log(`   - Index: index.js`);
+  console.log(`   - Types: index.d.ts`);
 } catch (error) {
   console.error('[ERROR] Failed to build React OTP Login components:', error);
   process.exit(1);

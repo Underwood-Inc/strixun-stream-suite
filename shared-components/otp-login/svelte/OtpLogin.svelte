@@ -165,7 +165,7 @@
             class="otp-login-close" 
             onclick={handleClose} 
             aria-label="Close"
-          >×</button>
+          >&times;</button>
         {/if}
       </div>
       <div class="otp-login-content">
