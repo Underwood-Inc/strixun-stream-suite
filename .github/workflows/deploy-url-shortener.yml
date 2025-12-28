@@ -1,0 +1,134 @@
+name: Deploy URL Shortener
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'serverless/url-shortener/**'
+  workflow_dispatch:
+
+jobs:
+  # Test job - required before deployment (skip if no test script)
+  test:
+    runs-on: ubuntu-latest
+    name: Test URL Shortener
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/url-shortener
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run URL Shortener Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/url-shortener
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: |
+          echo "[INFO] No test script found in URL Shortener - skipping tests"
+          echo "## [INFO] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
+          echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    needs: test
+    if: needs.test.result == 'success' || needs.test.result == 'skipped'
+    runs-on: ubuntu-latest
+    name: Build and Deploy URL Shortener
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build URL Shortener App
+        working-directory: serverless/url-shortener
+        env:
+          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
+        run: pnpm build:all
+      
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        working-directory: serverless/url-shortener
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy --env production
+      
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "[ERROR] Deployment failed - manual rollback required"
+          echo "Please check Cloudflare dashboard and rollback if needed"
+          exit 1
+      
+      - name: Set Worker Secrets (if needed)
+        working-directory: serverless/url-shortener
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env production
+          fi
+          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS --env production
+          fi
+        continue-on-error: true
+      
+      - name: Deployment Summary
+        run: |
+          echo "## [SUCCESS] URL Shortener Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The URL Shortener has been deployed to Cloudflare Workers." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** \`https://s.idling.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Health check: https://s.idling.app/health" >> $GITHUB_STEP_SUMMARY
+          echo "- API endpoints:" >> $GITHUB_STEP_SUMMARY
+          echo "  - POST /api/create - Create short URL (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "  - GET /api/list - List user's URLs (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "  - DELETE /api/delete/:code - Delete URL (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "  - GET /:code - Redirect to original URL" >> $GITHUB_STEP_SUMMARY
+

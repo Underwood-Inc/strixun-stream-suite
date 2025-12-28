@@ -11,7 +11,6 @@
     "build:otp-login:svelte": "pnpm --filter @strixun/otp-login build:svelte",
     "build:otp-login:vanilla": "pnpm --filter @strixun/otp-login build:vanilla",
     "build:otp-login:all": "pnpm --filter @strixun/otp-login build",
-    "prebuild": "pnpm build:otp-login:svelte",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

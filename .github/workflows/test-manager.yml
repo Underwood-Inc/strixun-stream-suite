@@ -38,6 +38,10 @@ on:
         description: 'Test Game API (skip if no tests)'
         type: boolean
         default: false
+      test_url_shortener:
+        description: 'Test URL Shortener (skip if no tests)'
+        type: boolean
+        default: false
 
 # Sets permissions for GITHUB_TOKEN
 permissions:
@@ -363,13 +367,60 @@ jobs:
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "⚠️ No test script found in Game API - skipping tests"
-          echo "## ⚠️ Game API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[INFO] No test script found in Game API - skipping tests"
+          echo "## [INFO] Game API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
+
+  # URL Shortener Tests (skip if no test script)
+  test_url_shortener:
+    needs: setup
+    if: ${{ inputs.test_url_shortener }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/url-shortener
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run URL Shortener Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/url-shortener
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: |
+          echo "[INFO] No test script found in URL Shortener - skipping tests"
+          echo "## [INFO] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # Test Summary
   summary:
-    needs: [test_root, test_otp_auth, test_mods_api, test_customer_api, test_twitch_api, test_game_api]
+    needs: [test_root, test_otp_auth, test_mods_api, test_customer_api, test_twitch_api, test_game_api, test_url_shortener]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -430,11 +481,21 @@ jobs:
           
           if [ "${{ inputs.test_game_api }}" == "true" ]; then
             if [ "${{ needs.test_game_api.result }}" == "success" ] || [ "${{ needs.test_game_api.result }}" == "skipped" ]; then
-              echo "✅ **Game API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "[SUCCESS] **Game API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_game_api.result }}" == "failure" ]; then
-              echo "❌ **Game API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "[ERROR] **Game API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "⏭️ **Game API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "[INFO] **Game API** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.test_url_shortener }}" == "true" ]; then
+            if [ "${{ needs.test_url_shortener.result }}" == "success" ] || [ "${{ needs.test_url_shortener.result }}" == "skipped" ]; then
+              echo "[SUCCESS] **URL Shortener** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
+              echo "[ERROR] **URL Shortener** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "[INFO] **URL Shortener** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
