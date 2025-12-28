@@ -421,6 +421,12 @@ export function AdminPanel() {
                 <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
                     <Title>Admin Panel - Mod Triage</Title>
                     <Button
+                        onClick={() => navigate('/admin/users')}
+                        variant="secondary"
+                    >
+                        User Management
+                    </Button>
+                    <Button
                         onClick={() => navigate('/admin/r2')}
                         variant="secondary"
                     >

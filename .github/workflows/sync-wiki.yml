@@ -66,11 +66,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Install tsx (for TypeScript execution)
-        # Install tsx temporarily for this run
-        # Note: You can add tsx to devDependencies to avoid installing it each time
-        run: pnpm add -D tsx
-      
       - name: Check for markdown changes
         id: check-changes
         run: |
@@ -118,7 +113,8 @@ jobs:
           fi
           
           # Run the migration script using tsx
-          pnpm exec tsx scripts/migrate-wiki.ts || {
+          # Use pnpm dlx to run tsx without installing it
+          pnpm dlx tsx scripts/migrate-wiki.ts || {
             echo ""
             echo "❌ Wiki sync failed!"
             echo ""

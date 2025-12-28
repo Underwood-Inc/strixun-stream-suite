@@ -205,13 +205,16 @@ export async function wrapWithEncryption(
     // CRITICAL: Exclude thumbnailUrl from encryption - it's a public URL that browsers need to fetch directly
     // Extract thumbnailUrls before encryption and store them separately
     let thumbnailUrlsMap: Record<string, string> | null = null;
-    if (responseData && typeof responseData === 'object') {
+    if (responseData && typeof responseData === 'object' && responseData !== null) {
       thumbnailUrlsMap = {};
       
+      // Type guard: check if responseData has mods property
+      const dataWithMods = responseData as { mods?: unknown[]; mod?: { thumbnailUrl?: string } };
+      
       // Handle mod list responses (array of mods)
-      if (Array.isArray(responseData.mods)) {
-        responseData.mods.forEach((mod: any, index: number) => {
-          if (mod && mod.thumbnailUrl && typeof mod.thumbnailUrl === 'string') {
+      if (Array.isArray(dataWithMods.mods)) {
+        dataWithMods.mods.forEach((mod: any, index: number) => {
+          if (mod && typeof mod === 'object' && mod !== null && 'thumbnailUrl' in mod && typeof mod.thumbnailUrl === 'string') {
             thumbnailUrlsMap![`mods.${index}`] = mod.thumbnailUrl;
             // Temporarily remove to exclude from encryption
             delete mod.thumbnailUrl;
@@ -220,9 +223,9 @@ export async function wrapWithEncryption(
       }
       
       // Handle single mod responses
-      if (responseData.mod && responseData.mod.thumbnailUrl && typeof responseData.mod.thumbnailUrl === 'string') {
-        thumbnailUrlsMap['mod'] = responseData.mod.thumbnailUrl;
-        delete responseData.mod.thumbnailUrl;
+      if (dataWithMods.mod && typeof dataWithMods.mod === 'object' && dataWithMods.mod !== null && 'thumbnailUrl' in dataWithMods.mod && typeof dataWithMods.mod.thumbnailUrl === 'string') {
+        thumbnailUrlsMap['mod'] = dataWithMods.mod.thumbnailUrl;
+        delete dataWithMods.mod.thumbnailUrl;
       }
     }
     

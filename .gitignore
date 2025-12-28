@@ -82,3 +82,5 @@ yarn-error.log*
 *storybook.log
 storybook-static
 *temp*
+CONTEXT_SUMMARY.md
+*PROMPT*

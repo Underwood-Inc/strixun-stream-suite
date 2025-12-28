@@ -201,11 +201,13 @@ export async function listMods(params: {
         }
         
         // Check if we got HTML instead of JSON (common when proxy is misconfigured or wrangler isn't running)
-        if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
+        // Type guard: check if data is a string (shouldn't happen with proper typing, but handle it)
+        const responseData = response.data as unknown;
+        if (typeof responseData === 'string' && responseData.trim().startsWith('<!DOCTYPE')) {
             console.error('[API] Received HTML instead of JSON - this usually means:');
             console.error('[API] 1. Wrangler dev server is not running on port 8787');
             console.error('[API] 2. Vite proxy is not working (try restarting Vite)');
-            console.error('[API] 3. Request URL:', response.url || 'unknown');
+            console.error('[API] 3. Request URL:', response.request?.url || 'unknown');
             throw new Error('API returned HTML instead of JSON. Make sure:\n1. Wrangler dev server is running: cd serverless/mods-api && pnpm dev\n2. Vite dev server has been restarted after config changes\n3. Both servers are running (use: pnpm dev:all)');
         }
         
@@ -649,6 +651,62 @@ export async function bulkDeleteR2Files(keys: string[]): Promise<{
         failed: number;
         results: Array<{ key: string; deleted: boolean; error?: string }>;
     }>('/admin/r2/files/delete', { keys });
+    return response.data;
+}
+
+// ============================================================================
+// User Management API (Admin Only)
+// ============================================================================
+
+/**
+ * List all users (admin only)
+ */
+export async function listUsers(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+}): Promise<import('../types/user').UserListResponse> {
+    const response = await api.get<import('../types/user').UserListResponse>('/admin/users', params);
+    return response.data;
+}
+
+/**
+ * Get user details (admin only)
+ */
+export async function getUserDetails(userId: string): Promise<import('../types/user').UserDetail> {
+    const response = await api.get<import('../types/user').UserDetail>(`/admin/users/${userId}`);
+    return response.data;
+}
+
+/**
+ * Update user (admin only)
+ */
+export async function updateUser(
+    userId: string,
+    updates: import('../types/user').UpdateUserRequest
+): Promise<{ success: boolean; userId: string }> {
+    const response = await api.put<{ success: boolean; userId: string }>(`/admin/users/${userId}`, updates);
+    return response.data;
+}
+
+/**
+ * Get user's mods (admin only)
+ */
+export async function getUserMods(userId: string, params: {
+    page?: number;
+    pageSize?: number;
+}): Promise<{
+    mods: ModMetadata[];
+    total: number;
+    page: number;
+    pageSize: number;
+}> {
+    const response = await api.get<{
+        mods: ModMetadata[];
+        total: number;
+        page: number;
+        pageSize: number;
+    }>(`/admin/users/${userId}/mods`, params);
     return response.data;
 }
 

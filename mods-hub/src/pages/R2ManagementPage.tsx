@@ -7,7 +7,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
-import { listR2Files, detectDuplicates, deleteR2File, bulkDeleteR2Files, type R2FileInfo, type DuplicateGroup } from '../services/api';
+import { listR2Files, detectDuplicates, deleteR2File, bulkDeleteR2Files } from '../services/api';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
 const PageContainer = styled.div`

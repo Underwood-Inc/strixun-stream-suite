@@ -139,6 +139,37 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth);
         }
 
+        // Route: GET /admin/users - List all users
+        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'GET') {
+            const { handleListUsers } = await import('../handlers/admin/users.js');
+            const response = await handleListUsers(request, env, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: GET /admin/users/:userId - Get user details
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'GET') {
+            const userId = pathSegments[2];
+            const { handleGetUserDetails } = await import('../handlers/admin/users.js');
+            const response = await handleGetUserDetails(request, env, userId, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: PUT /admin/users/:userId - Update user
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'PUT') {
+            const userId = pathSegments[2];
+            const { handleUpdateUser } = await import('../handlers/admin/users.js');
+            const response = await handleUpdateUser(request, env, userId, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
+        // Route: GET /admin/users/:userId/mods - Get user's mods
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && pathSegments[3] === 'mods' && request.method === 'GET') {
+            const userId = pathSegments[2];
+            const { handleGetUserMods } = await import('../handlers/admin/users.js');
+            const response = await handleGetUserMods(request, env, userId, auth);
+            return await wrapWithEncryption(response, auth);
+        }
+
         // 404 for unknown admin routes
         return null;
     } catch (error: any) {
