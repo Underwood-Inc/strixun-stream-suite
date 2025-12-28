@@ -36,7 +36,10 @@ export async function handleGetModDetail(
             
             // If not found and authenticated, check customer scope
             if (!mod && auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${slug}`);
+                // Normalize slug (which might be a modId) to match storage format
+                const { normalizeModId } = await import('../../utils/customer.js');
+                const normalizedSlug = normalizeModId(slug);
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedSlug}`);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
             

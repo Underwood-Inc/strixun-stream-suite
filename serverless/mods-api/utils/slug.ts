@@ -2,7 +2,7 @@
  * Slug utilities for mod lookup
  */
 
-import { getCustomerKey } from './customer.js';
+import { getCustomerKey, normalizeModId } from './customer.js';
 import { isSuperAdminEmail } from './admin.js';
 import type { ModMetadata } from '../types/mod.js';
 
@@ -52,7 +52,9 @@ export async function findModBySlug(
         
         if (customerModsList) {
             for (const modId of customerModsList) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+                // Normalize modId to match how it was stored (with normalizeModId)
+                const normalizedModId = normalizeModId(modId);
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
                 const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                 if (mod && mod.slug === slug) {
                     // For customer-scoped mods, allow if user is author or super admin
