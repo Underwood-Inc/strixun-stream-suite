@@ -6,7 +6,7 @@
   import UrlManager from './pages/UrlManager.svelte';
 
   let isAuthenticated = false;
-  let userEmail: string | null = null;
+  let userDisplayName: string | null = null;
   let loading = true;
 
   function getApiUrl(): string {
@@ -24,32 +24,61 @@
     return getKey();
   }
 
-  onMount(() => {
+  /**
+   * Fetch user display name from /auth/me
+   * CRITICAL: Never display email in UI - only use displayName
+   */
+  async function fetchUserDisplayName(token: string): Promise<string | null> {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.displayName || null;
+      }
+    } catch (error) {
+      console.error('[URL Shortener] Failed to fetch display name:', error);
+    }
+    return null;
+  }
+
+  onMount(async () => {
     // Check for stored token
     const token = apiClient.getToken();
-    const storedEmail = typeof window !== 'undefined' 
-      ? localStorage.getItem('urlShortenerEmail') 
-      : null;
     
-    if (token && storedEmail) {
-      isAuthenticated = true;
-      userEmail = storedEmail;
+    if (token) {
+      // Fetch display name from auth API
+      const displayName = await fetchUserDisplayName(token);
+      if (displayName) {
+        isAuthenticated = true;
+        userDisplayName = displayName;
+      }
     }
     
     loading = false;
   });
 
-  function handleLoginSuccess(data: LoginSuccessData): void {
+  async function handleLoginSuccess(data: LoginSuccessData): Promise<void> {
     const token = data.access_token || data.token;
-    const email = data.email;
     
-    apiClient.setToken(token || null);
-    if (typeof window !== 'undefined' && email) {
-      localStorage.setItem('urlShortenerEmail', email);
+    if (!token) {
+      console.error('[URL Shortener] No token in login response');
+      return;
     }
     
+    apiClient.setToken(token);
+    
+    // Fetch display name from auth API (never store or display email)
+    const displayName = await fetchUserDisplayName(token);
+    
     isAuthenticated = true;
-    userEmail = email;
+    userDisplayName = displayName;
   }
 
   function handleLoginError(error: string): void {
@@ -65,7 +94,7 @@
   function handleLogout(): void {
     apiClient.logout();
     isAuthenticated = false;
-    userEmail = null;
+    userDisplayName = null;
   }
 </script>
 
@@ -78,7 +107,7 @@
   {:else if !isAuthenticated}
     <div class="auth-container">
       <div class="auth-header">
-        <h1>[LINK] URL Shortener</h1>
+        <h1>URL Shortener</h1>
         <p>Strixun Stream Suite - Create and manage short URLs with secure OTP authentication</p>
       </div>
       <OtpLogin
@@ -93,7 +122,7 @@
       />
     </div>
   {:else}
-    <UrlManager {userEmail} on:logout={handleLogout} />
+    <UrlManager {userDisplayName} on:logout={handleLogout} />
   {/if}
 </div>
 

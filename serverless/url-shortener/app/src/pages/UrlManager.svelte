@@ -3,7 +3,7 @@
   import { apiClient, type ShortUrl } from '$lib/api-client';
   import { createEventDispatcher } from 'svelte';
 
-  export let userEmail: string | null = null;
+  export let userDisplayName: string | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -160,8 +160,8 @@
   <header class="header">
     <div class="header-content">
       <div>
-        <h1>[LINK] URL Shortener</h1>
-        <p class="user-info">Signed in as: <strong>{userEmail}</strong></p>
+        <h1>URL Shortener</h1>
+        <p class="user-info">Signed in as: <strong>{userDisplayName || 'User'}</strong></p>
       </div>
       <button class="btn btn-secondary" on:click={handleLogout}>
         Sign Out
