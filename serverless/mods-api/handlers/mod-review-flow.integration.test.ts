@@ -118,7 +118,8 @@ describe('Mod Review Flow Integration', () => {
             }, mockEnv.JWT_SECRET);
 
             // Admin should be able to review mod
-            const isAdmin = await require('../utils/admin.js').isSuperAdminEmail(adminEmail, mockEnv);
+            const { isSuperAdminEmail } = await import('../utils/admin.js');
+            const isAdmin = await isSuperAdminEmail(adminEmail, mockEnv);
             expect(isAdmin).toBe(true);
         });
 
