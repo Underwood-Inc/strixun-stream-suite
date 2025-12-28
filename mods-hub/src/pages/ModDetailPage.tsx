@@ -3,6 +3,7 @@
  * Shows mod information, versions, and download options
  */
 
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useModDetail, useModRatings, useSubmitModRating } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
@@ -11,6 +12,7 @@ import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
+import { getDownloadUrl } from '../services/api';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 
@@ -84,11 +86,37 @@ const Error = styled.div`
   color: ${colors.danger};
 `;
 
+const Actions = styled.div`
+  display: flex;
+  gap: ${spacing.md};
+  align-items: center;
+  margin-top: ${spacing.md};
+`;
+
+const DownloadButton = styled.a`
+  padding: ${spacing.md} ${spacing.lg};
+  background: ${colors.accent};
+  color: ${colors.bg};
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  
+  &:hover {
+    background: ${colors.accentHover};
+  }
+`;
+
 export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const { data, isLoading, error } = useModDetail(slug || '');
     const { user } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
+    const [thumbnailError, setThumbnailError] = useState(false);
     
     // Fetch ratings for this mod
     const { data: ratingsData } = useModRatings(data?.mod.modId || '');
@@ -109,12 +137,22 @@ export function ModDetailPage() {
         });
     };
 
+    const handleThumbnailError = () => {
+        setThumbnailError(true);
+    };
+
     return (
         <>
             <ModMetaTags mod={mod} />
             <PageContainer>
                 <Header>
-                {mod.thumbnailUrl && <Thumbnail src={mod.thumbnailUrl} alt={mod.title} />}
+                {mod.thumbnailUrl && !thumbnailError && (
+                    <Thumbnail 
+                        src={mod.thumbnailUrl} 
+                        alt={mod.title}
+                        onError={handleThumbnailError}
+                    />
+                )}
                 <Info>
                     <Title>{mod.title}</Title>
                     <Description>{mod.description}</Description>
@@ -140,6 +178,16 @@ export function ModDetailPage() {
                             <Tag key={tag}>{tag}</Tag>
                         ))}
                     </Tags>
+                    {latestVersion && (
+                        <Actions>
+                            <DownloadButton
+                                href={getDownloadUrl(mod.slug, latestVersion.versionId)}
+                                download
+                            >
+                                Download Latest Version (v{latestVersion.version})
+                            </DownloadButton>
+                        </Actions>
+                    )}
                 </Info>
             </Header>
 

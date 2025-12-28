@@ -319,6 +319,11 @@ export async function handleUploadMod(
             dependencies: metadata.dependencies || [],
         };
 
+        // Upload thumbnail first (before creating mod metadata) so we can use the slug
+        const thumbnailUrl = metadata.thumbnail 
+            ? await handleThumbnailUpload(metadata.thumbnail, modId, slug, env, auth.customerId)
+            : undefined;
+
         // Create mod metadata with initial status
         const mod: ModMetadata = {
             modId,
@@ -329,7 +334,7 @@ export async function handleUploadMod(
             description: metadata.description || '',
             category: metadata.category,
             tags: metadata.tags || [],
-            thumbnailUrl: metadata.thumbnail ? await handleThumbnailUpload(metadata.thumbnail, modId, env, auth.customerId) : undefined,
+            thumbnailUrl,
             createdAt: now,
             updatedAt: now,
             latestVersion: metadata.version,
@@ -417,6 +422,7 @@ export async function handleUploadMod(
 async function handleThumbnailUpload(
     base64Data: string,
     modId: string,
+    slug: string,
     env: Env,
     customerId: string | null
 ): Promise<string> {
@@ -474,12 +480,7 @@ async function handleThumbnailUpload(
         });
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)
-        // Get the mod to get its slug
-        // Use normalized modId for key lookup
-        const normalizedModId = normalizeModId(modId);
-        const modKey = `mod_${normalizedModId}`;
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-        const slug = mod?.slug || modId; // Fallback to modId if mod not found yet
+        // Slug is passed as parameter to avoid race condition (mod not stored yet)
         const API_BASE_URL = 'https://mods-api.idling.app';
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {

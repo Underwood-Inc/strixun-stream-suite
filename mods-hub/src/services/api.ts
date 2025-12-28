@@ -378,10 +378,11 @@ export async function uploadVersion(
 
 /**
  * Download version
+ * Accepts either modId or slug (backend supports both)
  */
-export function getDownloadUrl(modId: string, versionId: string): string {
-    const url = `${API_BASE_URL}/mods/${modId}/versions/${versionId}/download`;
-    console.log('[API] getDownloadUrl called:', { modId, versionId, url });
+export function getDownloadUrl(modIdOrSlug: string, versionId: string): string {
+    const url = `${API_BASE_URL}/mods/${modIdOrSlug}/versions/${versionId}/download`;
+    console.log('[API] getDownloadUrl called:', { modIdOrSlug, versionId, url });
     return url;
 }
 

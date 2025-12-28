@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import type { ModRating } from '../../types/mod';
 import styled from 'styled-components';
@@ -343,7 +344,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
 
             {!isAuthenticated && (
                 <AuthPrompt>
-                    <a href="/login" style={{ color: colors.accent }}>Log in</a> to rate and review this mod
+                    <Link to="/login" style={{ color: colors.accent, textDecoration: 'none' }}>Log in</Link> to rate and review this mod
                 </AuthPrompt>
             )}
 

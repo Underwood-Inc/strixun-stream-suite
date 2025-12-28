@@ -3,6 +3,7 @@
  * Displays mod preview in grid
  */
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
@@ -114,6 +115,10 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
         }
     };
 
+    const handleThumbnailError = () => {
+        setThumbnailError(true);
+    };
+
     return (
         <CardContainer>
             {showDelete && onDelete && (
@@ -122,7 +127,13 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                 </DeleteButton>
             )}
             <Card to={`/${mod.slug}`}>
-                {mod.thumbnailUrl && <Thumbnail src={mod.thumbnailUrl} alt={mod.title} />}
+                {mod.thumbnailUrl && !thumbnailError && (
+                    <Thumbnail 
+                        src={mod.thumbnailUrl} 
+                        alt={mod.title}
+                        onError={handleThumbnailError}
+                    />
+                )}
                 <Title>{mod.title}</Title>
                 <Description>{mod.description || 'No description'}</Description>
                 <Meta>

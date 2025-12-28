@@ -118,7 +118,8 @@ export async function handleUpdateMod(
         // Handle thumbnail update
         if (updateData.thumbnail) {
             try {
-                mod.thumbnailUrl = await handleThumbnailUpload(updateData.thumbnail, modId, env, auth.customerId);
+                // Use current slug (may have been updated if title changed)
+                mod.thumbnailUrl = await handleThumbnailUpload(updateData.thumbnail, modId, mod.slug, env, auth.customerId);
             } catch (error) {
                 console.error('Thumbnail update error:', error);
                 // Continue without thumbnail update
@@ -200,6 +201,7 @@ export async function handleUpdateMod(
 async function handleThumbnailUpload(
     base64Data: string,
     modId: string,
+    slug: string,
     env: Env,
     customerId: string | null
 ): Promise<string> {
@@ -257,10 +259,7 @@ async function handleThumbnailUpload(
         });
 
         // Return API proxy URL using slug (thumbnails should be served through API, not direct R2)
-        // Get mod to get slug
-        const modKey = `mod_${modId}`;
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
-        const slug = mod?.slug || modId; // Fallback to modId if mod not found
+        // Slug is passed as parameter to avoid race condition
         const API_BASE_URL = 'https://mods-api.idling.app';
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {

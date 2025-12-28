@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '../../../shared-components/search-query-parser/AdvancedSearchInput';
 import type { Column } from '../../../shared-components/virtualized-table/VirtualizedTable';
@@ -148,7 +149,7 @@ const ActionGroup = styled.div`
   flex-wrap: wrap;
 `;
 
-const Link = styled.a`
+const StyledLink = styled(Link)`
   color: ${colors.accent};
   text-decoration: none;
   
@@ -310,9 +311,9 @@ export function AdminPanel() {
             width: '300px',
             sortable: true,
             render: (mod) => (
-                <Link href={`/${mod.slug}`} target="_blank" rel="noopener noreferrer">
+                <StyledLink to={`/${mod.slug}`}>
                     {mod.title}
-                </Link>
+                </StyledLink>
             ),
         },
         {
