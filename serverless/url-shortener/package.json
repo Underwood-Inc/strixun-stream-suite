@@ -8,14 +8,15 @@
   "scripts": {
     "build:decrypt": "node scripts/bundle-decrypt.js",
     "build:otp-core": "node scripts/bundle-otp-core.js",
-    "build:html": "node scripts/bundle-html.js",
-    "build:all": "pnpm build:decrypt && pnpm build:otp-core && pnpm build:html",
+    "build:app": "cd app && pnpm build",
+    "build:app-assets": "node scripts/build-app.js",
+    "build:all": "pnpm build:decrypt && pnpm build:otp-core && pnpm build:app && pnpm build:app-assets",
     "predeploy": "pnpm build:all",
     "predeploy:prod": "pnpm build:all",
     "predev": "pnpm build:all",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env production",
-    "deploy:prod": "wrangler deploy --env production",
+    "deploy: prod": "wrangler deploy --env production",
     "tail": "wrangler tail",
     "tail:prod": "wrangler tail --env production"
   },
