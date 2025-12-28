@@ -143,7 +143,7 @@ export function ModDetailPage() {
                 </Info>
             </Header>
 
-            <ModVersionList modSlug={mod.slug} versions={versions} isUploader={isUploader} />
+            <ModVersionList versions={versions} isUploader={isUploader} />
             
             {isUploader && (
                 <ModAnalytics mod={mod} versions={versions} />

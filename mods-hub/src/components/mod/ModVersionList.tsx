@@ -86,12 +86,11 @@ const DownloadButton = styled.a`
 `;
 
 interface ModVersionListProps {
-    modSlug: string;
     versions: ModVersion[];
     isUploader?: boolean;
 }
 
-export function ModVersionList({ modSlug, versions, isUploader = false }: ModVersionListProps) {
+export function ModVersionList({ versions, isUploader = false }: ModVersionListProps) {
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
