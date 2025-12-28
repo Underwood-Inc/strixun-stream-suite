@@ -107,6 +107,8 @@ interface ModCardProps {
 }
 
 export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
+    const [thumbnailError, setThumbnailError] = useState(false);
+
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
