@@ -186,24 +186,32 @@ export async function wrapWithEncryption(
   // If no auth token, return unencrypted (but still set header to false for clarity)
   // This is likely a service-to-service call - add integrity header
   if (!auth?.jwtToken || auth.userId === 'service') {
-    const headers = new Headers(handlerResponse.headers);
-    headers.set('X-Encrypted', 'false');
-    
-    // Add integrity header for service-to-service calls
+    // Add integrity header for service-to-service calls (CRITICAL for security)
     if (request && env) {
         try {
             const { wrapResponseWithIntegrity } = await import('../service-client/integrity-response.js');
             const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth ?? null, env);
+            // Ensure X-Encrypted header is set
+            const finalHeaders = new Headers(responseWithIntegrity.headers);
+            finalHeaders.set('X-Encrypted', 'false');
             return {
-                response: responseWithIntegrity,
+                response: new Response(responseWithIntegrity.body, {
+                    status: responseWithIntegrity.status,
+                    statusText: responseWithIntegrity.statusText,
+                    headers: finalHeaders,
+                }),
                 customerId: auth?.customerId || null,
             };
         } catch (error) {
             console.error('Failed to add integrity header to service response:', error);
-            // Fall through to return response without integrity header
+            // If integrity header addition fails, we MUST fail the request for security
+            throw new Error(`[NetworkIntegrity] Failed to add integrity header: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
     
+    // If no request/env provided, still set X-Encrypted header
+    const headers = new Headers(handlerResponse.headers);
+    headers.set('X-Encrypted', 'false');
     return {
       response: new Response(handlerResponse.body, {
         status: handlerResponse.status,
