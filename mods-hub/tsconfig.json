@@ -21,8 +21,8 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Types */
-    // Removed types restriction to allow TypeScript to auto-discover all types
-    // This ensures React types are included along with any other needed types
+    // Include React types and Cloudflare Workers types
+    "types": ["@types/react", "@types/react-dom", "@cloudflare/workers-types"],
 
     /* Path aliases */
     "baseUrl": ".",
@@ -33,6 +33,7 @@
   "include": ["src"],
   "exclude": [
     "../shared-components/**/*",
+    "../src/**/*",
     "node_modules"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -22,7 +22,7 @@
       "@shared-components/*": ["./*"],
       "@shared-styles/*": ["../shared-styles/*"]
     },
-    "types": ["vite/client", "svelte", "node"]
+    "types": ["vite/client", "svelte", "node", "@types/react", "@types/react-dom", "@cloudflare/workers-types"]
   },
   "include": [
     "**/*.ts",
