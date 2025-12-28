@@ -19,25 +19,33 @@ export async function handleThumbnail(
     modId: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
+    console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
         // Get mod metadata - modId parameter might be a slug or actual modId
         // Try slug lookup first (more common for public URLs), then fall back to direct modId lookup
+        console.log('[Thumbnail] Strategy 1: Trying slug lookup:', { modId });
         let mod: ModMetadata | null = await findModBySlug(modId, env, auth);
+        if (mod) console.log('[Thumbnail] Found mod by slug:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
         
         // If slug lookup failed, try direct modId lookup
         if (!mod) {
+            console.log('[Thumbnail] Strategy 2: Trying modId lookup:', { modId });
             // First try global scope (for public mods)
             const globalModKey = `mod_${modId}`;
+            console.log('[Thumbnail] Checking global scope:', { globalModKey });
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             
             // If not found and authenticated, check customer scope
             if (!mod && auth?.customerId) {
                 const customerModKey = getCustomerKey(auth.customerId, `mod_${modId}`);
+                console.log('[Thumbnail] Checking customer scope:', { customerModKey });
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
+            if (mod) console.log('[Thumbnail] Found mod by modId:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
         }
 
         if (!mod) {
+            console.error('[Thumbnail] Mod not found:', { modId });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -116,6 +124,7 @@ export async function handleThumbnail(
 
         // If no thumbnail, return 404
         if (!mod.thumbnailUrl) {
+            console.error('[Thumbnail] Mod has no thumbnailUrl:', { modId: mod.modId, slug: mod.slug });
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'This mod does not have a thumbnail');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -129,12 +138,15 @@ export async function handleThumbnail(
             });
         }
 
+        console.log('[Thumbnail] Mod has thumbnailUrl:', { thumbnailUrl: mod.thumbnailUrl, modId: mod.modId, slug: mod.slug });
+
         // Reconstruct R2 key from mod metadata
         // Thumbnails are stored as: customer_xxx/thumbnails/modId.ext
         // Use mod's customerId (not auth customerId) to ensure correct scope
         // Use mod.modId (actual modId) not the URL parameter (which might be a slug)
         const customerId = mod.customerId || null;
         const actualModId = mod.modId;
+        console.log('[Thumbnail] Looking up R2 file:', { customerId, actualModId });
         
         // Try common image extensions to find the actual file
         // This handles cases where extension wasn't stored in metadata
@@ -144,16 +156,19 @@ export async function handleThumbnail(
         
         for (const ext of extensions) {
             const testKey = getCustomerR2Key(customerId, `thumbnails/${actualModId}.${ext}`);
+            console.log('[Thumbnail] Trying R2 key:', { testKey, ext });
             const testFile = await env.MODS_R2.get(testKey);
             if (testFile) {
                 r2Key = testKey;
                 thumbnail = testFile;
+                console.log('[Thumbnail] Found thumbnail in R2:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
                 break;
             }
         }
         
         // If not found, return 404
         if (!r2Key || !thumbnail) {
+            console.error('[Thumbnail] Thumbnail file not found in R2:', { customerId, actualModId, triedExtensions: extensions });
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -168,6 +183,7 @@ export async function handleThumbnail(
         }
 
         // Return thumbnail with proper headers
+        console.log('[Thumbnail] Serving thumbnail:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });

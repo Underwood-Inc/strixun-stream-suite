@@ -213,7 +213,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // Route: GET /mods/:modId/thumbnail or GET /:modId/thumbnail - Get thumbnail
         if (pathSegments.length === 2 && pathSegments[1] === 'thumbnail' && request.method === 'GET') {
             const modId = pathSegments[0];
+            console.log('[Router] Thumbnail request:', { path, pathSegments, modId, hasAuth: !!auth });
             const response = await handleThumbnail(request, env, modId, auth);
+            console.log('[Router] Thumbnail response:', { status: response.status, contentType: response.headers.get('content-type') });
             // Don't encrypt binary image data
             return { response, customerId: auth?.customerId || null };
         }
@@ -231,7 +233,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'download' && request.method === 'GET') {
             const modId = pathSegments[0];
             const versionId = pathSegments[2];
+            console.log('[Router] Download request:', { path, pathSegments, modId, versionId, hasAuth: !!auth });
             const response = await handleDownloadVersion(request, env, modId, versionId, auth);
+            console.log('[Router] Download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
             // Downloads are binary files - DO NOT encrypt, return as-is
             return { response, customerId: auth?.customerId || null };
         }

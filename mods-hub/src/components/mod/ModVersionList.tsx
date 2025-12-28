@@ -86,11 +86,12 @@ const DownloadButton = styled.a`
 `;
 
 interface ModVersionListProps {
+    modSlug: string; // Mod slug for constructing download URLs
     versions: ModVersion[];
     isUploader?: boolean;
 }
 
-export function ModVersionList({ versions, isUploader = false }: ModVersionListProps) {
+export function ModVersionList({ modSlug, versions, isUploader = false }: ModVersionListProps) {
     const formatFileSize = (bytes: number): string => {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -132,7 +133,7 @@ export function ModVersionList({ versions, isUploader = false }: ModVersionListP
                         )}
                     </VersionInfo>
                     <DownloadButton
-                        href={getDownloadUrl(version.modId, version.versionId)}
+                        href={getDownloadUrl(modSlug, version.versionId)}
                         download
                     >
                         Download

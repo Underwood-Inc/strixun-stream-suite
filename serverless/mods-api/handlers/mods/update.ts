@@ -256,9 +256,13 @@ async function handleThumbnailUpload(
             },
         });
 
-        // Return API proxy URL (thumbnails should be served through API, not direct R2)
+        // Return API proxy URL using slug (thumbnails should be served through API, not direct R2)
+        // Get mod to get slug
+        const modKey = `mod_${modId}`;
+        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        const slug = mod?.slug || modId; // Fallback to modId if mod not found
         const API_BASE_URL = 'https://mods-api.idling.app';
-        return `${API_BASE_URL}/mods/${modId}/thumbnail`;
+        return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
         console.error('Thumbnail upload error:', error);
         throw error;

@@ -39,6 +39,7 @@ function getAuthToken(): string | null {
         }
     } catch (err) {
         // Auth store might not be available, that's okay
+        console.error({err: err instanceof Error ? err.message : String(err)});
     }
     
     return null;
@@ -194,11 +195,28 @@ export async function listMods(params: {
         const response = await api.get<ModListResponse>('/mods', params, {
             cache: undefined, // Explicitly disable caching for this request
         });
-        console.log('[API] Response received:', response);
+        console.log('[API] listMods response received:', {
+            status: response.status,
+            hasData: !!response.data,
+            modsCount: response.data?.mods?.length,
+        });
+        
         if (!response.data) {
             console.error('[API] Response missing data property:', response);
             throw new Error('Invalid response format: missing data property');
         }
+        
+        // Log thumbnail URLs for debugging
+        if (response.data.mods && response.data.mods.length > 0) {
+            console.log('[API] Sample mod thumbnailUrls:', response.data.mods.slice(0, 3).map(m => ({
+                title: m.title,
+                slug: m.slug,
+                modId: m.modId,
+                thumbnailUrl: m.thumbnailUrl,
+                thumbnailUrlType: typeof m.thumbnailUrl,
+            })));
+        }
+        
         return response.data;
     } catch (error) {
         console.error('[API] Error fetching mods list:', error);
@@ -215,7 +233,19 @@ export async function listMods(params: {
  * Get mod detail (by slug)
  */
 export async function getModDetail(slug: string): Promise<ModDetailResponse> {
+    console.log('[API] getModDetail called:', { slug, url: `/mods/${slug}` });
     const response = await api.get<ModDetailResponse>(`/mods/${slug}`);
+    console.log('[API] getModDetail response:', {
+        status: response.status,
+        hasData: !!response.data,
+        hasMod: !!response.data?.mod,
+        modId: response.data?.mod?.modId,
+        slug: response.data?.mod?.slug,
+        thumbnailUrl: response.data?.mod?.thumbnailUrl,
+        thumbnailUrlType: typeof response.data?.mod?.thumbnailUrl,
+        thumbnailUrlLength: response.data?.mod?.thumbnailUrl?.length,
+        versionsCount: response.data?.versions?.length,
+    });
     return response.data;
 }
 
@@ -350,7 +380,9 @@ export async function uploadVersion(
  * Download version
  */
 export function getDownloadUrl(modId: string, versionId: string): string {
-    return `${API_BASE_URL}/mods/${modId}/versions/${versionId}/download`;
+    const url = `${API_BASE_URL}/mods/${modId}/versions/${versionId}/download`;
+    console.log('[API] getDownloadUrl called:', { modId, versionId, url });
+    return url;
 }
 
 /**

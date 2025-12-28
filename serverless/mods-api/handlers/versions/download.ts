@@ -23,32 +23,41 @@ export async function handleDownloadVersion(
     versionId: string,
     auth: { userId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
+    console.log('[Download] handleDownloadVersion called:', { modIdOrSlug, versionId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
         // Get mod metadata - try multiple lookup strategies for legacy compatibility
         let mod: ModMetadata | null = null;
         
         // Strategy 1: Try direct modId lookup (legacy pattern: mod_xxx or just xxx)
         const cleanModId = modIdOrSlug.startsWith('mod_') ? modIdOrSlug.substring(4) : modIdOrSlug;
+        console.log('[Download] Strategy 1: Trying modId lookup:', { cleanModId, original: modIdOrSlug });
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
             const customerModKey = getCustomerKey(auth.customerId, `mod_${cleanModId}`);
+            console.log('[Download] Checking customer scope:', { customerModKey });
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            if (mod) console.log('[Download] Found mod in customer scope:', { modId: mod.modId, slug: mod.slug });
         }
         
         // Fall back to global scope if not found
         if (!mod) {
             const globalModKey = `mod_${cleanModId}`;
+            console.log('[Download] Checking global scope:', { globalModKey });
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            if (mod) console.log('[Download] Found mod in global scope:', { modId: mod.modId, slug: mod.slug });
         }
         
         // Strategy 2: If not found by modId, try slug lookup (new pattern)
         if (!mod) {
+            console.log('[Download] Strategy 2: Trying slug lookup:', { modIdOrSlug });
             mod = await findModBySlug(modIdOrSlug, env, auth);
+            if (mod) console.log('[Download] Found mod by slug:', { modId: mod.modId, slug: mod.slug });
         }
         
         // Strategy 3: Try treating the entire string as modId (for legacy mods with full mod_ prefix)
         if (!mod && modIdOrSlug.startsWith('mod_')) {
+            console.log('[Download] Strategy 3: Trying full modId:', { modIdOrSlug });
             if (auth?.customerId) {
                 const customerModKey = getCustomerKey(auth.customerId, modIdOrSlug);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
@@ -56,9 +65,11 @@ export async function handleDownloadVersion(
             if (!mod) {
                 mod = await env.MODS_KV.get(modIdOrSlug, { type: 'json' }) as ModMetadata | null;
             }
+            if (mod) console.log('[Download] Found mod by full modId:', { modId: mod.modId, slug: mod.slug });
         }
 
         if (!mod) {
+            console.error('[Download] Mod not found after all strategies:', { modIdOrSlug, versionId }); {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -116,21 +127,32 @@ export async function handleDownloadVersion(
 
         // Get version metadata - check both customer scope and global scope
         let version: ModVersion | null = null;
+        console.log('[Download] Looking up version:', { versionId, modId: mod.modId });
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
             const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+            console.log('[Download] Checking customer scope for version:', { customerVersionKey });
             version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+            if (version) console.log('[Download] Found version in customer scope:', { versionId: version.versionId, modId: version.modId });
         }
         
         // Fall back to global scope if not found
         if (!version) {
             const globalVersionKey = `version_${versionId}`;
+            console.log('[Download] Checking global scope for version:', { globalVersionKey });
             version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+            if (version) console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
         }
 
         // Check version belongs to mod - version.modId must match mod.modId (source of truth)
         if (!version || version.modId !== mod.modId) {
+            console.error('[Download] Version not found or mismatch:', { 
+                hasVersion: !!version, 
+                versionModId: version?.modId, 
+                expectedModId: mod.modId,
+                versionId 
+            });
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -143,6 +165,13 @@ export async function handleDownloadVersion(
                 },
             });
         }
+
+        console.log('[Download] Version found, preparing download:', { 
+            versionId: version.versionId, 
+            fileName: version.fileName, 
+            r2Key: version.r2Key,
+            fileSize: version.fileSize
+        });
 
         // Increment download count
         version.downloads += 1;
@@ -173,9 +202,11 @@ export async function handleDownloadVersion(
         // Get encrypted file from R2
         // SECURITY: Files are stored encrypted in R2 (encryption at rest)
         // We decrypt on-the-fly during download to return usable files
+        console.log('[Download] Fetching file from R2:', { r2Key: version.r2Key });
         const encryptedFile = await env.MODS_R2.get(version.r2Key);
         
         if (!encryptedFile) {
+            console.error('[Download] File not found in R2:', { r2Key: version.r2Key });
             const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found in storage');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -191,19 +222,28 @@ export async function handleDownloadVersion(
 
         // Check if file is encrypted (should always be true for new uploads)
         const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
+        console.log('[Download] File retrieved from R2:', { 
+            size: encryptedFile.size, 
+            isEncrypted, 
+            contentType: encryptedFile.httpMetadata?.contentType,
+            hasCustomMetadata: !!encryptedFile.customMetadata
+        });
         
         // Decrypt the file on-the-fly
         let decryptedFileBytes: Uint8Array;
         let originalContentType: string;
         
         if (isEncrypted) {
+            console.log('[Download] File is encrypted, decrypting...');
             // File is encrypted - decrypt it
             try {
                 const encryptedData = await encryptedFile.text();
                 const encryptedJson = JSON.parse(encryptedData);
+                console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
                 
                 // Get JWT token for decryption
                 const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length });
                 if (!jwtToken) {
                     const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
                     const corsHeaders = createCORSHeaders(request, {
@@ -219,7 +259,9 @@ export async function handleDownloadVersion(
                 }
                 
                 // Decrypt the file
+                console.log('[Download] Decrypting with JWT...');
                 const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                console.log('[Download] Decryption successful, base64 length:', decryptedBase64.length);
                 
                 // Convert base64 back to binary
                 const binaryString = atob(decryptedBase64);
@@ -227,11 +269,13 @@ export async function handleDownloadVersion(
                 for (let i = 0; i < binaryString.length; i++) {
                     decryptedFileBytes[i] = binaryString.charCodeAt(i);
                 }
+                console.log('[Download] Converted to binary, size:', decryptedFileBytes.length);
                 
                 // Get original content type from metadata
                 originalContentType = encryptedFile.customMetadata?.originalContentType || 'application/zip';
+                console.log('[Download] Original content type:', originalContentType);
             } catch (error) {
-                console.error('File decryption error during download:', error);
+                console.error('[Download] File decryption error:', error);
                 const rfcError = createError(request, 500, 'Decryption Failed', 'Failed to decrypt file. Please ensure you are authenticated.');
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -245,14 +289,22 @@ export async function handleDownloadVersion(
                 });
             }
         } else {
+            console.log('[Download] File is not encrypted (legacy), returning as-is');
             // Legacy file (not encrypted) - return as-is
             // This handles files uploaded before encryption was enforced
             const arrayBuffer = await encryptedFile.arrayBuffer();
             decryptedFileBytes = new Uint8Array(arrayBuffer);
             originalContentType = encryptedFile.httpMetadata?.contentType || 'application/octet-stream';
+            console.log('[Download] Legacy file prepared:', { size: decryptedFileBytes.length, contentType: originalContentType });
         }
 
         // Return decrypted file with proper headers including integrity hash
+        console.log('[Download] Preparing response:', { 
+            fileName: version.fileName, 
+            contentType: originalContentType, 
+            size: decryptedFileBytes.length,
+            hasHash: !!version.sha256
+        });
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
