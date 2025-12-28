@@ -37,6 +37,35 @@ jobs:
       - name: Run OTP Auth Service Tests
         working-directory: serverless/otp-auth-service
         run: pnpm test
+      
+      - name: Generate coverage report
+        working-directory: serverless/otp-auth-service
+        run: pnpm test:coverage
+        continue-on-error: true
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./serverless/otp-auth-service/coverage/coverage-final.json
+          flags: otp-auth-service
+          name: otp-auth-service-coverage
+          fail_ci_if_error: false
+        continue-on-error: true
+      
+      - name: Display coverage summary
+        working-directory: serverless/otp-auth-service
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -f "coverage/coverage-summary.json" ]; then
+            COVERAGE=$(node -e "const data = require('./coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
+            echo "Coverage: $COVERAGE%"
+            echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "**Total Coverage:** $COVERAGE%" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Coverage report not found (this is informational only)"
+          fi
 
   deploy:
     needs: test

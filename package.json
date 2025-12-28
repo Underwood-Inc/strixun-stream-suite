@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "test:serverless": "cd serverless/otp-auth-service && pnpm test",
     "test:all": "pnpm test:serverless && pnpm test",
     "test:all:sequential": "pnpm test:serverless && pnpm test",

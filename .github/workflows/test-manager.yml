@@ -96,11 +96,33 @@ jobs:
         working-directory: .
         run: pnpm test
       
+      - name: Generate coverage report
+        working-directory: .
+        env:
+          NODE_ENV: test
+        run: pnpm test:coverage
+        continue-on-error: true
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage/coverage-final.json
+          flags: root-client
+          name: root-client-coverage
+          fail_ci_if_error: false
+        continue-on-error: true
+      
       - name: Test Results
         if: always()
         run: |
           echo "## ✅ Root/Client Tests" >> $GITHUB_STEP_SUMMARY
           echo "Svelte component tests completed" >> $GITHUB_STEP_SUMMARY
+          if [ -f "coverage/coverage-summary.json" ]; then
+            COVERAGE=$(node -e "const data = require('./coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Coverage:** $COVERAGE%" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # OTP Auth Service Tests
   test_otp_auth:
@@ -131,11 +153,31 @@ jobs:
         working-directory: serverless/otp-auth-service
         run: pnpm test
       
+      - name: Generate coverage report
+        working-directory: serverless/otp-auth-service
+        run: pnpm test:coverage
+        continue-on-error: true
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./serverless/otp-auth-service/coverage/coverage-final.json
+          flags: otp-auth-service
+          name: otp-auth-service-coverage
+          fail_ci_if_error: false
+        continue-on-error: true
+      
       - name: Test Results
         if: always()
         run: |
           echo "## ✅ OTP Auth Service Tests" >> $GITHUB_STEP_SUMMARY
           echo "Unit and integration tests completed" >> $GITHUB_STEP_SUMMARY
+          if [ -f "serverless/otp-auth-service/coverage/coverage-summary.json" ]; then
+            COVERAGE=$(node -e "const data = require('./serverless/otp-auth-service/coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Coverage:** $COVERAGE%" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # Mods API Tests (skip if no test script)
   test_mods_api:

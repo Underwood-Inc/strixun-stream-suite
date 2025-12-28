@@ -22,7 +22,7 @@ export default defineConfig({
     exclude: ['node_modules', 'dist', '.storybook', 'serverless/**'], // Exclude serverless
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'dist/',

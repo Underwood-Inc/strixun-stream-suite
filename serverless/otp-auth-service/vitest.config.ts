@@ -14,7 +14,7 @@ export default defineConfig({
     isolate: true, // Isolate each test file
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'dist/',
