@@ -29,6 +29,7 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
     OTP_AUTH_KV: {} as any,
     CUSTOMER_API_URL: 'https://customer.idling.app',
     SERVICE_API_KEY: 'test-service-key',
+    NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-tests',
   };
 
   const legacyUserEmail = 'legacy.user@example.com';

@@ -31,12 +31,15 @@ const config = loadTestConfig(testEnv);
 const USE_LIVE_API = config.useLiveApi;
 const CUSTOMER_API_URL = config.customerApiUrl;
 const SERVICE_API_KEY = config.serviceApiKey;
+// NETWORK_INTEGRITY_KEYPHRASE must match the value in customer-api worker for integration tests
+const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests';
 
 describe.skipIf(!USE_LIVE_API)(`ensureCustomerAccount - Integration Tests (Live API) [${testEnv}]`, () => {
   const mockEnv = {
     OTP_AUTH_KV: {} as any, // Not used in these tests
     CUSTOMER_API_URL,
     SERVICE_API_KEY,
+    NETWORK_INTEGRITY_KEYPHRASE,
   };
 
   // Generate unique test email to avoid conflicts
