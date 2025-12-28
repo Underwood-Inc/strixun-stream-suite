@@ -37,6 +37,7 @@ ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"p
 # Custom domain configuration
 # Matches remote configuration to avoid deployment warnings
 # Remote has custom domain route + specific routes in vars.routes (dashboard-only)
+# For custom domains, pattern should be just the domain (Cloudflare handles /* automatically)
 routes = [
   { pattern = "mods-api.idling.app", zone_name = "idling.app", custom_domain = true },
 ]

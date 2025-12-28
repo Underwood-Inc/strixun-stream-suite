@@ -248,11 +248,18 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
  */
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-        // Handle CORS preflight
+        // CRITICAL: Handle CORS preflight FIRST, before any routing
+        // This ensures OPTIONS requests always get CORS headers, even if route doesn't match
         if (request.method === 'OPTIONS') {
+            const corsHeaders = getCorsHeaders(env, request);
+            console.log('[Worker] OPTIONS preflight request:', {
+                url: request.url,
+                origin: request.headers.get('Origin'),
+                corsHeaders: Object.keys(corsHeaders),
+            });
             return new Response(null, { 
                 status: 204,
-                headers: getCorsHeaders(env, request),
+                headers: corsHeaders,
             });
         }
         
