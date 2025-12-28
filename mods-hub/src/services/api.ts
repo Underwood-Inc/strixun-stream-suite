@@ -9,9 +9,12 @@ import type { UpdateUserRequest } from '../types/user';
 
 /**
  * API base URL for constructing absolute URLs
- * Uses Vite environment variable or defaults to production URL
+ * In dev mode, uses Vite proxy (/mods-api) to avoid CORS issues
+ * In production, uses environment variable or defaults to production URL
  */
-export const API_BASE_URL = import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app';
+export const API_BASE_URL = import.meta.env.DEV 
+  ? '/mods-api'  // Vite proxy in development
+  : (import.meta.env.VITE_MODS_API_URL || 'https://mods-api.idling.app');
 
 /**
  * Create API client instance with auth token getter
