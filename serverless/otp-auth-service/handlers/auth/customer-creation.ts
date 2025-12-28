@@ -16,7 +16,8 @@ import {
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     CUSTOMER_API_URL?: string;
-    SERVICE_API_KEY?: string; // Service-to-service API key for customer-api
+    SERVICE_API_KEY?: string; // Service-to-service API key for customer-api (REQUIRED)
+    NETWORK_INTEGRITY_KEYPHRASE?: string; // Network integrity keyphrase (REQUIRED)
     [key: string]: any;
 }
 
@@ -294,6 +295,19 @@ export async function ensureCustomerAccount(
 ): Promise<string> {
     const emailLower = email.toLowerCase().trim();
     
+    // CRITICAL: Validate required environment variables before attempting customer creation
+    if (!env.SERVICE_API_KEY) {
+        const errorMsg = 'SERVICE_API_KEY is not configured in otp-auth-service. This is required for service-to-service calls to customer-api. Set it via: wrangler secret put SERVICE_API_KEY';
+        console.error(`[Customer Creation] ${errorMsg}`);
+        throw new Error(errorMsg);
+    }
+    
+    if (!env.NETWORK_INTEGRITY_KEYPHRASE) {
+        const errorMsg = 'NETWORK_INTEGRITY_KEYPHRASE is not configured in otp-auth-service. This is required for service-to-service calls to customer-api. Set it via: wrangler secret put NETWORK_INTEGRITY_KEYPHRASE';
+        console.error(`[Customer Creation] ${errorMsg}`);
+        throw new Error(errorMsg);
+    }
+    
     try {
         // UPSERT customer account with retry logic
         const resolvedCustomerId = await retryWithBackoff(async () => {
@@ -307,8 +321,32 @@ export async function ensureCustomerAccount(
         return resolvedCustomerId;
     } catch (error) {
         console.error(`[Customer Creation] CRITICAL ERROR: Customer account creation/lookup failed after retries for ${emailLower}:`, error);
+        
+        // Provide more specific error messages based on error type
+        let errorMessage = `Failed to ensure customer account exists for ${emailLower}. This is required for login.`;
+        
+        if (error instanceof Error) {
+            const errorMsg = error.message;
+            
+            // Check for authentication errors (401)
+            if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('Authentication required')) {
+                errorMessage = `Service authentication failed. Please verify that SERVICE_API_KEY is set correctly in both otp-auth-service and customer-api workers, and that they match. Error: ${errorMsg}`;
+            }
+            // Check for missing environment variable errors
+            else if (errorMsg.includes('SERVICE_API_KEY') || errorMsg.includes('NETWORK_INTEGRITY_KEYPHRASE')) {
+                errorMessage = errorMsg; // Use the specific error message from validation
+            }
+            // Check for network/integrity errors
+            else if (errorMsg.includes('integrity') || errorMsg.includes('NETWORK_INTEGRITY')) {
+                errorMessage = `Network integrity verification failed. Please verify that NETWORK_INTEGRITY_KEYPHRASE is set correctly in both otp-auth-service and customer-api workers, and that they match. Error: ${errorMsg}`;
+            }
+            else {
+                errorMessage = `${errorMessage} Error: ${errorMsg}`;
+            }
+        }
+        
         // BUSINESS RULE: Customer account MUST ALWAYS be created - throw error instead of returning null
-        throw new Error(`Failed to ensure customer account exists for ${emailLower}. This is required for login. Error: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(errorMessage);
     }
 }
 

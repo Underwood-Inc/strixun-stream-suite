@@ -52,8 +52,26 @@ function getCustomerApiUrl(env: Env): string {
 
 /**
  * Create service client for service-to-service calls with SERVICE_API_KEY
+ * 
+ * CRITICAL: Validates required environment variables before creating client
+ * Throws clear error messages if SERVICE_API_KEY or NETWORK_INTEGRITY_KEYPHRASE are missing
  */
 function createServiceApiClient(env: Env) {
+    // Validate required environment variables
+    if (!env.SERVICE_API_KEY) {
+        throw new Error(
+            'SERVICE_API_KEY is required for service-to-service calls to customer-api. ' +
+            'Set it via: wrangler secret put SERVICE_API_KEY'
+        );
+    }
+    
+    if (!env.NETWORK_INTEGRITY_KEYPHRASE) {
+        throw new Error(
+            'NETWORK_INTEGRITY_KEYPHRASE is required for service-to-service calls to customer-api. ' +
+            'Set it via: wrangler secret put NETWORK_INTEGRITY_KEYPHRASE'
+        );
+    }
+    
     return createServiceClient(getCustomerApiUrl(env), env, {
         retry: {
             maxAttempts: 3,
