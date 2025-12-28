@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -120,9 +120,13 @@ export async function handleAdminDeleteMod(
         // Delete thumbnail if exists
         if (mod.thumbnailUrl) {
             try {
-                // Extract R2 key from URL or construct it
-                const thumbnailKey = getCustomerR2Key(auth.customerId, `thumbnails/${modId}.png`);
-                await env.MODS_R2.delete(thumbnailKey);
+                // Try multiple extensions since we don't know which one was used
+                const normalizedModId = normalizeModId(modId);
+                const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+                for (const ext of extensions) {
+                    const thumbnailKey = getCustomerR2Key(auth.customerId, `thumbnails/${normalizedModId}.${ext}`);
+                    await env.MODS_R2.delete(thumbnailKey);
+                }
             } catch (error) {
                 console.error('Failed to delete thumbnail:', error);
             }

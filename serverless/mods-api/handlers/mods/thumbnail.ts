@@ -105,11 +105,11 @@ export async function handleThumbnail(
                 });
             }
             
-            // Check status: only allow downloads of published mods to public, admins and authors can download all statuses
+            // Check status: only allow viewing thumbnails of published mods to public, admins and authors can view all statuses
             // Legacy mods without status field are treated as published
             const modStatus = mod.status || 'published';
-            if (modStatus !== 'published') {
-                // Only allow downloads of non-published mods to admins or the author
+            if (modStatus !== 'published' && modStatus !== 'approved') {
+                // Only allow viewing thumbnails of non-published mods to admins or the author
                 if (mod.authorId !== auth?.userId) {
                     const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
                     const corsHeaders = createCORSHeaders(request, {
@@ -161,13 +161,13 @@ export async function handleThumbnail(
         console.log('[Thumbnail] Mod has thumbnailUrl:', { thumbnailUrl: mod.thumbnailUrl, modId: mod.modId, slug: mod.slug });
 
         // Reconstruct R2 key from mod metadata
-        // Thumbnails are stored as: customer_xxx/thumbnails/modId.ext
+        // Thumbnails are stored as: customer_xxx/thumbnails/normalizedModId.ext
         // Use mod's customerId (not auth customerId) to ensure correct scope
         // Use mod.modId (actual modId) not the URL parameter (which might be a slug)
-        // Strip mod_ prefix if present (thumbnails are stored without the prefix)
+        // Normalize modId to match how it was stored (strip mod_ prefix if present)
         const customerId = mod.customerId || null;
-        const actualModId = mod.modId.startsWith('mod_') ? mod.modId.substring(4) : mod.modId;
-        console.log('[Thumbnail] Looking up R2 file:', { customerId, actualModId, originalModId: mod.modId });
+        const normalizedModId = normalizeModId(mod.modId);
+        console.log('[Thumbnail] Looking up R2 file:', { customerId, normalizedModId, originalModId: mod.modId });
         
         // Try common image extensions to find the actual file
         // This handles cases where extension wasn't stored in metadata
@@ -176,7 +176,7 @@ export async function handleThumbnail(
         let thumbnail: R2ObjectBody | null = null;
         
         for (const ext of extensions) {
-            const testKey = getCustomerR2Key(customerId, `thumbnails/${actualModId}.${ext}`);
+            const testKey = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${ext}`);
             console.log('[Thumbnail] Trying R2 key:', { testKey, ext });
             const testFile = await env.MODS_R2.get(testKey);
             if (testFile) {
@@ -189,7 +189,7 @@ export async function handleThumbnail(
         
         // If not found, return 404
         if (!r2Key || !thumbnail) {
-            console.error('[Thumbnail] Thumbnail file not found in R2:', { customerId, actualModId, triedExtensions: extensions });
+            console.error('[Thumbnail] Thumbnail file not found in R2:', { customerId, normalizedModId, triedExtensions: extensions });
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

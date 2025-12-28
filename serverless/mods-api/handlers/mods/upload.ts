@@ -466,7 +466,9 @@ async function handleThumbnailUpload(
         }
 
         // Upload to R2
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${normalizedType}`);
+        // Normalize modId to ensure consistent storage (strip mod_ prefix if present)
+        const normalizedModId = normalizeModId(modId);
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${normalizedType}`);
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: `image/${normalizedType}`,

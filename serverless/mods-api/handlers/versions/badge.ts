@@ -123,11 +123,11 @@ export async function handleBadge(
                 return new Response('Mod not found', { status: 404 });
             }
             
-            // Check status: only allow badges of published mods to public, admins and authors can see all statuses
+            // Check status: only allow badges of published/approved mods to public, admins and authors can see all statuses
             // Legacy mods without status field are treated as published
             const modStatus = mod.status || 'published';
-            if (modStatus !== 'published') {
-                // Only allow badges of non-published mods to admins or the author
+            if (modStatus !== 'published' && modStatus !== 'approved') {
+                // Only allow badges of non-published/approved mods to admins or the author
                 if (mod.authorId !== auth?.userId) {
                     return new Response('Mod not found', { status: 404 });
                 }
@@ -140,17 +140,25 @@ export async function handleBadge(
             }
         }
 
-        // Get version metadata - check both global scope and customer scope
+        // Get version metadata - use mod's customerId (not auth customerId)
         let version: ModVersion | null = null;
         
-        // First try global scope
-        const globalVersionKey = `version_${versionId}`;
-        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        // Check mod's customer scope first (where version was stored)
+        if (mod.customerId) {
+            const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
+            version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
         
-        // If not found and authenticated, check customer scope
-        if (!version && auth?.customerId) {
-            const customerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-            version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+        // Also check auth customer scope (in case they match)
+        if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
+            const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+            version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
+        
+        // Fall back to global scope
+        if (!version) {
+            const globalVersionKey = `version_${versionId}`;
+            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
         }
 
         // Check version belongs to mod (compare with mod.modId, not the input parameter)

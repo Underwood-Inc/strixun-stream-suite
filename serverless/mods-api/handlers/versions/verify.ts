@@ -6,7 +6,8 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { findModBySlug } from '../../utils/slug.js';
 import { calculateFileHash, formatStrixunHash, parseStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -21,9 +22,28 @@ export async function handleVerifyVersion(
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
-        // Get mod metadata
-        const modKey = getCustomerKey(auth?.customerId || null, `mod_${modId}`);
-        const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
+        // Get mod metadata - try multiple lookup strategies
+        let mod: ModMetadata | null = null;
+        
+        // Strategy 1: Try slug lookup first
+        mod = await findModBySlug(modId, env, auth);
+        
+        // Strategy 2: If not found by slug, try modId lookup
+        if (!mod) {
+            const normalizedModId = normalizeModId(modId);
+            
+            // Check customer scope first if authenticated
+            if (auth?.customerId) {
+                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+                mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+            }
+            
+            // Fall back to global scope
+            if (!mod) {
+                const globalModKey = `mod_${normalizedModId}`;
+                mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            }
+        }
 
         if (!mod) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
@@ -54,11 +74,29 @@ export async function handleVerifyVersion(
             });
         }
 
-        // Get version metadata
-        const versionKey = getCustomerKey(auth?.customerId || null, `version_${versionId}`);
-        const version = await env.MODS_KV.get(versionKey, { type: 'json' }) as ModVersion | null;
+        // Get version metadata - use mod's customerId (not auth customerId)
+        let version: ModVersion | null = null;
+        
+        // Check mod's customer scope first (where version was stored)
+        if (mod.customerId) {
+            const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
+            version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
+        
+        // Also check auth customer scope (in case they match)
+        if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
+            const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
+            version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
+        
+        // Fall back to global scope
+        if (!version) {
+            const globalVersionKey = `version_${versionId}`;
+            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+        }
 
-        if (!version || version.modId !== modId) {
+        // Check version belongs to mod - use mod.modId (source of truth), not the input parameter
+        if (!version || version.modId !== mod.modId) {
             const rfcError = createError(request, 404, 'Version Not Found', 'The requested version was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
