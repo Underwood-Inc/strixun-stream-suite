@@ -8,7 +8,7 @@ export default defineConfig({
       '**/*.{test,spec}.{js,ts}',
       '../shared/**/*.{test,spec}.{js,ts}', // Include shared encryption tests
     ],
-    exclude: ['node_modules', 'dist', 'dashboard'],
+    exclude: ['node_modules', 'dist', 'dashboard', '**/*.e2e.{test,spec}.{js,ts}'],
     testTimeout: 10000, // 10 second timeout per test
     pool: 'forks', // Use forks to avoid memory issues
     isolate: true, // Isolate each test file

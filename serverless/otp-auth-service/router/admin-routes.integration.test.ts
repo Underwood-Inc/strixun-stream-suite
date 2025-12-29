@@ -62,9 +62,19 @@ vi.mock('../handlers/admin/data-requests.js', () => ({
     handleDeleteDataRequest: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
 }));
 
-vi.mock('@strixun/api-framework', () => ({
-    encryptWithJWT: vi.fn().mockImplementation(async (data) => data),
-}));
+vi.mock('@strixun/api-framework', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@strixun/api-framework')>();
+    return {
+        ...actual,
+        encryptWithJWT: vi.fn().mockImplementation(async (data) => data),
+        wrapWithEncryption: vi.fn().mockImplementation(async (response, auth, request?, env?) => {
+            return {
+                response: response,
+                customerId: auth?.customerId || null
+            };
+        }),
+    };
+});
 
 vi.mock('../handlers/auth/customer-creation.js', () => ({
     ensureCustomerAccount: vi.fn().mockResolvedValue('cust_123'),
