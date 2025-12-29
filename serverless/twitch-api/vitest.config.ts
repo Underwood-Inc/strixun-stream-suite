@@ -8,7 +8,7 @@ export default defineConfig({
       '**/*.{test,spec}.{js,ts}',
       '../shared/**/*.{test,spec}.{js,ts}', // Include shared tests
     ],
-    exclude: ['node_modules', 'dist'],
+    exclude: ['node_modules', 'dist', '**/*.e2e.{test,spec}.{js,ts}'],
     testTimeout: 10000,
     pool: 'forks',
     isolate: true,

@@ -27,6 +27,7 @@ export default defineConfig({
       'shared-components/otp-login/svelte/**/*.test.ts', // Skip Svelte component tests for now
       'shared-components/otp-login/react/**/*.test.tsx', // Skip React component tests for now
       '**/node_modules/**', // Exclude all node_modules tests
+      '**/*.e2e.{test,spec}.{js,ts}', // Exclude Playwright e2e tests
     ],
     coverage: {
       provider: 'v8',
