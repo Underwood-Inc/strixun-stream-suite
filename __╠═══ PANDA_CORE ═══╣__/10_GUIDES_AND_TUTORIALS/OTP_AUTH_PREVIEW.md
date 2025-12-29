@@ -81,4 +81,3 @@ This will:
 - Make sure dashboard dependencies are installed: `cd dashboard && pnpm install`
 - Check for TypeScript errors: `cd dashboard && pnpm check`
 - Verify Vite config is correct
-

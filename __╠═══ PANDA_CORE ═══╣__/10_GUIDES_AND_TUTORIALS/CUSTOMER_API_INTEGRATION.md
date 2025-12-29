@@ -197,4 +197,3 @@ Migrate existing customer data from `OTP_AUTH_KV` to `CUSTOMER_KV`:
 
 **Status:** [SUCCESS] **FULLY INTEGRATED**
 **Next Step:** Test integration and optionally migrate existing customer data
-

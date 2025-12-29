@@ -121,4 +121,3 @@ See `.github/workflows/test-otp-auth-integration.yml`
 - [SUCCESS] Example files (`.dev.toml.example`, `.prod.toml.example`) are safe to commit
 - [SUCCESS] Never commit actual secrets
 - [SUCCESS] Use different keys for dev/prod if possible
-

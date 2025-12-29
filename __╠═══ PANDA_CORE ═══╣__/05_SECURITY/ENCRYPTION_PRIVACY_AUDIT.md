@@ -1,8 +1,8 @@
-# Encryption & Privacy System - Comprehensive Audit [LOCK]
-
-> **Fresh audit of encryption architecture, privacy features, and what's needed for userId (email) double-encryption**
+# Encryption & Privacy System - Comprehensive Audit
 
 **Last Updated:** 2025-12-29
+
+> **Fresh audit of encryption architecture, privacy features, and what's needed for userId (email) double-encryption**
 
 ---
 
@@ -11,7 +11,7 @@
 This audit identifies:
 1. [SUCCESS] **What exists** - Router encryption, two-stage encryption utilities
 2. [ERROR] **What's missing** - User preferences, data request system, email privacy, userId double-encryption
-3. [WARNING] **What needs integration** - Two-stage encryption with router, userId field handling
+3. [INFO] **What needs integration** - Two-stage encryption with router, userId field handling
 
 ---
 
@@ -28,17 +28,6 @@ This audit identifies:
 - [SUCCESS] Sets `X-Encrypted: true` header
 - [SUCCESS] Client automatically decrypts with `decryptWithJWT()` in API client
 - [SUCCESS] Works for all authenticated routes (admin, game, user routes)
-
-**Code Flow:**
-```typescript
-// router/admin-routes.ts:179-183
-if ('jwtToken' in auth && auth.jwtToken && handlerResponse.ok) {
-    const { encryptWithJWT } = await import('../utils/jwt-encryption.js');
-    const responseData = await handlerResponse.json();
-    const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
-    // ... returns encrypted response
-}
-```
 
 **Status:** [SUCCESS] **WORKING** - All responses are automatically encrypted with requester's JWT
 
@@ -134,28 +123,6 @@ if ('jwtToken' in auth && auth.jwtToken && handlerResponse.ok) {
 - [ ] Integrate two-stage encryption into response builders
 - [ ] Update all handlers that return `userId` or `email` fields
 
-**Architecture:**
-```
-Handler Response:
-{
-  id: "req_123...",           // Single-encrypted (router)
-  customerId: "cust_abc...",  // Single-encrypted (router)
-  userId: {                   // Double-encrypted (if private)
-    doubleEncrypted: true,
-    stage1: {...},            // Owner's JWT
-    stage2: {...}             // Request key
-  }
-}
-    ->
-Router encrypts entire response with requester's JWT
-    ->
-Client receives encrypted blob
-    ->
-Client decrypts router encryption -> gets double-encrypted userId
-    ->
-To decrypt userId: Need owner's JWT + approved request key
-```
-
 ---
 
 ### 2. User Preferences System [ERROR] **NOT IMPLEMENTED**
@@ -166,26 +133,7 @@ To decrypt userId: Need owner's JWT + approved request key
 - Default preferences on user creation
 
 **What Needs to Be Built:**
-- [ ] User preferences data structure:
-  ```typescript
-  interface UserPreferences {
-    emailVisibility: 'private' | 'public';  // Default: 'private'
-    displayName: {
-      current: string;
-      previousNames: Array<{
-        name: string;
-        changedAt: string;
-        reason: 'auto-generated' | 'user-changed' | 'regenerated';
-      }>;
-      lastChangedAt: string | null;
-      changeCount: number;
-    };
-    privacy: {
-      showEmail: boolean;
-      showProfilePicture: boolean;
-    };
-  }
-  ```
+- [ ] User preferences data structure
 - [ ] Preferences storage in user object (KV: `user_${emailHash}`)
 - [ ] `GET /user/me/preferences` endpoint
 - [ ] `PUT /user/me/preferences` endpoint
@@ -205,22 +153,7 @@ To decrypt userId: Need owner's JWT + approved request key
 - Request status tracking
 
 **What Needs to Be Built:**
-- [ ] Request data structure:
-  ```typescript
-  interface DataRequest {
-    requestId: string;
-    requesterId: string;        // Super admin customerId
-    targetUserId: string;        // User whose data is requested
-    dataType: 'email' | 'userId' | 'custom';
-    reason: string;
-    status: 'pending' | 'approved' | 'rejected' | 'expired';
-    requestKey?: string;         // Encrypted with requester's JWT when approved
-    createdAt: string;
-    approvedAt?: string;
-    rejectedAt?: string;
-    expiresAt: string;
-  }
-  ```
+- [ ] Request data structure
 - [ ] Request storage in KV (`data_request_${requestId}`)
 - [ ] `POST /admin/data-requests` - Create request
 - [ ] `GET /admin/data-requests` - List requests
@@ -271,7 +204,7 @@ To decrypt userId: Need owner's JWT + approved request key
 
 ---
 
-## Integration Requirements
+## [INFO] Integration Requirements
 
 ### 1. Two-Stage Encryption Integration
 
@@ -344,7 +277,7 @@ To decrypt userId:
 
 ## Implementation Priority
 
-### Phase 1: Foundation (CRITICAL) [ERROR]
+### Phase 1: Foundation (CRITICAL)
 1. **User Preferences System**
    - Create preferences structure
    - Add to user object
@@ -357,21 +290,21 @@ To decrypt userId:
    - Update handlers to use response builder
    - Handle owner's JWT retrieval
 
-### Phase 2: Request System (HIGH) [WARNING]
+### Phase 2: Request System (HIGH)
 3. **Sensitive Data Request System**
    - Request data structure
    - Request storage
    - Request endpoints (create, list, approve, reject)
    - Request key management
 
-### Phase 3: Display Name Enhancements (MEDIUM) [WARNING]
+### Phase 3: Display Name Enhancements (MEDIUM)
 4. **Display Name History & Limits**
    - History tracking
    - Monthly limit enforcement
    - Regeneration endpoint
    - Tooltip support
 
-### Phase 4: Frontend Integration (MEDIUM) [WARNING]
+### Phase 4: Frontend Integration (MEDIUM)
 5. **Email Privacy UI**
    - Tooltip component
    - Email visibility toggle
@@ -395,7 +328,7 @@ To decrypt userId:
 4. Email privacy filtering doesn't exist [ERROR]
 5. Display name history doesn't exist [ERROR]
 
-### [WARNING] What Needs Integration
+### [INFO] What Needs Integration
 1. Two-stage encryption into response builders
 2. User preferences check before encrypting userId
 3. Request system for decrypting double-encrypted data
@@ -428,4 +361,3 @@ To decrypt userId:
 ---
 
 **Status:** [ERROR] **CRITICAL WORK NEEDED** - Foundation missing for userId double-encryption
-

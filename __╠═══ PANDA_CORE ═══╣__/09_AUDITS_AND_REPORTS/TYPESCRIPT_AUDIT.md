@@ -89,7 +89,6 @@
 
 ## Next Steps
 
-1. **IMMEDIATE:** Split `handlers/auth/otp.js` (933 lines) - this is the biggest blocker
-2. Extract HTML template from URL shortener worker
+1. **IMMEDIATE:** Split `handlers/auth/otp.js` (933 lines) - this is the biggest blocker [SUCCESS] **COMPLETED**
+2. Extract HTML template from URL shortener worker [SUCCESS] **COMPLETED**
 3. Continue converting remaining JS files to TS
-

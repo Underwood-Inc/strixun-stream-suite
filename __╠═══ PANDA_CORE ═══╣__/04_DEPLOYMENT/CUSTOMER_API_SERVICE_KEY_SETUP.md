@@ -14,7 +14,7 @@ You've already set `SERVICE_API_KEY` manually via `wrangler secret put`. That's 
 
 ---
 
-## Optional: GitHub Secrets (For Automated Deployment)
+## [INFO] Optional: GitHub Secrets (For Automated Deployment)
 
 If you want the GitHub workflow to automatically set `SERVICE_API_KEY` during deployment:
 
@@ -70,7 +70,7 @@ curl -X GET https://customer.idling.app/customer/by-email/test@example.com \
 ## Summary
 
 - [SUCCESS] **Manual Setup:** Already done via `wrangler secret put`
-- [WARNING] **GitHub Secrets:** Optional - only needed if you want automated deployment to set it
+- [INFO] **GitHub Secrets:** Optional - only needed if you want automated deployment to set it
 - [SUCCESS] **Workflows:** Already configured to use GitHub secret if it exists
 
 **Current State:** You're all set! The manual setup is sufficient. GitHub secrets are only needed if you want the workflow to automatically manage it.
@@ -78,4 +78,3 @@ curl -X GET https://customer.idling.app/customer/by-email/test@example.com \
 ---
 
 **Status:** [SUCCESS] **CONFIGURED**
-

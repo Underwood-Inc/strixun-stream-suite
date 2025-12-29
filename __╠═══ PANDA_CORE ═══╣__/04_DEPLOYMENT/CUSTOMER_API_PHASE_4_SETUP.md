@@ -34,7 +34,7 @@ wrangler kv namespace create "CUSTOMER_API_KV"
 
 **Expected Output:**
 ```
-[INFO] Creating namespace with title "CUSTOMER_API_KV"
+Creating namespace with title "CUSTOMER_API_KV"
 [SUCCESS] Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "CUSTOMER_KV", id = "abc123def456ghi789..." }
@@ -55,7 +55,7 @@ Open `serverless/customer-api/wrangler.toml` and replace `PLACEHOLDER_ID` with t
 ```toml
 [[kv_namespaces]]
 binding = "CUSTOMER_KV"
-id = "abc123def456ghi789..."  # -> Replace PLACEHOLDER_ID with your actual ID
+id = "abc123def456ghi789..."  # Replace PLACEHOLDER_ID with your actual ID
 ```
 
 ---

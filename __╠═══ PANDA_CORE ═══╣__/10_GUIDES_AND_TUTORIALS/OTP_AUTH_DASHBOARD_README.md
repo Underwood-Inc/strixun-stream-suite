@@ -57,7 +57,7 @@ Open **http://localhost:5174** in your browser. The Vite proxy forwards API requ
    # Dashboard runs on http://localhost:5174
    ```
 
-### Option 2: Build & Serve via Worker
+### Option 3: Build & Serve via Worker
 
 1. Build the dashboard:
    ```bash
@@ -70,10 +70,10 @@ Open **http://localhost:5174** in your browser. The Vite proxy forwards API requ
 
 ## Features
 
-- [LOCK] OTP-based authentication
-- [LOCK] API key management (create, revoke, rotate)
-- [INFO] Audit log viewer with filtering
-- [INFO] Analytics dashboard
+- [SUCCESS] OTP-based authentication
+- [SUCCESS] API key management (create, revoke, rotate)
+- [SUCCESS] Audit log viewer with filtering
+- [SUCCESS] Analytics dashboard
 - [SUCCESS] Strixun design system
 - [SUCCESS] Svelte 5 with runes
 - [SUCCESS] Full TypeScript support
@@ -118,7 +118,7 @@ The API client uses `window.location.origin` by default:
 
 To change the API endpoint, modify `API_BASE_URL` in `src/lib/api-client.ts`.
 
-### OTP Encryption Key (CRITICAL) [LOCK]
+### OTP Encryption Key (CRITICAL)
 
 **The dashboard REQUIRES `VITE_SERVICE_ENCRYPTION_KEY` to be set at build time.**
 
@@ -177,4 +177,3 @@ Outputs to `dist/` directory. Files need to be embedded in the worker or served 
 - Path aliases: `$lib` and `$components`
 - Follows repo CSS rules (explicit selectors, no nested BEM)
 - Composable component architecture
-

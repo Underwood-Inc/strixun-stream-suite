@@ -41,4 +41,3 @@ await client.logout(auth.token);
 ## API Reference
 
 See the TypeScript definitions in `index.ts` for full API documentation.
-

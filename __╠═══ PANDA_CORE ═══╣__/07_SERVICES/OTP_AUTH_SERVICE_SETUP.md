@@ -123,10 +123,10 @@ pnpm dev:all
 ```
 serverless/
 ├── otp-auth-service/
-│   ├── .dev.vars          [SUCCESS] Create this file
-│   └── .dev.vars.example  [SUCCESS] Template
+│   ├── .dev.vars          [INFO] Create this file
+│   └── .dev.vars.example  [INFO] Template
 └── mods-api/
-    └── .dev.vars          [SUCCESS] Should also have JWT_SECRET
+    └── .dev.vars          [INFO] Should also have JWT_SECRET
 ```
 
 ## Next Steps
@@ -135,4 +135,3 @@ Once `.dev.vars` is configured:
 1. Run `pnpm dev:all` from `mods-hub/`
 2. Try logging in at http://localhost:3001
 3. Check console logs for any remaining errors
-

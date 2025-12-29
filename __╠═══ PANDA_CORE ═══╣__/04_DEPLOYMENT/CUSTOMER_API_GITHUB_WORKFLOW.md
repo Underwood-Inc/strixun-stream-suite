@@ -146,7 +146,7 @@ The workflow automatically runs when:
 
 - **Automatic:** Worker is created automatically on first `wrangler deploy`
 - **No Manual Step:** You don't need to create the worker manually
-- **Name:** `strixun-customer-api` (from wrangler.toml)`
+- **Name:** `strixun-customer-api` (from wrangler.toml)
 
 ### Secrets Management
 
@@ -242,4 +242,3 @@ This workflow follows the same pattern as:
 **Auto-Deploys:** [SUCCESS] Yes (on push to main/master)
 **Auto-Creates:** [SUCCESS] KV namespace (if missing)
 **Auto-Sets Secrets:** [SUCCESS] Yes (if configured in GitHub)
-

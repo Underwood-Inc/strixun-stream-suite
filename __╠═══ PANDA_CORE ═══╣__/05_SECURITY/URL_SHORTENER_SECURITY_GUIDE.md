@@ -1,4 +1,4 @@
-# [LOCK] Security Guide - URL Shortener Encryption
+# Security Guide - URL Shortener Encryption
 
 **Last Updated:** 2025-12-29
 
@@ -14,7 +14,7 @@
 
 ---
 
-## [LOCK] Current Encryption Architecture
+## Current Encryption Architecture
 
 ### How It Works Now
 
@@ -74,9 +74,9 @@
 **If you must use symmetric encryption:**
 
 - [SUCCESS] Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
-- [SUCCESS] Rotate keys frequently (monthly or more)
-- [SUCCESS] Document the security trade-off
-- [SUCCESS] Monitor for key extraction attempts
+- [WARNING] Rotate keys frequently (monthly or more)
+- [WARNING] Document the security trade-off
+- [WARNING] Monitor for key extraction attempts
 - [ERROR] Never use runtime injection
 
 ---

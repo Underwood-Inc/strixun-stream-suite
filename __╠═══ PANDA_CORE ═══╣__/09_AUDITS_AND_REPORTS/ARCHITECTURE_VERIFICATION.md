@@ -1,4 +1,4 @@
-# Architecture Verification [SUCCESS]
+# Architecture Verification
 
 **Last Updated:** 2025-12-29
 
@@ -68,8 +68,8 @@ Let me verify each point of your understanding against the actual implementation
 - **Default Behavior:** Email is **private by default** (double-encrypted) [SUCCESS]
 - **User Control:** Users can set `emailVisibility: 'public'` to make it single-encrypted
 - **Current Implementation:**
-  - `emailVisibility: 'private'` -> Double-encrypted (default)
-  - `emailVisibility: 'public'` -> Single-encrypted (router-level only)
+  - `emailVisibility: 'private'` - Double-encrypted (default)
+  - `emailVisibility: 'public'` - Single-encrypted (router-level only)
 
 **How It Works:**
 1. Check user preferences for `emailVisibility`
@@ -137,27 +137,10 @@ Let me verify each point of your understanding against the actual implementation
 If you want email to **always** be double-encrypted regardless of user preferences:
 
 **Option A:** Remove `public` option
-```typescript
-// In response-builder.ts
-if (preferences.emailVisibility === 'private') {
-  // Always double-encrypt
-  const requestKey = generateRequestKey();
-  const doubleEncrypted = await encryptTwoStage(userId, ownerToken, requestKey);
-  response.userId = doubleEncrypted as any;
-} else {
-  // If somehow public, still double-encrypt for security
-  const requestKey = generateRequestKey();
-  const doubleEncrypted = await encryptTwoStage(userId, ownerToken, requestKey);
-  response.userId = doubleEncrypted as any;
-}
-```
+- Always double-encrypt regardless of preference
 
 **Option B:** Enforce at handler level
-```typescript
-// Always set emailVisibility to private before building response
-const preferences = await getUserPreferences(ownerUserId, customerId, env);
-preferences.emailVisibility = 'private'; // Force private
-```
+- Always set emailVisibility to private before building response
 
 ### 2. Complete Customer Storage Migration
 
@@ -188,4 +171,3 @@ preferences.emailVisibility = 'private'; // Force private
 
 **Status:** [SUCCESS] **YOUR UNDERSTANDING IS MOSTLY CORRECT**
 **Action Items:** See recommendations above
-

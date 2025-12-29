@@ -181,4 +181,3 @@ powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 - **Cross-platform support** (Unix and Windows)
 - **Automatic environment detection**
 - **Safety confirmations** for production access
-

@@ -103,4 +103,3 @@ dashboard/
 **Type errors?**
 - Run `pnpm check` to verify TypeScript
 - Make sure all dependencies are installed
-

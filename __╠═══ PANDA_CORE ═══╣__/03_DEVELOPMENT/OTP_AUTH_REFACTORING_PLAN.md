@@ -35,9 +35,9 @@ serverless/otp-auth-service/
 ## Progress
 - [SUCCESS] Utils modules created (cache, cors, crypto, email)
 - [SUCCESS] Core services created (customer, api-key, rate-limit)
-- [WARNING] Handler modules (in progress)
-- [WARNING] Router module (pending)
-- [WARNING] Worker.js refactor (pending)
+- [INFO] Handler modules (in progress)
+- [INFO] Router module (pending)
+- [INFO] Worker.js refactor (pending)
 
 ## Next Steps
 1. Create remaining service modules (analytics, webhooks, security)
@@ -45,4 +45,3 @@ serverless/otp-auth-service/
 3. Create router module
 4. Refactor worker.js to be thin entry point
 5. Test with wrangler deploy
-

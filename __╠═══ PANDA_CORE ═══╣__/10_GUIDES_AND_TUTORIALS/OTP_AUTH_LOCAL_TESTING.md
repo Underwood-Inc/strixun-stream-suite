@@ -90,4 +90,3 @@ Before testing, ensure these files exist:
 - The dashboard is not built yet, so `/dashboard` will show a placeholder
 - Swagger UI loads from CDN, so you need internet connection
 - All API endpoints require proper secrets to work fully
-

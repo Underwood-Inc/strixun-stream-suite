@@ -118,4 +118,3 @@ Only temporary data should have TTL:
 
 **Status:** [WARNING] **ISSUE IDENTIFIED** - User data TTL should be removed
 **Priority:** [ERROR] **HIGH** - Data loss risk for inactive users
-

@@ -1,7 +1,8 @@
 # Security Improvements - Implementation Summary
 
-**Date:** 2025-01-27  
 **Last Updated:** 2025-12-29
+
+**Date:** 2025-01-27  
 **Service:** OTP Authentication Service  
 **Version:** 2.2.0
 
@@ -246,9 +247,8 @@ Request -> IP Rate Limit Check -> Email Rate Limit Check -> Quota Check -> Proce
 
 - [Security Audit Report](./OTP_AUTH_SECURITY_AUDIT.md)
 - [API Documentation](../06_API_REFERENCE/OTP_AUTH_API_STANDARDS.md)
-- [Rate Limiting Service](../07_SERVICES/OTP_AUTH_SERVICE_README.md)
+- [Rate Limiting Service](../../serverless/otp-auth-service/services/rate-limit.js)
 
 ---
 
 **Status:** [SUCCESS] All critical security improvements implemented and ready for testing.
-

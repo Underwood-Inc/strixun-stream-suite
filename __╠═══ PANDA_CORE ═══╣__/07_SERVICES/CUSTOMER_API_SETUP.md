@@ -28,7 +28,7 @@ wrangler kv namespace create "CUSTOMER_API_KV"
 
 **Output will look like:**
 ```
-[INFO] Creating namespace with title "CUSTOMER_API_KV"
+Creating namespace with title "CUSTOMER_API_KV"
 [SUCCESS] Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "CUSTOMER_KV", id = "abc123def456..." }
@@ -218,8 +218,8 @@ After setup is complete:
 | Variable | Type | Required | Description |
 |----------|------|----------|-------------|
 | `JWT_SECRET` | Secret | [SUCCESS] Yes | JWT signing secret (must match OTP auth service) |
-| `ALLOWED_ORIGINS` | Secret | [ERROR] No | Comma-separated CORS origins |
-| `ENVIRONMENT` | Var | [ERROR] No | Environment name (default: "production") |
+| `ALLOWED_ORIGINS` | Secret | [INFO] No | Comma-separated CORS origins |
+| `ENVIRONMENT` | Var | [INFO] No | Environment name (default: "production") |
 
 ---
 

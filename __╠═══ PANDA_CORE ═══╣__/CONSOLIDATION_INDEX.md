@@ -125,6 +125,63 @@ All documentation is being consolidated into 12 main categories:
 | `serverless/CUSTOM_DOMAIN_SETUP.md` | `04_DEPLOYMENT/CUSTOM_DOMAIN_SETUP.md` | ✅ Consolidated |
 | `serverless/ENCRYPTION_GUIDE.md` | `05_SECURITY/CLOUD_STORAGE_ENCRYPTION_GUIDE.md` | ✅ Consolidated |
 | `serverless/SCROLLBAR_CUSTOMIZER.md` | `12_REFERENCE/SCROLLBAR_CUSTOMIZER.md` | ✅ Consolidated |
+| `serverless/SETUP.md` | `04_DEPLOYMENT/SERVERLESS_SETUP.md` | ✅ Consolidated |
+| `serverless/twitch-api/SETUP.md` | `04_DEPLOYMENT/TWITCH_API_SETUP.md` | ✅ Consolidated |
+| `serverless/TYPESCRIPT_CONVERSION_STATUS.md` | `03_DEVELOPMENT/TYPESCRIPT_CONVERSION_STATUS.md` | ✅ Consolidated |
+| `serverless/TYPESCRIPT_CONVERSION_PLAN.md` | `03_DEVELOPMENT/TYPESCRIPT_CONVERSION_PLAN.md` | ✅ Consolidated |
+| `serverless/SHARED_LIBRARIES_AUDIT.md` | `09_AUDITS_AND_REPORTS/SHARED_LIBRARIES_AUDIT.md` | ✅ Consolidated |
+| `serverless/WORKERS_AUDIT.md` | `09_AUDITS_AND_REPORTS/WORKERS_DEPLOYMENT_AUDIT.md` | ✅ Consolidated |
+| `serverless/CLOUD_STORAGE_GUIDE.md` | `10_GUIDES_AND_TUTORIALS/CLOUD_STORAGE_INTEGRATION.md` | ✅ Consolidated |
+| `serverless/mods-api/API_FRAMEWORK_INTEGRATION_AUDIT.md` | `09_AUDITS_AND_REPORTS/MODS_API_INTEGRATION_AUDIT.md` | ✅ Consolidated |
+| `serverless/mods-api/SECURITY_AND_INTEGRATION_SUMMARY.md` | `09_AUDITS_AND_REPORTS/MODS_API_SECURITY_AND_INTEGRATION_SUMMARY.md` | ✅ Consolidated |
+| `serverless/mods-api/ENVIRONMENT_SETUP.md` | `07_SERVICES/MODS_API_ENVIRONMENT_SETUP.md` | ✅ Consolidated |
+| `serverless/mods-api/FILE_INTEGRITY_SYSTEM.md` | `05_SECURITY/MODS_API_FILE_INTEGRITY_SYSTEM.md` | ✅ Consolidated |
+| `serverless/mods-api/INTEGRATION_VERIFICATION.md` | `09_AUDITS_AND_REPORTS/MODS_API_INTEGRATION_VERIFICATION.md` | ✅ Consolidated |
+| `serverless/mods-api/CORS_ORIGINS_AUDIT.md` | `10_GUIDES_AND_TUTORIALS/MODS_API_CORS_ORIGINS.md` | ✅ Consolidated |
+| `serverless/mods-api/SECRETS_AUDIT.md` | `04_DEPLOYMENT/MODS_API_SECRETS_AUDIT.md` | ✅ Consolidated |
+| `serverless/url-shortener/TROUBLESHOOTING.md` | `10_GUIDES_AND_TUTORIALS/URL_SHORTENER_TROUBLESHOOTING.md` | ✅ Consolidated |
+| `serverless/url-shortener/INTEGRATION_GUIDE.md` | `10_GUIDES_AND_TUTORIALS/URL_SHORTENER_INTEGRATION.md` | ✅ Consolidated |
+| `serverless/url-shortener/DEPLOYMENT_GUIDE.md` | `04_DEPLOYMENT/URL_SHORTENER_DEPLOYMENT.md` | ✅ Consolidated |
+| `serverless/url-shortener/ROUTE_SETUP.md` | `04_DEPLOYMENT/URL_SHORTENER_ROUTE_SETUP.md` | ✅ Consolidated |
+| `serverless/url-shortener/AUTH_DNS_SETUP.md` | `04_DEPLOYMENT/AUTH_DNS_SETUP.md` | ✅ Consolidated |
+| `serverless/url-shortener/ENCRYPTION_SETUP_GUIDE.md` | `05_SECURITY/URL_SHORTENER_ENCRYPTION_SETUP.md` | ✅ Consolidated |
+| `serverless/url-shortener/SECRET_SETUP_GUIDE.md` | `04_DEPLOYMENT/URL_SHORTENER_SECRETS_SETUP.md` | ✅ Consolidated |
+| `serverless/url-shortener/SECURITY_FIX_SUMMARY.md` | `09_AUDITS_AND_REPORTS/URL_SHORTENER_SECURITY_FIX.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/INTEGRATION_GUIDE.md` | `10_GUIDES_AND_TUTORIALS/OTP_AUTH_INTEGRATION.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/API_STANDARDS.md` | `06_API_REFERENCE/OTP_AUTH_API_STANDARDS.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/API_ARCHITECTURE_COMPLIANCE.md` | `09_AUDITS_AND_REPORTS/OTP_AUTH_API_ARCHITECTURE_COMPLIANCE.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/STORAGE_ARCHITECTURE.md` | `02_ARCHITECTURE/OTP_AUTH_STORAGE_ARCHITECTURE.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/TWO_STAGE_ENCRYPTION_ARCHITECTURE.md` | `05_SECURITY/TWO_STAGE_ENCRYPTION_ARCHITECTURE.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/TTL_ISSUE_ANALYSIS.md` | `09_AUDITS_AND_REPORTS/TTL_ISSUE_ANALYSIS.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/SUPER_ADMIN_SETUP.md` | `04_DEPLOYMENT/SUPER_ADMIN_SETUP.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/SECURITY_IMPROVEMENTS.md` | `05_SECURITY/OTP_AUTH_SECURITY_IMPROVEMENTS.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/REFACTORING_PLAN.md` | `03_DEVELOPMENT/OTP_AUTH_REFACTORING_PLAN.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/PRIVACY_USER_MANAGEMENT_AUDIT.md` | `09_AUDITS_AND_REPORTS/PRIVACY_USER_MANAGEMENT_AUDIT.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/ENCRYPTION_PRIVACY_AUDIT.md` | `05_SECURITY/ENCRYPTION_PRIVACY_AUDIT.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/CUSTOMER_DATA_ISSUES_ANALYSIS.md` | `09_AUDITS_AND_REPORTS/CUSTOMER_DATA_ISSUES_ANALYSIS.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/ARCHITECTURE_VERIFICATION.md` | `09_AUDITS_AND_REPORTS/ARCHITECTURE_VERIFICATION.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/ACCOUNT_RECOVERY_SYSTEM.md` | `02_ARCHITECTURE/ACCOUNT_RECOVERY_SYSTEM.md` | ✅ Consolidated |
+| `serverless/url-shortener/SECURITY_GUIDE.md` | `05_SECURITY/URL_SHORTENER_SECURITY_GUIDE.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/README-INTEGRATION-TESTS.md` | `08_TESTING/OTP_AUTH_INTEGRATION_TESTS.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/PREVIEW.md` | `10_GUIDES_AND_TUTORIALS/OTP_AUTH_PREVIEW.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/PHASE_1_COMPLETE.md` | `09_AUDITS_AND_REPORTS/OTP_AUTH_PHASE_1_COMPLETE.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/MARKETING_USE_CASES.md` | `12_REFERENCE/MARKETING_USE_CASES.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/LOCAL_TESTING.md` | `10_GUIDES_AND_TUTORIALS/OTP_AUTH_LOCAL_TESTING.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/FINAL_STATUS.md` | `09_AUDITS_AND_REPORTS/OTP_AUTH_FINAL_STATUS.md` | ✅ Consolidated |
+| `serverless/TYPESCRIPT_AUDIT.md` | `09_AUDITS_AND_REPORTS/TYPESCRIPT_AUDIT.md` | ✅ Consolidated |
+| `serverless/README.md` | `07_SERVICES/SERVERLESS_README.md` | ✅ Consolidated |
+| `serverless/customer-api/SETUP.md` | `07_SERVICES/CUSTOMER_API_SETUP.md` | ✅ Consolidated |
+| `serverless/customer-api/SERVICE_API_KEY_SETUP.md` | `04_DEPLOYMENT/CUSTOMER_API_SERVICE_KEY_SETUP.md` | ✅ Consolidated |
+| `serverless/customer-api/PHASE_4_SETUP_INSTRUCTIONS.md` | `04_DEPLOYMENT/CUSTOMER_API_PHASE_4_SETUP.md` | ✅ Consolidated |
+| `serverless/customer-api/INTEGRATION_GUIDE.md` | `10_GUIDES_AND_TUTORIALS/CUSTOMER_API_INTEGRATION.md` | ✅ Consolidated |
+| `serverless/customer-api/FINAL_STATUS.md` | `09_AUDITS_AND_REPORTS/CUSTOMER_API_FINAL_STATUS.md` | ✅ Consolidated |
+| `serverless/customer-api/GITHUB_WORKFLOW_SETUP.md` | `04_DEPLOYMENT/CUSTOMER_API_GITHUB_WORKFLOW.md` | ✅ Consolidated |
+| `serverless/customer-api/DATA_MIGRATION_GUIDE.md` | `10_GUIDES_AND_TUTORIALS/CUSTOMER_API_DATA_MIGRATION.md` | ✅ Consolidated |
+| `serverless/customer-api/CORS_ORIGINS_AUDIT.md` | `10_GUIDES_AND_TUTORIALS/CUSTOMER_API_CORS_ORIGINS.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/dashboard/README.md` | `10_GUIDES_AND_TUTORIALS/OTP_AUTH_DASHBOARD_README.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/dashboard/LOCAL_DEV.md` | `10_GUIDES_AND_TUTORIALS/OTP_AUTH_DASHBOARD_LOCAL_DEV.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/sdk/README.md` | `12_REFERENCE/OTP_AUTH_SDK_README.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/scripts/README.md` | `10_GUIDES_AND_TUTORIALS/OTP_AUTH_SCRIPTS_README.md` | ✅ Consolidated |
 
 ### product-docs/ Directory Files
 
@@ -139,9 +196,9 @@ All documentation is being consolidated into 12 main categories:
 ## Consolidation Progress
 
 - **Total Files**: 300+
-- **Consolidated**: ~113
-- **Pending**: ~187
-- **Progress**: ~38%
+- **Consolidated**: ~143
+- **Pending**: ~157
+- **Progress**: ~48%
 
 ---
 

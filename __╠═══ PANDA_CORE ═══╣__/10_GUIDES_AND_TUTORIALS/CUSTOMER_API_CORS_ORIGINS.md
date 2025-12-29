@@ -198,11 +198,11 @@ https://*.idling.app,http://localhost:*
 | `https://chat.idling.app` | [INFO] MEDIUM | [SUCCESS] | [SUCCESS] | Chat signaling |
 | `https://idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Main website |
 | `https://www.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | WWW subdomain |
-| `http://localhost:5173` | [ERROR] CRITICAL | [ERROR] | [SUCCESS] | Vite dev server |
-| `http://localhost:3000` | [INFO] MEDIUM | [ERROR] | [SUCCESS] | Alternative dev |
-| `http://localhost:5174` | [INFO] MEDIUM | [ERROR] | [SUCCESS] | Alternative Vite |
-| `http://127.0.0.1:5173` | [INFO] MEDIUM | [ERROR] | [SUCCESS] | IP localhost |
-| `http://localhost:8080` | [INFO] LOW | [ERROR] | [SUCCESS] | Alternative dev |
+| `http://localhost:5173` | [ERROR] CRITICAL | [INFO] | [SUCCESS] | Vite dev server |
+| `http://localhost:3000` | [INFO] MEDIUM | [INFO] | [SUCCESS] | Alternative dev |
+| `http://localhost:5174` | [INFO] MEDIUM | [INFO] | [SUCCESS] | Alternative Vite |
+| `http://127.0.0.1:5173` | [INFO] MEDIUM | [INFO] | [SUCCESS] | IP localhost |
+| `http://localhost:8080` | [INFO] LOW | [INFO] | [SUCCESS] | Alternative dev |
 
 ---
 
@@ -230,4 +230,3 @@ https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https
 
 **Status:** [SUCCESS] **COMPLETE AUDIT**
 **Total Origins:** 14 (9 production + 5 development)
-

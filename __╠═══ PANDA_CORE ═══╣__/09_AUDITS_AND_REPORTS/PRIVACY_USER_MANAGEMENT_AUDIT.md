@@ -1,8 +1,8 @@
-# Privacy & User Management System - Comprehensive Audit & Implementation Plan [LOCK]
-
-> **Complete audit of privacy features, user preferences, customer creation, and sensitive data access request system**
+# Privacy & User Management System - Comprehensive Audit & Implementation Plan
 
 **Last Updated:** 2025-12-29
+
+> **Complete audit of privacy features, user preferences, customer creation, and sensitive data access request system**
 
 ---
 
@@ -360,6 +360,68 @@ serverless/customer-api/
 
 ---
 
+### 2. User Preferences Storage
+
+**Recommendation:** Store preferences in user object (KV) with separate key for quick access
+
+**Storage Structure:**
+```
+KV Keys:
+- `user_${emailHash}` - Full user object (includes preferences)
+- `user_preferences_${userId}` - Quick access to preferences (optional cache)
+```
+
+**Data Structure:**
+```typescript
+interface User {
+  userId: string;
+  email: string;
+  displayName: string;
+  displayNameHistory: Array<{
+    name: string;
+    changedAt: string;
+    reason: 'auto-generated' | 'user-changed' | 'regenerated';
+  }>;
+  preferences: {
+    emailVisibility: 'private' | 'public';
+    privacy: {
+      showEmail: boolean;
+      showProfilePicture: boolean;
+    };
+  };
+  customerId: string | null;
+  createdAt: string;
+  lastLogin: string;
+}
+```
+
+---
+
+### 3. Sensitive Data Request System
+
+**Recommendation:** Implement request system with two-stage encryption
+
+**Encryption Stages:**
+1. **Stage 1 (Public Decryptable):**
+   - Encrypted with user's JWT
+   - User can decrypt with their token
+   - Used for data user can always access
+
+2. **Stage 2 (Request-Required):**
+   - Encrypted with user's JWT + request key
+   - Requires approved request + user's JWT to decrypt
+   - Used for sensitive data (email, etc.)
+
+**Request Flow:**
+1. Super admin creates request via `POST /admin/data-requests`
+2. Request stored in KV with `pending` status
+3. System notifies user (optional - via email/webhook)
+4. Super admin approves request
+5. Decryption key generated and encrypted with requester's JWT
+6. Requester can decrypt data using request key + user's JWT
+
+---
+
 ## Implementation Plan
 
 ### Phase 1: Fix Immediate Issues (Week 1)
@@ -476,11 +538,208 @@ serverless/customer-api/
 
 ---
 
-**Status:** [WARNING] **AWAITING INSTRUCTIONS** - Ready to proceed with implementation
+### Phase 6: Customer API Worker (Week 7-8)
+
+**Priority: LOW (Future Enhancement)**
+
+1. **Create Customer API Worker**
+   - [ ] Worker structure
+   - [ ] Route definitions
+   - [ ] Handler implementations
+
+2. **Migrate Customer Operations**
+   - [ ] Move customer handlers to new worker
+   - [ ] Update OTP service to call customer API
+   - [ ] Update dashboard to call customer API
+
+3. **Test and Deploy**
+   - [ ] End-to-end testing
+   - [ ] Performance testing
+   - [ ] Deploy to production
+
+---
+
+## Security Considerations
+
+### 1. Encryption Security [SUCCESS]
+
+**Current State:**
+- [SUCCESS] No fallback decryption (secure)
+- [SUCCESS] Token hash verification
+- [SUCCESS] Only JWT token holder can decrypt
+
+**Recommendations:**
+- [SUCCESS] Keep current implementation (no changes needed)
+- [SUCCESS] Ensure no fallback decryption in request system
+- [SUCCESS] Verify token hash in all decryption operations
+
+---
+
+### 2. Privacy by Default [SUCCESS]
+
+**Implementation:**
+- [SUCCESS] Emails hidden by default
+- [SUCCESS] Only display name shown
+- [SUCCESS] Email visibility controlled by user preference
+- [SUCCESS] Super admin can request access (with approval)
+
+---
+
+### 3. Request System Security
+
+**Requirements:**
+- [SUCCESS] Super admin authentication required
+- [SUCCESS] Request expiration (time-limited)
+- [SUCCESS] Request approval required
+- [SUCCESS] Decryption key encrypted with requester's JWT
+- [SUCCESS] Audit logging for all requests
+
+---
+
+## Data Flow Diagrams
+
+### Customer Creation Flow
+
+```
+User Login (OTP)
+    ->
+Verify OTP
+    ->
+Check Customer Exists (by email)
+    ->
+[If Not Exists]
+    ->
+Generate Customer ID
+    ->
+Generate Random Display Name
+    ->
+Create Customer Object:
+  - customerId
+  - email
+  - displayName (random)
+  - subscriptions: []
+  - tier: 'free'
+  - flairs: []
+    ->
+Store in CUSTOMER_KV
+    ->
+Create User Object:
+  - userId
+  - email
+  - displayName (from customer)
+  - displayNameHistory: [{name, changedAt, reason: 'auto-generated'}]
+  - preferences: {emailVisibility: 'private', ...}
+    ->
+Store in OTP_AUTH_KV
+    ->
+Create JWT (includes customerId)
+    ->
+Return JWT to User
+```
+
+### Sensitive Data Request Flow
+
+```
+Super Admin Creates Request
+    ->
+Request Stored (status: 'pending')
+    ->
+[Optional] Notify User
+    ->
+Super Admin Approves Request
+    ->
+Generate Decryption Key
+    ->
+Encrypt Key with Requester's JWT
+    ->
+Store Request (status: 'approved', decryptionKey)
+    ->
+Requester Retrieves Request
+    ->
+Decrypt Key with Requester's JWT
+    ->
+Use Key + User's JWT to Decrypt Data
+    ->
+Return Decrypted Data
+```
+
+---
+
+## Success Criteria
+
+### Phase 1 (Immediate Fixes)
+- [SUCCESS] Customer creation works in all auth flows
+- [SUCCESS] Customer data displays correctly in dashboard
+- [SUCCESS] Response format matches API client expectations
+
+### Phase 2 (User Preferences)
+- [SUCCESS] Email privacy works (hidden by default)
+- [SUCCESS] User can make email public
+- [SUCCESS] Email shown in tooltip when public
+- [SUCCESS] Preferences API functional
+
+### Phase 3 (Display Name)
+- [SUCCESS] Display name history tracked
+- [SUCCESS] Monthly change limit enforced
+- [SUCCESS] Regeneration endpoint works
+- [SUCCESS] "Previously known as" shown in tooltips
+
+### Phase 4 (Customer Enhancement)
+- [SUCCESS] Customer created with subscriptions, tier, flairs
+- [SUCCESS] Random display name generated during creation
+- [SUCCESS] Dedicated customer KV namespace
+
+### Phase 5 (Request System)
+- [SUCCESS] Super admin can create requests
+- [SUCCESS] Two-stage encryption works
+- [SUCCESS] Request approval system functional
+- [SUCCESS] Data decryption with request works
+
+---
+
+## Notes
+
+### Obfuscation Animations
+
+**Available Animations:**
+- `obfuscate` - Best for sensitive data reveal (Minecraft enchantment style)
+- `typewriter` - Good for gradual reveal
+- `glitch` - Good for error states
+- `scramble` - Good for quick reveal
+
+**Recommendation:** Use `obfuscate` for email reveal (matches privacy theme)
+
+### Customer Storage
+
+**Current:** `OTP_AUTH_KV` (shared with auth data)
+**Recommended:** `CUSTOMER_KV` (dedicated namespace)
+
+**Migration Strategy:**
+1. Create `CUSTOMER_KV` namespace
+2. Update customer service to use new namespace
+3. Migrate existing customers (optional - can be gradual)
+4. Update all customer operations
+
+### Request System
+
+**Use Cases:**
+- Super admin needs to view user email for support
+- Compliance requests (GDPR, etc.)
+- Security investigations
+- Account recovery
+
+**Security:**
+- All requests logged
+- Request expiration (e.g., 24 hours)
+- Approval required
+- Decryption key encrypted with requester's JWT
+
+---
+
+**Status:** [INFO] **AWAITING INSTRUCTIONS** - Ready to proceed with implementation
 
 **Next Steps:**
 1. Review this audit
 2. Prioritize phases
 3. Start with Phase 1 (immediate fixes)
 4. Proceed with subsequent phases
-

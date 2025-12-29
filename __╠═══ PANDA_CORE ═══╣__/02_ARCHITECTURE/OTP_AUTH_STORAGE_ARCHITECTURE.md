@@ -251,3 +251,4 @@ await env.OTP_AUTH_KV.put(key, JSON.stringify(data), {
 - **Max Value Size:** 25MB per key
 - **TTL Support:** Yes
 
+---
