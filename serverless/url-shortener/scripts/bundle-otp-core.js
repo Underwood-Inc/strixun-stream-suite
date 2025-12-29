@@ -1,7 +1,7 @@
 /**
  * Bundle OTP Login Core for Browser Use
  * 
- * Bundles the shared OtpLoginCore for use in the Svelte app
+ * Bundles the shared OtpLoginCore for use in the React app
  * Similar to bundle-decrypt.js but for OTP authentication
  */
 

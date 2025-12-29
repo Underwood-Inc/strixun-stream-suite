@@ -105,7 +105,7 @@ export function createRouter() {
         }
       }
 
-      // Serve Svelte app (SPA routing - all non-API paths serve the app)
+      // Serve React app (SPA routing - all non-API paths serve the app)
       if (request.method === 'GET' && !path.startsWith('/api/')) {
         return handleAppAssets(request, env);
       }

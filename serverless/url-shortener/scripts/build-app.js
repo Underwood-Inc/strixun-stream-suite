@@ -1,7 +1,7 @@
 /**
  * Build URL Shortener App Assets
  * 
- * Bundles the Svelte app and creates an assets file for the worker
+ * Bundles the React app and creates an assets file for the worker
  */
 
 import { build } from 'vite';
@@ -19,7 +19,7 @@ const workerDistDir = join(projectRoot, 'dist');
 const outputFile = join(workerDistDir, 'app-assets.ts');
 
 try {
-  // Build the Svelte app (already done by pnpm build:app script)
+  // Build the React app (already done by pnpm build:app script)
   // This script just processes the built files
   console.log('Processing built app files...');
 

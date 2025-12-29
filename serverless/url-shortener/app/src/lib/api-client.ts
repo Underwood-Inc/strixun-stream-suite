@@ -3,8 +3,6 @@
  * TypeScript client for URL shortener API
  */
 
-import type { LoginSuccessData } from '@strixun/otp-login/dist/svelte';
-
 const API_URL = typeof window !== 'undefined' 
     ? window.location.origin 
     : 'https://s.idling.app';
@@ -66,9 +64,9 @@ class UrlShortenerApiClient {
 
     private async decryptResponse<T>(response: Response): Promise<T> {
         const isEncrypted = response.headers.get('X-Encrypted') === 'true';
-        let data = await response.json();
+        let data: any = await response.json();
         
-        if (isEncrypted && data.encrypted && this.token) {
+        if (isEncrypted && data && typeof data === 'object' && 'encrypted' in data && data.encrypted && this.token) {
             try {
                 if (typeof (window as any).decryptWithJWT !== 'function') {
                     throw new Error('Decryption library not loaded');
