@@ -8,7 +8,7 @@
   "scripts": {
     "build:decrypt": "node scripts/bundle-decrypt.js",
     "build:otp-core": "node scripts/bundle-otp-core.js",
-    "build:app": "cd app && pnpm build",
+    "build:app": "node scripts/build-app-with-env.js",
     "build:app-assets": "node scripts/build-app.js",
     "build:all": "pnpm build:decrypt && pnpm build:otp-core && pnpm build:app && pnpm build:app-assets",
     "predeploy": "pnpm build:all",
