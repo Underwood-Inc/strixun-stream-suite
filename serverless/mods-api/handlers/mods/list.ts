@@ -47,11 +47,14 @@ export async function handleListMods(
             customerModIds = customerListData || [];
         }
 
-        // Combine and deduplicate mod IDs
-        const allModIds = [...new Set([...globalModIds, ...customerModIds])];
+        // Combine and deduplicate mod IDs (normalize to ensure consistent comparison)
+        const normalizedGlobalModIds = globalModIds.map(id => normalizeModId(id));
+        const normalizedCustomerModIds = customerModIds.map(id => normalizeModId(id));
+        const allModIds = [...new Set([...normalizedGlobalModIds, ...normalizedCustomerModIds])];
 
-        // Fetch all mod metadata
+        // Fetch all mod metadata and deduplicate by modId to prevent duplicates
         const mods: ModMetadata[] = [];
+        const seenModIds = new Set<string>(); // Track modIds we've already added
         for (const modId of allModIds) {
             // Try to find mod in global scope first, then customer scope
             let mod: ModMetadata | null = null;
@@ -77,6 +80,14 @@ export async function handleListMods(
             }
             
             if (!mod) continue;
+            
+            // CRITICAL: Deduplicate by mod.modId to prevent same mod appearing twice
+            // This can happen if mod exists in both global and customer lists
+            const modUniqueId = normalizeModId(mod.modId);
+            if (seenModIds.has(modUniqueId)) {
+                continue; // Skip if we've already added this mod
+            }
+            seenModIds.add(modUniqueId);
 
             // Apply filters
             if (category && mod.category !== category) continue;

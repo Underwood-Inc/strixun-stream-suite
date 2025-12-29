@@ -209,30 +209,51 @@ export async function handleThumbnail(
         }
         
         // Strategy 4: If still not found, search all customer scopes (like badge handler does for versions)
+        // Search for thumbnails in all customer scopes by trying common customer prefixes
         if (!thumbnail) {
             console.log('[Thumbnail] Searching all customer scopes for thumbnail:', { normalizedStoredModId });
-            const customerPrefix = 'customer_';
-            let cursor: string | undefined;
-            let found = false;
             
-            do {
-                const listResult = await env.MODS_R2.list({ prefix: customerPrefix, cursor, limit: 1000 });
-                for (const obj of listResult.objects) {
-                    // Look for thumbnails matching pattern: customer_*/thumbnails/{normalizedModId}.ext
-                    if (obj.key.includes(`/thumbnails/${normalizedStoredModId}.`)) {
-                        const testFile = await env.MODS_R2.get(obj.key);
-                        if (testFile) {
-                            r2Key = obj.key;
-                            thumbnail = testFile;
-                            console.log('[Thumbnail] Found thumbnail in R2 (searched customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
-                            found = true;
-                            break;
+            // Try searching with common thumbnail path patterns across all customer scopes
+            // R2 list with prefix search for thumbnails
+            const thumbnailPrefixes = [
+                'customer_', // Search all customer scopes
+            ];
+            
+            for (const prefix of thumbnailPrefixes) {
+                let cursor: string | undefined;
+                let found = false;
+                
+                do {
+                    try {
+                        const listResult = await env.MODS_R2.list({ 
+                            prefix: prefix, 
+                            cursor, 
+                            limit: 1000 
+                        });
+                        
+                        for (const obj of listResult.objects) {
+                            // Look for thumbnails matching pattern: customer_*/thumbnails/{normalizedModId}.ext
+                            if (obj.key.includes(`thumbnails/${normalizedStoredModId}.`)) {
+                                const testFile = await env.MODS_R2.get(obj.key);
+                                if (testFile) {
+                                    r2Key = obj.key;
+                                    thumbnail = testFile;
+                                    console.log('[Thumbnail] Found thumbnail in R2 (searched customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                                    found = true;
+                                    break;
+                                }
+                            }
                         }
+                        if (found) break;
+                        cursor = listResult.truncated ? listResult.cursor : undefined;
+                    } catch (error) {
+                        console.warn('[Thumbnail] Error searching R2 with prefix:', { prefix, error: error instanceof Error ? error.message : String(error) });
+                        break; // Skip this prefix if there's an error
                     }
-                }
+                } while (cursor && !found);
+                
                 if (found) break;
-                cursor = listResult.truncated ? listResult.cursor : undefined;
-            } while (cursor && !found);
+            }
         }
         
         // If not found after all strategies, return 404
