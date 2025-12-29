@@ -23,6 +23,7 @@ let landingPageAssetsLoaded = false;
 
 /**
  * Lazy load dashboard assets (only when needed, not at top level)
+ * Wrangler should bundle dynamically imported files, but we add error handling
  */
 export async function loadDashboardAssets(): Promise<AssetMap> {
     if (dashboardAssetsLoaded) return dashboardAssets;
@@ -30,8 +31,22 @@ export async function loadDashboardAssets(): Promise<AssetMap> {
     try {
         const dashboardModule = await import('../dashboard-assets.js');
         dashboardAssets = dashboardModule.default as AssetMap;
+        
+        // Log for debugging in production
+        if (dashboardAssets) {
+            const assetCount = Object.keys(dashboardAssets).length;
+            console.log(`[Assets] Loaded dashboard assets: ${assetCount} files`);
+            // Log first few asset keys for debugging
+            const sampleKeys = Object.keys(dashboardAssets).slice(0, 5);
+            console.log(`[Assets] Sample asset keys: ${sampleKeys.join(', ')}`);
+        } else {
+            console.warn('[Assets] dashboard-assets.js loaded but default export is null/undefined');
+        }
     } catch (e) {
         // Dashboard not built yet - will proxy to dev server in dev mode
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.error('[Assets] Failed to load dashboard-assets.js:', errorMessage);
+        console.error('[Assets] This usually means the dashboard was not built. Run: pnpm build');
         dashboardAssets = null;
     }
     return dashboardAssets;
@@ -369,9 +384,23 @@ pnpm dev</code></pre>
         // If it's an asset request that's not found, return 404 immediately
         // Don't fallback to index.html for asset requests
         if (isAssetRequest) {
-            // Log for debugging - show first few available keys
-            const availableKeys = Object.keys(assets).slice(0, 5).join(', ');
-            console.error(`[Dashboard Assets] File not found: ${filePath}. Sample available keys: ${availableKeys}...`);
+            // Log for debugging - show first few available keys and the requested path
+            const availableKeys = Object.keys(assets).slice(0, 10).join(', ');
+            const totalKeys = Object.keys(assets).length;
+            console.error(`[Dashboard Assets] File not found: ${filePath}`);
+            console.error(`[Dashboard Assets] Original request path: ${url.pathname}`);
+            console.error(`[Dashboard Assets] Total assets available: ${totalKeys}`);
+            console.error(`[Dashboard Assets] Sample available keys: ${availableKeys}...`);
+            
+            // Try to find similar keys (for debugging)
+            const matchingKeys = Object.keys(assets).filter(key => 
+                key.includes(filePath.split('/').pop() || '') || 
+                filePath.split('/').pop()?.includes(key.split('/').pop() || '')
+            ).slice(0, 5);
+            if (matchingKeys.length > 0) {
+                console.error(`[Dashboard Assets] Similar keys found: ${matchingKeys.join(', ')}`);
+            }
+            
             return new Response(`File not found: ${filePath}`, {
                 status: 404,
                 headers: getCorsHeaders(env, request),

@@ -10,6 +10,7 @@
   import ApiKeys from './pages/ApiKeys.svelte';
   import AuditLogs from './pages/AuditLogs.svelte';
   import Dashboard from './pages/Dashboard.svelte';
+  import TwitchAdCarousel from '@strixun/ad-carousel/TwitchAdCarousel.svelte';
 
   let user: User | null = null;
   let customer: Customer | null = null;
@@ -162,6 +163,13 @@
   {/if}
 </div>
 
+{#if isAuthenticated}
+  <TwitchAdCarousel
+    position="bottom-right"
+    supportUrl="https://www.twitch.tv/strixun"
+    storageKey="ui_otp_auth_ad_carousel_state"
+  />
+{/if}
 
 <style>
   .app-container {
