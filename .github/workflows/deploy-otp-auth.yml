@@ -103,6 +103,14 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
+      - name: Build workspace dependencies
+        working-directory: .
+        run: |
+          # Build workspace packages that are needed by the dashboard
+          pnpm --filter "@strixun/otp-login" run build:react || echo "OTP login build skipped if no build script"
+          # Note: @strixun/status-flair and @strixun/ad-carousel are Svelte components, no build needed
+          # but they need export specifiers in package.json (which we've fixed)
+      
       - name: Build and Deploy to Cloudflare Workers
         id: deploy
         working-directory: serverless/otp-auth-service
@@ -110,7 +118,34 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: pnpm run deploy
+        run: |
+          # Build the dashboard and generate assets
+          echo "🔨 Building dashboard..."
+          pnpm run build
+          
+          # Verify dashboard-assets.js was created
+          echo "🔍 Verifying dashboard-assets.js..."
+          if [ ! -f "dashboard-assets.js" ]; then
+            echo "❌ ERROR: dashboard-assets.js was not created!"
+            echo "Build may have failed. Checking dashboard dist directory..."
+            ls -la dashboard/dist/ || echo "Dashboard dist directory not found"
+            exit 1
+          fi
+          
+          # Check that dashboard-assets.js has content (using ES module import)
+          echo "📊 Checking dashboard-assets.js content..."
+          ASSET_COUNT=$(node --input-type=module -e "import('./dashboard-assets.js').then(m => console.log(Object.keys(m.default || {}).length)).catch(() => console.log('0'))" 2>/dev/null || echo "0")
+          if [ "$ASSET_COUNT" = "0" ]; then
+            echo "⚠️  WARNING: dashboard-assets.js appears to be empty or invalid"
+            echo "This might cause styles to not load in production"
+            echo "File size: $(wc -c < dashboard-assets.js) bytes"
+          else
+            echo "✅ dashboard-assets.js created with $ASSET_COUNT files"
+          fi
+          
+          # Deploy to Cloudflare Workers (production environment)
+          echo "🚀 Deploying to Cloudflare Workers..."
+          pnpm exec wrangler deploy --env production
       
       - name: Rollback on Failure
         if: failure()
