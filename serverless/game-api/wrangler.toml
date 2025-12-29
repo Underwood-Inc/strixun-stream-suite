@@ -6,12 +6,8 @@ main = "worker.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespace for game data
-# Created via: wrangler kv namespace create "GAME_API_KV"
-[[kv_namespaces]]
-binding = "GAME_KV"
-id = "cc95b32546e14dfbb6c36f8e3d96f13f"  # TODO: Create namespace and update this ID
-# To create: cd serverless/game-api && wrangler kv namespace create "GAME_API_KV"
+# KV Namespace is now defined per environment below
+# Default binding (for backward compatibility) is in [env.production] section
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
@@ -20,11 +16,34 @@ id = "cc95b32546e14dfbb6c36f8e3d96f13f"  # TODO: Create namespace and update thi
 #
 # IMPORTANT: JWT_SECRET must match the OTP auth service secret for authentication to work
 
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+# Production KV Namespace
+[[env.production.kv_namespaces]]
+binding = "GAME_KV"
+id = "cc95b32546e14dfbb6c36f8e3d96f13f"
+
+# Production routes
+[[env.production.routes]]
+pattern = "game.idling.app/*"
+zone_name = "idling.app"
+
+# Development environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Development KV Namespace (using same namespace for testing)
+[[env.development.kv_namespaces]]
+binding = "GAME_KV"
+id = "cc95b32546e14dfbb6c36f8e3d96f13f"
+
+# Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
 
-# Custom domain configuration
-# Using idling.app domain
+# Default routes (production)
 routes = [
   { pattern = "game.idling.app/*", zone_name = "idling.app" }
 ]

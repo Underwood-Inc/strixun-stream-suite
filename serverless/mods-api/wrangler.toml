@@ -6,24 +6,8 @@ main = "worker.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespace for mod metadata
-# Created via: wrangler kv namespace create "MODS_KV"
-[[kv_namespaces]]
-binding = "MODS_KV"
-id = "0d3dafe0994046c6a47146c6bd082ad3"
-
-# KV Namespace for OTP auth data (shared with otp-auth-service)
-# This allows mods-api to access user data directly
-[[kv_namespaces]]
-binding = "OTP_AUTH_KV"
-id = "680c9dbe86854c369dd23e278abb41f9"
-
-# R2 Bucket for mod files
-# Created via: wrangler r2 bucket create "mods-storage"
-[[r2_buckets]]
-binding = "MODS_R2"
-bucket_name = "mods-storage"
-# To create: cd serverless/mods-api && wrangler r2 bucket create "mods-storage"
+# KV Namespaces and R2 buckets are now defined per environment below
+# Default bindings (for backward compatibility) are in [env.production] section
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
@@ -36,14 +20,55 @@ bucket_name = "mods-storage"
 #   - JWT_SECRET must match the OTP auth service secret for authentication to work
 #   - ALLOWED_EMAILS restricts who can upload/manage mods (leave unset to allow all authenticated users)
 
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production" }
+ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
+
+# Production KV Namespaces
+[[env.production.kv_namespaces]]
+binding = "MODS_KV"
+id = "0d3dafe0994046c6a47146c6bd082ad3"
+
+[[env.production.kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
+# Production R2 Bucket
+[[env.production.r2_buckets]]
+binding = "MODS_R2"
+bucket_name = "mods-storage"
+
+# Production routes
+[[env.production.routes]]
+pattern = "mods-api.idling.app"
+zone_name = "idling.app"
+custom_domain = true
+
+# Development environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Development KV Namespaces (using same namespaces for testing)
+[[env.development.kv_namespaces]]
+binding = "MODS_KV"
+id = "0d3dafe0994046c6a47146c6bd082ad3"
+
+[[env.development.kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
+# Development R2 Bucket (can use same bucket or separate test bucket)
+[[env.development.r2_buckets]]
+binding = "MODS_R2"
+bucket_name = "mods-storage"
+
+# Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
-# Custom domain configuration
-# Matches remote configuration to avoid deployment warnings
-# Remote has custom domain route + specific routes in vars.routes (dashboard-only)
-# For custom domains, pattern should be just the domain (Cloudflare handles /* automatically)
+# Default routes (production)
 routes = [
   { pattern = "mods-api.idling.app", zone_name = "idling.app", custom_domain = true },
 ]

@@ -6,12 +6,8 @@ main = "worker.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespace for caching tokens and data
-# Created via: wrangler kv namespace create "TWITCH_CACHE"
-[[kv_namespaces]]
-binding = "TWITCH_CACHE"
-id = "66b9a4425cb7492fbae8f690780cd0ae"
-# To create: cd serverless/twitch-api && wrangler kv namespace create "TWITCH_CACHE"
+# KV Namespace is now defined per environment below
+# Default binding (for backward compatibility) is in [env.production] section
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
@@ -22,11 +18,34 @@ id = "66b9a4425cb7492fbae8f690780cd0ae"
 #
 # IMPORTANT: JWT_SECRET must match the OTP auth service secret for authentication to work
 
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+# Production KV Namespace
+[[env.production.kv_namespaces]]
+binding = "TWITCH_CACHE"
+id = "66b9a4425cb7492fbae8f690780cd0ae"
+
+# Production routes
+[[env.production.routes]]
+pattern = "api.idling.app/*"
+zone_name = "idling.app"
+
+# Development environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Development KV Namespace (using same namespace for testing)
+[[env.development.kv_namespaces]]
+binding = "TWITCH_CACHE"
+id = "66b9a4425cb7492fbae8f690780cd0ae"
+
+# Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
 
-# Custom domain configuration
-# Using idling.app domain
+# Default routes (production)
 routes = [
   { pattern = "api.idling.app/*", zone_name = "idling.app" }
 ]

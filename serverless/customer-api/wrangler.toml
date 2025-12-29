@@ -6,12 +6,8 @@ main = "worker.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespace for customer data
-# Created via: wrangler kv namespace create "CUSTOMER_API_KV"
-[[kv_namespaces]]
-binding = "CUSTOMER_KV"
-id = "86ef5ab4419b40eab3fe65b75f052789"
-# To create: cd serverless/customer-api && wrangler kv namespace create "CUSTOMER_API_KV"
+# KV Namespace is now defined per environment below
+# Default binding (for backward compatibility) is in [env.production] section
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
@@ -20,11 +16,34 @@ id = "86ef5ab4419b40eab3fe65b75f052789"
 #
 # IMPORTANT: JWT_SECRET must match the OTP auth service secret for authentication to work
 
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+# Production KV Namespace
+[[env.production.kv_namespaces]]
+binding = "CUSTOMER_KV"
+id = "86ef5ab4419b40eab3fe65b75f052789"
+
+# Production routes
+[[env.production.routes]]
+pattern = "customer-api.idling.app/*"
+zone_name = "idling.app"
+
+# Development environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Development KV Namespace (using same namespace for testing)
+[[env.development.kv_namespaces]]
+binding = "CUSTOMER_KV"
+id = "86ef5ab4419b40eab3fe65b75f052789"
+
+# Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
 
-# Custom domain configuration
-# Using idling.app domain
+# Default routes (production)
 routes = [
   { pattern = "customer-api.idling.app/*", zone_name = "idling.app" }
 ]

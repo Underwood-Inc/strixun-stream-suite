@@ -2,16 +2,29 @@ name = "strixun-chat-signaling"
 main = "worker.ts"
 compatibility_date = "2024-01-01"
 
+# Production environment
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
-[env.development]
-vars = { ENVIRONMENT = "development" }
-
-[[kv_namespaces]]
+# Production KV Namespace
+[[env.production.kv_namespaces]]
 binding = "CHAT_KV"
 id = "78a1bd4cd5dc468780de442aacc9d1ee"
 preview_id = "78a1bd4cd5dc468780de442aacc9d1ee"
+
+# Development environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Development KV Namespace (using same namespace for testing)
+[[env.development.kv_namespaces]]
+binding = "CHAT_KV"
+id = "78a1bd4cd5dc468780de442aacc9d1ee"
+preview_id = "78a1bd4cd5dc468780de442aacc9d1ee"
+
+# Default to production for backward compatibility
+[vars]
+ENVIRONMENT = "production"
 
 # Note: Create KV namespace with:
 # wrangler kv namespace create "CHAT_KV"
