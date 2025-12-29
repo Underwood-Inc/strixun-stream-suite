@@ -3,7 +3,7 @@
  * Improves UX by breaking the form into logical steps
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
@@ -318,6 +318,45 @@ const ReviewEmpty = styled.div`
   font-size: 0.875rem;
 `;
 
+const ThumbnailPreview = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  margin: ${spacing.sm} auto;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid ${colors.border};
+`;
+
+const ThumbnailImage = styled.img`
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  background: ${colors.bg};
+`;
+
+const ThumbnailLabel = styled.div`
+  position: absolute;
+  top: ${spacing.xs};
+  left: ${spacing.xs};
+  background: ${colors.warning}dd;
+  color: ${colors.bg};
+  padding: 2px ${spacing.xs};
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ThumbnailPreviewContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${spacing.xs};
+`;
+
 // Variants Section
 const VariantsSection = styled.div`
   margin-top: ${spacing.lg};
@@ -405,9 +444,25 @@ export function ModUploadWizard({
     const [gameId, setGameId] = useState<string | undefined>(initialData?.gameId);
     const [isDragging, setIsDragging] = useState(false);
     const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
+    const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
+    // Generate thumbnail preview URL when thumbnail changes
+    useEffect(() => {
+        if (thumbnail) {
+            const objectUrl = URL.createObjectURL(thumbnail);
+            setThumbnailPreview(objectUrl);
+            
+            // Cleanup function to revoke the object URL
+            return () => {
+                URL.revokeObjectURL(objectUrl);
+            };
+        } else {
+            setThumbnailPreview(null);
+        }
+    }, [thumbnail]);
 
     // Validation
     const validateStep = (step: number): boolean => {
@@ -640,19 +695,25 @@ export function ModUploadWizard({
                                 onDrop={handleThumbnailDrop}
                                 onClick={() => thumbnailInputRef.current?.click()}
                             >
-                                {thumbnail ? (
-                                    <FileInfo>
-                                        <FileName>{thumbnail.name}</FileName>
-                                        <RemoveButton 
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setThumbnail(null);
-                                            }}
-                                        >
-                                            Remove
-                                        </RemoveButton>
-                                    </FileInfo>
+                                {thumbnail && thumbnailPreview ? (
+                                    <ThumbnailPreviewContainer>
+                                        <ThumbnailPreview>
+                                            <ThumbnailLabel>Preview</ThumbnailLabel>
+                                            <ThumbnailImage src={thumbnailPreview} alt="Thumbnail preview" />
+                                        </ThumbnailPreview>
+                                        <FileInfo>
+                                            <FileName>{thumbnail.name}</FileName>
+                                            <RemoveButton 
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setThumbnail(null);
+                                                }}
+                                            >
+                                                Remove
+                                            </RemoveButton>
+                                        </FileInfo>
+                                    </ThumbnailPreviewContainer>
                                 ) : (
                                     <>
                                         <div>❓❓ Drop thumbnail here</div>
@@ -855,10 +916,18 @@ export function ModUploadWizard({
                     <ReviewValue>{visibility}</ReviewValue>
                 </ReviewSection>
 
-                {thumbnail && (
+                {thumbnail && thumbnailPreview && (
                     <ReviewSection>
                         <ReviewLabel>Thumbnail</ReviewLabel>
-                        <ReviewValue>{thumbnail.name}</ReviewValue>
+                        <ThumbnailPreviewContainer>
+                            <ThumbnailPreview>
+                                <ThumbnailLabel>Preview (Not Uploaded)</ThumbnailLabel>
+                                <ThumbnailImage src={thumbnailPreview} alt="Thumbnail preview" />
+                            </ThumbnailPreview>
+                            <ReviewValue style={{ fontSize: '0.75rem', color: colors.textMuted }}>
+                                {thumbnail.name}
+                            </ReviewValue>
+                        </ThumbnailPreviewContainer>
                     </ReviewSection>
                 )}
 
