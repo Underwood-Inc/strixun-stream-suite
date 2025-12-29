@@ -205,18 +205,32 @@ export function AdminPanel() {
 
     // Filter and sort mods - MEMOIZED for performance
     const { filteredMods, sortedMods } = useMemo(() => {
-        if (isLoading || error || !data) return { filteredMods: [], sortedMods: [] };
+        if (isLoading || error || !data) {
+            console.log('[AdminPanel] Early return:', { isLoading, error: !!error, hasData: !!data });
+            return { filteredMods: [], sortedMods: [] };
+        }
+        
+        // Defensive check: ensure data.mods is an array
+        if (!Array.isArray(data.mods)) {
+            console.error('[AdminPanel] data.mods is not an array:', { data, modsType: typeof data.mods });
+            return { filteredMods: [], sortedMods: [] };
+        }
         
         let mods = data.mods;
+        console.log('[AdminPanel] Starting with mods:', { count: mods.length, statusFilter, searchQuery });
         
         // Filter by status
         if (statusFilter) {
+            const beforeCount = mods.length;
             mods = mods.filter(m => m.status === statusFilter);
+            console.log('[AdminPanel] After status filter:', { beforeCount, afterCount: mods.length, statusFilter });
         }
         
         // Filter by search query
         if (searchQuery.trim()) {
+            const beforeCount = mods.length;
             mods = filterModsBySearchQuery(mods, searchQuery);
+            console.log('[AdminPanel] After search filter:', { beforeCount, afterCount: mods.length, searchQuery });
         }
         
         const filtered = mods;
@@ -241,6 +255,7 @@ export function AdminPanel() {
             });
         }
         
+        console.log('[AdminPanel] Final result:', { filteredCount: filtered.length, sortedCount: sorted.length });
         return { filteredMods: filtered, sortedMods: sorted };
     }, [data, statusFilter, searchQuery, sortConfig, isLoading, error]);
 
@@ -411,6 +426,17 @@ export function AdminPanel() {
 
     if (isLoading) return <Loading>Loading mods...</Loading>;
     if (error) return <Error>Failed to load mods: {(error as Error).message}</Error>;
+    
+    // Debug logging
+    console.log('[AdminPanel] Render state:', {
+        hasData: !!data,
+        modsCount: data?.mods?.length ?? 0,
+        isArray: Array.isArray(data?.mods),
+        statusFilter,
+        searchQuery,
+        sortedModsCount: sortedMods.length,
+        filteredModsCount: filteredMods.length
+    });
 
     const selectedCount = selectedIds.size;
     const hasSelection = selectedCount > 0;
