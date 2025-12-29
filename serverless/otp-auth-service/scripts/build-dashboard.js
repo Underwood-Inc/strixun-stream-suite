@@ -144,25 +144,20 @@ if (!files['index.html']) {
   process.exit(1);
 }
 
-// Fix asset paths in index.html to use relative paths from /dashboard/
-// This ensures assets load correctly regardless of how the page is accessed
+// Fix asset paths in index.html - Vite's base path should handle this, but ensure it's correct
 console.log('🔧 Fixing asset paths in index.html...');
 let htmlContent = files['index.html'];
-// Replace absolute paths starting with /assets/ to be relative ./assets/
-// This works because the HTML is served at /dashboard, so ./assets/ resolves to /dashboard/assets/
+// Vite with base: '/dashboard/' should generate /dashboard/assets/... but it's generating /assets/...
+// We need to convert /assets/... to /dashboard/assets/... so they resolve correctly
 htmlContent = htmlContent.replace(
   /(href|src)=(["'])\/(assets\/[^"']+)\2/g,
   (match, attr, quote, path) => {
-    // Convert absolute /assets/... to relative ./assets/...
-    // This ensures paths work correctly when HTML is at /dashboard
-    return `${attr}=${quote}./${path}${quote}`;
+    // Convert /assets/... to /dashboard/assets/...
+    return `${attr}=${quote}/dashboard/${path}${quote}`;
   }
 );
 files['index.html'] = htmlContent;
-// Verify the fix worked
-const assetRefs = htmlContent.match(/(href|src)=["']([^"']+)["']/g) || [];
-console.log('✅ Fixed asset paths in index.html to use relative paths');
-console.log(`   Found ${assetRefs.length} asset references: ${assetRefs.slice(0, 3).join(', ')}...`);
+console.log('✅ Fixed asset paths in index.html');
 
 // Generate dashboard-assets.js module
 console.log('📝 Generating assets module...');
