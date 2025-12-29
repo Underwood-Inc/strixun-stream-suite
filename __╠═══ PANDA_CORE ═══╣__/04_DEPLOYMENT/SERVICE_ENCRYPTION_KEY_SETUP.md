@@ -1,6 +1,6 @@
-# Setting SERVICE_ENCRYPTION_KEY [LOCK]
+# Setting SERVICE_ENCRYPTION_KEY
 
-**Last Updated:** 2025-12-29
+**Last Updated**: 2025-12-29
 
 ## Quick Setup
 
@@ -105,4 +105,3 @@ wrangler secret list
 **Error: "Permission denied"**
 - Make sure you have access to the Cloudflare account
 - Check: `wrangler whoami`
-

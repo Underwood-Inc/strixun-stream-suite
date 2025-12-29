@@ -1,10 +1,6 @@
 # Encryption Setup Guide - URL Shortener
 
-> **Complete guide for setting up end-to-end encryption in URL Shortener**
-
-**Date:** 2025-12-29
-
----
+**Last Updated**: 2025-12-29
 
 ## How End-to-End Encryption Works
 
@@ -161,11 +157,11 @@ const decrypted = await decryptWithServiceKey(body, serviceKey);
 
 ## Security Notes
 
-- ✅ Keys are bundled at build time (not in source code)
-- ⚠️ Keys are still accessible in the JavaScript bundle
-- ⚠️ Symmetric keys exposed to clients is a security trade-off
-- 💡 Consider removing client-side encryption (HTTPS is sufficient)
-- 💡 Consider asymmetric encryption (public key for client)
+- [SUCCESS] Keys are bundled at build time (not in source code)
+- [WARNING] Keys are still accessible in the JavaScript bundle
+- [WARNING] Symmetric keys exposed to clients is a security trade-off
+- [INFO] Consider removing client-side encryption (HTTPS is sufficient)
+- [INFO] Consider asymmetric encryption (public key for client)
 
 ---
 
@@ -197,8 +193,3 @@ For production builds:
 - `shared-components/otp-login/core.ts` - Encryption implementation
 - `serverless/otp-auth-service/handlers/auth/request-otp.ts` - Server decryption
 - `serverless/url-shortener/app/src/App.svelte` - Client usage
-
----
-
-**Last Updated**: 2025-12-29
-

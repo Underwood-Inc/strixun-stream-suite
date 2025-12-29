@@ -1,6 +1,6 @@
 # CORS Origins Audit for Mods API
 
-**Last Updated:** 2025-12-29
+**Last Updated**: 2025-12-29
 
 ## Overview
 
@@ -12,7 +12,7 @@ This document lists **ALL** origins that should be included in the `ALLOWED_ORIG
 
 ### Primary Domains
 
-1. **`https://mods.idling.app`** [SUCCESS] **CRITICAL**
+1. **`https://mods.idling.app`** [CRITICAL]
    - Mods Hub frontend (React app on Cloudflare Pages)
    - **MUST INCLUDE** - Primary consumer of mods API
    - Frontend makes all API calls from this origin
@@ -107,12 +107,12 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 
 ## Priority Levels
 
-### [ERROR] CRITICAL (Must Include)
+### [CRITICAL] (Must Include)
 - `https://mods.idling.app` - Primary consumer (Mods Hub frontend)
 - `http://localhost:5173` - Local development (mods-hub Vite server)
 - `http://localhost:3001` - Local development (mods-hub React app port)
 
-### [WARNING] HIGH (Should Include)
+### [HIGH] (Should Include)
 - `https://auth.idling.app` - Authentication service
 - `https://api.idling.app` - Main API worker
 - `https://customer.idling.app` - Customer API integration
@@ -120,14 +120,14 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 - `https://idling.app` - Main website
 - `https://www.idling.app` - WWW subdomain
 
-### [INFO] MEDIUM (Consider Including)
+### [MEDIUM] (Consider Including)
 - `https://s.idling.app` - URL shortener
 - `https://chat.idling.app` - Chat signaling
 - `http://localhost:3000` - Alternative dev port
 - `http://localhost:5174` - Alternative Vite port
 - `http://127.0.0.1:5173` - IP-based localhost
 
-### [SUCCESS] LOW (Optional)
+### [LOW] (Optional)
 - `http://localhost:8080` - Alternative dev port
 
 ---
@@ -174,7 +174,7 @@ curl -H "Origin: https://mods.idling.app" \
 
 ---
 
-## Security Notes
+## [WARNING] Security Notes
 
 1. **Never use `*` in production** - Always specify exact origins
 2. **Include protocol** - `https://` for production, `http://` for localhost
@@ -197,21 +197,21 @@ https://*.idling.app,http://localhost:*
 
 | Origin | Priority | Production | Development | Notes |
 |--------|----------|-----------|-------------|-------|
-| `https://mods.idling.app` | [ERROR] CRITICAL | [SUCCESS] | [SUCCESS] | Primary consumer (Mods Hub frontend) |
-| `https://auth.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Authentication service |
-| `https://api.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Main API worker |
-| `https://customer.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Customer API |
-| `https://game.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Game API |
-| `https://s.idling.app` | [INFO] MEDIUM | [SUCCESS] | [SUCCESS] | URL shortener |
-| `https://chat.idling.app` | [INFO] MEDIUM | [SUCCESS] | [SUCCESS] | Chat signaling |
-| `https://idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Main website |
-| `https://www.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | WWW subdomain |
-| `http://localhost:5173` | [ERROR] CRITICAL | [ERROR] | [SUCCESS] | Vite dev server (mods-hub) |
-| `http://localhost:3000` | [INFO] MEDIUM | [ERROR] | [SUCCESS] | Alternative dev |
-| `http://localhost:3001` | [ERROR] CRITICAL | [ERROR] | [SUCCESS] | Mods Hub React app port |
-| `http://localhost:5174` | [INFO] MEDIUM | [ERROR] | [SUCCESS] | Alternative Vite |
-| `http://127.0.0.1:5173` | [INFO] MEDIUM | [ERROR] | [SUCCESS] | IP localhost |
-| `http://localhost:8080` | [SUCCESS] LOW | [ERROR] | [SUCCESS] | Alternative dev |
+| `https://mods.idling.app` | [CRITICAL] | [SUCCESS] | [SUCCESS] | Primary consumer (Mods Hub frontend) |
+| `https://auth.idling.app` | [HIGH] | [SUCCESS] | [SUCCESS] | Authentication service |
+| `https://api.idling.app` | [HIGH] | [SUCCESS] | [SUCCESS] | Main API worker |
+| `https://customer.idling.app` | [HIGH] | [SUCCESS] | [SUCCESS] | Customer API |
+| `https://game.idling.app` | [HIGH] | [SUCCESS] | [SUCCESS] | Game API |
+| `https://s.idling.app` | [MEDIUM] | [SUCCESS] | [SUCCESS] | URL shortener |
+| `https://chat.idling.app` | [MEDIUM] | [SUCCESS] | [SUCCESS] | Chat signaling |
+| `https://idling.app` | [HIGH] | [SUCCESS] | [SUCCESS] | Main website |
+| `https://www.idling.app` | [HIGH] | [SUCCESS] | [SUCCESS] | WWW subdomain |
+| `http://localhost:5173` | [CRITICAL] | [ERROR] | [SUCCESS] | Vite dev server (mods-hub) |
+| `http://localhost:3000` | [MEDIUM] | [ERROR] | [SUCCESS] | Alternative dev |
+| `http://localhost:3001` | [CRITICAL] | [ERROR] | [SUCCESS] | Mods Hub React app port |
+| `http://localhost:5174` | [MEDIUM] | [ERROR] | [SUCCESS] | Alternative Vite |
+| `http://127.0.0.1:5173` | [MEDIUM] | [ERROR] | [SUCCESS] | IP localhost |
+| `http://localhost:8080` | [LOW] | [ERROR] | [SUCCESS] | Alternative dev |
 
 ---
 
@@ -234,4 +234,3 @@ wrangler secret put ALLOWED_ORIGINS
 # Paste this when prompted:
 https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080
 ```
-

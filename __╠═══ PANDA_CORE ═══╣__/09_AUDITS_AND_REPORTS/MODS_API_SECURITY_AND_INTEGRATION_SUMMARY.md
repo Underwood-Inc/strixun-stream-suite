@@ -1,7 +1,8 @@
 # Security Audit & Integration Summary
 
+**Last Updated**: 2025-12-29
+
 **Date:** 2025-01-XX  
-**Last Updated:** 2025-12-29
 **Status:** [SUCCESS] Complete - All systems secure and properly integrated
 
 ---
@@ -34,7 +35,7 @@
    - [ERROR] Hash calculation method details - Only signature, not keyphrase
 
 3. **HMAC-SHA256 Security:**
-   - [SUCCESS] One-way function: Cannot reverse signature -> keyphrase
+   - [SUCCESS] One-way function: Cannot reverse signature to keyphrase
    - [SUCCESS] Cryptographically secure: Industry-standard algorithm
    - [SUCCESS] Key-dependent: Same file + different keyphrase = different signature
 
@@ -63,7 +64,7 @@
    - [SUCCESS] Uses `calculateStrixunHash(decryptedBytes, env)` for binary format
    - [SUCCESS] Uses `calculateStrixunHash(fileBytes, env)` for JSON format
    - [SUCCESS] Hash calculated on **decrypted content** (correct)
-   - [SUCCESS] Passes `env` parameter (contains keyphrase server-side only)
+   - [SUCCESS] Passes `env` parameter (contains keyphrase server-side)
 
 2. **`handlers/versions/upload.ts`**
    - [SUCCESS] Uses `calculateStrixunHash(decryptedBytes, env)` for binary format
@@ -115,8 +116,8 @@
 ### Problem Identified
 
 The verify handler was calculating the hash on the **encrypted** file from R2, but during upload, the hash is calculated on the **decrypted** content. This meant:
-- Upload: Hash calculated on decrypted content -> stored
-- Verify: Hash calculated on encrypted content -> never matches!
+- Upload: Hash calculated on decrypted content and stored
+- Verify: Hash calculated on encrypted content and never matches!
 
 ### Solution Implemented
 
@@ -219,7 +220,7 @@ fetch('/mods/test-mod/versions/version-123/validate', {
 ### [SUCCESS] Cryptographic Security
 
 1. **HMAC-SHA256 Properties:**
-   - One-way function: signature -> keyphrase is impossible
+   - One-way function: signature to keyphrase is impossible
    - Collision-resistant: different files = different signatures
    - Key-dependent: same file + different keyphrase = different signature
 

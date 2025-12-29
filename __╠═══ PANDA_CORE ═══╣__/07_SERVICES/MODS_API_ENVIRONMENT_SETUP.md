@@ -1,6 +1,6 @@
 # Environment Variables Setup
 
-**Last Updated:** 2025-12-29
+**Last Updated**: 2025-12-29
 
 ## File Integrity Keyphrase
 
@@ -38,7 +38,7 @@ FILE_INTEGRITY_KEYPHRASE=your-secret-keyphrase-here
 Add `FILE_INTEGRITY_KEYPHRASE` as a GitHub Secret:
 
 1. Go to your repository settings
-2. Navigate to "Secrets and variables" -> "Actions"
+2. Navigate to "Secrets and variables" > "Actions"
 3. Click "New repository secret"
 4. Name: `FILE_INTEGRITY_KEYPHRASE`
 5. Value: Your secret keyphrase

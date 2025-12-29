@@ -1,6 +1,6 @@
 # Upload Limits Test Coverage
 
-**Last Updated:** 2025-12-29
+**Last Updated**: 2025-12-29
 
 ## Overview
 
@@ -11,7 +11,7 @@
 ### 1. Shared Framework Tests
 **File**: `serverless/shared/api/upload-limits.test.ts`
 
-**Coverage:**
+**Coverage**:
 - [SUCCESS] `BASE_UPLOAD_LIMIT` constant (10 MB verification)
 - [SUCCESS] `DEFAULT_UPLOAD_LIMITS` object (all properties, values)
 - [SUCCESS] `formatFileSize()` function:
@@ -43,7 +43,7 @@
 ### 2. Mods API Tests
 **File**: `serverless/mods-api/utils/upload-limits.test.ts`
 
-**Coverage:**
+**Coverage**:
 - [SUCCESS] `MAX_MOD_FILE_SIZE` constant (35 MB verification)
 - [SUCCESS] `MAX_VERSION_FILE_SIZE` constant (35 MB verification)
 - [SUCCESS] `MAX_THUMBNAIL_SIZE` constant (1 MB verification)
@@ -70,7 +70,7 @@
 ### 3. OTP Auth Service Tests
 **File**: `serverless/otp-auth-service/utils/upload-limits.test.ts`
 
-**Coverage:**
+**Coverage**:
 - [SUCCESS] `MAX_PROFILE_PICTURE_SIZE` constant (5 MB verification)
 - [SUCCESS] Default usage verification (uses shared framework default)
 - [SUCCESS] Validation with profile picture limits:
@@ -90,7 +90,7 @@
 ### 4. Twitch API Tests
 **File**: `serverless/twitch-api/utils/upload-limits.test.js`
 
-**Coverage:**
+**Coverage**:
 - [SUCCESS] `MAX_CLOUD_SAVE_SIZE` constant (10 MB verification)
 - [SUCCESS] Base limit usage verification (uses BASE_UPLOAD_LIMIT)
 - [SUCCESS] Validation with cloud save limits:
@@ -179,4 +179,3 @@ When adding new upload limit types or modifying existing limits:
 - Integration tests for handlers (mod upload, version upload, etc.) should be added separately if needed
 - The tests verify that the dynamic override system works correctly
 - The tests verify that error messages are human-readable and accurate
-
