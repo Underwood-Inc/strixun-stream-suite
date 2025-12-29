@@ -47,10 +47,19 @@ try {
             react: 'React',
             'react-dom': 'ReactDOM',
           },
+          assetFileNames: 'otp-login.css',
         },
       },
       outDir: outputDir,
       emptyOutDir: true,
+      cssCodeSplit: false, // Bundle all CSS into a single file
+    },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          includePaths: [resolve(projectRoot, 'shared-styles')],
+        },
+      },
     },
     resolve: {
       alias: {

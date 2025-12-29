@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig, type OtpLoginState } from '../core';
 import { OTP_LENGTH, OTP_HTML_PATTERN, OTP_PLACEHOLDER, OTP_LENGTH_DESCRIPTION } from '../../../shared-config/otp-config';
+import './OtpLogin.scss';
 
 export interface OtpLoginProps {
   apiUrl: string;
@@ -22,6 +23,8 @@ export interface OtpLoginProps {
   subtitle?: string;
   showAsModal?: boolean;
   onClose?: () => void;
+  fancy?: boolean; // Show fancy authentication required screen first
+  learnMoreUrl?: string; // URL for "Learn more" link (defaults to https://auth.idling.app)
 }
 
 export function OtpLogin({
@@ -35,8 +38,11 @@ export function OtpLogin({
   subtitle = 'Enter your email to receive a verification code',
   showAsModal = false,
   onClose,
+  fancy = false,
+  learnMoreUrl = 'https://auth.idling.app',
 }: OtpLoginProps) {
   const coreRef = useRef<OtpLoginCore | null>(null);
+  const [showFancyScreen, setShowFancyScreen] = useState(fancy);
   const [state, setState] = useState<OtpLoginState>({
     step: 'email',
     email: '',
@@ -136,6 +142,45 @@ export function OtpLogin({
     return OtpLoginCore.formatCountdown(seconds);
   };
 
+  const handleFancyScreenClick = () => {
+    setShowFancyScreen(false);
+  };
+
+  // Render fancy authentication required screen
+  if (fancy && showFancyScreen) {
+    return (
+      <div className="otp-login-fancy">
+        <div className="otp-login-fancy__content">
+          <div className="otp-login-fancy__icon">🔐</div>
+          <h1 className="otp-login-fancy__title">Authentication Required</h1>
+          <p className="otp-login-fancy__description">
+            Encryption is enabled for this application. You must authenticate via email OTP to access the app.
+          </p>
+          <p className="otp-login-fancy__subtext">
+            Please sign in using your email address to continue.
+          </p>
+          <button
+            type="button"
+            className="otp-login-fancy__button"
+            onClick={handleFancyScreenClick}
+          >
+            SIGN IN WITH EMAIL
+          </button>
+          <p className="otp-login-fancy__info-link">
+            <a
+              href={learnMoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="otp-login-fancy__link"
+            >
+              Learn more about this authentication method
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (showAsModal) {
     return (
       <div
@@ -144,18 +189,6 @@ export function OtpLogin({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === 'Escape' && onClose?.()}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000000,
-        }}
       >
         <div
           className="otp-login-modal"
@@ -164,28 +197,9 @@ export function OtpLogin({
           role="dialog"
           aria-labelledby="otp-login-title"
           tabIndex={-1}
-          style={{
-            background: 'var(--card, #fff)',
-            border: '1px solid var(--border, #ddd)',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: 'min(90vw, 500px)',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-          }}
         >
-          <div
-            className="otp-login-header"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '24px',
-              borderBottom: '1px solid var(--border, #ddd)',
-            }}
-          >
-            <h2 id="otp-login-title" style={{ margin: 0, fontSize: '24px' }}>
+          <div className="otp-login-header">
+            <h2 id="otp-login-title">
               {title}
             </h2>
             {onClose && (
@@ -197,90 +211,77 @@ export function OtpLogin({
                   onClose();
                 }}
                 aria-label="Close"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '32px',
-                  cursor: 'pointer',
-                  padding: 0,
-                  width: '32px',
-                  height: '32px',
-                }}
               >
                 {'\u00D7'}
               </button>
             )}
           </div>
-          <div className="otp-login-content" style={{ padding: '24px' }}>
+          <div className="otp-login-content">
             {state.error && (
-              <div style={{ color: 'var(--danger, #f00)', marginBottom: '16px', textAlign: 'center' }}>
+              <div className="otp-login-error">
                 {state.error}
               </div>
             )}
             {state.step === 'email' ? (
               <form
+                className="otp-login-form"
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleRequestOtp();
                 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
               >
-                <div>
-                  <label htmlFor="otp-login-email" style={{ display: 'block', marginBottom: '8px' }}>
+                <div className="otp-login-field">
+                  <label htmlFor="otp-login-email" className="otp-login-label">
                     Email Address
                   </label>
                   <input
                     type="email"
                     id="otp-login-email"
+                    className="otp-login-input"
                     value={state.email}
                     onChange={handleEmailChange}
                     onKeyDown={(e) => handleKeyPress(e, handleRequestOtp)}
                     disabled={state.loading}
                     required
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid var(--border, #ddd)',
-                      borderRadius: '4px',
-                      fontSize: '16px',
-                    }}
+                    autoComplete="email"
+                    placeholder="your@email.com"
+                    autoFocus
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={state.loading}
-                  style={{
-                    padding: '12px 24px',
-                    background: state.loading ? 'var(--border, #ddd)' : 'var(--accent, #007bff)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: state.loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px',
-                    fontWeight: 500,
-                  }}
+                  className="otp-login-button otp-login-button--primary"
+                  disabled={state.loading || !state.email}
                 >
-                  {state.loading ? 'Sending...' : 'Send OTP'}
+                  {state.loading ? 'Sending...' : 'Send OTP Code'}
                 </button>
+                <p className="otp-login-learn-more">
+                  <a
+                    href={learnMoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="otp-login-learn-more__link"
+                  >
+                    Learn more about this authentication method
+                  </a>
+                </p>
               </form>
             ) : (
               <form
+                className="otp-login-form"
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleVerifyOtp();
                 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
               >
-                <div style={{ textAlign: 'center', color: 'var(--text-secondary, #666)', marginBottom: '16px' }}>
-                  Check your email for the OTP code
-                </div>
-                <div>
-                  <label htmlFor="otp-login-otp" style={{ display: 'block', marginBottom: '8px' }}>
+                <div className="otp-login-field">
+                  <label htmlFor="otp-login-otp" className="otp-login-label">
                     {OTP_LENGTH_DESCRIPTION} OTP Code
                   </label>
                   <input
                     type="tel"
                     id="otp-login-otp"
+                    className="otp-login-input otp-login-input--otp"
                     value={state.otp}
                     onChange={handleOtpChange}
                     onKeyDown={(e) => handleKeyPress(e, handleVerifyOtp)}
@@ -291,54 +292,36 @@ export function OtpLogin({
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     placeholder={OTP_PLACEHOLDER}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid var(--border, #ddd)',
-                      borderRadius: '4px',
-                      fontSize: '16px',
-                      textAlign: 'center',
-                      letterSpacing: '8px',
-                    }}
+                    autoFocus
                   />
-                  {state.countdown > 0 && (
-                    <div style={{ marginTop: '8px', fontSize: '14px', color: 'var(--text-secondary, #666)' }}>
+                  <p className="otp-login-hint">Check your email ({state.email}) for the code</p>
+                  {state.countdown > 0 ? (
+                    <p className="otp-login-countdown">
                       Code expires in: {formatCountdown(state.countdown)}
-                    </div>
-                  )}
+                    </p>
+                  ) : state.countdown === 0 && state.step === 'otp' ? (
+                    <p className="otp-login-countdown otp-login-countdown--expired">
+                      Code expired. Request a new one.
+                    </p>
+                  ) : null}
                 </div>
-                <button
-                  type="submit"
-                  disabled={state.loading}
-                  style={{
-                    padding: '12px 24px',
-                    background: state.loading ? 'var(--border, #ddd)' : 'var(--accent, #007bff)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: state.loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px',
-                    fontWeight: 500,
-                  }}
-                >
-                  {state.loading ? 'Verifying...' : 'Verify OTP'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGoBack}
-                  disabled={state.loading}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'transparent',
-                    color: 'var(--text, #000)',
-                    border: '1px solid var(--border, #ddd)',
-                    borderRadius: '4px',
-                    cursor: state.loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px',
-                  }}
-                >
-                  Back
-                </button>
+                <div className="otp-login-actions">
+                  <button
+                    type="button"
+                    className="otp-login-button otp-login-button--secondary"
+                    disabled={state.loading}
+                    onClick={handleGoBack}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    className="otp-login-button otp-login-button--primary"
+                    disabled={state.loading || state.otp.length !== OTP_LENGTH}
+                  >
+                    {state.loading ? 'Verifying...' : 'Verify & Login'}
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -348,145 +331,121 @@ export function OtpLogin({
   }
 
   return (
-    <div
-      className="otp-login"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: '24px',
-      }}
-    >
-      <div
-        className="otp-login-container"
-        style={{
-          maxWidth: '400px',
-          width: '100%',
-        }}
-      >
-        <div className="otp-login-header" style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 className="otp-login-title" style={{ fontSize: '2rem', marginBottom: '16px' }}>
+    <div className="otp-login">
+      <div className="otp-login-container">
+        <div className="otp-login-header">
+          <h1 className="otp-login-title">
             {title}
           </h1>
-          <p className="otp-login-subtitle" style={{ color: 'var(--text-secondary, #666)' }}>
+          <p className="otp-login-subtitle">
             {subtitle}
           </p>
         </div>
         {state.error && (
-          <div style={{ color: 'var(--danger, #f00)', marginBottom: '16px', textAlign: 'center' }}>
+          <div className="otp-login-error">
             {state.error}
           </div>
         )}
         {state.step === 'email' ? (
           <form
+            className="otp-login-form"
             onSubmit={(e) => {
               e.preventDefault();
               handleRequestOtp();
             }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
           >
-            <input
-              type="email"
-              placeholder="Email address"
-              value={state.email}
-              onChange={handleEmailChange}
-              onKeyDown={(e) => handleKeyPress(e, handleRequestOtp)}
-              disabled={state.loading}
-              required
-              style={{
-                padding: '12px',
-                border: '1px solid var(--border, #ddd)',
-                borderRadius: '4px',
-                fontSize: '16px',
-              }}
-            />
+            <div className="otp-login-field">
+              <label htmlFor="otp-login-email" className="otp-login-label">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="otp-login-email"
+                className="otp-login-input"
+                value={state.email}
+                onChange={handleEmailChange}
+                onKeyDown={(e) => handleKeyPress(e, handleRequestOtp)}
+                disabled={state.loading}
+                required
+                autoComplete="email"
+                placeholder="your@email.com"
+                autoFocus
+              />
+            </div>
             <button
               type="submit"
-              disabled={state.loading}
-              style={{
-                padding: '12px 24px',
-                background: state.loading ? 'var(--border, #ddd)' : 'var(--accent, #007bff)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: state.loading ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: 500,
-              }}
+              className="otp-login-button otp-login-button--primary"
+              disabled={state.loading || !state.email}
             >
-              {state.loading ? 'Sending...' : 'Send OTP'}
+              {state.loading ? 'Sending...' : 'Send OTP Code'}
             </button>
+            <p className="otp-login-learn-more">
+              <a
+                href={learnMoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="otp-login-learn-more__link"
+              >
+                Learn more about this authentication method
+              </a>
+            </p>
           </form>
         ) : (
           <form
+            className="otp-login-form"
             onSubmit={(e) => {
               e.preventDefault();
               handleVerifyOtp();
             }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
           >
-            <div style={{ textAlign: 'center', color: 'var(--text-secondary, #666)', marginBottom: '16px' }}>
-              Check your email for the OTP code
+            <div className="otp-login-field">
+              <label htmlFor="otp-login-otp" className="otp-login-label">
+                {OTP_LENGTH_DESCRIPTION} OTP Code
+              </label>
+              <input
+                type="tel"
+                id="otp-login-otp"
+                className="otp-login-input otp-login-input--otp"
+                value={state.otp}
+                onChange={handleOtpChange}
+                onKeyDown={(e) => handleKeyPress(e, handleVerifyOtp)}
+                disabled={state.loading}
+                required
+                maxLength={OTP_LENGTH}
+                pattern={OTP_HTML_PATTERN}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder={OTP_PLACEHOLDER}
+                autoFocus
+              />
+              <p className="otp-login-hint">Check your email ({state.email}) for the code</p>
+              {state.countdown > 0 ? (
+                <p className="otp-login-countdown">
+                  Code expires in: {formatCountdown(state.countdown)}
+                </p>
+              ) : state.countdown === 0 && state.step === 'otp' ? (
+                <p className="otp-login-countdown otp-login-countdown--expired">
+                  Code expired. Request a new one.
+                </p>
+              ) : null}
             </div>
-            <input
-              type="tel"
-              placeholder={OTP_PLACEHOLDER}
-              value={state.otp}
-              onChange={handleOtpChange}
-              onKeyDown={(e) => handleKeyPress(e, handleVerifyOtp)}
-              disabled={state.loading}
-              required
-              maxLength={OTP_LENGTH}
-              pattern={OTP_HTML_PATTERN}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              style={{
-                padding: '12px',
-                border: '1px solid var(--border, #ddd)',
-                borderRadius: '4px',
-                fontSize: '16px',
-                textAlign: 'center',
-                letterSpacing: '8px',
-              }}
-            />
-            {state.countdown > 0 && (
-              <div style={{ fontSize: '14px', color: 'var(--text-secondary, #666)', textAlign: 'center' }}>
-                Code expires in: {formatCountdown(state.countdown)}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={state.loading}
-              style={{
-                padding: '12px 24px',
-                background: state.loading ? 'var(--border, #ddd)' : 'var(--accent, #007bff)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: state.loading ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: 500,
-              }}
-            >
-              {state.loading ? 'Verifying...' : 'Verify OTP'}
-            </button>
-            <button
-              type="button"
-              onClick={handleGoBack}
-              disabled={state.loading}
-              style={{
-                padding: '12px 24px',
-                background: 'transparent',
-                color: 'var(--text, #000)',
-                border: '1px solid var(--border, #ddd)',
-                borderRadius: '4px',
-                cursor: state.loading ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-              }}
-            >
-              Back
-            </button>
+            <div className="otp-login-actions">
+              <button
+                type="button"
+                className="otp-login-button otp-login-button--secondary"
+                disabled={state.loading}
+                onClick={handleGoBack}
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                className="otp-login-button otp-login-button--primary"
+                disabled={state.loading || state.otp.length !== OTP_LENGTH}
+              >
+                {state.loading ? 'Verifying...' : 'Verify & Login'}
+              </button>
+            </div>
           </form>
         )}
       </div>

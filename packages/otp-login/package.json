@@ -13,6 +13,7 @@
     },
     "./dist/svelte": "./dist/svelte/index.js",
     "./dist/react": "./dist/react/index.js",
+    "./dist/react/otp-login.css": "./dist/react/otp-login.css",
     "./dist/js": "./dist/js/index.js"
   },
   "scripts": {

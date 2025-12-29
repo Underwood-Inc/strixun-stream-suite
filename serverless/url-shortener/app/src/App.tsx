@@ -8,6 +8,7 @@ import { apiClient } from './lib/api-client';
 import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
+import '@strixun/otp-login/dist/react/otp-login.css';
 import { getOtpEncryptionKey as getKey } from '../../../../shared-config/otp-encryption';
 import './app.scss';
 
@@ -100,29 +101,20 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="app-container">
-        <div className="auth-container">
-          <div className="auth-header">
-            <h1>URL Shortener</h1>
-            <p>Strixun Stream Suite - Create and manage short URLs with secure OTP authentication</p>
-          </div>
-          <div className="login-form">
-            <OtpLogin
-              apiUrl={getApiUrl()}
-              onSuccess={handleLoginSuccess}
-              onError={handleLoginError}
-              otpEncryptionKey={getOtpEncryptionKey()}
-              title="Sign In"
-              subtitle="Enter your email to receive a verification code"
-              endpoints={undefined}
-              customHeaders={undefined}
-              onClose={undefined}
-            />
-          </div>
+      return (
+        <div className="app-container">
+          <OtpLogin
+            apiUrl={getApiUrl()}
+            onSuccess={handleLoginSuccess}
+            onError={handleLoginError}
+            otpEncryptionKey={getOtpEncryptionKey()}
+            title="Sign In"
+            subtitle="Enter your email to receive a verification code"
+            showAsModal={true}
+            fancy={true}
+          />
         </div>
-      </div>
-    );
+      );
   }
 
   return (

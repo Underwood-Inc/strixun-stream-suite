@@ -6,6 +6,7 @@ import './app.scss';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const container = document.getElementById('app');
 if (!container) {
@@ -15,7 +16,9 @@ if (!container) {
 const root = createRoot(container);
 root.render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );
 

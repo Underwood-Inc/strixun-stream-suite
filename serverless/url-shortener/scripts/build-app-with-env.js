@@ -1,9 +1,11 @@
 /**
  * Build script that ensures VITE_SERVICE_ENCRYPTION_KEY is available to Vite
  * This script explicitly passes the environment variable to the Vite build process
+ * Supports reading from .env file for local development
  */
 
 import { execSync } from 'child_process';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -18,12 +20,78 @@ console.log('[DEBUG] Checking for VITE_SERVICE_ENCRYPTION_KEY in environment...'
 const viteEnvVars = Object.keys(process.env).filter(key => key.startsWith('VITE_'));
 console.log(`[DEBUG] Found ${viteEnvVars.length} VITE_* environment variables:`, viteEnvVars);
 
-// Get the encryption key from environment
-const encryptionKey = process.env.VITE_SERVICE_ENCRYPTION_KEY;
+/**
+ * Get encryption key from multiple sources (in priority order)
+ */
+function getEncryptionKey() {
+  // Priority 1: Environment variable
+  if (process.env.VITE_SERVICE_ENCRYPTION_KEY) {
+    const key = process.env.VITE_SERVICE_ENCRYPTION_KEY.trim();
+    if (key.length >= 32) {
+      console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in environment');
+      return key;
+    }
+  }
+
+  // Priority 2: .env file in app directory
+  const envPath = join(appDir, '.env');
+  if (existsSync(envPath)) {
+    try {
+      const envContent = readFileSync(envPath, 'utf8');
+      const match = envContent.match(/VITE_SERVICE_ENCRYPTION_KEY=(.+)/);
+      if (match && match[1]) {
+        const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
+        if (key.length >= 32) {
+          console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in app/.env');
+          return key;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not read .env file:', error.message);
+    }
+  }
+
+  // Priority 3: .env file in project root
+  const rootEnvPath = join(projectRoot, '.env');
+  if (existsSync(rootEnvPath)) {
+    try {
+      const envContent = readFileSync(rootEnvPath, 'utf8');
+      const match = envContent.match(/VITE_SERVICE_ENCRYPTION_KEY=(.+)/);
+      if (match && match[1]) {
+        const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
+        if (key.length >= 32) {
+          console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in project root .env');
+          return key;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not read root .env file:', error.message);
+    }
+  }
+
+  return null;
+}
+
+// Get the encryption key
+const encryptionKey = getEncryptionKey();
 
 if (!encryptionKey) {
-  console.error('❌ VITE_SERVICE_ENCRYPTION_KEY is not set in environment');
-  console.error('This key is required for building the app. Please set it in your CI/CD environment.');
+  console.error('❌ VITE_SERVICE_ENCRYPTION_KEY is not set');
+  console.error('');
+  console.error('This key is required for building the app. Please set it in one of the following ways:');
+  console.error('');
+  console.error('1. Environment variable:');
+  console.error('   export VITE_SERVICE_ENCRYPTION_KEY=your-key-here');
+  console.error('');
+  console.error('2. Create app/.env file:');
+  console.error('   echo "VITE_SERVICE_ENCRYPTION_KEY=your-key-here" > app/.env');
+  console.error('');
+  console.error('3. Create .env file in project root:');
+  console.error('   echo "VITE_SERVICE_ENCRYPTION_KEY=your-key-here" > .env');
+  console.error('');
+  console.error('Note: The key must be at least 32 characters long.');
+  console.error('      It should match the SERVICE_ENCRYPTION_KEY in your Cloudflare Worker secrets.');
+  console.error('');
   console.error('[DEBUG] Available environment variables:', Object.keys(process.env).filter(k => k.includes('ENCRYPTION') || k.includes('KEY')));
   process.exit(1);
 }

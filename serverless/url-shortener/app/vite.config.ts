@@ -4,6 +4,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+  },
   css: {
     preprocessorOptions: {
       scss: {
@@ -34,6 +37,9 @@ export default defineConfig({
   server: {
     port: 5176,
     open: false,
+    hmr: {
+      port: 5176,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8787',
