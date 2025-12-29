@@ -5,7 +5,7 @@
    * Main application component that orchestrates all pages
    */
   
-  import { ActivityLog, AuthScreen, DomInterferenceBanner, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ToastContainer, TwitchAdCarousel } from '@components';
+  import { ActivityLog, AuthScreen, DomInterferenceBanner, FloatingPanel, Header, InfoBar, Navigation, Sidebar, ThemeSettings, ToastContainer, TwitchAdCarousel } from '@components';
   import { onMount } from 'svelte';
   import Chat from './pages/Chat.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -25,6 +25,7 @@
   import { authRequired, isAuthenticated } from './stores/auth';
   import { currentPage } from './stores/navigation';
   import { domInterferenceDetected } from './stores/dom-interference';
+  import { themeSettingsVisible } from './stores/theme-settings';
   
   let hasCompletedPostAuthInit = false;
   
@@ -157,6 +158,11 @@
     position="bottom-right"
     supportUrl="https://www.twitch.tv/strixun"
     storageKey="ui_main_ad_carousel_state"
+  />
+  
+  <ThemeSettings
+    visible={$themeSettingsVisible}
+    onClose={() => themeSettingsVisible.set(false)}
   />
 </div>
 {/if}
