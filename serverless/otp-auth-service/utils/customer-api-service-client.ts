@@ -79,9 +79,18 @@ function createServiceApiClient(env: Env) {
         hasNetworkIntegrityKeyphrase: !!env.NETWORK_INTEGRITY_KEYPHRASE,
         networkIntegrityKeyphraseLength: env.NETWORK_INTEGRITY_KEYPHRASE?.length || 0,
         customerApiUrl: getCustomerApiUrl(env),
+        hasSuperAdminKey: !!env.SUPER_ADMIN_API_KEY, // Log if this exists (should not be used for service-to-service)
     });
     
-    return createServiceClient(getCustomerApiUrl(env), env, {
+    // CRITICAL: For service-to-service calls, we MUST use SERVICE_API_KEY, not SUPER_ADMIN_API_KEY
+    // Create a filtered env object that only includes SERVICE_API_KEY (excludes SUPER_ADMIN_API_KEY)
+    // This ensures we use X-Service-Key header instead of Authorization: Bearer header
+    const serviceEnv = {
+        SERVICE_API_KEY: env.SERVICE_API_KEY,
+        NETWORK_INTEGRITY_KEYPHRASE: env.NETWORK_INTEGRITY_KEYPHRASE,
+    };
+    
+    return createServiceClient(getCustomerApiUrl(env), serviceEnv, {
         retry: {
             maxAttempts: 3,
             backoff: 'exponential',
