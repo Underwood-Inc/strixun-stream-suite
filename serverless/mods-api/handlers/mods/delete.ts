@@ -111,15 +111,16 @@ export async function handleDeleteMod(
             });
         }
 
-        const modId = mod.modId;
+        // Use mod.modId from metadata (this is the canonical modId)
+        const actualModId = mod.modId;
 
         // Get all versions - check both customer scope and global scope
-        let versionsListKey = getCustomerKey(auth.customerId, `mod_${modId}_versions`);
+        let versionsListKey = getCustomerKey(auth.customerId, `mod_${actualModId}_versions`);
         let versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
         
         // If not found in customer scope, try global scope
         if (!versionsList) {
-            const globalVersionsKey = `mod_${modId}_versions`;
+            const globalVersionsKey = `mod_${actualModId}_versions`;
             versionsList = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
             if (versionsList) {
                 versionsListKey = globalVersionsKey;
@@ -150,7 +151,7 @@ export async function handleDeleteMod(
         if (mod.thumbnailUrl) {
             try {
                 // Try multiple extensions since we don't know which one was used
-                const normalizedModId = normalizeModId(modId);
+                const normalizedModId = normalizeModId(actualModId);
                 const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
                 for (const ext of extensions) {
                     const thumbnailKey = getCustomerR2Key(auth.customerId, `thumbnails/${normalizedModId}.${ext}`);
@@ -166,8 +167,8 @@ export async function handleDeleteMod(
         await env.MODS_KV.delete(versionsListKey);
         
         // Also delete from global scope if it exists there
-        const globalModKey = `mod_${modId}`;
-        const globalVersionsKey = `mod_${modId}_versions`;
+        const globalModKey = `mod_${actualModId}`;
+        const globalVersionsKey = `mod_${actualModId}_versions`;
         if (modKey !== globalModKey) {
             // Only delete global if we didn't already delete it
             await env.MODS_KV.delete(globalModKey);
@@ -181,7 +182,7 @@ export async function handleDeleteMod(
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
         const modsList = await env.MODS_KV.get(modsListKey, { type: 'json' }) as string[] | null;
         if (modsList) {
-            const updatedList = modsList.filter(id => id !== modId);
+            const updatedList = modsList.filter(id => id !== actualModId);
             await env.MODS_KV.put(modsListKey, JSON.stringify(updatedList));
         }
 
@@ -190,7 +191,7 @@ export async function handleDeleteMod(
             const globalListKey = 'mods_list_public';
             const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
             if (globalModsList) {
-                const updatedGlobalList = globalModsList.filter(id => id !== modId);
+                const updatedGlobalList = globalModsList.filter(id => id !== actualModId);
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
             }
         }
