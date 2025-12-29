@@ -1,3 +1,5 @@
+<svelte:options runes={false} />
+
 <script lang="ts">
   /**
    * ErrorDisplay Component
@@ -48,7 +50,7 @@
   {@const tooltipContent = generateRateLimitTooltip(errorInfo, state.errorDetails as any)}
   {@const isRateLimitError = state.errorCode?.includes('rate_limit') || false}
   {@const summary = isRateLimitError ? getRateLimitSummary(state.errorDetails?.emailLimit, (state.errorDetails?.failedAttempts ?? null) as number | null) : null}
-  <div class="otp-login-error">
+  <div class="otp-login-error" role="alert">
     <div class="otp-login-error-message">
       {state.error}
       {#if isRateLimitError}
@@ -106,6 +108,8 @@
       </div>
     {/if}
   </div>
+{:else}
+  <div class="otp-login-error" style="display: none;" aria-hidden="true"></div>
 {/if}
 
 <style lang="scss">

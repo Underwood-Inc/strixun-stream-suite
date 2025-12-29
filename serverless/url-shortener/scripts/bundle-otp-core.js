@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '../../..');
-const corePath = join(projectRoot, 'shared-components/otp-login/core.ts');
+const corePath = join(projectRoot, 'packages/otp-login/core.ts');
 const outputFile = join(__dirname, '../dist/otp-core.js');
 const outputTsFile = join(__dirname, '../dist/otp-core-script.ts');
 
@@ -36,7 +36,7 @@ try {
       'process.env.NODE_ENV': '"production"',
     },
     banner: {
-      js: '// Bundled OtpLoginCore from shared-components/otp-login/core.ts\n// This file is auto-generated - do not edit manually\n',
+      js: '// Bundled OtpLoginCore from packages/otp-login/core.ts\n// This file is auto-generated - do not edit manually\n',
     },
   });
 

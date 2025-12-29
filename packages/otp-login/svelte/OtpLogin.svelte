@@ -1,3 +1,5 @@
+<svelte:options runes={false} />
+
 <script lang="ts">
   /**
    * OTP Login Component - Svelte Wrapper
@@ -149,6 +151,10 @@
   // Computed values to avoid deeply nested conditionals in template
   $: showEmailForm = state.step === 'email';
   $: showOtpForm = state.step === 'otp';
+  
+  // Computed component to render - ensures we always have content for Svelte 5 runes mode
+  // Default to 'email' if step is invalid to prevent empty blocks
+  $: currentForm = showEmailForm ? 'email' : (showOtpForm ? 'otp' : 'email');
 </script>
 
 {#if showAsModal}
@@ -163,26 +169,25 @@
     <div class="otp-login-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-labelledby="otp-login-title" tabindex="-1">
       <div class="otp-login-header">
         <h2 id="otp-login-title">{title}</h2>
-        {#if onClose}
-          <button 
-            type="button"
-            class="otp-login-close" 
-            onclick={handleClose} 
-            aria-label="Close"
-          >X</button>
-        {/if}
+        <button 
+          type="button"
+          class="otp-login-close" 
+          class:hidden={!onClose}
+          onclick={handleClose} 
+          aria-label="Close"
+          aria-hidden={!onClose}
+        >X</button>
       </div>
       <div class="otp-login-content">
         <ErrorDisplay {state} />
-        {#if showEmailForm}
+        {#if currentForm === 'email'}
           <EmailForm 
             {state}
             onEmailChange={handleEmailChange}
             onRequestOtp={handleRequestOtp}
             onKeyPress={handleKeyPress}
           />
-        {/if}
-        {#if showOtpForm}
+        {:else}
           <OtpForm 
             {state}
             onOtpChange={handleOtpChange}
@@ -202,15 +207,14 @@
         <p class="otp-login-subtitle">{subtitle}</p>
       </div>
       <ErrorDisplay {state} />
-      {#if showEmailForm}
+      {#if currentForm === 'email'}
         <EmailForm 
           {state}
           onEmailChange={handleEmailChange}
           onRequestOtp={handleRequestOtp}
           onKeyPress={handleKeyPress}
         />
-      {/if}
-      {#if showOtpForm}
+      {:else}
         <OtpForm 
           {state}
           onOtpChange={handleOtpChange}
@@ -326,17 +330,25 @@
     z-index: 10;
     pointer-events: auto;
     
-    &:hover {
+    &.hidden {
+      display: none;
+    }
+    
+    &:hover:not(.hidden) {
       background: var(--bg-secondary);
       color: var(--text);
     }
     
-    &:active {
+    &:active:not(.hidden) {
       transform: scale(0.95);
     }
   }
 
   .otp-login-modal .otp-login-content {
     padding: 24px;
+  }
+
+  .hidden {
+    display: none;
   }
 </style>
