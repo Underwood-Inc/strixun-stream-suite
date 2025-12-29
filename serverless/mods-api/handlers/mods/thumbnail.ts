@@ -40,30 +40,32 @@ export async function handleThumbnail(
         }
         
         // If still not found, search all customer scopes by modId (for cross-customer access)
+        // Use direct key pattern matching for efficiency (like admin list handler)
         if (!mod) {
             console.log('[Thumbnail] Searching all customer scopes by modId:', { normalizedModId });
-            const customerListPrefix = 'customer_';
+            const customerModPrefix = 'customer_';
             let cursor: string | undefined;
+            let found = false;
             
             do {
-                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                const listResult = await env.MODS_KV.list({ prefix: customerModPrefix, cursor });
                 for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                        const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                        
-                        if (candidateMod) {
-                            mod = candidateMod;
-                            console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId });
+                    // Look for keys matching pattern: customer_*_mod_{normalizedModId}
+                    if (key.name.endsWith(`_mod_${normalizedModId}`)) {
+                        mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
+                        if (mod) {
+                            // Extract customerId from key name
+                            const match = key.name.match(/^customer_([^_/]+)_mod_/);
+                            const customerId = match ? match[1] : null;
+                            console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
+                            found = true;
                             break;
                         }
                     }
                 }
-                if (mod) break;
+                if (found) break;
                 cursor = listResult.listComplete ? undefined : listResult.cursor;
-            } while (cursor);
+            } while (cursor && !found);
         }
         
         if (mod) console.log('[Thumbnail] Found mod by modId:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
