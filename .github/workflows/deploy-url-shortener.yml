@@ -48,12 +48,30 @@ jobs:
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/url-shortener
         run: pnpm test
+
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/url-shortener
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/url-shortener/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/url-shortener/coverage/coverage-summary.json . "URL Shortener"
+          else
+            echo "::warning::URL Shortener coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[INFO] No test script found in URL Shortener - skipping tests"
-          echo "## [INFO] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[WARNING] No test script found in URL Shortener - skipping tests"
+          echo "::warning::URL Shortener has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to URL Shortener package.json"
+          echo "## [WARNING] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
 
   deploy:

@@ -49,6 +49,16 @@ jobs:
         run: pnpm test:api:coverage
         continue-on-error: true
       
+      - name: Annotate coverage
+        if: always()
+        run: |
+          if [ -f "mods-hub/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js mods-hub/coverage/coverage-summary.json . "Mods Hub API"
+          else
+            echo "::warning::Mods Hub API coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         if: always()

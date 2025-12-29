@@ -43,6 +43,16 @@ jobs:
         run: pnpm test:coverage
         continue-on-error: true
       
+      - name: Annotate coverage
+        if: always()
+        run: |
+          if [ -f "serverless/otp-auth-service/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/otp-auth-service/coverage/coverage-summary.json . "OTP Auth Service"
+          else
+            echo "::warning::OTP Auth Service coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         if: always()

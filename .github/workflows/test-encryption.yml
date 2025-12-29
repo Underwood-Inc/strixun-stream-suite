@@ -58,6 +58,16 @@ jobs:
         run: pnpm test:coverage
         continue-on-error: true
 
+      - name: Annotate coverage
+        if: always()
+        run: |
+          if [ -f "coverage/coverage-summary.json" ]; then
+            node ../../scripts/annotate-coverage.js coverage/coverage-summary.json ../.. "Encryption Libraries"
+          else
+            echo "::warning::Encryption libraries coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         if: always()

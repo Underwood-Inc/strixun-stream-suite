@@ -49,11 +49,29 @@ jobs:
         working-directory: serverless/game-api
         run: pnpm test
       
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/game-api
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/game-api/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/game-api/coverage/coverage-summary.json . "Game API"
+          else
+            echo "::warning::Game API coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
+
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "⚠️ No test script found in Game API - skipping tests"
-          echo "## ⚠️ Game API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[WARNING] No test script found in Game API - skipping tests"
+          echo "::warning::Game API has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to Game API package.json"
+          echo "## [WARNING] Game API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped (tests will be required when added)" >> $GITHUB_STEP_SUMMARY
 
   deploy:
