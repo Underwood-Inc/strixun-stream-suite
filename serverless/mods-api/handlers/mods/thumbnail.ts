@@ -152,12 +152,10 @@ export async function handleThumbnail(
 
         // Reconstruct R2 key from mod metadata
         // Thumbnails are stored as: customer_xxx/thumbnails/normalizedModId.ext
-        // Use mod's customerId (not auth customerId) to ensure correct scope
-        // Use mod.modId (actual modId) not the URL parameter (which might be a slug)
-        // Normalize modId to match how it was stored (strip mod_ prefix if present)
-        const customerId = mod.customerId || null;
+        // CRITICAL: Search mod's customer scope first, then all customer scopes if not found
+        // This matches the pattern used by badge handler for version lookups
         const normalizedStoredModId = normalizeModId(mod.modId);
-        console.log('[Thumbnail] Looking up R2 file:', { customerId, normalizedStoredModId, originalModId: mod.modId });
+        console.log('[Thumbnail] Looking up R2 file:', { modCustomerId: mod.customerId, normalizedStoredModId, originalModId: mod.modId });
         
         // Try common image extensions to find the actual file
         // This handles cases where extension wasn't stored in metadata
@@ -165,21 +163,86 @@ export async function handleThumbnail(
         let r2Key: string | null = null;
         let thumbnail: R2ObjectBody | null = null;
         
-        for (const ext of extensions) {
-            const testKey = getCustomerR2Key(customerId, `thumbnails/${normalizedStoredModId}.${ext}`);
-            console.log('[Thumbnail] Trying R2 key:', { testKey, ext });
-            const testFile = await env.MODS_R2.get(testKey);
-            if (testFile) {
-                r2Key = testKey;
-                thumbnail = testFile;
-                console.log('[Thumbnail] Found thumbnail in R2:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
-                break;
+        // Strategy 1: Try mod's customer scope first (where thumbnail was uploaded)
+        if (mod.customerId) {
+            for (const ext of extensions) {
+                const testKey = getCustomerR2Key(mod.customerId, `thumbnails/${normalizedStoredModId}.${ext}`);
+                console.log('[Thumbnail] Trying R2 key (mod customer scope):', { testKey, ext, customerId: mod.customerId });
+                const testFile = await env.MODS_R2.get(testKey);
+                if (testFile) {
+                    r2Key = testKey;
+                    thumbnail = testFile;
+                    console.log('[Thumbnail] Found thumbnail in R2 (mod customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                    break;
+                }
             }
         }
         
-        // If not found, return 404
+        // Strategy 2: If not found, try authenticated user's customer scope (for cross-customer access)
+        if (!thumbnail && auth?.customerId && auth.customerId !== mod.customerId) {
+            for (const ext of extensions) {
+                const testKey = getCustomerR2Key(auth.customerId, `thumbnails/${normalizedStoredModId}.${ext}`);
+                console.log('[Thumbnail] Trying R2 key (auth customer scope):', { testKey, ext, customerId: auth.customerId });
+                const testFile = await env.MODS_R2.get(testKey);
+                if (testFile) {
+                    r2Key = testKey;
+                    thumbnail = testFile;
+                    console.log('[Thumbnail] Found thumbnail in R2 (auth customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                    break;
+                }
+            }
+        }
+        
+        // Strategy 3: If still not found, try global scope (no customer prefix)
+        if (!thumbnail) {
+            for (const ext of extensions) {
+                const testKey = `thumbnails/${normalizedStoredModId}.${ext}`;
+                console.log('[Thumbnail] Trying R2 key (global scope):', { testKey, ext });
+                const testFile = await env.MODS_R2.get(testKey);
+                if (testFile) {
+                    r2Key = testKey;
+                    thumbnail = testFile;
+                    console.log('[Thumbnail] Found thumbnail in R2 (global scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                    break;
+                }
+            }
+        }
+        
+        // Strategy 4: If still not found, search all customer scopes (like badge handler does for versions)
+        if (!thumbnail) {
+            console.log('[Thumbnail] Searching all customer scopes for thumbnail:', { normalizedStoredModId });
+            const customerPrefix = 'customer_';
+            let cursor: string | undefined;
+            let found = false;
+            
+            do {
+                const listResult = await env.MODS_R2.list({ prefix: customerPrefix, cursor, limit: 1000 });
+                for (const obj of listResult.objects) {
+                    // Look for thumbnails matching pattern: customer_*/thumbnails/{normalizedModId}.ext
+                    if (obj.key.includes(`/thumbnails/${normalizedStoredModId}.`)) {
+                        const testFile = await env.MODS_R2.get(obj.key);
+                        if (testFile) {
+                            r2Key = obj.key;
+                            thumbnail = testFile;
+                            console.log('[Thumbnail] Found thumbnail in R2 (searched customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (found) break;
+                cursor = listResult.truncated ? listResult.cursor : undefined;
+            } while (cursor && !found);
+        }
+        
+        // If not found after all strategies, return 404
         if (!r2Key || !thumbnail) {
-            console.error('[Thumbnail] Thumbnail file not found in R2:', { customerId, normalizedStoredModId, triedExtensions: extensions });
+            console.error('[Thumbnail] Thumbnail file not found in R2 after exhaustive search:', { 
+                modCustomerId: mod.customerId, 
+                authCustomerId: auth?.customerId,
+                normalizedStoredModId, 
+                triedExtensions: extensions 
+            });
             const rfcError = createError(request, 404, 'Thumbnail Not Found', 'Thumbnail file not found in storage');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
