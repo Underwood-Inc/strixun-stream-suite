@@ -4,6 +4,7 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
+import { encryptBinaryWithJWT } from '@strixun/api-framework';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
 
@@ -172,8 +173,22 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
+    // Get token for encryption
+    const token = await api.config.auth?.tokenGetter?.();
+    if (!token) {
+        throw new Error('Authentication token required for file encryption');
+    }
+
+    // Encrypt file before upload
+    const fileBuffer = await file.arrayBuffer();
+    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    
+    // Create encrypted File object with .encrypted extension
+    const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
+    const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', encryptedFileObj);
     formData.append('metadata', JSON.stringify(metadata));
     if (thumbnail) {
         formData.append('thumbnail', thumbnail);
@@ -207,8 +222,22 @@ export async function uploadVersion(
     file: File,
     metadata: VersionUploadRequest
 ): Promise<any> {
+    // Get token for encryption
+    const token = await api.config.auth?.tokenGetter?.();
+    if (!token) {
+        throw new Error('Authentication token required for file encryption');
+    }
+
+    // Encrypt file before upload
+    const fileBuffer = await file.arrayBuffer();
+    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    
+    // Create encrypted File object with .encrypted extension
+    const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
+    const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', encryptedFileObj);
     formData.append('metadata', JSON.stringify(metadata));
     
     // API framework automatically handles FormData - don't set Content-Type header
