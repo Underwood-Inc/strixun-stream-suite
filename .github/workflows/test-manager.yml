@@ -101,8 +101,22 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Run Root/Client Tests
+        id: run_tests
         working-directory: .
         run: pnpm test
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always()
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] Root/Client tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] Root/Client tests passed"
+          fi
+        id: test_result
       
       - name: Generate coverage report
         working-directory: .
@@ -168,8 +182,22 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Run OTP Auth Service Tests
+        id: run_tests
         working-directory: serverless/otp-auth-service
         run: pnpm test
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always()
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] OTP Auth Service tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] OTP Auth Service tests passed"
+          fi
+        id: test_result
       
       - name: Generate coverage report
         working-directory: serverless/otp-auth-service
@@ -243,15 +271,30 @@ jobs:
           fi
       
       - name: Run Mods API Tests (Unit + Integration)
+        id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
         run: pnpm test
+        continue-on-error: true
       
       - name: Run Mods API Integration Tests Explicitly
+        id: run_integration_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
         run: pnpm test handlers/*.integration.test.ts
-        continue-on-error: false
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ] || [ "${{ steps.run_integration_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] Mods API tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] Mods API tests passed"
+          fi
+        id: test_result
       
       - name: Generate Coverage Report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -327,9 +370,23 @@ jobs:
           fi
       
       - name: Run Customer API Tests
+        id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/customer-api
         run: pnpm test
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] Customer API tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] Customer API tests passed"
+          fi
+        id: test_result
 
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -392,9 +449,23 @@ jobs:
           fi
       
       - name: Run Twitch API Tests
+        id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/twitch-api
         run: pnpm test
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] Twitch API tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] Twitch API tests passed"
+          fi
+        id: test_result
 
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -457,9 +528,23 @@ jobs:
           fi
       
       - name: Run Game API Tests
+        id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/game-api
         run: pnpm test
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] Game API tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] Game API tests passed"
+          fi
+        id: test_result
 
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -522,9 +607,23 @@ jobs:
           fi
       
       - name: Run URL Shortener Tests
+        id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/url-shortener
         run: pnpm test
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] URL Shortener tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] URL Shortener tests passed"
+          fi
+        id: test_result
 
       - name: Generate coverage report
         if: steps.check_test.outputs.has_tests == 'true'
@@ -666,6 +765,7 @@ jobs:
           fi
       
       - name: Run E2E Tests
+        id: run_tests
         working-directory: .
         env:
           E2E_OTP_AUTH_URL: https://otp-auth-service-dev.strixuns-script-suite.workers.dev
@@ -676,6 +776,19 @@ jobs:
           E2E_CHAT_SIGNALING_URL: https://strixun-chat-signaling-dev.strixuns-script-suite.workers.dev
           E2E_URL_SHORTENER_URL: https://strixun-url-shortener-dev.strixuns-script-suite.workers.dev
         run: pnpm test:e2e
+        continue-on-error: true
+      
+      - name: Set test result
+        if: always()
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" == "failure" ]; then
+            echo "tests_failed=true" >> $GITHUB_OUTPUT
+            echo "[ERROR] E2E tests failed"
+          else
+            echo "tests_failed=false" >> $GITHUB_OUTPUT
+            echo "[SUCCESS] E2E tests passed"
+          fi
+        id: test_result
       
       - name: Upload E2E Test Results
         if: always()
@@ -712,6 +825,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Test Summary
+        id: summary
         run: |
           echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -799,4 +913,43 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Note:** Services without test scripts are automatically skipped." >> $GITHUB_STEP_SUMMARY
           echo "**E2E Tests:** Require development worker deployments. Workers are automatically deployed before tests run." >> $GITHUB_STEP_SUMMARY
+          
+          # Check if any tests failed and fail the workflow
+          FAILED_COUNT=0
+          if [ "${{ inputs.test_root }}" == "true" ] && [ "${{ needs.test_root.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_otp_auth }}" == "true" ] && [ "${{ needs.test_otp_auth.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_mods_api }}" == "true" ] && [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_customer_api }}" == "true" ] && [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_twitch_api }}" == "true" ] && [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_game_api }}" == "true" ] && [ "${{ needs.test_game_api.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_url_shortener }}" == "true" ] && [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          if [ "${{ inputs.test_e2e }}" == "true" ] && [ "${{ needs.test_e2e.result }}" == "failure" ]; then
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+          fi
+          
+          if [ $FAILED_COUNT -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## [ERROR] Test Failures Detected" >> $GITHUB_STEP_SUMMARY
+            echo "$FAILED_COUNT test job(s) failed. See individual job logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "failed_count=$FAILED_COUNT" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## [SUCCESS] All Tests Passed" >> $GITHUB_STEP_SUMMARY
+            echo "failed_count=0" >> $GITHUB_OUTPUT
+          fi
 

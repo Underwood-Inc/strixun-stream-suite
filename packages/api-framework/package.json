@@ -33,8 +33,17 @@
     "*.d.ts",
     "*.ts"
   ],
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
+  },
   "dependencies": {
     "@strixun/service-client": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16"
   }
 }
 

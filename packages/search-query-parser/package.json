@@ -26,6 +26,11 @@
   "devDependencies": {
     "@types/react": "^19.0.1",
     "@types/styled-components": "^5.1.34"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
   }
 }
 

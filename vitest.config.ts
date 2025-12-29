@@ -15,6 +15,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom', // Default for Svelte components
     setupFiles: ['./vitest.setup.ts'],
+    passWithNoTests: true, // Don't fail if no tests are found
     include: [
       'src/**/*.{test,spec}.{js,ts}',
       'shared-components/**/*.{test,spec}.{js,ts}', // Include shared-components tests

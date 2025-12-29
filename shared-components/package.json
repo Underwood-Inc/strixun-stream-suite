@@ -4,6 +4,9 @@
   "description": "Shared component library for Strixun Stream Suite with Storybook documentation",
   "private": true,
   "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

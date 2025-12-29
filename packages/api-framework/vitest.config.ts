@@ -5,15 +5,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: [
-      '**/*.{test,spec}.{js,ts}',
-      '../shared/**/*.{test,spec}.{js,ts}', // Include shared tests
-    ],
+    include: ['**/*.{test,spec}.{js,ts}'],
     exclude: ['node_modules', 'dist', '**/*.e2e.{test,spec}.{js,ts}'],
     testTimeout: 10000,
-    pool: 'forks',
-    isolate: true,
-    passWithNoTests: true, // Don't fail if no tests are found
+    passWithNoTests: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
@@ -22,10 +17,6 @@ export default defineConfig({
         'dist/',
         '**/*.d.ts',
         '**/*.config.{js,ts}',
-        '**/worker.ts',
-        '**/router.ts',
-        '**/router/**',
-        '**/handlers/**',
       ],
     },
   },

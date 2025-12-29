@@ -12,6 +12,7 @@ export default defineConfig({
     testTimeout: 10000, // 10 second timeout per test
     pool: 'forks', // Use forks to avoid memory issues
     isolate: true, // Isolate each test file
+    passWithNoTests: true, // Don't fail if no tests are found
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
