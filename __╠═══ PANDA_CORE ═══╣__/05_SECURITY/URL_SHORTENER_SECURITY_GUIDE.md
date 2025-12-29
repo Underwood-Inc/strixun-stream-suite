@@ -1,10 +1,6 @@
-# Security Guide - URL Shortener Encryption
+# [LOCK] Security Guide - URL Shortener Encryption
 
-> **Complete security guide for URL Shortener encryption**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Encryption Key Management
 
@@ -12,13 +8,13 @@
 
 ### Key Management Approach
 
-- ✅ Keys must be provided at **BUILD TIME** via `VITE_SERVICE_ENCRYPTION_KEY`
-- ✅ Keys are bundled into JavaScript during build
-- ✅ No runtime key injection
+- [SUCCESS] Keys must be provided at **BUILD TIME** via `VITE_SERVICE_ENCRYPTION_KEY`
+- [SUCCESS] Keys are bundled into JavaScript during build
+- [SUCCESS] No runtime key injection
 
 ---
 
-## Current Encryption Architecture
+## [LOCK] Current Encryption Architecture
 
 ### How It Works Now
 
@@ -30,9 +26,9 @@
 ### Security Trade-offs
 
 **Current Approach (Build-time injection):**
-- ✅ Better than runtime injection (not in plain HTML)
-- ⚠️ Key is still in the JavaScript bundle (can be extracted)
-- ⚠️ Symmetric key exposed to clients (fundamental security issue)
+- [SUCCESS] Better than runtime injection (not in plain HTML)
+- [WARNING] Key is still in the JavaScript bundle (can be extracted)
+- [WARNING] Symmetric key exposed to clients (fundamental security issue)
 
 **Why This Is Still Problematic:**
 - Anyone can extract the key from the JavaScript bundle
@@ -77,11 +73,11 @@
 
 **If you must use symmetric encryption:**
 
-- ✅ Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
-- ✅ Rotate keys frequently (monthly or more)
-- ✅ Document the security trade-off
-- ✅ Monitor for key extraction attempts
-- ❌ Never use runtime injection
+- [SUCCESS] Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
+- [SUCCESS] Rotate keys frequently (monthly or more)
+- [SUCCESS] Document the security trade-off
+- [SUCCESS] Monitor for key extraction attempts
+- [ERROR] Never use runtime injection
 
 ---
 
@@ -135,7 +131,7 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 
 - `shared-config/otp-encryption.ts` - Key retrieval function
 - `shared-config/README.md` - Configuration guide
-- [Security Audit Report](../09_AUDITS_AND_REPORTS/SECURITY_AUDIT_REPORT.md) - Full security audit
+- `SECURITY_AUDIT_REPORT.md` - Full security audit
 - `serverless/shared/encryption/` - Encryption utilities
 
 ---
@@ -161,8 +157,3 @@ If you want to remove client-side encryption:
 5. Deploy
 
 The server already supports both encrypted and plain requests (backward compatibility), so migration is straightforward.
-
----
-
-**Last Updated**: 2025-12-29
-

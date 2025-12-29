@@ -1,10 +1,8 @@
-# OTP Auth Service
-
-Multi-tenant OTP authentication service built on Cloudflare Workers.
+# OTP Auth Service [LOCK]
 
 **Last Updated:** 2025-12-29
 
----
+Multi-tenant OTP authentication service built on Cloudflare Workers.
 
 ## Quick Start
 
@@ -62,8 +60,6 @@ cd dashboard
 pnpm build
 ```
 
----
-
 ## Project Structure
 
 ```
@@ -89,8 +85,6 @@ otp-auth-service/
     └── vite.config.ts
 ```
 
----
-
 ## Scripts
 
 - `pnpm dev` - Start worker dev server
@@ -98,8 +92,6 @@ otp-auth-service/
 - `pnpm dev:all` - Start both worker and dashboard together
 - `pnpm deploy` - Deploy worker to Cloudflare
 - `pnpm tail` - Tail worker logs
-
----
 
 ## Features
 
@@ -112,14 +104,8 @@ otp-auth-service/
 - [SUCCESS] Swagger UI integration
 - [SUCCESS] Developer dashboard (Svelte 5 + TypeScript)
 
----
-
 ## Documentation
 
 - [Dashboard README](./dashboard/README.md) - Dashboard development
-- [API Standards](./API_STANDARDS.md) - API documentation
-- [Local Testing](./LOCAL_TESTING.md) - Testing guide
-
----
-
-**Last Updated:** 2025-12-29
+- [API Standards](../06_API_REFERENCE/OTP_AUTH_API_STANDARDS.md) - API documentation
+- [Local Testing](../10_GUIDES_AND_TUTORIALS/OTP_AUTH_LOCAL_TESTING.md) - Testing guide

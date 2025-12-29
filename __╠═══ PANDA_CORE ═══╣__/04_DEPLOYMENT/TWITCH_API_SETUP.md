@@ -1,8 +1,8 @@
 # Strixun Twitch API Proxy - Setup Guide
 
-This serverless Cloudflare Worker proxies Twitch Helix API requests, handling authentication and caching automatically.
-
 **Last Updated:** 2025-12-29
+
+This serverless Cloudflare Worker proxies Twitch Helix API requests, handling authentication and caching automatically.
 
 ## Prerequisites
 
@@ -123,4 +123,3 @@ Cloudflare Workers free tier includes:
 - 1GB KV storage
 
 This is more than sufficient for personal streaming use.
-
