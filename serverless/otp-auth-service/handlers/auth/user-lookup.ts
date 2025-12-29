@@ -20,6 +20,9 @@ interface User {
  * Falls back to scanning if index is not available (backward compatibility)
  */
 async function findUserByUserId(userId: string, env: Env): Promise<User | null> {
+    const startTime = Date.now();
+    const TIMEOUT_MS = 10000; // 10 second timeout to prevent 522 errors
+    
     // Try to get customerId from index first (O(1) lookup)
     const { getCustomerIdFromIndex, updateUserIndex } = await import('../../utils/user-index.js');
     const indexedCustomerId = await getCustomerIdFromIndex(userId, env);
@@ -31,18 +34,21 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
     const indexValue = await env.OTP_AUTH_KV.get(indexKey);
     const indexExists = indexValue !== null;
     
-    if (indexExists) {
-        // Index entry exists - search only within the specific customer scope (much faster)
-        // This reduces search space from all customers to just one customer
-        const customerPrefix = indexedCustomerId 
-            ? `customer_${indexedCustomerId}_user_` 
-            : 'customer_'; // If customerId is null, search all customer_ prefixes (but still faster than full scan)
-        
+    if (indexExists && indexedCustomerId) {
+        // Index entry exists with a valid customerId - search only within that customer's scope
+        // This is the fastest path: O(1) index lookup + search within one customer scope
+        const customerPrefix = `customer_${indexedCustomerId}_user_`;
         let cursor: string | undefined;
         let iterations = 0;
         const MAX_ITERATIONS = 3; // Limit iterations to prevent excessive scanning
         
         do {
+            // Check timeout
+            if (Date.now() - startTime > TIMEOUT_MS) {
+                console.warn(`[UserLookup] Timeout (${TIMEOUT_MS}ms) while searching customer scope for userId: ${userId}`);
+                return null;
+            }
+            
             const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
             
             for (const key of listResult.keys) {
@@ -68,18 +74,29 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
                 break;
             }
         } while (cursor);
+        
+        // User not found in expected customer scope - return null (don't fall through to full scan)
+        console.warn(`[UserLookup] User ${userId} not found in customer scope ${indexedCustomerId} after ${iterations} iterations`);
+        return null;
     }
     
     // Fallback: Index not available or customerId is null - scan all scopes (backward compatibility)
     // This should rarely happen if index is properly maintained
-    console.warn(`[UserLookup] Index lookup failed or customerId is null, falling back to full scan for userId: ${userId}`);
+    // WARNING: This is slow and may timeout - should only happen for old users without index entries
+    console.warn(`[UserLookup] Index lookup failed or customerId is null, falling back to limited scan for userId: ${userId}`);
     
     const customerPrefix = 'customer_';
     let cursor: string | undefined;
     let iterations = 0;
-    const MAX_ITERATIONS = 3; // Limit iterations to prevent excessive scanning
+    const MAX_ITERATIONS = 2; // Very limited for fallback - only 2 iterations to prevent timeouts
     
     do {
+        // Check timeout
+        if (Date.now() - startTime > TIMEOUT_MS) {
+            console.warn(`[UserLookup] Timeout (${TIMEOUT_MS}ms) during fallback scan for userId: ${userId}`);
+            return null;
+        }
+        
         const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
         
         for (const key of listResult.keys) {
@@ -89,7 +106,6 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
                     if (user && user.userId === userId) {
                         // Update index for future lookups
                         if (user.customerId !== undefined) {
-                            const { updateUserIndex } = await import('../../utils/user-index.js');
                             await updateUserIndex(userId, user.customerId, env);
                         }
                         return user;
@@ -104,7 +120,7 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
         iterations++;
         
         if (iterations >= MAX_ITERATIONS) {
-            console.warn(`[UserLookup] Reached max iterations (${MAX_ITERATIONS}) while searching for userId: ${userId}`);
+            console.warn(`[UserLookup] Reached max iterations (${MAX_ITERATIONS}) during fallback scan for userId: ${userId}`);
             break;
         }
     } while (cursor);

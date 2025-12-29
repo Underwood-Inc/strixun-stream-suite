@@ -25,7 +25,7 @@ export async function handleGetUserPermissions(
         const corsHeaders = createCORSHeadersWithLocalhost(request, env);
         
         return new Response(JSON.stringify({
-            hasUploadPermission: hasPermission,
+            hasPermission: hasPermission,
             isSuperAdmin: isSuperAdmin,
             userId: auth.userId,
             // CRITICAL: email is NEVER returned - it remains encrypted in the OTP auth service

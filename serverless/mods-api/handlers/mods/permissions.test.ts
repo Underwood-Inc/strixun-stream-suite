@@ -57,7 +57,7 @@ describe('handleGetUserPermissions', () => {
         // CRITICAL: email must NOT be in response
         expect(data).not.toHaveProperty('email');
         expect(data).toEqual({
-            hasUploadPermission: true,
+            hasPermission: true,
             isSuperAdmin: false,
             userId: 'user_123',
         });
@@ -96,7 +96,7 @@ describe('handleGetUserPermissions', () => {
         // CRITICAL: email must NOT be in response even if missing in auth
         expect(data).not.toHaveProperty('email');
         expect(data).toEqual({
-            hasUploadPermission: false,
+            hasPermission: false,
             isSuperAdmin: false,
             userId: 'user_123',
         });
