@@ -241,7 +241,7 @@ export function UserManagementPage() {
         }
         
         // Sort users
-        let sorted = [...users];
+        const sorted = [...users];
         if (sortConfig) {
             sorted.sort((a, b) => {
                 let aVal: any = a[sortConfig.key as keyof UserListItem];
@@ -297,7 +297,7 @@ export function UserManagementPage() {
             }
             setSelectedIds(new Set());
             setBulkActionModalOpen(false);
-        } catch (error) {
+        } catch {
             // Error handled by mutations
         }
     }, [selectedIds, sortedUsers, updateUser]);
@@ -502,13 +502,13 @@ export function UserManagementPage() {
             <TableContainer>
                 {isLoading ? (
                     <EmptyState>
-                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>❓</div>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>[?]</div>
                         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>Loading users...</div>
                         <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>Fetching data from API</div>
                     </EmptyState>
                 ) : error ? (
                     <EmptyState>
-                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⚠️</div>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>[WARNING]</div>
                         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs, color: colors.danger }}>
                             Failed to load users
                         </div>

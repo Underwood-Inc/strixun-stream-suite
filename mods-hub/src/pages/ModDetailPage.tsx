@@ -208,7 +208,7 @@ export function ModDetailPage() {
                 {mod.thumbnailUrl ? (
                     thumbnailError ? (
                         <ThumbnailError>
-                            <ErrorIcon>⚠</ErrorIcon>
+                            <ErrorIcon>[WARNING]</ErrorIcon>
                             <ErrorMessage>Thumbnail unavailable</ErrorMessage>
                             <ErrorDetail>Image failed to load</ErrorDetail>
                         </ThumbnailError>

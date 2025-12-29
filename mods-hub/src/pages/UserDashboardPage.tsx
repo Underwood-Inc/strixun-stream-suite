@@ -110,7 +110,7 @@ export function UserDashboardPage() {
             await deleteMod.mutateAsync(identifier);
             setModToDelete(null);
             setIsModalOpen(false);
-        } catch (error) {
+        } catch {
             // Error is handled by the mutation
             // Don't close modal on error so user can retry
         }
@@ -149,7 +149,7 @@ export function UserDashboardPage() {
                 <EmptyState>
                     <EmptyStateTitle>No mods yet</EmptyStateTitle>
                     <EmptyStateMessage>
-                        You haven't uploaded any mods yet. Get started by uploading your first mod!
+                        You haven&apos;t uploaded any mods yet. Get started by uploading your first mod!
                     </EmptyStateMessage>
                     <Button onClick={() => navigate('/upload')}>
                         Upload Your First Mod

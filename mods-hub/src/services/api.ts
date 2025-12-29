@@ -141,7 +141,7 @@ async function getAuthToken(): Promise<string | null> {
                 return token;
             }
         }
-    } catch (error) {
+    } catch {
         // Ignore errors if store isn't available
     }
     
@@ -164,7 +164,7 @@ async function getAuthToken(): Promise<string | null> {
                 }
             }
         }
-    } catch (error) {
+    } catch {
         // Ignore parse errors
     }
     

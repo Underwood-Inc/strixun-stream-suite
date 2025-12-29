@@ -92,7 +92,7 @@ describe('Mods Hub API Service - Integration Tests', () => {
 
             try {
                 await apiModule.listMods({});
-            } catch (error) {
+            } catch {
                 // Expected to throw
             }
 

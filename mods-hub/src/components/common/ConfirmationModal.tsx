@@ -209,7 +209,7 @@ export function ConfirmationModal({
         try {
             await onConfirm();
             onClose();
-        } catch (error) {
+        } catch {
             // Error handling is up to the parent component
             // We just close the modal if confirm succeeds
         }

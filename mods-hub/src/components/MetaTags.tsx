@@ -30,9 +30,9 @@ function getBaseUrl(baseUrl?: string): string {
 function formatDescription(description: string): string {
     // Remove markdown links and formatting
     let cleaned = description
-        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove markdown links
-        .replace(/\*\*([^\*]+)\*\*/g, '$1') // Remove bold
-        .replace(/\*([^\*]+)\*/g, '$1') // Remove italic
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links
+        .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+        .replace(/\*([^*]+)\*/g, '$1') // Remove italic
         .replace(/#{1,6}\s+/g, '') // Remove headers
         .replace(/\n+/g, ' ') // Replace newlines with spaces
         .trim();

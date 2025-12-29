@@ -43,7 +43,7 @@ test.describe('Mod Detail Page', () => {
           }
         }
       }
-    } catch (error) {
+    } catch {
       // If API fails, test with a placeholder slug
       await page.goto(`${modsHubUrl}/mods/test-mod`);
       
@@ -82,7 +82,7 @@ test.describe('Mod Detail Page', () => {
           }
         }
       }
-    } catch (error) {
+    } catch {
       // Skip if API unavailable
       test.skip();
     }
@@ -111,7 +111,7 @@ test.describe('Mod Detail Page', () => {
           }
         }
       }
-    } catch (error) {
+    } catch {
       test.skip();
     }
   });

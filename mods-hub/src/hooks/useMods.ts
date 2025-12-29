@@ -125,10 +125,7 @@ export function useUploadMod() {
             let errorMessage = error.message || 'Failed to upload mod';
             
             // Check if error contains file size information
-            if (errorMessage.includes('File size') || errorMessage.includes('exceeds maximum')) {
-                // Error message is already user-friendly from the API
-                errorMessage = errorMessage;
-            } else if (errorMessage.includes('File Must Be Encrypted')) {
+            if (errorMessage.includes('File Must Be Encrypted')) {
                 errorMessage = 'File encryption error. Please try uploading again.';
             } else if (errorMessage.includes('413') || errorMessage.includes('Payload Too Large')) {
                 errorMessage = 'File size exceeds maximum allowed size. Please use a smaller file.';

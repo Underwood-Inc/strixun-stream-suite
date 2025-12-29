@@ -108,7 +108,7 @@ export function ModUploadPage() {
         try {
             const result = await uploadMod.mutateAsync(data);
             navigate(`/${result.mod.slug}`);
-        } catch (error) {
+        } catch {
             // Error handled by mutation (notification shown)
         }
     };
@@ -137,7 +137,7 @@ export function ModUploadPage() {
                 type: 'success',
             });
             navigate(`/drafts`);
-        } catch (error) {
+        } catch {
             // Error handled by mutation
         }
     };

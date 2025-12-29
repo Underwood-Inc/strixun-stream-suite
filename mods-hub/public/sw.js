@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       return; // Skip entirely - don't try to cache or fetch
     }
-  } catch (error) {
+  } catch {
     // If URL parsing fails, skip this request entirely
     console.debug('[SW] Invalid URL, skipping:', event.request.url);
     return;
@@ -124,7 +124,7 @@ self.addEventListener('fetch', (event) => {
 
             return response;
           })
-          .catch((error) => {
+          .catch(() => {
             // If network fails, always return a Response object (never undefined)
             if (event.request.destination === 'document') {
               return caches.match('/index.html').then((offlinePage) => {
@@ -136,11 +136,11 @@ self.addEventListener('fetch', (event) => {
             return fetch(event.request);
           });
       })
-      .catch((error) => {
+      .catch(() => {
         // If cache match fails, fetch from network
         // Always return a Response object - never return undefined
-        console.debug('[SW] Cache match failed, fetching from network:', error.message);
-        return fetch(event.request).catch((fetchError) => {
+        console.debug('[SW] Cache match failed, fetching from network');
+        return fetch(event.request).catch(() => {
           // If fetch also fails, return appropriate response
           if (event.request.destination === 'document') {
             return caches.match('/index.html').then((offlinePage) => {

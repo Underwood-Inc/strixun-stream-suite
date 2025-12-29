@@ -48,7 +48,7 @@ function generateNamePattern(
         case 'noun-adjective':
             return includeNumber ? `${noun} ${adjective} ${number}` : `${noun} ${adjective}`;
         case 'random':
-        default:
+        default: {
             const patterns: Array<'adjective-noun' | 'noun-adjective'> = ['adjective-noun', 'noun-adjective'];
             const selectedPattern = randomElement(patterns);
             if (selectedPattern === 'adjective-noun') {
@@ -56,6 +56,7 @@ function generateNamePattern(
             } else {
                 return includeNumber ? `${noun} ${adjective} ${number}` : `${noun} ${adjective}`;
             }
+        }
     }
 }
 

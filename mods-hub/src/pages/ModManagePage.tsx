@@ -69,7 +69,7 @@ export function ModManagePage() {
         return (
             <Unauthorized>
                 <UnauthorizedTitle>Mod Not Found</UnauthorizedTitle>
-                <UnauthorizedMessage>The mod you're looking for doesn't exist or has been deleted.</UnauthorizedMessage>
+                <UnauthorizedMessage>The mod you&apos;re looking for doesn&apos;t exist or has been deleted.</UnauthorizedMessage>
             </Unauthorized>
         );
     }
@@ -106,7 +106,7 @@ export function ModManagePage() {
     const handleUpdate = async (updates: any, thumbnail?: File) => {
         try {
             await updateMod.mutateAsync({ slug: slug!, updates, thumbnail });
-        } catch (error) {
+        } catch {
             // Error handled by mutation
         }
     };
@@ -119,7 +119,7 @@ export function ModManagePage() {
                 status,
                 reason: status === 'pending' ? 'Submitted for review by author' : undefined
             });
-        } catch (error) {
+        } catch {
             // Error handled by mutation
         }
     };
@@ -131,7 +131,7 @@ export function ModManagePage() {
         try {
             await deleteMod.mutateAsync(slug!);
             navigate('/');
-        } catch (error) {
+        } catch {
             // Error handled by mutation
         }
     };
@@ -144,7 +144,7 @@ export function ModManagePage() {
                 file: uploadData.file,
                 metadata: uploadData.metadata,
             });
-        } catch (error) {
+        } catch {
             // Error handled by mutation
         }
     };

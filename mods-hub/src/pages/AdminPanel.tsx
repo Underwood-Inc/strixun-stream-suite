@@ -239,7 +239,7 @@ export function AdminPanel() {
         const filtered = mods;
         
         // Sort mods
-        let sorted = [...filtered];
+        const sorted = [...filtered];
         if (sortConfig) {
             sorted.sort((a, b) => {
                 const aVal = a[sortConfig.key as keyof ModMetadata];
@@ -292,7 +292,7 @@ export function AdminPanel() {
             }
             setSelectedIds(new Set());
             setBulkActionModalOpen(false);
-        } catch (error) {
+        } catch {
             // Error handled by mutations
         }
     }, [selectedIds, sortedMods, deleteMod, updateStatus]);
@@ -308,7 +308,7 @@ export function AdminPanel() {
             await deleteMod.mutateAsync(modToDelete.modId);
             setDeleteModalOpen(false);
             setModToDelete(null);
-        } catch (error) {
+        } catch {
             // Error is handled by the mutation's onError
         }
     }, [modToDelete, deleteMod]);

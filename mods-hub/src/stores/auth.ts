@@ -21,7 +21,7 @@ interface AuthState {
     isSuperAdmin: boolean;
     setUser: (user: User | null) => void;
     logout: () => void;
-    restoreSession: () => Promise<void>;
+    restoreSession: () => Promise<boolean>;
     fetchUserInfo: () => Promise<void>;
 }
 
@@ -79,7 +79,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
             };
             
             // Token is stored in user object, which is persisted to localStorage
-            console.log('[Auth] ✅ Session restored from backend for user:', user.email);
+            console.log('[Auth] [SUCCESS] Session restored from backend for user:', user.email);
             return user;
         }
 
@@ -255,7 +255,7 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                 }).catch(err => {
                     console.debug('[Auth] Background admin status refresh failed (non-critical):', err);
                 });
-                return; // Already authenticated with valid token - don't clear!
+                return true; // Already authenticated with valid token - don't clear!
             }
             // Token is expired - try to restore from backend, but don't clear user yet
             // Only clear if backend restore fails
@@ -278,12 +278,15 @@ const authStoreCreator: StateCreator<AuthState> = (set, get) => ({
                 // If fetchUserInfo fails, keep the user but log the issue
                 console.warn('[Auth] Failed to fetch admin status after restore, but keeping user authenticated');
             }
+            return true; // Successfully restored
         } else if (currentUser && currentUser.expiresAt && new Date(currentUser.expiresAt) <= new Date()) {
             // Backend restore failed AND token is expired - only now clear the user
             console.log('[Auth] Token expired and backend restore failed, clearing auth state');
             set({ user: null, isAuthenticated: false, isSuperAdmin: false });
+            return false; // Failed to restore
         }
         // If backend restore failed but we have a valid user, keep them logged in
+        return false; // No user to restore or restore failed
     },
 });
 

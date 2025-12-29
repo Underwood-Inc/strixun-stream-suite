@@ -242,7 +242,7 @@ export function AdminSettingsPage() {
                             Add
                         </Button>
                     </div>
-                    <InfoText>Enter extension with or without leading dot (e.g., "lua" or ".lua")</InfoText>
+                    <InfoText>Enter extension with or without leading dot (e.g., &quot;lua&quot; or &quot;.lua&quot;)</InfoText>
                 </FormGroup>
 
                 <FormGroup>

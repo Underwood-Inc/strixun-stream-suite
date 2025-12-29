@@ -123,7 +123,7 @@ export function DraftsPage() {
                 status: 'pending',
                 reason: 'Submitted for review by author'
             });
-        } catch (error) {
+        } catch {
             // Error handled by mutation
         }
     };
@@ -171,7 +171,7 @@ export function DraftsPage() {
             {drafts.length === 0 ? (
                 <EmptyState>
                     <EmptyTitle>No Drafts</EmptyTitle>
-                    <p>You don't have any draft mods yet.</p>
+                    <p>You don&apos;t have any draft mods yet.</p>
                     <ActionButton 
                         variant="primary" 
                         onClick={() => navigate('/upload')}
