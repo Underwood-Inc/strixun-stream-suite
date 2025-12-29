@@ -39,6 +39,8 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
             : 'customer_'; // If customerId is null, search all customer_ prefixes (but still faster than full scan)
         
         let cursor: string | undefined;
+        let iterations = 0;
+        const MAX_ITERATIONS = 3; // Limit iterations to prevent excessive scanning
         
         do {
             const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
@@ -59,6 +61,12 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
             }
             
             cursor = listResult.listComplete ? undefined : listResult.cursor;
+            iterations++;
+            
+            if (iterations >= MAX_ITERATIONS) {
+                console.warn(`[UserLookup] Reached max iterations (${MAX_ITERATIONS}) while searching customer scope for userId: ${userId}`);
+                break;
+            }
         } while (cursor);
     }
     
@@ -69,7 +77,7 @@ async function findUserByUserId(userId: string, env: Env): Promise<User | null> 
     const customerPrefix = 'customer_';
     let cursor: string | undefined;
     let iterations = 0;
-    const MAX_ITERATIONS = 100; // Safety limit
+    const MAX_ITERATIONS = 3; // Limit iterations to prevent excessive scanning
     
     do {
         const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
