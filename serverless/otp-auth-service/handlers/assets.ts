@@ -235,8 +235,13 @@ function serveDashboardFile(
         }
         content = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     } else {
-        // Text file
-        content = fileContent;
+        // Text file - ensure proper UTF-8 encoding
+        // Convert string to Uint8Array for proper encoding
+        if (typeof fileContent === 'string') {
+            content = new TextEncoder().encode(fileContent);
+        } else {
+            content = fileContent;
+        }
     }
     
     return new Response(content, {

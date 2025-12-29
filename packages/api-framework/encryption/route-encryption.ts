@@ -414,6 +414,10 @@ export const DEFAULT_ENCRYPTION_POLICIES: RouteEncryptionPolicy[] = [
     pattern: '/assets/**',
     strategy: 'none', // Static assets (JS, CSS, images) don't need encryption
   },
+  {
+    pattern: '/dashboard/assets/**',
+    strategy: 'none', // Dashboard static assets (JS, CSS, images) don't need encryption
+  },
   
   // Public routes - don't encrypt (clients need to read responses without JWT/service key)
   {
