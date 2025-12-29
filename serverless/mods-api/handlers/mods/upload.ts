@@ -516,6 +516,9 @@ export async function handleUploadMod(
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
+                    // CRITICAL: Prevent caching of service-to-service API calls
+                    // Even server-side calls should not be cached to ensure fresh data
+                    cache: 'no-store',
                 });
                 if (response.ok) {
                     const responseData = await response.json();
@@ -534,13 +537,28 @@ export async function handleUploadMod(
                     }
                     
                     authorDisplayName = userData?.displayName || null;
-                    console.log('[Upload] Fetched authorDisplayName:', { authorDisplayName, hasDisplayName: !!authorDisplayName });
+                    console.log('[Upload] Fetched authorDisplayName:', { 
+                        authorDisplayName, 
+                        hasDisplayName: !!authorDisplayName,
+                        userId: auth.userId,
+                        userDataKeys: userData ? Object.keys(userData) : []
+                    });
                 } else {
-                    console.warn('[Upload] /auth/me returned non-200 status:', response.status);
+                    const errorText = await response.text().catch(() => 'Unable to read error');
+                    console.warn('[Upload] /auth/me returned non-200 status:', { 
+                        status: response.status, 
+                        statusText: response.statusText,
+                        error: errorText
+                    });
                 }
+            } else {
+                console.warn('[Upload] No Authorization header found for displayName fetch');
             }
         } catch (error) {
-            console.warn('[Upload] Failed to fetch displayName from auth service:', error);
+            console.error('[Upload] Failed to fetch displayName from auth service:', { 
+                error: error instanceof Error ? error.message : String(error),
+                userId: auth.userId
+            });
         }
         
         // CRITICAL: Never use authorEmail as fallback - email is ONLY for authentication

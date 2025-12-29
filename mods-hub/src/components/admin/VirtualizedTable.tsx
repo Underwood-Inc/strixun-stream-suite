@@ -17,6 +17,7 @@ const TableContainer = styled.div`
   border-radius: 8px;
   overflow: hidden;
   height: 100%;
+  position: relative;
 `;
 
 const TableHeader = styled.div`
@@ -26,6 +27,7 @@ const TableHeader = styled.div`
   position: sticky;
   top: 0;
   z-index: 10;
+  flex-shrink: 0;
 `;
 
 const HeaderCell = styled.div<{ $sortable?: boolean; $sorted?: 'asc' | 'desc' | null; $width?: string }>`
@@ -61,7 +63,9 @@ const HeaderCell = styled.div<{ $sortable?: boolean; $sorted?: 'asc' | 'desc' | 
 const TableBody = styled.div`
   flex: 1;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: hidden; /* react-window handles vertical scrolling */
+  min-height: 0;
+  position: relative;
 `;
 
 const Row = styled.div<{ $selected?: boolean; $hover?: boolean }>`
@@ -307,15 +311,17 @@ export function VirtualizedTable<T extends Record<string, any>>({
         ))}
       </TableHeader>
       <TableBody>
-        <List
-          ref={listRef}
-          height={height - 50} // Subtract header height
-          itemCount={data.length}
-          itemSize={rowHeight}
-          width="100%"
-        >
-          {RowComponent}
-        </List>
+        <div style={{ width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
+          <List
+            ref={listRef}
+            height={height - 50} // Subtract header height
+            itemCount={data.length}
+            itemSize={rowHeight}
+            width={totalContentWidth} // Match content width for proper horizontal scrolling
+          >
+            {RowComponent}
+          </List>
+        </div>
       </TableBody>
     </TableContainer>
   );

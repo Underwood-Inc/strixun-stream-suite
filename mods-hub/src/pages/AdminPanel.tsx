@@ -12,7 +12,7 @@
  * - Optimized for performance
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '../../../shared-components/search-query-parser/AdvancedSearchInput';
@@ -182,6 +182,8 @@ const TableContainer = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  position: relative;
 `;
 
 export function AdminPanel() {
@@ -193,6 +195,8 @@ export function AdminPanel() {
     const [bulkActionModalOpen, setBulkActionModalOpen] = useState(false);
     const [bulkAction, setBulkAction] = useState<ModStatus | 'delete' | null>(null);
     const [modToDelete, setModToDelete] = useState<{ modId: string; title: string } | null>(null);
+    const [tableHeight, setTableHeight] = useState<number>(600);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
     
     const { data, isLoading, error } = useAdminModsList({
         page: 1,
@@ -424,6 +428,63 @@ export function AdminPanel() {
         },
     ], [handleStatusChange, handleDeleteClick, updateStatus, deleteMod]);
 
+    // Calculate table height based on available space
+    useEffect(() => {
+        const updateTableHeight = () => {
+            if (tableContainerRef.current) {
+                // Get the actual container height from the ref
+                const containerRect = tableContainerRef.current.getBoundingClientRect();
+                const containerHeight = containerRect.height;
+                
+                // If container height is available, use it
+                // Otherwise calculate from viewport
+                if (containerHeight > 0) {
+                    // Reserve space for header, stats, toolbar, and padding
+                    // Header: ~80px, Stats: ~100px, Toolbar: ~60px, Padding: ~40px
+                    const reservedHeight = 280;
+                    const availableHeight = containerHeight - reservedHeight;
+                    // Minimum height of 400px, maximum of available space
+                    const calculatedHeight = Math.max(400, availableHeight);
+                    setTableHeight(calculatedHeight);
+                } else {
+                    // Fallback: calculate from viewport
+                    const viewportHeight = window.innerHeight;
+                    const calculatedHeight = Math.max(400, viewportHeight - 300);
+                    setTableHeight(calculatedHeight);
+                }
+            } else {
+                // Fallback: calculate from viewport if ref not available
+                const viewportHeight = window.innerHeight;
+                const calculatedHeight = Math.max(400, viewportHeight - 300);
+                setTableHeight(calculatedHeight);
+            }
+        };
+
+        // Initial calculation
+        updateTableHeight();
+        
+        // Recalculate after a short delay to ensure DOM is fully rendered
+        const timeoutId = setTimeout(updateTableHeight, 100);
+        
+        // Listen for window resize
+        window.addEventListener('resize', updateTableHeight);
+        
+        // Use ResizeObserver to detect container size changes
+        let resizeObserver: ResizeObserver | null = null;
+        if (tableContainerRef.current && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(updateTableHeight);
+            resizeObserver.observe(tableContainerRef.current);
+        }
+        
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('resize', updateTableHeight);
+            if (resizeObserver && tableContainerRef.current) {
+                resizeObserver.unobserve(tableContainerRef.current);
+            }
+        };
+    }, [data]); // Recalculate when data changes (affects layout)
+
     if (isLoading) return <Loading>Loading mods...</Loading>;
     if (error) return <Error>Failed to load mods: {(error as Error).message}</Error>;
     
@@ -435,7 +496,8 @@ export function AdminPanel() {
         statusFilter,
         searchQuery,
         sortedModsCount: sortedMods.length,
-        filteredModsCount: filteredMods.length
+        filteredModsCount: filteredMods.length,
+        tableHeight
     });
 
     const selectedCount = selectedIds.size;
@@ -517,12 +579,12 @@ export function AdminPanel() {
                 </div>
             </Toolbar>
 
-            <TableContainer>
+            <TableContainer ref={tableContainerRef}>
                 {sortedMods.length > 0 ? (
                     <VirtualizedTable
                         data={sortedMods}
                         columns={columns}
-                        height={600}
+                        height={tableHeight}
                         rowHeight={56}
                         getItemId={(mod) => mod.modId}
                         sortConfig={sortConfig}

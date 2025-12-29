@@ -8,7 +8,7 @@
 
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { createCORSHeadersWithLocalhost } from '../utils/cors.js';
-import { protectAdminRoute, type RouteProtectionEnv, type AuthResult } from '@strixun/api-framework';
+import { protectAdminRoute, type RouteProtectionEnv } from '@strixun/api-framework';
 import { verifyJWT } from '../utils/auth.js';
 import { createError } from '../utils/errors.js';
 
@@ -56,8 +56,8 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth, request, env);
         }
 
-        // Route: POST /admin/mods/:modId/status - Update mod status
-        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && pathSegments[3] === 'status' && request.method === 'POST') {
+        // Route: PUT /admin/mods/:modId/status - Update mod status (also accepts POST for backward compatibility)
+        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && pathSegments[3] === 'status' && (request.method === 'PUT' || request.method === 'POST')) {
             const modId = pathSegments[2];
             const { handleUpdateModStatus } = await import('../handlers/admin/triage.js');
             const response = await handleUpdateModStatus(request, env, modId, auth);
@@ -184,12 +184,16 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         console.error('Admin routes error:', error);
         const rfcError = createError(request, 500, 'Internal Server Error', 'An error occurred while processing the admin request');
         const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+        const headers: Record<string, string> = {};
+        corsHeaders.forEach((value, key) => {
+            headers[key] = value;
+        });
         return {
             response: new Response(JSON.stringify(rfcError), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...headers,
                 },
             }),
             customerId: null
@@ -199,6 +203,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
 
 interface Env extends RouteProtectionEnv {
     MODS_KV: KVNamespace;
+    MODS_R2: R2Bucket;
     SUPER_ADMIN_EMAILS?: string;
     ADMIN_EMAILS?: string; // Regular admin emails (for future use)
     JWT_SECRET?: string;
