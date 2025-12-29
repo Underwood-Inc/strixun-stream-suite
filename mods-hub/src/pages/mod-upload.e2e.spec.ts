@@ -5,8 +5,8 @@
  * Co-located with ModUploadPage component
  */
 
-import { test, expect } from '@playwright/test';
-import { verifyWorkersHealth, authenticateUser, TEST_USERS } from '../../../serverless/shared/e2e/helpers';
+import { test, expect } from '@strixun/e2e-helpers/fixtures';
+import { verifyWorkersHealth } from '@strixun/e2e-helpers';
 
 test.describe('Mod Upload', () => {
   test.beforeAll(async () => {
@@ -22,8 +22,9 @@ test.describe('Mod Upload', () => {
     await page.waitForTimeout(2000); // Wait for redirect
     
     const currentUrl = page.url();
-    const isLoginPage = currentUrl.includes('/login') || 
-                       page.locator('input[type="email"]').isVisible();
+    const emailInput = page.locator('input[type="email"]');
+    const isEmailInputVisible = await emailInput.isVisible();
+    const isLoginPage = currentUrl.includes('/login') || isEmailInputVisible;
     
     expect(isLoginPage).toBeTruthy();
   });

@@ -5,8 +5,8 @@
  * Co-located with ModListPage component
  */
 
-import { test, expect } from '@playwright/test';
-import { verifyWorkersHealth } from '../../../serverless/shared/e2e/helpers';
+import { test, expect } from '@strixun/e2e-helpers/fixtures';
+import { verifyWorkersHealth } from '@strixun/e2e-helpers';
 
 test.describe('Mod List Page', () => {
   test.beforeAll(async () => {

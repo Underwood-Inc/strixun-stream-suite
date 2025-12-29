@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
-    "@strixun/types": "workspace:*"
+    "@strixun/types": "workspace:*",
+    "@strixun/e2e-helpers": "workspace:*"
   },
   "devDependencies": {}
 }

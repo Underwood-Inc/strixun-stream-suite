@@ -11,6 +11,7 @@
     "build:otp-login:svelte": "pnpm --filter @strixun/otp-login build:svelte",
     "build:otp-login:vanilla": "pnpm --filter @strixun/otp-login build:vanilla",
     "build:otp-login:all": "pnpm --filter @strixun/otp-login build",
+    "prebuild": "pnpm build:otp-login:svelte",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
@@ -48,7 +49,8 @@
     "@strixun/search-query-parser": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
     "@strixun/error-mapping": "workspace:*",
-    "@strixun/otp-login": "workspace:*"
+    "@strixun/otp-login": "workspace:*",
+    "@strixun/e2e-helpers": "workspace:*"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.2",

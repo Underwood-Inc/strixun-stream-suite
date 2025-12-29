@@ -1,0 +1,35 @@
+{
+  "name": "@strixun/e2e-helpers",
+  "version": "1.0.0",
+  "description": "Shared E2E testing utilities and fixtures for Playwright tests",
+  "private": true,
+  "type": "module",
+  "main": "./helpers.ts",
+  "types": "./helpers.ts",
+  "exports": {
+    ".": {
+      "types": "./helpers.ts",
+      "default": "./helpers.ts"
+    },
+    "./fixtures": {
+      "types": "./fixtures.ts",
+      "default": "./fixtures.ts"
+    },
+    "./helpers": {
+      "types": "./helpers.ts",
+      "default": "./helpers.ts"
+    }
+  },
+  "files": [
+    "*.ts",
+    "*.js",
+    "*.d.ts"
+  ],
+  "dependencies": {
+    "@playwright/test": "^1.57.0"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.57.0"
+  }
+}
+

@@ -22,10 +22,10 @@ compatibility_flags = ["nodejs_compat"]
 
 # Production environment
 [env.production]
-vars = { 
-  ENVIRONMENT = "production",
-  CUSTOMER_API_URL = "https://customer-api.idling.app"
-}
+
+[env.production.vars]
+ENVIRONMENT = "production"
+CUSTOMER_API_URL = "https://customer-api.idling.app"
 
 # Production KV Namespace
 [[env.production.kv_namespaces]]
@@ -39,10 +39,10 @@ zone_name = "idling.app"
 
 # Development environment
 [env.development]
-vars = { 
-  ENVIRONMENT = "development",
-  CUSTOMER_API_URL = "https://strixun-customer-api-dev.strixuns-script-suite.workers.dev"
-}
+
+[env.development.vars]
+ENVIRONMENT = "development"
+CUSTOMER_API_URL = "https://strixun-customer-api-dev.strixuns-script-suite.workers.dev"
 
 # Development KV Namespace (using same namespace for testing)
 [[env.development.kv_namespaces]]

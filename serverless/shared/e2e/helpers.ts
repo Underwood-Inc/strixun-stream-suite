@@ -5,8 +5,11 @@
  * Used across all E2E tests in the codebase
  */
 
-import { Page } from '@playwright/test';
-import { WORKER_URLS } from '../../../../playwright.config';
+import { Page, type APIResponse } from '@playwright/test';
+import { WORKER_URLS } from '../../../../playwright.config.js';
+
+// Re-export WORKER_URLS for convenience
+export { WORKER_URLS };
 
 /**
  * Test user credentials for E2E testing
@@ -118,7 +121,7 @@ export async function waitForAPIResponse(
   timeout = 10000
 ): Promise<void> {
   await page.waitForResponse(
-    (response) => {
+    (response: APIResponse) => {
       const url = response.url();
       if (typeof urlPattern === 'string') {
         return url.includes(urlPattern);

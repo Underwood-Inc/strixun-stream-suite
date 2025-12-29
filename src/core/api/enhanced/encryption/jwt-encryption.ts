@@ -5,11 +5,11 @@
  * All encryption logic is now in serverless/shared/encryption/
  */
 
-// Re-export from shared encryption suite
+// Re-export from shared encryption suite via workspace package
 export {
   encryptWithJWT,
   decryptWithJWT,
-} from '../../../../../serverless/shared/encryption/jwt-encryption.js';
+} from '@strixun/api-framework';
 
 import type { E2EEncryptionConfig } from '../types';
 import type { APIRequest, APIResponse } from '../../types';
@@ -60,8 +60,8 @@ export function createE2EEncryptionMiddleware(
 
       const data = response.data;
 
-      // Encrypt data using shared encryption suite
-      const { encryptWithJWT } = await import('../../../../../serverless/shared/encryption/jwt-encryption.js');
+      // Encrypt data using shared encryption suite via workspace package
+      const { encryptWithJWT } = await import('@strixun/api-framework');
       const encrypted = await encryptWithJWT(data, token);
 
       // Create new response with encrypted data

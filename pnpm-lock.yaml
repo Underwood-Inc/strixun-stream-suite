@@ -17,6 +17,9 @@ importers:
       '@strixun/ad-carousel':
         specifier: workspace:*
         version: link:shared-components/ad-carousel
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:serverless/shared/e2e
       '@strixun/error-mapping':
         specifier: workspace:*
         version: link:shared-components/error-mapping
@@ -169,6 +172,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../serverless/shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../serverless/shared/e2e
       '@strixun/search-query-parser':
         specifier: workspace:*
         version: link:../shared-components/search-query-parser
@@ -203,6 +209,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
         version: 4.20251225.0
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.9.1
@@ -264,6 +273,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/types':
         specifier: workspace:*
         version: link:../shared/types
@@ -273,6 +285,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/types':
         specifier: workspace:*
         version: link:../shared/types
@@ -292,6 +307,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/types':
         specifier: workspace:*
         version: link:../shared/types
@@ -301,6 +319,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/otp-auth-service':
         specifier: workspace:*
         version: link:../otp-auth-service
@@ -326,6 +347,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../shared/service-client
@@ -439,6 +463,12 @@ importers:
 
   serverless/shared/api: {}
 
+  serverless/shared/e2e:
+    dependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+
   serverless/shared/service-client: {}
 
   serverless/shared/types: {}
@@ -448,6 +478,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/types':
         specifier: workspace:*
         version: link:../shared/types
@@ -470,6 +503,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/e2e-helpers':
+        specifier: workspace:*
+        version: link:../shared/e2e
       '@strixun/types':
         specifier: workspace:*
         version: link:../shared/types
@@ -2451,6 +2487,11 @@ packages:
   '@parcel/watcher@2.5.1':
     resolution: {integrity: sha512-dfUnCxiN9H4ap84DvD2ubjw+3vUNpstxa0TneY/Paat8a3R4uQZDLSvWjmznAY/DoahqTHl9V46HF/Zs3F29pg==}
     engines: {node: '>= 10.0.0'}
+
+  '@playwright/test@1.57.0':
+    resolution: {integrity: sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -7744,6 +7785,10 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.1
       '@parcel/watcher-win32-x64': 2.5.1
     optional: true
+
+  '@playwright/test@1.57.0':
+    dependencies:
+      playwright: 1.57.0
 
   '@polka/url@1.0.0-next.29': {}
 

@@ -7,6 +7,7 @@ packages:
   - 'serverless/shared/api'
   - 'serverless/shared/service-client'
   - 'serverless/shared/types'
+  - 'serverless/shared/e2e'
   - 'control-panel'
   - 'mods-hub'
   - 'shared-components'

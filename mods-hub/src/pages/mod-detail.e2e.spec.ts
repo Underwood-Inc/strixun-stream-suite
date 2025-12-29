@@ -5,9 +5,13 @@
  * Co-located with ModDetailPage component
  */
 
-import { test, expect } from '@playwright/test';
-import { verifyWorkersHealth } from '../../../serverless/shared/e2e/helpers';
-import { WORKER_URLS } from '../../../playwright.config';
+import { test, expect } from '@strixun/e2e-helpers/fixtures';
+import { verifyWorkersHealth } from '@strixun/e2e-helpers';
+import { WORKER_URLS } from '../../../playwright.config.js';
+
+interface ModsResponse {
+  mods?: Array<{ slug: string }>;
+}
 
 test.describe('Mod Detail Page', () => {
   test.beforeAll(async () => {
@@ -22,7 +26,7 @@ test.describe('Mod Detail Page', () => {
     try {
       const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1`);
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as ModsResponse;
         if (data.mods && data.mods.length > 0) {
           const modSlug = data.mods[0].slug;
           await page.goto(`${modsHubUrl}/mods/${modSlug}`);
@@ -60,7 +64,7 @@ test.describe('Mod Detail Page', () => {
     try {
       const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1&status=published`);
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as ModsResponse;
         if (data.mods && data.mods.length > 0) {
           const modSlug = data.mods[0].slug;
           await page.goto(`${modsHubUrl}/mods/${modSlug}`);
@@ -90,7 +94,7 @@ test.describe('Mod Detail Page', () => {
     try {
       const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1`);
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as ModsResponse;
         if (data.mods && data.mods.length > 0) {
           const modSlug = data.mods[0].slug;
           await page.goto(`${modsHubUrl}/mods/${modSlug}`);

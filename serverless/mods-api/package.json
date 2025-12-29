@@ -19,7 +19,8 @@
     "@strixun/api-framework": "workspace:*",
     "@strixun/otp-auth-service": "workspace:*",
     "@strixun/service-client": "workspace:*",
-    "@strixun/types": "workspace:*"
+    "@strixun/types": "workspace:*",
+    "@strixun/e2e-helpers": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",

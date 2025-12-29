@@ -6,6 +6,15 @@
   "type": "module",
   "main": "./core.ts",
   "types": "./otp-login.d.ts",
+  "exports": {
+    ".": {
+      "types": "./otp-login.d.ts",
+      "default": "./core.ts"
+    },
+    "./dist/svelte": "./dist/svelte/index.js",
+    "./dist/react": "./dist/react/index.js",
+    "./dist/js": "./dist/js/index.js"
+  },
   "scripts": {
     "build": "node scripts/build-vanilla.js && node scripts/build-react.js && node scripts/build-svelte.js",
     "build:vanilla": "node scripts/build-vanilla.js",

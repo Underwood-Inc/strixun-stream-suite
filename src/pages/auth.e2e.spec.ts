@@ -5,8 +5,8 @@
  * Co-located with frontend auth code
  */
 
-import { test, expect } from '@playwright/test';
-import { verifyWorkersHealth } from '../../serverless/shared/e2e/helpers';
+import { test, expect } from '@strixun/e2e-helpers/fixtures';
+import { verifyWorkersHealth } from '@strixun/e2e-helpers';
 
 test.describe('Authentication Flow', () => {
   test.beforeAll(async () => {

@@ -44,6 +44,7 @@
     "@strixun/api-framework": "workspace:*",
     "@strixun/service-client": "workspace:*",
     "@strixun/types": "workspace:*",
+    "@strixun/e2e-helpers": "workspace:*",
     "mermaid": "^11.12.2",
     "prismjs": "^1.30.0",
     "svelte": "^5.46.0",

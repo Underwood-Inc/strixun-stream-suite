@@ -5,8 +5,8 @@
  * Co-located with LoginPage component
  */
 
-import { test, expect } from '@playwright/test';
-import { verifyWorkersHealth } from '../../../serverless/shared/e2e/helpers';
+import { test, expect } from '@strixun/e2e-helpers/fixtures';
+import { verifyWorkersHealth } from '@strixun/e2e-helpers';
 
 test.describe('Mods Hub Login', () => {
   test.beforeAll(async () => {
