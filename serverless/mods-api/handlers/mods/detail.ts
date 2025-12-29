@@ -243,11 +243,13 @@ export async function handleGetModDetail(
         });
 
         // Fetch author display name from auth API
+        // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
+        // Always try to fetch latest, but preserve stored value if fetch fails
+        const storedDisplayName = mod.authorDisplayName;
         const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-        const authorDisplayName = await fetchDisplayNameByUserId(mod.authorId, env);
-        if (authorDisplayName) {
-            mod.authorDisplayName = authorDisplayName;
-        }
+        const fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env);
+        // Use fetched value if available, otherwise fall back to stored value
+        mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
 
         const response: ModDetailResponse = {
             mod,
