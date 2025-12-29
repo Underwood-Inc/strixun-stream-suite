@@ -74,24 +74,11 @@ export async function resolveSlugToModId(
                             const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                             
                             if (mod && mod.slug === slug) {
-                                // Only return public, approved/published mods for unauthenticated requests
-                                if (!auth) {
-                                    const modVisibility = mod.visibility || 'public';
-                                    const modStatus = mod.status || 'published';
-                                    if (modVisibility === 'public' && (modStatus === 'published' || modStatus === 'approved')) {
-                                        return mod.modId;
-                                    }
-                                } else {
-                                    // For authenticated requests, return if user is author or mod is public
-                                    const modVisibility = mod.visibility || 'public';
-                                    const modStatus = mod.status || 'published';
-                                    const isAuthor = mod.authorId === auth.userId;
-                                    const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
-                                    
-                                    if (isAuthor || (modVisibility === 'public' && isAllowedStatus)) {
-                                        return mod.modId;
-                                    }
-                                }
+                                // CRITICAL: Slug resolver should only convert slug to modId
+                                // Access control (visibility/status) should be enforced by handlers, not here
+                                // This allows image endpoints (thumbnail, badge) to work even for pending mods
+                                // when accessed by the author or when the mod becomes public
+                                return mod.modId;
                             }
                         }
                     }
