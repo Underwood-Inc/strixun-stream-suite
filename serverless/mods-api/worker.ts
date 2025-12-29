@@ -13,6 +13,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';

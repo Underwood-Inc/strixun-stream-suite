@@ -273,6 +273,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241106.0
@@ -289,6 +292,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
 
   serverless/mods-api:
     dependencies:
@@ -301,6 +307,9 @@ importers:
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../shared/service-client
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
@@ -439,6 +448,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0

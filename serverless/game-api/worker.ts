@@ -8,6 +8,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleGameRoutes } from './router/game-routes.js';
 

@@ -6,6 +6,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import type { ExecutionContext } from '@strixun/types';
 import { route } from './router.js';
 
 /**
