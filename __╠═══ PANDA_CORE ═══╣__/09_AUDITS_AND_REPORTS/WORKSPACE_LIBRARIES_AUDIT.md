@@ -1,8 +1,9 @@
 # Workspace Libraries Audit and Fix - Work Tracking Document
 
-**Created:** 2025-01-XX  
-**Status:** ⚠️ MOVING LIBRARIES TO packages/ DIRECTORY  
-**Last Updated:** 2025-01-XX
+> **Complete audit and fix of all workspace library dependencies and imports**
+
+**Date:** 2025-12-29  
+**Status:** ⚠️ MOVING LIBRARIES TO packages/ DIRECTORY
 
 ---
 
@@ -65,45 +66,9 @@ This document tracks the complete audit and fix of all workspace library depende
   - ❌ `@strixun/e2e-helpers: workspace:*` (has health.e2e.spec.ts - needs dependency even though test uses @playwright/test directly)
 - **Status:** ⚠️ Needs e2e-helpers dependency (for E2E test support)
 
-#### `serverless/customer-api`
-- **Current Dependencies:**
-  - ✅ `@strixun/api-framework: workspace:*`
-  - ✅ `@strixun/types: workspace:*`
-- **Missing Dependencies:**
-  - ❌ `@strixun/e2e-helpers: workspace:*` (has health.e2e.spec.ts - needs dependency even though test uses @playwright/test directly)
-- **Status:** ⚠️ Needs e2e-helpers dependency (for E2E test support)
-
-#### `serverless/twitch-api`
-- **Current Dependencies:**
-  - ✅ `@strixun/api-framework: workspace:*`
-  - ✅ `@strixun/types: workspace:*`
-- **Missing Dependencies:**
-  - ❌ `@strixun/e2e-helpers: workspace:*` (has health.e2e.spec.ts - needs dependency even though test uses @playwright/test directly)
-- **Status:** ⚠️ Needs e2e-helpers dependency (for E2E test support)
-
-#### `serverless/game-api`
-- **Current Dependencies:**
-  - ✅ `@strixun/api-framework: workspace:*`
-  - ✅ `@strixun/types: workspace:*`
-- **Missing Dependencies:**
-  - ❌ `@strixun/e2e-helpers: workspace:*` (has health.e2e.spec.ts - needs dependency even though test uses @playwright/test directly)
-- **Status:** ⚠️ Needs e2e-helpers dependency (for E2E test support)
-
-#### `serverless/chat-signaling`
-- **Current Dependencies:**
-  - ✅ `@strixun/api-framework: workspace:*`
-  - ✅ `@strixun/types: workspace:*`
-- **Missing Dependencies:**
-  - ❌ `@strixun/e2e-helpers: workspace:*` (has health.e2e.spec.ts - needs dependency even though test uses @playwright/test directly)
-- **Status:** ⚠️ Needs e2e-helpers dependency (for E2E test support)
-
-#### `serverless/url-shortener`
-- **Current Dependencies:**
-  - ✅ `@strixun/api-framework: workspace:*`
-  - ✅ `@strixun/types: workspace:*`
-- **Missing Dependencies:**
-  - ❌ `@strixun/e2e-helpers: workspace:*` (has health.e2e.spec.ts - needs dependency even though test uses @playwright/test directly)
-- **Status:** ⚠️ Needs e2e-helpers dependency (for E2E test support)
+#### Other Workers
+- All workers follow similar patterns
+- All need `@strixun/e2e-helpers` if they have E2E tests
 
 ### Frontend Applications
 
@@ -123,36 +88,6 @@ This document tracks the complete audit and fix of all workspace library depende
   - No imports from workspace libraries found
 - **Status:** ✅ Complete (no dependencies needed)
 
-#### Root `src/` (Main App)
-- **Current Dependencies:**
-  - ✅ `@strixun/status-flair: workspace:*`
-  - ✅ `@strixun/search-query-parser: workspace:*`
-  - ✅ `@strixun/ad-carousel: workspace:*`
-  - ✅ `@strixun/error-mapping: workspace:*`
-  - ✅ `@strixun/otp-login: workspace:*`
-  - ✅ `@strixun/e2e-helpers: workspace:*`
-- **Status:** ✅ Complete
-
-### Sub-Applications
-
-#### `serverless/url-shortener/app`
-- **Current Dependencies:**
-  - ✅ `@strixun/otp-login: workspace:*` (just added)
-- **Imports Found:**
-  - Was using path alias `@shared-components/otp-login` - ✅ **Fixed to use `@strixun/otp-login`**
-  - Uses path alias `@shared-config/otp-encryption` - ✅ **Valid (config files, not a library)**
-- **Status:** ✅ Complete
-
-#### `serverless/otp-auth-service/dashboard`
-- **Current Dependencies:**
-  - ✅ `@strixun/api-framework: workspace:*` (just added)
-  - ✅ `@strixun/otp-login: workspace:*` (just added)
-- **Imports Found:**
-  - Was using path alias `@shared-components/otp-login` - ✅ **Fixed to use `@strixun/otp-login`**
-  - Uses `@strixun/api-framework` - ✅ **Already correct**
-  - Uses path alias `@shared-config/otp-encryption` - ✅ **Valid (config files, not a library)**
-- **Status:** ✅ Complete
-
 ---
 
 ## Phase 3: Import Audit
@@ -166,51 +101,28 @@ This document tracks the complete audit and fix of all workspace library depende
 - [x] `mods-hub/src/pages/login.e2e.spec.ts` - ✅ FIXED (uses @strixun/e2e-helpers/fixtures)
 - [x] `src/pages/auth.e2e.spec.ts` - ✅ FIXED (uses @strixun/e2e-helpers/fixtures)
 - [x] `serverless/mods-api/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
-- [x] `serverless/otp-auth-service/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
-- [x] `serverless/customer-api/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
-- [x] `serverless/twitch-api/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
-- [x] `serverless/game-api/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
-- [x] `serverless/chat-signaling/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
-- [x] `serverless/url-shortener/health.e2e.spec.ts` - ✅ CORRECT (uses @playwright/test directly - simple health check, no auth needed)
 
 **Note:** Health E2E tests correctly use `@playwright/test` directly because they are simple health checks that don't require authentication or shared helpers. The `@strixun/e2e-helpers/fixtures` should only be used when tests need authenticated pages or shared helper functions.
 
-#### Encryption Imports
-- [ ] `src/core/api/enhanced/encryption/jwt-encryption.ts` - ✅ FIXED
-
 #### API Framework Imports
 - [x] ✅ **VERIFIED: All files using `@strixun/api-framework`** - No relative imports found
-  - Example: `serverless/otp-auth-service/utils/two-stage-encryption.ts` uses `@strixun/api-framework`
-  - Example: `serverless/otp-auth-service/services/data-request.ts` uses `@strixun/api-framework`
-  - Example: `serverless/mods-api/handlers/*.ts` files use `@strixun/api-framework`
 
 #### Types Imports
 - [x] ✅ **VERIFIED: All files using `@strixun/types`** - No relative imports found
-  - Example: `serverless/otp-auth-service/worker.ts` uses `@strixun/types`
-  - Example: `serverless/mods-api/worker.ts` uses `@strixun/types`
 
 #### Service Client Imports
 - [x] ✅ **VERIFIED: All files using `@strixun/service-client`** - No relative imports found
-  - Example: `serverless/mods-api/handlers/customer-isolation.integration.test.ts` uses `@strixun/service-client/integrity`
 
 #### Shared Components Imports
 - [x] ✅ **VERIFIED: All files using workspace packages or path aliases** - No relative imports found
-  - Files use `@strixun/search-query-parser`, `@strixun/error-mapping`, etc.
-  - Some use path aliases like `@shared-components/otp-login` (configured in vite.config.ts - valid)
 
 ---
 
 ## Phase 4: Work Progress
 
 ### Step 1: Add Missing Dependencies
-- [x] Add `@strixun/e2e-helpers` to `serverless/mods-api/package.json` ✅
-- [x] Add `@strixun/e2e-helpers` to `serverless/otp-auth-service/package.json` ✅
-- [x] Add `@strixun/e2e-helpers` to `serverless/customer-api/package.json` ✅
-- [x] Add `@strixun/e2e-helpers` to `serverless/twitch-api/package.json` ✅
-- [x] Add `@strixun/e2e-helpers` to `serverless/game-api/package.json` ✅
-- [x] Add `@strixun/e2e-helpers` to `serverless/chat-signaling/package.json` ✅
-- [x] Add `@strixun/e2e-helpers` to `serverless/url-shortener/package.json` ✅
-- [x] Audit `control-panel` for needed dependencies - ✅ **No workspace dependencies needed** (uses only path aliases for internal code)
+- [x] Add `@strixun/e2e-helpers` to all serverless workers with E2E tests ✅
+- [x] Audit `control-panel` for needed dependencies - ✅ **No workspace dependencies needed**
 - [x] Audit `serverless/url-shortener/app` for needed dependencies - ✅ **Fixed: Added `@strixun/otp-login`**
 - [x] Audit `serverless/otp-auth-service/dashboard` for needed dependencies - ✅ **Fixed: Added `@strixun/api-framework` and `@strixun/otp-login`**
 
@@ -220,8 +132,6 @@ This document tracks the complete audit and fix of all workspace library depende
 - [x] Search for all imports from `serverless/shared/service-client` (relative paths) - ✅ **VERIFIED: All using `@strixun/service-client`**
 - [x] Search for all imports from `serverless/shared/e2e` (relative paths) - ✅ **FIXED: All using `@strixun/e2e-helpers`**
 - [x] Search for all imports from `serverless/shared/encryption` (relative paths) - ✅ **VERIFIED: All using `@strixun/api-framework` (encryption exported from api-framework)**
-- [x] Search for all imports from `shared-components/*` (relative paths) - ✅ **VERIFIED: All using workspace packages or path aliases**
-- [x] Search for all imports from `serverless/otp-auth-service` (relative paths) - ✅ **VERIFIED: All using `@strixun/otp-auth-service`**
 
 **Result:** ✅ **ALL CODE FILES ARE ALREADY USING WORKSPACE PACKAGES!** The comments mentioning "serverless/shared/encryption" are just documentation comments, not actual imports.
 
@@ -230,11 +140,6 @@ This document tracks the complete audit and fix of all workspace library depende
 - [x] Replace relative imports with workspace package names - ✅ **No relative imports found**
 - [ ] Verify all imports compile correctly - ⚠️ **PENDING: Need to run build**
 - [ ] Run linter to check for errors - ⚠️ **PENDING: Need to run linter**
-
-### Step 4: Verification
-- [ ] Run `pnpm install` to verify all dependencies resolve
-- [ ] Run build for each project to verify no import errors
-- [ ] Run tests to verify functionality
 
 ---
 
@@ -294,7 +199,7 @@ This document tracks the complete audit and fix of all workspace library depende
 2. [x] Move each library directory ✅
 3. [x] Update internal imports within moved libraries (relative paths) ✅ (verified - all relative paths still valid)
 4. [x] Update `pnpm-workspace.yaml` to point to new locations ✅
-5. [x] Verify all workspace package imports still work ✅ **FIXED: Corrected relative import in serverless/worker.refactored.js to use @strixun/api-framework/enhanced-router**
+5. [ ] Verify all workspace package imports still work (they should - using package names) ⚠️ **PENDING: Run pnpm install and test builds**
 6. [x] Handle remaining files in `serverless/shared/` ✅ **COMPLETED: enhanced-router.ts and enhanced-wrapper.ts moved to packages/api-framework, compiled .js files removed, directory removed if empty**
 
 ---
@@ -312,7 +217,6 @@ This document tracks the complete audit and fix of all workspace library depende
 - **Dependency Strategy:**
   - Projects with E2E tests → Need `@strixun/e2e-helpers: workspace:*` dependency
   - Pure component/API libraries without E2E tests → Do NOT need `@strixun/e2e-helpers` dependency
-- Need to verify if `control-panel`, `url-shortener/app`, and `otp-auth-service/dashboard` actually import from workspace libraries
 
 ---
 
@@ -350,10 +254,6 @@ This document tracks the complete audit and fix of all workspace library depende
 
 ---
 
-**Next Action:** Run verification steps (builds and tests)
-
----
-
 ## Phase 7: Import Audit Results
 
 ### ✅ Code Files - No Relative Imports Found
@@ -373,4 +273,12 @@ Some files use path aliases like `@shared-components/otp-login` and `@shared-con
 - `serverless/otp-auth-service/dashboard/src/components/Login.tsx` - Uses `@shared-components/otp-login` and `@shared-config/otp-encryption`
 
 **Decision:** Path aliases are fine - they're configured build-time aliases, not runtime relative imports.
+
+---
+
+**Next Action:** Run verification steps (builds and tests)
+
+---
+
+**Last Updated**: 2025-12-29
 
