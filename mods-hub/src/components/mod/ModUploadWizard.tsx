@@ -618,7 +618,7 @@ export function ModUploadWizard({
                                     <>
                                         <div>📁 Drop mod file here or click to browse</div>
                                         <DragDropText>
-                                            Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .java, .zip, .json, .txt, .xml, .yaml, .yml'}
+                                            Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .java, .jar, .zip, .json, .txt, .xml, .yaml, .yml'}
                                         </DragDropText>
                                     </>
                                 )}
@@ -626,7 +626,7 @@ export function ModUploadWizard({
                             <HiddenInput
                                 ref={fileInputRef}
                                 type="file"
-                                accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.zip,.json,.txt,.xml,.yaml,.yml'}
+                                accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
                                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                             />
                         </div>
@@ -901,7 +901,7 @@ export function ModUploadWizard({
                                 <Label>Variant File</Label>
                                 <Input
                                     type="file"
-                                    accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.zip,.json,.txt,.xml,.yaml,.yml'}
+                                    accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {

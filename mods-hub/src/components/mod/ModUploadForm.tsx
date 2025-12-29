@@ -574,7 +574,7 @@ export function ModUploadForm({
                             <Label>Variant File</Label>
                             <Input
                                 type="file"
-                                accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.zip,.json,.txt,.xml,.yaml,.yml'}
+                                accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {

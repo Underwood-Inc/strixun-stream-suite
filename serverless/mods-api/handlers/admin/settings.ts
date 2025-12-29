@@ -7,7 +7,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 
 const SETTINGS_KEY = 'admin_settings';
-const DEFAULT_ALLOWED_EXTENSIONS = ['.lua', '.js', '.java', '.zip', '.json', '.txt', '.xml', '.yaml', '.yml'];
+const DEFAULT_ALLOWED_EXTENSIONS = ['.lua', '.js', '.java', '.jar', '.zip', '.json', '.txt', '.xml', '.yaml', '.yml'];
 
 interface AdminSettings {
     allowedFileExtensions: string[];

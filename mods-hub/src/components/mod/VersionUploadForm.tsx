@@ -153,13 +153,13 @@ export function VersionUploadForm({ modId: _modId, onSubmit, isLoading }: Versio
                     ref={fileInputRef}
                     type="file"
                     required
-                    accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.zip,.json,.txt,.xml,.yaml,.yml'}
+                    accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                 />
                 {file && <FileInfo>Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</FileInfo>}
                 {!file && (
                     <FileInfo style={{ fontSize: '0.75rem', color: colors.textMuted }}>
-                        Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .java, .zip, .json, .txt, .xml, .yaml, .yml'}
+                        Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .java, .jar, .zip, .json, .txt, .xml, .yaml, .yml'}
                     </FileInfo>
                 )}
             </FormGroup>
