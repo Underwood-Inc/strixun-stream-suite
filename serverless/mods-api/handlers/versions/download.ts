@@ -292,18 +292,36 @@ export async function handleDownloadVersion(
                     });
                 }
                 
+                // Normalize encryption format (trim whitespace, handle undefined)
+                encryptionFormat = encryptionFormat?.trim();
+                console.log('[Download] Encryption format from metadata:', { encryptionFormat, type: typeof encryptionFormat });
+                
                 // Read encrypted file once
                 const encryptedBinary = await encryptedFile.arrayBuffer();
                 const fileBytes = new Uint8Array(encryptedBinary);
                 
-                // If encryption format is not in metadata, detect it from file header
-                if (!encryptionFormat) {
-                    // Check for binary format: first byte should be 4 or 5
-                    if (fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5)) {
-                        encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
-                        console.log('[Download] Detected encryption format from file header:', encryptionFormat);
-                    }
+                // Always detect format from file header as fallback/verification
+                // Check for binary format: first byte should be 4 or 5
+                let detectedFormat: string | null = null;
+                if (fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5)) {
+                    detectedFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
+                    console.log('[Download] Detected encryption format from file header:', detectedFormat);
                 }
+                
+                // Use detected format if metadata format is missing or doesn't match
+                if (!encryptionFormat && detectedFormat) {
+                    encryptionFormat = detectedFormat;
+                    console.log('[Download] Using detected format from file header:', encryptionFormat);
+                } else if (encryptionFormat && detectedFormat && encryptionFormat !== detectedFormat) {
+                    console.warn('[Download] Format mismatch - metadata:', encryptionFormat, 'detected:', detectedFormat, 'using detected format');
+                    encryptionFormat = detectedFormat;
+                } else if (!encryptionFormat && !detectedFormat) {
+                    // No format detected - assume legacy JSON
+                    encryptionFormat = 'json-v3';
+                    console.log('[Download] No format detected, assuming legacy JSON format');
+                }
+                
+                console.log('[Download] Final encryption format:', encryptionFormat);
                 
                 // Check encryption format and decrypt accordingly
                 if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
@@ -314,9 +332,12 @@ export async function handleDownloadVersion(
                     decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
                     console.log('[Download] Binary decryption successful, size:', decryptedFileBytes.length);
                 } else {
-                    // Legacy JSON encrypted format
+                    // Legacy JSON encrypted format - need to read as text
+                    // CRITICAL: We already read as arrayBuffer above, so we need to convert back
+                    // Convert the already-read binary to text for JSON parsing
                     console.log('[Download] Using JSON decryption (v3)...');
-                    const encryptedData = await encryptedFile.text();
+                    const textDecoder = new TextDecoder('utf-8');
+                    const encryptedData = textDecoder.decode(encryptedBinary);
                     const encryptedJson = JSON.parse(encryptedData);
                     console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
                     
