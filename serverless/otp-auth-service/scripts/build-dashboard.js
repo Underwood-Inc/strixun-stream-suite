@@ -144,6 +144,24 @@ if (!files['index.html']) {
   process.exit(1);
 }
 
+// Fix asset paths in index.html to include /dashboard/ prefix
+// Vite's base path should do this, but we ensure it's correct
+console.log('🔧 Fixing asset paths in index.html...');
+let htmlContent = files['index.html'];
+// Replace absolute asset paths that don't have /dashboard/ prefix
+htmlContent = htmlContent.replace(
+  /(href|src)=["']\/(assets\/[^"']+)["']/g,
+  (match, attr, path) => {
+    // Only fix if it doesn't already have /dashboard/ prefix
+    if (!path.startsWith('dashboard/')) {
+      return `${attr}="/dashboard/${path}"`;
+    }
+    return match;
+  }
+);
+files['index.html'] = htmlContent;
+console.log('✅ Fixed asset paths in index.html');
+
 // Generate dashboard-assets.js module
 console.log('📝 Generating assets module...');
 const startTime = Date.now();
