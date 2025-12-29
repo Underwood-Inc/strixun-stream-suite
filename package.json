@@ -24,7 +24,7 @@
     "test:all": "pnpm -r --parallel test 2>&1 | Select-String -Pattern \"(?i)(warning|error|fail)\"",
     "test:all:verbose": "pnpm -r --parallel test",
     "test:all:sequential": "pnpm -r test",
-    "test:all:totals": "pnpm -r test",
+    "test:all:totals": "pnpm -r test 2>&1 | Tee-Object -FilePath test-output.txt && node scripts/generate-test-report.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",

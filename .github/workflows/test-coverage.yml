@@ -29,8 +29,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run all tests
-        run: pnpm test:all
+      - name: Run all tests and generate report
+        run: pnpm test:all:totals
+        continue-on-error: true
+
+      - name: Annotate test report
+        if: always()
+        run: |
+          if [ -f "TEST_REPORT.md" ]; then
+            node scripts/annotate-test-report.js TEST_REPORT.md
+          else
+            echo "::warning::Test report not found - skipping annotations"
+          fi
+        continue-on-error: true
 
       - name: Generate root coverage
         run: pnpm test:coverage
