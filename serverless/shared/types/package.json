@@ -4,18 +4,18 @@
   "description": "Shared type definitions and type registry for all Strixun Stream Suite services",
   "private": true,
   "type": "module",
-  "main": "../types.ts",
-  "types": "../types.ts",
+  "main": "./index.ts",
+  "types": "./index.ts",
   "exports": {
     ".": {
-      "types": "../types.ts",
-      "default": "../types.ts"
+      "types": "./index.ts",
+      "default": "./index.ts"
     }
   },
   "files": [
-    "../types.ts",
-    "../types.js",
-    "../types.js.map"
+    "index.ts",
+    "index.js",
+    "index.js.map"
   ]
 }
 

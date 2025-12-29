@@ -54,11 +54,11 @@ vi.mock('../handlers/admin/settings.js', () => ({
     handleUpdateSettings: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
 }));
 
-vi.mock('@strixun/api-framework', async () => {
-    const actual = await vi.importActual('@strixun/api-framework');
+vi.mock('@strixun/api-framework', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@strixun/api-framework')>();
     return {
         ...actual,
-        wrapWithEncryption: vi.fn().mockImplementation(async (response, auth) => {
+        wrapWithEncryption: vi.fn().mockImplementation(async (response, auth, request?, env?) => {
             return {
                 response: response,
                 customerId: auth?.customerId || null
