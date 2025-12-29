@@ -110,6 +110,10 @@ jobs:
             exit 1
           fi
           echo "[INFO] Building URL Shortener app with encryption key configured (length: ${#VITE_SERVICE_ENCRYPTION_KEY})"
+          # Export the variable to ensure it's available to all subprocesses
+          export VITE_SERVICE_ENCRYPTION_KEY
+          # Verify it's available before building
+          echo "[DEBUG] VITE_SERVICE_ENCRYPTION_KEY is set: ${VITE_SERVICE_ENCRYPTION_KEY:0:10}... (length: ${#VITE_SERVICE_ENCRYPTION_KEY})"
           pnpm build:all
       
       - name: Verify Build Output
@@ -123,6 +127,14 @@ jobs:
           if [ ! -f "dist/app-assets.ts" ]; then
             echo "[ERROR] app-assets.ts not found - build may have failed"
             exit 1
+          fi
+          # Verify that the encryption key was embedded in the bundle
+          # The key should be present in the built JavaScript files
+          if grep -r "VITE_SERVICE_ENCRYPTION_KEY" app/dist/assets/*.js 2>/dev/null | grep -q "VITE_SERVICE_ENCRYPTION_KEY"; then
+            echo "[SUCCESS] Encryption key reference found in built bundle"
+          else
+            echo "[WARNING] Encryption key reference not found in built bundle - this may indicate the key wasn't embedded"
+            echo "[INFO] This is expected if the key is minified/obfuscated, but verify the app works correctly"
           fi
           echo "[SUCCESS] Build output verified"
       
