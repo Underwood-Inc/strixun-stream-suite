@@ -7,6 +7,7 @@ declare global {
   interface Window {
     ScrollbarCustomizer?: new (config?: ScrollbarConfig) => ScrollbarCustomizerInstance;
     ScrollbarCustomizerInstance?: ScrollbarCustomizerInstance;
+    getWorkerApiUrl?: () => string;
   }
 }
 
@@ -43,8 +44,8 @@ export function useScrollbarCustomizer(workerUrl?: string | null) {
     if (workerUrl) return workerUrl;
     
     // Try to get from window.getWorkerApiUrl if available
-    if (typeof window !== 'undefined' && (window as any).getWorkerApiUrl) {
-      return (window as any).getWorkerApiUrl();
+    if (typeof window !== 'undefined' && window.getWorkerApiUrl) {
+      return window.getWorkerApiUrl();
     }
     
     // Fallback to hardcoded URL
