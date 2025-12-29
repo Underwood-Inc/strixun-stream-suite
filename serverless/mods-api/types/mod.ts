@@ -37,6 +37,8 @@ export interface ModMetadata {
     status: ModStatus; // Review/triage status
     statusHistory?: ModStatusHistory[]; // History of status changes
     reviewComments?: ModReviewComment[]; // Comments from admins/uploader
+    variants?: ModVariant[]; // Variants for the mod
+    gameId?: string; // Associated game ID (sub-category)
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
     // Use authorId to lookup displayName via /auth/user/:userId if needed
 }
@@ -111,6 +113,8 @@ export interface ModUpdateRequest {
     tags?: string[];
     visibility?: ModVisibility;
     thumbnail?: string;
+    variants?: ModVariant[];
+    gameId?: string;
 }
 
 /**
@@ -156,6 +160,24 @@ export interface ModReviewComment {
     createdAt: string;
     isAdmin: boolean; // True if comment is from admin
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
+}
+
+/**
+ * Mod variant
+ */
+export interface ModVariant {
+    variantId: string;
+    name: string;
+    description?: string;
+    fileUrl?: string; // For existing variants
+    fileName?: string;
+    fileSize?: number;
+    version?: string;
+    changelog?: string;
+    gameVersions?: string[];
+    dependencies?: ModDependency[];
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 /**

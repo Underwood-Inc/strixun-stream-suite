@@ -229,6 +229,8 @@ export function ModDetailPage() {
                         <span>{mod.downloadCount} downloads</span>
                         <span>•</span>
                         <span>Latest: {mod.latestVersion}</span>
+                        <span>•</span>
+                        <span>Updated: {new Date(mod.updatedAt).toLocaleDateString()}</span>
                         {latestVersion?.sha256 && (
                             <>
                                 <span>•</span>

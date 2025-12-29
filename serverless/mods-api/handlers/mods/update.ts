@@ -10,6 +10,7 @@ import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/cu
 import { generateUniqueSlug } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
+import { createModSnapshot } from '../../utils/snapshot.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
@@ -147,6 +148,8 @@ export async function handleUpdateMod(
         if (updateData.category !== undefined) mod.category = updateData.category;
         if (updateData.tags !== undefined) mod.tags = updateData.tags;
         if (updateData.visibility !== undefined) mod.visibility = updateData.visibility;
+        if (updateData.variants !== undefined) mod.variants = updateData.variants;
+        if (updateData.gameId !== undefined) mod.gameId = updateData.gameId;
         mod.updatedAt = new Date().toISOString();
 
         // Handle thumbnail update - support both binary file upload and legacy base64
@@ -179,6 +182,24 @@ export async function handleUpdateMod(
 
         // Save updated mod (customer scope)
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
+
+        // Create snapshot after saving (captures state after update)
+        // Fetch display name for snapshot
+        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+        const displayName = await fetchDisplayNameByUserId(auth.userId, env) || mod.authorDisplayName || null;
+        
+        // Create snapshot of the mod after update
+        const snapshot = await createModSnapshot(mod, auth.userId, displayName, env);
+        
+        // Store snapshot (customer scope)
+        const snapshotKey = getCustomerKey(auth.customerId, `snapshot_${snapshot.snapshotId}`);
+        await env.MODS_KV.put(snapshotKey, JSON.stringify(snapshot));
+        
+        // Add snapshot to mod's snapshot list
+        const snapshotsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_snapshots`);
+        const snapshotsList = await env.MODS_KV.get(snapshotsListKey, { type: 'json' }) as string[] | null;
+        const updatedSnapshotsList = [...(snapshotsList || []), snapshot.snapshotId];
+        await env.MODS_KV.put(snapshotsListKey, JSON.stringify(updatedSnapshotsList));
 
         // Update global scope if mod is public
         if (mod.visibility === 'public') {

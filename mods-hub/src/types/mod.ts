@@ -141,6 +141,7 @@ export interface ModUpdateRequest {
     thumbnail?: string;
     status?: ModStatus; // Allow updating status (e.g., 'draft' to 'pending')
     variants?: ModVariant[]; // Update variants
+    gameId?: string; // Associated game ID (sub-category)
 }
 
 export interface VersionUploadRequest {

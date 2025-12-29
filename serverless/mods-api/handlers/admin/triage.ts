@@ -3,10 +3,10 @@
  * Handles mod status changes and review management
  */
 
-import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
+import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment, ModVersion } from '../../types/mod.js';
 
 /**
@@ -25,44 +25,70 @@ export async function handleUpdateModStatus(
         // CRITICAL: Admin can approve mods from ANY customer, so we must search all scopes
         // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
         const normalizedModId = normalizeModId(modId);
+        console.log('[UpdateModStatus] Looking up mod:', { originalModId: modId, normalizedModId });
         let mod: ModMetadata | null = null;
         let modCustomerId: string | null = null;
         
         // Try global scope first (for already-approved mods)
         const globalModKey = `mod_${normalizedModId}`;
+        console.log('[UpdateModStatus] Checking global scope:', { globalModKey });
         mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         if (mod) {
             modCustomerId = mod.customerId || null;
+            console.log('[UpdateModStatus] Found mod in global scope:', { modId: mod.modId, customerId: modCustomerId });
+        } else {
+            console.log('[UpdateModStatus] Mod not found in global scope, searching customer scopes');
         }
         
         // If not found, search all customer scopes to find where the mod was uploaded
         if (!mod) {
             const customerListPrefix = 'customer_';
             let cursor: string | undefined;
+            let customerScopesSearched = 0;
+            let modsListsFound = 0;
             
             do {
                 const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                console.log('[UpdateModStatus] Listing customer keys:', { keysFound: listResult.keys.length, cursor: !!cursor });
+                
                 for (const key of listResult.keys) {
                     if (key.name.endsWith('_mods_list')) {
+                        modsListsFound++;
                         const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
                         const customerId = match ? match[1] : null;
                         if (customerId) {
+                            customerScopesSearched++;
                             const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            console.log('[UpdateModStatus] Checking customer scope:', { customerId, customerModKey, keyName: key.name });
                             const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                             if (candidateMod) {
                                 mod = candidateMod;
                                 modCustomerId = customerId;
+                                console.log('[UpdateModStatus] Found mod in customer scope:', { customerId, modId: mod.modId });
                                 break;
                             }
+                        } else {
+                            console.log('[UpdateModStatus] Failed to extract customerId from key:', { keyName: key.name });
                         }
                     }
                 }
                 if (mod) break;
                 cursor = listResult.listComplete ? undefined : listResult.cursor;
             } while (cursor);
+            
+            console.log('[UpdateModStatus] Customer scope search complete:', { 
+                customerScopesSearched, 
+                modsListsFound, 
+                modFound: !!mod 
+            });
         }
 
         if (!mod) {
+            console.error('[UpdateModStatus] Mod not found after searching all scopes:', { 
+                originalModId: modId, 
+                normalizedModId,
+                globalModKey: `mod_${normalizedModId}`
+            });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -78,20 +104,21 @@ export async function handleUpdateModStatus(
 
         // Parse status update request
         // CRITICAL: Handle encrypted request bodies (if API client encrypts them)
-        // For now, API client sends plain JSON, but we should handle encryption for future compatibility
+        // Check both X-Encrypted header and encrypted field in body for consistency
         let updateData: { status: ModStatus; reason?: string };
         try {
             const body = await request.json();
             
-            // Check if body is encrypted (has encrypted field)
-            if (body && typeof body === 'object' && 'encrypted' in body && (body as any).encrypted === true) {
+            // Check if body is encrypted (check both header and data structure for consistency)
+            const requestIsEncrypted = request.headers.get('X-Encrypted') === 'true' ||
+                                      (body && typeof body === 'object' && 'encrypted' in body && (body as any).encrypted === true);
+            
+            if (requestIsEncrypted) {
                 // Body is encrypted - decrypt using JWT token
                 const authHeader = request.headers.get('Authorization');
                 if (!authHeader || !authHeader.startsWith('Bearer ')) {
                     const rfcError = createError(request, 401, 'Unauthorized', 'JWT token required to decrypt request body');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
+                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
                     return new Response(JSON.stringify(rfcError), {
                         status: 401,
                         headers: {
@@ -102,6 +129,33 @@ export async function handleUpdateModStatus(
                 }
                 
                 const token = authHeader.substring(7);
+                
+                // Validate token before decryption
+                if (!token || token.length < 10) {
+                    const rfcError = createError(request, 401, 'Unauthorized', 'Invalid JWT token provided');
+                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
+                // Validate encrypted data structure before decryption
+                if (!body || typeof body !== 'object' || !('encrypted' in body) || !('data' in body)) {
+                    const rfcError = createError(request, 400, 'Invalid Request', 'Encrypted request body has invalid structure');
+                    const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 400,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
                 const { decryptWithJWT } = await import('@strixun/api-framework');
                 updateData = await decryptWithJWT(body, token) as { status: ModStatus; reason?: string };
             } else {

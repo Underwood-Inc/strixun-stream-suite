@@ -150,10 +150,11 @@ export function useUpdateMod() {
     const addNotification = useUIStore((state) => state.addNotification);
     
     return useMutation({
-        mutationFn: ({ slug, updates }: {
+        mutationFn: ({ slug, updates, thumbnail }: {
             slug: string;
             updates: ModUpdateRequest;
-        }) => api.updateMod(slug, updates),
+            thumbnail?: File;
+        }) => api.updateMod(slug, updates, thumbnail),
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.slug) });
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });

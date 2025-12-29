@@ -53,6 +53,15 @@ export async function handleListAllMods(
         let totalModIdsFromCustomers = 0;
         let skippedDuplicates = 0;
         
+        // CRITICAL: Normalize modIds in global list for comparison
+        // Global list stores normalized modIds (without mod_ prefix)
+        // Customer lists may store modIds with or without prefix
+        const { normalizeModId } = await import('../../utils/customer.js');
+        const normalizedGlobalModIdsSet = new Set<string>();
+        globalModIdsSet.forEach(id => {
+            normalizedGlobalModIdsSet.add(normalizeModId(id));
+        });
+        
         do {
             const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
             console.log('[AdminList] KV.list() returned', listResult.keys.length, 'keys');
@@ -71,9 +80,10 @@ export async function handleListAllMods(
                     if (customerListData && Array.isArray(customerListData)) {
                         console.log('[AdminList] Customer list has', customerListData.length, 'mods');
                         customerListData.forEach(id => {
-                            // CRITICAL: Skip mod IDs that are already in the global list
-                            // This prevents duplicates - approved mods are handled via global list
-                            if (globalModIdsSet.has(id)) {
+                            // CRITICAL: Normalize modId before checking for duplicates
+                            // Global list stores normalized modIds, so we must normalize customer list modIds too
+                            const normalizedId = normalizeModId(id);
+                            if (normalizedGlobalModIdsSet.has(normalizedId)) {
                                 skippedDuplicates++;
                                 return; // Skip this mod ID - it's already in global list
                             }
@@ -165,9 +175,17 @@ export async function handleListAllMods(
         // Fetch display names for all unique authors
         // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
         // If auth API times out or fails, we still have the stored value
-        const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId))];
+        const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId).filter(Boolean))];
+        console.log('[AdminList] Fetching display names for', uniqueAuthorIds.length, 'unique authors');
+        
         const { fetchDisplayNamesByUserIds } = await import('../../utils/displayName.js');
         const displayNames = await fetchDisplayNamesByUserIds(uniqueAuthorIds, env);
+        
+        console.log('[AdminList] Fetched display names:', {
+            requested: uniqueAuthorIds.length,
+            fetched: displayNames.size,
+            displayNamesMap: Array.from(displayNames.entries()).slice(0, 5) // Log first 5 for debugging
+        });
         
         // Map display names to mods (use fetched displayName if available, otherwise keep stored one)
         mods.forEach(mod => {
@@ -175,6 +193,16 @@ export async function handleListAllMods(
             const fetchedDisplayName = displayNames.get(mod.authorId);
             // Use fetched value if available, otherwise fall back to stored value
             mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
+            
+            // Log if display name is still null after fetch
+            if (!mod.authorDisplayName && mod.authorId) {
+                console.warn('[AdminList] No display name found for authorId:', {
+                    authorId: mod.authorId,
+                    storedDisplayName,
+                    fetchedDisplayName,
+                    hasFetched: displayNames.has(mod.authorId)
+                });
+            }
         });
 
         // Paginate

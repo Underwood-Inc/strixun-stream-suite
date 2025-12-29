@@ -429,47 +429,37 @@ export function AdminPanel() {
     ], [handleStatusChange, handleDeleteClick, updateStatus, deleteMod]);
 
     // Calculate table height based on available space
+    // CRITICAL: Use viewport height and measure actual rendered elements
     useEffect(() => {
         const updateTableHeight = () => {
+            const viewportHeight = window.innerHeight;
+            
+            // Use the table container ref to measure available space
+            // This is more accurate than estimating element heights
             if (tableContainerRef.current) {
-                // Get the actual container height from the ref
                 const containerRect = tableContainerRef.current.getBoundingClientRect();
-                const containerHeight = containerRect.height;
+                const containerTop = containerRect.top;
+                const availableHeight = viewportHeight - containerTop - 40; // 40px bottom padding
                 
-                // If container height is available, use it
-                // Otherwise calculate from viewport
-                if (containerHeight > 0) {
-                    // Reserve space for header, stats, toolbar, and padding
-                    // Header: ~80px, Stats: ~100px, Toolbar: ~60px, Padding: ~40px
-                    const reservedHeight = 280;
-                    const availableHeight = containerHeight - reservedHeight;
-                    // Minimum height of 400px, maximum of available space
-                    const calculatedHeight = Math.max(400, availableHeight);
-                    setTableHeight(calculatedHeight);
-                } else {
-                    // Fallback: calculate from viewport
-                    const viewportHeight = window.innerHeight;
-                    const calculatedHeight = Math.max(400, viewportHeight - 300);
-                    setTableHeight(calculatedHeight);
-                }
+                // Minimum height of 300px, ensure it doesn't exceed viewport
+                const calculatedHeight = Math.max(300, Math.min(availableHeight, viewportHeight - 100));
+                setTableHeight(calculatedHeight);
             } else {
-                // Fallback: calculate from viewport if ref not available
-                const viewportHeight = window.innerHeight;
-                const calculatedHeight = Math.max(400, viewportHeight - 300);
+                // Fallback: estimate based on typical layout
+                // Main nav: ~80px, Admin nav: ~50px, Page header: ~100px, Stats: ~120px, Toolbar: ~60px
+                const estimatedReserved = 410;
+                const calculatedHeight = Math.max(300, viewportHeight - estimatedReserved);
                 setTableHeight(calculatedHeight);
             }
         };
 
-        // Initial calculation
-        updateTableHeight();
-        
-        // Recalculate after a short delay to ensure DOM is fully rendered
+        // Initial calculation after DOM is ready
         const timeoutId = setTimeout(updateTableHeight, 100);
         
         // Listen for window resize
         window.addEventListener('resize', updateTableHeight);
         
-        // Use ResizeObserver to detect container size changes
+        // Use ResizeObserver to detect when container position changes
         let resizeObserver: ResizeObserver | null = null;
         if (tableContainerRef.current && typeof ResizeObserver !== 'undefined') {
             resizeObserver = new ResizeObserver(updateTableHeight);

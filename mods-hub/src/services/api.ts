@@ -267,9 +267,19 @@ export async function uploadMod(
 /**
  * Update mod (requires authentication and ownership/admin)
  */
-export async function updateMod(slug: string, updates: ModUpdateRequest): Promise<any> {
-    const response = await api.put<any>(`/mods/${slug}`, updates);
-    return response.data;
+export async function updateMod(slug: string, updates: ModUpdateRequest, thumbnail?: File): Promise<any> {
+    // If thumbnail is provided, use FormData; otherwise use JSON
+    if (thumbnail) {
+        const formData = new FormData();
+        formData.append('metadata', JSON.stringify(updates));
+        formData.append('thumbnail', thumbnail);
+        // API framework automatically handles FormData - don't set Content-Type header
+        const response = await api.put<any>(`/mods/${slug}`, formData);
+        return response.data;
+    } else {
+        const response = await api.put<any>(`/mods/${slug}`, updates);
+        return response.data;
+    }
 }
 
 /**

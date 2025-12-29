@@ -2,16 +2,76 @@
  * Admin R2 Management Handler
  * Handles R2 file listing, duplicate detection, and cleanup
  * Admin-only endpoints for managing R2 storage
+ * 
+ * Enhanced to retrieve all human-readable associated data for smart decision-making and debugging
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
-import { getCustomerR2Key } from '../../utils/customer.js';
+import { getCustomerR2Key, getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { fetchDisplayNameByUserId, fetchDisplayNamesByUserIds } from '../../utils/displayName.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
- * R2 file information
+ * Associated mod information (human-readable)
+ */
+interface AssociatedModInfo {
+    modId: string;
+    title: string;
+    slug: string;
+    authorId: string;
+    authorDisplayName?: string | null;
+    description: string;
+    category: string;
+    status: string;
+    customerId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    latestVersion: string;
+    downloadCount: number;
+    visibility: string;
+    featured: boolean;
+}
+
+/**
+ * Associated version information (human-readable)
+ */
+interface AssociatedVersionInfo {
+    versionId: string;
+    modId: string;
+    version: string;
+    changelog: string;
+    fileSize: number;
+    fileName: string;
+    sha256: string;
+    createdAt: string;
+    downloads: number;
+    gameVersions: string[];
+    dependencies?: Array<{ modId: string; version?: string; required: boolean }>;
+}
+
+/**
+ * Associated user information (human-readable)
+ */
+interface AssociatedUserInfo {
+    userId: string;
+    displayName?: string | null;
+}
+
+/**
+ * Full associated data for an R2 file
+ */
+interface R2FileAssociatedData {
+    mod?: AssociatedModInfo;
+    version?: AssociatedVersionInfo;
+    uploadedBy?: AssociatedUserInfo;
+    isThumbnail?: boolean;
+    isModFile?: boolean;
+}
+
+/**
+ * R2 file information with full associated data
  */
 interface R2FileInfo {
     key: string;
@@ -22,6 +82,7 @@ interface R2FileInfo {
     isOrphaned?: boolean;
     associatedModId?: string;
     associatedVersionId?: string;
+    associatedData?: R2FileAssociatedData; // Human-readable associated data
 }
 
 /**
@@ -35,8 +96,314 @@ interface DuplicateGroup {
 }
 
 /**
- * List all R2 files
+ * Fetch mod metadata from KV (checks both global and customer scopes)
+ */
+async function fetchModMetadata(
+    modId: string,
+    customerId: string | null | undefined,
+    env: Env
+): Promise<ModMetadata | null> {
+    const normalizedModId = normalizeModId(modId);
+    
+    // Try customer scope first if customerId is available
+    if (customerId) {
+        const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+        const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+        if (mod) {
+            return mod;
+        }
+    }
+    
+    // Try global scope
+    const globalModKey = `mod_${normalizedModId}`;
+    const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+    if (mod) {
+        return mod;
+    }
+    
+    // If still not found, try searching all customer scopes
+    // This is expensive but necessary for orphaned files
+    if (!customerId) {
+        const customerListPrefix = 'customer_';
+        let customerCursor: string | undefined;
+        
+        do {
+            const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor: customerCursor });
+            for (const key of listResult.keys) {
+                if (key.name.endsWith('_mods_list')) {
+                    const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                    const foundCustomerId = match ? match[1] : null;
+                    if (foundCustomerId) {
+                        const customerModKey = getCustomerKey(foundCustomerId, `mod_${normalizedModId}`);
+                        const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
+                        if (mod) {
+                            return mod;
+                        }
+                    }
+                }
+            }
+            customerCursor = listResult.listComplete ? undefined : listResult.cursor;
+        } while (customerCursor);
+    }
+    
+    return null;
+}
+
+/**
+ * Fetch version metadata from KV (checks both global and customer scopes)
+ */
+async function fetchVersionMetadata(
+    versionId: string,
+    modId: string,
+    customerId: string | null | undefined,
+    env: Env
+): Promise<ModVersion | null> {
+    // Try customer scope first if customerId is available
+    if (customerId) {
+        const customerVersionKey = getCustomerKey(customerId, `version_${versionId}`);
+        const version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+        if (version) {
+            return version;
+        }
+    }
+    
+    // Try global scope
+    const globalVersionKey = `version_${versionId}`;
+    const version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+    if (version) {
+        return version;
+    }
+    
+    // If still not found, try searching all customer scopes
+    if (!customerId) {
+        const customerListPrefix = 'customer_';
+        let customerCursor: string | undefined;
+        
+        do {
+            const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor: customerCursor });
+            for (const key of listResult.keys) {
+                if (key.name.endsWith('_mods_list')) {
+                    const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                    const foundCustomerId = match ? match[1] : null;
+                    if (foundCustomerId) {
+                        const customerVersionKey = getCustomerKey(foundCustomerId, `version_${versionId}`);
+                        const version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+                        if (version) {
+                            return version;
+                        }
+                    }
+                }
+            }
+            customerCursor = listResult.listComplete ? undefined : listResult.cursor;
+        } while (customerCursor);
+    }
+    
+    return null;
+}
+
+/**
+ * Extract customer ID from R2 key
+ * Format: customer_{id}/mods/... or customer_{id}/thumbnails/...
+ */
+function extractCustomerIdFromR2Key(r2Key: string): string | null {
+    const match = r2Key.match(/^customer_([^/]+)\//);
+    return match ? match[1] : null;
+}
+
+/**
+ * Fetch all associated data for an R2 file
+ * Returns human-readable mod, version, and user information
+ */
+async function fetchAssociatedData(
+    file: R2FileInfo,
+    env: Env
+): Promise<R2FileAssociatedData> {
+    const associatedData: R2FileAssociatedData = {};
+    
+    if (!file.customMetadata) {
+        return associatedData;
+    }
+    
+    const modId = file.customMetadata.modId;
+    const versionId = file.customMetadata.versionId;
+    const uploadedBy = file.customMetadata.uploadedBy;
+    const customerId = extractCustomerIdFromR2Key(file.key);
+    
+    // Determine file type
+    const isThumbnail = file.key.includes('/thumbnails/');
+    const isModFile = file.key.includes('/mods/');
+    associatedData.isThumbnail = isThumbnail;
+    associatedData.isModFile = isModFile;
+    
+    // Fetch mod metadata if modId is available
+    if (modId) {
+        const mod = await fetchModMetadata(modId, customerId, env);
+        if (mod) {
+            associatedData.mod = {
+                modId: mod.modId,
+                title: mod.title,
+                slug: mod.slug,
+                authorId: mod.authorId,
+                authorDisplayName: mod.authorDisplayName || null,
+                description: mod.description,
+                category: mod.category,
+                status: mod.status,
+                customerId: mod.customerId,
+                createdAt: mod.createdAt,
+                updatedAt: mod.updatedAt,
+                latestVersion: mod.latestVersion,
+                downloadCount: mod.downloadCount,
+                visibility: mod.visibility,
+                featured: mod.featured,
+            };
+        }
+    }
+    
+    // Fetch version metadata if versionId is available
+    if (versionId && modId) {
+        const version = await fetchVersionMetadata(versionId, modId, customerId, env);
+        if (version) {
+            associatedData.version = {
+                versionId: version.versionId,
+                modId: version.modId,
+                version: version.version,
+                changelog: version.changelog,
+                fileSize: version.fileSize,
+                fileName: version.fileName,
+                sha256: version.sha256,
+                createdAt: version.createdAt,
+                downloads: version.downloads,
+                gameVersions: version.gameVersions,
+                dependencies: version.dependencies,
+            };
+        }
+    }
+    
+    // Fetch user display name if uploadedBy is available
+    if (uploadedBy) {
+        const displayName = await fetchDisplayNameByUserId(uploadedBy, env);
+        associatedData.uploadedBy = {
+            userId: uploadedBy,
+            displayName: displayName || null,
+        };
+    }
+    
+    return associatedData;
+}
+
+/**
+ * Fetch associated data for multiple files in batch
+ * Optimized to fetch user display names in parallel
+ */
+async function fetchAssociatedDataBatch(
+    files: R2FileInfo[],
+    env: Env
+): Promise<Map<string, R2FileAssociatedData>> {
+    const results = new Map<string, R2FileAssociatedData>();
+    
+    // Collect all unique user IDs for batch fetching
+    const userIds = new Set<string>();
+    for (const file of files) {
+        if (file.customMetadata?.uploadedBy) {
+            userIds.add(file.customMetadata.uploadedBy);
+        }
+    }
+    
+    // Fetch all display names in parallel
+    const displayNames = await fetchDisplayNamesByUserIds(Array.from(userIds), env);
+    
+    // Process each file
+    const promises = files.map(async (file) => {
+        const associatedData: R2FileAssociatedData = {};
+        
+        if (!file.customMetadata) {
+            return { key: file.key, data: associatedData };
+        }
+        
+        const modId = file.customMetadata.modId;
+        const versionId = file.customMetadata.versionId;
+        const uploadedBy = file.customMetadata.uploadedBy;
+        const customerId = extractCustomerIdFromR2Key(file.key);
+        
+        // Determine file type
+        const isThumbnail = file.key.includes('/thumbnails/');
+        const isModFile = file.key.includes('/mods/');
+        associatedData.isThumbnail = isThumbnail;
+        associatedData.isModFile = isModFile;
+        
+        // Fetch mod metadata
+        if (modId) {
+            const mod = await fetchModMetadata(modId, customerId, env);
+            if (mod) {
+                associatedData.mod = {
+                    modId: mod.modId,
+                    title: mod.title,
+                    slug: mod.slug,
+                    authorId: mod.authorId,
+                    authorDisplayName: mod.authorDisplayName || null,
+                    description: mod.description,
+                    category: mod.category,
+                    status: mod.status,
+                    customerId: mod.customerId,
+                    createdAt: mod.createdAt,
+                    updatedAt: mod.updatedAt,
+                    latestVersion: mod.latestVersion,
+                    downloadCount: mod.downloadCount,
+                    visibility: mod.visibility,
+                    featured: mod.featured,
+                };
+            }
+        }
+        
+        // Fetch version metadata
+        if (versionId && modId) {
+            const version = await fetchVersionMetadata(versionId, modId, customerId, env);
+            if (version) {
+                associatedData.version = {
+                    versionId: version.versionId,
+                    modId: version.modId,
+                    version: version.version,
+                    changelog: version.changelog,
+                    fileSize: version.fileSize,
+                    fileName: version.fileName,
+                    sha256: version.sha256,
+                    createdAt: version.createdAt,
+                    downloads: version.downloads,
+                    gameVersions: version.gameVersions,
+                    dependencies: version.dependencies,
+                };
+            }
+        }
+        
+        // Use batch-fetched display name
+        if (uploadedBy) {
+            const displayName = displayNames.get(uploadedBy) || null;
+            associatedData.uploadedBy = {
+                userId: uploadedBy,
+                displayName: displayName || null,
+            };
+        }
+        
+        return { key: file.key, data: associatedData };
+    });
+    
+    const allResults = await Promise.all(promises);
+    for (const { key, data } of allResults) {
+        results.set(key, data);
+    }
+    
+    return results;
+}
+
+/**
+ * List all R2 files with associated human-readable data
  * GET /admin/r2/files
+ * 
+ * Query parameters:
+ * - prefix: Filter by R2 key prefix
+ * - limit: Maximum number of files to return (default: 1000, max: 10000)
+ * - cursor: Pagination cursor
+ * - includeAssociatedData: Include full mod/version/user data (default: true)
  */
 export async function handleListR2Files(
     request: Request,
@@ -49,10 +416,13 @@ export async function handleListR2Files(
         const prefix = url.searchParams.get('prefix') || '';
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '1000', 10), 10000);
         const cursor = url.searchParams.get('cursor') || undefined;
+        const includeAssociatedData = url.searchParams.get('includeAssociatedData') !== 'false'; // Default: true
 
         const files: R2FileInfo[] = [];
         let currentCursor: string | undefined = cursor;
         let totalListed = 0;
+
+        console.log('[R2List] Starting file listing:', { prefix, limit, includeAssociatedData });
 
         do {
             const listResult = await env.MODS_R2.list({
@@ -75,6 +445,24 @@ export async function handleListR2Files(
             currentCursor = listResult.truncated ? listResult.cursor : undefined;
         } while (currentCursor && totalListed < limit);
 
+        console.log('[R2List] Found', files.length, 'files, fetching associated data:', includeAssociatedData);
+
+        // Fetch associated data for all files if requested
+        if (includeAssociatedData && files.length > 0) {
+            const associatedDataMap = await fetchAssociatedDataBatch(files, env);
+            for (const file of files) {
+                file.associatedData = associatedDataMap.get(file.key);
+                
+                // Set associated IDs from metadata if available
+                if (file.customMetadata?.modId) {
+                    file.associatedModId = file.customMetadata.modId;
+                }
+                if (file.customMetadata?.versionId) {
+                    file.associatedVersionId = file.customMetadata.versionId;
+                }
+            }
+        }
+
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
@@ -84,6 +472,7 @@ export async function handleListR2Files(
             total: files.length,
             cursor: currentCursor,
             hasMore: !!currentCursor,
+            includeAssociatedData,
         }), {
             status: 200,
             headers: {
@@ -280,6 +669,24 @@ export async function handleDetectDuplicates(
             }
         }
 
+        console.log('[R2Duplicates] Fetching associated data for all files...');
+        
+        // Fetch associated data for all files (for smart decision-making)
+        const associatedDataMap = await fetchAssociatedDataBatch(allFiles, env);
+        for (const file of allFiles) {
+            file.associatedData = associatedDataMap.get(file.key);
+            
+            // Set associated IDs from metadata if available
+            if (file.customMetadata?.modId) {
+                file.associatedModId = file.customMetadata.modId;
+            }
+            if (file.customMetadata?.versionId) {
+                file.associatedVersionId = file.customMetadata.versionId;
+            }
+        }
+        
+        console.log('[R2Duplicates] Associated data fetched for', associatedDataMap.size, 'files');
+
         // Step 4: Detect duplicates by size and content hash (if available)
         const duplicatesBySize = new Map<number, R2FileInfo[]>();
         for (const file of allFiles) {
@@ -294,11 +701,57 @@ export async function handleDetectDuplicates(
             if (files.length > 1 && size > 0) {
                 // Group by size - files with same size might be duplicates
                 // For more accurate detection, we'd need to compare content hashes
+                
+                // Smart recommendation: choose best file to keep based on associated data
+                let recommendedKeep = files[0].key;
+                let bestScore = -1;
+                
+                for (const file of files) {
+                    let score = 0;
+                    const data = file.associatedData;
+                    
+                    // Prefer files that are NOT orphaned
+                    if (!file.isOrphaned) {
+                        score += 1000;
+                    }
+                    
+                    // Prefer files associated with published/approved mods
+                    if (data?.mod) {
+                        if (data.mod.status === 'published') {
+                            score += 500;
+                        } else if (data.mod.status === 'approved') {
+                            score += 300;
+                        } else if (data.mod.status === 'pending') {
+                            score += 100;
+                        }
+                        
+                        // Prefer mods with more downloads
+                        score += Math.min(data.mod.downloadCount * 10, 200);
+                    }
+                    
+                    // Prefer files associated with versions
+                    if (data?.version) {
+                        score += 200;
+                        
+                        // Prefer versions with more downloads
+                        score += Math.min(data.version.downloads * 5, 100);
+                    }
+                    
+                    // Prefer more recently uploaded files
+                    const daysSinceUpload = (Date.now() - file.uploaded.getTime()) / (1000 * 60 * 60 * 24);
+                    score += Math.max(0, 100 - daysSinceUpload); // Newer files get higher score
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        recommendedKeep = file.key;
+                    }
+                }
+                
                 duplicateGroups.push({
                     files,
                     count: files.length,
                     totalSize: size * files.length,
-                    recommendedKeep: files[0].key, // Keep the first one by default
+                    recommendedKeep,
                 });
             }
         }
@@ -464,6 +917,7 @@ interface Env {
     SUPER_ADMIN_EMAILS?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;
+    AUTH_API_URL?: string; // For fetching user display names
     [key: string]: any;
 }
 

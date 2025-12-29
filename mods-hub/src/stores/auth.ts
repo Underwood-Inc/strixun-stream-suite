@@ -101,6 +101,37 @@ async function restoreSessionFromBackend(): Promise<User | null> {
 }
 
 /**
+ * Validate token with backend to check if it's blacklisted or invalid
+ * Returns true if token is valid, false if invalid/blacklisted
+ * 
+ * CRITICAL: This ensures we detect tokens that were blacklisted on other domains
+ */
+async function validateTokenWithBackend(token: string): Promise<boolean> {
+    try {
+        const { createAPIClient } = await import('@strixun/api-framework/client');
+        const authClient = createAPIClient({
+            baseURL: AUTH_API_URL,
+            timeout: 5000, // 5 second timeout for validation
+        });
+        
+        // Use /auth/me endpoint to validate token (returns 401 if invalid/blacklisted)
+        const response = await authClient.get('/auth/me', undefined, {
+            metadata: {
+                token: token, // Pass token for authentication
+                cache: false, // Never cache validation requests
+            },
+        });
+        
+        // 200 = valid, 401 = invalid/blacklisted
+        return response.status === 200;
+    } catch (error) {
+        // Network errors or other issues - assume valid to avoid blocking initialization
+        console.warn('[Auth] Token validation failed (assuming valid):', error instanceof Error ? error.message : String(error));
+        return true; // Assume valid to avoid blocking initialization
+    }
+}
+
+/**
  * Fetch user info from /auth/me to get admin status
  * CRITICAL: Disable caching for this endpoint - we always need fresh user data
  * Also handles undefined cached values gracefully
@@ -264,7 +295,8 @@ export const useAuthStore = create<AuthState>()(
             storage: createJSONStorage(() => localStorage),
             partialize: (state: AuthState) => ({ user: state.user }),
             // After hydration, restore session if needed
-            onRehydrateStorage: () => (state) => {
+            onRehydrateStorage: () => {
+                return async (state) => {
                 if (state) {
                     // CRITICAL: Set isAuthenticated and isSuperAdmin from restored user
                     if (state.user) {
@@ -274,40 +306,58 @@ export const useAuthStore = create<AuthState>()(
                             state.user = null;
                             state.isAuthenticated = false;
                             state.isSuperAdmin = false;
-                            state.restoreSession();
+                            await state.restoreSession();
                             return;
                         }
                         
-                        // Update derived state from persisted user
-                        state.isAuthenticated = true;
-                        state.isSuperAdmin = state.user.isSuperAdmin || false;
-                        
-                        // Check if token is expired
+                        // Check if token is expired locally first (fast check)
                         const isExpired = state.user.expiresAt && new Date(state.user.expiresAt) <= new Date();
                         
-                        if (isExpired) {
-                            console.log('[Auth] Token expired, attempting to restore session');
-                            // Token expired, try to restore from backend
-                            // restoreSession will only clear user if backend restore fails AND token is expired
-                            state.restoreSession();
-                        } else {
-                            // Token is valid - user is authenticated!
+                        if (!isExpired) {
+                            // Token not expired locally - validate with backend to check if blacklisted
+                            // This ensures we detect tokens that were blacklisted on other domains
+                            const isValid = await validateTokenWithBackend(state.user.token);
+                            
+                            if (!isValid) {
+                                // Token is blacklisted or invalid - clear auth state
+                                console.log('[Auth] Token is blacklisted or invalid, clearing auth state');
+                                state.user = null;
+                                state.isAuthenticated = false;
+                                state.isSuperAdmin = false;
+                                // Try to restore session from backend (in case there's a valid session for this IP)
+                                await state.restoreSession();
+                                return;
+                            }
+                            
+                            // Token is valid - restore auth state
+                            state.isAuthenticated = true;
+                            state.isSuperAdmin = state.user.isSuperAdmin || false;
+                            
                             // Just refresh admin status in background, don't clear user
                             console.log('[Auth] User authenticated from localStorage, token valid until:', state.user.expiresAt);
-                            console.log('[Auth] Token length:', state.user.token.length);
                             if (state.user.token) {
                                 // Don't await - let it run in background, don't block hydration
                                 state.fetchUserInfo().catch(err => {
                                     console.debug('[Auth] Background fetchUserInfo failed (non-critical):', err);
                                 });
                             }
+                        } else {
+                            // Token expired, try to restore from backend before clearing
+                            console.log('[Auth] Token expired, attempting to restore from backend');
+                            const restored = await state.restoreSession();
+                            if (!restored) {
+                                // Backend restore failed, clear auth
+                                state.user = null;
+                                state.isAuthenticated = false;
+                                state.isSuperAdmin = false;
+                            }
                         }
                     } else {
                         // No user in localStorage - try to restore from backend (IP-based session sharing)
                         console.log('[Auth] No user in storage, attempting to restore session from backend');
-                        state.restoreSession();
+                        await state.restoreSession();
                     }
-                }
+                };
             },
         }
     )

@@ -18,6 +18,15 @@ const TableContainer = styled.div`
   overflow: hidden;
   height: 100%;
   position: relative;
+  min-height: 0;
+`;
+
+const ScrollContainer = styled.div`
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+  position: relative;
 `;
 
 const TableHeader = styled.div`
@@ -61,9 +70,6 @@ const HeaderCell = styled.div<{ $sortable?: boolean; $sorted?: 'asc' | 'desc' | 
 `;
 
 const TableBody = styled.div`
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden; /* react-window handles vertical scrolling */
   min-height: 0;
   position: relative;
 `;
@@ -279,50 +285,55 @@ export function VirtualizedTable<T extends Record<string, any>>({
       : gridTemplateColumns;
   }, [onSelectionChange, gridTemplateColumns]);
   
+  const headerHeight = 50;
+  const bodyHeight = Math.max(100, height - headerHeight);
+
   return (
-    <TableContainer style={{ height: `${height}px` }}>
-      <TableHeader style={{ gridTemplateColumns: headerGridColumns, width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
-        {onSelectionChange && (
-          <HeaderCell style={{ width: '50px', minWidth: '50px', justifyContent: 'center' }}>
-            <Checkbox
-              type="checkbox"
-              checked={data.length > 0 && selectedIds.size === data.length}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  const allIds = new Set(data.map(getItemId));
-                  onSelectionChange(allIds);
-                } else {
-                  onSelectionChange(new Set());
-                }
-              }}
-            />
-          </HeaderCell>
-        )}
-        {columns.map((column) => (
-          <HeaderCell
-            key={column.key}
-            $sortable={column.sortable}
-            $sorted={sortConfig?.key === column.key ? sortConfig.direction : null}
-            $width={column.width}
-            onClick={() => handleSort(column.key)}
-          >
-            {column.label}
-          </HeaderCell>
-        ))}
-      </TableHeader>
-      <TableBody>
-        <div style={{ width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
-          <List
-            ref={listRef}
-            height={height - 50} // Subtract header height
-            itemCount={data.length}
-            itemSize={rowHeight}
-            width={totalContentWidth} // Match content width for proper horizontal scrolling
-          >
-            {RowComponent}
-          </List>
-        </div>
-      </TableBody>
+    <TableContainer style={{ height: `${height}px`, minHeight: `${height}px` }}>
+      <ScrollContainer>
+        <TableHeader style={{ gridTemplateColumns: headerGridColumns, width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
+          {onSelectionChange && (
+            <HeaderCell style={{ width: '50px', minWidth: '50px', justifyContent: 'center' }}>
+              <Checkbox
+                type="checkbox"
+                checked={data.length > 0 && selectedIds.size === data.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    const allIds = new Set(data.map(getItemId));
+                    onSelectionChange(allIds);
+                  } else {
+                    onSelectionChange(new Set());
+                  }
+                }}
+              />
+            </HeaderCell>
+          )}
+          {columns.map((column) => (
+            <HeaderCell
+              key={column.key}
+              $sortable={column.sortable}
+              $sorted={sortConfig?.key === column.key ? sortConfig.direction : null}
+              $width={column.width}
+              onClick={() => handleSort(column.key)}
+            >
+              {column.label}
+            </HeaderCell>
+          ))}
+        </TableHeader>
+        <TableBody>
+          <div style={{ width: `${totalContentWidth}px`, minWidth: `${totalContentWidth}px` }}>
+            <List
+              ref={listRef}
+              height={bodyHeight}
+              itemCount={data.length}
+              itemSize={rowHeight}
+              width={totalContentWidth}
+            >
+              {RowComponent}
+            </List>
+          </div>
+        </TableBody>
+      </ScrollContainer>
     </TableContainer>
   );
 }

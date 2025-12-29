@@ -274,6 +274,10 @@ export async function wrapWithEncryption(
     throw new Error('[NetworkIntegrity] Service-to-service calls require request and env to add integrity headers');
   }
 
+  // Declare variables outside try block for use in catch block
+  let responseData: unknown = null;
+  let thumbnailUrlsMap: Record<string, string> | null = null;
+  
   try {
     // Check if response is JSON
     const contentType = handlerResponse.headers.get('content-type');
@@ -292,11 +296,11 @@ export async function wrapWithEncryption(
     }
 
     // Parse and encrypt
-    const responseData = await handlerResponse.json();
+    responseData = await handlerResponse.json();
     
     // CRITICAL: Exclude thumbnailUrl from encryption - it's a public URL that browsers need to fetch directly
     // Extract thumbnailUrls before encryption and store them separately
-    let thumbnailUrlsMap: Record<string, string> | null = null;
+    thumbnailUrlsMap = null;
     if (responseData && typeof responseData === 'object' && responseData !== null) {
       thumbnailUrlsMap = {};
       
@@ -348,8 +352,55 @@ export async function wrapWithEncryption(
     };
   } catch (error) {
     console.error('Failed to encrypt response:', error);
+    
+    // If JSON parsing failed, responseData will be null and body is already consumed
+    // In this case, we can't reconstruct the response - return error response
+    if (responseData === null) {
+      const headers = new Headers(handlerResponse.headers);
+      headers.set('Content-Type', 'application/json');
+      headers.set('X-Encrypted', 'false');
+      return {
+        response: new Response(JSON.stringify({
+          error: 'Failed to parse response for encryption',
+          message: error instanceof Error ? error.message : String(error)
+        }), {
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: headers,
+        }),
+        customerId: auth.customerId || null,
+      };
+    }
+    
+    // Encryption failed but we have parsed data - return unencrypted with X-Encrypted: false
+    const headers = new Headers(handlerResponse.headers);
+    headers.set('Content-Type', 'application/json');
+    headers.set('X-Encrypted', 'false');
+    
+    // Restore thumbnailUrls if they were removed before encryption attempt
+    let dataToReturn = responseData;
+    if (thumbnailUrlsMap && Object.keys(thumbnailUrlsMap).length > 0 && dataToReturn && typeof dataToReturn === 'object') {
+      const dataWithMods = dataToReturn as any;
+      // Restore thumbnailUrls that were removed
+      if (Array.isArray(dataWithMods.mods)) {
+        dataWithMods.mods.forEach((mod: any, index: number) => {
+          const key = `mods.${index}`;
+          if (thumbnailUrlsMap![key]) {
+            mod.thumbnailUrl = thumbnailUrlsMap![key];
+          }
+        });
+      }
+      if (dataWithMods.mod && thumbnailUrlsMap['mod']) {
+        dataWithMods.mod.thumbnailUrl = thumbnailUrlsMap['mod'];
+      }
+    }
+    
     return {
-      response: handlerResponse,
+      response: new Response(JSON.stringify(dataToReturn), {
+        status: handlerResponse.status,
+        statusText: handlerResponse.statusText,
+        headers: headers,
+      }),
       customerId: auth.customerId || null,
     };
   }

@@ -100,7 +100,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const response = await handleListMods(request, env, auth);
             // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
             // wrapWithEncryption will detect it's a public endpoint and won't encrypt, but will add integrity headers
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /mods or POST / - Upload new mod
@@ -142,7 +142,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModReview } = await import('../handlers/mods/review.js');
             const response = await handleGetModReview(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug or GET /:slug - Get mod detail (by slug)
@@ -154,7 +154,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleGetModDetail(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: PATCH /mods/:slug or PATCH /:slug - Update mod (by slug)
@@ -219,7 +219,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /mods/:slug/ratings or POST /:slug/ratings - Submit a rating for a mod
@@ -246,6 +246,39 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleSubmitModRating } = await import('../handlers/mods/ratings.js');
             const response = await handleSubmitModRating(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: GET /mods/:slug/snapshots or GET /:slug/snapshots - List snapshots for a mod
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        if (pathSegments.length === 2 && pathSegments[1] === 'snapshots' && request.method === 'GET') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to view snapshots', null);
+            }
+            const slugOrModId = pathSegments[0];
+            const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
+            if (!modId) {
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+            }
+            const { handleListModSnapshots } = await import('../handlers/mods/snapshots.js');
+            const response = await handleListModSnapshots(request, env, modId, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: GET /mods/:slug/snapshots/:snapshotId or GET /:slug/snapshots/:snapshotId - Load a specific snapshot
+        // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        if (pathSegments.length === 3 && pathSegments[1] === 'snapshots' && request.method === 'GET') {
+            if (!auth) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required to load snapshots', null);
+            }
+            const slugOrModId = pathSegments[0];
+            const snapshotId = pathSegments[2];
+            const modId = await resolveSlugIfNeeded(slugOrModId, env, auth);
+            if (!modId) {
+                return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
+            }
+            const { handleLoadSnapshot } = await import('../handlers/mods/snapshots.js');
+            const response = await handleLoadSnapshot(request, env, modId, snapshotId, auth);
             return await wrapWithEncryption(response, auth, request, env);
         }
 
@@ -298,7 +331,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const response = await handleThumbnail(request, env, modId, auth);
             console.log('[Router] Thumbnail response:', { status: response.status, contentType: response.headers.get('content-type') });
             // Use wrapWithEncryption to add integrity headers (won't encrypt image data)
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug/og-image or GET /:slug/og-image - Get Open Graph preview image
@@ -311,7 +344,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const response = await handleOGImage(request, env, modId, auth);
             // Use wrapWithEncryption to add integrity headers (won't encrypt image data)
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug/versions/:versionId/download or GET /:slug/versions/:versionId/download - Download version
@@ -379,7 +412,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleVerifyVersion } = await import('../handlers/versions/verify.js');
             const response = await handleVerifyVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: POST /mods/:slug/versions/:versionId/validate or POST /:slug/versions/:versionId/validate - Validate file against uploaded version
@@ -403,7 +436,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleValidateVersion } = await import('../handlers/versions/validate.js');
             const response = await handleValidateVersion(request, env, modId, versionId, auth);
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge
@@ -428,7 +461,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const { handleBadge } = await import('../handlers/versions/badge.js');
             const response = await handleBadge(request, env, modId, versionId, auth);
             // Use wrapWithEncryption to add integrity headers (won't encrypt SVG image data)
-            return await wrapWithEncryption(response, auth || undefined, request, env);
+            return await wrapWithEncryption(response, auth, request, env);
         }
 
         // 404 for unknown mod routes

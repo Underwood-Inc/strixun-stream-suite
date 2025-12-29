@@ -59,6 +59,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
         // Route: PUT /admin/mods/:modId/status - Update mod status (also accepts POST for backward compatibility)
         if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'mods' && pathSegments[3] === 'status' && (request.method === 'PUT' || request.method === 'POST')) {
             const modId = pathSegments[2];
+            console.log('[AdminRoutes] PUT /admin/mods/:modId/status matched', { modId, pathSegments, method: request.method });
             const { handleUpdateModStatus } = await import('../handlers/admin/triage.js');
             const response = await handleUpdateModStatus(request, env, modId, auth);
             return await wrapWithEncryption(response, auth, request, env);

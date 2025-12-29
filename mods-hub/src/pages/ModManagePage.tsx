@@ -103,9 +103,9 @@ export function ModManagePage() {
         );
     }
 
-    const handleUpdate = async (updates: any) => {
+    const handleUpdate = async (updates: any, thumbnail?: File) => {
         try {
-            await updateMod.mutateAsync({ slug: slug!, updates });
+            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail });
         } catch (error) {
             // Error handled by mutation
         }
@@ -152,6 +152,9 @@ export function ModManagePage() {
     return (
         <PageContainer>
             <Title>Manage Mod: {data.mod.title}</Title>
+            <div style={{ color: colors.textSecondary, fontSize: '0.875rem', marginBottom: spacing.md }}>
+                Last updated: {new Date(data.mod.updatedAt).toLocaleString()}
+            </div>
             <ModManageForm
                 mod={data.mod}
                 onUpdate={handleUpdate}
