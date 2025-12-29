@@ -18,6 +18,14 @@
     "react"
   ],
   "author": "Strixun",
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "styled-components": "^6.1.13"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "@types/styled-components": "^5.1.34"
+  }
 }
 

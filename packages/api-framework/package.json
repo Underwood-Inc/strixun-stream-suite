@@ -22,12 +22,19 @@
     "./enhanced-router": {
       "types": "./enhanced-router.ts",
       "default": "./enhanced-router.ts"
+    },
+    "./test-utils": {
+      "types": "./test-utils.ts",
+      "default": "./test-utils.ts"
     }
   },
   "files": [
     "*.js",
     "*.d.ts",
     "*.ts"
-  ]
+  ],
+  "dependencies": {
+    "@strixun/service-client": "workspace:*"
+  }
 }
 

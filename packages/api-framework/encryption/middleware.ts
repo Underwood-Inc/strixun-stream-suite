@@ -211,7 +211,7 @@ export async function wrapWithEncryption(
               userId: auth?.userId
             });
             
-            const { wrapResponseWithIntegrity } = await import('../service-client/integrity-response.js');
+            const { wrapResponseWithIntegrity } = await import('@strixun/service-client/integrity-response');
             const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth ?? null, env);
             
             // Check if integrity header was added

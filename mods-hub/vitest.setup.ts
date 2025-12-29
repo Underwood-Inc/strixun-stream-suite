@@ -3,7 +3,7 @@
  * Configures test environment and mocks
  */
 
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 
 // Mock window.URL.createObjectURL and revokeObjectURL for download tests

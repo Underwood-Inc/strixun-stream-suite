@@ -5,7 +5,7 @@
  * Used across all E2E tests in the codebase
  */
 
-import { Page, type APIResponse } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { WORKER_URLS } from '../../playwright.config.js';
 
 // Re-export WORKER_URLS for convenience
@@ -29,7 +29,7 @@ export const TEST_USERS = {
  * Wait for OTP email and extract code
  * In a real scenario, you might use a test email service or mock
  */
-export async function waitForOTP(page: Page): Promise<string> {
+export async function waitForOTP(_page: Page): Promise<string> {
   // TODO: Integrate with test email service (e.g., Mailtrap, MailSlurp)
   // For now, this is a placeholder that would need manual OTP entry
   // or integration with a test email service
@@ -121,7 +121,7 @@ export async function waitForAPIResponse(
   timeout = 10000
 ): Promise<void> {
   await page.waitForResponse(
-    (response: APIResponse) => {
+    (response) => {
       const url = response.url();
       if (typeof urlPattern === 'string') {
         return url.includes(urlPattern);
@@ -178,7 +178,7 @@ export async function verifyWorkersHealth(): Promise<void> {
 /**
  * Clean up test data (if needed)
  */
-export async function cleanupTestData(page: Page): Promise<void> {
+export async function cleanupTestData(_page: Page): Promise<void> {
   // Implement cleanup logic for test data
   // This might involve calling admin APIs to delete test records
   // or clearing KV namespaces used for testing

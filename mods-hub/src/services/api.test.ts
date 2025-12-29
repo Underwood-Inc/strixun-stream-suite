@@ -9,6 +9,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Use vi.hoisted to create mock client before factory runs
+const { mockApiClient } = vi.hoisted(() => {
+    const { createMockAPIClient } = require('@strixun/api-framework/test-utils');
+    const mockClient = createMockAPIClient(vi);
+    return { mockApiClient: mockClient };
+});
+
+vi.mock('@strixun/api-framework/client', () => {
+    return {
+        createAPIClient: vi.fn(() => mockApiClient),
+    };
+});
+
+// Import after mock is set up
 import {
     API_BASE_URL,
     listMods,
@@ -37,18 +52,6 @@ import {
     deleteR2File,
     bulkDeleteR2Files,
 } from './api.js';
-
-// Mock the API framework client
-const mockApiClient = {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-};
-
-vi.mock('@strixun/api-framework/client', () => ({
-    createAPIClient: vi.fn(() => mockApiClient),
-}));
 
 describe('Mods Hub API Service - Unit Tests', () => {
     beforeEach(() => {
@@ -150,8 +153,15 @@ describe('Mods Hub API Service - Unit Tests', () => {
     });
 
     describe('uploadMod', () => {
+        beforeEach(() => {
+            // Set up auth token for encryption
+            localStorage.setItem('auth_token', 'test-token-123');
+        });
+
         it('should create FormData and call API with file and metadata', async () => {
             const mockFile = new File(['content'], 'test.zip', { type: 'application/zip' });
+            // Add arrayBuffer method to mock File
+            mockFile.arrayBuffer = async () => new ArrayBuffer(8);
             const mockMetadata = { 
                 title: 'Test', 
                 version: '1.0.0', 
@@ -180,6 +190,8 @@ describe('Mods Hub API Service - Unit Tests', () => {
 
         it('should include thumbnail in FormData when provided', async () => {
             const mockFile = new File(['content'], 'test.zip', { type: 'application/zip' });
+            // Add arrayBuffer method to mock File
+            mockFile.arrayBuffer = async () => new ArrayBuffer(8);
             const mockThumbnail = new File(['image'], 'thumb.png', { type: 'image/png' });
             const mockMetadata = { 
                 title: 'Test', 
@@ -235,8 +247,15 @@ describe('Mods Hub API Service - Unit Tests', () => {
     });
 
     describe('uploadVersion', () => {
+        beforeEach(() => {
+            // Set up auth token for encryption
+            localStorage.setItem('auth_token', 'test-token-123');
+        });
+
         it('should create FormData and call API with file and metadata', async () => {
             const mockFile = new File(['content'], 'v2.zip', { type: 'application/zip' });
+            // Add arrayBuffer method to mock File
+            mockFile.arrayBuffer = async () => new ArrayBuffer(8);
             const mockMetadata = { version: '2.0.0', changelog: 'Updates', gameVersions: [] };
             const mockResponse = {
                 data: { id: 'ver_456' },
@@ -544,13 +563,33 @@ describe('Mods Hub API Service - Unit Tests', () => {
             };
             mockApiClient.get.mockResolvedValue(mockResponse);
 
+            // Mock URL.createObjectURL and document.createElement
+            const createObjectURLSpy = vi.spyOn(global.URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+            const mockLink = {
+                href: '',
+                download: '',
+                click: vi.fn(),
+            };
+            const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
+            const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
+            const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
+            const revokeObjectURLSpy = vi.spyOn(global.URL, 'revokeObjectURL').mockImplementation(() => {});
+
             await downloadVersion('test-slug', 'ver_123', 'test.zip');
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
                 '/mods/test-slug/versions/ver_123/download'
             );
-            expect(global.URL.createObjectURL).toHaveBeenCalled();
-            expect(document.createElement).toHaveBeenCalledWith('a');
+            expect(createObjectURLSpy).toHaveBeenCalled();
+            expect(createElementSpy).toHaveBeenCalledWith('a');
+            expect(mockLink.click).toHaveBeenCalled();
+
+            // Cleanup
+            createObjectURLSpy.mockRestore();
+            createElementSpy.mockRestore();
+            appendChildSpy.mockRestore();
+            removeChildSpy.mockRestore();
+            revokeObjectURLSpy.mockRestore();
         });
 
         it('should throw error on failed download', async () => {
@@ -610,7 +649,15 @@ describe('Mods Hub API Service - Unit Tests', () => {
         it('should call API and transform dates in duplicates and orphaned', async () => {
             const mockResponse = {
                 data: {
-                    duplicates: [
+                    summary: {
+                        totalFiles: 2,
+                        referencedFiles: 1,
+                        orphanedFiles: 1,
+                        orphanedSize: 2048,
+                        duplicateGroups: 1,
+                        duplicateWastedSize: 0,
+                    },
+                    duplicateGroups: [
                         {
                             files: [
                                 {
@@ -619,11 +666,11 @@ describe('Mods Hub API Service - Unit Tests', () => {
                                     uploaded: '2024-01-01T00:00:00Z',
                                 },
                             ],
-                            size: 1024,
                             count: 1,
+                            totalSize: 1024,
                         },
                     ],
-                    orphaned: [
+                    orphanedFiles: [
                         {
                             key: 'file2.zip',
                             size: 2048,
