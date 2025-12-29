@@ -10,7 +10,8 @@
     ".": {
       "types": "./index.ts",
       "default": "./index.ts"
-    }
+    },
+    "./TwitchAdCarousel.svelte": "./TwitchAdCarousel.svelte"
   },
   "files": [
     "*.ts",

@@ -10,7 +10,8 @@
     ".": {
       "types": "./index.ts",
       "default": "./index.ts"
-    }
+    },
+    "./StatusFlair.svelte": "./StatusFlair.svelte"
   },
   "files": [
     "*.ts",
