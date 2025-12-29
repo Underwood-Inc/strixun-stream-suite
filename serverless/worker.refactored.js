@@ -24,7 +24,7 @@ import { handleCloudSave, handleCloudLoad, handleCloudList, handleCloudDelete } 
 import { handleNotesSave, handleNotesLoad, handleNotesList, handleNotesDelete } from './handlers/notes.js';
 import { handleOBSCredentialsSave, handleOBSCredentialsLoad, handleOBSCredentialsDelete } from './handlers/obs.js';
 import { createEnhancedRouter } from './shared/enhanced-router.js';
-import { initializeServiceTypes } from './shared/types.js';
+import { initializeServiceTypes } from '@strixun/types';
 
 // Initialize service types for enhanced framework
 initializeServiceTypes();
