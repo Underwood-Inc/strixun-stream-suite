@@ -19,6 +19,10 @@
     "@strixun/types": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "vitest": "^4.0.16",
+    "wrangler": "^4.54.0"
+  }
 }
 

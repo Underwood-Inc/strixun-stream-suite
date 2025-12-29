@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Shared component library for Strixun Stream Suite with Storybook documentation",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
@@ -37,6 +38,7 @@
     "svelte": "^5.46.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
+    "vitest": "^4.0.16",
     "wrangler": "^4.54.0"
   }
 }

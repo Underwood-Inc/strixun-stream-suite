@@ -29,7 +29,10 @@
     "@strixun/e2e-helpers": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
     "concurrently": "^9.2.1",
-    "esbuild": "^0.19.12"
+    "esbuild": "^0.19.12",
+    "vitest": "^4.0.16",
+    "wrangler": "^4.54.0"
   }
 }
