@@ -5,8 +5,12 @@
  * Uses existing auth system and encryption utilities
  */
 
-import { decryptWithJWT } from '../../../src/core/api/enhanced/encryption/jwt-encryption.js';
-import { authenticatedFetch, getAuthToken } from '../../../src/stores/auth.js';
+import { decryptWithJWT } from '@strixun/api-framework';
+
+// Auth functions must be provided by the consuming app
+// This library accepts them as constructor parameters to avoid app-specific dependencies
+type AuthFetch = (url: string, options?: RequestInit) => Promise<Response>;
+type GetToken = () => string | null | Promise<string | null>;
 import type {
     CharacterAppearance,
     CraftingResult,
@@ -77,9 +81,13 @@ function getGameApiUrl(): string {
  */
 export class GameApiService {
   private baseUrl: string;
+  private authenticatedFetch: AuthFetch;
+  private getAuthToken: GetToken;
 
-  constructor() {
+  constructor(authenticatedFetch: AuthFetch, getAuthToken: GetToken) {
     this.baseUrl = getGameApiUrl();
+    this.authenticatedFetch = authenticatedFetch;
+    this.getAuthToken = getAuthToken;
   }
 
   /**
@@ -89,7 +97,7 @@ export class GameApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const response = await authenticatedFetch(`${this.baseUrl}${endpoint}`, options);
+    const response = await this.authenticatedFetch(`${this.baseUrl}${endpoint}`, options);
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -101,7 +109,7 @@ export class GameApiService {
     const data = await response.json();
 
     if (isEncrypted) {
-      const token = getAuthToken();
+      const token = await Promise.resolve(this.getAuthToken());
       if (!token) {
         throw new Error('No auth token available for decryption');
       }
@@ -270,6 +278,9 @@ export class GameApiService {
   }
 }
 
-// Export singleton instance
-export const gameApi = new GameApiService();
+// Note: gameApi instance must be created by the consuming app with auth functions
+// Example:
+// import { GameApiService } from '@strixun/idle-game-overlay';
+// import { authenticatedFetch, getAuthToken } from './stores/auth';
+// export const gameApi = new GameApiService(authenticatedFetch, getAuthToken);
 

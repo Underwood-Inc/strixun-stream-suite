@@ -5,7 +5,7 @@
  */
 
 export { default as GameOverlay } from './components/GameOverlay.svelte';
-export { gameApi } from './services/game-api.js';
+export { GameApiService } from './services/game-api.js';
 export * from './types/index.js';
 export * from './core/loot-generator.js';
 export * from './core/pixel-editor.js';

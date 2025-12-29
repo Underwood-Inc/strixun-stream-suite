@@ -19,31 +19,31 @@
  */
 
 // Re-export everything from the base API framework
-export * from '../../../src/core/api/index.js';
+export * from './src/index.js';
 
 // Re-export enhanced framework (excluding APIResponse, E2EEncryptionConfig, EncryptedData to avoid conflicts)
 export type {
   BuiltResponse, EnhancedAPIClientConfig, ErrorHandlingConfig, FilteringParams, MetricDefinition, RequestContext, ResponseBuilderOptions, ResponseFilterConfig, RFC7807Error, RootResponseConfig, TypeDefinition, WorkerAdapterConfig
-} from '../../../src/core/api/enhanced/types.js';
+} from './src/enhanced/types.js';
 
 // Re-export enhanced APIResponse as EnhancedAPIResponse to avoid conflict
-export type { APIResponse as EnhancedAPIResponse } from '../../../src/core/api/enhanced/types.js';
+export type { APIResponse as EnhancedAPIResponse } from './src/enhanced/types.js';
 
 // Re-export enhanced framework exports (excluding APIResponse)
 export {
   applyFiltering, buildResponse, clearCachedMetric, COMMON_TAGS, composeServerMiddlewares, computeMetric,
   computeMetrics, createCORSHeaders, createCORSMiddleware, createE2EEncryptionMiddleware, createEnhancedAPIClient, createEnhancedHandler, createErrorLegendMiddleware, createGetHandler, createKVCache, createPostHandler, createResponseBuilderMiddleware, createResponseFilterMiddleware, createRFC7807Error, createRFC7807Response, createServerMiddleware, createWorkerAdapter,
   createWorkerHandler, decryptWithJWT as decryptWithJWTEnhanced, detectPlatform, encryptWithJWT as encryptWithJWTEnhanced, EnhancedAPIClientV2, enhanceErrorWithLegend, formatErrorAsRFC7807, generateMetricCacheKey, getEnhancedAPIClient, getStorageAdapter, getTagFields, getType, getTypeRegistry, handleCORSPreflight, initializeCommonTags, isBrowser, isCloudflareWorker, isNode, KVCache, parseFilteringParams, registerTag, registerType, resetEnhancedAPIClient, setEnhancedAPIClient, TypeRegistry, validateResponse, withMiddleware, WorkerAdapter
-} from '../../../src/core/api/enhanced/index.js';
+} from './src/enhanced/index.js';
 
 export type {
   CORSOptions, HandlerContext, HandlerOptions, KVCacheOptions, ServerMiddleware
-} from '../../../src/core/api/enhanced/index.js';
+} from './src/enhanced/index.js';
 
 // Re-export client factory for convenience
 export {
   createAPIClient, getAPIClient, resetAPIClient, setAPIClient
-} from '../../../src/core/api/factory.js';
+} from './src/factory.js';
 
 // Re-export encryption utilities
 export {
@@ -65,7 +65,7 @@ export {
   isMultiEncrypted,
   withEncryption,
   wrapWithEncryption
-} from '../encryption/index.js';
+} from './encryption/index.js';
 
 // Re-export encryption types
 export type {
@@ -82,7 +82,7 @@ export type {
   RouteEncryptionPolicy,
   RouteResult,
   TwoStageEncryptedData
-} from '../encryption/index.js';
+} from './encryption/index.js';
 
 // Re-export fingerprinting utilities
 export {

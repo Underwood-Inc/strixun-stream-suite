@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { isAuthenticated } from '../../../src/stores/auth.js';
+  // Note: isAuthenticated should be provided as a prop or store from the consuming app
+  // This component should not depend on app-specific stores
   import DailyLootBox from './DailyLootBox.svelte';
   import InventoryScreen from './InventoryScreen.svelte';
   import CharacterScreen from './CharacterScreen.svelte';
@@ -10,19 +11,11 @@
 
   export let visible = false;
   export let onClose: (() => void) | null = null;
+  export let isAuthenticated: boolean = false; // Provided by consuming app
 
   type Screen = 'home' | 'loot-box' | 'inventory' | 'character' | 'idle' | 'crafting' | 'dungeons';
 
   let currentScreen: Screen = 'home';
-  let isAuthenticatedValue = false;
-
-  const unsubscribe = isAuthenticated.subscribe(value => {
-    isAuthenticatedValue = value;
-  });
-
-  onDestroy(() => {
-    unsubscribe();
-  });
 
   function handleScreenChange(screen: Screen) {
     currentScreen = screen;
@@ -116,7 +109,7 @@
       </nav>
 
       <main class="game-overlay__content">
-        {#if !isAuthenticatedValue}
+        {#if !isAuthenticated}
           <div class="game-overlay__auth-required">
             <p class="game-overlay__auth-message">Please log in to access the idle game.</p>
           </div>

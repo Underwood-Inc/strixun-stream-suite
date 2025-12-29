@@ -12,7 +12,7 @@ export {
   resetAPIClient,
   APIClient,
   EnhancedAPIClient,
-} from '../../../src/core/api/index.js';
+} from './src/index.js';
 
 export type {
   APIRequest,
@@ -26,5 +26,5 @@ export type {
   RetryConfig,
   OptimisticConfig,
   OfflineConfig,
-} from '../../../src/core/api/types.js';
+} from './src/types.js';
 

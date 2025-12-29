@@ -16,7 +16,7 @@ import { createErrorMiddleware } from './middleware/error';
 import { createTransformMiddleware, defaultRequestTransformer } from './middleware/transform';
 import { RequestBuilder } from './utils/request-builder';
 import { handleResponse, handleErrorResponse, isSuccessResponse } from './utils/response-handler';
-import { secureFetch } from '../services/encryption';
+import { secureFetch } from './utils/secure-fetch';
 
 export class APIClient {
   private config: Required<APIClientConfig>;

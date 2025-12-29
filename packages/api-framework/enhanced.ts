@@ -5,5 +5,5 @@
  * Use this for server-side (Cloudflare Workers) code
  */
 
-export * from '../../../src/core/api/enhanced/index.js';
+export * from './src/enhanced/index.js';
 

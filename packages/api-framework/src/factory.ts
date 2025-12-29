@@ -6,7 +6,11 @@
 
 import type { APIClientConfig } from './types';
 import { EnhancedAPIClient } from './enhanced-client';
-import { getAuthToken, getCsrfToken } from '../../stores/auth';
+
+// Auth functions must be provided by the consuming app
+// These are type definitions for the factory functions
+type AuthTokenGetter = () => string | null | Promise<string | null>;
+type CsrfTokenGetter = () => string | null | Promise<string | null>;
 
 /**
  * Get API URL from config

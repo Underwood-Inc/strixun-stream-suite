@@ -5,11 +5,11 @@
  * All encryption logic is now in serverless/shared/encryption/
  */
 
-// Re-export from shared encryption suite via workspace package
+// Import from encryption package (now part of api-framework)
 export {
   encryptWithJWT,
   decryptWithJWT,
-} from '@strixun/api-framework';
+} from '../../../encryption/index.js';
 
 import type { E2EEncryptionConfig } from '../types';
 import type { APIRequest, APIResponse } from '../../types';
