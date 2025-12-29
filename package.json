@@ -21,6 +21,13 @@
     "test:serverless": "pnpm --filter \"./serverless/otp-auth-service\" test && pnpm --filter \"./serverless/mods-api\" test && pnpm --filter \"./serverless/twitch-api\" test",
     "test:all": "pnpm test",
     "test:all:sequential": "pnpm test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "deploy:dev:all": "node serverless/deploy-dev-all.js",
+    "deploy:dev:all:dry-run": "node serverless/deploy-dev-all.js --dry-run",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
     "check:all": "pnpm check && pnpm lint && pnpm build && pnpm --filter \"./control-panel\" build && pnpm --filter \"./control-panel\" lint && pnpm --filter \"./mods-hub\" build && pnpm --filter \"./mods-hub\" lint && pnpm --filter @strixun/otp-login build && pnpm --filter \"./serverless/otp-auth-service\" check && pnpm --filter \"./serverless/otp-auth-service\" build && pnpm --filter \"./serverless/otp-auth-service/dashboard\" check && pnpm --filter \"./serverless/otp-auth-service/dashboard\" build && pnpm --filter \"./serverless/otp-auth-service/sdk\" build && pnpm --filter \"./serverless/url-shortener/app\" build",
@@ -36,7 +43,12 @@
     "build-storybook": "pnpm --filter @strixun/shared-components build-storybook"
   },
   "dependencies": {
-    "swiper": "^11.2.10"
+    "swiper": "^11.2.10",
+    "@strixun/status-flair": "workspace:*",
+    "@strixun/search-query-parser": "workspace:*",
+    "@strixun/ad-carousel": "workspace:*",
+    "@strixun/error-mapping": "workspace:*",
+    "@strixun/otp-login": "workspace:*"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.2",

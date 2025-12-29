@@ -14,6 +14,21 @@ importers:
 
   .:
     dependencies:
+      '@strixun/ad-carousel':
+        specifier: workspace:*
+        version: link:shared-components/ad-carousel
+      '@strixun/error-mapping':
+        specifier: workspace:*
+        version: link:shared-components/error-mapping
+      '@strixun/otp-login':
+        specifier: workspace:*
+        version: link:shared-components/otp-login
+      '@strixun/search-query-parser':
+        specifier: workspace:*
+        version: link:shared-components/search-query-parser
+      '@strixun/status-flair':
+        specifier: workspace:*
+        version: link:shared-components/status-flair
       swiper:
         specifier: ^11.2.10
         version: 11.2.10
@@ -154,6 +169,12 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../serverless/shared/api
+      '@strixun/search-query-parser':
+        specifier: workspace:*
+        version: link:../shared-components/search-query-parser
+      '@strixun/virtualized-table':
+        specifier: workspace:*
+        version: link:../shared-components/virtualized-table
       '@tanstack/react-query':
         specifier: ^5.62.11
         version: 5.90.12(react@19.2.3)
@@ -243,6 +264,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
 
   serverless/customer-api:
     dependencies:
@@ -271,6 +295,12 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/otp-auth-service':
+        specifier: workspace:*
+        version: link:../otp-auth-service
+      '@strixun/service-client':
+        specifier: workspace:*
+        version: link:../shared/service-client
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
@@ -287,6 +317,12 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/service-client':
+        specifier: workspace:*
+        version: link:../shared/service-client
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
       mermaid:
         specifier: ^11.12.2
         version: 11.12.2
@@ -394,6 +430,10 @@ importers:
 
   serverless/shared/api: {}
 
+  serverless/shared/service-client: {}
+
+  serverless/shared/types: {}
+
   serverless/twitch-api:
     dependencies:
       '@strixun/api-framework':
@@ -418,6 +458,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../shared/api
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../shared/types
     devDependencies:
       concurrently:
         specifier: ^9.2.1
@@ -522,6 +565,20 @@ importers:
         specifier: ^4.54.0
         version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
 
+  shared-components/ad-carousel:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  shared-components/error-mapping: {}
+
+  shared-components/idle-game-overlay:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
   shared-components/otp-login:
     dependencies:
       react:
@@ -571,7 +628,37 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)
 
+  shared-components/rate-limit-info:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
   shared-components/search-query-parser: {}
+
+  shared-components/status-flair:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  shared-components/tooltip:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  shared-components/virtualized-table:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+      react-window:
+        specifier: ^1.8.10
+        version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
 
 packages:
 
