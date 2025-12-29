@@ -218,6 +218,10 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
         // Update user object
         user.displayName = sanitized;
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+        
+        // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
+        const { updateUserIndex } = await import('../../utils/user-index.js');
+        await updateUserIndex(user.userId, user.customerId || null, env);
 
         return new Response(JSON.stringify({
             success: true,
@@ -315,6 +319,10 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
         // Update user object
         user.displayName = newDisplayName;
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+        
+        // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
+        const { updateUserIndex } = await import('../../utils/user-index.js');
+        await updateUserIndex(user.userId, user.customerId || null, env);
 
         return new Response(JSON.stringify({
             success: true,

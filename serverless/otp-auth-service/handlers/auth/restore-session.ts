@@ -315,6 +315,9 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             if (userData) {
                 userData.customerId = sessionMapping.customerId;
                 await env.OTP_AUTH_KV.put(userKey, JSON.stringify(userData), { expirationTtl: 31536000 });
+                // Update userId -> customerId index
+                const { updateUserIndex } = await import('../../utils/user-index.js');
+                await updateUserIndex(userData.userId, sessionMapping.customerId, env);
             }
         }
         

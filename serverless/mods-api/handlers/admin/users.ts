@@ -51,10 +51,15 @@ async function listAllUsers(env: Env): Promise<User[]> {
     
     // Always use service-to-service call to OTP auth service
     // This ensures we get ALL users across the entire system, not just mods-hub users
+    // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
     console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
     try {
         const { createServiceClient } = await import('../../../shared/service-client/index.js');
         const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        
+        // For admin endpoints, we need SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
+        // createServiceClient will automatically use SUPER_ADMIN_API_KEY if available
+        // This is correct for admin operations
         const client = createServiceClient(authApiUrl, env);
         
         const response = await client.get<{ users: Array<{

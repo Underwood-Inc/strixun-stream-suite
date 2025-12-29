@@ -116,6 +116,9 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             if (user) {
                 user.customerId = customerId;
                 await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+                // Update userId -> customerId index
+                const { updateUserIndex } = await import('../../utils/user-index.js');
+                await updateUserIndex(user.userId, customerId, env);
             }
         }
         
@@ -130,6 +133,9 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         if (!user.customerId && customerId) {
             user.customerId = customerId;
             await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+            // Update userId -> customerId index
+            const { updateUserIndex } = await import('../../utils/user-index.js');
+            await updateUserIndex(user.userId, customerId, env);
         }
         
         // CRITICAL: Verify session still exists (user might have logged out)

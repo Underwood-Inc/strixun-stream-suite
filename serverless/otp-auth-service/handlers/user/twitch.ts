@@ -303,6 +303,10 @@ export async function handleAttachTwitchAccount(
 
     user.twitchAccount = twitchAccount;
     await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+    
+    // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
+    const { updateUserIndex } = await import('../../utils/user-index.js');
+    await updateUserIndex(user.userId, user.customerId || auth.customerId || null, env);
 
     const twitchKey = getCustomerKey(auth.customerId || null, `twitch_${finalTwitchUserId}`);
     await env.OTP_AUTH_KV.put(twitchKey, JSON.stringify({
@@ -416,6 +420,10 @@ export async function handleDetachTwitchAccount(
     const twitchUserId = user.twitchAccount.twitchUserId;
     delete user.twitchAccount;
     await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+    
+    // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
+    const { updateUserIndex } = await import('../../utils/user-index.js');
+    await updateUserIndex(user.userId, user.customerId || auth.customerId || null, env);
 
     const twitchKey = getCustomerKey(auth.customerId || null, `twitch_${twitchUserId}`);
     await env.OTP_AUTH_KV.delete(twitchKey);

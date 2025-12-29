@@ -87,6 +87,10 @@ async function getOrCreateUser(
         };
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 }); // 1 year
         
+        // Update userId -> customerId index for O(1) lookups
+        const { updateUserIndex } = await import('../../utils/user-index.js');
+        await updateUserIndex(userId, customerId, env);
+        
         // Initialize user preferences with default values and display name
         const preferences = getDefaultPreferences();
         preferences.displayName.current = displayName;
@@ -118,6 +122,10 @@ async function getOrCreateUser(
         // Update last login
         user.lastLogin = new Date().toISOString();
         await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+        
+        // Update userId -> customerId index (customerId may have changed)
+        const { updateUserIndex } = await import('../../utils/user-index.js');
+        await updateUserIndex(userId, user.customerId || customerId, env);
         
         // Reset preferences TTL on login to keep it in sync with user data
         const preferences = await getUserPreferences(userId, customerId, env);
