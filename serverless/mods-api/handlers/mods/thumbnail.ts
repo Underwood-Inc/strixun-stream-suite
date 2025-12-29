@@ -223,6 +223,8 @@ export async function handleThumbnail(
                 const customerPrefix = 'customer_';
                 let cursor: string | undefined;
                 let found = false;
+                let totalChecked = 0;
+                let thumbnailFilesChecked = 0;
                 
                 // Try both normalized and original modId formats
                 const modIdVariants = [
@@ -231,6 +233,8 @@ export async function handleThumbnail(
                     normalizeModId(mod.modId), // Ensure normalized
                 ];
                 
+                console.log('[Thumbnail] Starting R2 list search with prefix:', { customerPrefix, modIdVariants });
+                
                 do {
                     const listResult = await env.MODS_R2.list({ 
                         prefix: customerPrefix, 
@@ -238,17 +242,42 @@ export async function handleThumbnail(
                         limit: 1000 
                     });
                     
+                    console.log('[Thumbnail] R2 list returned:', { 
+                        objectsCount: listResult.objects.length, 
+                        truncated: listResult.truncated,
+                        hasCursor: !!cursor
+                    });
+                    
                     for (const obj of listResult.objects) {
+                        totalChecked++;
+                        
                         // Only check thumbnail files
                         if (obj.key.includes('/thumbnails/')) {
+                            thumbnailFilesChecked++;
+                            console.log('[Thumbnail] Checking thumbnail file:', { 
+                                key: obj.key, 
+                                size: obj.size,
+                                checked: thumbnailFilesChecked
+                            });
+                            
                             // Get the object to check customMetadata
                             const testFile = await env.MODS_R2.get(obj.key);
                             if (testFile && testFile.customMetadata) {
                                 // Check if modId matches (handle both normalized and non-normalized)
                                 const metadataModId = testFile.customMetadata.modId;
-                                if (!metadataModId) continue;
+                                if (!metadataModId) {
+                                    console.log('[Thumbnail] File has no modId in customMetadata:', { key: obj.key });
+                                    continue;
+                                }
                                 
                                 const normalizedMetadataModId = normalizeModId(metadataModId);
+                                
+                                console.log('[Thumbnail] Comparing modIds:', {
+                                    key: obj.key,
+                                    metadataModId,
+                                    normalizedMetadataModId,
+                                    searchingFor: modIdVariants
+                                });
                                 
                                 // Check against all modId variants
                                 const matches = modIdVariants.some(variant => {
@@ -271,16 +300,41 @@ export async function handleThumbnail(
                                     });
                                     found = true;
                                     break;
+                                } else {
+                                    console.log('[Thumbnail] ModId mismatch:', {
+                                        key: obj.key,
+                                        metadataModId,
+                                        normalizedMetadataModId,
+                                        searchingFor: modIdVariants
+                                    });
                                 }
+                            } else {
+                                console.log('[Thumbnail] File has no customMetadata:', { key: obj.key, hasFile: !!testFile });
                             }
                         }
                     }
+                    
+                    console.log('[Thumbnail] Search iteration complete:', {
+                        totalChecked,
+                        thumbnailFilesChecked,
+                        found,
+                        truncated: listResult.truncated
+                    });
+                    
                     if (found) break;
                     cursor = listResult.truncated ? listResult.cursor : undefined;
                 } while (cursor && !found);
+                
+                console.log('[Thumbnail] R2 customMetadata search complete:', {
+                    found,
+                    totalChecked,
+                    thumbnailFilesChecked,
+                    finalCursor: cursor
+                });
             } catch (error) {
-                console.warn('[Thumbnail] Error searching R2 by customMetadata:', { 
+                console.error('[Thumbnail] Error searching R2 by customMetadata:', { 
                     error: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined,
                     modId: mod.modId 
                 });
             }
