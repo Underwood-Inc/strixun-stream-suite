@@ -1,10 +1,6 @@
 # URL Shortener Setup Guide
 
-> **Complete setup guide for URL Shortener Cloudflare Worker**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Quick Setup
 
@@ -46,8 +42,13 @@ preview_id = "YOUR_ANALYTICS_KV_PREVIEW_ID_HERE"  # Replace with actual ID
 
 ```bash
 # Set the JWT secret (use your actual secret)
+echo "4kImx5pe5LdZ76BCgHIQMdFoNP0hkbxqBCi7YBlm4e0=" | wrangler secret put JWT_SECRET
+```
+
+Or interactively:
+```bash
 wrangler secret put JWT_SECRET
-# When prompted, paste your JWT_SECRET value
+# When prompted, paste: 4kImx5pe5LdZ76BCgHIQMdFoNP0hkbxqBCi7YBlm4e0=
 ```
 
 ### 4. Install Dependencies (using pnpm)
@@ -69,8 +70,8 @@ wrangler deploy
 
 ### 6. Configure Custom Domain (Optional)
 
-1. Go to Cloudflare Dashboard → Workers & Pages → strixun-url-shortener
-2. Go to Settings → Triggers → Routes
+1. Go to Cloudflare Dashboard -> Workers & Pages -> strixun-url-shortener
+2. Go to Settings -> Triggers -> Routes
 3. Add custom domain route (e.g., `s.yourdomain.com/*` or `short.yourdomain.com/*`)
 4. Update DNS records as instructed by Cloudflare
 
@@ -88,8 +89,6 @@ window.getUrlShortenerApiUrl = function() {
 };
 ```
 
----
-
 ## Verification
 
 After deployment, test the service:
@@ -101,8 +100,6 @@ curl https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev/health
 # Should return:
 # {"status":"ok","service":"url-shortener","timestamp":"..."}
 ```
-
----
 
 ## Troubleshooting
 
@@ -118,25 +115,9 @@ curl https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev/health
 - Set `ALLOWED_ORIGINS` secret if needed: `wrangler secret put ALLOWED_ORIGINS`
 - Include your frontend domain in the comma-separated list
 
----
-
 ## Next Steps
 
 1. The URL shortener is now integrated into your Svelte app
 2. Users can access it from the navigation (tab X - "URL Shortener")
 3. It requires authentication via your OTP auth system
 4. Users can create, view, and delete short URLs
-
----
-
-## See Also
-
-- [URL Shortener README](./URL_SHORTENER_README.md) - Complete API documentation
-- [URL Shortener Secrets Setup](./URL_SHORTENER_SECRETS_SETUP.md) - Secrets configuration
-- [URL Shortener Encryption Setup](./URL_SHORTENER_ENCRYPTION_SETUP.md) - Encryption configuration
-- [URL Shortener Security Guide](./URL_SHORTENER_SECURITY_GUIDE.md) - Security best practices
-
----
-
-**Last Updated**: 2025-12-29
-

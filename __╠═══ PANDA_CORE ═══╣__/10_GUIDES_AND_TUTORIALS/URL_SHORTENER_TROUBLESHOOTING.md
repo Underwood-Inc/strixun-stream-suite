@@ -1,178 +1,128 @@
-# URL Shortener Troubleshooting Guide
+# Troubleshooting s.idling.app Not Working
 
-> **Common issues and solutions for URL Shortener**
+**Last Updated:** 2025-12-29
 
-**Date:** 2025-12-29
+## Step 1: Test workers.dev URL First
 
----
+Before troubleshooting the custom domain, verify the worker itself works:
 
-## Common Issues
+```bash
+# Test the workers.dev URL (should work)
+curl https://strixun-url-shortener.strixuns-script-suite.workers.dev/health
+```
 
-### Issue: "JWT_SECRET environment variable is required"
+**Expected response:**
+```json
+{"status":"ok","service":"url-shortener","timestamp":"..."}
+```
 
-**Symptoms:** Worker fails to start or authentication fails
+If this doesn't work, the worker itself has an issue.
 
-**Solutions:**
-1. Set the JWT_SECRET secret:
-   ```bash
-   cd serverless/url-shortener
-   wrangler secret put JWT_SECRET
-   ```
-2. Ensure it matches your OTP auth service's JWT_SECRET exactly
-3. Redeploy the worker after setting the secret
+## Step 2: Verify Route in Cloudflare Dashboard
 
----
+1. Go to **Cloudflare Dashboard** -> **Workers & Pages**
+2. Click **strixun-url-shortener**
+3. Go to **Settings** -> **Triggers** -> **Routes**
+4. Verify you see: `s.idling.app/*`
+5. Check that it shows as **Active** (not pending or error)
 
-### Issue: KV Namespace Not Found
+## Step 3: Verify DNS Record
 
-**Symptoms:** Worker errors about missing KV namespace
+1. Go to **Cloudflare Dashboard** -> **DNS** -> **Records**
+2. Look for a CNAME record:
+   - **Type**: CNAME
+   - **Name**: `s`
+   - **Target**: `strixun-url-shortener.strixuns-script-suite.workers.dev`
+   - **Proxy status**: Proxied (orange cloud) [SUCCESS]
 
-**Solutions:**
-1. Verify the namespace IDs in `wrangler.toml` are correct
-2. Check namespace exists: `wrangler kv namespace list`
-3. If missing, create it:
-   ```bash
-   wrangler kv namespace create "URL_SHORTENER_KV"
-   wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
-   ```
-4. Update `wrangler.toml` with the correct namespace IDs
+If the DNS record doesn't exist:
+1. Click **Add record**
+2. Type: `CNAME`
+3. Name: `s`
+4. Target: `strixun-url-shortener.strixuns-script-suite.workers.dev`
+5. Proxy status: **Proxied** (orange cloud)
+6. Click **Save**
 
----
+## Step 4: Check SSL Certificate
 
-### Issue: CORS Errors
+1. Go to **Cloudflare Dashboard** -> **SSL/TLS** -> **Overview**
+2. Verify SSL/TLS encryption mode is set to **Full** or **Full (strict)**
+3. Wait 1-2 minutes for SSL certificate to provision (automatic)
 
-**Symptoms:** Browser console shows CORS errors when making API requests
+## Step 5: Test DNS Resolution
 
-**Solutions:**
-1. Set `ALLOWED_ORIGINS` secret:
-   ```bash
-   wrangler secret put ALLOWED_ORIGINS
-   # Enter: https://s.idling.app,https://idling.app,https://www.idling.app
-   ```
-2. Include your frontend domain in the comma-separated list
-3. Ensure no trailing slashes in origins
-4. Redeploy after setting the secret
+```bash
+# Check if DNS resolves
+nslookup s.idling.app
 
----
+# Should return Cloudflare IPs (not the workers.dev domain)
+```
 
-### Issue: Custom Domain Not Working
-
-**Symptoms:** `s.idling.app` doesn't resolve or returns errors
-
-**Solutions:**
-1. Check DNS records in Cloudflare Dashboard
-2. Verify route is configured: Dashboard → Workers → strixun-url-shortener → Routes
-3. Wait a few minutes for DNS propagation
-4. Check SSL certificate is active: Dashboard → SSL/TLS → Overview
-5. Test workers.dev URL first: `https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev/health`
-
----
-
-### Issue: Authentication Fails
-
-**Symptoms:** OTP login doesn't work, returns 401 errors
-
-**Solutions:**
-1. Verify `JWT_SECRET` matches between URL shortener and OTP auth service
-2. Check that `auth.idling.app` is configured and working
-3. Verify JWT token is valid and not expired
-4. Check browser console for detailed error messages
-5. Check worker logs: `wrangler tail`
-
----
-
-### Issue: Encryption Key Not Found
-
-**Symptoms:** "OTP encryption key is required" error in browser console
-
-**Solutions:**
-1. Check `.env` file exists in `serverless/url-shortener/app/`
-2. Verify key starts with `VITE_` prefix: `VITE_SERVICE_ENCRYPTION_KEY`
-3. Rebuild the app: `pnpm build:app`
-4. Check browser console for errors
-5. Verify key is at least 32 characters
-
----
-
-### Issue: Short URL Redirect Not Working
-
-**Symptoms:** Clicking short URL doesn't redirect
-
-**Solutions:**
-1. Check that the short code exists in KV
-2. Verify the URL hasn't expired
-3. Check worker logs: `wrangler tail`
-4. Test the redirect endpoint directly:
-   ```bash
-   curl -I https://s.idling.app/YOUR_SHORT_CODE
-   ```
-
----
-
-### Issue: App Not Loading
-
-**Symptoms:** Blank page or JavaScript errors
-
-**Solutions:**
-1. Check browser console for errors
-2. Verify the app was built: `pnpm build:app`
-3. Check worker logs: `wrangler tail`
-4. Verify route is configured correctly
-5. Clear browser cache and try again
-
----
-
-## Debugging Commands
-
-### Check Worker Status
+## Step 6: Check Worker Logs
 
 ```bash
 cd serverless/url-shortener
 wrangler tail
 ```
 
-### Check Secrets
+Then try accessing `https://s.idling.app/health` in another terminal/browser.
 
-```bash
-wrangler secret list
-```
+**Look for:**
+- Any error messages
+- Whether requests are reaching the worker
+- Response status codes
 
-### Check KV Namespaces
+## Step 7: Common Issues
 
-```bash
-wrangler kv namespace list
-```
+### Issue: "Connection timeout" or "DNS_PROBE_FINISHED_NXDOMAIN"
+- **Cause**: DNS record not created or not proxied
+- **Fix**: Create CNAME record with proxy enabled (orange cloud)
 
-### Test Health Endpoint
+### Issue: "502 Bad Gateway" or "Worker not responding"
+- **Cause**: Route not active or worker error
+- **Fix**: Check route is active in dashboard, check worker logs
 
-```bash
-curl https://s.idling.app/health
-# Or
-curl https://strixun-url-shortener.YOUR_SUBDOMAIN.workers.dev/health
-```
+### Issue: "SSL Certificate Error"
+- **Cause**: SSL not provisioned yet
+- **Fix**: Wait 1-2 minutes, check SSL/TLS settings
 
-### Test API Endpoint
+### Issue: Works on workers.dev but not custom domain
+- **Cause**: Route or DNS misconfiguration
+- **Fix**: Verify route pattern matches exactly: `s.idling.app/*` (with the `/*`)
 
-```bash
-curl -X POST https://s.idling.app/api/create \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com"}'
-```
+## Step 8: Verify Route Pattern
 
----
+The route pattern must be **exactly**: `s.idling.app/*`
 
-## Getting Help
+Common mistakes:
+- [ERROR] `s.idling.app` (missing `/*`)
+- [ERROR] `s.idling.app/` (missing `*`)
+- [SUCCESS] `s.idling.app/*` (correct)
 
-If you're still experiencing issues:
+## Step 9: Force Route Update
 
-1. Check worker logs: `wrangler tail`
-2. Check browser console for client-side errors
-3. Verify all secrets are set correctly
-4. Verify DNS and routes are configured
-5. Review [URL Shortener README](../07_SERVICES/URL_SHORTENER_README.md) for complete documentation
+If route exists but not working:
 
----
+1. **Remove the route** in dashboard
+2. Wait 30 seconds
+3. **Add it back**: `s.idling.app/*`
+4. Wait 1-2 minutes
+5. Test again
 
-**Last Updated**: 2025-12-29
+## Step 10: Check Browser Console
 
+Open browser DevTools (F12) -> Console tab, then visit `https://s.idling.app/health`
+
+Look for:
+- Network errors
+- CORS errors
+- SSL errors
+- Any JavaScript errors
+
+## Still Not Working?
+
+1. **Clear browser cache** and try again
+2. **Try incognito/private mode**
+3. **Test from different network** (mobile data, different WiFi)
+4. **Check if other subdomains work** (e.g., `auth.idling.app`)
+5. **Verify worker deployment**: `wrangler deployments list`

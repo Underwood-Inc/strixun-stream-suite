@@ -112,9 +112,15 @@ All documentation is being consolidated into 12 main categories:
 | `serverless/otp-auth-service/README.md` | `07_SERVICES/OTP_AUTH_SERVICE_README.md` | ✅ Consolidated |
 | `serverless/url-shortener/README.md` | `07_SERVICES/URL_SHORTENER_README.md` | ✅ Consolidated |
 | `serverless/chat-signaling/README.md` | `07_SERVICES/CHAT_SIGNALING_README.md` | ✅ Consolidated |
+| `serverless/mods-api/SETUP.md` | `07_SERVICES/MODS_API_SETUP.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/SETUP_LOCAL_DEV.md` | `07_SERVICES/OTP_AUTH_SERVICE_SETUP.md` | ✅ Consolidated |
+| `serverless/url-shortener/SETUP.md` | `07_SERVICES/URL_SHORTENER_SETUP.md` | ✅ Consolidated |
+| `serverless/mods-api/SECURITY_AUDIT.md` | `05_SECURITY/MODS_API_SECURITY_AUDIT.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/SECURITY_AUDIT.md` | `05_SECURITY/OTP_AUTH_SECURITY_AUDIT.md` | ✅ Consolidated |
+| `serverless/url-shortener/SECURITY_GUIDE.md` | `05_SECURITY/URL_SHORTENER_SECURITY.md` | ✅ Consolidated |
 | All other `serverless/*/README.md` | `07_SERVICES/[service-name]_README.md` | ⏳ Pending |
-| All `serverless/*/SETUP.md` | `07_SERVICES/[service-name]_SETUP.md` | ⏳ Pending |
-| All `serverless/*/SECURITY*.md` | `07_SERVICES/[service-name]_SECURITY.md` | ⏳ Pending |
+| All other `serverless/*/SETUP.md` | `07_SERVICES/[service-name]_SETUP.md` | ⏳ Pending |
+| All other `serverless/*/SECURITY*.md` | `05_SECURITY/[service-name]_SECURITY.md` | ⏳ Pending |
 | `serverless/CORS_CONFIGURATION_GUIDE.md` + `serverless/CORS_QUICK_REFERENCE.md` | `10_GUIDES_AND_TUTORIALS/CORS_CONFIGURATION_GUIDE.md` | ✅ Consolidated |
 | `serverless/CUSTOM_DOMAIN_SETUP.md` | `04_DEPLOYMENT/CUSTOM_DOMAIN_SETUP.md` | ✅ Consolidated |
 | `serverless/ENCRYPTION_GUIDE.md` | `05_SECURITY/CLOUD_STORAGE_ENCRYPTION_GUIDE.md` | ✅ Consolidated |
@@ -133,9 +139,9 @@ All documentation is being consolidated into 12 main categories:
 ## Consolidation Progress
 
 - **Total Files**: 300+
-- **Consolidated**: ~16
-- **Pending**: ~284
-- **Progress**: ~5%
+- **Consolidated**: ~46
+- **Pending**: ~254
+- **Progress**: ~15%
 
 ---
 

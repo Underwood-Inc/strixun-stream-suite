@@ -1,10 +1,6 @@
 # Mods API Setup Guide
 
-> **Complete setup guide for Mods API Cloudflare Worker**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Prerequisites
 
@@ -26,8 +22,6 @@
    wrangler login
    ```
 
----
-
 ## Setup Steps
 
 ### 1. Create KV Namespace
@@ -41,8 +35,8 @@ wrangler kv namespace create "MODS_KV"
 
 Example output:
 ```
-[SUCCESS] Creating namespace with title "MODS_KV"
-✨  Success!
+[INFO] Creating namespace with title "MODS_KV"
+[SUCCESS] Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "MODS_KV", id = "abc123def456..." }
 ```
@@ -90,12 +84,10 @@ wrangler deploy
 
 ### 6. Configure Custom Domain (Optional)
 
-1. Go to Cloudflare Dashboard → Workers & Pages → strixun-mods-api
-2. Go to Settings → Triggers → Routes
-3. Add custom domain route: `mods-api.idling.app/*`
+1. Go to Cloudflare Dashboard -> Workers & Pages -> strixun-mods-api
+2. Go to Settings -> Triggers -> Routes
+3. Add custom domain route: `mods.idling.app/*`
 4. DNS records are automatically managed by Cloudflare
-
----
 
 ## Verification
 
@@ -108,8 +100,6 @@ curl https://mods-api.idling.app/health
 # Should return:
 # {"status":"ok","message":"Mods API is running",...}
 ```
-
----
 
 ## Troubleshooting
 
@@ -134,8 +124,6 @@ If you get `Please enable R2 through the Cloudflare Dashboard`:
 - The `JWT_SECRET` must match the one used in your OTP auth service
 - Check your OTP auth service's `wrangler.toml` or secrets to ensure they match
 
----
-
 ## Development
 
 For local development:
@@ -145,8 +133,6 @@ pnpm dev
 ```
 
 This will start a local development server with hot reloading.
-
----
 
 ## Production Deployment
 
@@ -162,16 +148,3 @@ Make sure to set all secrets for production as well:
 wrangler secret put JWT_SECRET --env production
 wrangler secret put ALLOWED_ORIGINS --env production
 ```
-
----
-
-## See Also
-
-- [Mods API README](./MODS_API_README.md) - Complete API documentation
-- [File Integrity System](./FILE_INTEGRITY_SYSTEM.md) - File integrity verification
-- [Environment Setup Guide](../01_GETTING_STARTED/ENVIRONMENT_SETUP.md) - Environment variables
-
----
-
-**Last Updated**: 2025-12-29
-

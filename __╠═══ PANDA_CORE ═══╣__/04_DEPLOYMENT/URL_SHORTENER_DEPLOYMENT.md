@@ -1,10 +1,6 @@
 # URL Shortener Deployment Guide
 
-> **Quick deployment guide for URL Shortener**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Quick Deploy
 
@@ -15,9 +11,7 @@ cd serverless/url-shortener
 wrangler deploy
 ```
 
-That's it!
-
----
+That's it! [SUCCESS]
 
 ## What This Does
 
@@ -27,8 +21,6 @@ That's it!
 4. **Keeps redirects** working at `https://s.idling.app/:shortCode`
 5. **Health check** still available at `https://s.idling.app/health`
 
----
-
 ## After Deployment
 
 Users can now:
@@ -36,8 +28,6 @@ Users can now:
 - Authenticate with OTP (no main app required)
 - Create, view, and manage short URLs
 - All functionality works standalone!
-
----
 
 ## Verification
 
@@ -51,8 +41,6 @@ curl https://s.idling.app/health
 open https://s.idling.app
 ```
 
----
-
 ## Notes
 
 - The Svelte app is built and bundled into the worker assets
@@ -60,16 +48,9 @@ open https://s.idling.app
 - The HTML uses your existing API URLs (`auth.idling.app` and `s.idling.app`)
 - Token persistence works via localStorage
 
----
-
 ## Troubleshooting
 
 If the page doesn't load:
 1. Check that the worker deployed successfully: `wrangler tail`
-2. Verify the route is configured: Cloudflare Dashboard → Workers → strixun-url-shortener → Routes
+2. Verify the route is configured: Cloudflare Dashboard -> Workers -> strixun-url-shortener -> Routes
 3. Check browser console for any JavaScript errors
-
----
-
-**Last Updated**: 2025-12-29
-

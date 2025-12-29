@@ -1,57 +1,103 @@
 # API Framework Usage Audit
 
-> **Audit of API framework usage across all services and frontend applications**
-
-**Date:** 2025-12-29  
-**Status**: ✅ **All critical issues fixed**
-
----
+**Date**: 2024-12-19  
+**Last Updated:** 2025-12-29
+**Status**: [ERROR] **Multiple projects NOT using API framework correctly**
 
 ## Summary
 
-Several projects were using manual `fetch()` calls or only partially using the API framework. All projects should use the shared API framework for:
-
-- ✅ HTTPS enforcement (secureFetch)
-- ✅ Encryption/decryption
-- ✅ Automatic retry, circuit breaker, queuing
-- ✅ Consistent error handling
-- ✅ CORS handling
-
----
-
-## ✅ Projects Using API Framework Correctly
-
-### 1. **Mods Hub Frontend** ✅
-**Location**: `mods-hub/src/`  
-**Status**: ✅ **FIXED** - Now using `createAPIClient` for all API calls
-- `mods-hub/src/stores/auth.ts` - Uses `createAPIClient`
-- `mods-hub/src/services/api.ts` - Uses `createAPIClient`
-- `mods-hub/src/pages/LoginPage.tsx` - Uses `createAPIClient`
+Several projects are using manual `fetch()` calls or only partially using the API framework. All projects should use the shared API framework for:
+- [SUCCESS] HTTPS enforcement (secureFetch)
+- [SUCCESS] Encryption/decryption
+- [SUCCESS] Automatic retry, circuit breaker, queuing
+- [SUCCESS] Consistent error handling
+- [SUCCESS] CORS handling
 
 ---
 
-## ✅ Completed Work
+## [ERROR] Projects NOT Using API Framework Correctly
 
-All **critical** issues have been fixed:
-- ✅ All frontend API clients now use `createAPIClient` from the framework
-- ✅ All service-to-service clients now use `createAPIClient` from the framework
-- ✅ HTTPS enforcement, retry, circuit breaker, encryption all handled automatically
+### 1. **OTP Auth Service Dashboard** [ERROR]
+**Location**: `serverless/otp-auth-service/dashboard/src/lib/api-client.ts`  
+**Issue**: Using manual `fetch()` instead of `createAPIClient`  
+**Impact**: No HTTPS enforcement, no automatic retry, no encryption handling
 
-### Fixed Issues
+**Current Code:**
+```typescript
+private async request(endpoint: string, options: RequestInit): Promise<Response> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const response = await fetch(url, config); // [ERROR] Manual fetch
+    // ...
+}
+```
 
-1. ✅ **OTP Auth Service Dashboard** - Fixed (`dashboard/src/lib/api-client.ts`)
-2. ✅ **OTP Auth Service Dashboard** - Fixed (`src/dashboard/lib/api-client.ts`)
-3. ✅ **OTP Auth Service Utils** - Fixed (`utils/customer-api-client.ts`)
-4. ✅ **OTP Auth Service Utils** - Fixed (`utils/customer-api-service-client.ts`)
+**Should Use:**
+```typescript
+import { createAPIClient } from '@strixun/api-framework/client';
+
+const api = createAPIClient({
+    baseURL: API_BASE_URL,
+    // Framework handles HTTPS, retry, encryption automatically
+});
+```
+
+**Also Check**: `serverless/otp-auth-service/src/dashboard/lib/api-client.ts` (likely same issue)
 
 ---
 
-## 📝 Remaining Work (Optimization, Not Critical)
+### 2. **OTP Auth Service Utils - Customer API Client** [ERROR]
+**Location**: `serverless/otp-auth-service/utils/customer-api-client.ts`  
+**Issue**: Using manual `fetch()` instead of API framework client  
+**Impact**: No HTTPS enforcement, no automatic retry, manual encryption handling
 
-The remaining items are optimizations to use `createCORSMiddleware` instead of manual `createCORSHeaders` calls. These workers are already using framework utilities, just not the middleware pattern. This is a code quality improvement, not a functional issue.
+**Current Code:**
+```typescript
+async function makeCustomerApiRequest(...): Promise<Response> {
+    return fetch(url, options); // [ERROR] Manual fetch
+}
+```
 
-### Workers Using Framework Utilities (Partial Usage)
+**Should Use:**
+```typescript
+import { createAPIClient } from '@strixun/api-framework/client';
 
+const customerApi = createAPIClient({
+    baseURL: getCustomerApiUrl(env),
+    // Framework handles HTTPS, retry, encryption automatically
+});
+```
+
+---
+
+### 3. **OTP Auth Service Utils - Customer API Service Client** [ERROR]
+**Location**: `serverless/otp-auth-service/utils/customer-api-service-client.ts`  
+**Issue**: Using manual `fetch()` for service-to-service calls  
+**Impact**: No HTTPS enforcement, no automatic retry
+
+**Current Code:**
+```typescript
+async function makeServiceRequest(...): Promise<Response> {
+    const response = await fetch(url, options); // [ERROR] Manual fetch
+    // ...
+}
+```
+
+**Should Use:**
+```typescript
+import { createAPIClient } from '@strixun/api-framework/client';
+
+const serviceApi = createAPIClient({
+    baseURL: getCustomerApiUrl(env),
+    defaultHeaders: {
+        'X-Service-Key': env.SERVICE_API_KEY,
+    },
+    // Framework handles HTTPS, retry automatically
+});
+```
+
+---
+
+### 4. **Workers - Partial Framework Usage** [WARNING]
 **Locations**:
 - `serverless/twitch-api/worker.ts`
 - `serverless/chat-signaling/worker.ts`
@@ -60,7 +106,10 @@ The remaining items are optimizations to use `createCORSMiddleware` instead of m
 - `serverless/customer-api/worker.ts`
 - `serverless/mods-api/worker.ts`
 
-**Current Pattern**:
+**Issue**: Using `createCORSHeaders` but NOT using `createWorkerHandler`  
+**Impact**: Missing automatic CORS preflight handling, error handling, and other framework benefits
+
+**Current Pattern:**
 ```typescript
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -75,7 +124,7 @@ export default {
 };
 ```
 
-**Recommended Pattern** (Future Optimization):
+**Should Use:**
 ```typescript
 import { createWorkerHandler } from '@strixun/api-framework/enhanced';
 
@@ -90,30 +139,41 @@ export default createWorkerHandler(
 );
 ```
 
-**Benefits**:
-- ✅ Automatic CORS preflight handling
-- ✅ Automatic error handling with RFC 7807 format
-- ✅ Consistent response formatting
-- ✅ Better type safety
+**Benefits:**
+- [SUCCESS] Automatic CORS preflight handling
+- [SUCCESS] Automatic error handling with RFC 7807 format
+- [SUCCESS] Consistent response formatting
+- [SUCCESS] Better type safety
+
+---
+
+## [SUCCESS] Projects Using API Framework Correctly
+
+### 1. **Mods Hub Frontend** [SUCCESS]
+**Location**: `mods-hub/src/`  
+**Status**: [SUCCESS] **FIXED** - Now using `createAPIClient` for all API calls
+- `mods-hub/src/stores/auth.ts` - Uses `createAPIClient`
+- `mods-hub/src/services/api.ts` - Uses `createAPIClient`
+- `mods-hub/src/pages/LoginPage.tsx` - Uses `createAPIClient`
 
 ---
 
 ## Migration Priority
 
-### High Priority (Frontend Clients) ✅ COMPLETED
-1. ✅ **OTP Auth Service Dashboard** - User-facing, needs HTTPS enforcement
-2. ✅ **OTP Auth Service Utils** - Service-to-service calls, needs reliability
+### High Priority (Frontend Clients)
+1. **OTP Auth Service Dashboard** - User-facing, needs HTTPS enforcement
+2. **OTP Auth Service Utils** - Service-to-service calls, needs reliability
 
-### Medium Priority (Workers) - Optional Optimization
+### Medium Priority (Workers)
 3. **All Workers** - Migrate to `createWorkerHandler` for consistency and automatic features
 
 ---
 
 ## Migration Steps
 
-### For Frontend Clients ✅ COMPLETED
+### For Frontend Clients
 
-1. ✅ **Replace manual fetch with createAPIClient**:
+1. **Replace manual fetch with createAPIClient**:
 ```typescript
 // Before
 const response = await fetch(url, options);
@@ -124,11 +184,13 @@ const api = createAPIClient({ baseURL: API_BASE_URL });
 const response = await api.get('/endpoint');
 ```
 
-2. ✅ **Remove manual HTTPS checks** - Framework handles this automatically
-3. ✅ **Remove manual retry logic** - Framework handles this automatically
-4. ✅ **Use framework encryption** - Framework handles encryption/decryption automatically
+2. **Remove manual HTTPS checks** - Framework handles this automatically
 
-### For Workers (Future Optimization)
+3. **Remove manual retry logic** - Framework handles this automatically
+
+4. **Use framework encryption** - Framework handles encryption/decryption automatically
+
+### For Workers
 
 1. **Replace manual fetch handler with createWorkerHandler**:
 ```typescript
@@ -157,6 +219,7 @@ export default createWorkerHandler(
 ```
 
 2. **Remove manual CORS handling** - Framework handles this automatically
+
 3. **Remove manual error handling** - Framework provides RFC 7807 error format
 
 ---
@@ -181,16 +244,22 @@ export default createWorkerHandler(
 - [x] Fix OTP Auth Service Dashboard (`src/dashboard/lib/api-client.ts`) - **COMPLETED**
 - [x] Fix OTP Auth Service Utils (`utils/customer-api-client.ts`) - **COMPLETED**
 - [x] Fix OTP Auth Service Utils (`utils/customer-api-service-client.ts`) - **COMPLETED**
+- [ ] Migrate `twitch-api/worker.ts` to use `createCORSMiddleware` (currently uses `createCORSHeaders` manually)
+- [x] `chat-signaling/worker.ts` - **ALREADY USING** `createCORSMiddleware` [SUCCESS]
+- [x] `url-shortener/worker.ts` - **ALREADY USING** `createCORSMiddleware` [SUCCESS]
+- [ ] Migrate `game-api/worker.ts` to use `createCORSMiddleware` (currently uses `createCORSHeaders` manually)
+- [ ] Migrate `customer-api/worker.ts` to use `createCORSMiddleware` (currently uses `createCORSHeaders` manually)
+- [ ] Migrate `mods-api/worker.ts` to use `createCORSMiddleware` (currently uses `createCORSHeaders` manually)
 - [x] Verify all frontend clients use framework correctly - **COMPLETED**
-- [ ] Migrate `twitch-api/worker.ts` to use `createCORSMiddleware` (optional optimization)
-- [x] `chat-signaling/worker.ts` - **ALREADY USING** `createCORSMiddleware` ✅
-- [x] `url-shortener/worker.ts` - **ALREADY USING** `createCORSMiddleware` ✅
-- [ ] Migrate `game-api/worker.ts` to use `createCORSMiddleware` (optional optimization)
-- [ ] Migrate `customer-api/worker.ts` to use `createCORSMiddleware` (optional optimization)
-- [ ] Migrate `mods-api/worker.ts` to use `createCORSMiddleware` (optional optimization)
 - [ ] Update documentation
 
----
+## Completed Work
 
-**Last Updated**: 2025-12-29
+All **critical** issues have been fixed:
+- [SUCCESS] All frontend API clients now use `createAPIClient` from the framework
+- [SUCCESS] All service-to-service clients now use `createAPIClient` from the framework
+- [SUCCESS] HTTPS enforcement, retry, circuit breaker, encryption all handled automatically
 
+## Remaining Work (Optimization, Not Critical)
+
+The remaining items are optimizations to use `createCORSMiddleware` instead of manual `createCORSHeaders` calls. These workers are already using framework utilities, just not the middleware pattern. This is a code quality improvement, not a functional issue.

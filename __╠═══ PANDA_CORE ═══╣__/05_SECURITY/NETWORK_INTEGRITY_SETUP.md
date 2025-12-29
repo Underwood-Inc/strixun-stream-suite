@@ -1,37 +1,29 @@
 # Network Integrity Keyphrase Setup
 
-> **Complete guide for setting up network integrity verification**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## What is NETWORK_INTEGRITY_KEYPHRASE?
 
 `NETWORK_INTEGRITY_KEYPHRASE` is a **security feature** that provides cryptographic integrity verification for all network requests and responses between services. It uses HMAC-SHA256 signatures to:
 
-- ✅ Detect tampering with request/response data
-- ✅ Prevent MITM (Man-in-the-Middle) attacks
-- ✅ Verify data integrity across service boundaries
-- ✅ Automatically validate all API calls
+- [SUCCESS] Detect tampering with request/response data
+- [SUCCESS] Prevent MITM (Man-in-the-Middle) attacks
+- [SUCCESS] Verify data integrity across service boundaries
+- [SUCCESS] Automatically validate all API calls
 
 **The warnings you're seeing are normal in development** - the system falls back to a dev keyphrase. In production, you **must** set a proper keyphrase.
-
----
 
 ## Which Services Need This?
 
 All services that use `ServiceClient` need this keyphrase:
 
-- ✅ `otp-auth-service` (when calling customer-api)
-- ✅ `customer-api` (when receiving requests from otp-auth-service)
-- ✅ `mods-api` (if it uses ServiceClient)
-- ✅ `game-api` (if it uses ServiceClient)
-- ✅ Any other service using the shared ServiceClient
+- [SUCCESS] `otp-auth-service` (when calling customer-api)
+- [SUCCESS] `customer-api` (when receiving requests from otp-auth-service)
+- [SUCCESS] `mods-api` (if it uses ServiceClient)
+- [SUCCESS] `game-api` (if it uses ServiceClient)
+- [SUCCESS] Any other service using the shared ServiceClient
 
 **Important**: All services that communicate with each other **must use the same keyphrase**.
-
----
 
 ## Setup Steps
 
@@ -75,14 +67,14 @@ wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
 # Repeat for any other services using ServiceClient
 ```
 
-**⚠️ CRITICAL**: All services must use the **same keyphrase** or integrity checks will fail!
+**[WARNING] CRITICAL**: All services must use the **same keyphrase** or integrity checks will fail!
 
 ### Step 3: Set in GitHub Secrets (For CI/CD)
 
 If you're using GitHub Actions for deployment, add the keyphrase as a repository secret:
 
 1. Go to your GitHub repository
-2. Settings → Secrets and variables → Actions
+2. Settings -> Secrets and variables -> Actions
 3. Click "New repository secret"
 4. Name: `NETWORK_INTEGRITY_KEYPHRASE`
 5. Value: Your keyphrase (same one used in Cloudflare Workers)
@@ -128,8 +120,6 @@ NETWORK_INTEGRITY_KEYPHRASE=your-keyphrase-here
 
 **Note**: `.dev.vars` is automatically loaded by `wrangler dev` but is gitignored.
 
----
-
 ## Verify Setup
 
 ### Check Secrets in Cloudflare Workers
@@ -152,8 +142,6 @@ After setting the keyphrase, the warnings should disappear. You can verify by:
 1. **Check logs**: The warnings should stop appearing
 2. **Test API calls**: Make a request between services - it should work without warnings
 3. **Verify headers**: Check that `X-Strixun-Request-Integrity` headers are present
-
----
 
 ## Troubleshooting
 
@@ -184,18 +172,14 @@ If deploying via GitHub Actions:
 3. **Secrets persist**: Once set, secrets persist across deployments
 4. **Environment-specific**: Set secrets for each environment (production, staging, etc.)
 
----
-
 ## Security Best Practices
 
-1. ✅ **Use a strong keyphrase**: 32+ characters, random
-2. ✅ **Same keyphrase across services**: All communicating services must match
-3. ✅ **Store securely**: Use a password manager or secure vault
-4. ✅ **Rotate periodically**: Change the keyphrase periodically (requires updating all services)
-5. ✅ **Never commit to git**: Keep keyphrases out of version control
-6. ✅ **Use different keyphrases per environment**: Dev, staging, production should have different keyphrases
-
----
+1. [SUCCESS] **Use a strong keyphrase**: 32+ characters, random
+2. [SUCCESS] **Same keyphrase across services**: All communicating services must match
+3. [SUCCESS] **Store securely**: Use a password manager or secure vault
+4. [SUCCESS] **Rotate periodically**: Change the keyphrase periodically (requires updating all services)
+5. [SUCCESS] **Never commit to git**: Keep keyphrases out of version control
+6. [SUCCESS] **Use different keyphrases per environment**: Dev, staging, production should have different keyphrases
 
 ## Quick Reference
 
@@ -214,19 +198,17 @@ echo "your-keyphrase-here" | wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
 wrangler secret list
 
 # Set in GitHub Secrets
-# Go to: Repository → Settings → Secrets and variables → Actions
+# Go to: Repository -> Settings -> Secrets and variables -> Actions
 # Add: NETWORK_INTEGRITY_KEYPHRASE = your-keyphrase-here
 ```
-
----
 
 ## Summary
 
 **For Production:**
-1. ✅ Generate a strong keyphrase (32+ chars)
-2. ✅ Set via `wrangler secret put NETWORK_INTEGRITY_KEYPHRASE` in all services
-3. ✅ Use the **same keyphrase** across all communicating services
-4. ✅ Add to GitHub Secrets for CI/CD (if using GitHub Actions)
+1. [SUCCESS] Generate a strong keyphrase (32+ chars)
+2. [SUCCESS] Set via `wrangler secret put NETWORK_INTEGRITY_KEYPHRASE` in all services
+3. [SUCCESS] Use the **same keyphrase** across all communicating services
+4. [SUCCESS] Add to GitHub Secrets for CI/CD (if using GitHub Actions)
 
 **For Development:**
 - Warnings are normal - the system uses a dev fallback
@@ -234,8 +216,3 @@ wrangler secret list
 - Or ignore warnings in dev (they won't affect functionality)
 
 The warnings you're seeing are **expected in development** and won't affect functionality. For production, just set the secret in all services and the warnings will disappear.
-
----
-
-**Last Updated**: 2025-12-29
-

@@ -1,21 +1,16 @@
 # Upload File Size Limits Configuration
 
-> **Complete guide for configuring upload file size limits across all services**
+This document describes the configurable upload file size limits implemented across all upload endpoints in the project.
 
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Overview
 
 All upload file size limits are now centralized in the **shared API framework** (`@strixun/api-framework`), providing:
-
 - **Base default limit of 10 MB** for all uploads
 - **Service-specific overrides** for services that need higher limits
 - **Automatic validation utilities** available to all services
 - **Consistent error handling** across all services
-
----
 
 ## Architecture
 
@@ -34,8 +29,6 @@ Each service can:
 1. Use the base 10 MB limit (default)
 2. Override specific limits for their use case
 3. Import validation utilities from the shared framework
-
----
 
 ## Current Limits
 
@@ -64,8 +57,6 @@ Each service can:
   - Applied to: Cloud save uploads in `handlers/cloud-storage.js`
   - Note: Cloudflare KV has a 25MB limit, but we use 10MB for safety
   - This applies to JSON stringified save data
-
----
 
 ## How to Change Limits
 
@@ -148,8 +139,6 @@ if (!sizeValidation.valid) {
 }
 ```
 
----
-
 ## Implementation Details
 
 ### Validation
@@ -174,8 +163,6 @@ The `formatFileSize()` utility function automatically formats file sizes:
 - Megabytes: `100.0 MB`
 - Gigabytes: `1.5 GB`
 
----
-
 ## Updated Handlers
 
 The following handlers have been updated to use the configurable limits:
@@ -191,8 +178,6 @@ The following handlers have been updated to use the configurable limits:
 3. **Twitch API**:
    - `handlers/cloud-storage.js` - Cloud save uploads (10 MB)
 
----
-
 ## Thumbnail Format Support
 
 Thumbnails support the following image formats:
@@ -206,8 +191,6 @@ All thumbnail uploads are validated for:
 - Image format (must be one of the supported formats)
 - Image integrity (valid image headers)
 
----
-
 ## Notes
 
 - Limits apply to the **encrypted file size** (as received from client) for mod/version uploads
@@ -216,16 +199,12 @@ All thumbnail uploads are validated for:
 - Cloud save limits apply to the JSON stringified save data size
 - The base 10 MB limit ensures that only services with explicit overrides (like mods-api) can exceed it
 
----
-
 ## TypeScript Note
 
 If you see TypeScript errors about missing exports from `@strixun/api-framework` after adding new exports, you may need to:
 1. Rebuild the TypeScript project
 2. Restart your TypeScript language server
 3. The runtime code will work correctly even if TypeScript shows errors until types are regenerated
-
----
 
 ## Testing
 
@@ -236,8 +215,3 @@ After modifying limits, test the following:
 4. Verify error messages display correct size information
 5. Verify that services using base limit (10 MB) are enforced correctly
 6. Verify that services with overrides (like mods-api with 35 MB) work correctly
-
----
-
-**Last Updated**: 2025-12-29
-
