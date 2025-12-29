@@ -26,7 +26,7 @@ const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev'
 // Only run integration tests when USE_LIVE_API is set
 const USE_LIVE_API = process.env.USE_LIVE_API === 'true';
 const AUTH_API_URL = process.env.AUTH_API_URL || (testEnv === 'dev' 
-    ? 'https://strixun-otp-auth-service.strixuns-script-suite.workers.dev'
+    ? 'https://otp-auth-service-dev.strixuns-script-suite.workers.dev'
     : 'https://auth.idling.app');
 
 describe.skipIf(!USE_LIVE_API)(`Service Integration Tests (Live API) [${testEnv}]`, () => {

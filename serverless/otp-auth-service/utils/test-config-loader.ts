@@ -57,8 +57,8 @@ export function loadTestConfig(environment: 'dev' | 'prod' = 'dev'): TestConfig 
     process.env.CUSTOMER_API_URL ||
     tomlConfig?.integration?.customer_api_url ||
     (environment === 'prod' 
-      ? 'https://customer.idling.app' 
-      : 'https://strixun-customer-api.strixuns-script-suite.workers.dev');
+      ? 'https://customer-api.idling.app' 
+      : 'https://strixun-customer-api-dev.strixuns-script-suite.workers.dev');
   
   const serviceApiKey = 
     process.env.SERVICE_API_KEY ||
