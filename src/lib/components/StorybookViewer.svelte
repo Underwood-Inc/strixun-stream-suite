@@ -148,7 +148,7 @@
     >
       <div class="storybook-viewer-header">
         <div class="storybook-viewer-title">
-          <span class="storybook-viewer-icon">[DOCS]</span>
+          <span class="storybook-viewer-icon">📚</span>
           <span>Storybook: {componentName}</span>
         </div>
         <div class="storybook-viewer-actions">
@@ -157,7 +157,7 @@
             on:click={handleOpenInNewTab}
             title="Open in new tab"
           >
-            <span>[LINK]</span>
+            <span>🔗</span>
             <span>Open in Tab</span>
           </button>
           <button
@@ -165,7 +165,7 @@
             on:click={handleClose}
             title="Close (Esc)"
           >
-            [EMOJI]
+            ❓
           </button>
         </div>
       </div>

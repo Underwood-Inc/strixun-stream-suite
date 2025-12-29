@@ -210,10 +210,10 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant User as [USER] User
-    participant Browser as [WEB] Browser
-    participant Worker as [EMOJI][EMOJI] Cloudflare Worker
-    participant Storage as [EMOJI] R2/KV
+    participant User as 👤 User
+    participant Browser as 🌐 Browser
+    participant Worker as ❓❓ Cloudflare Worker
+    participant Storage as ❓ R2/KV
     
     Note over User,Storage: Upload (Client-Side Processing)
     User->>Browser: Select File (100 MB)

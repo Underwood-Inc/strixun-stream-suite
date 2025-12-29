@@ -154,7 +154,7 @@ window.getWorkerApiUrl = function() {
     if (HARDCODED_WORKER_URL && !HARDCODED_WORKER_URL.includes('UPDATE-ME')) {
         if (!apiUrlLogged) {
             console.log('[Config] Using hardcoded Worker URL:', HARDCODED_WORKER_URL);
-            console.warn('[Config] [WARNING] Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
+            console.warn('[Config] ⚠️ Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
             apiUrlLogged = true;
         }
         cachedApiUrl = HARDCODED_WORKER_URL;
@@ -163,10 +163,10 @@ window.getWorkerApiUrl = function() {
     
     // Priority 4: No configuration available
     if (!apiUrlLogged) {
-        console.error('[Config] [ERROR] No API server configured!');
+        console.error('[Config] ❌ No API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_WORKER_URL in config.js with your actual Worker URL');
-        console.log('  2. OR manually configure in Setup [EMOJI] Twitch API Settings');
+        console.log('  2. OR manually configure in Setup ❓ Twitch API Settings');
         console.log('  3. OR add WORKER_URL to GitHub Secrets for auto-injection');
         apiUrlLogged = true;
     }
@@ -226,7 +226,7 @@ window.getUrlShortenerApiUrl = function() {
     if (HARDCODED_URL_SHORTENER_URL && !HARDCODED_URL_SHORTENER_URL.includes('UPDATE-ME')) {
         if (!urlShortenerApiUrlLogged) {
             console.log('[Config] Using hardcoded URL Shortener Worker URL:', HARDCODED_URL_SHORTENER_URL);
-            console.log('[Config] [SUCCESS] Using custom domain: s.idling.app');
+            console.log('[Config] ✅ Using custom domain: s.idling.app');
             urlShortenerApiUrlLogged = true;
         }
         cachedUrlShortenerApiUrl = HARDCODED_URL_SHORTENER_URL;
@@ -235,7 +235,7 @@ window.getUrlShortenerApiUrl = function() {
     
     // Priority 4: No configuration available
     if (!urlShortenerApiUrlLogged) {
-        console.error('[Config] [ERROR] No URL shortener API server configured!');
+        console.error('[Config] ❌ No URL shortener API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_URL_SHORTENER_URL in config.js with your actual Worker URL');
         console.log('  2. OR manually configure in localStorage (url_shortener_api_server)');
@@ -298,7 +298,7 @@ window.getOtpAuthApiUrl = function() {
     if (HARDCODED_OTP_AUTH_URL && !HARDCODED_OTP_AUTH_URL.includes('UPDATE-ME')) {
         if (!otpAuthApiUrlLogged) {
             console.log('[Config] Using hardcoded OTP Auth Worker URL:', HARDCODED_OTP_AUTH_URL);
-            console.log('[Config] [SUCCESS] Using custom domain: auth.idling.app');
+            console.log('[Config] ✅ Using custom domain: auth.idling.app');
             otpAuthApiUrlLogged = true;
         }
         cachedOtpAuthApiUrl = HARDCODED_OTP_AUTH_URL;
@@ -307,7 +307,7 @@ window.getOtpAuthApiUrl = function() {
     
     // Priority 4: No configuration available
     if (!otpAuthApiUrlLogged) {
-        console.error('[Config] [ERROR] No OTP auth API server configured!');
+        console.error('[Config] ❌ No OTP auth API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_OTP_AUTH_URL in config.js with your actual Worker URL');
         console.log('  2. OR manually configure in localStorage (otp_auth_api_server)');
@@ -342,7 +342,7 @@ window.testWorkerApi = async function() {
         return {
             success: false,
             error: 'No API server configured',
-            message: 'Configure API server URL in Setup [EMOJI] Twitch API Settings'
+            message: 'Configure API server URL in Setup ❓ Twitch API Settings'
         };
     }
     
@@ -430,10 +430,10 @@ window.testWorkerApi = async function() {
  * Runs health checks and logs config state
  */
 window.initStrixunConfig = async function() {
-    console.group('[EMOJI] Strixun Stream Suite - Configuration');
-    console.log('Worker API URL:', window.getWorkerApiUrl() || '[ERROR] Not configured');
-    console.log('URL Shortener API URL:', window.getUrlShortenerApiUrl() || '[ERROR] Not configured');
-    console.log('OTP Auth API URL:', window.getOtpAuthApiUrl() || '[ERROR] Not configured');
+    console.group('❓ Strixun Stream Suite - Configuration');
+    console.log('Worker API URL:', window.getWorkerApiUrl() || '❌ Not configured');
+    console.log('URL Shortener API URL:', window.getUrlShortenerApiUrl() || '❌ Not configured');
+    console.log('OTP Auth API URL:', window.getOtpAuthApiUrl() || '❌ Not configured');
     console.log('GitHub Pages URL:', window.getGitHubPagesUrl());
     console.log('Deployed At:', window.STRIXUN_CONFIG.DEPLOYED_AT);
     console.log('Environment:', window.STRIXUN_CONFIG.DEPLOYMENT_ENV);
@@ -441,10 +441,10 @@ window.initStrixunConfig = async function() {
     if (window.STRIXUN_CONFIG.FEATURES.WORKER_HEALTH_CHECK) {
         const healthCheck = await window.testWorkerApi();
         if (healthCheck.success) {
-            console.log('[SUCCESS] Worker API Health Check: PASSED');
+            console.log('✅ Worker API Health Check: PASSED');
             console.log('Worker Info:', healthCheck.data);
         } else {
-            console.warn('[WARNING] Worker API Health Check: FAILED');
+            console.warn('⚠️ Worker API Health Check: FAILED');
             console.warn('Error:', healthCheck.error);
             console.warn('Message:', healthCheck.message);
         }

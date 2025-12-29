@@ -1,16 +1,16 @@
 # Idle Game API Endpoints Reference
 
-> **Complete API reference for all idle game endpoints** [EMOJI][FEATURE]
+> **Complete API reference for all idle game endpoints** ❓✨
 
 ---
 
-## [AUTH] Authentication
+## 🔐 Authentication
 
 All endpoints require JWT authentication via `Authorization: Bearer <token>` header.
 
 ---
 
-## [PACKAGE] Save State
+## 📦 Save State
 
 ### Save Game State
 ```
@@ -49,7 +49,7 @@ Response: {
 
 ---
 
-## [EMOJI] Daily Loot Boxes
+## ❓ Daily Loot Boxes
 
 ### Get Loot Box Status
 ```
@@ -95,7 +95,7 @@ Response: {
 
 ---
 
-## [TIME] Idle Mechanics
+## ⏱️ Idle Mechanics
 
 ### Get Idle Progress
 ```
@@ -186,7 +186,7 @@ Response: {
 
 ---
 
-## [EMOJI][EMOJI] End-Game Crafting
+## ❓❓ End-Game Crafting
 
 ### Start Crafting Session
 ```
@@ -274,7 +274,7 @@ Response: {
 
 ---
 
-## [EMOJI] Dungeons
+## ❓ Dungeons
 
 ### Start Dungeon Instance
 ```
@@ -376,7 +376,7 @@ Response: {
 
 ---
 
-## [EMOJI] Inventory
+## ❓ Inventory
 
 ### Get Inventory
 ```
@@ -463,7 +463,7 @@ Response: {
 
 ---
 
-## [UI] Character
+## 🎨 Character
 
 ### Get Character
 ```
@@ -553,7 +553,7 @@ Response: {
 
 ---
 
-## [EMOJI] Loot Generation
+## ❓ Loot Generation
 
 ### Generate Loot Item
 ```
@@ -629,7 +629,7 @@ Response: {
 
 ---
 
-## [ANALYTICS] Error Responses
+## 📊 Error Responses
 
 All endpoints return consistent error responses:
 
@@ -649,7 +649,7 @@ Common status codes:
 
 ---
 
-## [SYNC] Integration Notes
+## 🔄 Integration Notes
 
 - All endpoints use **JWT authentication** from OTP auth system
 - All data stored in **Cloudflare KV** with customer isolation

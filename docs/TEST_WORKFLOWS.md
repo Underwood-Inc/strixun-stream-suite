@@ -61,7 +61,7 @@ Allows manual testing of multiple services with checkboxes, similar to the deplo
 
 ### Usage
 
-1. Go to **Actions** [EMOJI] **Test Service(s)**
+1. Go to **Actions** ❓ **Test Service(s)**
 2. Select which services to test using checkboxes
 3. Click **Run workflow**
 
@@ -96,7 +96,7 @@ All deployments include rollback protection:
 - name: Rollback on Failure
   if: failure()
   run: |
-    echo "[ERROR] Deployment failed - manual rollback required"
+    echo "❌ Deployment failed - manual rollback required"
     echo "Please check Cloudflare dashboard and rollback if needed"
     exit 1
 ```
@@ -256,7 +256,7 @@ When adding tests to a service that doesn't have them yet:
 
 ### Rollback needed
 
-- **Cloudflare Workers**: Go to Cloudflare Dashboard [EMOJI] Workers [EMOJI] Your Worker [EMOJI] Versions [EMOJI] Rollback
-- **Cloudflare Pages**: Go to Cloudflare Dashboard [EMOJI] Pages [EMOJI] Your Project [EMOJI] Deployments [EMOJI] Rollback
-- **GitHub Pages**: Go to Repository Settings [EMOJI] Pages [EMOJI] Deployments [EMOJI] Rollback
+- **Cloudflare Workers**: Go to Cloudflare Dashboard ❓ Workers ❓ Your Worker ❓ Versions ❓ Rollback
+- **Cloudflare Pages**: Go to Cloudflare Dashboard ❓ Pages ❓ Your Project ❓ Deployments ❓ Rollback
+- **GitHub Pages**: Go to Repository Settings ❓ Pages ❓ Deployments ❓ Rollback
 

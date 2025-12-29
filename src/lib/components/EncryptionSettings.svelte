@@ -48,7 +48,7 @@ import { showToast } from '../../stores/toast-queue';
       // If encryption is enabled but token doesn't match, warn user
       if (!tokenMatches) {
         showToast(
-          '[WARNING] Current authentication token does not match the token used for encryption. ' +
+          '⚠️ Current authentication token does not match the token used for encryption. ' +
           'You may not be able to decrypt existing data. Please log in again.',
           'warning'
         );
@@ -77,7 +77,7 @@ import { showToast } from '../../stores/toast-queue';
           tokenMatches = matches;
           if (!matches) {
             showToast(
-              '[WARNING] Current authentication token does not match the token used for encryption. ' +
+              '⚠️ Current authentication token does not match the token used for encryption. ' +
               'You may not be able to decrypt existing data. Please log in again.',
               'warning'
             );
@@ -146,7 +146,7 @@ import { showToast } from '../../stores/toast-queue';
 
 <div class="encryption-settings">
   <div class="encryption-settings__header">
-    <h2>[AUTH] Encryption Settings</h2>
+    <h2>🔐 Encryption Settings</h2>
     <p class="encryption-settings__description">
       All data is encrypted at rest using AES-GCM-256. 
       <strong>Only authenticated users (with email OTP access) can decrypt your data.</strong>
@@ -158,26 +158,26 @@ import { showToast } from '../../stores/toast-queue';
     <div class="encryption-settings__status-item">
       <span class="encryption-settings__label">Encryption Status:</span>
       <span class="encryption-settings__value" class:encryption-settings__value--enabled={encryptionEnabled}>
-        {encryptionEnabled ? '[SUCCESS] Enabled' : '[ERROR] Disabled'}
+        {encryptionEnabled ? '✅ Enabled' : '❌ Disabled'}
       </span>
     </div>
     <div class="encryption-settings__status-item">
       <span class="encryption-settings__label">HTTPS Status:</span>
       <span class="encryption-settings__value" class:encryption-settings__value--enabled={httpsStatus}>
-        {httpsStatus ? '[SUCCESS] Secure' : '[WARNING] Not Secure'}
+        {httpsStatus ? '✅ Secure' : '⚠️ Not Secure'}
       </span>
     </div>
     <div class="encryption-settings__status-item">
       <span class="encryption-settings__label">Authentication:</span>
       <span class="encryption-settings__value" class:encryption-settings__value--enabled={!!currentToken}>
-        {currentToken ? `[SUCCESS] ${currentUserEmail || 'Logged In'}` : '[ERROR] Not Logged In'}
+        {currentToken ? `✅ ${currentUserEmail || 'Logged In'}` : '❌ Not Logged In'}
       </span>
     </div>
     {#if encryptionEnabled && currentToken}
       <div class="encryption-settings__status-item">
         <span class="encryption-settings__label">Token Match:</span>
         <span class="encryption-settings__value" class:encryption-settings__value--enabled={tokenMatches}>
-          {tokenMatches ? '[SUCCESS] Matches' : '[WARNING] Mismatch'}
+          {tokenMatches ? '✅ Matches' : '⚠️ Mismatch'}
         </span>
       </div>
     {/if}
@@ -191,7 +191,7 @@ import { showToast } from '../../stores/toast-queue';
 
   {#if !currentToken}
     <div class="encryption-settings__section">
-      <h3>[WARNING] Authentication Required</h3>
+      <h3>⚠️ Authentication Required</h3>
       <p>
         You must be logged in (via email OTP) to use encryption. Encryption uses your JWT token 
         (obtained through email OTP authentication) as the key derivation source. 
@@ -215,7 +215,7 @@ import { showToast } from '../../stores/toast-queue';
     </div>
   {:else}
     <div class="encryption-settings__section">
-      <h3>[AUTH] Encryption Enabled</h3>
+      <h3>🔐 Encryption Enabled</h3>
       <p>
         All your data is encrypted using your JWT token (obtained via email OTP): 
         <strong>{currentUserEmail || 'Authenticated'}</strong>
@@ -223,7 +223,7 @@ import { showToast } from '../../stores/toast-queue';
       
       {#if !tokenMatches}
         <div class="encryption-settings__warning">
-          <strong>[WARNING] Token Mismatch:</strong> 
+          <strong>⚠️ Token Mismatch:</strong> 
           Your current authentication token does not match the token used for encryption. 
           You may not be able to decrypt existing data. 
           Please log out and log in again to refresh your token.
@@ -243,7 +243,7 @@ import { showToast } from '../../stores/toast-queue';
   {/if}
 
   <div class="encryption-settings__info">
-    <h4>[INFO] About JWT Token-Based Encryption</h4>
+    <h4>ℹ️ About JWT Token-Based Encryption</h4>
     <ul>
       <li>
         <strong>JWT Token as Key:</strong> Your JWT token (obtained via email OTP) is used to derive the encryption key. 

@@ -303,7 +303,7 @@ function Main {
                 } catch {
                     Print-Warning "Could not automatically open browser."
                     Print-Info "Please visit: $dashboardUrl"
-                    Print-Info "Then navigate to: Workers & Pages [EMOJI] $SERVICE_NAME [EMOJI] Logs"
+                    Print-Info "Then navigate to: Workers & Pages ❓ $SERVICE_NAME ❓ Logs"
                 }
                 
                 Write-Host ""

@@ -21,7 +21,7 @@ const svelteConfigPath = resolve(__dirname, '../svelte.config.js');
 // Verify config file exists
 import { existsSync } from 'fs';
 if (!existsSync(svelteConfigPath)) {
-  console.error(`[ERROR] Svelte config not found at: ${svelteConfigPath}`);
+  console.error(`❌ Svelte config not found at: ${svelteConfigPath}`);
   process.exit(1);
 }
 
@@ -75,12 +75,12 @@ try {
     },
   });
 
-  console.log(`[SUCCESS] Bundled OtpLogin Svelte component to ${outputDir}/otp-login-svelte.js`);
+  console.log(`✅ Bundled OtpLogin Svelte component to ${outputDir}/otp-login-svelte.js`);
   console.log(`   Load it in HTML with: <script src="/otp-login-svelte.js"></script>`);
   console.log(`   Then use: OtpLoginSvelte.mountOtpLogin({ target: element, ...props })`);
   console.log(`   CDN Usage: <script src="https://cdn.example.com/otp-login-svelte.js"></script>`);
 } catch (error) {
-  console.error('[ERROR] Failed to bundle OtpLogin Svelte component:', error);
+  console.error('❌ Failed to bundle OtpLogin Svelte component:', error);
   process.exit(1);
 }
 

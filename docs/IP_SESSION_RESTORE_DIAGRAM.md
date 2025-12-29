@@ -1,12 +1,12 @@
 # IP-Based Session Restoration - Complete Guide
 
-## [AUTH] How It Works
+## 🔐 How It Works
 
 IP-based session restoration enables **Single Sign-On (SSO)** across multiple applications on the same device/IP address. When you log into one app, other apps can automatically discover and restore your session.
 
 ---
 
-## [ANALYTICS] Architecture Diagram
+## 📊 Architecture Diagram
 
 ```mermaid
 sequenceDiagram
@@ -21,28 +21,28 @@ sequenceDiagram
     App1->>Auth: POST /auth/verify-otp
     Auth->>Auth: Create JWT token
     Auth->>Auth: Get IP: 192.168.1.100
-    Auth->>Auth: Hash IP [EMOJI] SHA256(IP)
+    Auth->>Auth: Hash IP ❓ SHA256(IP)
     Auth->>KV: Store session<br/>Key: session_user123<br/>Data: {userId, email, ipAddress: "192.168.1.100"}
     Auth->>KV: Store IP mapping<br/>Key: ip_session_<hash><br/>Data: [{userId, sessionKey, expiresAt}]
     Auth->>App1: Return JWT token
-    App1->>User: [SUCCESS] Logged in!
+    App1->>User: ✅ Logged in!
 
     Note over User,App2: Step 2: User opens App 2 (same device/IP)
     User->>App2: Open app (no token)
     App2->>Auth: POST /auth/restore-session<br/>(IP: 192.168.1.100)
-    Auth->>Auth: Hash IP [EMOJI] SHA256(192.168.1.100)
+    Auth->>Auth: Hash IP ❓ SHA256(192.168.1.100)
     Auth->>KV: Lookup ip_session_<hash>
     KV->>Auth: Return sessions for this IP
     Auth->>Auth: Validate IP matches session IP
     Auth->>Auth: Create FRESH JWT token
     Auth->>KV: Update session with new token
     Auth->>App2: Return new JWT token
-    App2->>User: [SUCCESS] Auto-logged in!
+    App2->>User: ✅ Auto-logged in!
 ```
 
 ---
 
-## [SEARCH] Detailed Flow
+## 🔍 Detailed Flow
 
 ### **Step 1: User Logs In (First App)**
 
@@ -63,7 +63,7 @@ POST /auth/verify-otp
    Value: {
      userId: "user_abc123",
      email: "user@example.com",
-     ipAddress: "192.168.1.100",  // [EMOJI] Stored for validation
+     ipAddress: "192.168.1.100",  // ❓ Stored for validation
      expiresAt: "2025-01-28T10:00:00Z"
    }
 
@@ -88,10 +88,10 @@ POST /auth/restore-session
 
 // Auth service:
 1. Gets IP from CF-Connecting-IP: "192.168.1.100"
-2. Hashes IP: SHA256("192.168.1.100") [EMOJI] "abc123..."
+2. Hashes IP: SHA256("192.168.1.100") ❓ "abc123..."
 3. Looks up: ip_session_abc123...
 4. Finds session for user_abc123
-5. Validates: session.ipAddress === requestIP [SUCCESS]
+5. Validates: session.ipAddress === requestIP ✅
 6. Creates FRESH JWT token (new token, not reused)
 7. Updates session with new token
 8. Returns new JWT token to App 2
@@ -101,45 +101,45 @@ POST /auth/restore-session
 
 ---
 
-## [SUCCESS] What WILL Work
+## ✅ What WILL Work
 
 ### **1. Same Device, Same Network**
 ```
 Scenario: User logs into mods.idling.app on laptop, then opens other.idling.app
 IP: 192.168.1.100 (same for both)
-Result: [SUCCESS] Session restored automatically
+Result: ✅ Session restored automatically
 ```
 
 ### **2. Multiple Tabs, Same Browser**
 ```
 Scenario: User has mods.idling.app open in Tab 1, opens other.idling.app in Tab 2
 IP: 192.168.1.100 (same for both)
-Result: [SUCCESS] Session restored automatically
+Result: ✅ Session restored automatically
 ```
 
 ### **3. Multiple Apps, Same Device**
 ```
 Scenario: User logs into app1.idling.app, then opens app2.idling.app, app3.idling.app
 IP: 192.168.1.100 (same for all)
-Result: [SUCCESS] All apps restore session automatically
+Result: ✅ All apps restore session automatically
 ```
 
 ### **4. Same WiFi Network, Different Devices**
 ```
 Scenario: User logs into mods.idling.app on laptop, then opens other.idling.app on phone
 IP: 192.168.1.100 (same public IP from router)
-Result: [SUCCESS] Session restored (if router uses same public IP)
+Result: ✅ Session restored (if router uses same public IP)
 Note: This works because both devices share the same public IP from the router
 ```
 
 ---
 
-## [ERROR] What WILL NOT Work
+## ❌ What WILL NOT Work
 
 ### **1. Different IP Address**
 ```
 Scenario: User logs in at home (IP: 192.168.1.100), then opens app at coffee shop (IP: 203.0.113.50)
-Result: [ERROR] Session NOT restored
+Result: ❌ Session NOT restored
 Reason: IP addresses don't match
 Security: This prevents cross-location session hijacking
 ```
@@ -147,7 +147,7 @@ Security: This prevents cross-location session hijacking
 ### **2. VPN Changes IP**
 ```
 Scenario: User logs in with VPN off (IP: 192.168.1.100), then turns on VPN (IP: 10.0.0.50)
-Result: [ERROR] Session NOT restored
+Result: ❌ Session NOT restored
 Reason: IP addresses don't match
 Security: VPN IP changes are treated as different devices
 ```
@@ -155,7 +155,7 @@ Security: VPN IP changes are treated as different devices
 ### **3. Mobile Data vs WiFi**
 ```
 Scenario: User logs in on WiFi (IP: 192.168.1.100), then switches to mobile data (IP: 203.0.113.50)
-Result: [ERROR] Session NOT restored
+Result: ❌ Session NOT restored
 Reason: IP addresses don't match
 Security: Different networks = different security context
 ```
@@ -163,7 +163,7 @@ Security: Different networks = different security context
 ### **4. Expired Session**
 ```
 Scenario: User logged in 8 hours ago (session expired after 7 hours)
-Result: [ERROR] Session NOT restored
+Result: ❌ Session NOT restored
 Reason: Session expired (TTL expired in KV)
 Security: Expired sessions are automatically cleaned up
 ```
@@ -171,7 +171,7 @@ Security: Expired sessions are automatically cleaned up
 ### **5. User Logged Out**
 ```
 Scenario: User logged out from App 1, then opens App 2
-Result: [ERROR] Session NOT restored
+Result: ❌ Session NOT restored
 Reason: IP mapping was deleted on logout
 Security: Logout invalidates all sessions for that IP
 ```
@@ -179,14 +179,14 @@ Security: Logout invalidates all sessions for that IP
 ### **6. Rate Limit Exceeded**
 ```
 Scenario: User makes 61 restore-session requests in 1 hour
-Result: [ERROR] Request blocked (429 Too Many Requests)
+Result: ❌ Request blocked (429 Too Many Requests)
 Reason: Rate limit is 60 requests/hour per IP
 Security: Prevents abuse and enumeration attacks
 ```
 
 ---
 
-## [SECURITY] Security Features
+## 🔒 Security Features
 
 ### **1. IP Address Validation**
 ```typescript
@@ -242,7 +242,7 @@ const ip = request.headers.get('CF-Connecting-IP');
 
 ---
 
-## [CLIPBOARD] Real-World Examples
+## 📋 Real-World Examples
 
 ### **Example 1: Home WiFi Network**
 ```
@@ -251,12 +251,12 @@ Public IP: 203.0.113.50 (from ISP)
 Private IP: 192.168.1.100 (from router)
 
 User logs into mods.idling.app:
-  [EMOJI] Auth service sees: 203.0.113.50 (public IP)
-  [EMOJI] Stores session with IP: 203.0.113.50
+  ❓ Auth service sees: 203.0.113.50 (public IP)
+  ❓ Stores session with IP: 203.0.113.50
 
 User opens other.idling.app:
-  [EMOJI] Auth service sees: 203.0.113.50 (same public IP)
-  [EMOJI] [SUCCESS] Session restored!
+  ❓ Auth service sees: 203.0.113.50 (same public IP)
+  ❓ ✅ Session restored!
 ```
 
 ### **Example 2: Office Network**
@@ -267,12 +267,12 @@ Both on same office WiFi
 Public IP: 198.51.100.25 (shared by router)
 
 User logs into mods.idling.app on Desktop:
-  [EMOJI] Auth service sees: 198.51.100.25
-  [EMOJI] Stores session with IP: 198.51.100.25
+  ❓ Auth service sees: 198.51.100.25
+  ❓ Stores session with IP: 198.51.100.25
 
 User opens other.idling.app on Laptop:
-  [EMOJI] Auth service sees: 198.51.100.25 (same public IP)
-  [EMOJI] [SUCCESS] Session restored!
+  ❓ Auth service sees: 198.51.100.25 (same public IP)
+  ❓ ✅ Session restored!
   
 Note: Both devices share the same public IP, so SSO works
 ```
@@ -283,12 +283,12 @@ Device: Phone on mobile data
 IP: 203.0.113.100 (from mobile carrier)
 
 User logs into mods.idling.app:
-  [EMOJI] Auth service sees: 203.0.113.100
-  [EMOJI] Stores session with IP: 203.0.113.100
+  ❓ Auth service sees: 203.0.113.100
+  ❓ Stores session with IP: 203.0.113.100
 
 User switches to WiFi (different IP: 192.168.1.50):
-  [EMOJI] Auth service sees: 192.168.1.50 (different IP)
-  [EMOJI] [ERROR] Session NOT restored (different network)
+  ❓ Auth service sees: 192.168.1.50 (different IP)
+  ❓ ❌ Session NOT restored (different network)
 ```
 
 ### **Example 4: VPN Usage**
@@ -298,17 +298,17 @@ Without VPN: IP = 203.0.113.50
 With VPN: IP = 10.0.0.100
 
 User logs into mods.idling.app (VPN off):
-  [EMOJI] Auth service sees: 203.0.113.50
-  [EMOJI] Stores session with IP: 203.0.113.50
+  ❓ Auth service sees: 203.0.113.50
+  ❓ Stores session with IP: 203.0.113.50
 
 User turns on VPN, opens other.idling.app:
-  [EMOJI] Auth service sees: 10.0.0.100 (different IP)
-  [EMOJI] [ERROR] Session NOT restored (VPN changed IP)
+  ❓ Auth service sees: 10.0.0.100 (different IP)
+  ❓ ❌ Session NOT restored (VPN changed IP)
 ```
 
 ---
 
-## [TARGET] Key Takeaways
+## 🎯 Key Takeaways
 
 1. **IP-Based Matching**: Sessions are matched by IP address (hashed for privacy)
 2. **Same IP = Same Device**: If two requests come from the same IP, they're treated as the same device
@@ -319,7 +319,7 @@ User turns on VPN, opens other.idling.app:
 
 ---
 
-## [CONFIG] Technical Details
+## 🔧 Technical Details
 
 ### **IP Address Source**
 ```typescript
@@ -337,7 +337,7 @@ Key: "session_user_abc123"
 Value: {
   userId: "user_abc123",
   email: "user@example.com",
-  ipAddress: "192.168.1.100",  // [EMOJI] Used for validation
+  ipAddress: "192.168.1.100",  // ❓ Used for validation
   expiresAt: "2025-01-28T10:00:00Z"
 }
 
@@ -354,7 +354,7 @@ Value: [{
 ### **Restore Session Flow**
 ```typescript
 1. Get request IP from CF-Connecting-IP
-2. Hash IP: SHA256(IP) [EMOJI] hash
+2. Hash IP: SHA256(IP) ❓ hash
 3. Lookup: ip_session_<hash>
 4. Filter expired sessions
 5. Validate: session.ipAddress === requestIP
@@ -365,38 +365,38 @@ Value: [{
 
 ---
 
-## [WARNING] Limitations
+## ⚠️ Limitations
 
 1. **NAT Networks**: Multiple devices behind same router share public IP
-   - [SUCCESS] Works: All devices can restore each other's sessions
-   - [WARNING] Security: Less isolation between devices
+   - ✅ Works: All devices can restore each other's sessions
+   - ⚠️ Security: Less isolation between devices
 
 2. **Dynamic IPs**: IP addresses can change
-   - [ERROR] Doesn't work: If IP changes, session won't restore
-   - [SUCCESS] Security: Prevents stale session restoration
+   - ❌ Doesn't work: If IP changes, session won't restore
+   - ✅ Security: Prevents stale session restoration
 
 3. **Mobile Networks**: IP changes when switching networks
-   - [ERROR] Doesn't work: WiFi [EMOJI] Mobile data = different IP
-   - [SUCCESS] Security: Different network = different security context
+   - ❌ Doesn't work: WiFi ❓ Mobile data = different IP
+   - ✅ Security: Different network = different security context
 
 4. **VPN Usage**: VPN changes IP address
-   - [ERROR] Doesn't work: VPN on/off = different IP
-   - [SUCCESS] Security: VPN IP changes are treated as different devices
+   - ❌ Doesn't work: VPN on/off = different IP
+   - ✅ Security: VPN IP changes are treated as different devices
 
 ---
 
-## [PROTECT] Security Considerations
+## 🛡️ Security Considerations
 
 ### **Why IP-Based is Secure:**
-- [SUCCESS] IP addresses come from Cloudflare (cannot be spoofed)
-- [SUCCESS] IP validation prevents cross-location attacks
-- [SUCCESS] Rate limiting prevents enumeration
-- [SUCCESS] Fresh tokens prevent token reuse
-- [SUCCESS] Session expiration limits exposure
+- ✅ IP addresses come from Cloudflare (cannot be spoofed)
+- ✅ IP validation prevents cross-location attacks
+- ✅ Rate limiting prevents enumeration
+- ✅ Fresh tokens prevent token reuse
+- ✅ Session expiration limits exposure
 
 ### **Potential Risks:**
 
-#### [WARNING] **Risk 1: NAT Networks (Multiple Devices Share IP)**
+#### ⚠️ **Risk 1: NAT Networks (Multiple Devices Share IP)**
 
 **The Problem:**
 - Home/office routers use Network Address Translation (NAT)
@@ -406,10 +406,10 @@ Value: [{
 **Attack Scenario:**
 ```
 Scenario: Family member logs into mods.idling.app on their laptop
-[EMOJI] Session stored with IP: 203.0.113.50
-[EMOJI] Another family member opens other.idling.app on their phone
-[EMOJI] Both devices share IP: 203.0.113.50
-[EMOJI] [WARNING] Second user could potentially restore first user's session
+❓ Session stored with IP: 203.0.113.50
+❓ Another family member opens other.idling.app on their phone
+❓ Both devices share IP: 203.0.113.50
+❓ ⚠️ Second user could potentially restore first user's session
 ```
 
 **Why This Is Risky:**
@@ -495,7 +495,7 @@ Scenario: Family member logs into mods.idling.app on their laptop
 
 ---
 
-#### [WARNING] **Risk 2: Public WiFi (Multiple Users Share IP)**
+#### ⚠️ **Risk 2: Public WiFi (Multiple Users Share IP)**
 
 **The Problem:**
 - Coffee shops, airports, hotels use public WiFi
@@ -505,10 +505,10 @@ Scenario: Family member logs into mods.idling.app on their laptop
 **Attack Scenario:**
 ```
 Scenario: User A logs into mods.idling.app at coffee shop
-[EMOJI] Session stored with IP: 203.0.113.50
-[EMOJI] User B (stranger) opens other.idling.app at same coffee shop
-[EMOJI] Both users share IP: 203.0.113.50
-[EMOJI] [WARNING] User B could potentially restore User A's session
+❓ Session stored with IP: 203.0.113.50
+❓ User B (stranger) opens other.idling.app at same coffee shop
+❓ Both users share IP: 203.0.113.50
+❓ ⚠️ User B could potentially restore User A's session
 ```
 
 **Why This Is Risky:**
@@ -610,14 +610,14 @@ Scenario: User A logs into mods.idling.app at coffee shop
 
 ---
 
-#### [SUCCESS] **Comprehensive Mitigation Summary**
+#### ✅ **Comprehensive Mitigation Summary**
 
 **Current Protections:**
-- [SUCCESS] Rate limiting (60 requests/hour per IP)
-- [SUCCESS] IP address validation (CF-Connecting-IP cannot be spoofed)
-- [SUCCESS] Fresh token generation (new JWT per restore)
-- [SUCCESS] Session expiration (7 hours TTL)
-- [SUCCESS] IP hashing (privacy protection)
+- ✅ Rate limiting (60 requests/hour per IP)
+- ✅ IP address validation (CF-Connecting-IP cannot be spoofed)
+- ✅ Fresh token generation (new JWT per restore)
+- ✅ Session expiration (7 hours TTL)
+- ✅ IP hashing (privacy protection)
 
 **Recommended Additional Protections:**
 
@@ -644,10 +644,10 @@ Scenario: User A logs into mods.idling.app at coffee shop
 
 | Scenario | Risk Level | Current Mitigation | Recommended Enhancement |
 |----------|-----------|-------------------|------------------------|
-| Home NAT (family) | [YELLOW] Medium | Rate limiting + IP validation | User-Agent fingerprinting |
-| Office NAT (coworkers) | [YELLOW] Medium | Rate limiting + IP validation | Device cookie validation |
-| Public WiFi (strangers) | [RED] High | Rate limiting + IP validation | Disable auto-restore, require login |
-| Mobile carrier NAT | [YELLOW] Medium | Rate limiting + IP validation | Time-based isolation |
+| Home NAT (family) | 🟡 Medium | Rate limiting + IP validation | User-Agent fingerprinting |
+| Office NAT (coworkers) | 🟡 Medium | Rate limiting + IP validation | Device cookie validation |
+| Public WiFi (strangers) | 🔴 High | Rate limiting + IP validation | Disable auto-restore, require login |
+| Mobile carrier NAT | 🟡 Medium | Rate limiting + IP validation | Time-based isolation |
 
 **Best Practice Recommendation:**
 - For **private networks** (home/office): Current mitigations + User-Agent fingerprinting
@@ -655,13 +655,13 @@ Scenario: User A logs into mods.idling.app at coffee shop
 
 ---
 
-## [NOTE] Summary
+## 📝 Summary
 
 **IP-based session restoration enables SSO across apps on the same device/IP address.**
 
-- [SUCCESS] **Works**: Same device, same network, same IP
-- [ERROR] **Doesn't work**: Different IP, expired session, logged out
-- [SECURITY] **Secure**: IP validation, rate limiting, fresh tokens, expiration
+- ✅ **Works**: Same device, same network, same IP
+- ❌ **Doesn't work**: Different IP, expired session, logged out
+- 🔒 **Secure**: IP validation, rate limiting, fresh tokens, expiration
 
 This is a **convenience feature** that provides seamless SSO while maintaining security through IP validation and rate limiting.
 

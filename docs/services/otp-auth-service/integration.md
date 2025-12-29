@@ -1,6 +1,6 @@
 # OTP Auth Service - Integration Guide
 
-> **Complete integration guide for developers** [DEPLOY]
+> **Complete integration guide for developers** 🚀
 
 ## Quick Start
 
@@ -309,5 +309,5 @@ console.log('Service status:', health.status);
 
 ---
 
-**Happy integrating!** [EMOJI]
+**Happy integrating!** ❓
 

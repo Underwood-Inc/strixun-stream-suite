@@ -73,12 +73,12 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>[EMOJI] Quick Controls v1.0</h2>
+    return [[<h2>❓ Quick Controls v1.0</h2>
 <p>Quick access buttons and hotkeys for animation scripts.</p>
 
 <h3>Features:</h3>
 <ul>
-<li>Hotkey to cycle aspect override (Off [EMOJI] Preserve [EMOJI] Stretch)</li>
+<li>Hotkey to cycle aspect override (Off ❓ Preserve ❓ Stretch)</li>
 <li>Quick status display</li>
 <li>Works alongside Source Swap script</li>
 </ul>
@@ -86,7 +86,7 @@ function script_description()
 <h3>Setup:</h3>
 <ol>
 <li>Load this script</li>
-<li>Go to Settings [EMOJI] Hotkeys</li>
+<li>Go to Settings ❓ Hotkeys</li>
 <li>Find "Quick: Cycle Aspect Override"</li>
 <li>Assign a hotkey</li>
 </ol>
@@ -106,7 +106,7 @@ function script_properties()
     
     -- Current override setting
     local override_list = obs.obs_properties_add_list(props, "quick_override", 
-        "[PERF] Aspect Override", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_INT)
+        "⚡ Aspect Override", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_INT)
     obs.obs_property_list_add_int(override_list, "Off (use default)", 0)
     obs.obs_property_list_add_int(override_list, "Force PRESERVE", 1)
     obs.obs_property_list_add_int(override_list, "Force STRETCH", 2)
@@ -115,7 +115,7 @@ function script_properties()
     obs.obs_properties_add_text(props, "h2", 
         "═══════════ HOTKEYS ═══════════", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "hotkey_info", 
-        "Assign 'Quick: Cycle Aspect Override' in Settings [EMOJI] Hotkeys", obs.OBS_TEXT_INFO)
+        "Assign 'Quick: Cycle Aspect Override' in Settings ❓ Hotkeys", obs.OBS_TEXT_INFO)
     
     -- Quick swap buttons (if swap configs exist)
     obs.obs_properties_add_text(props, "h3", 
@@ -156,7 +156,7 @@ function script_load(settings)
     end
     
     log_info("Quick Controls loaded!")
-    log_info("Assign hotkeys in Settings [EMOJI] Hotkeys")
+    log_info("Assign hotkeys in Settings ❓ Hotkeys")
 end
 
 function script_save(settings)

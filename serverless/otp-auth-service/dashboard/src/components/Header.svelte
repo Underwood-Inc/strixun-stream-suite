@@ -13,7 +13,7 @@
 
 <header class="app-header">
   <div class="app-header__content">
-    <a href="/" class="app-header__logo">[AUTH] OTP Auth API</a>
+    <a href="/" class="app-header__logo">🔐 OTP Auth API</a>
     {#if user}
       <div class="app-header__user">
         <span class="app-header__email">{user.email || 'User'}</span>

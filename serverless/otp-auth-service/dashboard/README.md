@@ -1,4 +1,4 @@
-# OTP Auth Dashboard [CONTROL]
+# OTP Auth Dashboard 🎛️
 
 Svelte 5 + TypeScript developer dashboard for managing your OTP Auth API.
 
@@ -24,7 +24,7 @@ pnpm check
 
 ## Local Development
 
-### Option 1: Run Both Together (Recommended) [DEPLOY]
+### Option 1: Run Both Together (Recommended) 🚀
 
 From the `serverless/otp-auth-service` directory:
 
@@ -68,13 +68,13 @@ Open **http://localhost:5174** in your browser. The Vite proxy forwards API requ
 
 ## Features
 
-- [AUTH] OTP-based authentication
-- [KEY] API key management (create, revoke, rotate)
-- [ANALYTICS] Audit log viewer with filtering
-- [METRICS] Analytics dashboard
-- [UI] Strixun design system
-- [PERF] Svelte 5 with runes
-- [EMOJI] Full TypeScript support
+- 🔐 OTP-based authentication
+- 🔑 API key management (create, revoke, rotate)
+- 📊 Audit log viewer with filtering
+- 📈 Analytics dashboard
+- 🎨 Strixun design system
+- ⚡ Svelte 5 with runes
+- ❓ Full TypeScript support
 
 ## Project Structure
 
@@ -116,7 +116,7 @@ The API client uses `window.location.origin` by default:
 
 To change the API endpoint, modify `API_BASE_URL` in `src/lib/api-client.ts`.
 
-### OTP Encryption Key (CRITICAL) [AUTH]
+### OTP Encryption Key (CRITICAL) 🔐
 
 **The dashboard REQUIRES `VITE_SERVICE_ENCRYPTION_KEY` to be set at build time.**
 

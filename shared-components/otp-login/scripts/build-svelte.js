@@ -20,7 +20,7 @@ const svelteConfigPath = resolve(__dirname, '../svelte.config.js');
 
 // Verify config file exists
 if (!existsSync(svelteConfigPath)) {
-  console.error(`[ERROR] Svelte config not found at: ${svelteConfigPath}`);
+  console.error(`❌ Svelte config not found at: ${svelteConfigPath}`);
   process.exit(1);
 }
 
@@ -79,10 +79,10 @@ try {
     },
   });
 
-  console.log(`[SUCCESS] Built Svelte OTP Login components to ${outputDir}/`);
+  console.log(`✅ Built Svelte OTP Login components to ${outputDir}/`);
   console.log(`   - ES Module: otp-login.js`);
 } catch (error) {
-  console.error('[ERROR] Failed to build Svelte OTP Login components:', error);
+  console.error('❌ Failed to build Svelte OTP Login components:', error);
   process.exit(1);
 }
 

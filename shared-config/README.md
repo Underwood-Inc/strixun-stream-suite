@@ -8,17 +8,17 @@ This directory contains centralized configuration that is shared across all appl
 
 This is the **SINGLE SOURCE OF TRUTH** for retrieving the SERVICE_ENCRYPTION_KEY. All apps import from this file to ensure consistent key retrieval.
 
-### [SECURITY] Security
+### 🔒 Security
 
 **CRITICAL**: The encryption key is **NEVER** stored in:
-- [ERROR] Source code (no hardcoded constants)
-- [ERROR] localStorage/sessionStorage (browser storage)
-- [ERROR] Version control (git)
+- ❌ Source code (no hardcoded constants)
+- ❌ localStorage/sessionStorage (browser storage)
+- ❌ Version control (git)
 
 The key **MUST** be provided via:
-- [SUCCESS] Environment variables (`VITE_SERVICE_ENCRYPTION_KEY`)
-- [SUCCESS] Build-time injection (CI/CD secrets)
-- [SUCCESS] Runtime injection via `window.getOtpEncryptionKey()` (development only)
+- ✅ Environment variables (`VITE_SERVICE_ENCRYPTION_KEY`)
+- ✅ Build-time injection (CI/CD secrets)
+- ✅ Runtime injection via `window.getOtpEncryptionKey()` (development only)
 
 ### To Configure the Encryption Key
 
@@ -53,10 +53,10 @@ if (!key) {
 
 ### Why This Approach?
 
-- [SUCCESS] **Single source of truth** - One function, consistent behavior everywhere
-- [SUCCESS] **Secure** - Key never stored in code or browser storage
-- [SUCCESS] **Type-safe** - TypeScript ensures correct usage
-- [SUCCESS] **Environment-based** - Uses standard Vite environment variables
-- [SUCCESS] **Easy to update** - Change .env files, all apps get the update
-- [SUCCESS] **Consistent** - Uses same SERVICE_ENCRYPTION_KEY as all other services
+- ✅ **Single source of truth** - One function, consistent behavior everywhere
+- ✅ **Secure** - Key never stored in code or browser storage
+- ✅ **Type-safe** - TypeScript ensures correct usage
+- ✅ **Environment-based** - Uses standard Vite environment variables
+- ✅ **Easy to update** - Change .env files, all apps get the update
+- ✅ **Consistent** - Uses same SERVICE_ENCRYPTION_KEY as all other services
 

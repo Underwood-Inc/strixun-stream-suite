@@ -1,4 +1,4 @@
-# Services [CONFIG]
+# Services 🔧
 
 Documentation for individual services in Strixun Stream Suite.
 

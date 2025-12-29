@@ -200,9 +200,9 @@ Matches a search query against multiple text fields.
 ## Integration
 
 This search parser is now used in:
-- [SUCCESS] Admin Panel - Mod Triage (React)
-- [SUCCESS] Activity Log Filter (Svelte)
-- [SYNC] All other search inputs should be migrated to use this component
+- ✅ Admin Panel - Mod Triage (React)
+- ✅ Activity Log Filter (Svelte)
+- 🔄 All other search inputs should be migrated to use this component
 
 ## Migration Guide
 

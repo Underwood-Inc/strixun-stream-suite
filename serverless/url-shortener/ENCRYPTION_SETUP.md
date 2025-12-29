@@ -155,11 +155,11 @@ const decrypted = await decryptWithServiceKey(body, serviceKey);
 
 ## Security Notes
 
-- [SUCCESS] Keys are bundled at build time (not in source code)
-- [WARNING] Keys are still accessible in the JavaScript bundle
-- [WARNING] Symmetric keys exposed to clients is a security trade-off
-- [IDEA] Consider removing client-side encryption (HTTPS is sufficient)
-- [IDEA] Consider asymmetric encryption (public key for client)
+- ✅ Keys are bundled at build time (not in source code)
+- ⚠️ Keys are still accessible in the JavaScript bundle
+- ⚠️ Symmetric keys exposed to clients is a security trade-off
+- 💡 Consider removing client-side encryption (HTTPS is sufficient)
+- 💡 Consider asymmetric encryption (public key for client)
 
 ---
 

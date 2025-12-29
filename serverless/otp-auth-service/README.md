@@ -1,10 +1,10 @@
-# OTP Auth Service [AUTH]
+# OTP Auth Service 🔐
 
 Multi-tenant OTP authentication service built on Cloudflare Workers.
 
 ## Quick Start
 
-### [DEPLOY] Local Development (Recommended)
+### 🚀 Local Development (Recommended)
 
 **1. Install dependencies:**
 ```bash
@@ -93,14 +93,14 @@ otp-auth-service/
 
 ## Features
 
-- [SUCCESS] Passwordless OTP authentication
-- [SUCCESS] JWT token management
-- [SUCCESS] API key management (multi-tenant)
-- [SUCCESS] Audit logging
-- [SUCCESS] Analytics dashboard
-- [SUCCESS] OpenAPI 3.1.0 spec
-- [SUCCESS] Swagger UI integration
-- [SUCCESS] Developer dashboard (Svelte 5 + TypeScript)
+- ✅ Passwordless OTP authentication
+- ✅ JWT token management
+- ✅ API key management (multi-tenant)
+- ✅ Audit logging
+- ✅ Analytics dashboard
+- ✅ OpenAPI 3.1.0 spec
+- ✅ Swagger UI integration
+- ✅ Developer dashboard (Svelte 5 + TypeScript)
 
 ## Documentation
 

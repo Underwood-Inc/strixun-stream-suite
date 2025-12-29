@@ -1,4 +1,4 @@
-# CORS Origins Audit for Mods API [SEARCH]
+# CORS Origins Audit for Mods API 🔍
 
 ## Overview
 
@@ -6,88 +6,88 @@ This document lists **ALL** origins that should be included in the `ALLOWED_ORIG
 
 ---
 
-## [WEB] Production Domains (idling.app)
+## 🌐 Production Domains (idling.app)
 
 ### Primary Domains
 
-1. **`https://mods.idling.app`** [SUCCESS] **CRITICAL**
+1. **`https://mods.idling.app`** ✅ **CRITICAL**
    - Mods Hub frontend (React app on Cloudflare Pages)
    - **MUST INCLUDE** - Primary consumer of mods API
    - Frontend makes all API calls from this origin
 
-2. **`https://auth.idling.app`** [SUCCESS]
+2. **`https://auth.idling.app`** ✅
    - OTP Auth Service
    - May need to verify mod ownership/authorization
    - **SHOULD INCLUDE** - For auth-related API calls
 
-3. **`https://api.idling.app`** [SUCCESS]
+3. **`https://api.idling.app`** ✅
    - Main API worker (Twitch API proxy, legacy endpoints)
    - May call mods API for integration features
    - **SHOULD INCLUDE** - For API-to-API calls
 
-4. **`https://customer.idling.app`** [SUCCESS]
+4. **`https://customer.idling.app`** ✅
    - Customer API worker
    - May need mod data for customer profiles
    - **SHOULD INCLUDE** - If customer features use mod data
 
-5. **`https://game.idling.app`** [SUCCESS]
+5. **`https://game.idling.app`** ✅
    - Game API worker
    - May need mod data for game features
    - **SHOULD INCLUDE** - If game features use mod data
 
-6. **`https://s.idling.app`** [SUCCESS]
+6. **`https://s.idling.app`** ✅
    - URL Shortener service
    - May need mod data for analytics
    - **SHOULD INCLUDE** - If URL shortener tracks mod downloads
 
-7. **`https://chat.idling.app`** [SUCCESS]
+7. **`https://chat.idling.app`** ✅
    - Chat Signaling service
    - May need mod data for user profiles
    - **SHOULD INCLUDE** - If chat features use mod data
 
 ### Root Domain
 
-8. **`https://idling.app`** [SUCCESS]
+8. **`https://idling.app`** ✅
    - Main website domain
    - **SHOULD INCLUDE** - If main site embeds mod browser
 
-9. **`https://www.idling.app`** [SUCCESS]
+9. **`https://www.idling.app`** ✅
    - WWW subdomain
    - **SHOULD INCLUDE** - If www subdomain is used
 
 ---
 
-## [EMOJI] Development/Local Origins
+## ❓ Development/Local Origins
 
-10. **`http://localhost:5173`** [SUCCESS]
+10. **`http://localhost:5173`** ✅
     - Vite default development server (mods-hub frontend)
     - **MUST INCLUDE** - For local development
     - This is the default port for the mods-hub React app
 
-11. **`http://localhost:3000`** [SUCCESS]
+11. **`http://localhost:3000`** ✅
     - Common development server port
     - **SHOULD INCLUDE** - For alternative dev setups
 
-12. **`http://localhost:3001`** [SUCCESS]
+12. **`http://localhost:3001`** ✅
     - Mods Hub development server port (as specified in README)
     - **MUST INCLUDE** - For local development of mods-hub
     - This is the port used by the mods-hub React app
 
-13. **`http://localhost:5174`** [SUCCESS]
+13. **`http://localhost:5174`** ✅
     - Alternative Vite port
     - **SHOULD INCLUDE** - For multiple dev servers
 
-14. **`http://127.0.0.1:5173`** [SUCCESS]
+14. **`http://127.0.0.1:5173`** ✅
     - Localhost IP (alternative to localhost)
     - **SHOULD INCLUDE** - For IP-based local access
 
-15. **`http://localhost:8080`** [SUCCESS]
+15. **`http://localhost:8080`** ✅
     - Alternative development port
     - **SHOULD INCLUDE** - For various dev setups
 
 ---
 
-## [CLIPBOARD] Complete ALLOWED_ORIGINS String
+## 📋 Complete ALLOWED_ORIGINS String
 
 ### Production Only (Recommended for Production)
 
@@ -103,14 +103,14 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 
 ---
 
-## [TARGET] Priority Levels
+## 🎯 Priority Levels
 
-### [RED] CRITICAL (Must Include)
+### 🔴 CRITICAL (Must Include)
 - `https://mods.idling.app` - Primary consumer (Mods Hub frontend)
 - `http://localhost:5173` - Local development (mods-hub Vite server)
 - `http://localhost:3001` - Local development (mods-hub React app port)
 
-### [EMOJI] HIGH (Should Include)
+### ❓ HIGH (Should Include)
 - `https://auth.idling.app` - Authentication service
 - `https://api.idling.app` - Main API worker
 - `https://customer.idling.app` - Customer API integration
@@ -118,19 +118,19 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 - `https://idling.app` - Main website
 - `https://www.idling.app` - WWW subdomain
 
-### [YELLOW] MEDIUM (Consider Including)
+### 🟡 MEDIUM (Consider Including)
 - `https://s.idling.app` - URL shortener
 - `https://chat.idling.app` - Chat signaling
 - `http://localhost:3000` - Alternative dev port
 - `http://localhost:5174` - Alternative Vite port
 - `http://127.0.0.1:5173` - IP-based localhost
 
-### [GREEN] LOW (Optional)
+### 🟢 LOW (Optional)
 - `http://localhost:8080` - Alternative dev port
 
 ---
 
-## [NOTE] Setting ALLOWED_ORIGINS
+## 📝 Setting ALLOWED_ORIGINS
 
 ### For Production (Recommended)
 
@@ -152,7 +152,7 @@ https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://c
 
 ---
 
-## [SEARCH] Verification
+## 🔍 Verification
 
 After setting ALLOWED_ORIGINS, test CORS from the primary origin:
 
@@ -172,7 +172,7 @@ curl -H "Origin: https://mods.idling.app" \
 
 ---
 
-## [WARNING] Security Notes
+## ⚠️ Security Notes
 
 1. **Never use `*` in production** - Always specify exact origins
 2. **Include protocol** - `https://` for production, `http://` for localhost
@@ -187,33 +187,33 @@ curl -H "Origin: https://mods.idling.app" \
 https://*.idling.app,http://localhost:*
 ```
 
-**[WARNING] WARNING:** Wildcards are less secure. Prefer explicit origins.
+**⚠️ WARNING:** Wildcards are less secure. Prefer explicit origins.
 
 ---
 
-## [ANALYTICS] Summary Table
+## 📊 Summary Table
 
 | Origin | Priority | Production | Development | Notes |
 |--------|----------|-----------|-------------|-------|
-| `https://mods.idling.app` | [RED] CRITICAL | [SUCCESS] | [SUCCESS] | Primary consumer (Mods Hub frontend) |
-| `https://auth.idling.app` | [EMOJI] HIGH | [SUCCESS] | [SUCCESS] | Authentication service |
-| `https://api.idling.app` | [EMOJI] HIGH | [SUCCESS] | [SUCCESS] | Main API worker |
-| `https://customer.idling.app` | [EMOJI] HIGH | [SUCCESS] | [SUCCESS] | Customer API |
-| `https://game.idling.app` | [EMOJI] HIGH | [SUCCESS] | [SUCCESS] | Game API |
-| `https://s.idling.app` | [YELLOW] MEDIUM | [SUCCESS] | [SUCCESS] | URL shortener |
-| `https://chat.idling.app` | [YELLOW] MEDIUM | [SUCCESS] | [SUCCESS] | Chat signaling |
-| `https://idling.app` | [EMOJI] HIGH | [SUCCESS] | [SUCCESS] | Main website |
-| `https://www.idling.app` | [EMOJI] HIGH | [SUCCESS] | [SUCCESS] | WWW subdomain |
-| `http://localhost:5173` | [RED] CRITICAL | [ERROR] | [SUCCESS] | Vite dev server (mods-hub) |
-| `http://localhost:3000` | [YELLOW] MEDIUM | [ERROR] | [SUCCESS] | Alternative dev |
-| `http://localhost:3001` | [RED] CRITICAL | [ERROR] | [SUCCESS] | Mods Hub React app port |
-| `http://localhost:5174` | [YELLOW] MEDIUM | [ERROR] | [SUCCESS] | Alternative Vite |
-| `http://127.0.0.1:5173` | [YELLOW] MEDIUM | [ERROR] | [SUCCESS] | IP localhost |
-| `http://localhost:8080` | [GREEN] LOW | [ERROR] | [SUCCESS] | Alternative dev |
+| `https://mods.idling.app` | 🔴 CRITICAL | ✅ | ✅ | Primary consumer (Mods Hub frontend) |
+| `https://auth.idling.app` | ❓ HIGH | ✅ | ✅ | Authentication service |
+| `https://api.idling.app` | ❓ HIGH | ✅ | ✅ | Main API worker |
+| `https://customer.idling.app` | ❓ HIGH | ✅ | ✅ | Customer API |
+| `https://game.idling.app` | ❓ HIGH | ✅ | ✅ | Game API |
+| `https://s.idling.app` | 🟡 MEDIUM | ✅ | ✅ | URL shortener |
+| `https://chat.idling.app` | 🟡 MEDIUM | ✅ | ✅ | Chat signaling |
+| `https://idling.app` | ❓ HIGH | ✅ | ✅ | Main website |
+| `https://www.idling.app` | ❓ HIGH | ✅ | ✅ | WWW subdomain |
+| `http://localhost:5173` | 🔴 CRITICAL | ❌ | ✅ | Vite dev server (mods-hub) |
+| `http://localhost:3000` | 🟡 MEDIUM | ❌ | ✅ | Alternative dev |
+| `http://localhost:3001` | 🔴 CRITICAL | ❌ | ✅ | Mods Hub React app port |
+| `http://localhost:5174` | 🟡 MEDIUM | ❌ | ✅ | Alternative Vite |
+| `http://127.0.0.1:5173` | 🟡 MEDIUM | ❌ | ✅ | IP localhost |
+| `http://localhost:8080` | 🟢 LOW | ❌ | ✅ | Alternative dev |
 
 ---
 
-## [DEPLOY] Quick Setup Command
+## 🚀 Quick Setup Command
 
 ### Production (Recommended)
 

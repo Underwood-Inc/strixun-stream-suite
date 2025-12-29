@@ -22,7 +22,7 @@ mkdirSync(join(__dirname, '../dist'), { recursive: true });
 try {
   // Check if the Svelte bundle exists
   if (!existsSync(svelteBundlePath)) {
-    console.error(`[ERROR] Svelte bundle not found at: ${svelteBundlePath}`);
+    console.error(`❌ Svelte bundle not found at: ${svelteBundlePath}`);
     console.error('   Please run: pnpm --filter @strixun/otp-login build:svelte');
     process.exit(1);
   }
@@ -43,9 +43,9 @@ export const BUNDLED_OTP_LOGIN_SVELTE_SCRIPT = ${JSON.stringify(bundled)};
 `;
 
   writeFileSync(outputTsFile, tsContent);
-  console.log(`[SUCCESS] Created TypeScript export at ${outputTsFile}`);
+  console.log(`✅ Created TypeScript export at ${outputTsFile}`);
 } catch (error) {
-  console.error('[ERROR] Failed to bundle OtpLogin Svelte component:', error);
+  console.error('❌ Failed to bundle OtpLogin Svelte component:', error);
   process.exit(1);
 }
 

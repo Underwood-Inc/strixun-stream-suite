@@ -106,7 +106,7 @@
         level={$connected ? 'log' : 'warning'}
       >
         <button class="btn-primary btn-lg" on:click={handleExecuteSwap} disabled={!$connected}>
-          [SYNC] Swap Now
+          🔄 Swap Now
         </button>
       </Tooltip>
     </div>
@@ -149,7 +149,7 @@
     </div>
     
     <div style="margin-top:8px">
-      <label>[PERF] Temporary Override</label>
+      <label>⚡ Temporary Override</label>
       <select id="swapTempOverride" bind:value={swapTempOverride}>
         <option value="off" selected>Off (use config/global)</option>
         <option value="preserve">Preserve</option>
@@ -172,7 +172,7 @@
   <div class="card">
     <h3>Add Swap Config</h3>
     <label>Config Name</label>
-    <input type="text" id="swapConfigName" bind:value={swapConfigName} placeholder="e.g. Camera [EMOJI] Gameplay">
+    <input type="text" id="swapConfigName" bind:value={swapConfigName} placeholder="e.g. Camera ❓ Gameplay">
     <div class="row" style="margin-top:8px">
       <div style="flex:1">
         <label>Source A</label>
@@ -199,7 +199,7 @@
       level={$connected ? 'log' : 'warning'}
     >
       <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleAddSwapConfig} disabled={!$connected}>
-        [ADD] Add Config
+        ➕ Add Config
       </button>
     </Tooltip>
   </div>
@@ -224,10 +224,10 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleRefreshSwapSources} disabled={!$connected}>[SYNC] Refresh Sources</button>
+        <button on:click={handleRefreshSwapSources} disabled={!$connected}>🔄 Refresh Sources</button>
       </Tooltip>
-      <button on:click={handleExportConfigs}>[EMOJI] Export</button>
-      <button on:click={handleImportConfigs}>[EMOJI] Import</button>
+      <button on:click={handleExportConfigs}>❓ Export</button>
+      <button on:click={handleImportConfigs}>❓ Import</button>
     </div>
   </div>
 </div>

@@ -66,7 +66,7 @@ export async function handleTestEmail(request, env) {
                     </head>
                     <body>
                         <div class="container">
-                            <h1>[SUCCESS] Test Email Successful!</h1>
+                            <h1>✅ Test Email Successful!</h1>
                             <div class="success">
                                 <p><strong>If you're reading this, Resend is working correctly!</strong></p>
                                 <p>This is a test email from your Cloudflare Worker.</p>

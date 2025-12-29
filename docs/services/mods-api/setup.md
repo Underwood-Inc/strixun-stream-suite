@@ -33,8 +33,8 @@ wrangler kv namespace create "MODS_KV"
 
 Example output:
 ```
-[EMOJI]  Creating namespace with title "MODS_KV"
-[FEATURE]  Success!
+❓  Creating namespace with title "MODS_KV"
+✨  Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "MODS_KV", id = "abc123def456..." }
 ```
@@ -82,8 +82,8 @@ wrangler deploy
 
 ### 6. Configure Custom Domain (Optional)
 
-1. Go to Cloudflare Dashboard [EMOJI] Workers & Pages [EMOJI] strixun-mods-api
-2. Go to Settings [EMOJI] Triggers [EMOJI] Routes
+1. Go to Cloudflare Dashboard ❓ Workers & Pages ❓ strixun-mods-api
+2. Go to Settings ❓ Triggers ❓ Routes
 3. Add custom domain route: `mods.idling.app/*`
 4. DNS records are automatically managed by Cloudflare
 

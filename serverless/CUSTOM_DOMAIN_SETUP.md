@@ -2,7 +2,7 @@
 
 This guide covers setting up custom domains for all Cloudflare Workers using `idling.app`.
 
-## [TARGET] Domain Configuration
+## 🎯 Domain Configuration
 
 All workers are configured to use the following subdomains:
 
@@ -16,7 +16,7 @@ All workers are configured to use the following subdomains:
 | Mods Hub | `mods.idling.app` | Mod hosting frontend (React) | Pages |
 | Storybook | `design.idling.app` | Component library documentation | Pages |
 
-## [CLIPBOARD] Setup Steps
+## 📋 Setup Steps
 
 ### 1. Deploy Workers with Custom Routes
 
@@ -44,9 +44,9 @@ wrangler deploy
 
 After deployment, verify routes are active:
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **Workers & Pages**
+1. Go to **Cloudflare Dashboard** ❓ **Workers & Pages**
 2. Select each worker
-3. Go to **Settings** [EMOJI] **Triggers** [EMOJI] **Routes**
+3. Go to **Settings** ❓ **Triggers** ❓ **Routes**
 4. Verify the custom domain routes are listed:
    - `api.idling.app/*`
    - `auth.idling.app/*` (if using standalone auth service)
@@ -57,12 +57,12 @@ After deployment, verify routes are active:
 
 Cloudflare automatically manages DNS records for custom domains. Verify in:
 
-1. **Cloudflare Dashboard** [EMOJI] **DNS** [EMOJI] **Records**
+1. **Cloudflare Dashboard** ❓ **DNS** ❓ **Records**
 2. Look for CNAME records:
-   - `api` [EMOJI] `strixun-twitch-api.strixuns-script-suite.workers.dev`
-   - `auth` [EMOJI] `otp-auth-service.strixuns-script-suite.workers.dev`
-   - `s` [EMOJI] `strixun-url-shortener.strixuns-script-suite.workers.dev`
-   - `chat` [EMOJI] `strixun-chat-signaling.strixuns-script-suite.workers.dev`
+   - `api` ❓ `strixun-twitch-api.strixuns-script-suite.workers.dev`
+   - `auth` ❓ `otp-auth-service.strixuns-script-suite.workers.dev`
+   - `s` ❓ `strixun-url-shortener.strixuns-script-suite.workers.dev`
+   - `chat` ❓ `strixun-chat-signaling.strixuns-script-suite.workers.dev`
 
 **Note:** DNS records are automatically created by Cloudflare when you deploy with routes configured.
 
@@ -114,25 +114,25 @@ curl https://mods.idling.app
 curl https://design.idling.app
 ```
 
-## [CONFIG] Configuration Files Updated
+## 🔧 Configuration Files Updated
 
 The following files have been updated with custom domain configuration:
 
 ### Workers
-- [SUCCESS] `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
-- [SUCCESS] `serverless/otp-auth-service/wrangler.toml` - Auth service
-- [SUCCESS] `serverless/url-shortener/wrangler.toml` - URL shortener
-- [SUCCESS] `serverless/chat-signaling/wrangler.toml` - Chat signaling
-- [SUCCESS] `serverless/mods-api/wrangler.toml` - Mods API worker
+- ✅ `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
+- ✅ `serverless/otp-auth-service/wrangler.toml` - Auth service
+- ✅ `serverless/url-shortener/wrangler.toml` - URL shortener
+- ✅ `serverless/chat-signaling/wrangler.toml` - Chat signaling
+- ✅ `serverless/mods-api/wrangler.toml` - Mods API worker
 
 ### Pages (Frontend)
-- [SUCCESS] `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
-- [SUCCESS] `shared-components/` - Storybook component library
+- ✅ `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
+- ✅ `shared-components/` - Storybook component library
 
 ### Frontend Configuration
-- [SUCCESS] `config.js` - Frontend configuration (hardcoded fallbacks)
+- ✅ `config.js` - Frontend configuration (hardcoded fallbacks)
 
-## [NOTE] Frontend Configuration
+## 📝 Frontend Configuration
 
 The frontend `config.js` has been updated with custom domain fallbacks:
 
@@ -141,7 +141,7 @@ The frontend `config.js` has been updated with custom domain fallbacks:
 
 The frontend will automatically use these URLs if no other configuration is provided.
 
-## [DEPLOY] Production Deployment
+## 🚀 Production Deployment
 
 For production, you can:
 
@@ -149,14 +149,14 @@ For production, you can:
 2. **Use wrangler.toml Routes**: Routes are already configured in `wrangler.toml` files
 3. **Environment Variables**: Set `WORKER_API_URL` and `URL_SHORTENER_API_URL` in your deployment pipeline
 
-## [WARNING] Important Notes
+## ⚠️ Important Notes
 
 - **DNS Propagation**: DNS changes may take a few minutes to propagate
 - **SSL Certificates**: Cloudflare automatically provisions SSL certificates for custom domains
 - **Route Precedence**: Routes configured in the dashboard take precedence over `wrangler.toml`
 - **Workers.dev URLs**: The original `*.workers.dev` URLs will continue to work as fallbacks
 
-## [SEARCH] Troubleshooting
+## 🔍 Troubleshooting
 
 ### Routes Not Working
 
@@ -177,7 +177,7 @@ For production, you can:
 2. Check SSL/TLS settings in Cloudflare Dashboard
 3. Ensure domain is fully proxied (orange cloud) in DNS settings
 
-## [DOCS] Additional Resources
+## 📚 Additional Resources
 
 - [Cloudflare Workers Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
 - [Wrangler Routes Documentation](https://developers.cloudflare.com/workers/wrangler/configuration/#routes)

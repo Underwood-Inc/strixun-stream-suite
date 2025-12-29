@@ -1,4 +1,4 @@
-# Deployment [EMOJI]
+# Deployment ❓
 
 Deployment guides and operations documentation.
 

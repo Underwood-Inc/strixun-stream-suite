@@ -673,7 +673,7 @@ export default `<!DOCTYPE html>
         }
 
         .self-hosting-card li::before {
-            content: '[EMOJI]';
+            content: '❓';
             position: absolute;
             left: 0;
             color: var(--success);
@@ -944,7 +944,7 @@ export default `<!DOCTYPE html>
     <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <a href="/" class="logo">[AUTH] OTP Auth API</a>
+            <a href="/" class="logo">🔐 OTP Auth API</a>
             <div class="header-actions">
                 <a href="/dashboard" class="btn btn-secondary">Developer Dashboard</a>
                 <a href="#code-examples" class="btn btn-secondary">Get Started</a>
@@ -956,7 +956,7 @@ export default `<!DOCTYPE html>
     <!-- API Usage Bar (shown for authenticated users) -->
     <div id="api-usage-bar" class="api-usage-bar">
         <div class="api-usage-header">
-            <div class="api-usage-title">[ANALYTICS] API Usage</div>
+            <div class="api-usage-title">📊 API Usage</div>
             <div class="api-usage-stats">
                 <div class="api-usage-stat">
                     <span class="api-usage-stat-label">Daily:</span>
@@ -998,7 +998,7 @@ export default `<!DOCTYPE html>
         <p>
             Secure, scalable OTP authentication API built for modern applications. 
             No passwords, no complexity—just email verification that works.
-            <strong style="color: var(--accent);">Open-source and self-hostable.</strong> [EMOJI]
+            <strong style="color: var(--accent);">Open-source and self-hostable.</strong> ❓
         </p>
         <div class="hero-cta">
             <a href="/dashboard" class="btn btn-primary">Developer Dashboard</a>
@@ -1012,46 +1012,46 @@ export default `<!DOCTYPE html>
         <h2>Why Choose OTP Auth?</h2>
         <div class="features-grid">
             <div class="feature-card">
-                <div class="feature-icon">[PERF]</div>
+                <div class="feature-icon">⚡</div>
                 <h3>Lightning Fast</h3>
                 <p>Built on Cloudflare Workers for global edge deployment. Sub-100ms response times worldwide.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[SECURITY]</div>
+                <div class="feature-icon">🔒</div>
                 <h3>Enterprise Security</h3>
                 <p>Cryptographically secure OTP codes, JWT tokens, rate limiting, and comprehensive audit logging.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[DEPLOY]</div>
+                <div class="feature-icon">🚀</div>
                 <h3>Easy Integration</h3>
                 <p>Simple REST API that works with any framework. React, Svelte, Vue, or vanilla JavaScript—we've got you covered.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[ANALYTICS]</div>
+                <div class="feature-icon">📊</div>
                 <h3>Multi-Tenant Ready</h3>
                 <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[EMOJI]</div>
+                <div class="feature-icon">❓</div>
                 <h3>Cost Effective</h3>
                 <p>Pay only for what you use. No infrastructure to manage, no servers to maintain.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[GLOBAL]</div>
+                <div class="feature-icon">🌍</div>
                 <h3>Global Scale</h3>
                 <p>Deployed on Cloudflare's edge network. Your users get the same fast experience anywhere in the world.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[EMOJI]</div>
+                <div class="feature-icon">❓</div>
                 <h3>Open Source & Self-Hostable</h3>
-                <p>Completely open-source on GitHub. Self-host with unlimited rate limits or wait for subscription tiers. [EMOJI]</p>
+                <p>Completely open-source on GitHub. Self-host with unlimited rate limits or wait for subscription tiers. ❓</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">[CONTROL]</div>
+                <div class="feature-icon">🎛️</div>
                 <h3>Developer Dashboard</h3>
                 <p>Manage API keys, view audit logs, monitor analytics, and track usage—all from a beautiful, intuitive dashboard.</p>
                 <div style="margin-top: var(--spacing-md);">
-                    <a href="/dashboard" class="btn btn-secondary" style="font-size: 0.875rem; padding: var(--spacing-sm) var(--spacing-md);">Open Dashboard [EMOJI]</a>
+                    <a href="/dashboard" class="btn btn-secondary" style="font-size: 0.875rem; padding: var(--spacing-sm) var(--spacing-md);">Open Dashboard ❓</a>
                 </div>
             </div>
         </div>
@@ -1063,35 +1063,35 @@ export default `<!DOCTYPE html>
             <h2>Security You Can Trust</h2>
             <div class="security-grid">
                 <div class="security-item">
-                    <h3>[AUTH] Cryptographically Secure</h3>
+                    <h3>🔐 Cryptographically Secure</h3>
                     <p>9-digit OTP codes generated using cryptographically secure random number generators. 1 billion possible combinations.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[TIME] Time-Limited</h3>
+                    <h3>⏱️ Time-Limited</h3>
                     <p>OTP codes expire after 10 minutes. Single-use only—once verified, the code is immediately invalidated.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[PROTECT] Brute Force Protection</h3>
+                    <h3>🛡️ Brute Force Protection</h3>
                     <p>Maximum 5 verification attempts per OTP code. After that, a new code must be requested.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[EMOJI] Rate Limiting</h3>
+                    <h3>❓ Rate Limiting</h3>
                     <p>3 OTP requests per email per hour. Prevents abuse and email spam while maintaining usability.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[EMOJI] JWT Tokens</h3>
+                    <h3>❓ JWT Tokens</h3>
                     <p>HMAC-SHA256 signed tokens with 7-hour expiration. Token blacklisting for secure logout.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[NOTE] Audit Logging</h3>
+                    <h3>📝 Audit Logging</h3>
                     <p>Comprehensive security event logging with 90-day retention. Track all authentication attempts and failures.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[WEB] CORS Protection</h3>
+                    <h3>🌐 CORS Protection</h3>
                     <p>Configurable CORS policies per customer. IP allowlisting for additional security layers.</p>
                 </div>
                 <div class="security-item">
-                    <h3>[SUCCESS] GDPR Compliant</h3>
+                    <h3>✅ GDPR Compliant</h3>
                     <p>Data export and deletion endpoints. Complete user data portability and right to be forgotten.</p>
                 </div>
             </div>
@@ -1388,7 +1388,7 @@ export default LoginForm;</code></pre>
                 </li>
                 <li>
                     <strong>Exceeded Free Tier?</strong>
-                    <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon. [EMOJI]</p>
+                    <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon. ❓</p>
                 </li>
             </ul>
         </div>
@@ -1397,7 +1397,7 @@ export default LoginForm;</code></pre>
     <!-- Self-Hosting & Open Source Section -->
     <section class="self-hosting" id="self-hosting">
         <div class="self-hosting-content">
-            <h2>Outgrown the Free Tier? We've Got You Covered [EMOJI]</h2>
+            <h2>Outgrown the Free Tier? We've Got You Covered ❓</h2>
             <p class="self-hosting-subtitle">
                 Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
                 Or sit tight—subscription tiers with enhanced limits are coming soon.
@@ -1405,7 +1405,7 @@ export default LoginForm;</code></pre>
             
             <div class="self-hosting-grid">
                 <div class="self-hosting-card">
-                    <h3>[EMOJI] Self-Host on GitHub</h3>
+                    <h3>❓ Self-Host on GitHub</h3>
                     <p>
                         The entire codebase is open-source and available on GitHub. Deploy it on your own infrastructure 
                         with complete control over rate limits, configuration, and data.
@@ -1419,13 +1419,13 @@ export default LoginForm;</code></pre>
                     </ul>
                     <div style="margin-top: var(--spacing-lg);">
                         <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
-                            <span>[PACKAGE]</span> View on GitHub
+                            <span>📦</span> View on GitHub
                         </a>
                     </div>
                 </div>
 
                 <div class="self-hosting-card">
-                    <h3>[PERF] Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+                    <h3>⚡ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
                     <p>
                         Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
                         Get notified when they launch and keep using our managed service.
@@ -1445,7 +1445,7 @@ export default LoginForm;</code></pre>
                 </div>
 
                 <div class="self-hosting-card">
-                    <h3>[DEPLOY] Why Choose Self-Hosting?</h3>
+                    <h3>🚀 Why Choose Self-Hosting?</h3>
                     <p>
                         Self-hosting gives you complete freedom and control. Perfect for enterprises, high-traffic applications, 
                         or when you need custom configurations.

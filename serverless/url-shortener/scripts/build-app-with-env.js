@@ -22,18 +22,18 @@ console.log(`[DEBUG] Found ${viteEnvVars.length} VITE_* environment variables:`,
 const encryptionKey = process.env.VITE_SERVICE_ENCRYPTION_KEY;
 
 if (!encryptionKey) {
-  console.error('[ERROR] VITE_SERVICE_ENCRYPTION_KEY is not set in environment');
+  console.error('❌ VITE_SERVICE_ENCRYPTION_KEY is not set in environment');
   console.error('This key is required for building the app. Please set it in your CI/CD environment.');
   console.error('[DEBUG] Available environment variables:', Object.keys(process.env).filter(k => k.includes('ENCRYPTION') || k.includes('KEY')));
   process.exit(1);
 }
 
 if (encryptionKey.length < 32) {
-  console.error(`[ERROR] VITE_SERVICE_ENCRYPTION_KEY is too short (${encryptionKey.length} chars, need 32+)`);
+  console.error(`❌ VITE_SERVICE_ENCRYPTION_KEY is too short (${encryptionKey.length} chars, need 32+)`);
   process.exit(1);
 }
 
-console.log(`[INFO] Building app with encryption key (length: ${encryptionKey.length})`);
+console.log(`ℹ️ Building app with encryption key (length: ${encryptionKey.length})`);
 
 // Set the environment variable and run the build
 // This ensures Vite can access it during the build process
@@ -51,9 +51,9 @@ try {
     },
   });
   
-  console.log('[SUCCESS] App build completed');
+  console.log('✅ App build completed');
 } catch (error) {
-  console.error('[ERROR] App build failed:', error.message);
+  console.error('❌ App build failed:', error.message);
   process.exit(1);
 }
 

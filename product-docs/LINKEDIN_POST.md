@@ -2,19 +2,19 @@
 
 ---
 
-[EMOJI] **Introducing Strixun Stream Suite: A Professional OBS Studio Production Toolkit**
+❓ **Introducing Strixun Stream Suite: A Professional OBS Studio Production Toolkit**
 
 I'm excited to share **Strixun Stream Suite** - a comprehensive, open-source streaming toolkit that transforms manual OBS Studio workflows into automated, professional-quality operations. Built for content creators, streamers, and production teams who want to elevate their live streams without the complexity.
 
-## [EMOJI] What It Offers
+## ❓ What It Offers
 
 Strixun Stream Suite is a complete ecosystem of tools that work seamlessly together to automate and enhance live streaming production. From smooth source animations to cloud-synced configurations, this toolkit handles everything you need for professional streaming workflows.
 
-## [LOCATION] Where to Find It
+## 📍 Where to Find It
 
-[LINK] **GitHub Repository:** https://github.com/Underwood-Inc/strixun-stream-suite  
-[WEB] **Live Demo:** https://streamkit.idling.app  
-[PACKAGE] **GitHub Pages:** https://underwood-inc.github.io/strixun-stream-suite
+🔗 **GitHub Repository:** https://github.com/Underwood-Inc/strixun-stream-suite  
+🌐 **Live Demo:** https://streamkit.idling.app  
+📦 **GitHub Pages:** https://underwood-inc.github.io/strixun-stream-suite
 
 **License:** MIT (Open Source)  
 **Platform:** Windows, macOS, Linux  
@@ -22,7 +22,7 @@ Strixun Stream Suite is a complete ecosystem of tools that work seamlessly toget
 
 ---
 
-## [TARGET] Core Features
+## 🎯 Core Features
 
 ### 1. **Source Animations System**
 Smooth, professional animations for source visibility toggles:
@@ -66,7 +66,7 @@ Automated clip playback during BRB screens:
 
 ---
 
-## [EMOJI][EMOJI] Sub-Applications & Services
+## ❓❓ Sub-Applications & Services
 
 ### **Control Panel (Web Application)**
 **Tech Stack:** Svelte 5 + TypeScript + Vite  
@@ -162,7 +162,7 @@ Standalone React application for mods management and discovery.
 
 ---
 
-## [DEPLOY] Technical Highlights
+## 🚀 Technical Highlights
 
 - **Multi-Layer Storage:** IndexedDB (primary) + localStorage (backup) + Recovery snapshots
 - **Serverless Architecture:** Cloudflare Workers for edge computing
@@ -175,7 +175,7 @@ Standalone React application for mods management and discovery.
 
 ---
 
-## [ANALYTICS] Architecture Overview
+## 📊 Architecture Overview
 
 The suite follows a modular architecture:
 - **Client-Side:** Svelte 5 control panel running in OBS Browser Source
@@ -186,26 +186,26 @@ The suite follows a modular architecture:
 
 ---
 
-## [EMOJI] Perfect For
+## ❓ Perfect For
 
-[SUCCESS] Content creators looking to automate streaming workflows  
-[SUCCESS] Production teams managing multiple streamers  
-[SUCCESS] Streamers who want professional-quality animations  
-[SUCCESS] Developers interested in OBS Studio automation  
-[SUCCESS] Anyone who wants to reduce setup time from hours to minutes
+✅ Content creators looking to automate streaming workflows  
+✅ Production teams managing multiple streamers  
+✅ Streamers who want professional-quality animations  
+✅ Developers interested in OBS Studio automation  
+✅ Anyone who wants to reduce setup time from hours to minutes
 
 ---
 
-## [LINK] Get Started
+## 🔗 Get Started
 
 1. **Visit:** https://streamkit.idling.app
-2. **Add to OBS:** View [EMOJI] Docks [EMOJI] Custom Browser Docks
+2. **Add to OBS:** View ❓ Docks ❓ Custom Browser Docks
 3. **Install Scripts:** Use the built-in installation wizard
 4. **Start Streaming:** Configure your sources and start animating!
 
 ---
 
-**Built with [EMOJI][EMOJI] for the streaming community**
+**Built with ❓❓ for the streaming community**
 
 #OpenSource #Streaming #OBSStudio #WebDevelopment #TypeScript #Cloudflare #LiveStreaming #ContentCreation #DeveloperTools
 

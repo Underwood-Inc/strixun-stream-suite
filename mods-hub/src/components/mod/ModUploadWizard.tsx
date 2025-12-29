@@ -69,7 +69,7 @@ const StepCircle = styled.div<{ active: boolean; completed: boolean }>`
   
   ${({ completed }) => completed && `
     &::after {
-      content: '[EMOJI]';
+      content: '❓';
       font-size: 1.2rem;
     }
   `}
@@ -616,7 +616,7 @@ export function ModUploadWizard({
                                     </FileInfo>
                                 ) : (
                                     <>
-                                        <div>[FOLDER] Drop mod file here or click to browse</div>
+                                        <div>📁 Drop mod file here or click to browse</div>
                                         <DragDropText>
                                             Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .zip, .json, .txt, .xml, .yaml, .yml'}
                                         </DragDropText>
@@ -655,7 +655,7 @@ export function ModUploadWizard({
                                     </FileInfo>
                                 ) : (
                                     <>
-                                        <div>[EMOJI][EMOJI] Drop thumbnail here</div>
+                                        <div>❓❓ Drop thumbnail here</div>
                                         <DragDropText>.png, .jpg, .webp</DragDropText>
                                     </>
                                 )}
@@ -711,7 +711,7 @@ export function ModUploadWizard({
                         onClick={handleNext}
                         disabled={!canProceed}
                     >
-                        Next: Version & Details [EMOJI]
+                        Next: Version & Details ❓
                     </Button>
                 </NavigationButtons>
             </StepContent>
@@ -784,14 +784,14 @@ export function ModUploadWizard({
 
                 <NavigationButtons>
                     <Button variant="secondary" onClick={handleBack}>
-                        [EMOJI] Back
+                        ❓ Back
                     </Button>
                     <Button 
                         variant="primary"
                         onClick={handleNext}
                         disabled={!canProceed}
                     >
-                        Next: Review & Submit [EMOJI]
+                        Next: Review & Submit ❓
                     </Button>
                 </NavigationButtons>
             </StepContent>
@@ -924,7 +924,7 @@ export function ModUploadWizard({
 
                 <NavigationButtons>
                     <Button variant="secondary" onClick={handleBack}>
-                        [EMOJI] Back
+                        ❓ Back
                     </Button>
                     <div style={{ display: 'flex', gap: spacing.md }}>
                         {onSaveDraft && (

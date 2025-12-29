@@ -1,10 +1,10 @@
-# CORS Quick Reference [DEPLOY]
+# CORS Quick Reference 🚀
 
 **Quick commands to configure CORS for all services.**
 
 ---
 
-## [TARGET] Production Configuration
+## 🎯 Production Configuration
 
 ### 1. Mods API
 
@@ -35,7 +35,7 @@ https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https
 
 ---
 
-## [EMOJI][EMOJI] Development Configuration (includes localhost)
+## ❓❓ Development Configuration (includes localhost)
 
 ### 1. Mods API
 
@@ -66,7 +66,7 @@ https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https
 
 ---
 
-## [SUCCESS] Verification Commands
+## ✅ Verification Commands
 
 ### Test Mods API CORS
 
@@ -100,11 +100,11 @@ curl -H "Origin: https://auth.idling.app" \
 
 ---
 
-## [CLIPBOARD] Critical Origins (Must Include)
+## 📋 Critical Origins (Must Include)
 
-- [SUCCESS] `https://mods.idling.app` - Frontend (Mods Hub)
-- [SUCCESS] `https://auth.idling.app` - Auth service (dashboard)
-- [SUCCESS] `http://localhost:3001` - Local development (Mods Hub)
+- ✅ `https://mods.idling.app` - Frontend (Mods Hub)
+- ✅ `https://auth.idling.app` - Auth service (dashboard)
+- ✅ `http://localhost:3001` - Local development (Mods Hub)
 
 ---
 

@@ -1,4 +1,4 @@
-# [UI] Scrollbar Customizer - Free CDN Tool
+# 🎨 Scrollbar Customizer - Free CDN Tool
 
 > **Make your website's scrollbars look amazing with just one line of code!**
 
@@ -6,7 +6,7 @@ A free, easy-to-use tool that lets you customize scrollbars on any website. Just
 
 ---
 
-## [DEPLOY] Quick Start (Super Simple!)
+## 🚀 Quick Start (Super Simple!)
 
 ### Option 1: Just Apply Default Styling (Easiest)
 
@@ -39,7 +39,7 @@ This adds a **floating control panel** (top-right corner) where you can:
 
 ---
 
-## [CLIPBOARD] Step-by-Step Guide
+## 📋 Step-by-Step Guide
 
 ### For Complete Beginners
 
@@ -82,7 +82,7 @@ Here's what your HTML might look like:
 
 ---
 
-## [CONTROL] Using the Customizer UI
+## 🎛️ Using the Customizer UI
 
 If you chose the **customizer version** (`scrollbar-customizer.js`), you'll see a floating panel in the top-right corner when you load your page.
 
@@ -106,7 +106,7 @@ If you chose the **customizer version** (`scrollbar-customizer.js`), you'll see 
 
 ---
 
-## [WEB] CDN URLs
+## 🌐 CDN URLs
 
 ### Base Styling (Defaults Only)
 ```
@@ -122,7 +122,7 @@ https://strixun-twitch-api.strixuns-script-suite.workers.dev/cdn/scrollbar-custo
 
 ---
 
-## [FEATURE] Default Styling
+## ✨ Default Styling
 
 When you use the base version, your scrollbars get these default settings:
 
@@ -137,7 +137,7 @@ These defaults work great for most websites, but you can always use the customiz
 
 ---
 
-## [CONFIG] Advanced Usage (For Developers)
+## 🔧 Advanced Usage (For Developers)
 
 If you want to customize programmatically instead of using the UI:
 
@@ -165,18 +165,18 @@ If you want to customize programmatically instead of using the UI:
 
 ---
 
-## [GLOBAL] Browser Support
+## 🌍 Browser Support
 
 Works on all modern browsers:
-- [SUCCESS] Chrome
-- [SUCCESS] Firefox
-- [SUCCESS] Safari
-- [SUCCESS] Edge
-- [WARNING] Internet Explorer (limited support)
+- ✅ Chrome
+- ✅ Firefox
+- ✅ Safari
+- ✅ Edge
+- ⚠️ Internet Explorer (limited support)
 
 ---
 
-## [IDEA] What is "Content Adjustment"?
+## 💡 What is "Content Adjustment"?
 
 Content adjustment is a feature that prevents your page from "jumping" or shifting when scrollbars appear or disappear. 
 
@@ -186,7 +186,7 @@ Content adjustment is a feature that prevents your page from "jumping" or shifti
 
 ---
 
-## [QUESTION] Frequently Asked Questions
+## ❓ Frequently Asked Questions
 
 ### Do I need to know how to code?
 **No!** Just copy and paste the script tag into your HTML. That's it!
@@ -211,7 +211,7 @@ Content adjustment is a feature that prevents your page from "jumping" or shifti
 
 ---
 
-## [BUG] Troubleshooting
+## 🐛 Troubleshooting
 
 ### Scrollbars don't appear customized
 - Make sure you added the script tag to the `<head>` section
@@ -229,13 +229,13 @@ Content adjustment is a feature that prevents your page from "jumping" or shifti
 
 ---
 
-## [NOTE] License
+## 📝 License
 
 Part of the Strixun Stream Suite project. Free to use on any website.
 
 ---
 
-## [EMOJI] Need Help?
+## ❓ Need Help?
 
 If you run into any issues:
 1. Check the troubleshooting section above
@@ -244,4 +244,4 @@ If you run into any issues:
 
 ---
 
-**Made with [EMOJI][EMOJI] for the web community**
+**Made with ❓❓ for the web community**

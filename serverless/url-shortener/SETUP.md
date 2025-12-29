@@ -68,8 +68,8 @@ wrangler deploy
 
 ### 6. Configure Custom Domain (Optional)
 
-1. Go to Cloudflare Dashboard [EMOJI] Workers & Pages [EMOJI] strixun-url-shortener
-2. Go to Settings [EMOJI] Triggers [EMOJI] Routes
+1. Go to Cloudflare Dashboard ❓ Workers & Pages ❓ strixun-url-shortener
+2. Go to Settings ❓ Triggers ❓ Routes
 3. Add custom domain route (e.g., `s.yourdomain.com/*` or `short.yourdomain.com/*`)
 4. Update DNS records as instructed by Cloudflare
 

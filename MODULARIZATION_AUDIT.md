@@ -6,28 +6,28 @@
 
 ---
 
-## [ANALYTICS] Current State Analysis
+## 📊 Current State Analysis
 
-### [SUCCESS] Already Extracted Modules
+### ✅ Already Extracted Modules
 
 | Module | File | Status | Notes |
 |--------|------|--------|-------|
-| CSS Styles | `assets/css/control-panel.css` | [SUCCESS] Complete | All styles extracted |
-| Storage System | `assets/js/storage.js` | [SUCCESS] Complete | Duplicate removed from HTML (~643 lines saved) |
-| Text Cycler | `assets/js/text-cycler.js` | [SUCCESS] Complete | Extracted |
-| Storage Sync | `assets/js/storage-sync.js` | [SUCCESS] Complete | Extracted |
-| Source Swaps | `assets/js/source-swaps.js` | [SUCCESS] Complete | Extracted |
-| Installer Module | `assets/js/modules/installer.js` | [SUCCESS] Complete | Extracted (~620 lines saved) |
+| CSS Styles | `assets/css/control-panel.css` | ✅ Complete | All styles extracted |
+| Storage System | `assets/js/storage.js` | ✅ Complete | Duplicate removed from HTML (~643 lines saved) |
+| Text Cycler | `assets/js/text-cycler.js` | ✅ Complete | Extracted |
+| Storage Sync | `assets/js/storage-sync.js` | ✅ Complete | Extracted |
+| Source Swaps | `assets/js/source-swaps.js` | ✅ Complete | Extracted |
+| Installer Module | `assets/js/modules/installer.js` | ✅ Complete | Extracted (~620 lines saved) |
 
-### [SUCCESS] Completed Work
+### ✅ Completed Work
 
-**Phase 1: Storage Duplication Removal** [SUCCESS]
+**Phase 1: Storage Duplication Removal** ✅
 - Removed ~643 lines of duplicate storage code from HTML
 - Added `assets/js/storage.js` script tag
 - All storage functions now use global declarations from storage.js
 - **Result:** No more duplication, cleaner code
 
-**Phase 2 (Step 2): Installer Module Extraction** [SUCCESS]
+**Phase 2 (Step 2): Installer Module Extraction** ✅
 - Extracted ~620 lines to `assets/js/modules/installer.js`
 - All installer functions now modularized
 - Updated HTML onclick handlers to use `window.Installer.*`
@@ -41,15 +41,15 @@
 
 ---
 
-## [TARGET] Largest Extractable Chunks (Ranked by Size)
+## 🎯 Largest Extractable Chunks (Ranked by Size)
 
-### 1. **Installer/Script Manager Module** [EMOJI] **LARGEST NEXT CHUNK**
+### 1. **Installer/Script Manager Module** ❓ **LARGEST NEXT CHUNK**
 - **Lines:** ~4400-5373 (973 lines)
 - **Size:** ~973 lines
 - **Dependencies:** Minimal (uses `log()`, `storage`, `isOBSDock()`)
-- **Self-contained:** [SUCCESS] Yes
+- **Self-contained:** ✅ Yes
 - **Complexity:** Medium
-- **Extraction Priority:** [EMOJI] **HIGHEST**
+- **Extraction Priority:** ❓ **HIGHEST**
 
 **Functions included:**
 - `initScriptsAndInstaller()`
@@ -75,9 +75,9 @@
 - **Lines:** ~1995-2865 (870 lines)
 - **Size:** ~870 lines
 - **Dependencies:** Storage, UI utilities
-- **Self-contained:** [SUCCESS] Mostly
+- **Self-contained:** ✅ Mostly
 - **Complexity:** High (core functionality)
-- **Extraction Priority:** [EMOJI] **HIGH**
+- **Extraction Priority:** ❓ **HIGH**
 
 **Functions included:**
 - WebSocket connection management
@@ -96,9 +96,9 @@
 - **Lines:** ~2867-3430 (563 lines)
 - **Size:** ~563 lines
 - **Dependencies:** WebSocket, UI utilities
-- **Self-contained:** [SUCCESS] Yes
+- **Self-contained:** ✅ Yes
 - **Complexity:** Medium
-- **Extraction Priority:** [YELLOW] **MEDIUM**
+- **Extraction Priority:** 🟡 **MEDIUM**
 
 **Functions included:**
 - `refreshScenes()`
@@ -119,9 +119,9 @@
 - **Lines:** ~3551-4043 (492 lines)
 - **Size:** ~492 lines
 - **Dependencies:** WebSocket, Storage
-- **Self-contained:** [SUCCESS] Yes
+- **Self-contained:** ✅ Yes
 - **Complexity:** Medium
-- **Extraction Priority:** [YELLOW] **MEDIUM**
+- **Extraction Priority:** 🟡 **MEDIUM**
 
 **Functions included:**
 - `captureLayout()`
@@ -141,9 +141,9 @@
 - **Lines:** ~1607-1993 (386 lines)
 - **Size:** ~386 lines
 - **Dependencies:** Storage
-- **Self-contained:** [SUCCESS] Yes
+- **Self-contained:** ✅ Yes
 - **Complexity:** Low-Medium
-- **Extraction Priority:** [GREEN] **LOW**
+- **Extraction Priority:** 🟢 **LOW**
 
 **Functions included:**
 - `SmartSearch` object
@@ -159,9 +159,9 @@
 - **Lines:** ~5376-5550 (174 lines)
 - **Size:** ~174 lines
 - **Dependencies:** Storage
-- **Self-contained:** [SUCCESS] Yes
+- **Self-contained:** ✅ Yes
 - **Complexity:** Low
-- **Extraction Priority:** [GREEN] **LOW**
+- **Extraction Priority:** 🟢 **LOW**
 
 **Functions included:**
 - `getLocalVersion()`
@@ -178,9 +178,9 @@
 - **Lines:** ~4401-4800 (399 lines)
 - **Size:** ~399 lines
 - **Dependencies:** WebSocket
-- **Self-contained:** [SUCCESS] Mostly
+- **Self-contained:** ✅ Mostly
 - **Complexity:** Medium
-- **Extraction Priority:** [YELLOW] **MEDIUM**
+- **Extraction Priority:** 🟡 **MEDIUM**
 
 **Functions included:**
 - `checkScriptStatus()`
@@ -198,9 +198,9 @@
 - **Lines:** ~4266-4492 (226 lines)
 - **Size:** ~226 lines
 - **Dependencies:** Storage, WebSocket
-- **Self-contained:** [SUCCESS] Yes
+- **Self-contained:** ✅ Yes
 - **Complexity:** Medium
-- **Extraction Priority:** [GREEN] **LOW**
+- **Extraction Priority:** 🟢 **LOW**
 
 **Functions included:**
 - `getTwitchClientId()`
@@ -213,83 +213,83 @@
 
 ---
 
-## [TARGET] Recommended Extraction Order
+## 🎯 Recommended Extraction Order
 
-### Phase 1: Remove Duplication (Immediate) [SUCCESS] COMPLETE
-1. [SUCCESS] **Removed storage code from HTML** (lines 963-1606)
+### Phase 1: Remove Duplication (Immediate) ✅ COMPLETE
+1. ✅ **Removed storage code from HTML** (lines 963-1606)
    - Added `assets/js/storage.js` script tag
    - Removed ~643 lines of duplicate code
    - All storage functions now global from storage.js
    - **Savings:** ~643 lines
 
 ### Phase 2: Largest Chunks First (High Impact)
-2. [SUCCESS] **Extracted Installer Module** (~620 lines) [SUCCESS] COMPLETE
+2. ✅ **Extracted Installer Module** (~620 lines) ✅ COMPLETE
    - File: `assets/js/modules/installer.js`
    - **Impact:** Largest single extraction
    - **Risk:** Low (self-contained)
    - **Status:** Successfully extracted, all functions working
 
-3. [SUCCESS] **Extract WebSocket Module** (~870 lines) [SUCCESS] COMPLETE
+3. ✅ **Extract WebSocket Module** (~870 lines) ✅ COMPLETE
    - File: `assets/js/websocket.js`
    - **Impact:** Core functionality
    - **Risk:** Medium (many dependencies)
    - **Status:** Successfully extracted, all functions working
 
 ### Phase 3: Feature Modules (Medium Impact)
-4. [SUCCESS] **Extract Source Management** (~615 lines) [SUCCESS] COMPLETE
+4. ✅ **Extract Source Management** (~615 lines) ✅ COMPLETE
    - File: `assets/js/modules/sources.js`
    - **Status:** Successfully extracted, includes opacity management and animations
 
-5. [SUCCESS] **Extract Layout Management** (~503 lines) [SUCCESS] COMPLETE
+5. ✅ **Extract Layout Management** (~503 lines) ✅ COMPLETE
    - File: `assets/js/modules/layouts.js`
    - **Status:** Successfully extracted, uses global easeFunc/lerp from sources.js
 
-6. [SUCCESS] **Extract Script Status** (~355 lines) [SUCCESS] COMPLETE
+6. ✅ **Extract Script Status** (~355 lines) ✅ COMPLETE
    - File: `assets/js/modules/script-status.js`
    - **Status:** Successfully extracted, includes OBS dock detection utilities
 
 ### Phase 4: Utilities (Low Impact, High Value)
-7. [SUCCESS] **Extract UI Utilities** (~386 lines) [SUCCESS] COMPLETE
+7. ✅ **Extract UI Utilities** (~386 lines) ✅ COMPLETE
    - File: `assets/js/ui-utils.js`
    - **Status:** Successfully extracted, includes SmartSearch, CollapsibleCards, and SplitPanel
 
-8. [SUCCESS] **Extract Version Management** (~174 lines) [SUCCESS] COMPLETE
+8. ✅ **Extract Version Management** (~174 lines) ✅ COMPLETE
    - File: `assets/js/modules/version.js`
    - **Status:** Successfully extracted, includes version comparison and GitHub update checking
 
-9. [SUCCESS] **Extract Twitch API** (~226 lines) [SUCCESS] COMPLETE
+9. ✅ **Extract Twitch API** (~226 lines) ✅ COMPLETE
    - File: `assets/js/modules/twitch-api.js`
    - **Status:** Successfully extracted, includes OAuth URL generation and API testing
 
 ---
 
-## [EMOJI] Proposed Final Structure
+## ❓ Proposed Final Structure
 
 ```
 control_panel.html                    # ~800 lines (HTML structure only)
 assets/
 ├── css/
-│   └── control-panel.css            # [SUCCESS] Already extracted
+│   └── control-panel.css            # ✅ Already extracted
 └── js/
-    ├── storage.js                   # [SUCCESS] Already extracted (remove duplicate from HTML)
-    ├── websocket.js                 # [SYNC] Extract (870 lines)
-    ├── ui-utils.js                  # [SYNC] Extract (386 lines)
-    ├── app.js                       # [SYNC] Create (initialization, ~100 lines)
-    ├── text-cycler.js               # [SUCCESS] Already extracted
-    ├── storage-sync.js              # [SUCCESS] Already extracted
-    ├── source-swaps.js               # [SUCCESS] Already extracted
+    ├── storage.js                   # ✅ Already extracted (remove duplicate from HTML)
+    ├── websocket.js                 # 🔄 Extract (870 lines)
+    ├── ui-utils.js                  # 🔄 Extract (386 lines)
+    ├── app.js                       # 🔄 Create (initialization, ~100 lines)
+    ├── text-cycler.js               # ✅ Already extracted
+    ├── storage-sync.js              # ✅ Already extracted
+    ├── source-swaps.js               # ✅ Already extracted
     └── modules/
-        ├── installer.js              # [SYNC] Extract (973 lines) [EMOJI] LARGEST
-        ├── sources.js                # [SYNC] Extract (563 lines)
-        ├── layouts.js                # [SYNC] Extract (492 lines)
-        ├── script-status.js          # [SYNC] Extract (399 lines)
-        ├── version.js                # [SYNC] Extract (174 lines)
-        └── twitch-api.js             # [SYNC] Extract (226 lines)
+        ├── installer.js              # 🔄 Extract (973 lines) ❓ LARGEST
+        ├── sources.js                # 🔄 Extract (563 lines)
+        ├── layouts.js                # 🔄 Extract (492 lines)
+        ├── script-status.js          # 🔄 Extract (399 lines)
+        ├── version.js                # 🔄 Extract (174 lines)
+        └── twitch-api.js             # 🔄 Extract (226 lines)
 ```
 
 ---
 
-## [SEARCH] Detailed Analysis: Installer Module (Largest Next Chunk)
+## 🔍 Detailed Analysis: Installer Module (Largest Next Chunk)
 
 ### Boundaries
 - **Start:** Line ~4401 (`const AVAILABLE_SCRIPTS = [...]`)
@@ -350,7 +350,7 @@ window.Installer = {
 
 ---
 
-## [WARNING] Extraction Considerations
+## ⚠️ Extraction Considerations
 
 ### 1. Global State Sharing
 Many modules need access to:
@@ -398,7 +398,7 @@ After each extraction:
 
 ---
 
-## [METRICS] Expected Results
+## 📈 Expected Results
 
 ### After All Extractions:
 - **Current:** 5,572 lines
@@ -414,16 +414,16 @@ After each extraction:
 
 ---
 
-## [DEPLOY] Next Steps
+## 🚀 Next Steps
 
-1. [SUCCESS] **COMPLETE:** Removed duplicate storage code from HTML
-2. [SUCCESS] **COMPLETE:** Extracted Installer Module (~620 lines)
-3. [SYNC] **IN PROGRESS:** Extract WebSocket Module (core functionality, ~870 lines)
+1. ✅ **COMPLETE:** Removed duplicate storage code from HTML
+2. ✅ **COMPLETE:** Extracted Installer Module (~620 lines)
+3. 🔄 **IN PROGRESS:** Extract WebSocket Module (core functionality, ~870 lines)
 4. **Next:** Continue with Phase 3 modules (sources, layouts, script-status)
 
 ---
 
-## [NOTE] Notes
+## 📝 Notes
 
 - All modules should be OBS dock compatible (no ES modules, use global namespace)
 - Maintain backward compatibility during extraction
@@ -433,20 +433,20 @@ After each extraction:
 
 ---
 
-## [CLIPBOARD] Extraction Progress Log
+## 📋 Extraction Progress Log
 
-### 2025-12-22: Phase 2 & 3 Progress [SUCCESS]
+### 2025-12-22: Phase 2 & 3 Progress ✅
 
 **Completed:**
-- [SUCCESS] Removed duplicate storage code (~643 lines)
-- [SUCCESS] Extracted Installer/Script Manager module (~620 lines)
-- [SUCCESS] Extracted WebSocket/OBS Connection module (~870 lines)
-- [SUCCESS] Extracted Source Management module (~615 lines)
-- [SUCCESS] Extracted Layout Management module (~503 lines)
-- [SUCCESS] Extracted Script Status module (~355 lines)
-- [SUCCESS] Extracted UI Utilities module (~386 lines)
-- [SUCCESS] Extracted Version Management module (~174 lines)
-- [SUCCESS] Extracted Twitch API module (~226 lines)
+- ✅ Removed duplicate storage code (~643 lines)
+- ✅ Extracted Installer/Script Manager module (~620 lines)
+- ✅ Extracted WebSocket/OBS Connection module (~870 lines)
+- ✅ Extracted Source Management module (~615 lines)
+- ✅ Extracted Layout Management module (~503 lines)
+- ✅ Extracted Script Status module (~355 lines)
+- ✅ Extracted UI Utilities module (~386 lines)
+- ✅ Extracted Version Management module (~174 lines)
+- ✅ Extracted Twitch API module (~226 lines)
 
 **Current File Size:** ~1,920 lines (down from 5,572)
 **Total Reduction:** ~3,650 lines (65.5%)

@@ -48,7 +48,7 @@
 <div class="page layouts-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Save Current Layout -->
   <div class="card">
-    <h3>[EMOJI] Save Current Layout</h3>
+    <h3>❓ Save Current Layout</h3>
     <p style="color:var(--muted);margin-bottom:12px;font-size:0.85em">
       Capture all source positions/sizes in current scene
     </p>
@@ -60,14 +60,14 @@
       level={$connected ? 'log' : 'warning'}
     >
       <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleCaptureLayout} disabled={!$connected}>
-        [EMOJI] Capture Current Layout
+        ❓ Capture Current Layout
       </button>
     </Tooltip>
   </div>
   
   <!-- Saved Layouts -->
   <div class="card">
-    <h3>[EMOJI] Saved Layouts</h3>
+    <h3>❓ Saved Layouts</h3>
     <p style="color:var(--muted);margin-bottom:8px;font-size:0.85em" id="layoutSceneInfo">
       Scene: <span id="layoutCurrentScene">{$currentScene || '-'}</span>
     </p>
@@ -88,14 +88,14 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleRefreshLayouts} disabled={!$connected}>[SYNC] Refresh</button>
+        <button on:click={handleRefreshLayouts} disabled={!$connected}>🔄 Refresh</button>
       </Tooltip>
     </div>
   </div>
   
   <!-- Animation Settings -->
   <div class="card">
-    <h3>[SETTINGS] Animation Settings</h3>
+    <h3>⚙️ Animation Settings</h3>
     <div class="row">
       <div style="flex:1">
         <label>Duration (ms)</label>
@@ -131,7 +131,7 @@
   
   <!-- How It Works -->
   <div class="card">
-    <h3>[INFO] How It Works</h3>
+    <h3>ℹ️ How It Works</h3>
     <ol style="padding-left:20px;color:var(--muted);font-size:0.85em;margin:0">
       <li>Arrange sources how you want them</li>
       <li>Enter a name and click "Capture"</li>
@@ -139,7 +139,7 @@
       <li>Click "Apply" to animate back</li>
     </ol>
     <p style="color:var(--muted);font-size:0.8em;margin-top:8px">
-      [IDEA] <b>Tip:</b> Assign hotkeys in OBS [EMOJI] Settings [EMOJI] Hotkeys for quick switching!
+      💡 <b>Tip:</b> Assign hotkeys in OBS ❓ Settings ❓ Hotkeys for quick switching!
     </p>
   </div>
 </div>

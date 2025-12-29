@@ -104,9 +104,9 @@ export async function initializeApp(): Promise<void> {
     
     if (encryptionEnabled && !authToken) {
       // Encryption is enabled but user is not authenticated - auth required
-      addLogEntry('[WARNING] AUTH REQUIRED: Encryption enabled but user not authenticated', 'warning', 'AUTH');
+      addLogEntry('⚠️ AUTH REQUIRED: Encryption enabled but user not authenticated', 'warning', 'AUTH');
       addLogEntry('User must authenticate via email OTP to access the application', 'info', 'AUTH');
-      console.warn('[Bootstrap] [WARNING] AUTH REQUIRED: Encryption enabled but user not authenticated');
+      console.warn('[Bootstrap] ⚠️ AUTH REQUIRED: Encryption enabled but user not authenticated');
       console.warn('[Bootstrap] User must authenticate via email OTP to access the application');
       
       // Continue initialization anyway - app will show AuthScreen instead of main app

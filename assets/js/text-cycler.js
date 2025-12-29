@@ -49,7 +49,7 @@
     const MIN_TEXT_INTERVAL = 80;
 
     // Character sets for effects
-    const CHARS_ENCHANT = 'ᔑᒷᓵ[EMOJI]ᒷ[EMOJI]⊣[EMOJI]╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ[EMOJI][EMOJI]∴⨅';
+    const CHARS_ENCHANT = 'ᔑᒷᓵ❓ᒷ❓⊣❓╎⋮ꖌꖎᒲリ𝙹ᑑ∷ᓭℸ❓❓∴⨅';
     const CHARS_GLITCH = '█▓▒░╔╗╚╝║═┌┐└┘│─┼▀▄▌▐■□▪▫●○';
 
     // ============ Config Management ============
@@ -92,10 +92,10 @@
             <div class="source-item" style="cursor:pointer" onclick="TextCycler.loadConfig(${i})">
                 <div>
                     <div class="name">${c.name || 'Unnamed'} ${c.isRunning ? '<span class="badge badge-success">Running</span>' : ''}</div>
-                    <div class="type">${c.mode === 'browser' ? '[WEB] Browser' : '[NOTE] Legacy'} • ${(c.textLines || []).length} lines • ${c.transition || 'none'}</div>
+                    <div class="type">${c.mode === 'browser' ? '🌐 Browser' : '📝 Legacy'} • ${(c.textLines || []).length} lines • ${c.transition || 'none'}</div>
                 </div>
                 <div style="display:flex;gap:4px">
-                    <button onclick="event.stopPropagation(); TextCycler.quickStart(${i})" title="${c.isRunning ? 'Stop' : 'Start'}">${c.isRunning ? '[EMOJI]' : '▶'}</button>
+                    <button onclick="event.stopPropagation(); TextCycler.quickStart(${i})" title="${c.isRunning ? 'Stop' : 'Start'}">${c.isRunning ? '❓' : '▶'}</button>
                 </div>
             </div>
         `).join('');

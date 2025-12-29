@@ -170,14 +170,14 @@ describe('ActivityLog Store Integration - Direct Store Tests', () => {
   });
 
   it('should create entries with correct structure', () => {
-    addLogEntry('Test', 'success', 'FLAIR', '[EMOJI]');
+    addLogEntry('Test', 'success', 'FLAIR', '❓');
     
     const entries = get(logEntries);
     expect(entries[0]).toMatchObject({
       message: 'Test',
       type: 'success',
       flair: 'FLAIR',
-      icon: '[EMOJI]',
+      icon: '❓',
       count: 1
     });
     expect(entries[0].id).toBeDefined();

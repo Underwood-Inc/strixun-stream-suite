@@ -20,7 +20,7 @@ const __dirname = dirname(__filename);
 const servicePath = process.argv[2];
 
 if (!servicePath) {
-  console.error('[ERROR] Error: Service path required');
+  console.error('❌ Error: Service path required');
   console.error('Usage: node validate-service.js <service-path>');
   console.error('Example: node validate-service.js otp-auth-service');
   console.error('Example: node validate-service.js . (for root service)');
@@ -31,11 +31,11 @@ if (!servicePath) {
 const fullPath = servicePath === '.' ? __dirname : join(__dirname, servicePath);
 
 if (!existsSync(fullPath)) {
-  console.error(`[ERROR] Error: Service directory does not exist: ${fullPath}`);
+  console.error(`❌ Error: Service directory does not exist: ${fullPath}`);
   process.exit(1);
 }
 
-console.log(`[SEARCH] Validating service: ${servicePath}\n`);
+console.log(`🔍 Validating service: ${servicePath}\n`);
 console.log(`   Path: ${fullPath}\n`);
 
 const issues = [];
@@ -53,35 +53,35 @@ if (!existsSync(wranglerTomlPath)) {
     info.main = config.main;
     info.compatibility_date = config.compatibility_date;
     
-    console.log(`   [NOTE] Name: ${config.name || 'Not specified'}`);
-    console.log(`   [FILE] Main: ${config.main || 'Not specified'}`);
-    console.log(`   [EMOJI] Compatibility: ${config.compatibility_date || 'Not specified'}`);
+    console.log(`   📝 Name: ${config.name || 'Not specified'}`);
+    console.log(`   📄 Main: ${config.main || 'Not specified'}`);
+    console.log(`   ❓ Compatibility: ${config.compatibility_date || 'Not specified'}`);
     
     // Check if main file exists
     if (config.main) {
       const mainPath = join(fullPath, config.main);
       if (!existsSync(mainPath)) {
         issues.push(`Main file specified in wrangler.toml does not exist: ${config.main}`);
-        console.log(`   [ERROR] Main file missing: ${config.main}`);
+        console.log(`   ❌ Main file missing: ${config.main}`);
       } else {
         info.mainExists = true;
-        console.log(`   [SUCCESS] Main file exists: ${config.main}`);
+        console.log(`   ✅ Main file exists: ${config.main}`);
       }
     } else {
       issues.push('No main file specified in wrangler.toml');
-      console.log(`   [ERROR] No main file specified`);
+      console.log(`   ❌ No main file specified`);
     }
 
     // Check for KV namespaces
     if (config.kv_namespaces && Array.isArray(config.kv_namespaces)) {
       info.kvNamespaces = config.kv_namespaces.length;
-      console.log(`   [EMOJI] KV Namespaces: ${config.kv_namespaces.length}`);
+      console.log(`   ❓ KV Namespaces: ${config.kv_namespaces.length}`);
       config.kv_namespaces.forEach((ns, idx) => {
         if (!ns.id || !ns.binding) {
           issues.push(`KV namespace ${idx + 1} missing id or binding`);
-          console.log(`   [ERROR] KV namespace ${idx + 1} incomplete`);
+          console.log(`   ❌ KV namespace ${idx + 1} incomplete`);
         } else {
-          console.log(`   [SUCCESS] KV namespace ${idx + 1}: ${ns.binding} (${ns.id})`);
+          console.log(`   ✅ KV namespace ${idx + 1}: ${ns.binding} (${ns.id})`);
         }
       });
     }
@@ -89,14 +89,14 @@ if (!existsSync(wranglerTomlPath)) {
     // Check for routes
     if (config.routes && Array.isArray(config.routes)) {
       info.routes = config.routes.length;
-      console.log(`   [EMOJI][EMOJI]  Routes: ${config.routes.length}`);
+      console.log(`   ❓❓  Routes: ${config.routes.length}`);
       config.routes.forEach((route, idx) => {
         console.log(`      ${idx + 1}. ${route.pattern || route} (zone: ${route.zone_name || 'default'})`);
       });
     }
   } catch (error) {
     issues.push(`Failed to parse wrangler.toml: ${error.message}`);
-    console.error(`   [ERROR] Failed to parse wrangler.toml: ${error.message}`);
+    console.error(`   ❌ Failed to parse wrangler.toml: ${error.message}`);
   }
 }
 
@@ -107,23 +107,23 @@ if (existsSync(packageJsonPath)) {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
     info.packageName = packageJson.name;
     info.hasDeployScript = !!(packageJson.scripts && packageJson.scripts.deploy);
-    console.log(`   [PACKAGE] Package: ${packageJson.name || 'Not specified'}`);
-    console.log(`   ${info.hasDeployScript ? '[SUCCESS]' : '[WARNING] '} Deploy script: ${info.hasDeployScript ? 'Found' : 'Missing'}`);
+    console.log(`   📦 Package: ${packageJson.name || 'Not specified'}`);
+    console.log(`   ${info.hasDeployScript ? '✅' : '⚠️ '} Deploy script: ${info.hasDeployScript ? 'Found' : 'Missing'}`);
   } catch (error) {
     issues.push(`Failed to parse package.json: ${error.message}`);
-    console.error(`   [ERROR] Failed to parse package.json: ${error.message}`);
+    console.error(`   ❌ Failed to parse package.json: ${error.message}`);
   }
 } else {
-  console.log(`   [WARNING]  No package.json found (optional)`);
+  console.log(`   ⚠️  No package.json found (optional)`);
 }
 
 console.log('');
 
 if (issues.length === 0) {
-  console.log('[SUCCESS] Service validation passed! Ready to deploy.\n');
+  console.log('✅ Service validation passed! Ready to deploy.\n');
   process.exit(0);
 } else {
-  console.error('[ERROR] Service validation failed with the following issues:');
+  console.error('❌ Service validation failed with the following issues:');
   issues.forEach(issue => {
     console.error(`   • ${issue}`);
   });

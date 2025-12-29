@@ -172,7 +172,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 .requires-connection { transition: opacity 0.2s; }
 .disconnected .requires-connection { opacity: 0.4; pointer-events: none; }
 .disconnected .requires-connection::after {
-    content: '[EMOJI]';
+    content: '❓';
     position: absolute;
     top: 50%;
     left: 50%;
@@ -929,7 +929,7 @@ input[type="range"] {
     cursor: not-allowed;
 }
 .tab.disabled::after {
-    content: '[SECURITY]';
+    content: '🔒';
     margin-left: 2px;
     font-size: 0.7em;
 }

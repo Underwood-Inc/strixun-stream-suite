@@ -2,21 +2,21 @@
 
 Complete guide for integrating the cloud storage system with your Strixun Stream Suite.
 
-## [TARGET] Overview
+## 🎯 Overview
 
 The cloud storage system provides **true cross-device configuration backup and sync** using Cloudflare Workers and KV storage. Your configs are stored securely in the cloud and can be accessed from any device.
 
-## [CLIPBOARD] Features
+## 📋 Features
 
-- [SUCCESS] **Device-Based Authentication** - Automatic device ID generation
-- [SUCCESS] **Multiple Save Slots** - default, backup1, backup2, autosave, custom names
-- [SUCCESS] **Auto-Sync** - Optional automatic cloud saves every 5 minutes
-- [SUCCESS] **Conflict Detection** - Smart timestamp-based conflict resolution
-- [SUCCESS] **10MB Per Save** - Plenty of space for all your configs
-- [SUCCESS] **1 Year Retention** - Auto-expires after 1 year (renewable on save)
-- [SUCCESS] **Complete Backup** - Saves all config types (swaps, layouts, text cyclers, clips, opacity)
+- ✅ **Device-Based Authentication** - Automatic device ID generation
+- ✅ **Multiple Save Slots** - default, backup1, backup2, autosave, custom names
+- ✅ **Auto-Sync** - Optional automatic cloud saves every 5 minutes
+- ✅ **Conflict Detection** - Smart timestamp-based conflict resolution
+- ✅ **10MB Per Save** - Plenty of space for all your configs
+- ✅ **1 Year Retention** - Auto-expires after 1 year (renewable on save)
+- ✅ **Complete Backup** - Saves all config types (swaps, layouts, text cyclers, clips, opacity)
 
-## [DEPLOY] Quick Start
+## 🚀 Quick Start
 
 ### Step 1: Deploy the Cloudflare Worker
 
@@ -81,7 +81,7 @@ Option B: **Integrate into Existing Panel**
 - Add to your control panel HTML
 - Ensure scripts are loaded in the correct order
 
-## [EMOJI] Usage Examples
+## ❓ Usage Examples
 
 ### JavaScript API
 
@@ -138,7 +138,7 @@ if (conflict.hasConflict) {
 7. **Save Management** - Load or delete individual saves
 8. **Status Messages** - Real-time feedback on operations
 
-## [CONFIG] Configuration
+## 🔧 Configuration
 
 ### Save Slot Naming
 
@@ -160,7 +160,7 @@ When enabled:
 - Runs in background (non-blocking)
 - Fails gracefully (logs warning, doesn't interrupt workflow)
 
-## [PROTECT] Security & Privacy
+## 🛡️ Security & Privacy
 
 ### Device Identification
 - Device ID is auto-generated locally
@@ -180,7 +180,7 @@ When enabled:
 - You control your Cloudflare account and data
 - Can delete all data via Cloudflare dashboard
 
-## [SEARCH] Troubleshooting
+## 🔍 Troubleshooting
 
 ### "Failed to save: API error 500"
 - Check Worker deployment status
@@ -207,25 +207,25 @@ When enabled:
 - Verify API URL is correct in `cloud-storage.js`
 - Check browser console for specific CORS error
 
-## [LINK] Integration with Existing Storage
+## 🔗 Integration with Existing Storage
 
 The cloud storage system integrates seamlessly with your existing multi-layer storage:
 
 ```
 ┌─────────────────────────────────────┐
-│       Cloud Storage (NEW!)          │ [EMOJI] Cross-device backup
+│       Cloud Storage (NEW!)          │ ❓ Cross-device backup
 ├─────────────────────────────────────┤
-│       OBS Persistent Data           │ [EMOJI] Cross-client sync
+│       OBS Persistent Data           │ ❓ Cross-client sync
 ├─────────────────────────────────────┤
-│       IndexedDB (Primary)           │ [EMOJI] Survives cache clears
+│       IndexedDB (Primary)           │ ❓ Survives cache clears
 ├─────────────────────────────────────┤
-│       localStorage (Backup)         │ [EMOJI] Synced on every write
+│       localStorage (Backup)         │ ❓ Synced on every write
 ├─────────────────────────────────────┤
-│       Recovery Snapshot             │ [EMOJI] Emergency recovery
+│       Recovery Snapshot             │ ❓ Emergency recovery
 └─────────────────────────────────────┘
 ```
 
-## [ANALYTICS] Storage Architecture
+## 📊 Storage Architecture
 
 ### Worker Side (Cloudflare)
 ```
@@ -263,7 +263,7 @@ localStorage:
 └── sss_last_cloud_sync                  // Last sync timestamp
 ```
 
-## [EMOJI] Advanced Usage
+## ❓ Advanced Usage
 
 ### Custom API URL at Runtime
 ```javascript
@@ -305,18 +305,18 @@ const saveData = await CloudStorage.loadFromCloud('shared');
 CloudStorage.applyCloudSave(saveData, false);
 ```
 
-## [NOTE] API Reference
+## 📝 API Reference
 
 See `serverless/README.md` for complete API endpoint documentation.
 
-## [EMOJI] Support
+## ❓ Support
 
 - **Worker Logs:** `wrangler tail`
 - **Browser Console:** Check for errors and debug messages
 - **KV Dashboard:** View/edit data at Cloudflare dashboard
 - **GitHub Issues:** Report bugs and feature requests
 
-## [EMOJI] License
+## ❓ License
 
 Part of the Strixun Stream Suite
 

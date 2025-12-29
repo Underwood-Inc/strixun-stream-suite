@@ -1,8 +1,8 @@
 /**
  * Integration Tests for Service-to-Service Integration
- * Tests Mods API [EMOJI] OTP Auth Service (user lookup)
+ * Tests Mods API ❓ OTP Auth Service (user lookup)
  * 
- * [WARNING] IMPORTANT: These tests use REAL deployed services
+ * ⚠️ IMPORTANT: These tests use REAL deployed services
  * 
  * These tests only run when:
  * - USE_LIVE_API=true environment variable is set
@@ -37,7 +37,7 @@ describe.skipIf(!USE_LIVE_API)(`Service Integration Tests (Live API) [${testEnv}
         console.log(`[Integration Tests] Using live auth API: ${AUTH_API_URL}`);
     });
 
-    describe('Mods API [EMOJI] OTP Auth Service Integration', () => {
+    describe('Mods API ❓ OTP Auth Service Integration', () => {
         it('should successfully connect to OTP auth service', async () => {
             // Test basic connectivity to auth service
             const response = await fetch(`${AUTH_API_URL}/health`, {

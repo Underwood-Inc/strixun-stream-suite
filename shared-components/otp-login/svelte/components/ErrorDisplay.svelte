@@ -66,7 +66,7 @@
           maxWidth="min(85vw, 500px)"
           maxHeight="min(70vh, 600px)"
         >
-          <span class="otp-login-error-info-icon" aria-label="Rate limit details">[INFO]</span>
+          <span class="otp-login-error-info-icon" aria-label="Rate limit details">ℹ️</span>
         </Tooltip>
       {:else}
         <Tooltip 
@@ -76,13 +76,13 @@
           maxWidth="min(85vw, 450px)"
           maxHeight="min(60vh, 500px)"
         >
-          <span class="otp-login-error-info-icon" aria-label="Error details">[INFO]</span>
+          <span class="otp-login-error-info-icon" aria-label="Error details">ℹ️</span>
         </Tooltip>
       {/if}
     </div>
     {#if state.rateLimitCountdown > 0}
       <div class="otp-login-rate-limit-countdown">
-        <span class="otp-login-countdown-icon">[TIME]</span>
+        <span class="otp-login-countdown-icon">⏱️</span>
         <span class="otp-login-countdown-text">
           Try again in: <strong>{formatRateLimitCountdown(state.rateLimitCountdown)}</strong>
           {#if resetTime}

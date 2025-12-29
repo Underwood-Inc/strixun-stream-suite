@@ -1,4 +1,4 @@
-# GitHub Wiki Migration Documentation [DOCS]
+# GitHub Wiki Migration Documentation 📚
 
 ## Overview
 
@@ -82,8 +82,8 @@ The script will:
 
 Files are converted to wiki page names using this logic:
 
-- `docs/getting-started/setup.md` [EMOJI] `getting-started-setup.md`
-- `product-docs/ARCHITECTURAL_OVERVIEW.md` [EMOJI] `product-docs-architectural-overview.md`
+- `docs/getting-started/setup.md` ❓ `getting-started-setup.md`
+- `product-docs/ARCHITECTURAL_OVERVIEW.md` ❓ `product-docs-architectural-overview.md`
 
 The script preserves the directory structure as part of the filename.
 
@@ -91,8 +91,8 @@ The script preserves the directory structure as part of the filename.
 
 The script automatically fixes relative links in markdown files:
 
-- `[Setup](./setup.md)` [EMOJI] `[Setup](getting-started-setup)`
-- `[API Reference](../api/reference.md)` [EMOJI] `[API Reference](api-reference)`
+- `[Setup](./setup.md)` ❓ `[Setup](getting-started-setup)`
+- `[API Reference](../api/reference.md)` ❓ `[API Reference](api-reference)`
 
 External links (http/https) are left unchanged.
 

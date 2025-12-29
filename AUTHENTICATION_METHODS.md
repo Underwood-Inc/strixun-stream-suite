@@ -1,6 +1,6 @@
 # Cloud Storage Authentication Methods
 
-## [TARGET] The Question That Changed Everything
+## 🎯 The Question That Changed Everything
 
 **You asked:** *"If it is device based how do people restore their save on remote connections?"*
 
@@ -13,21 +13,21 @@
 ### How It Works
 ```
 Device generates unique ID: sss_abc123_xyz789
-  [EMOJI]
+  ❓
 Saves tied to this device ID
-  [EMOJI]
+  ❓
 To access from another device: Copy/paste the device ID
 ```
 
 ### Pros
-- [SUCCESS] No passwords to remember
-- [SUCCESS] Instant setup (auto-generated)
-- [SUCCESS] Works offline first
+- ✅ No passwords to remember
+- ✅ Instant setup (auto-generated)
+- ✅ Works offline first
 
 ### Cons
-- [ERROR] Manual device ID transfer needed
-- [ERROR] Must copy/paste long ID string
-- [ERROR] Data not encrypted in transit
+- ❌ Manual device ID transfer needed
+- ❌ Must copy/paste long ID string
+- ❌ Data not encrypted in transit
 
 ### Best For
 - Single device setups
@@ -52,21 +52,21 @@ await CloudStorage.loadFromCloud('default');
 ### How It Works
 ```
 User sets memorable key: "mystream2025"
-  [EMOJI]
+  ❓
 Key hashed to create device ID: sss_shared_mystream2025
-  [EMOJI]
+  ❓
 Same key on any device = same saves
 ```
 
 ### Pros
-- [SUCCESS] Memorable key (no copy/paste)
-- [SUCCESS] Easy cross-device access
-- [SUCCESS] Simpler than passphrase
+- ✅ Memorable key (no copy/paste)
+- ✅ Easy cross-device access
+- ✅ Simpler than passphrase
 
 ### Cons
-- [ERROR] Not encrypted (anyone with key can access)
-- [ERROR] Less secure than encryption
-- [ERROR] No protection if key is shared
+- ❌ Not encrypted (anyone with key can access)
+- ❌ Less secure than encryption
+- ❌ No protection if key is shared
 
 ### Best For
 - Personal use with trusted devices
@@ -82,41 +82,41 @@ await CloudStorage.saveToCloud('default');
 // Device B: Use same key
 CloudStorage.setSharedAccessKey('mystream2025');
 await CloudStorage.loadFromCloud('default');
-// [SUCCESS] Access granted!
+// ✅ Access granted!
 ```
 
 ---
 
-## Method 3: Passphrase (Encrypted) [AUTH] **RECOMMENDED**
+## Method 3: Passphrase (Encrypted) 🔐 **RECOMMENDED**
 
 ### How It Works
 ```
 User enters passphrase: "MyAwesomeStream2025!"
-  [EMOJI]
+  ❓
 Client derives:
   - Encryption Key (AES-256) [used to encrypt data]
   - Storage Key (hashed) [used as device ID]
-  [EMOJI]
-Encrypt configs [EMOJI] Upload encrypted blob
-  [EMOJI]
-On another device: Same passphrase [EMOJI] Decrypt [EMOJI] Restore!
+  ❓
+Encrypt configs ❓ Upload encrypted blob
+  ❓
+On another device: Same passphrase ❓ Decrypt ❓ Restore!
 ```
 
 ### Pros
-- [SUCCESS] **Client-side encryption** (AES-GCM-256)
-- [SUCCESS] **Zero-knowledge** (server can't decrypt)
-- [SUCCESS] **Cross-device** with same passphrase
-- [SUCCESS] **No database** needed
-- [SUCCESS] **Privacy-first** (anonymous)
-- [SUCCESS] **Professional security** (PBKDF2, 100K iterations)
+- ✅ **Client-side encryption** (AES-GCM-256)
+- ✅ **Zero-knowledge** (server can't decrypt)
+- ✅ **Cross-device** with same passphrase
+- ✅ **No database** needed
+- ✅ **Privacy-first** (anonymous)
+- ✅ **Professional security** (PBKDF2, 100K iterations)
 
 ### Cons
-- [ERROR] Must remember passphrase
-- [ERROR] Forgot passphrase = lost data
-- [ERROR] Slightly more complex UX
+- ❌ Must remember passphrase
+- ❌ Forgot passphrase = lost data
+- ❌ Slightly more complex UX
 
 ### Best For
-- **Production use** [EMOJI]
+- **Production use** ❓
 - **Multi-device setups**
 - **Security-conscious users**
 - **Professional streamers**
@@ -127,33 +127,33 @@ On another device: Same passphrase [EMOJI] Decrypt [EMOJI] Restore!
 // Device A: Save with passphrase
 const passphrase = "MyAwesomeStream2025!";
 await CloudStorage.saveToCloud('default', {}, passphrase);
-// [SECURITY] Data encrypted before upload
+// 🔒 Data encrypted before upload
 
 // Device B: Load with same passphrase
 await CloudStorage.loadFromCloud('default', passphrase);
-// [EMOJI] Automatic decryption
-// [SUCCESS] Configs restored!
+// ❓ Automatic decryption
+// ✅ Configs restored!
 ```
 
 ---
 
-## [ANALYTICS] Comparison Table
+## 📊 Comparison Table
 
 | Feature | Device ID | Shared Key | Passphrase (Encrypted) |
 |---------|-----------|------------|------------------------|
-| **Encryption** | [ERROR] No | [ERROR] No | [SUCCESS] AES-256 |
-| **Cross-Device** | [WARNING] Manual | [SUCCESS] Easy | [SUCCESS] Easy |
-| **Zero-Knowledge** | [ERROR] No | [ERROR] No | [SUCCESS] Yes |
-| **Memorable** | [ERROR] Long ID | [SUCCESS] Custom key | [SUCCESS] Passphrase |
-| **Security Level** | [EMOJI] Low | [SECURITY] Medium | [AUTH] High |
-| **Setup Complexity** | [EMOJI] Easiest | [EMOJI][EMOJI] Easy | [EMOJI][EMOJI][EMOJI] Moderate |
+| **Encryption** | ❌ No | ❌ No | ✅ AES-256 |
+| **Cross-Device** | ⚠️ Manual | ✅ Easy | ✅ Easy |
+| **Zero-Knowledge** | ❌ No | ❌ No | ✅ Yes |
+| **Memorable** | ❌ Long ID | ✅ Custom key | ✅ Passphrase |
+| **Security Level** | ❓ Low | 🔒 Medium | 🔐 High |
+| **Setup Complexity** | ❓ Easiest | ❓❓ Easy | ❓❓❓ Moderate |
 | **Best For** | Testing | Personal | **Production** |
 
 ---
 
-## [TARGET] Recommendations
+## 🎯 Recommendations
 
-### For Most Users (RECOMMENDED) [EMOJI]
+### For Most Users (RECOMMENDED) ❓
 **Use Method 3: Passphrase-Based Encryption**
 
 ```javascript
@@ -171,11 +171,11 @@ await CloudStorage.loadFromCloud('default', passphrase);
 ```
 
 **Why?**
-- [SUCCESS] Professional-grade security
-- [SUCCESS] Privacy-first (no tracking)
-- [SUCCESS] Works from any device
-- [SUCCESS] Server can't read your data
-- [SUCCESS] Future-proof
+- ✅ Professional-grade security
+- ✅ Privacy-first (no tracking)
+- ✅ Works from any device
+- ✅ Server can't read your data
+- ✅ Future-proof
 
 ### For Quick Testing
 **Use Method 1: Device ID**
@@ -189,9 +189,9 @@ Good if you don't need encryption but want easy cross-device access. Just rememb
 
 ---
 
-## [SYNC] Migration Between Methods
+## 🔄 Migration Between Methods
 
-### From Device ID [EMOJI] Passphrase (Recommended)
+### From Device ID ❓ Passphrase (Recommended)
 
 ```javascript
 // Load unencrypted save
@@ -204,10 +204,10 @@ await CloudStorage.saveToCloud('default_encrypted', {}, passphrase);
 // Delete old unencrypted save
 await CloudStorage.deleteCloudSave('default');
 
-console.log('[SUCCESS] Migrated to encrypted storage!');
+console.log('✅ Migrated to encrypted storage!');
 ```
 
-### From Shared Key [EMOJI] Passphrase
+### From Shared Key ❓ Passphrase
 
 ```javascript
 // Load with shared key
@@ -221,22 +221,22 @@ CloudStorage.clearSharedAccessKey();
 const passphrase = prompt("Create a strong passphrase:");
 await CloudStorage.saveToCloud('default', {}, passphrase);
 
-console.log('[SUCCESS] Upgraded to encrypted storage!');
+console.log('✅ Upgraded to encrypted storage!');
 ```
 
 ---
 
-## [EMOJI] Passphrase Best Practices
+## ❓ Passphrase Best Practices
 
 ### Strong Passphrase Examples
-- [SUCCESS] `StreamSetup2025!@#` (16 chars, mixed case, numbers, symbols)
-- [SUCCESS] `TwitchPro$treaM99` (17 chars, mixed case, numbers, symbol)
-- [SUCCESS] `Alpha-Bravo-7821!` (17 chars, words, numbers, symbol)
+- ✅ `StreamSetup2025!@#` (16 chars, mixed case, numbers, symbols)
+- ✅ `TwitchPro$treaM99` (17 chars, mixed case, numbers, symbol)
+- ✅ `Alpha-Bravo-7821!` (17 chars, words, numbers, symbol)
 
 ### Weak Passphrase Examples
-- [ERROR] `password` (too common)
-- [ERROR] `stream123` (too short)
-- [ERROR] `12345678` (no letters)
+- ❌ `password` (too common)
+- ❌ `stream123` (too short)
+- ❌ `12345678` (no letters)
 
 ### Tips
 1. **Length:** 12+ characters
@@ -247,27 +247,27 @@ console.log('[SUCCESS] Upgraded to encrypted storage!');
 
 ---
 
-## [AUTH] Security Guarantees (Method 3 Only)
+## 🔐 Security Guarantees (Method 3 Only)
 
 With passphrase-based encryption, you get:
 
-[SUCCESS] **Client-Side Encryption**
+✅ **Client-Side Encryption**
 - Data encrypted in YOUR browser before upload
 - Server receives only encrypted blobs
 
-[SUCCESS] **Zero-Knowledge**
+✅ **Zero-Knowledge**
 - Server never sees your passphrase
 - Server never sees encryption keys
 - Server never sees unencrypted data
 - Even WE (the server operators) cannot decrypt your data
 
-[SUCCESS] **Industry Standards**
+✅ **Industry Standards**
 - AES-GCM-256 encryption
 - PBKDF2 key derivation (100,000 iterations)
 - Cryptographically secure random (IV, salt)
 - Web Crypto API (browser-native)
 
-[SUCCESS] **Privacy**
+✅ **Privacy**
 - No accounts, no emails
 - No tracking, no analytics
 - Completely anonymous
@@ -275,7 +275,7 @@ With passphrase-based encryption, you get:
 
 ---
 
-## [DEPLOY] Quick Start
+## 🚀 Quick Start
 
 ### Recommended Setup (5 minutes)
 
@@ -294,11 +294,11 @@ await CloudStorage.saveToCloud('default', {}, passphrase);
 // 4. Done! Access from any device with this passphrase
 ```
 
-That's it! You now have encrypted cloud storage! [EMOJI]
+That's it! You now have encrypted cloud storage! ❓
 
 ---
 
-## [EMOJI] Full Documentation
+## ❓ Full Documentation
 
 - **Encryption Deep Dive:** `serverless/ENCRYPTION_GUIDE.md`
 - **Cloud Storage Guide:** `serverless/CLOUD_STORAGE_GUIDE.md`
@@ -307,21 +307,21 @@ That's it! You now have encrypted cloud storage! [EMOJI]
 
 ---
 
-## [FEATURE] Summary
+## ✨ Summary
 
 **Your question revealed the flaw, and we fixed it!**
 
 Now you have:
-- [SUCCESS] **3 authentication methods** (choose what's right for you)
-- [SUCCESS] **Professional encryption** (AES-256, zero-knowledge)
-- [SUCCESS] **Cross-device access** (same passphrase = access anywhere)
-- [SUCCESS] **Privacy-first** (no accounts, no tracking)
-- [SUCCESS] **Production-ready** (OWASP best practices)
+- ✅ **3 authentication methods** (choose what's right for you)
+- ✅ **Professional encryption** (AES-256, zero-knowledge)
+- ✅ **Cross-device access** (same passphrase = access anywhere)
+- ✅ **Privacy-first** (no accounts, no tracking)
+- ✅ **Production-ready** (OWASP best practices)
 
-**Bottom line:** Use **passphrase-based encryption** for production. It's secure, private, and works perfectly for cross-device restore! [AUTH]
+**Bottom line:** Use **passphrase-based encryption** for production. It's secure, private, and works perfectly for cross-device restore! 🔐
 
 ---
 
 *"If it is device based how do people restore their save on remote connections?"*  
-*— You, asking the right question that led to this encryption system* [EMOJI]
+*— You, asking the right question that led to this encryption system* ❓
 

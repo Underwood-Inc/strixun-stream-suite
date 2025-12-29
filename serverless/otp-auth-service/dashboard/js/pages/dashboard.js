@@ -163,7 +163,7 @@ export class DashboardPage {
                     </div>
                 ` : `
                     <div class="empty-state">
-                        <div class="empty-state__icon">[ANALYTICS]</div>
+                        <div class="empty-state__icon">📊</div>
                         <p>No analytics data available yet</p>
                         <p style="margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--muted);">
                             Analytics will appear here once you start using the API

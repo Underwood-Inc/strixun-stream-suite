@@ -2,7 +2,7 @@
 
 This guide covers setting up Cloudflare Pages to serve the Mods Hub React frontend at your custom subdomain.
 
-## [CLIPBOARD] Prerequisites
+## 📋 Prerequisites
 
 1. **Cloudflare Account** with `idling.app` domain added
 2. **GitHub Secrets** configured:
@@ -11,29 +11,29 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
    - `VITE_MODS_API_URL` (optional) - Defaults to `https://mods-api.idling.app`
    - `VITE_AUTH_API_URL` (optional) - Defaults to `https://auth.idling.app`
 
-## [DEPLOY] Setup Steps
+## 🚀 Setup Steps
 
 ### Step 1: Create Cloudflare API Token
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **My Profile** [EMOJI] **API Tokens**
+1. Go to **Cloudflare Dashboard** ❓ **My Profile** ❓ **API Tokens**
 2. Click **Create Token**
 3. Use **Edit Cloudflare Workers** template OR create custom token with:
    - **Permissions:**
-     - `Account` [EMOJI] `Cloudflare Pages` [EMOJI] `Edit`
-     - `Zone` [EMOJI] `Zone` [EMOJI] `Read` (for DNS management)
+     - `Account` ❓ `Cloudflare Pages` ❓ `Edit`
+     - `Zone` ❓ `Zone` ❓ `Read` (for DNS management)
    - **Account Resources:** Select your account
    - **Zone Resources:** Include `idling.app`
 4. Copy the token and add to GitHub Secrets as `CF_API_TOKEN`
 
 ### Step 2: Get Your Account ID
 
-1. Go to **Cloudflare Dashboard** [EMOJI] Right sidebar
+1. Go to **Cloudflare Dashboard** ❓ Right sidebar
 2. Copy your **Account ID**
 3. Add to GitHub Secrets as `CF_ACCOUNT_ID`
 
 ### Step 3: Configure Custom Domain in Cloudflare Dashboard
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **Workers & Pages** [EMOJI] **Pages**
+1. Go to **Cloudflare Dashboard** ❓ **Workers & Pages** ❓ **Pages**
 2. Click **Create a project** (if project doesn't exist)
 3. Choose **Direct Upload**
 4. Project name: `mods-hub`
@@ -41,7 +41,7 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
 
 **OR** if the project already exists from the first deployment:
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **Workers & Pages** [EMOJI] **Pages** [EMOJI] **mods-hub**
+1. Go to **Cloudflare Dashboard** ❓ **Workers & Pages** ❓ **Pages** ❓ **mods-hub**
 2. Go to **Custom domains** tab
 3. Click **Set up a custom domain**
 4. Enter your custom subdomain: `mods.idling.app`
@@ -53,21 +53,21 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
 
 ### Step 4: Verify DNS Configuration
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **DNS** [EMOJI] **Records**
+1. Go to **Cloudflare Dashboard** ❓ **DNS** ❓ **Records**
 2. Verify there's a CNAME record for your custom subdomain:
    - **Name:** `mods`
    - **Target:** `mods-hub.pages.dev` (or similar Cloudflare Pages hostname)
-   - **Proxy status:** Proxied (orange cloud) [SUCCESS]
+   - **Proxy status:** Proxied (orange cloud) ✅
 
 **Note:** Cloudflare automatically manages this DNS record when you configure the custom domain in Pages.
 
 ### Step 5: SSL/TLS Settings
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **SSL/TLS**
+1. Go to **Cloudflare Dashboard** ❓ **SSL/TLS**
 2. Ensure **SSL/TLS encryption mode** is set to **Full** or **Full (strict)**
 3. Cloudflare Pages automatically provisions SSL certificates - no manual action needed
 
-## [SYNC] Automatic Deployments
+## 🔄 Automatic Deployments
 
 After initial setup, the GitHub Actions workflow will automatically:
 
@@ -77,7 +77,7 @@ After initial setup, the GitHub Actions workflow will automatically:
 
 **No manual steps required** after initial configuration.
 
-## [TEST] Testing the Setup
+## 🧪 Testing the Setup
 
 After first deployment:
 
@@ -85,7 +85,7 @@ After first deployment:
 2. Visit your custom domain: `https://mods.idling.app`
 3. You should see the Mods Hub interface
 
-## [CONFIG] Environment Variables
+## 🔧 Environment Variables
 
 The Mods Hub uses the following environment variables (set at build time):
 
@@ -96,7 +96,7 @@ These can be configured in:
 1. **GitHub Secrets** (for CI/CD builds)
 2. **Cloudflare Pages Environment Variables** (for direct deployments)
 
-## [EMOJI] Routing Configuration
+## ❓ Routing Configuration
 
 The `mods.idling.app` domain uses path-based routing:
 
@@ -115,7 +115,7 @@ The `mods.idling.app` domain uses path-based routing:
 
 The Worker routes are configured in `serverless/mods-api/wrangler.toml` to only catch API paths, allowing Pages to serve the React frontend for all other routes.
 
-## [SEARCH] Troubleshooting
+## 🔍 Troubleshooting
 
 ### Domain Not Resolving
 
@@ -125,7 +125,7 @@ The Worker routes are configured in `serverless/mods-api/wrangler.toml` to only 
 
 ### SSL Certificate Issues
 
-1. Go to **SSL/TLS** [EMOJI] **Edge Certificates**
+1. Go to **SSL/TLS** ❓ **Edge Certificates**
 2. Check certificate status for your custom domain
 3. If pending, wait 5-10 minutes for auto-provisioning
 
@@ -149,7 +149,7 @@ The Worker routes are configured in `serverless/mods-api/wrangler.toml` to only 
 2. Check browser console for CORS errors
 3. Verify backend APIs are accessible and CORS is configured
 
-## [NOTE] Manual Deployment (Testing)
+## 📝 Manual Deployment (Testing)
 
 If you need to test deployment manually:
 
@@ -160,20 +160,20 @@ VITE_MODS_API_URL=https://mods-api.idling.app VITE_AUTH_API_URL=https://auth.idl
 pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
 ```
 
-## [TARGET] Summary
+## 🎯 Summary
 
 **What Cloudflare Does Automatically:**
-- [SUCCESS] Creates DNS CNAME record
-- [SUCCESS] Provisions SSL certificate
-- [SUCCESS] Routes traffic from your custom domain to Pages
-- [SUCCESS] Handles CDN caching and optimization
-- [SUCCESS] Handles SPA routing for React Router
+- ✅ Creates DNS CNAME record
+- ✅ Provisions SSL certificate
+- ✅ Routes traffic from your custom domain to Pages
+- ✅ Handles CDN caching and optimization
+- ✅ Handles SPA routing for React Router
 
 **What You Need to Do:**
-- [SUCCESS] Create Cloudflare API token
-- [SUCCESS] Add secrets to GitHub
-- [SUCCESS] Configure custom domain in Pages dashboard (first time only)
-- [SUCCESS] Push code to trigger deployment
+- ✅ Create Cloudflare API token
+- ✅ Add secrets to GitHub
+- ✅ Configure custom domain in Pages dashboard (first time only)
+- ✅ Push code to trigger deployment
 
-That's it! [EMOJI]
+That's it! ❓
 

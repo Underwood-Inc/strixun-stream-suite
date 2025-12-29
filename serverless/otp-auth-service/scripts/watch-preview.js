@@ -20,7 +20,7 @@ async function build() {
   }
   
   isBuilding = true;
-  console.log('\n[SYNC] Rebuilding dashboard...');
+  console.log('\n🔄 Rebuilding dashboard...');
   
   try {
     const buildScript = path.join(__dirname, 'build-dashboard.js');
@@ -30,9 +30,9 @@ async function build() {
       stdio: 'inherit',
       env: process.env
     });
-    console.log('[SUCCESS] Rebuild complete!\n');
+    console.log('✅ Rebuild complete!\n');
   } catch (error) {
-    console.error(`[ERROR] Build failed with exit code ${error.status || 1}\n`);
+    console.error(`❌ Build failed with exit code ${error.status || 1}\n`);
     throw new Error(`Build exited with code ${error.status || 1}`);
   } finally {
     isBuilding = false;
@@ -72,7 +72,7 @@ const watcher = chokidar.watch([
 let rebuildTimeout = null;
 watcher.on('change', (filePath) => {
   const relativePath = path.relative(rootDir, filePath);
-  console.log(`\n[NOTE] File changed: ${relativePath}`);
+  console.log(`\n📝 File changed: ${relativePath}`);
   
   // Debounce rebuilds
   if (rebuildTimeout) {
@@ -85,14 +85,14 @@ watcher.on('change', (filePath) => {
       build();
     } else if (filePath.includes('worker.js')) {
       // Worker changed - wrangler will auto-reload
-      console.log('[NOTE] Worker changed - wrangler will auto-reload');
+      console.log('📝 Worker changed - wrangler will auto-reload');
     }
   }, 500);
 });
 
 // Start wrangler dev
 function startWrangler() {
-  console.log('[DEPLOY] Starting wrangler dev...\n');
+  console.log('🚀 Starting wrangler dev...\n');
   
   // On Windows, use shell: true to properly handle pnpm execution
   const isWindows = process.platform === 'win32';
@@ -105,30 +105,30 @@ function startWrangler() {
   });
   
   wranglerProcess.on('close', (code) => {
-    console.log(`\n[WARNING]  Wrangler exited with code ${code}`);
+    console.log(`\n⚠️  Wrangler exited with code ${code}`);
     process.exit(code);
   });
   
   wranglerProcess.on('error', (error) => {
-    console.error('[ERROR] Wrangler error:', error);
+    console.error('❌ Wrangler error:', error);
     process.exit(1);
   });
 }
 
 // Initial build
-console.log('[EMOJI] Building dashboard and landing page for preview...\n');
+console.log('❓ Building dashboard and landing page for preview...\n');
 
 build().then(() => {
-  console.log('[EMOJI] Watching for changes...\n');
+  console.log('❓ Watching for changes...\n');
   startWrangler();
 }).catch((error) => {
-  console.error('[ERROR] Initial build failed:', error);
+  console.error('❌ Initial build failed:', error);
   process.exit(1);
 });
 
 // Cleanup on exit
 process.on('SIGINT', () => {
-  console.log('\n\n[EMOJI] Stopping watch mode...');
+  console.log('\n\n❓ Stopping watch mode...');
   watcher.close();
   if (wranglerProcess) {
     wranglerProcess.kill();

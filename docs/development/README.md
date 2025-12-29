@@ -1,4 +1,4 @@
-# Development [CODE]
+# Development 💻
 
 Development guides, best practices, and contributing information.
 

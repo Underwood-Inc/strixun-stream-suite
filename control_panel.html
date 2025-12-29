@@ -41,20 +41,20 @@
         <header class="header">
             <h1><span class="status-dot" id="statusDot"></span><span class="title-text">Stream Suite</span></h1>
             <div style="display:flex;gap:4px">
-                <button onclick="location.reload()" title="Reload Panel">[SYNC]</button>
+                <button onclick="location.reload()" title="Reload Panel">🔄</button>
                 <button onclick="showPage('setup')" id="connectHeaderBtn">Connect</button>
             </div>
         </header>
         
         <nav class="tabs">
-            <button class="tab active" onclick="showPage('dashboard')" title="Dashboard">[EMOJI]</button>
-            <button class="tab" onclick="showPage('sources')" title="Sources">[PACKAGE]</button>
-            <button class="tab" onclick="showPage('text')" title="Text Cycler">[NOTE]</button>
-            <button class="tab" onclick="showPage('swaps')" title="Swaps">[SYNC]</button>
-            <button class="tab" onclick="showPage('layouts')" title="Layouts">[EMOJI]</button>
-            <button class="tab" onclick="showPage('scripts')" title="Script Manager">[EMOJI]</button>
-            <button class="tab" onclick="showPage('install')" title="Installer">[EMOJI]</button>
-            <button class="tab" onclick="showPage('setup')" title="Setup">[SETTINGS]</button>
+            <button class="tab active" onclick="showPage('dashboard')" title="Dashboard">❓</button>
+            <button class="tab" onclick="showPage('sources')" title="Sources">📦</button>
+            <button class="tab" onclick="showPage('text')" title="Text Cycler">📝</button>
+            <button class="tab" onclick="showPage('swaps')" title="Swaps">🔄</button>
+            <button class="tab" onclick="showPage('layouts')" title="Layouts">❓</button>
+            <button class="tab" onclick="showPage('scripts')" title="Script Manager">❓</button>
+            <button class="tab" onclick="showPage('install')" title="Installer">❓</button>
+            <button class="tab" onclick="showPage('setup')" title="Setup">⚙️</button>
         </nav>
         
         <div class="split-container">
@@ -63,17 +63,17 @@
                 <div id="page-dashboard" class="page active">
                 <!-- Script Status Card -->
                 <div class="card" id="dashboardStatusCard">
-                    <h3>[ANALYTICS] System Status</h3>
+                    <h3>📊 System Status</h3>
                     <div id="dashboardScriptStatus">
                         <div class="script-status-grid">
                             <div class="script-status-item missing">
-                                <span class="script-status-item__icon">[EMOJI]</span>
+                                <span class="script-status-item__icon">❓</span>
                                 <span class="script-status-item__name">OBS Connection</span>
                                 <span class="script-status-item__badge">Offline</span>
                             </div>
                         </div>
                         <p class="hint" style="margin-top:8px">
-                            <button onclick="showPage('setup')" class="btn-link">[SETTINGS] Go to Setup</button> to connect to OBS WebSocket
+                            <button onclick="showPage('setup')" class="btn-link">⚙️ Go to Setup</button> to connect to OBS WebSocket
                         </p>
                     </div>
                 </div>
@@ -81,8 +81,8 @@
                 <div class="card">
                     <h3>Quick Actions</h3>
                     <div class="grid">
-                        <button class="source-btn requires-connection" onclick="cycleAspect()">[SYNC] Cycle Aspect</button>
-                        <button class="source-btn requires-connection" onclick="refreshScenes()">[EMOJI] Refresh</button>
+                        <button class="source-btn requires-connection" onclick="cycleAspect()">🔄 Cycle Aspect</button>
+                        <button class="source-btn requires-connection" onclick="refreshScenes()">❓ Refresh</button>
                     </div>
                 </div>
                 
@@ -132,7 +132,7 @@
                 
                 <!-- Opacity Control -->
                 <div class="card">
-                    <h3>[EMOJI][EMOJI] Opacity Control</h3>
+                    <h3>❓❓ Opacity Control</h3>
                     <label>Source</label>
                     <select id="opacitySourceSelect" onchange="loadSourceOpacity()">
                         <option value="">-- Select Source --</option>
@@ -146,34 +146,34 @@
                         </div>
                     </div>
                     <div class="row" style="margin-top:12px">
-                        <button onclick="applySourceOpacity()" style="flex:1">[SUCCESS] Apply</button>
-                        <button onclick="resetSourceOpacity()" class="btn-secondary" style="flex:1">[SYNC] Reset to 100%</button>
+                        <button onclick="applySourceOpacity()" style="flex:1">✅ Apply</button>
+                        <button onclick="resetSourceOpacity()" class="btn-secondary" style="flex:1">🔄 Reset to 100%</button>
                     </div>
                     <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)">
-                        [IDEA] Setting to 100% removes the filter (no overhead)
+                        💡 Setting to 100% removes the filter (no overhead)
                     </p>
                 </div>
                 
                 <!-- Scene Browser -->
                 <div class="card">
-                    <h3>[EMOJI] Scenes</h3>
+                    <h3>❓ Scenes</h3>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="scenesSearchInput" placeholder="Search scenes...">
-                        <span class="search-box__icon">[SEARCH]</span>
-                        <button class="search-box__clear" title="Clear">[EMOJI]</button>
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">❓</button>
                     </div>
                     <div id="scenesList" class="config-list" style="max-height:200px;overflow-y:auto"></div>
-                    <button onclick="refreshSceneList()" class="btn-secondary" style="width:100%;margin-top:8px">[EMOJI] Refresh Scenes</button>
+                    <button onclick="refreshSceneList()" class="btn-secondary" style="width:100%;margin-top:8px">❓ Refresh Scenes</button>
                 </div>
                 
                 <!-- Source Browser -->
                 <div class="card">
-                    <h3>[PACKAGE] Sources</h3>
+                    <h3>📦 Sources</h3>
                     <p class="hint" id="sourcesSceneLabel" style="margin-bottom:8px">Select a scene above to view sources</p>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="sourcesSearchInput" placeholder="Search sources...">
-                        <span class="search-box__icon">[SEARCH]</span>
-                        <button class="search-box__clear" title="Clear">[EMOJI]</button>
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">❓</button>
                     </div>
                     <div id="sourcesList"></div>
                 </div>
@@ -183,23 +183,23 @@
             <div id="page-text" class="page">
                 <!-- Saved Configs -->
                 <div class="card">
-                    <h3>[EMOJI] Saved Configs</h3>
+                    <h3>❓ Saved Configs</h3>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="textConfigsSearchInput" placeholder="Search configs...">
-                        <span class="search-box__icon">[SEARCH]</span>
-                        <button class="search-box__clear" title="Clear">[EMOJI]</button>
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">❓</button>
                     </div>
                     <div id="textCyclerConfigs" class="config-list"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="newTextConfig()">[ADD] New Config</button>
-                        <button onclick="exportTextConfigs()">[EMOJI] Export</button>
-                        <button onclick="importTextConfigs()">[EMOJI] Import</button>
+                        <button onclick="newTextConfig()">➕ New Config</button>
+                        <button onclick="exportTextConfigs()">❓ Export</button>
+                        <button onclick="importTextConfigs()">❓ Import</button>
                     </div>
                 </div>
 
                 <!-- Config Editor -->
                 <div class="card" id="textConfigEditor" style="display:none">
-                    <h3>[EMOJI][EMOJI] Edit Config</h3>
+                    <h3>❓❓ Edit Config</h3>
                     <label>Config Name</label>
                     <input type="text" id="textConfigName" placeholder="My Text Cycler">
                     
@@ -214,7 +214,7 @@
                         <label>Config ID (for browser source URL)</label>
                         <div class="url-box">
                             <input type="text" id="textConfigId" placeholder="config1" style="flex:1" oninput="updateBrowserSourceUrlPreview()">
-                            <button onclick="copyBrowserSourceUrl()">[CLIPBOARD] Copy URL</button>
+                            <button onclick="copyBrowserSourceUrl()">📋 Copy URL</button>
                         </div>
                         <p style="font-size:0.7em;color:var(--muted);margin-top:4px">
                             Add as OBS Browser Source: <code id="browserSourceUrlPreview"></code>
@@ -231,13 +231,13 @@
 
                 <!-- Text Lines -->
                 <div class="card" id="textLinesCard" style="display:none">
-                    <h3>[NOTE] Text Lines</h3>
+                    <h3>📝 Text Lines</h3>
                     <textarea id="textLines" placeholder="Enter text lines (one per line)&#10;Line 1&#10;Line 2&#10;Line 3" rows="5"></textarea>
                 </div>
                 
                 <!-- Animation Settings -->
                 <div class="card" id="textAnimationCard" style="display:none">
-                    <h3>[EMOJI] Animation</h3>
+                    <h3>❓ Animation</h3>
                     <label>Transition Effect</label>
                     <select id="textTransition" onchange="updateTransitionMode()">
                         <option value="none">None (instant)</option>
@@ -245,7 +245,7 @@
                         <option value="obfuscate">Obfuscate (Minecraft enchant)</option>
                         <option value="typewriter">Typewriter</option>
                         <option value="glitch">Glitch</option>
-                        <option value="scramble">Scramble [EMOJI] Snap</option>
+                        <option value="scramble">Scramble ❓ Snap</option>
                         <option value="wave">Wave Reveal</option>
                         <option value="slide_left">Slide Left</option>
                         <option value="slide_right">Slide Right</option>
@@ -268,7 +268,7 @@
 
                 <!-- Style Settings (Browser Mode Only) -->
                 <div class="card" id="textStyleCard" style="display:none">
-                    <h3>[UI] Style (Browser Mode)</h3>
+                    <h3>🎨 Style (Browser Mode)</h3>
                     
                     <label>Font Family</label>
                     <select id="textFontFamily">
@@ -372,7 +372,7 @@
 
                 <!-- Preview -->
                 <div class="card" id="textPreviewCard" style="display:none">
-                    <h3>[EMOJI][EMOJI] Preview</h3>
+                    <h3>❓❓ Preview</h3>
                     <div class="text-preview" id="textPreview">Select or create a config</div>
                 </div>
                 
@@ -383,8 +383,8 @@
                         <button class="btn-danger btn-lg" id="stopCycleBtn" onclick="stopTextCycler()" disabled>■ Stop</button>
                     </div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="saveCurrentTextConfig()">[EMOJI] Save Config</button>
-                        <button onclick="deleteCurrentTextConfig()" style="background:var(--danger);border-color:var(--danger)">[DELETE] Delete</button>
+                        <button onclick="saveCurrentTextConfig()">❓ Save Config</button>
+                        <button onclick="deleteCurrentTextConfig()" style="background:var(--danger);border-color:var(--danger)">🗑️ Delete</button>
                     </div>
                 </div>
             </div>
@@ -399,7 +399,7 @@
                     <label>Source B</label>
                     <select id="swapSourceB"></select>
                     <div class="row" style="margin-top:8px">
-                        <button class="btn-primary btn-lg" onclick="executeSwap()">[SYNC] Swap Now</button>
+                        <button class="btn-primary btn-lg" onclick="executeSwap()">🔄 Swap Now</button>
                     </div>
                 </div>
                 
@@ -439,7 +439,7 @@
                     </div>
                     
                     <div style="margin-top:8px">
-                        <label>[PERF] Temporary Override</label>
+                        <label>⚡ Temporary Override</label>
                         <select id="swapTempOverride">
                             <option value="off" selected>Off (use config/global)</option>
                             <option value="preserve">Preserve</option>
@@ -459,7 +459,7 @@
                 <div class="card">
                     <h3>Add Swap Config</h3>
                     <label>Config Name</label>
-                    <input type="text" id="swapConfigName" placeholder="e.g. Camera [EMOJI] Gameplay">
+                    <input type="text" id="swapConfigName" placeholder="e.g. Camera ❓ Gameplay">
                     <div class="row" style="margin-top:8px">
                         <div style="flex:1">
                             <label>Source A</label>
@@ -470,21 +470,21 @@
                             <select id="swapNewSourceB"></select>
                         </div>
                     </div>
-                    <button class="btn-primary" style="margin-top:12px;width:100%" onclick="addSwapConfig()">[ADD] Add Config</button>
+                    <button class="btn-primary" style="margin-top:12px;width:100%" onclick="addSwapConfig()">➕ Add Config</button>
                 </div>
                 
                 <div class="card">
                     <h3>Saved Configs</h3>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="swapConfigsSearchInput" placeholder="Search configs...">
-                        <span class="search-box__icon">[SEARCH]</span>
-                        <button class="search-box__clear" title="Clear">[EMOJI]</button>
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">❓</button>
                     </div>
                     <div id="savedSwaps"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="refreshSwapSources()">[SYNC] Refresh Sources</button>
-                        <button onclick="exportConfigs()">[EMOJI] Export</button>
-                        <button onclick="importConfigs()">[EMOJI] Import</button>
+                        <button onclick="refreshSwapSources()">🔄 Refresh Sources</button>
+                        <button onclick="exportConfigs()">❓ Export</button>
+                        <button onclick="importConfigs()">❓ Import</button>
                     </div>
                 </div>
             </div>
@@ -492,35 +492,35 @@
             <!-- Layouts -->
             <div id="page-layouts" class="page">
                 <div class="card">
-                    <h3>[EMOJI] Save Current Layout</h3>
+                    <h3>❓ Save Current Layout</h3>
                     <p style="color:var(--muted);margin-bottom:12px;font-size:0.85em">
                         Capture all source positions/sizes in current scene
                     </p>
                     <label>Layout Name</label>
                     <input type="text" id="layoutName" placeholder="e.g. Gaming Layout, Just Chatting">
                     <button class="btn-primary" style="margin-top:12px;width:100%" onclick="captureLayout()">
-                        [EMOJI] Capture Current Layout
+                        ❓ Capture Current Layout
                     </button>
                 </div>
                 
                 <div class="card">
-                    <h3>[EMOJI] Saved Layouts</h3>
+                    <h3>❓ Saved Layouts</h3>
                     <p style="color:var(--muted);margin-bottom:8px;font-size:0.85em" id="layoutSceneInfo">
                         Scene: <span id="layoutCurrentScene">-</span>
                     </p>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="layoutSearchInput" placeholder="Search layouts...">
-                        <span class="search-box__icon">[SEARCH]</span>
-                        <button class="search-box__clear" title="Clear">[EMOJI]</button>
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" title="Clear">❓</button>
                     </div>
                     <div id="savedLayouts" class="config-list"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="refreshLayouts()">[SYNC] Refresh</button>
+                        <button onclick="refreshLayouts()">🔄 Refresh</button>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h3>[SETTINGS] Animation Settings</h3>
+                    <h3>⚙️ Animation Settings</h3>
                     <div class="row">
                         <div style="flex:1">
                             <label>Duration (ms)</label>
@@ -555,7 +555,7 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[INFO] How It Works</h3>
+                    <h3>ℹ️ How It Works</h3>
                     <ol style="padding-left:20px;color:var(--muted);font-size:0.85em;margin:0">
                         <li>Arrange sources how you want them</li>
                         <li>Enter a name and click "Capture"</li>
@@ -563,7 +563,7 @@
                         <li>Click "Apply" to animate back</li>
                     </ol>
                     <p style="color:var(--muted);font-size:0.8em;margin-top:8px">
-                        [IDEA] <b>Tip:</b> Assign hotkeys in OBS [EMOJI] Settings [EMOJI] Hotkeys for quick switching!
+                        💡 <b>Tip:</b> Assign hotkeys in OBS ❓ Settings ❓ Hotkeys for quick switching!
                     </p>
                 </div>
             </div>
@@ -571,20 +571,20 @@
             <!-- Script Manager -->
             <div id="page-scripts" class="page">
                 <div class="card">
-                    <h3>[EMOJI] Stream Suite Scripts</h3>
+                    <h3>❓ Stream Suite Scripts</h3>
                     <p class="hint" style="margin-bottom:12px">Lua scripts that run inside OBS Studio. Install via the Installer tab.</p>
                     
                     <div id="scriptsList" class="scripts-grid"></div>
                 </div>
                 
                 <div class="card">
-                    <h3>[WEB] Browser Sources</h3>
+                    <h3>🌐 Browser Sources</h3>
                     <p class="hint" style="margin-bottom:12px">HTML files to add as Browser Sources in OBS.</p>
                     
                     <div class="scripts-grid">
                         <div class="script-card">
                             <div class="script-header">
-                                <span class="script-icon">[EMOJI]</span>
+                                <span class="script-icon">❓</span>
                                 <div>
                                     <div class="script-name">Text Cycler Display</div>
                                     <div class="script-version">Browser Source</div>
@@ -596,7 +596,7 @@
                         
                         <div class="script-card">
                             <div class="script-header">
-                                <span class="script-icon">[CONTROL]</span>
+                                <span class="script-icon">🎛️</span>
                                 <div>
                                     <div class="script-name">Control Panel Dock</div>
                                     <div class="script-version">Custom Dock</div>
@@ -609,11 +609,11 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[EMOJI] Quick Reference</h3>
+                    <h3>❓ Quick Reference</h3>
                     <div class="info-box">
                         <strong>Adding Scripts to OBS:</strong>
                         <ol style="margin:8px 0 0 16px;font-size:0.85em">
-                            <li>Tools [EMOJI] Scripts</li>
+                            <li>Tools ❓ Scripts</li>
                             <li>Click + (Add Scripts)</li>
                             <li>Navigate to your script folder</li>
                             <li>Select the .lua files</li>
@@ -622,7 +622,7 @@
                     <div class="info-box" style="margin-top:8px">
                         <strong>Adding Custom Browser Dock:</strong>
                         <ol style="margin:8px 0 0 16px;font-size:0.85em">
-                            <li>View [EMOJI] Docks [EMOJI] Custom Browser Docks</li>
+                            <li>View ❓ Docks ❓ Custom Browser Docks</li>
                             <li>Name: "Stream Suite"</li>
                             <li>URL: file:///path/to/control_panel.html</li>
                         </ol>
@@ -633,7 +633,7 @@
             <!-- Installer Wizard -->
             <div id="page-install" class="page">
                 <div class="card">
-                    <h3>[EMOJI] Installation Wizard</h3>
+                    <h3>❓ Installation Wizard</h3>
                     <p class="hint">Automatically install Lua scripts to your OBS scripts folder.</p>
                     
                     <!-- Step 1: Detect/Select Paths -->
@@ -643,21 +643,21 @@
                         <label>Source Files Location</label>
                         <div class="url-box">
                             <input type="text" id="installSourcePath" readonly>
-                            <button onclick="window.Installer.detectSourcePath()">[SEARCH] Detect</button>
+                            <button onclick="window.Installer.detectSourcePath()">🔍 Detect</button>
                         </div>
                         <p class="hint">Where the script files are located (this folder)</p>
                         
                         <label>OBS Scripts Folder</label>
                         <div class="url-box">
                             <input type="text" id="installTargetPath" placeholder="C:\Users\YourName\AppData\Roaming\obs-studio\scripts">
-                            <button onclick="window.Installer.browseTargetPath()">[FOLDER] Browse</button>
-                            <button onclick="window.Installer.detectOBSPath()">[SEARCH] Auto-Detect</button>
+                            <button onclick="window.Installer.browseTargetPath()">📁 Browse</button>
+                            <button onclick="window.Installer.detectOBSPath()">🔍 Auto-Detect</button>
                         </div>
                         <p class="hint">Where scripts will be installed. Common locations:</p>
                         <div class="path-suggestions" id="pathSuggestions"></div>
                         
                         <div class="row" style="margin-top:12px">
-                            <button onclick="window.Installer.goToInstallStep(2)" class="btn-primary">Next: Select Scripts [EMOJI]</button>
+                            <button onclick="window.Installer.goToInstallStep(2)" class="btn-primary">Next: Select Scripts ❓</button>
                         </div>
                     </div>
                     
@@ -668,8 +668,8 @@
                         <div id="installScriptsList" class="install-scripts-list"></div>
                         
                         <div class="row" style="margin-top:12px">
-                            <button onclick="window.Installer.goToInstallStep(1)">[EMOJI] Back</button>
-                            <button onclick="window.Installer.goToInstallStep(3)" class="btn-primary">Next: Review [EMOJI]</button>
+                            <button onclick="window.Installer.goToInstallStep(1)">❓ Back</button>
+                            <button onclick="window.Installer.goToInstallStep(3)" class="btn-primary">Next: Review ❓</button>
                         </div>
                     </div>
                     
@@ -690,7 +690,7 @@
                         </div>
                         
                         <div class="row" style="margin-top:12px">
-                            <button onclick="window.Installer.goToInstallStep(2)">[EMOJI] Back</button>
+                            <button onclick="window.Installer.goToInstallStep(2)">❓ Back</button>
                             <button onclick="window.Installer.generateInstallScript()" class="btn-primary">Generate Install Script</button>
                         </div>
                     </div>
@@ -703,7 +703,7 @@
                         
                         <!-- Dock Warning -->
                         <div id="dockDownloadWarning" class="feature-notice" style="display:none;margin-bottom:12px">
-                            <div class="feature-notice__title">[WARNING] OBS Dock Detected</div>
+                            <div class="feature-notice__title">⚠️ OBS Dock Detected</div>
                             <div class="feature-notice__text">
                                 File downloads don't work in OBS docks. Use <strong>Copy Script</strong> instead, 
                                 then paste into a text editor and save manually.
@@ -711,9 +711,9 @@
                         </div>
                         
                         <div class="row" style="margin-top:12px">
-                            <button onclick="window.Installer.goToInstallStep(3)">[EMOJI] Back</button>
-                            <button onclick="window.Installer.copyInstallScript()" class="btn-success">[CLIPBOARD] Copy Script</button>
-                            <button onclick="window.Installer.downloadInstallScript()" id="downloadScriptBtn" class="btn-primary" title="Download install script">[EMOJI] Download</button>
+                            <button onclick="window.Installer.goToInstallStep(3)">❓ Back</button>
+                            <button onclick="window.Installer.copyInstallScript()" class="btn-success">📋 Copy Script</button>
+                            <button onclick="window.Installer.downloadInstallScript()" id="downloadScriptBtn" class="btn-primary" title="Download install script">❓ Download</button>
                         </div>
                         
                         <!-- Browser Instructions (shown when NOT in dock) -->
@@ -723,13 +723,13 @@
                                 <li>Right-click the downloaded script</li>
                                 <li>Run as Administrator (Windows) or chmod +x && run (Linux/Mac)</li>
                                 <li>Restart OBS Studio</li>
-                                <li>Go to Tools [EMOJI] Scripts to configure</li>
+                                <li>Go to Tools ❓ Scripts to configure</li>
                             </ol>
                         </div>
                         
                         <!-- Dock Instructions (shown when IN dock) -->
                         <div id="dockInstructions" class="info-box" style="display:none;margin-top:12px">
-                            <strong>[CLIPBOARD] After copying the script:</strong>
+                            <strong>📋 After copying the script:</strong>
                             <ol style="margin:4px 0 0 16px;font-size:0.85em">
                                 <li>Open Notepad, VS Code, or any text editor</li>
                                 <li>Paste the script (Ctrl+V)</li>
@@ -738,7 +738,7 @@
                                 <li>Restart OBS Studio</li>
                             </ol>
                             <p style="margin-top:8px;font-size:0.85em;color:var(--muted)">
-                                [IDEA] <strong>Tip:</strong> Open this control panel in your regular browser for easier downloading!
+                                💡 <strong>Tip:</strong> Open this control panel in your regular browser for easier downloading!
                             </p>
                         </div>
                     </div>
@@ -746,7 +746,7 @@
                 
                 <!-- Existing Installation Detection -->
                 <div class="card" id="existingInstallCard" style="display:none">
-                    <h3>[WARNING] Existing Installation Detected</h3>
+                    <h3>⚠️ Existing Installation Detected</h3>
                     <div id="existingInstallInfo"></div>
                     <div class="row" style="margin-top:12px">
                         <button onclick="window.Installer.handleExistingInstall('skip')">Skip Existing</button>
@@ -787,12 +787,12 @@
                 <div class="card">
                     <h3>Add as OBS Dock</h3>
                     <p style="color:var(--muted);margin-bottom:12px;font-size:0.9em">
-                        In OBS: <strong>View [EMOJI] Docks [EMOJI] Custom Browser Docks</strong><br>
+                        In OBS: <strong>View ❓ Docks ❓ Custom Browser Docks</strong><br>
                         Click + and paste this URL:
                     </p>
                     <div class="url-box">
                         <input type="text" id="dockUrl" readonly>
-                        <button onclick="copyUrl()">[CLIPBOARD] Copy</button>
+                        <button onclick="copyUrl()">📋 Copy</button>
                     </div>
                     <p style="color:var(--muted);margin-top:8px;font-size:0.85em" id="copyStatus"></p>
                 </div>
@@ -800,7 +800,7 @@
                 <div class="card">
                     <h3>OBS WebSocket Setup</h3>
                     <ol style="color:var(--muted);padding-left:20px;font-size:0.9em;line-height:2">
-                        <li>In OBS: <strong>Tools [EMOJI] WebSocket Server Settings</strong></li>
+                        <li>In OBS: <strong>Tools ❓ WebSocket Server Settings</strong></li>
                         <li>Check "Enable WebSocket server"</li>
                         <li>Note the port (default: 4455)</li>
                         <li>Set password if desired</li>
@@ -809,7 +809,7 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[EMOJI] Twitch API Settings</h3>
+                    <h3>❓ Twitch API Settings</h3>
                     <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
                         Get credentials from 
                         <button onclick="openUrlOrCopy('https://dev.twitch.tv/console/apps', 'Twitch Developer Console')" class="btn-link">dev.twitch.tv/console</button>
@@ -818,26 +818,26 @@
                     <label>Twitch Client ID <span style="color:var(--muted);font-weight:normal">(Optional - Auto-configured)</span></label>
                     <input type="text" id="twitchClientId" placeholder="Auto-configured from deployment">
                     <p class="hint" style="margin-top:4px;font-size:0.75em">
-                        [FEATURE] Auto-configured during deployment. Only override if using a different Twitch app.
+                        ✨ Auto-configured during deployment. Only override if using a different Twitch app.
                         <span id="autoDetectedClientId" style="display:block;margin-top:4px;color:var(--success)"></span>
                     </p>
                     
                     <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
                     <input type="text" id="twitchApiServer" placeholder="Auto-detected from deployment config">
                     <p class="hint" style="margin-top:4px;font-size:0.75em">
-                        [FEATURE] Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
+                        ✨ Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
                         <span id="autoDetectedApiUrl" style="display:block;margin-top:4px;color:var(--success)"></span>
                     </p>
                     
                     <div style="margin-top:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:0.8em">
                         <strong style="color:var(--accent)">OAuth Redirect URI:</strong>
                         <code style="display:block;margin-top:4px;padding:6px;background:var(--bg);border-radius:4px;word-break:break-all;user-select:all">https://streamkit.idling.app/twitch_auth_callback.html</code>
-                        <p style="color:var(--muted);margin-top:4px">[EMOJI][EMOJI] Add this URL to your Twitch app's OAuth Redirect URLs</p>
+                        <p style="color:var(--muted);margin-top:4px">❓❓ Add this URL to your Twitch app's OAuth Redirect URLs</p>
                     </div>
                     
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-                        <button onclick="saveTwitchSettings()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer">[EMOJI] Save Settings</button>
-                        <button onclick="testTwitchApi()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer">[EMOJI] Test Connection</button>
+                        <button onclick="saveTwitchSettings()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer">❓ Save Settings</button>
+                        <button onclick="testTwitchApi()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer">❓ Test Connection</button>
                     </div>
                     <div id="twitchApiStatus" style="margin-top:8px;font-size:0.8em;text-align:center;color:var(--muted)"></div>
                 </div>
@@ -852,16 +852,16 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[SYNC] Cross-Client Sync</h3>
+                    <h3>🔄 Cross-Client Sync</h3>
                     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
                         Sync configs between OBS dock and remote browser panels via WebSocket.
                     </p>
                     <div style="display:grid;gap:8px">
                         <button class="btn-primary btn-block requires-connection" onclick="requestStorageFromOBS()">
-                            [EMOJI] Pull Storage from OBS Dock
+                            ❓ Pull Storage from OBS Dock
                         </button>
                         <button class="btn-block requires-connection" onclick="manualStorageSync()" style="background:var(--border)">
-                            [EMOJI] Push Storage to Other Clients
+                            ❓ Push Storage to Other Clients
                         </button>
                     </div>
                     <p class="hint" style="margin-top:6px">
@@ -875,12 +875,12 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[EMOJI] Data & Backup</h3>
+                    <h3>❓ Data & Backup</h3>
                     
                     <!-- Storage Engine Status -->
                     <div id="storageEngineStatus" style="display:flex;gap:12px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.85em">
-                        <span id="idbStatus">[EMOJI] IndexedDB</span>
-                        <span id="lsStatus">[EMOJI] localStorage</span>
+                        <span id="idbStatus">❓ IndexedDB</span>
+                        <span id="lsStatus">❓ localStorage</span>
                     </div>
                     
                     <!-- Data Categories -->
@@ -889,27 +889,27 @@
                         <div style="display:grid;gap:6px">
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportSwaps" checked style="width:auto;margin:0">
-                                <span>[SYNC] Swap Configs</span>
+                                <span>🔄 Swap Configs</span>
                                 <span id="swapCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportLayouts" checked style="width:auto;margin:0">
-                                <span>[EMOJI] Layout Presets</span>
+                                <span>❓ Layout Presets</span>
                                 <span id="layoutCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportTextCyclers" checked style="width:auto;margin:0">
-                                <span>[NOTE] Text Cycler Configs</span>
+                                <span>📝 Text Cycler Configs</span>
                                 <span id="textCyclerCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportUIState" checked style="width:auto;margin:0">
-                                <span>[SETTINGS] UI Preferences</span>
+                                <span>⚙️ UI Preferences</span>
                                 <span style="margin-left:auto;color:var(--muted);font-size:0.9em">(dropdowns, settings)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportCredentials" style="width:auto;margin:0">
-                                <span>[AUTH] Connection Settings</span>
+                                <span>🔐 Connection Settings</span>
                                 <span style="margin-left:auto;color:var(--warning);font-size:0.8em">(host/port only)</span>
                             </label>
                         </div>
@@ -917,17 +917,17 @@
                     
                     <!-- Action Buttons -->
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-                        <button onclick="exportSelectedData()" style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500">[EMOJI] Export Selected</button>
-                        <button onclick="importDataWithOptions()" style="padding:10px;background:var(--accent);border:none;color:#000;border-radius:6px;cursor:pointer;font-weight:500">[EMOJI] Import Backup</button>
+                        <button onclick="exportSelectedData()" style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500">❓ Export Selected</button>
+                        <button onclick="importDataWithOptions()" style="padding:10px;background:var(--accent);border:none;color:#000;border-radius:6px;cursor:pointer;font-weight:500">❓ Import Backup</button>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                        <button onclick="forceStorageSync()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[SYNC] Force Sync</button>
-                        <button onclick="copyBackupToClipboard()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[CLIPBOARD] Copy as JSON</button>
+                        <button onclick="forceStorageSync()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">🔄 Force Sync</button>
+                        <button onclick="copyBackupToClipboard()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">📋 Copy as JSON</button>
                     </div>
                     
                     <!-- Info -->
                     <div style="margin-top:10px;padding:8px;background:rgba(255,200,0,0.1);border-radius:6px;border-left:3px solid var(--warning)">
-                        <p style="font-size:0.75em;color:var(--warning);margin:0">[WARNING] <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!</p>
+                        <p style="font-size:0.75em;color:var(--warning);margin:0">⚠️ <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!</p>
                     </div>
                     
                     <!-- Last backup info -->
@@ -936,7 +936,7 @@
                 
                 <!-- Version Info -->
                 <div class="card">
-                    <h3>[PACKAGE] Version</h3>
+                    <h3>📦 Version</h3>
                     <div id="versionInfo" style="font-size:0.9em">
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
                             <span style="color:var(--muted)">Local Version:</span>
@@ -951,8 +951,8 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-                        <button onclick="checkForUpdates()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[SYNC] Check Updates</button>
-                        <button onclick="openGitHubRepo()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[EMOJI] Open GitHub</button>
+                        <button onclick="checkForUpdates()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">🔄 Check Updates</button>
+                        <button onclick="openGitHubRepo()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">❓ Open GitHub</button>
                     </div>
                     <div style="margin-top:10px;font-size:0.75em;color:var(--muted);text-align:center">
                         <span id="lastVersionCheck">Never checked</span>
@@ -971,8 +971,8 @@
                     <span class="split-log__title">Activity Log</span>
                     <div class="search-box split-log__search">
                         <input type="text" class="search-box__input" id="logSearchInput" placeholder="Search log...">
-                        <span class="search-box__icon">[SEARCH]</span>
-                        <button class="search-box__clear" id="logSearchClear" title="Clear search">[EMOJI]</button>
+                        <span class="search-box__icon">🔍</span>
+                        <button class="search-box__clear" id="logSearchClear" title="Clear search">❓</button>
                     </div>
                     <button class="split-log__clear btn-link" onclick="clearLog()">Clear</button>
                 </div>

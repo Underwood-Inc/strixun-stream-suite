@@ -1,17 +1,17 @@
-# [DEPLOY] Chat Client Setup Guide
+# 🚀 Chat Client Setup Guide
 
-**Ahoy there!** [EMOJI]‍[EMOJI][EMOJI][EMOJI] Here's how to set up and use yer new P2P chat client!
+**Ahoy there!** ❓‍❓❓❓ Here's how to set up and use yer new P2P chat client!
 
-## [CLIPBOARD] Prerequisites
+## 📋 Prerequisites
 
-1. [SUCCESS] Cloudflare OAuth system set up and working
-2. [SUCCESS] JWT tokens configured
-3. [SUCCESS] Cloudflare Workers account
-4. [SUCCESS] KV namespace access
+1. ✅ Cloudflare OAuth system set up and working
+2. ✅ JWT tokens configured
+3. ✅ Cloudflare Workers account
+4. ✅ KV namespace access
 
 ---
 
-## [CONFIG] Step 1: Deploy Signaling Server
+## 🔧 Step 1: Deploy Signaling Server
 
 ### 1.1 Create KV Namespace
 
@@ -51,7 +51,7 @@ preview_id = "your-namespace-id-here"
 
 If you see `JWT_SECRET` in the list, you need to **retrieve and reuse** the same value:
 
-**[WARNING] Problem**: Wrangler doesn't let you view existing secret values (for security). You have two options:
+**⚠️ Problem**: Wrangler doesn't let you view existing secret values (for security). You have two options:
 
 1. **If you remember the value**: Just set it again (same value) for the chat signaling worker:
    ```bash
@@ -118,7 +118,7 @@ Note the worker URL from the deployment output (e.g., `https://strixun-chat-sign
 
 **IMPORTANT**: After deployment, you must activate the route in the Cloudflare Dashboard:
 
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) [EMOJI] **Workers & Pages** [EMOJI] **strixun-chat-signaling**
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) ❓ **Workers & Pages** ❓ **strixun-chat-signaling**
 2. Click the **Settings** tab
 3. Scroll to **Domains & Routes** section
 4. Find the `workers.dev` route (should show as "Inactive")
@@ -143,7 +143,7 @@ You should see: `{"status":"ok","service":"chat-signaling",...}`
 
 ---
 
-## [UI] Step 2: Configure Chat Client
+## 🎨 Step 2: Configure Chat Client
 
 ### 2.1 Set Signaling Server URL
 
@@ -178,7 +178,7 @@ Or set globally:
 
 ---
 
-## [TARGET] Step 3: Usage Examples
+## 🎯 Step 3: Usage Examples
 
 ### Basic Usage
 
@@ -231,7 +231,7 @@ Or set globally:
 
 ---
 
-## [AUTH] Step 4: Authentication
+## 🔐 Step 4: Authentication
 
 The chat client automatically uses your existing OAuth system:
 
@@ -240,11 +240,11 @@ The chat client automatically uses your existing OAuth system:
 3. Chat client reads token from `getAuthToken()`
 4. Token sent with all signaling requests
 
-**No additional auth setup needed!** [SUCCESS]
+**No additional auth setup needed!** ✅
 
 ---
 
-## [UI] Step 5: Customization
+## 🎨 Step 5: Customization
 
 ### Styling
 
@@ -278,7 +278,7 @@ if (path === '/emoji/upload' && request.method === 'POST') {
 
 ---
 
-## [BUG] Troubleshooting
+## 🐛 Troubleshooting
 
 ### "Not authenticated" Error
 
@@ -311,7 +311,7 @@ if (path === '/emoji/upload' && request.method === 'POST') {
 
 ---
 
-## [ANALYTICS] Monitoring
+## 📊 Monitoring
 
 ### Signaling Server Health
 
@@ -328,19 +328,19 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ---
 
-## [DEPLOY] Next Steps
+## 🚀 Next Steps
 
-1. [SUCCESS] Deploy signaling server
-2. [SUCCESS] Configure chat client
-3. [SUCCESS] Test room creation/joining
-4. [SUCCESS] Test message sending
-5. [SUCCESS] Test emote integration
-6. [SUCCESS] Add custom emoji support (optional)
-7. [SUCCESS] Customize styling (optional)
+1. ✅ Deploy signaling server
+2. ✅ Configure chat client
+3. ✅ Test room creation/joining
+4. ✅ Test message sending
+5. ✅ Test emote integration
+6. ✅ Add custom emoji support (optional)
+7. ✅ Customize styling (optional)
 
 ---
 
-## [IDEA] Tips
+## 💡 Tips
 
 - **Development**: Use `wrangler dev` for local testing
 - **Production**: Set `ENVIRONMENT=production` in worker vars
@@ -350,5 +350,5 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ---
 
-**Ye be ready to chat!** [EMOJI][EMOJI]‍[EMOJI][EMOJI]
+**Ye be ready to chat!** ❓❓‍❓❓
 

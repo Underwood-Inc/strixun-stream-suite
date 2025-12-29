@@ -2,7 +2,7 @@
  * Integration Tests for Authentication Flow
  * 
  * Tests the complete authentication flow:
- * - OTP request [EMOJI] verify [EMOJI] JWT creation [EMOJI] API access
+ * - OTP request ❓ verify ❓ JWT creation ❓ API access
  * 
  * Uses real JWT creation/verification, mocks KV/network
  */
@@ -178,7 +178,7 @@ describe('Authentication Flow Integration', () => {
     });
 
     describe('End-to-End Authentication Flow', () => {
-        it('should complete full flow: OTP [EMOJI] JWT [EMOJI] API access', async () => {
+        it('should complete full flow: OTP ❓ JWT ❓ API access', async () => {
             // Simulate complete flow
             const userId = 'user_123';
             const email = 'user@example.com';

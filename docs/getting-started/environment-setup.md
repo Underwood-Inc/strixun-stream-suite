@@ -1,4 +1,4 @@
-# Environment Variable Setup Guide [AUTH]
+# Environment Variable Setup Guide 🔐
 
 ## Where to Put .env Files
 
@@ -51,15 +51,15 @@ echo "VITE_AUTH_API_URL=https://auth.idling.app" >> serverless/url-shortener/app
 
 ```
 .
-├── .env                          [EMOJI] CREATE THIS (root)
+├── .env                          ❓ CREATE THIS (root)
 ├── package.json
 ├── mods-hub/
-│   ├── .env                      [EMOJI] CREATE THIS
+│   ├── .env                      ❓ CREATE THIS
 │   └── package.json
 └── serverless/
     └── url-shortener/
         └── app/
-            ├── .env              [EMOJI] CREATE THIS
+            ├── .env              ❓ CREATE THIS
             └── package.json
 ```
 
@@ -76,10 +76,10 @@ ls -la serverless/url-shortener/app/.env
 
 ## Security Notes
 
-- [SUCCESS] `.env` files are already in `.gitignore` (won't be committed)
-- [SUCCESS] Never commit `.env` files to git
-- [SUCCESS] Use the same key in all 3 locations
-- [SUCCESS] Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
+- ✅ `.env` files are already in `.gitignore` (won't be committed)
+- ✅ Never commit `.env` files to git
+- ✅ Use the same key in all 3 locations
+- ✅ Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
 
 ## Current SERVICE_ENCRYPTION_KEY
 

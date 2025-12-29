@@ -304,7 +304,7 @@ async function saveToCloud(slot = 'default', metadata = {}, passphrase = null) {
         if (passphrase && typeof CloudEncryption !== 'undefined') {
             metadata.encrypted = true;
             configs = await CloudEncryption.encryptData(configs, passphrase);
-            console.log('[CloudStorage] [SECURITY] Data encrypted before upload');
+            console.log('[CloudStorage] 🔒 Data encrypted before upload');
         }
         
         const result = await cloudRequest('/cloud/save?slot=' + encodeURIComponent(slot), {
@@ -317,7 +317,7 @@ async function saveToCloud(slot = 'default', metadata = {}, passphrase = null) {
             storage.setRaw(LAST_CLOUD_SYNC_KEY, lastSyncTime);
         }
         
-        console.log('[CloudStorage] [SUCCESS] Saved to cloud:', slot, result);
+        console.log('[CloudStorage] ✅ Saved to cloud:', slot, result);
         return result;
     } finally {
         isSyncing = false;
@@ -350,13 +350,13 @@ async function loadFromCloud(slot = 'default', passphrase = null) {
         
         // Decrypt if encrypted and passphrase provided
         if (saveData.metadata?.encrypted && passphrase && typeof CloudEncryption !== 'undefined') {
-            console.log('[CloudStorage] [EMOJI] Decrypting data...');
+            console.log('[CloudStorage] ❓ Decrypting data...');
             saveData.configs = await CloudEncryption.decryptData(saveData.configs, passphrase);
         } else if (saveData.metadata?.encrypted && !passphrase) {
             throw new Error('This save is encrypted. Passphrase required.');
         }
         
-        console.log('[CloudStorage] [SUCCESS] Loaded from cloud:', slot);
+        console.log('[CloudStorage] ✅ Loaded from cloud:', slot);
         
         return saveData;
     } finally {
@@ -424,7 +424,7 @@ function applyCloudSave(saveData, merge = false) {
         }
     }
     
-    console.log('[CloudStorage] [SUCCESS] Applied cloud save to session');
+    console.log('[CloudStorage] ✅ Applied cloud save to session');
     
     // Refresh UI if available
     if (typeof refreshAllTables === 'function') {
@@ -458,7 +458,7 @@ async function deleteCloudSave(slot) {
         method: 'DELETE',
     });
     
-    console.log('[CloudStorage] [SUCCESS] Deleted cloud save:', slot);
+    console.log('[CloudStorage] ✅ Deleted cloud save:', slot);
     return result;
 }
 
@@ -503,7 +503,7 @@ function enableAutoSync() {
     //     }
     // }, AUTO_SYNC_INTERVAL);
     
-    console.log('[CloudStorage] [SUCCESS] Auto-sync enabled (every 5 minutes)');
+    console.log('[CloudStorage] ✅ Auto-sync enabled (every 5 minutes)');
 }
 
 /**
@@ -519,7 +519,7 @@ function disableAutoSync() {
         autoSyncTimer = null;
     }
     
-    console.log('[CloudStorage] [ERROR] Auto-sync disabled');
+    console.log('[CloudStorage] ❌ Auto-sync disabled');
 }
 
 /**
@@ -624,7 +624,7 @@ if (typeof window !== 'undefined') {
     if (importDevice) {
         try {
             importDeviceId(importDevice);
-            console.log('[CloudStorage] [SUCCESS] Imported device ID from URL');
+            console.log('[CloudStorage] ✅ Imported device ID from URL');
             // Clean URL
             if (window.history && window.history.replaceState) {
                 const cleanUrl = window.location.pathname;

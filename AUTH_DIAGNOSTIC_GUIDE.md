@@ -171,7 +171,7 @@ When prompted for `SERVICE_API_KEY`, enter the SAME key you want to use for both
 
 The browser logs show:
 ```
-[OtpLogin] [ERROR] CRITICAL ERROR: otpEncryptionKey is missing!
+[OtpLogin] ❌ CRITICAL ERROR: otpEncryptionKey is missing!
 ```
 
 This means `VITE_SERVICE_ENCRYPTION_KEY` is not set in your frontend build environment.

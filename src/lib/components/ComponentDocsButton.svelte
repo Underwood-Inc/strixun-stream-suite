@@ -29,7 +29,7 @@
     title="View {componentName} in Storybook"
     type="button"
   >
-    <span class="component-docs-button__icon">[DOCS]</span>
+    <span class="component-docs-button__icon">📚</span>
   </button>
 </div>
 

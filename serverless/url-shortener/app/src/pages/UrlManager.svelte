@@ -209,7 +209,7 @@
       <div class="urls-header">
         <h2>Your Short URLs</h2>
         <button class="btn btn-secondary" on:click={loadUrls} disabled={loading}>
-          [SYNC] Refresh
+          🔄 Refresh
         </button>
       </div>
       
@@ -229,7 +229,7 @@
                     on:click={() => copyToClipboard(url.shortUrl)}
                     title="Copy to clipboard"
                   >
-                    [CLIPBOARD] Copy
+                    📋 Copy
                   </button>
                 </div>
                 <button 
@@ -237,7 +237,7 @@
                   on:click={() => deleteUrl(url.shortCode)}
                   title="Delete"
                 >
-                  [DELETE] Delete
+                  🗑️ Delete
                 </button>
               </div>
               <div class="url-original">

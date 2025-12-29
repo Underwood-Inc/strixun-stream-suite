@@ -18,26 +18,26 @@ const isWindows = platform() === 'win32';
 
 if (isWindows) {
     const scriptPath = join(__dirname, 'tail-logs.ps1');
-    console.log('[EMOJI] Detected Windows - Running PowerShell script...\n');
+    console.log('❓ Detected Windows - Running PowerShell script...\n');
     try {
         execSync(
             `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`,
             { stdio: 'inherit', cwd: rootDir }
         );
     } catch (error) {
-        console.error('[ERROR] Error running PowerShell script:', error.message);
+        console.error('❌ Error running PowerShell script:', error.message);
         process.exit(1);
     }
 } else {
     const scriptPath = join(__dirname, 'tail-logs.sh');
-    console.log('[EMOJI] Detected Unix/Linux/macOS - Running Bash script...\n');
+    console.log('❓ Detected Unix/Linux/macOS - Running Bash script...\n');
     try {
         execSync(
             `bash "${scriptPath}"`,
             { stdio: 'inherit', cwd: rootDir }
         );
     } catch (error) {
-        console.error('[ERROR] Error running Bash script:', error.message);
+        console.error('❌ Error running Bash script:', error.message);
         process.exit(1);
     }
 }

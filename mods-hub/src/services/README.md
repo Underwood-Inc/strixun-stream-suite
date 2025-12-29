@@ -38,10 +38,10 @@ pnpm test:ui
 ## Coverage Requirements
 
 The API service requires **100% test coverage**:
-- [SUCCESS] Lines: 100%
-- [SUCCESS] Functions: 100%
-- [SUCCESS] Branches: 100%
-- [SUCCESS] Statements: 100%
+- ✅ Lines: 100%
+- ✅ Functions: 100%
+- ✅ Branches: 100%
+- ✅ Statements: 100%
 
 Coverage is enforced in:
 - Vitest configuration
@@ -67,54 +67,54 @@ The CI pipeline will:
 ### Functions Tested
 
 #### Mod Operations
-- [SUCCESS] `listMods` - With all filter combinations
-- [SUCCESS] `getModDetail` - By ID and slug
-- [SUCCESS] `uploadMod` - With and without thumbnail
-- [SUCCESS] `updateMod` - All update scenarios
-- [SUCCESS] `deleteMod` - Delete operations
-- [SUCCESS] `uploadVersion` - Version uploads
+- ✅ `listMods` - With all filter combinations
+- ✅ `getModDetail` - By ID and slug
+- ✅ `uploadMod` - With and without thumbnail
+- ✅ `updateMod` - All update scenarios
+- ✅ `deleteMod` - Delete operations
+- ✅ `uploadVersion` - Version uploads
 
 #### Admin Operations
-- [SUCCESS] `listAllMods` - Admin list with filters
-- [SUCCESS] `getModReview` - Review data retrieval
-- [SUCCESS] `updateModStatus` - Status updates with/without reason
-- [SUCCESS] `addReviewComment` - Comment creation
-- [SUCCESS] `adminDeleteMod` - Admin delete operations
+- ✅ `listAllMods` - Admin list with filters
+- ✅ `getModReview` - Review data retrieval
+- ✅ `updateModStatus` - Status updates with/without reason
+- ✅ `addReviewComment` - Comment creation
+- ✅ `adminDeleteMod` - Admin delete operations
 
 #### Ratings
-- [SUCCESS] `getModRatings` - Rating retrieval
-- [SUCCESS] `submitModRating` - With and without comment
+- ✅ `getModRatings` - Rating retrieval
+- ✅ `submitModRating` - With and without comment
 
 #### User Management
-- [SUCCESS] `listUsers` - User listing with filters
-- [SUCCESS] `getUserDetails` - User detail retrieval
-- [SUCCESS] `updateUser` - User updates
-- [SUCCESS] `getUserMods` - User's mods listing
+- ✅ `listUsers` - User listing with filters
+- ✅ `getUserDetails` - User detail retrieval
+- ✅ `updateUser` - User updates
+- ✅ `getUserMods` - User's mods listing
 
 #### Permissions
-- [SUCCESS] `checkUploadPermission` - Permission checking
+- ✅ `checkUploadPermission` - Permission checking
 
 #### Settings
-- [SUCCESS] `getAdminSettings` - Settings retrieval
-- [SUCCESS] `updateAdminSettings` - Settings updates
+- ✅ `getAdminSettings` - Settings retrieval
+- ✅ `updateAdminSettings` - Settings updates
 
 #### Downloads
-- [SUCCESS] `downloadVersion` - File downloads with error handling
+- ✅ `downloadVersion` - File downloads with error handling
 
 #### R2 Management
-- [SUCCESS] `listR2Files` - File listing with date transformation
-- [SUCCESS] `detectDuplicates` - Duplicate detection with date transformation
-- [SUCCESS] `deleteR2File` - Single file deletion with URL encoding
-- [SUCCESS] `bulkDeleteR2Files` - Bulk deletion with error handling
+- ✅ `listR2Files` - File listing with date transformation
+- ✅ `detectDuplicates` - Duplicate detection with date transformation
+- ✅ `deleteR2File` - Single file deletion with URL encoding
+- ✅ `bulkDeleteR2Files` - Bulk deletion with error handling
 
 ### Edge Cases Tested
-- [SUCCESS] Missing optional parameters
-- [SUCCESS] URL encoding for special characters
-- [SUCCESS] Date string to Date object transformation
-- [SUCCESS] Error responses and error handling
-- [SUCCESS] Token expiration and logout events
-- [SUCCESS] FormData creation for file uploads
-- [SUCCESS] Query parameter building
+- ✅ Missing optional parameters
+- ✅ URL encoding for special characters
+- ✅ Date string to Date object transformation
+- ✅ Error responses and error handling
+- ✅ Token expiration and logout events
+- ✅ FormData creation for file uploads
+- ✅ Query parameter building
 
 ## Adding New Tests
 

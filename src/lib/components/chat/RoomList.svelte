@@ -178,7 +178,7 @@
             {room.customName || room.broadcasterName}
           </div>
           <div class="room-list__room-info">
-            <span>[USER] {room.participantCount}</span>
+            <span>👤 {room.participantCount}</span>
             <span>•</span>
             <span>by {room.broadcasterName}</span>
           </div>

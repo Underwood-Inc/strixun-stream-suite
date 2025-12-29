@@ -40,7 +40,7 @@ print_option() {
     local title=$2
     local desc=$3
     echo -e "${GREEN}[${num}]${NC} ${BOLD}${title}${NC}"
-    echo -e "    ${YELLOW}[EMOJI]${NC} ${desc}"
+    echo -e "    ${YELLOW}❓${NC} ${desc}"
     echo ""
 }
 
@@ -51,17 +51,17 @@ print_info() {
 
 # Function to print warning
 print_warning() {
-    echo -e "${YELLOW}[EMOJI]${NC} $1"
+    echo -e "${YELLOW}❓${NC} $1"
 }
 
 # Function to print error
 print_error() {
-    echo -e "${RED}[EMOJI]${NC} $1"
+    echo -e "${RED}❓${NC} $1"
 }
 
 # Function to print success
 print_success() {
-    echo -e "${GREEN}[EMOJI]${NC} $1"
+    echo -e "${GREEN}❓${NC} $1"
 }
 
 # Check if wrangler is installed
@@ -304,7 +304,7 @@ main() {
                 else
                     print_warning "Could not automatically open browser."
                     print_info "Please visit: $dashboard_url"
-                    print_info "Then navigate to: Workers & Pages [EMOJI] $SERVICE_NAME [EMOJI] Logs"
+                    print_info "Then navigate to: Workers & Pages ❓ $SERVICE_NAME ❓ Logs"
                 fi
                 
                 echo ""
@@ -318,7 +318,7 @@ main() {
                 ;;
             0)
                 print_section "Exiting"
-                print_info "Goodbye! [EMOJI]"
+                print_info "Goodbye! ❓"
                 exit 0
                 ;;
             *)

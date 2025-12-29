@@ -152,7 +152,7 @@ export async function enableEncryption(token: string): Promise<void> {
   };
 
   await saveEncryptionConfig(config);
-  console.log('[Encryption] [SUCCESS] Encryption enabled with JWT token-based key derivation');
+  console.log('[Encryption] ✅ Encryption enabled with JWT token-based key derivation');
 }
 
 /**
@@ -187,7 +187,7 @@ export async function disableEncryption(token: string): Promise<void> {
   };
 
   await saveEncryptionConfig(newConfig);
-  console.log('[Encryption] [ERROR] Encryption disabled');
+  console.log('[Encryption] ❌ Encryption disabled');
 }
 
 /**
@@ -237,7 +237,7 @@ export async function changeEncryptionToken(
   };
 
   await saveEncryptionConfig(newConfig);
-  console.log('[Encryption] [SYNC] Encryption token changed - data will be re-encrypted');
+  console.log('[Encryption] 🔄 Encryption token changed - data will be re-encrypted');
 }
 
 // ============ Key Derivation ============
@@ -600,7 +600,7 @@ export function enforceHTTPS(url: string): string {
 
   // Enforce HTTPS
   if (url.startsWith('http://')) {
-    console.warn('[Encryption] [WARNING] HTTP request blocked, upgrading to HTTPS:', url);
+    console.warn('[Encryption] ⚠️ HTTP request blocked, upgrading to HTTPS:', url);
     return url.replace('http://', 'https://');
   }
 
@@ -618,7 +618,7 @@ export async function secureFetch(
 
   if (!isHTTPS() && !secureUrl.includes('localhost') && !secureUrl.includes('127.0.0.1')) {
     console.warn(
-      '[Encryption] [WARNING] Non-HTTPS connection detected. Some features may not work.'
+      '[Encryption] ⚠️ Non-HTTPS connection detected. Some features may not work.'
     );
   }
 

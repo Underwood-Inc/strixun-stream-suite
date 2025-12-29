@@ -1,10 +1,10 @@
-# Per-Route Encryption System Guide [SECURITY]
+# Per-Route Encryption System Guide 🔒
 
 > **Industry-standard encryption middleware that ensures ALL routes encrypt responses with appropriate keys based on route type and authentication status.**
 
 ---
 
-## [TARGET] Overview
+## 🎯 Overview
 
 The Per-Route Encryption System provides:
 
@@ -17,7 +17,7 @@ The Per-Route Encryption System provides:
 
 ---
 
-## [EMOJI][EMOJI] Architecture
+## ❓❓ Architecture
 
 ### Encryption Strategies
 
@@ -63,7 +63,7 @@ The system comes with sensible defaults:
 
 ---
 
-## [DEPLOY] Quick Start
+## 🚀 Quick Start
 
 ### 1. Set Service Key
 
@@ -97,10 +97,10 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 **Recommended: Same Key for All Services**
 
 Using the **same service key** across all services is recommended because:
-- [SUCCESS] **Simpler key management** - One key to rotate instead of seven
-- [SUCCESS] **Service interoperability** - Services can decrypt each other's responses
-- [SUCCESS] **Consistent encryption** - All services use the same standard
-- [SUCCESS] **Easier client implementation** - Clients only need one service key
+- ✅ **Simpler key management** - One key to rotate instead of seven
+- ✅ **Service interoperability** - Services can decrypt each other's responses
+- ✅ **Consistent encryption** - All services use the same standard
+- ✅ **Easier client implementation** - Clients only need one service key
 
 **Security Consideration:** Since service-key encryption is for **public routes** (not sensitive authenticated data), sharing the key is an acceptable trade-off for operational simplicity. Sensitive data should use JWT encryption (user-specific keys).
 
@@ -137,7 +137,7 @@ export const handleGetUser = withEncryption(async (request: Request, env: Env) =
 
 ---
 
-## [CLIPBOARD] Advanced Usage
+## 📋 Advanced Usage
 
 ### Custom Policies
 
@@ -220,7 +220,7 @@ const encryptedResponse = await applyEncryptionMiddleware(
 
 ---
 
-## [CONFIG] Integration Examples
+## 🔧 Integration Examples
 
 ### Example 1: Update Existing Router
 
@@ -235,7 +235,7 @@ async function handleUserRoute(handler, request, env, auth) {
     return new Response(JSON.stringify(encrypted), { ... });
   }
   
-  return handlerResponse; // [WARNING] Unencrypted if no JWT
+  return handlerResponse; // ⚠️ Unencrypted if no JWT
 }
 
 // After (mandatory encryption)
@@ -244,7 +244,7 @@ import { applyEncryptionMiddleware } from '@strixun/api-framework';
 async function handleUserRoute(handler, request, env, auth) {
   const handlerResponse = await handler(request, env);
   
-  // [SUCCESS] Always encrypts (JWT or service key)
+  // ✅ Always encrypts (JWT or service key)
   return await applyEncryptionMiddleware(handlerResponse, request, env);
 }
 ```
@@ -260,7 +260,7 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
     headers: { 'Content-Type': 'application/json' },
   });
   
-  // [SUCCESS] Encrypts with service key (no JWT required)
+  // ✅ Encrypts with service key (no JWT required)
   return await applyEncryptionMiddleware(response, request, env);
 }
 ```
@@ -284,14 +284,14 @@ export async function route(request: Request, env: Env): Promise<Response> {
     response = await handlePublicRoutes(request, path, env);
   }
   
-  // [SUCCESS] Apply encryption middleware to ALL responses
+  // ✅ Apply encryption middleware to ALL responses
   return await applyEncryptionMiddleware(response, request, env);
 }
 ```
 
 ---
 
-## [SECURITY] Security Benefits
+## 🔒 Security Benefits
 
 ### Defense in Depth
 
@@ -313,7 +313,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
 ---
 
-## [ANALYTICS] Response Headers
+## 📊 Response Headers
 
 Encrypted responses include:
 
@@ -322,7 +322,7 @@ Encrypted responses include:
 
 ---
 
-## [EMOJI][EMOJI] Configuration
+## ❓❓ Configuration
 
 ### Environment Variables
 
@@ -340,7 +340,7 @@ Policies are defined in code and can be:
 
 ---
 
-## [WARNING] Important Notes
+## ⚠️ Important Notes
 
 1. **Service Key Security**
    - Store service key as Cloudflare Worker secret
@@ -363,7 +363,7 @@ Policies are defined in code and can be:
 
 ---
 
-## [DOCS] Related Documentation
+## 📚 Related Documentation
 
 - [JWT Encryption](./jwt-encryption.ts) - JWT-based encryption
 - [Multi-Stage Encryption](./multi-stage-encryption.ts) - Multi-party encryption

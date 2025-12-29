@@ -162,7 +162,7 @@ export function App() {
         
         <Section>
           <SectionTitle>Slider</SectionTitle>
-          <DemoCard title="Opacity Control" icon="[EMOJI][EMOJI]">
+          <DemoCard title="Opacity Control" icon="❓❓">
             <Row>
               <Slider 
                 value={sliderValue}
@@ -181,7 +181,7 @@ export function App() {
         
         <Section>
           <SectionTitle>Form Elements</SectionTitle>
-          <DemoCard title="Connection Settings" icon="[SETTINGS]">
+          <DemoCard title="Connection Settings" icon="⚙️">
             <Input label="Host" placeholder="localhost" defaultValue="localhost" />
             <Input label="Port" placeholder="4455" defaultValue="4455" />
             <Select 
@@ -222,14 +222,14 @@ export function App() {
           </Button>
         </Section>
         
-        <Card title="Collapsible Card" icon="[PACKAGE]" collapsible>
+        <Card title="Collapsible Card" icon="📦" collapsible>
           <p style={{ color: colors.textSecondary }}>
             This card can be collapsed by clicking the header.
             Great for organizing complex forms and settings.
           </p>
         </Card>
         
-        <Card title="Default Collapsed" icon="[SECURITY]" collapsible defaultCollapsed>
+        <Card title="Default Collapsed" icon="🔒" collapsible defaultCollapsed>
           <p style={{ color: colors.textSecondary }}>
             This card starts collapsed by default.
           </p>

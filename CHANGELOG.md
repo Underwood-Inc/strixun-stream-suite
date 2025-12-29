@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Scene-specific layout filtering
   - Hotkey support (1-9) for quick layout switching
   - Full export/import/backup integration
-  - New "[EMOJI] Layouts" tab in Control Panel
+  - New "❓ Layouts" tab in Control Panel
 
 ### Changed
 

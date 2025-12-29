@@ -15,7 +15,7 @@
 <div class="chat-page">
   <Tooltip text="Chat | This feature is incomplete and still in progress" level="warning" position="bottom">
     <div class="wip-banner wip">
-      [WARNING] Work in Progress - This feature is incomplete and still in progress
+      ⚠️ Work in Progress - This feature is incomplete and still in progress
     </div>
   </Tooltip>
   {#if $isAuthenticated}

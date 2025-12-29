@@ -38,13 +38,13 @@ cache: {
 **File Updated:** `vite.config.ts`
 
 **Patterns:**
-- [SUCCESS] All API endpoints [EMOJI] `NetworkOnly` (no cache)
-- [SUCCESS] Static assets (images, fonts) [EMOJI] `CacheFirst` (1 year)
-- [SUCCESS] CDN resources [EMOJI] `CacheFirst` (1 year)
-- [SUCCESS] Profile pictures [EMOJI] `CacheFirst` (1 year)
+- ✅ All API endpoints ❓ `NetworkOnly` (no cache)
+- ✅ Static assets (images, fonts) ❓ `CacheFirst` (1 year)
+- ✅ CDN resources ❓ `CacheFirst` (1 year)
+- ✅ Profile pictures ❓ `CacheFirst` (1 year)
 
 **Removed:**
-- [ERROR] Twitch API caching (should not be cached)
+- ❌ Twitch API caching (should not be cached)
 
 ### 3. OTP Endpoints Cache Headers
 
@@ -65,25 +65,25 @@ cache: {
 
 ## What Gets Cached (Explicit Opt-In)
 
-### [SUCCESS] Static Assets
+### ✅ Static Assets
 - Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.ico`
 - Fonts: `.woff`, `.woff2`, `.ttf`, `.eot`, `.otf`
 - Strategy: `CacheFirst`
 - TTL: 1 year (immutable)
 
-### [SUCCESS] CDN Resources
+### ✅ CDN Resources
 - External CDNs: `cdn.jsdelivr.net`
 - Strategy: `CacheFirst`
 - TTL: 1 year
 
-### [SUCCESS] Profile Pictures
+### ✅ Profile Pictures
 - R2/CDN URLs with immutable filenames
 - Strategy: `CacheFirst`
 - TTL: 1 year
 
 ## What Does NOT Get Cached (Default)
 
-### [ERROR] All API Calls
+### ❌ All API Calls
 - `/api/*`
 - `/auth/*`
 - `/admin/*`
@@ -96,16 +96,16 @@ cache: {
 
 **Strategy:** `NetworkOnly` (always fetch from network)
 
-### [ERROR] All POST/PUT/DELETE Requests
+### ❌ All POST/PUT/DELETE Requests
 - Never cached (by HTTP spec and our implementation)
 
-### [ERROR] Dynamic Data
+### ❌ Dynamic Data
 - User-specific data
 - Real-time data
 - Session data
 - OTP codes
 
-### [ERROR] Auth Tokens
+### ❌ Auth Tokens
 - Stored in localStorage only
 - Never in HTTP cache
 - Never in service worker cache
@@ -123,15 +123,15 @@ cache: {
 ## Impact
 
 ### Benefits
-[SUCCESS] No stale data after deployments  
-[SUCCESS] Fresh data for all users  
-[SUCCESS] No cache invalidation complexity  
-[SUCCESS] Security: Auth data never cached  
-[SUCCESS] Simplicity: Clear cache strategy  
+✅ No stale data after deployments  
+✅ Fresh data for all users  
+✅ No cache invalidation complexity  
+✅ Security: Auth data never cached  
+✅ Simplicity: Clear cache strategy  
 
 ### Trade-offs
-[WARNING] More network requests (but only for API calls)  
-[WARNING] No offline fallback for API calls (but static assets still cached)  
+⚠️ More network requests (but only for API calls)  
+⚠️ No offline fallback for API calls (but static assets still cached)  
 
 **Mitigation:** Static assets and CDN resources are still cached, so only dynamic API calls go to network.
 

@@ -2,7 +2,7 @@
  * Integration Tests for Encryption/Decryption Flow
  * 
  * Tests the complete encryption/decryption flow:
- * - Request encryption [EMOJI] API [EMOJI] Response decryption
+ * - Request encryption ❓ API ❓ Response decryption
  * 
  * Uses real encryption/decryption, mocks network
  */
@@ -181,7 +181,7 @@ describe('Encryption/Decryption Flow Integration', () => {
     });
 
     describe('End-to-End Encryption Flow', () => {
-        it('should complete full flow: Encrypt Request [EMOJI] API [EMOJI] Decrypt Response', async () => {
+        it('should complete full flow: Encrypt Request ❓ API ❓ Decrypt Response', async () => {
             const userId = 'user_123';
             const email = 'user@example.com';
             const customerId = 'cust_abc';

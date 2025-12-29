@@ -207,7 +207,7 @@
 <div class="search-box-wrapper">
   <!-- <ComponentDocsButton componentName="SearchBox" position="top-right" size="small" /> -->
   <div class="search-box">
-    <span class="search-box__icon">[SEARCH]</span>
+    <span class="search-box__icon">🔍</span>
     <input
       type="text"
       class="search-box__input"
@@ -223,7 +223,7 @@
           on:click={clearSearch}
           type="button"
         >
-          [EMOJI]
+          ❓
         </button>
       </Tooltip>
     {/if}

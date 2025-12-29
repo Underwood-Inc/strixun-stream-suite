@@ -287,7 +287,7 @@ export function ModReviewPage() {
                             <Comment key={comment.commentId} isAdmin={comment.isAdmin}>
                                 <CommentHeader>
                                     <CommentAuthor>
-                                        {comment.isAdmin ? '[EMOJI] Admin' : (comment.authorDisplayName || 'Unknown User')}
+                                        {comment.isAdmin ? '❓ Admin' : (comment.authorDisplayName || 'Unknown User')}
                                     </CommentAuthor>
                                     <CommentDate>
                                         {new Date(comment.createdAt).toLocaleString()}

@@ -38,7 +38,7 @@ local hotkey_toggle_id = obs.OBS_INVALID_HOTKEY_ID
 
 -- Character sets for effects
 local CHARS_STANDARD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-local CHARS_ENCHANT = "ᔑᒷᓵ[EMOJI]ᒷ[EMOJI]⊣[EMOJI]╎⋮ꖌꖎᒲリ𝙹!¡ᑑ∷ᓭℸ[EMOJI][EMOJI]∴̇/||⨅" -- Minecraft Standard Galactic Alphabet-ish
+local CHARS_ENCHANT = "ᔑᒷᓵ❓ᒷ❓⊣❓╎⋮ꖌꖎᒲリ𝙹!¡ᑑ∷ᓭℸ❓❓∴̇/||⨅" -- Minecraft Standard Galactic Alphabet-ish
 local CHARS_GLITCH = "█▓▒░╔╗╚╝║═┌┐└┘│─┼▀▄▌▐■□▪▫●○◘◙◄►▲▼"
 
 -- Logging
@@ -404,7 +404,7 @@ function script_properties()
         obs.obs_property_list_add_string(src_list, name, name)
     end
     
-    obs.obs_properties_add_button(props, "refresh_btn", "[SYNC] Refresh Sources", function()
+    obs.obs_properties_add_button(props, "refresh_btn", "🔄 Refresh Sources", function()
         return true
     end)
     
@@ -430,17 +430,17 @@ function script_properties()
         100, 5000, 50)
     
     -- Controls
-    obs.obs_properties_add_button(props, "start_btn", "▶[EMOJI] Start Cycling", function()
+    obs.obs_properties_add_button(props, "start_btn", "▶❓ Start Cycling", function()
         start_cycling()
         return false
     end)
     
-    obs.obs_properties_add_button(props, "stop_btn", "[EMOJI][EMOJI] Stop", function()
+    obs.obs_properties_add_button(props, "stop_btn", "❓❓ Stop", function()
         stop_cycling()
         return false
     end)
     
-    obs.obs_properties_add_button(props, "preview_btn", "[EMOJI][EMOJI] Preview Transition", function()
+    obs.obs_properties_add_button(props, "preview_btn", "❓❓ Preview Transition", function()
         if source_name ~= "" and #text_lines > 0 then
             current_index = 0
             start_transition()

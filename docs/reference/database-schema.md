@@ -117,7 +117,7 @@ interface SwapConfig {
 ```json
 {
   "id": "swap_1703234567890",
-  "name": "Webcam [EMOJI] Game Swap",
+  "name": "Webcam ❓ Game Swap",
   "sourceA": "Webcam",
   "sourceB": "Game Capture",
   "hotkey": "OBS_KEY_F1",
@@ -394,9 +394,9 @@ interface CloudSaveData {
 | `game_{gameId}` | `JSON` | 7 days (604800s) | Game data by game ID |
 
 **Examples:**
-- `app_access_token` [EMOJI] `"abc123def456..."`
-- `user_id_ninja` [EMOJI] `"123456789"`
-- `game_33214` [EMOJI] `{"id": "33214", "name": "Fortnite", ...}`
+- `app_access_token` ❓ `"abc123def456..."`
+- `user_id_ninja` ❓ `"123456789"`
+- `game_33214` ❓ `{"id": "33214", "name": "Fortnite", ...}`
 
 ### Cache Key Generation
 
@@ -493,7 +493,7 @@ flowchart TB
 | 1 | Initial | Basic cloud save structure |
 | 2 | 2024-12-22 | Added metadata, config counts, improved structure |
 
-### Version 1 [EMOJI] Version 2 Migration
+### Version 1 ❓ Version 2 Migration
 
 **Changes:**
 - Added `metadata` object with `source`, `note`, `description`, `configCounts`

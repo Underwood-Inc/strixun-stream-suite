@@ -1,4 +1,4 @@
-# [SECURITY] Strixun Encryption Suite
+# 🔒 Strixun Encryption Suite
 
 > **Your data's personal bodyguard, but cooler and way more reliable.**
 
@@ -6,15 +6,15 @@ Think of encryption like a super-secure lockbox. You put your important stuff in
 
 ---
 
-## [TARGET] What's This All About?
+## 🎯 What's This All About?
 
 In simple terms, this library helps you **protect sensitive information** by scrambling it in a way that only authorized people can unscramble. Whether you're building a web app, an API, or handling files, this suite gives you the tools to keep data safe from prying eyes.
 
-**The best part?** It works everywhere—in your browser, on Cloudflare Workers, and anywhere JavaScript runs. No complicated setup, no headaches—just import and go! [DEPLOY]
+**The best part?** It works everywhere—in your browser, on Cloudflare Workers, and anywhere JavaScript runs. No complicated setup, no headaches—just import and go! 🚀
 
 ---
 
-## [FEATURE] Why Should You Care?
+## ✨ Why Should You Care?
 
 ### For Non-Technical Folks
 - **Your data stays private**: Even if someone intercepts it, they can't read it
@@ -31,26 +31,26 @@ In simple terms, this library helps you **protect sensitive information** by scr
 
 ---
 
-## [UI] What Makes This Special?
+## 🎨 What Makes This Special?
 
-### 1. **Universal Compatibility** [GLOBAL]
+### 1. **Universal Compatibility** 🌍
 Works seamlessly in both browser and server environments. No "works on my machine" moments here!
 
-### 2. **Binary Encryption Magic** [PERF]
+### 2. **Binary Encryption Magic** ⚡
 Our binary encryption format eliminates the 40-45% overhead from base64 encoding. A 100MB file becomes ~105MB instead of ~145MB. That's like fitting 38% more data in the same storage space!
 
-### 3. **Multi-Party Encryption** [USERS]
+### 3. **Multi-Party Encryption** 👥
 Need to share data that requires multiple people to unlock? We've got you covered. Perfect for scenarios where you need owner + requester + auditor all to agree before data can be accessed.
 
-### 4. **Order-Independent Decryption** [SYNC]
+### 4. **Order-Independent Decryption** 🔄
 With multi-party encryption, it doesn't matter what order people provide their keys. Party A, then B, then C? Sure! C, then A, then B? Also works! This makes it super flexible for real-world scenarios.
 
-### 5. **Automatic Route Encryption** [PROTECT]
+### 5. **Automatic Route Encryption** 🛡️
 Set it up once, and all your API responses are automatically encrypted. No need to remember to encrypt every endpoint manually.
 
 ---
 
-## [DEPLOY] Quick Start
+## 🚀 Quick Start
 
 ### Installation
 This package is part of the pnpm workspace and is automatically available to all packages. No installation needed—just import and use!
@@ -69,15 +69,15 @@ const decrypted = await decryptWithJWT(encrypted, jwtToken);
 // Result: { email: 'user@example.com', creditCard: '****' }
 ```
 
-That's it! Your data is now encrypted and can only be decrypted by someone with the same JWT token. [EMOJI]
+That's it! Your data is now encrypted and can only be decrypted by someone with the same JWT token. ❓
 
 ---
 
-## [DOCS] Features Overview
+## 📚 Features Overview
 
 ### Core Features
 
-#### 1. **JWT-Based Encryption** [KEY]
+#### 1. **JWT-Based Encryption** 🔑
 Encrypt data using a JWT token. Only someone with that exact token can decrypt it.
 
 **Use cases:**
@@ -85,7 +85,7 @@ Encrypt data using a JWT token. Only someone with that exact token can decrypt i
 - API response encryption
 - Secure data storage
 
-#### 2. **Binary File Encryption** [PACKAGE]
+#### 2. **Binary File Encryption** 📦
 Optimized encryption for files and large binary data. Eliminates base64 overhead.
 
 **Use cases:**
@@ -103,18 +103,18 @@ Optimized encryption for files and large binary data. Eliminates base64 overhead
 
 ```mermaid
 flowchart TB
-    subgraph Client["[WEB] Client Browser"]
+    subgraph Client["🌐 Client Browser"]
         A[Original File<br/>100 MB] --> B[Read as ArrayBuffer]
         B --> C[Compress with Gzip<br/>~60-80 MB]
         C --> D[Encrypt with AES-GCM<br/>JWT Token Key]
         D --> E[Compressed + Encrypted<br/>~65-85 MB]
     end
     
-    subgraph Network["[EMOJI] Network Transfer"]
+    subgraph Network["❓ Network Transfer"]
         E --> F[Upload to Server<br/>Reduced Bandwidth]
     end
     
-    subgraph Server["[EMOJI][EMOJI] Cloudflare Workers"]
+    subgraph Server["❓❓ Cloudflare Workers"]
         F --> G[Store in R2/KV<br/>Encrypted + Compressed]
     end
     
@@ -129,17 +129,17 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph Server["[EMOJI][EMOJI] Cloudflare Workers"]
+    subgraph Server["❓❓ Cloudflare Workers"]
         A[Retrieve from R2/KV<br/>Compressed + Encrypted] --> B[Decrypt with AES-GCM<br/>JWT Token Key]
         B --> C[Decompress Gzip]
         C --> D[Original File Data]
     end
     
-    subgraph Network["[EMOJI] Network Transfer"]
+    subgraph Network["❓ Network Transfer"]
         D --> E[Download to Client<br/>Full Size]
     end
     
-    subgraph Client["[WEB] Client Browser"]
+    subgraph Client["🌐 Client Browser"]
         E --> F[Display/Use File]
     end
     
@@ -150,7 +150,7 @@ flowchart TB
     style C fill:#edae49,color:#000
 ```
 
-#### 3. **Multi-Stage Encryption** [AUTH]
+#### 3. **Multi-Stage Encryption** 🔐
 Encrypt data that requires multiple parties (2-10) to decrypt. All parties must provide their keys.
 
 **Use cases:**
@@ -160,14 +160,14 @@ Encrypt data that requires multiple parties (2-10) to decrypt. All parties must 
 
 **Key feature:** Order-independent! Parties can provide keys in any order.
 
-#### 4. **Two-Stage Encryption** [SECURITY]
+#### 4. **Two-Stage Encryption** 🔒
 A special case of multi-stage encryption with exactly 2 parties. Backward compatible with existing implementations.
 
 **Use cases:**
 - Owner's JWT + Request key
 - User + Service encryption
 
-#### 5. **Route-Level Encryption** [EMOJI][EMOJI]
+#### 5. **Route-Level Encryption** ❓❓
 Automatic encryption middleware for API routes. Set policies per route, and encryption happens automatically.
 
 **Use cases:**
@@ -177,25 +177,25 @@ Automatic encryption middleware for API routes. Set policies per route, and encr
 
 ---
 
-## [EMOJI] How It Works (Getting Technical)
+## ❓ How It Works (Getting Technical)
 
 ### Encryption Process (High Level)
 
-1. **You provide data** [EMOJI] The thing you want to protect
-2. **You provide a key** [EMOJI] JWT token, request key, or custom key
-3. **Library generates random values** [EMOJI] Salt and IV (initialization vector) for security
-4. **Library derives encryption key** [EMOJI] Uses PBKDF2 to create a strong key from your key
-5. **Library encrypts data** [EMOJI] Uses AES-GCM-256 (military-grade encryption)
-6. **Library returns encrypted blob** [EMOJI] Safe to store or transmit
+1. **You provide data** ❓ The thing you want to protect
+2. **You provide a key** ❓ JWT token, request key, or custom key
+3. **Library generates random values** ❓ Salt and IV (initialization vector) for security
+4. **Library derives encryption key** ❓ Uses PBKDF2 to create a strong key from your key
+5. **Library encrypts data** ❓ Uses AES-GCM-256 (military-grade encryption)
+6. **Library returns encrypted blob** ❓ Safe to store or transmit
 
 ### Decryption Process (High Level)
 
-1. **You provide encrypted data** [EMOJI] The scrambled data
-2. **You provide the same key** [EMOJI] Must match the one used for encryption
-3. **Library verifies key** [EMOJI] Checks that the key hash matches
-4. **Library derives decryption key** [EMOJI] Uses the same process as encryption
-5. **Library decrypts data** [EMOJI] Unscrambles your data
-6. **Library returns original data** [EMOJI] Your data, safe and sound!
+1. **You provide encrypted data** ❓ The scrambled data
+2. **You provide the same key** ❓ Must match the one used for encryption
+3. **Library verifies key** ❓ Checks that the key hash matches
+4. **Library derives decryption key** ❓ Uses the same process as encryption
+5. **Library decrypts data** ❓ Unscrambles your data
+6. **Library returns original data** ❓ Your data, safe and sound!
 
 ### Security Details (For the Curious)
 
@@ -219,7 +219,7 @@ Automatic encryption middleware for API routes. Set policies per route, and encr
 
 ---
 
-## [EMOJI] API Reference
+## ❓ API Reference
 
 ### Core Functions
 
@@ -390,7 +390,7 @@ Creates a wrapper function that automatically encrypts handler responses.
 
 ---
 
-## [EMOJI][EMOJI] Architecture Deep Dive
+## ❓❓ Architecture Deep Dive
 
 ### Multi-Stage Encryption Architecture
 
@@ -402,11 +402,11 @@ Multi-stage encryption uses a **master key approach** for order-independent decr
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  1. Generate random master key                           │
-│  2. Encrypt data with master key [EMOJI] Encrypted Data        │
+│  2. Encrypt data with master key ❓ Encrypted Data        │
 │  3. Encrypt master key with each party's key:            │
-│     • Party 1's key [EMOJI] Encrypted Master Key 1             │
-│     • Party 2's key [EMOJI] Encrypted Master Key 2             │
-│     • Party 3's key [EMOJI] Encrypted Master Key 3             │
+│     • Party 1's key ❓ Encrypted Master Key 1             │
+│     • Party 2's key ❓ Encrypted Master Key 2             │
+│     • Party 3's key ❓ Encrypted Master Key 3             │
 │                                                           │
 │  Result: Encrypted Data + All Encrypted Master Keys      │
 │                                                           │
@@ -417,13 +417,13 @@ Multi-stage encryption uses a **master key approach** for order-independent decr
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  For each party (order doesn't matter!):                 │
-│    Encrypted Master Key [EMOJI] [Decrypt with Party's Key]      │
-│                        [EMOJI] Master Key                       │
+│    Encrypted Master Key ❓ [Decrypt with Party's Key]      │
+│                        ❓ Master Key                       │
 │                                                           │
 │  Verify ALL parties' master keys match                    │
 │                                                           │
 │  Once ALL verified:                                       │
-│    Master Key [EMOJI] [Decrypt Data] [EMOJI] Original Data           │
+│    Master Key ❓ [Decrypt Data] ❓ Original Data           │
 │                                                           │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -469,16 +469,16 @@ Binary encryption uses a compact binary format with **default compression enable
 
 ```mermaid
 sequenceDiagram
-    participant User as [USER] User
-    participant Browser as [WEB] Browser
-    participant Worker as [EMOJI][EMOJI] Cloudflare Worker
-    participant Storage as [EMOJI] R2/KV Storage
+    participant User as 👤 User
+    participant Browser as 🌐 Browser
+    participant Worker as ❓❓ Cloudflare Worker
+    participant Storage as ❓ R2/KV Storage
     
     Note over User,Storage: Upload Flow (Compression + Encryption)
     User->>Browser: Select File (100 MB)
     Browser->>Browser: Read as ArrayBuffer
-    Browser->>Browser: Compress (Gzip) [EMOJI] ~70 MB
-    Browser->>Browser: Encrypt (AES-GCM) [EMOJI] ~75 MB
+    Browser->>Browser: Compress (Gzip) ❓ ~70 MB
+    Browser->>Browser: Encrypt (AES-GCM) ❓ ~75 MB
     Browser->>Worker: Upload Compressed + Encrypted
     Worker->>Storage: Store (75 MB saved!)
     
@@ -522,9 +522,9 @@ sequenceDiagram
 
 ---
 
-## [AUTH] Security Best Practices
+## 🔐 Security Best Practices
 
-### Do's [SUCCESS]
+### Do's ✅
 
 - **Always use HTTPS** in production (encryption protects data, HTTPS protects the connection)
 - **Store JWT tokens securely** (never in localStorage for sensitive apps, use httpOnly cookies when possible)
@@ -533,7 +533,7 @@ sequenceDiagram
 - **Use multi-stage encryption** when multiple parties need to authorize access
 - **Test your encryption/decryption** flows thoroughly
 
-### Don'ts [ERROR]
+### Don'ts ❌
 
 - **Don't log encrypted data** (it's not useful and clutters logs)
 - **Don't reuse the same salt/IV** (library handles this automatically)
@@ -543,7 +543,7 @@ sequenceDiagram
 
 ---
 
-## [NOTE] Type Definitions
+## 📝 Type Definitions
 
 ### `EncryptedData` (Version 3 - JSON Format)
 ```typescript
@@ -592,7 +592,7 @@ interface EncryptionParty {
 
 ---
 
-## [IDEA] Real-World Examples
+## 💡 Real-World Examples
 
 ### Example 1: Encrypting User Profile Data
 
@@ -712,19 +712,19 @@ async function handleGetCustomer(
 
 ---
 
-## [TEST] Testing
+## 🧪 Testing
 
 We take testing seriously! The library includes comprehensive unit tests covering:
 
-- [SUCCESS] Encryption/decryption round-trips
-- [SUCCESS] Large file handling (1MB+ files)
-- [SUCCESS] Error handling (invalid tokens, wrong formats, etc.)
-- [SUCCESS] Storage efficiency validation
-- [SUCCESS] Backward compatibility
-- [SUCCESS] Edge cases (empty data, various data patterns)
-- [SUCCESS] Multi-party scenarios (2-10 parties)
-- [SUCCESS] Order-independent decryption verification
-- [SUCCESS] Security properties (tampering detection, key verification)
+- ✅ Encryption/decryption round-trips
+- ✅ Large file handling (1MB+ files)
+- ✅ Error handling (invalid tokens, wrong formats, etc.)
+- ✅ Storage efficiency validation
+- ✅ Backward compatibility
+- ✅ Edge cases (empty data, various data patterns)
+- ✅ Multi-party scenarios (2-10 parties)
+- ✅ Order-independent decryption verification
+- ✅ Security properties (tampering detection, key verification)
 
 ### Running Tests
 
@@ -745,14 +745,14 @@ pnpm test:coverage
 ```
 
 **Test Results:**
-- Binary encryption: 23/23 tests passing [SUCCESS]
-- JWT encryption: 16/16 tests passing [SUCCESS]
-- Multi-stage encryption: Comprehensive coverage [SUCCESS]
-- **Total: 39+ tests, all passing** [EMOJI]
+- Binary encryption: 23/23 tests passing ✅
+- JWT encryption: 16/16 tests passing ✅
+- Multi-stage encryption: Comprehensive coverage ✅
+- **Total: 39+ tests, all passing** ❓
 
 ---
 
-## [SYNC] Migration Guide
+## 🔄 Migration Guide
 
 ### From Service-Specific Encryption
 
@@ -801,7 +801,7 @@ const encrypted = await encryptBinaryWithJWT(fileData, token);
 
 ---
 
-## [BUG] Troubleshooting
+## 🐛 Troubleshooting
 
 ### "Valid JWT token is required for encryption"
 - **Cause**: Token is too short (less than 10 characters) or empty
@@ -821,7 +821,7 @@ const encrypted = await encryptBinaryWithJWT(fileData, token);
 
 ---
 
-## [ANALYTICS] Performance Characteristics
+## 📊 Performance Characteristics
 
 ### Encryption Speed
 - **Small data (< 1KB)**: ~1-5ms
@@ -840,42 +840,42 @@ const encrypted = await encryptBinaryWithJWT(fileData, token);
 
 ---
 
-## [TARGET] Use Case Recommendations
+## 🎯 Use Case Recommendations
 
 ### Use JSON Encryption (v3) When:
-- [SUCCESS] Encrypting API responses
-- [SUCCESS] Encrypting JSON data structures
-- [SUCCESS] You need human-readable encrypted format
-- [SUCCESS] Data size is small to medium (< 10MB)
+- ✅ Encrypting API responses
+- ✅ Encrypting JSON data structures
+- ✅ You need human-readable encrypted format
+- ✅ Data size is small to medium (< 10MB)
 
 ### Use Binary Encryption (v4) When:
-- [SUCCESS] Encrypting files or binary data
-- [SUCCESS] Storage efficiency is important
-- [SUCCESS] Data size is large (> 10MB)
-- [SUCCESS] You're storing in object storage (R2, S3, etc.)
+- ✅ Encrypting files or binary data
+- ✅ Storage efficiency is important
+- ✅ Data size is large (> 10MB)
+- ✅ You're storing in object storage (R2, S3, etc.)
 
 ### Use Multi-Stage Encryption When:
-- [SUCCESS] Multiple parties need to authorize access
-- [SUCCESS] You need audit trails (all parties must consent)
-- [SUCCESS] Data sharing between owner, requester, and auditor
-- [SUCCESS] Compliance requires multi-party authorization
+- ✅ Multiple parties need to authorize access
+- ✅ You need audit trails (all parties must consent)
+- ✅ Data sharing between owner, requester, and auditor
+- ✅ Compliance requires multi-party authorization
 
 ### Use Route-Level Encryption When:
-- [SUCCESS] You want automatic encryption for all API responses
-- [SUCCESS] Different routes need different encryption strategies
-- [SUCCESS] You want to enforce encryption at the framework level
+- ✅ You want automatic encryption for all API responses
+- ✅ Different routes need different encryption strategies
+- ✅ You want to enforce encryption at the framework level
 
 ---
 
-## [EMOJI] Future Enhancements
+## ❓ Future Enhancements
 
 - **Streaming encryption**: For very large files (>100MB)
 - **Key rotation**: Support for rotating encryption keys
 - **Performance optimizations**: WebAssembly acceleration for large files
 
-## [SUCCESS] Completed Enhancements
+## ✅ Completed Enhancements
 
-- **[SUCCESS] Compression before encryption**: Default gzip compression enabled (Version 5)
+- **✅ Compression before encryption**: Default gzip compression enabled (Version 5)
   - Automatically compresses data before encryption
   - Only uses compression if it reduces size (smart detection)
   - Reduces storage by 20-40% for compressible data
@@ -884,16 +884,16 @@ const encrypted = await encryptBinaryWithJWT(fileData, token);
 
 ---
 
-## [FILE] License
+## 📄 License
 
 Part of Strixun Stream Suite - Internal use only.
 
 ---
 
-## [EMOJI] Acknowledgments
+## ❓ Acknowledgments
 
-Built with [EMOJI][EMOJI] for the Strixun Stream Suite. Special thanks to the security community for best practices and the Web Crypto API for making this possible!
+Built with ❓❓ for the Strixun Stream Suite. Special thanks to the security community for best practices and the Web Crypto API for making this possible!
 
 ---
 
-**Questions? Issues?** Check the test files for examples, or reach out to the team. We're here to help! [DEPLOY]
+**Questions? Issues?** Check the test files for examples, or reach out to the team. We're here to help! 🚀

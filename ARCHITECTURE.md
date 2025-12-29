@@ -193,7 +193,7 @@ let scriptStatus = { ... };
    import { storage } from './storage.js';
    ```
 
-> [WARNING] **Note**: ES Modules (`import`/`export`) require HTTPS or localhost.
+> ⚠️ **Note**: ES Modules (`import`/`export`) require HTTPS or localhost.
 > For `file://` protocol, use global variables or IIFE modules.
 
 ## Testing After Split

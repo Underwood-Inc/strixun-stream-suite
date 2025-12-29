@@ -27,7 +27,7 @@ service_api_key = "your-actual-service-api-key-here"
 use_live_api = true
 ```
 
-**[WARNING] IMPORTANT:** 
+**⚠️ IMPORTANT:** 
 - `.dev.toml` and `.prod.toml` are gitignored (secrets won't be committed)
 - Never commit these files with real secrets
 - Use `.dev.toml.example` and `.prod.toml.example` as templates
@@ -78,16 +78,16 @@ pnpm test:integration
 
 Integration tests verify:
 
-[SUCCESS] **Customer API URL is correct and reachable**
+✅ **Customer API URL is correct and reachable**
 - Catches wrong URLs, DNS issues, unreachable services
 
-[SUCCESS] **SERVICE_API_KEY authentication works**
+✅ **SERVICE_API_KEY authentication works**
 - Verifies service-to-service auth is configured correctly
 
-[SUCCESS] **Customer account creation works end-to-end**
+✅ **Customer account creation works end-to-end**
 - Tests actual customer-api integration
 
-[SUCCESS] **UPSERT functionality**
+✅ **UPSERT functionality**
 - Verifies existing accounts are updated correctly
 
 ## GitHub Actions CI
@@ -115,8 +115,8 @@ See `.github/workflows/test-otp-auth-integration.yml`
 
 ## Security Notes
 
-- [SUCCESS] `.dev.toml` and `.prod.toml` are gitignored
-- [SUCCESS] Example files (`.dev.toml.example`, `.prod.toml.example`) are safe to commit
-- [SUCCESS] Never commit actual secrets
-- [SUCCESS] Use different keys for dev/prod if possible
+- ✅ `.dev.toml` and `.prod.toml` are gitignored
+- ✅ Example files (`.dev.toml.example`, `.prod.toml.example`) are safe to commit
+- ✅ Never commit actual secrets
+- ✅ Use different keys for dev/prod if possible
 

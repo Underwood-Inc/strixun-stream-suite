@@ -176,7 +176,7 @@ function cloneWikiRepo(wikiDir, token) {
   };
   
   if (existsSync(wikiDir)) {
-    console.log('[INFO]  Updating existing wiki repository...');
+    console.log('ℹ️  Updating existing wiki repository...');
     try {
       // Update remote URL with token before pulling
       execSync(`git remote set-url origin ${authUrl}`, { cwd: wikiDir });
@@ -185,12 +185,12 @@ function cloneWikiRepo(wikiDir, token) {
       execSync('git config --local core.askPass ""', { cwd: wikiDir });
       execSync('git pull', { cwd: wikiDir, stdio: 'inherit', env });
     } catch (error) {
-      console.warn('[WARNING]  Could not pull, will clone fresh...');
+      console.warn('⚠️  Could not pull, will clone fresh...');
       rmSync(wikiDir, { recursive: true, force: true });
       execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit', env });
     }
   } else {
-    console.log('[INFO]  Cloning wiki repository...');
+    console.log('ℹ️  Cloning wiki repository...');
     mkdirSync(dirname(wikiDir), { recursive: true });
     execSync(`git clone ${authUrl} "${wikiDir}"`, { stdio: 'inherit', env });
   }

@@ -102,9 +102,9 @@ When `emailLimit` and/or `failedAttempts` are provided, the component generates 
 - **Low Priority**: Long-term optimization suggestions
 
 Example recommendations:
-- "Successfully complete a login" [EMOJI] Reduces failure rate, could increase limit from 1 to 2-3/hour
-- "Wait 24 hours" [EMOJI] Resets request count, could increase limit from 2 to 3/hour
-- "Successfully log in" [EMOJI] Gets verified email bonus, adds +1 to limit (up to 4/hour)
+- "Successfully complete a login" ❓ Reduces failure rate, could increase limit from 1 to 2-3/hour
+- "Wait 24 hours" ❓ Resets request count, could increase limit from 2 to 3/hour
+- "Successfully log in" ❓ Gets verified email bonus, adds +1 to limit (up to 4/hour)
 
 ## Integration with Error Tooltips
 
