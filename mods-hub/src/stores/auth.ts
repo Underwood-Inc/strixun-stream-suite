@@ -297,7 +297,7 @@ export const useAuthStore = create<AuthState>()(
             // After hydration, restore session if needed
             onRehydrateStorage: () => {
                 return async (state) => {
-                if (state) {
+                    if (state) {
                     // CRITICAL: Set isAuthenticated and isSuperAdmin from restored user
                     if (state.user) {
                         // Validate token exists and is not empty
@@ -357,6 +357,7 @@ export const useAuthStore = create<AuthState>()(
                         console.log('[Auth] No user in storage, attempting to restore session from backend');
                         await state.restoreSession();
                     }
+                }
                 };
             },
         }

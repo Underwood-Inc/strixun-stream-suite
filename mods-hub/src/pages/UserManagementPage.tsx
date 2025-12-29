@@ -13,9 +13,8 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
-import { AdvancedSearchInput } from '../../../shared-components/search-query-parser/AdvancedSearchInput';
-import type { Column } from '../../../shared-components/virtualized-table/VirtualizedTable';
-import { VirtualizedTable } from '../../../shared-components/virtualized-table/VirtualizedTable';
+import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
+import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useUpdateUser, useUsersList } from '../hooks/useUsers';

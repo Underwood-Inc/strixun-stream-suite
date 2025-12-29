@@ -2,7 +2,7 @@
  * Search utility for filtering users using the human-friendly search query parser
  */
 
-import { matchesSearchQueryFields } from '../../../shared-components/search-query-parser/index.js';
+import { matchesSearchQueryFields } from '@strixun/search-query-parser';
 import type { UserListItem } from '../types/user';
 
 /**

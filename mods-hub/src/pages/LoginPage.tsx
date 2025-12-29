@@ -5,8 +5,8 @@
 
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
-import { OtpLogin } from '../../../shared-components/otp-login/dist/react';
-import type { LoginSuccessData } from '../../../shared-components/otp-login/dist/react';
+import { OtpLogin } from '@strixun/otp-login/dist/react';
+import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 
 import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 
