@@ -45,10 +45,13 @@ id = "66b9a4425cb7492fbae8f690780cd0ae"
 [vars]
 ENVIRONMENT = "production"
 
-# Default routes (production)
-routes = [
-  { pattern = "api.idling.app/*", zone_name = "idling.app" }
-]
+# Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
+[[kv_namespaces]]
+binding = "TWITCH_CACHE"
+id = "66b9a4425cb7492fbae8f690780cd0ae"
+
+# Routes are configured in Cloudflare Dashboard, not in wrangler.toml
+# This ensures we deploy to the base worker name (strixun-twitch-api) without environment suffixes
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-twitch-api

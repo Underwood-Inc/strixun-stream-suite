@@ -227,30 +227,41 @@ function serveDashboardFile(
     
     // Handle base64 encoded files (binary) vs text files
     let content: string | Uint8Array;
-    if (typeof fileContent === 'string' && fileContent.startsWith('data:')) {
+    const isBinary = typeof fileContent === 'string' && fileContent.startsWith('data:');
+    
+    if (isBinary) {
         // Base64 encoded binary file
         const base64Data = fileContent.split(',')[1];
         if (!base64Data) {
             throw new Error('Invalid data URI: missing base64 data');
         }
         content = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        console.log(`[Dashboard] Serving binary file: "${filePath}" (${content.length} bytes) as ${contentType}`);
     } else {
         // Text file - ensure proper UTF-8 encoding
         // Convert string to Uint8Array for proper encoding
         if (typeof fileContent === 'string') {
             content = new TextEncoder().encode(fileContent);
+            const preview = fileContent.substring(0, 100).replace(/\n/g, '\\n');
+            console.log(`[Dashboard] Serving text file: "${filePath}" (${content.length} bytes) as ${contentType}`);
+            console.log(`[Dashboard] Content preview: ${preview}...`);
         } else {
             content = fileContent;
+            console.log(`[Dashboard] Serving file: "${filePath}" (${content.length} bytes) as ${contentType}`);
         }
     }
     
-    return new Response(content, {
+    const response = new Response(content, {
         headers: {
             'Content-Type': contentType,
             'Cache-Control': filePath === 'index.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
             ...getCorsHeaders(env, request),
         },
     });
+    
+    console.log(`[Dashboard] Response created: ${response.status} ${contentType} (${content.length} bytes)`);
+    
+    return response;
 }
 
 /**
@@ -326,6 +337,7 @@ pnpm dev</code></pre>
     // The dashboard handles routing client-side, so /dashboard serves index.html
     const assets = await loadDashboardAssets();
     if (!assets) {
+        console.error('[Dashboard] Assets not loaded - dashboard-assets.js failed to load');
         return new Response('Dashboard not built. Run: pnpm build', {
             status: 503,
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'text/plain' },
@@ -336,6 +348,8 @@ pnpm dev</code></pre>
     // For asset requests, handle both /dashboard/assets/... and /assets/... paths
     const url = new URL(request.url);
     let filePath = url.pathname;
+    
+    console.log(`[Dashboard] Request: ${url.pathname} | ENVIRONMENT: ${env.ENVIRONMENT || 'undefined'}`);
     
     // Remove /dashboard prefix if present
     filePath = filePath.replace(/^\/dashboard\/?/, '');
@@ -350,11 +364,19 @@ pnpm dev</code></pre>
         filePath = filePath.slice(1);
     }
     
+    console.log(`[Dashboard] Looking up file: "${filePath}"`);
+    
     // Check if this is an asset request (has file extension and is not index.html)
     const isAssetRequest = filePath.includes('.') && filePath !== 'index.html';
     
     // Try to find the file - check multiple path variations
     let fileContent = assets[filePath];
+    
+    if (fileContent) {
+        console.log(`[Dashboard] Found file: "${filePath}" (${typeof fileContent === 'string' ? fileContent.length : 'binary'} bytes)`);
+    } else {
+        console.log(`[Dashboard] File not found: "${filePath}" - trying alternatives...`);
+    }
     
     // If not found and it's an asset request, try alternative paths
     if (!fileContent && isAssetRequest) {
@@ -363,7 +385,10 @@ pnpm dev</code></pre>
             const dashboardPath = `dashboard/${filePath}`;
             fileContent = assets[dashboardPath];
             if (fileContent) {
+                console.log(`[Dashboard] Found file with dashboard/ prefix: "${dashboardPath}"`);
                 filePath = dashboardPath;
+            } else {
+                console.log(`[Dashboard] Tried dashboard/ prefix: "${dashboardPath}" - not found`);
             }
         }
         
@@ -372,7 +397,10 @@ pnpm dev</code></pre>
             const altPath = filePath.replace(/^assets\//, '');
             fileContent = assets[altPath];
             if (fileContent) {
+                console.log(`[Dashboard] Found file without assets/ prefix: "${altPath}"`);
                 filePath = altPath;
+            } else {
+                console.log(`[Dashboard] Tried without assets/ prefix: "${altPath}" - not found`);
             }
         }
     }

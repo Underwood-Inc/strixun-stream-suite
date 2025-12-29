@@ -43,10 +43,13 @@ id = "86ef5ab4419b40eab3fe65b75f052789"
 [vars]
 ENVIRONMENT = "production"
 
-# Default routes (production)
-routes = [
-  { pattern = "customer-api.idling.app/*", zone_name = "idling.app" }
-]
+# Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
+[[kv_namespaces]]
+binding = "CUSTOMER_KV"
+id = "86ef5ab4419b40eab3fe65b75f052789"
+
+# Routes are configured in Cloudflare Dashboard, not in wrangler.toml
+# This ensures we deploy to the base worker name (strixun-customer-api) without environment suffixes
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → strixun-customer-api

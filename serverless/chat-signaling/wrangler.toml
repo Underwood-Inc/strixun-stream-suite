@@ -26,6 +26,14 @@ preview_id = "78a1bd4cd5dc468780de442aacc9d1ee"
 [vars]
 ENVIRONMENT = "production"
 
+# Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
+[[kv_namespaces]]
+binding = "CHAT_KV"
+id = "78a1bd4cd5dc468780de442aacc9d1ee"
+
+# Routes are configured in Cloudflare Dashboard, not in wrangler.toml
+# This ensures we deploy to the base worker name (strixun-chat-signaling) without environment suffixes
+
 # Note: Create KV namespace with:
 # wrangler kv namespace create "CHAT_KV"
 # Then update the IDs above

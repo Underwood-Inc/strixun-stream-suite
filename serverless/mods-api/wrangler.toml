@@ -68,10 +68,22 @@ bucket_name = "mods-storage"
 ENVIRONMENT = "production"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
-# Default routes (production)
-routes = [
-  { pattern = "mods-api.idling.app", zone_name = "idling.app", custom_domain = true },
-]
+# Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
+[[kv_namespaces]]
+binding = "MODS_KV"
+id = "0d3dafe0994046c6a47146c6bd082ad3"
+
+[[kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
+
+# Default R2 Bucket (required for routes configured in dashboard or when no environment is specified)
+[[r2_buckets]]
+binding = "MODS_R2"
+bucket_name = "mods-storage"
+
+# Routes are configured in Cloudflare Dashboard, not in wrangler.toml
+# This ensures we deploy to the base worker name (strixun-mods-api) without environment suffixes
 
 # Note: The remote also has specific routes in vars.routes (dashboard-managed):
 # - mods-api.idling.app/mods/*

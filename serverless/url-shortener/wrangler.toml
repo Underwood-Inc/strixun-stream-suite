@@ -41,6 +41,22 @@ binding = "ANALYTICS_KV"
 id = "486b241817f34f76b0cbb44d81205ce3"
 preview_id = "b0e590fa55ce4513af3c5e07068372ef"
 
+# Default to production for backward compatibility
+[vars]
+ENVIRONMENT = "production"
+
+# Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
+[[kv_namespaces]]
+binding = "URL_KV"
+id = "aed413a5133e445fbe4d91c1a080369e"
+
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "486b241817f34f76b0cbb44d81205ce3"
+
+# Routes are configured in Cloudflare Dashboard, not in wrangler.toml
+# This ensures we deploy to the base worker name (strixun-url-shortener) without environment suffixes
+
 # Note: Create KV namespaces with:
 # wrangler kv namespace create "URL_SHORTENER_KV"
 # wrangler kv namespace create "URL_SHORTENER_ANALYTICS"
