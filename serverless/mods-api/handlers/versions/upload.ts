@@ -11,6 +11,8 @@ import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/cu
 import { isEmailAllowed } from '../../utils/auth.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
+import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
+import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
 
 /**
@@ -78,6 +80,33 @@ export async function handleUploadVersion(
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
+        }
+
+        // Check upload quota (skip for super admins)
+        const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
+        if (!isSuperAdmin) {
+            const quotaCheck = await checkUploadQuota(auth.userId, env);
+            if (!quotaCheck.allowed) {
+                const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
+                    ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
+                    : `Monthly upload limit exceeded. You have uploaded ${quotaCheck.usage.monthly} of ${quotaCheck.quota.maxUploadsPerMonth} allowed uploads this month.`;
+                
+                const rfcError = createError(request, 429, 'Upload Quota Exceeded', quotaMessage);
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 429,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        'X-Quota-Limit-Daily': quotaCheck.quota.maxUploadsPerDay.toString(),
+                        'X-Quota-Remaining-Daily': Math.max(0, quotaCheck.quota.maxUploadsPerDay - quotaCheck.usage.daily).toString(),
+                        'X-Quota-Limit-Monthly': quotaCheck.quota.maxUploadsPerMonth.toString(),
+                        'X-Quota-Remaining-Monthly': Math.max(0, quotaCheck.quota.maxUploadsPerMonth - quotaCheck.usage.monthly).toString(),
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
         }
 
         // Parse multipart form data
@@ -377,6 +406,11 @@ export async function handleUploadVersion(
             
             // Update global mod metadata
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+        }
+
+        // Track successful upload (skip for super admins)
+        if (!isSuperAdmin) {
+            await trackUpload(auth.userId, env);
         }
 
         const corsHeaders = createCORSHeaders(request, {
