@@ -4,7 +4,6 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-// @ts-expect-error - encryptBinaryWithJWT is exported from @strixun/api-framework but TypeScript can't resolve it in the workspace
 import { encryptBinaryWithJWT } from '@strixun/api-framework';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
@@ -245,10 +244,11 @@ export async function uploadMod(
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
+    // Create a new ArrayBuffer copy to ensure type compatibility
     const encryptedArrayBuffer = encryptedFile.buffer.slice(
         encryptedFile.byteOffset,
         encryptedFile.byteOffset + encryptedFile.byteLength
-    );
+    ) as ArrayBuffer;
     const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
     const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
 
@@ -299,10 +299,11 @@ export async function uploadVersion(
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
+    // Create a new ArrayBuffer copy to ensure type compatibility
     const encryptedArrayBuffer = encryptedFile.buffer.slice(
         encryptedFile.byteOffset,
         encryptedFile.byteOffset + encryptedFile.byteLength
-    );
+    ) as ArrayBuffer;
     const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
     const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
 
