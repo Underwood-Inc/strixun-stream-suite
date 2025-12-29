@@ -77,7 +77,52 @@ export async function handleUpdateModStatus(
         }
 
         // Parse status update request
-        const updateData = await request.json() as { status: ModStatus; reason?: string };
+        // CRITICAL: Handle encrypted request bodies (if API client encrypts them)
+        // For now, API client sends plain JSON, but we should handle encryption for future compatibility
+        let updateData: { status: ModStatus; reason?: string };
+        try {
+            const body = await request.json();
+            
+            // Check if body is encrypted (has encrypted field)
+            if (body && typeof body === 'object' && 'encrypted' in body && (body as any).encrypted === true) {
+                // Body is encrypted - decrypt using JWT token
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token required to decrypt request body');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
+                const token = authHeader.substring(7);
+                const { decryptWithJWT } = await import('@strixun/api-framework');
+                updateData = await decryptWithJWT(body, token) as { status: ModStatus; reason?: string };
+            } else {
+                // Body is not encrypted (current behavior)
+                updateData = body as { status: ModStatus; reason?: string };
+            }
+        } catch (error: any) {
+            console.error('[UpdateModStatus] Failed to parse request body:', error);
+            const rfcError = createError(request, 400, 'Invalid Request', 'Failed to parse request body. ' + (error.message || ''));
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
         const newStatus = updateData.status;
         const reason = updateData.reason;
 
