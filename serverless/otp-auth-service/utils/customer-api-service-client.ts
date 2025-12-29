@@ -7,7 +7,7 @@
  * Uses the shared service-to-service client library
  */
 
-import { createServiceClient } from '../../shared/service-client/index.js';
+import { createServiceClient } from '@strixun/service-client';
 
 interface CustomerData {
     customerId: string;

@@ -13,7 +13,7 @@ import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
 import { applyEncryptionMiddleware } from '@strixun/api-framework';
-import type { ExecutionContext } from '../../shared/types.js';
+import type { ExecutionContext } from '@strixun/types';
 
 /**
  * Check for high error rate and alert
