@@ -208,51 +208,81 @@ export async function handleThumbnail(
             }
         }
         
-        // Strategy 4: If still not found, search all customer scopes (like badge handler does for versions)
-        // Search for thumbnails in all customer scopes by trying common customer prefixes
+        // Strategy 4: If still not found, search R2 by customMetadata (modId) to find thumbnail
+        // This is more reliable than guessing extensions - R2 stores modId in customMetadata
+        // Also try searching with original modId (with mod_ prefix) in case it was stored differently
         if (!thumbnail) {
-            console.log('[Thumbnail] Searching all customer scopes for thumbnail:', { normalizedStoredModId });
+            console.log('[Thumbnail] Searching R2 by customMetadata (modId):', { 
+                modId: mod.modId, 
+                normalizedStoredModId,
+                originalModId: mod.modId 
+            });
             
-            // Try searching with common thumbnail path patterns across all customer scopes
-            // R2 list with prefix search for thumbnails
-            const thumbnailPrefixes = [
-                'customer_', // Search all customer scopes
-            ];
-            
-            for (const prefix of thumbnailPrefixes) {
+            try {
+                // Search all customer scopes for thumbnails with matching modId in customMetadata
+                const customerPrefix = 'customer_';
                 let cursor: string | undefined;
                 let found = false;
                 
+                // Try both normalized and original modId formats
+                const modIdVariants = [
+                    normalizedStoredModId,
+                    mod.modId, // Original with mod_ prefix
+                    normalizeModId(mod.modId), // Ensure normalized
+                ];
+                
                 do {
-                    try {
-                        const listResult = await env.MODS_R2.list({ 
-                            prefix: prefix, 
-                            cursor, 
-                            limit: 1000 
-                        });
-                        
-                        for (const obj of listResult.objects) {
-                            // Look for thumbnails matching pattern: customer_*/thumbnails/{normalizedModId}.ext
-                            if (obj.key.includes(`thumbnails/${normalizedStoredModId}.`)) {
-                                const testFile = await env.MODS_R2.get(obj.key);
-                                if (testFile) {
+                    const listResult = await env.MODS_R2.list({ 
+                        prefix: customerPrefix, 
+                        cursor, 
+                        limit: 1000 
+                    });
+                    
+                    for (const obj of listResult.objects) {
+                        // Only check thumbnail files
+                        if (obj.key.includes('/thumbnails/')) {
+                            // Get the object to check customMetadata
+                            const testFile = await env.MODS_R2.get(obj.key);
+                            if (testFile && testFile.customMetadata) {
+                                // Check if modId matches (handle both normalized and non-normalized)
+                                const metadataModId = testFile.customMetadata.modId;
+                                if (!metadataModId) continue;
+                                
+                                const normalizedMetadataModId = normalizeModId(metadataModId);
+                                
+                                // Check against all modId variants
+                                const matches = modIdVariants.some(variant => {
+                                    const normalizedVariant = normalizeModId(variant);
+                                    return normalizedMetadataModId === normalizedVariant || 
+                                           metadataModId === variant;
+                                });
+                                
+                                if (matches) {
                                     r2Key = obj.key;
                                     thumbnail = testFile;
-                                    console.log('[Thumbnail] Found thumbnail in R2 (searched customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                                    console.log('[Thumbnail] Found thumbnail in R2 by customMetadata:', { 
+                                        r2Key, 
+                                        size: thumbnail.size, 
+                                        contentType: thumbnail.httpMetadata?.contentType,
+                                        metadataModId,
+                                        matchedModId: mod.modId,
+                                        normalizedMetadataModId,
+                                        normalizedStoredModId
+                                    });
                                     found = true;
                                     break;
                                 }
                             }
                         }
-                        if (found) break;
-                        cursor = listResult.truncated ? listResult.cursor : undefined;
-                    } catch (error) {
-                        console.warn('[Thumbnail] Error searching R2 with prefix:', { prefix, error: error instanceof Error ? error.message : String(error) });
-                        break; // Skip this prefix if there's an error
                     }
+                    if (found) break;
+                    cursor = listResult.truncated ? listResult.cursor : undefined;
                 } while (cursor && !found);
-                
-                if (found) break;
+            } catch (error) {
+                console.warn('[Thumbnail] Error searching R2 by customMetadata:', { 
+                    error: error instanceof Error ? error.message : String(error),
+                    modId: mod.modId 
+                });
             }
         }
         
