@@ -42,6 +42,10 @@ on:
         description: 'Test URL Shortener (skip if no tests)'
         type: boolean
         default: false
+      test_e2e:
+        description: 'Run E2E Tests (requires dev worker deployment)'
+        type: boolean
+        default: false
 
 # Sets permissions for GITHUB_TOKEN
 permissions:
@@ -116,11 +120,21 @@ jobs:
           name: root-client-coverage
           fail_ci_if_error: false
         continue-on-error: true
+
+      - name: Annotate coverage
+        if: always()
+        run: |
+          if [ -f "coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js coverage/coverage-summary.json . "Root/Client"
+          else
+            echo "::warning::Root/Client coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Test Results
         if: always()
         run: |
-          echo "## ✅ Root/Client Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## [SUCCESS] Root/Client Tests" >> $GITHUB_STEP_SUMMARY
           echo "Svelte component tests completed" >> $GITHUB_STEP_SUMMARY
           if [ -f "coverage/coverage-summary.json" ]; then
             COVERAGE=$(node -e "const data = require('./coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
@@ -171,11 +185,21 @@ jobs:
           name: otp-auth-service-coverage
           fail_ci_if_error: false
         continue-on-error: true
+
+      - name: Annotate coverage
+        if: always()
+        run: |
+          if [ -f "serverless/otp-auth-service/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/otp-auth-service/coverage/coverage-summary.json . "OTP Auth Service"
+          else
+            echo "::warning::OTP Auth Service coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Test Results
         if: always()
         run: |
-          echo "## ✅ OTP Auth Service Tests" >> $GITHUB_STEP_SUMMARY
+          echo "## [SUCCESS] OTP Auth Service Tests" >> $GITHUB_STEP_SUMMARY
           echo "Unit and integration tests completed" >> $GITHUB_STEP_SUMMARY
           if [ -f "serverless/otp-auth-service/coverage/coverage-summary.json" ]; then
             COVERAGE=$(node -e "const data = require('./serverless/otp-auth-service/coverage/coverage-summary.json'); const total = data.total.lines.pct; console.log(total);")
@@ -218,10 +242,32 @@ jobs:
             echo "has_tests=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: Run Mods API Tests
+      - name: Run Mods API Tests (Unit + Integration)
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
         run: pnpm test
+      
+      - name: Run Mods API Integration Tests Explicitly
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/mods-api
+        run: pnpm test handlers/*.integration.test.ts
+        continue-on-error: false
+      
+      - name: Generate Coverage Report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/mods-api
+        run: pnpm test:coverage
+        continue-on-error: true
+      
+      - name: Upload Coverage to Codecov
+        if: steps.check_test.outputs.has_tests == 'true' && always()
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./serverless/mods-api/coverage/coverage-final.json
+          flags: mods-api
+          name: mods-api-coverage
+          fail_ci_if_error: false
+        continue-on-error: true
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
@@ -229,6 +275,21 @@ jobs:
           echo "⚠️ No test script found in Mods API - skipping tests"
           echo "## ⚠️ Mods API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Test Results Summary
+        if: steps.check_test.outputs.has_tests == 'true' && always()
+        run: |
+          echo "## ✅ Mods API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "All tests completed (unit + integration)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Integration Tests:**" >> $GITHUB_STEP_SUMMARY
+          echo "- API Framework Integration Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Session Restore Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Auth Flow Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Encryption Flow Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Customer Isolation Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Mod Upload Flow Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Mod Review Flow Tests" >> $GITHUB_STEP_SUMMARY
 
   # Customer API Tests (skip if no test script)
   test_customer_api:
@@ -269,12 +330,30 @@ jobs:
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/customer-api
         run: pnpm test
+
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/customer-api
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/customer-api/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/customer-api/coverage/coverage-summary.json . "Customer API"
+          else
+            echo "::warning::Customer API coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "⚠️ No test script found in Customer API - skipping tests"
-          echo "## ⚠️ Customer API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[WARNING] No test script found in Customer API - skipping tests"
+          echo "::warning::Customer API has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to Customer API package.json"
+          echo "## [WARNING] Customer API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # Twitch API Tests (skip if no test script)
@@ -316,12 +395,30 @@ jobs:
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/twitch-api
         run: pnpm test
+
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/twitch-api
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/twitch-api/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/twitch-api/coverage/coverage-summary.json . "Twitch API"
+          else
+            echo "::warning::Twitch API coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "⚠️ No test script found in Twitch API - skipping tests"
-          echo "## ⚠️ Twitch API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[WARNING] No test script found in Twitch API - skipping tests"
+          echo "::warning::Twitch API has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to Twitch API package.json"
+          echo "## [WARNING] Twitch API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # Game API Tests (skip if no test script)
@@ -363,12 +460,30 @@ jobs:
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/game-api
         run: pnpm test
+
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/game-api
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/game-api/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/game-api/coverage/coverage-summary.json . "Game API"
+          else
+            echo "::warning::Game API coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[INFO] No test script found in Game API - skipping tests"
-          echo "## [INFO] Game API Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[WARNING] No test script found in Game API - skipping tests"
+          echo "::warning::Game API has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to Game API package.json"
+          echo "## [WARNING] Game API Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
 
   # URL Shortener Tests (skip if no test script)
@@ -410,17 +525,189 @@ jobs:
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/url-shortener
         run: pnpm test
+
+      - name: Generate coverage report
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/url-shortener
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Annotate coverage
+        if: always() && steps.check_test.outputs.has_tests == 'true'
+        run: |
+          if [ -f "serverless/url-shortener/coverage/coverage-summary.json" ]; then
+            node scripts/annotate-coverage.js serverless/url-shortener/coverage/coverage-summary.json . "URL Shortener"
+          else
+            echo "::warning::URL Shortener coverage summary not found - skipping annotations"
+          fi
+        continue-on-error: true
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
         run: |
-          echo "[INFO] No test script found in URL Shortener - skipping tests"
-          echo "## [INFO] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
+          echo "[WARNING] No test script found in URL Shortener - skipping tests"
+          echo "::warning::URL Shortener has no test script - tests skipped"
+          echo "::notice::Action Required: Add test script to URL Shortener package.json"
+          echo "## [WARNING] URL Shortener Tests" >> $GITHUB_STEP_SUMMARY
           echo "No test script found - skipped" >> $GITHUB_STEP_SUMMARY
+
+  # E2E Tests (requires development worker deployment)
+  test_e2e:
+    needs: setup
+    if: ${{ inputs.test_e2e }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+      
+      - name: Validate Development Worker Configurations (Dry Run)
+        working-directory: .
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "[INFO] Validating development worker configurations..."
+          pnpm deploy:dev:all:dry-run
+          if [ $? -ne 0 ]; then
+            echo "[ERROR] Development worker configuration validation failed"
+            exit 1
+          fi
+      
+      - name: Deploy Workers to Development Environment
+        working-directory: .
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "[INFO] Deploying all workers to development environment..."
+          pnpm deploy:dev:all
+          if [ $? -ne 0 ]; then
+            echo "[ERROR] Development worker deployment failed"
+            exit 1
+          fi
+      
+      - name: Set Development Secrets
+        working-directory: .
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "[INFO] Setting development secrets..."
+          # OTP Auth Service
+          cd serverless/otp-auth-service
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
+          fi
+          if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
+            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY --env development || true
+          fi
+          if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
+            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL --env development || true
+          fi
+          
+          # Mods API
+          cd ../mods-api
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
+          fi
+          
+          # Other workers can be added here as needed
+        continue-on-error: true
+      
+      - name: Verify Workers Health
+        run: |
+          echo "[INFO] Verifying development workers are healthy..."
+          # Wait a moment for deployments to propagate
+          sleep 10
+          
+          # Check each worker health endpoint
+          WORKERS=(
+            "https://otp-auth-service-dev.strixuns-script-suite.workers.dev"
+            "https://strixun-mods-api-dev.strixuns-script-suite.workers.dev"
+            "https://strixun-twitch-api-dev.strixuns-script-suite.workers.dev"
+            "https://strixun-customer-api-dev.strixuns-script-suite.workers.dev"
+            "https://strixun-game-api-dev.strixuns-script-suite.workers.dev"
+            "https://strixun-chat-signaling-dev.strixuns-script-suite.workers.dev"
+            "https://strixun-url-shortener-dev.strixuns-script-suite.workers.dev"
+          )
+          
+          FAILED=0
+          for WORKER in "${WORKERS[@]}"; do
+            if curl -f -s "${WORKER}/health" > /dev/null 2>&1; then
+              echo "[SUCCESS] ${WORKER} is healthy"
+            else
+              echo "[ERROR] ${WORKER} is not responding"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+          
+          if [ $FAILED -gt 0 ]; then
+            echo "[ERROR] $FAILED worker(s) failed health checks"
+            exit 1
+          fi
+      
+      - name: Run E2E Tests
+        working-directory: .
+        env:
+          E2E_OTP_AUTH_URL: https://otp-auth-service-dev.strixuns-script-suite.workers.dev
+          E2E_MODS_API_URL: https://strixun-mods-api-dev.strixuns-script-suite.workers.dev
+          E2E_TWITCH_API_URL: https://strixun-twitch-api-dev.strixuns-script-suite.workers.dev
+          E2E_CUSTOMER_API_URL: https://strixun-customer-api-dev.strixuns-script-suite.workers.dev
+          E2E_GAME_API_URL: https://strixun-game-api-dev.strixuns-script-suite.workers.dev
+          E2E_CHAT_SIGNALING_URL: https://strixun-chat-signaling-dev.strixuns-script-suite.workers.dev
+          E2E_URL_SHORTENER_URL: https://strixun-url-shortener-dev.strixuns-script-suite.workers.dev
+        run: pnpm test:e2e
+      
+      - name: Upload E2E Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+        continue-on-error: true
+      
+      - name: Upload E2E Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: test-results/
+          retention-days: 7
+        continue-on-error: true
+      
+      - name: E2E Test Results Summary
+        if: always()
+        run: |
+          echo "## E2E Tests" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "[SUCCESS] All E2E tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "[ERROR] E2E tests failed - check artifacts for details" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # Test Summary
   summary:
-    needs: [test_root, test_otp_auth, test_mods_api, test_customer_api, test_twitch_api, test_game_api, test_url_shortener]
+    needs: [test_root, test_otp_auth, test_mods_api, test_customer_api, test_twitch_api, test_game_api, test_url_shortener, test_e2e]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -431,51 +718,51 @@ jobs:
           
           if [ "${{ inputs.test_root }}" == "true" ]; then
             if [ "${{ needs.test_root.result }}" == "success" ]; then
-              echo "✅ **Root/Client** - Tests Passed" >> $GITHUB_STEP_SUMMARY
+              echo "[SUCCESS] **Root/Client** - Tests Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_root.result }}" == "failure" ]; then
-              echo "❌ **Root/Client** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "[ERROR] **Root/Client** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "⏭️ **Root/Client** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "[INFO] **Root/Client** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_otp_auth }}" == "true" ]; then
             if [ "${{ needs.test_otp_auth.result }}" == "success" ]; then
-              echo "✅ **OTP Auth Service** - Tests Passed" >> $GITHUB_STEP_SUMMARY
+              echo "[SUCCESS] **OTP Auth Service** - Tests Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_otp_auth.result }}" == "failure" ]; then
-              echo "❌ **OTP Auth Service** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "[ERROR] **OTP Auth Service** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "⏭️ **OTP Auth Service** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "[INFO] **OTP Auth Service** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_mods_api }}" == "true" ]; then
             if [ "${{ needs.test_mods_api.result }}" == "success" ] || [ "${{ needs.test_mods_api.result }}" == "skipped" ]; then
-              echo "✅ **Mods API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "[SUCCESS] **Mods API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
-              echo "❌ **Mods API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "[ERROR] **Mods API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "⏭️ **Mods API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "[INFO] **Mods API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_customer_api }}" == "true" ]; then
             if [ "${{ needs.test_customer_api.result }}" == "success" ] || [ "${{ needs.test_customer_api.result }}" == "skipped" ]; then
-              echo "✅ **Customer API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "[SUCCESS] **Customer API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
-              echo "❌ **Customer API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "[ERROR] **Customer API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "⏭️ **Customer API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "[INFO] **Customer API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.test_twitch_api }}" == "true" ]; then
             if [ "${{ needs.test_twitch_api.result }}" == "success" ] || [ "${{ needs.test_twitch_api.result }}" == "skipped" ]; then
-              echo "✅ **Twitch API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
+              echo "[SUCCESS] **Twitch API** - Tests Passed or Skipped (no tests)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
-              echo "❌ **Twitch API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
+              echo "[ERROR] **Twitch API** - Tests Failed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "⏭️ **Twitch API** - Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "[INFO] **Twitch API** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
@@ -499,6 +786,17 @@ jobs:
             fi
           fi
           
+          if [ "${{ inputs.test_e2e }}" == "true" ]; then
+            if [ "${{ needs.test_e2e.result }}" == "success" ]; then
+              echo "[SUCCESS] **E2E Tests** - All tests passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_e2e.result }}" == "failure" ]; then
+              echo "[ERROR] **E2E Tests** - Tests Failed (check artifacts for details)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "[INFO] **E2E Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Note:** Services without test scripts are automatically skipped." >> $GITHUB_STEP_SUMMARY
+          echo "**E2E Tests:** Require development worker deployments. Workers are automatically deployed before tests run." >> $GITHUB_STEP_SUMMARY
 

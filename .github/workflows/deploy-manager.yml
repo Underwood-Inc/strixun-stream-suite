@@ -22,6 +22,13 @@ name: Deploy Service(s)
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Deployment Environment'
+        type: choice
+        options:
+          - production
+          - development
+        default: 'production'
       deploy_twitch_api:
         description: 'Deploy Twitch API'
         type: boolean
@@ -43,15 +50,15 @@ on:
         type: boolean
         default: true
       deploy_mods_hub:
-        description: 'Deploy Mods Hub (Pages)'
+        description: 'Deploy Mods Hub (Pages) - Production only'
         type: boolean
         default: true
       deploy_storybook:
-        description: 'Deploy Storybook (Pages)'
+        description: 'Deploy Storybook (Pages) - Production only'
         type: boolean
         default: true
       deploy_pages:
-        description: 'Deploy GitHub Pages'
+        description: 'Deploy GitHub Pages - Production only'
         type: boolean
         default: true
       deploy_url_shortener:
@@ -177,7 +184,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
       
       - name: Rollback on Failure
         if: failure()
@@ -192,11 +204,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "${{ secrets.TWITCH_CLIENT_ID }}" | pnpm exec wrangler secret put TWITCH_CLIENT_ID || true
-          echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | pnpm exec wrangler secret put TWITCH_CLIENT_SECRET || true
-          echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY || true
-          echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL || true
-          echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
+          echo "${{ secrets.TWITCH_CLIENT_ID }}" | pnpm exec wrangler secret put TWITCH_CLIENT_ID $ENV_FLAG || true
+          echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | pnpm exec wrangler secret put TWITCH_CLIENT_SECRET $ENV_FLAG || true
+          echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY $ENV_FLAG || true
+          echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL $ENV_FLAG || true
+          echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
         continue-on-error: true
 
   # Mods API Deployment
@@ -230,7 +246,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
       
       - name: Rollback on Failure
         if: failure()
@@ -245,20 +266,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
-            echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL || true
+            echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
-            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY || true
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
-            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE || true
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
         continue-on-error: true
 
@@ -294,7 +319,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: pnpm run deploy
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm run deploy
+          fi
       
       - name: Rollback on Failure
         if: failure()
@@ -309,29 +339,33 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY || true
+            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
-            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL || true
+            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
-            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY || true
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
           fi
           # CRITICAL: Workers use SERVICE_ENCRYPTION_KEY (not VITE_SERVICE_ENCRYPTION_KEY)
           # Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
           # They must have the SAME value, but different names for their respective environments
           if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY || true
+            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
-            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE || true
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
         continue-on-error: true
 
@@ -376,7 +410,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
       
       - name: Rollback on Failure
         if: failure()
@@ -391,17 +430,21 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
-            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY || true
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
-            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE || true
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
         continue-on-error: true
 
@@ -436,7 +479,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy
+          fi
       
       - name: Rollback on Failure
         if: failure()
@@ -451,11 +499,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          ENV_FLAG=""
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          fi
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET || true
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS || true
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           fi
         continue-on-error: true
 
@@ -496,7 +548,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy --env production
+        run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            pnpm exec wrangler deploy --env development
+          else
+            pnpm exec wrangler deploy --env production
+          fi
       
       - name: Rollback on Failure
         if: failure()
@@ -511,18 +568,23 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          if [ "${{ inputs.environment }}" == "development" ]; then
+            ENV_FLAG="--env development"
+          else
+            ENV_FLAG="--env production"
+          fi
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env production || true
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS --env production || true
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           fi
         continue-on-error: true
 
-  # Mods Hub Deployment (Cloudflare Pages)
+  # Mods Hub Deployment (Cloudflare Pages) - Production only
   deploy_mods_hub:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_mods_hub && needs.test_root.result == 'success' }}
+    if: ${{ inputs.deploy_mods_hub && inputs.environment == 'production' && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -570,10 +632,10 @@ jobs:
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
 
-  # Storybook Deployment (Cloudflare Pages)
+  # Storybook Deployment (Cloudflare Pages) - Production only
   deploy_storybook:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_storybook && needs.test_root.result == 'success' }}
+    if: ${{ inputs.deploy_storybook && inputs.environment == 'production' && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -616,10 +678,10 @@ jobs:
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
 
-  # GitHub Pages Deployment - Build
+  # GitHub Pages Deployment - Build (Production only)
   deploy_pages_build:
     needs: [setup, test_root]
-    if: ${{ inputs.deploy_pages && needs.test_root.result == 'success' }}
+    if: ${{ inputs.deploy_pages && inputs.environment == 'production' && needs.test_root.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
