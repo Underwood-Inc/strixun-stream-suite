@@ -279,12 +279,12 @@ export async function handleUploadMod(
             });
         }
         
-        // Check file format: binary encrypted (v4) or legacy JSON encrypted (v3)
+        // Check file format: binary encrypted (v4/v5) or legacy JSON encrypted (v3)
         const fileBuffer = await file.arrayBuffer();
         const fileBytes = new Uint8Array(fileBuffer);
         
-        // Check for binary format (version 4): first byte should be 4
-        const isBinaryEncrypted = fileBytes.length >= 4 && fileBytes[0] === 4;
+        // Check for binary format (version 4 or 5): first byte should be 4 or 5
+        const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
         const isLegacyEncrypted = file.type === 'application/json' || 
                                   (fileBytes.length > 0 && fileBytes[0] === 0x7B); // '{' for JSON
         
@@ -314,7 +314,8 @@ export async function handleUploadMod(
                 const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
                 fileSize = decryptedBytes.length;
                 fileHash = await calculateStrixunHash(decryptedBytes, env);
-                encryptionFormat = 'binary-v4';
+                // Determine version from first byte (4 or 5)
+                encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
                 // Legacy JSON encrypted format
                 const encryptedData = await file.text();
