@@ -4,6 +4,7 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
+// @ts-expect-error - encryptBinaryWithJWT is exported from @strixun/api-framework but TypeScript can't resolve it in the workspace
 import { encryptBinaryWithJWT } from '@strixun/api-framework';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
@@ -122,6 +123,65 @@ const createClient = () => {
 const api = createClient();
 
 /**
+ * Get authentication token using the same logic as the API client
+ * This is a helper function to access the token for encryption without
+ * accessing the private config property
+ */
+async function getAuthToken(): Promise<string | null> {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    // Priority 1: Try to get token from Zustand store directly (most reliable)
+    try {
+        const { useAuthStore } = await import('../stores/auth');
+        const store = useAuthStore.getState();
+        if (store.user?.token) {
+            const token = store.user.token.trim();
+            if (token && token.length > 0) {
+                return token;
+            }
+        }
+    } catch (error) {
+        // Ignore errors if store isn't available
+    }
+    
+    // Priority 2: Read directly from localStorage (works even if store isn't hydrated)
+    try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+            const parsed = JSON.parse(authStorage);
+            let token: string | null = null;
+            if (parsed?.user?.token) {
+                token = parsed.user.token;
+            } else if (parsed?.state?.user?.token) {
+                token = parsed.state.user.token;
+            }
+            
+            if (token) {
+                const trimmedToken = token.trim();
+                if (trimmedToken && trimmedToken.length > 0) {
+                    return trimmedToken;
+                }
+            }
+        }
+    } catch (error) {
+        // Ignore parse errors
+    }
+    
+    // Priority 3: Legacy keys for backwards compatibility
+    const legacyToken = localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+    if (legacyToken) {
+        const trimmedToken = legacyToken.trim();
+        if (trimmedToken && trimmedToken.length > 0) {
+            return trimmedToken;
+        }
+    }
+    
+    return null;
+}
+
+/**
  * List mods (public endpoint - returns approved mods only)
  */
 export async function listMods(filters: {
@@ -174,7 +234,7 @@ export async function uploadMod(
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
     // Get token for encryption
-    const token = await api.config.auth?.tokenGetter?.();
+    const token = await getAuthToken();
     if (!token) {
         throw new Error('Authentication token required for file encryption');
     }
@@ -184,7 +244,12 @@ export async function uploadMod(
     const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     
     // Create encrypted File object with .encrypted extension
-    const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
+    // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
+    const encryptedArrayBuffer = encryptedFile.buffer.slice(
+        encryptedFile.byteOffset,
+        encryptedFile.byteOffset + encryptedFile.byteLength
+    );
+    const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
     const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
 
     const formData = new FormData();
@@ -223,7 +288,7 @@ export async function uploadVersion(
     metadata: VersionUploadRequest
 ): Promise<any> {
     // Get token for encryption
-    const token = await api.config.auth?.tokenGetter?.();
+    const token = await getAuthToken();
     if (!token) {
         throw new Error('Authentication token required for file encryption');
     }
@@ -233,7 +298,12 @@ export async function uploadVersion(
     const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     
     // Create encrypted File object with .encrypted extension
-    const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
+    // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
+    const encryptedArrayBuffer = encryptedFile.buffer.slice(
+        encryptedFile.byteOffset,
+        encryptedFile.byteOffset + encryptedFile.byteLength
+    );
+    const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
     const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
 
     const formData = new FormData();
