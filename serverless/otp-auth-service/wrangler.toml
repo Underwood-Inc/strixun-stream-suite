@@ -6,8 +6,8 @@ main = "worker.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespace is now defined per environment below
-# Default binding (for backward compatibility) is in [env.production] section
+# KV Namespace is defined per environment and also at root level for default binding
+# Root level binding ensures KV is available when routes are configured in dashboard
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
@@ -49,10 +49,20 @@ CUSTOMER_API_URL = "https://strixun-customer-api-dev.strixuns-script-suite.worke
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
+# Development routes
+[[env.development.routes]]
+pattern = "auth.idling.app/*"
+zone_name = "idling.app"
+
 # Default to production for backward compatibility
 [vars]
 ENVIRONMENT = "production"
 CUSTOMER_API_URL = "https://customer-api.idling.app"
+
+# Default KV Namespace (required for routes configured in dashboard or when no environment is specified)
+[[kv_namespaces]]
+binding = "OTP_AUTH_KV"
+id = "680c9dbe86854c369dd23e278abb41f9"
 
 # Default routes (production)
 routes = [
