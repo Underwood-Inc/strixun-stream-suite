@@ -288,9 +288,10 @@ export async function handleUploadVersion(
 
         // SECURITY: Store encrypted file in R2 as-is (already encrypted by client)
         // Files are decrypted on-the-fly during download
-        const fileExtension = originalFileName.split('.').pop() || 'zip';
         // Use normalized modId for R2 key consistency
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${fileExtension}`);
+        // Strip leading dot from fileExtension for R2 key (fileExtension includes the dot from validation)
+        const extensionForR2 = fileExtension.startsWith('.') ? fileExtension.substring(1) : fileExtension || 'zip';
+        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${extensionForR2}`);
         
         // Store encrypted file data as-is (binary or JSON format)
         let encryptedFileBytes: Uint8Array;
