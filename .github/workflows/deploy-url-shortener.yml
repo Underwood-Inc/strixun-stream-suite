@@ -114,7 +114,8 @@ jobs:
           export VITE_SERVICE_ENCRYPTION_KEY
           # Verify it's available before building
           echo "[DEBUG] VITE_SERVICE_ENCRYPTION_KEY is set: ${VITE_SERVICE_ENCRYPTION_KEY:0:10}... (length: ${#VITE_SERVICE_ENCRYPTION_KEY})"
-          pnpm build:all
+          # Explicitly pass the environment variable to pnpm to ensure it's available to all child processes
+          VITE_SERVICE_ENCRYPTION_KEY="$VITE_SERVICE_ENCRYPTION_KEY" pnpm build:all
       
       - name: Verify Build Output
         working-directory: serverless/url-shortener
@@ -144,7 +145,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy --env production
+        run: pnpm exec wrangler deploy --env production --no-bundle
       
       - name: Rollback on Failure
         if: failure()

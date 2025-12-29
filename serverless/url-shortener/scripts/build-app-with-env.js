@@ -13,12 +13,18 @@ const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, '..');
 const appDir = join(projectRoot, 'app');
 
+// Debug: Log all VITE_* environment variables (without exposing the full key)
+console.log('[DEBUG] Checking for VITE_SERVICE_ENCRYPTION_KEY in environment...');
+const viteEnvVars = Object.keys(process.env).filter(key => key.startsWith('VITE_'));
+console.log(`[DEBUG] Found ${viteEnvVars.length} VITE_* environment variables:`, viteEnvVars);
+
 // Get the encryption key from environment
 const encryptionKey = process.env.VITE_SERVICE_ENCRYPTION_KEY;
 
 if (!encryptionKey) {
   console.error('[ERROR] VITE_SERVICE_ENCRYPTION_KEY is not set in environment');
   console.error('This key is required for building the app. Please set it in your CI/CD environment.');
+  console.error('[DEBUG] Available environment variables:', Object.keys(process.env).filter(k => k.includes('ENCRYPTION') || k.includes('KEY')));
   process.exit(1);
 }
 
