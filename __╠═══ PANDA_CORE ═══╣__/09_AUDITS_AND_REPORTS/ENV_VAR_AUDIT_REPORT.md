@@ -1,18 +1,12 @@
-# Environment Variable Audit Report
-
-> **Complete audit of environment variable configuration and naming conventions**
+# Environment Variable Audit Report - streamkit.idling.app
 
 **Date**: 2024-12-XX  
 **Project**: streamkit.idling.app (main)  
 **Status**: [FIXED] Critical naming conflicts resolved
 
----
-
 ## Executive Summary
 
 This audit identified and fixed critical environment variable naming conflicts between frontend (Vite) and backend (Cloudflare Workers) configurations. The main issue was confusion between `VITE_SERVICE_ENCRYPTION_KEY` (frontend) and `SERVICE_ENCRYPTION_KEY` (backend).
-
----
 
 ## Critical Issues Found and Fixed
 
@@ -50,8 +44,6 @@ This audit identified and fixed critical environment variable naming conflicts b
 **Files Fixed**:
 - `.github/workflows/deploy-manager.yml` - Added `NETWORK_INTEGRITY_KEYPHRASE` setup for customer-api
 
----
-
 ## Environment Variable Naming Convention
 
 ### Frontend (Vite Applications)
@@ -70,8 +62,6 @@ This audit identified and fixed critical environment variable naming conflicts b
   - `NETWORK_INTEGRITY_KEYPHRASE` - Network integrity verification keyphrase
   - `RESEND_API_KEY` - Resend email API key
   - `RESEND_FROM_EMAIL` - Resend from email address
-
----
 
 ## Required GitHub Secrets
 
@@ -98,8 +88,6 @@ The following secrets must be set in GitHub repository settings:
 - `VITE_AUTH_API_URL` - Override auth API URL (defaults to https://auth.idling.app)
 - `VITE_MODS_API_URL` - Override mods API URL (defaults to https://mods-api.idling.app)
 
----
-
 ## Configuration Sources Priority
 
 ### Frontend Builds (GitHub Actions)
@@ -115,8 +103,6 @@ The following secrets must be set in GitHub repository settings:
 1. `.env` files (frontend)
 2. `.dev.vars` files (workers)
 3. Environment variables
-
----
 
 ## Verification Steps
 
@@ -152,8 +138,6 @@ cat .env | grep VITE_SERVICE_ENCRYPTION_KEY
 # They should have the SAME value
 ```
 
----
-
 ## PowerShell Script Status
 
 The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
@@ -162,8 +146,6 @@ The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 - Sets `SERVICE_API_KEY` in required workers
 
 **No changes needed** - script already uses correct naming.
-
----
 
 ## Remaining Tasks
 
@@ -177,8 +159,6 @@ The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 3. [ ] Add validation to prevent setting `VITE_*` variables in workers
    - **Note**: This would require runtime validation in worker code. Currently handled by documentation and code review.
 
----
-
 ## Testing Checklist
 
 - [ ] OTP request/verify endpoints work with encrypted requests
@@ -186,8 +166,6 @@ The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 - [ ] Frontend builds successfully with `VITE_SERVICE_ENCRYPTION_KEY`
 - [ ] Workers can decrypt requests using `SERVICE_ENCRYPTION_KEY`
 - [ ] Network integrity verification works (if enabled)
-
----
 
 ## Related Files
 
@@ -198,11 +176,9 @@ The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 - `.github/workflows/deploy-manager.yml`
 
 ### Documentation
-- [Environment Setup Guide](../01_GETTING_STARTED/ENVIRONMENT_SETUP.md)
+- `ENV_SETUP_GUIDE.md` - Environment setup guide
 - `serverless/SET_SERVICE_KEY.md` - Service key setup
 - `shared-config/README.md` - Shared configuration
-
----
 
 ## Notes
 
@@ -210,8 +186,3 @@ The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 - Frontend and backend use different variable names but must have the same value
 - GitHub Actions workflows now correctly map frontend secrets to backend secrets
 - All workers that use service-to-service calls need `NETWORK_INTEGRITY_KEYPHRASE`
-
----
-
-**Last Updated**: 2025-01-27
-

@@ -1,10 +1,6 @@
 # Control Panel Architecture & Modularization Guide
 
-> **Complete architecture documentation for the control panel and modularization strategy**
-
 This document explains the architecture of `control_panel.html` and provides guidance for splitting it into modular components.
-
----
 
 ## Current Structure (v3.0)
 
@@ -23,8 +19,6 @@ The single-file approach was chosen for:
 2. **No Build Step** - Streamers can use immediately without npm/webpack
 3. **Easy Distribution** - One file to copy/share
 
----
-
 ## OBS Browser Source Compatibility
 
 OBS browser sources **CAN** load external files via relative paths. This is proven by `twitch_clips_player/clips.html` which uses:
@@ -40,8 +34,6 @@ OBS browser sources **CAN** load external files via relative paths. This is prov
 2. Use **relative paths** (not absolute)
 3. Files must exist when OBS loads the page
 4. **Cache-busting** recommended for development: `?v=1.0.0`
-
----
 
 ## Recommended Modular Structure
 
@@ -63,8 +55,6 @@ control_panel/
 │           ├── animations.js   # Source animations functionality
 │           └── installer.js    # Script installer wizard
 ```
-
----
 
 ## JavaScript Module Dependencies
 
@@ -103,19 +93,7 @@ flowchart TB
     Storage --> Swaps
     Storage --> TextCycler
     Storage --> Clips
-    
-    style Storage fill:#6495ed,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style WS fill:#6495ed,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style UI fill:#6495ed,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style App fill:#edae49,stroke:#c68214,stroke-width:2px,color:#1a1611
-    style Swaps fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style TextCycler fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style Clips fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style Animations fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style Installer fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
 ```
-
----
 
 ## How to Split (Step by Step)
 
@@ -164,8 +142,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initWebSocket();
 });
 ```
-
----
 
 ## Global Variables to Consider
 
@@ -217,10 +193,8 @@ let scriptStatus = { ... };
    import { storage } from './storage.js';
    ```
 
-> **Note**: ES Modules (`import`/`export`) require HTTPS or localhost.
+> ⚠️ **Note**: ES Modules (`import`/`export`) require HTTPS or localhost.
 > For `file://` protocol, use global variables or IIFE modules.
-
----
 
 ## Testing After Split
 
@@ -231,14 +205,10 @@ let scriptStatus = { ... };
 5. Check browser console for errors
 6. Test after OBS restart
 
----
-
 ## Rollback Plan
 
 Keep a backup of the original `control_panel.html` before splitting.
 If anything breaks, revert to the single-file version.
-
----
 
 ## Future Improvements
 
@@ -254,8 +224,3 @@ If anything breaks, revert to the single-file version.
 - [OBS Browser Source Documentation](https://github.com/obsproject/obs-browser)
 - [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 - [OBS WebSocket Protocol](https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md)
-
----
-
-**Last Updated**: 2025-01-27
-

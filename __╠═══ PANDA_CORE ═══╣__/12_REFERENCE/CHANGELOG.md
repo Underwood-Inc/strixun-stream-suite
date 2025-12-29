@@ -5,8 +5,6 @@ All notable changes to Strixun Stream Suite will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
-
 ## 1.1.0 (2025-12-21)
 
 ### Added
@@ -20,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Scene-specific layout filtering
   - Hotkey support (1-9) for quick layout switching
   - Full export/import/backup integration
-  - New "Layouts" tab in Control Panel
+  - New "❓ Layouts" tab in Control Panel
 
 ### Changed
 
@@ -28,8 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source Animations updated to v2.8.0 - improved compatibility
 - Control Panel - added layouts to export/import system
 - Storage system - layouts included in auto-recovery snapshots
-
----
 
 ## 1.0.0
 
@@ -45,8 +41,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dual Storage System**: IndexedDB + localStorage for reliable OBS dock persistence
 - **Import/Export**: Full configuration backup and restore with category selection
 - **Auto-Recovery**: Automatic snapshots to protect against data loss
-
----
-
-**Last Updated**: 2025-12-29
-

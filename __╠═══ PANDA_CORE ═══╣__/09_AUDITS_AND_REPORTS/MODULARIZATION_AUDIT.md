@@ -43,13 +43,13 @@
 
 ## 🎯 Largest Extractable Chunks (Ranked by Size)
 
-### 1. **Installer/Script Manager Module** ❓ **LARGEST NEXT CHUNK**
+### 1. **Installer/Script Manager Module** ⏳ **LARGEST NEXT CHUNK**
 - **Lines:** ~4400-5373 (973 lines)
 - **Size:** ~973 lines
 - **Dependencies:** Minimal (uses `log()`, `storage`, `isOBSDock()`)
 - **Self-contained:** ✅ Yes
 - **Complexity:** Medium
-- **Extraction Priority:** ❓ **HIGHEST**
+- **Extraction Priority:** ⏳ **HIGHEST**
 
 **Functions included:**
 - `initScriptsAndInstaller()`
@@ -77,7 +77,7 @@
 - **Dependencies:** Storage, UI utilities
 - **Self-contained:** ✅ Mostly
 - **Complexity:** High (core functionality)
-- **Extraction Priority:** ❓ **HIGH**
+- **Extraction Priority:** ⏳ **HIGH**
 
 **Functions included:**
 - WebSocket connection management
@@ -263,7 +263,7 @@
 
 ---
 
-## ❓ Proposed Final Structure
+## ✅ Proposed Final Structure
 
 ```
 control_panel.html                    # ~800 lines (HTML structure only)
@@ -272,19 +272,19 @@ assets/
 │   └── control-panel.css            # ✅ Already extracted
 └── js/
     ├── storage.js                   # ✅ Already extracted (remove duplicate from HTML)
-    ├── websocket.js                 # 🔄 Extract (870 lines)
-    ├── ui-utils.js                  # 🔄 Extract (386 lines)
+    ├── websocket.js                 # ✅ Extract (870 lines)
+    ├── ui-utils.js                  # ✅ Extract (386 lines)
     ├── app.js                       # 🔄 Create (initialization, ~100 lines)
     ├── text-cycler.js               # ✅ Already extracted
     ├── storage-sync.js              # ✅ Already extracted
     ├── source-swaps.js               # ✅ Already extracted
     └── modules/
-        ├── installer.js              # 🔄 Extract (973 lines) ❓ LARGEST
-        ├── sources.js                # 🔄 Extract (563 lines)
-        ├── layouts.js                # 🔄 Extract (492 lines)
-        ├── script-status.js          # 🔄 Extract (399 lines)
-        ├── version.js                # 🔄 Extract (174 lines)
-        └── twitch-api.js             # 🔄 Extract (226 lines)
+        ├── installer.js              # ✅ Extract (973 lines) ⏳ LARGEST
+        ├── sources.js                # ✅ Extract (563 lines)
+        ├── layouts.js                # ✅ Extract (492 lines)
+        ├── script-status.js          # ✅ Extract (399 lines)
+        ├── version.js                # ✅ Extract (174 lines)
+        └── twitch-api.js             # ✅ Extract (226 lines)
 ```
 
 ---
@@ -418,8 +418,8 @@ After each extraction:
 
 1. ✅ **COMPLETE:** Removed duplicate storage code from HTML
 2. ✅ **COMPLETE:** Extracted Installer Module (~620 lines)
-3. 🔄 **IN PROGRESS:** Extract WebSocket Module (core functionality, ~870 lines)
-4. **Next:** Continue with Phase 3 modules (sources, layouts, script-status)
+3. ✅ **COMPLETE:** Extract WebSocket Module (core functionality, ~870 lines)
+4. ✅ **COMPLETE:** Continue with Phase 3 modules (sources, layouts, script-status)
 
 ---
 

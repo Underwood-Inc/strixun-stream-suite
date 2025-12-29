@@ -1,8 +1,7 @@
 # GitHub Actions Workflow Audit Report
 
-> **Optimize workflows to use `test:all` as required check and make other workflows optional where appropriate**
-
-**Date:** 2025-12-29
+**Date:** 2025-01-27  
+**Purpose:** Optimize workflows to use `test:all` as required check and make other workflows optional where appropriate
 
 ---
 
@@ -51,13 +50,46 @@
    - **Action:** Tests + deploys Mods API
    - **Status:** Auto-runs on service changes
 
-9-14. **Other deploy workflows** (twitch-api, customer-api, game-api, mods-hub, storybook, pages)
-   - **Status:** Individual service deployments
+9. **deploy-twitch-api.yml** (not read, but exists)
+   - **Trigger:** Likely push to main/master + manual
+   - **Status:** Individual service deployment
+
+10. **deploy-customer-api.yml** (not read, but exists)
+    - **Trigger:** Likely push to main/master + manual
+    - **Status:** Individual service deployment
+
+11. **deploy-game-api.yml** (not read, but exists)
+    - **Trigger:** Likely push to main/master + manual
+    - **Status:** Individual service deployment
+
+12. **deploy-mods-hub.yml** (not read, but exists)
+    - **Trigger:** Likely push to main/master + manual
+    - **Status:** Individual service deployment
+
+13. **deploy-storybook.yml** (not read, but exists)
+    - **Trigger:** Likely push to main/master + manual
+    - **Status:** Individual service deployment
+
+14. **deploy-pages.yml**
+    - **Trigger:** Push to main/master (excluding serverless paths) + manual
+    - **Action:** Tests + deploys GitHub Pages
+    - **Status:** Auto-runs on frontend changes
 
 ### Utility Workflows
-15. **release.yml** - Creates GitHub releases with Changesets
-16. **sync-wiki.yml** - Syncs docs to GitHub wiki
-17. **update-version-badge.yml** - Updates version badge in README
+15. **release.yml**
+    - **Trigger:** Push to main/master
+    - **Action:** Creates GitHub releases with Changesets
+    - **Status:** Utility workflow, should remain
+
+16. **sync-wiki.yml**
+    - **Trigger:** Push to master/main (markdown file changes) + manual
+    - **Action:** Syncs docs to GitHub wiki
+    - **Status:** Utility workflow, should remain
+
+17. **update-version-badge.yml**
+    - **Trigger:** Push to main/master (package.json changes) + manual
+    - **Action:** Updates version badge in README
+    - **Status:** Utility workflow, should remain
 
 ---
 
@@ -213,13 +245,18 @@ For `test-encryption.yml`, `test-otp-auth-integration.yml`, `mods-hub-tests.yml`
 
 ---
 
+## Questions for Decision
+
+1. **deploy-pages.yml:** Keep auto-trigger or make manual only?
+2. **Specialized test workflows:** Should they block if they fail, or be truly optional?
+3. **deploy-manager.yml:** Should it check that test-coverage.yml passed, or just run its own tests?
+
+---
+
 ## Summary
 
 **Current State:** 17 workflows, many auto-running, no clear hierarchy  
 **Proposed State:** 1 required test workflow, 1 primary deploy workflow, others optional  
 **Result:** Cleaner CI/CD, clear test gate, reduced redundancy
 
----
-
-**Last Updated**: 2025-12-29
-
+**Next Steps:** Await your decision on the questions above, then implement changes.

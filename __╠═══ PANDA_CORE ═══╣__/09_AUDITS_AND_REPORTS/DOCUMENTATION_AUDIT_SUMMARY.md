@@ -115,23 +115,23 @@ These files document completed work and can be archived:
 These files have overlapping content and should be consolidated:
 
 #### Migration Documentation
-- `MIGRATION_COMPLETE.md` + `API_FRAMEWORK_SETUP_COMPLETE.md` ❓ Keep `MIGRATION_COMPLETE.md`
-- `MIGRATION_STATUS.md` + `MIGRATION_COMPLETE.md` ❓ Remove `MIGRATION_STATUS.md`
-- `IMPLEMENTATION_STATUS.md` + `IMPLEMENTATION_COMPLETE.md` ❓ Remove `IMPLEMENTATION_STATUS.md`
+- `MIGRATION_COMPLETE.md` + `API_FRAMEWORK_SETUP_COMPLETE.md` ⏳ Keep `MIGRATION_COMPLETE.md`
+- `MIGRATION_STATUS.md` + `MIGRATION_COMPLETE.md` ⏳ Remove `MIGRATION_STATUS.md`
+- `IMPLEMENTATION_STATUS.md` + `IMPLEMENTATION_COMPLETE.md` ⏳ Remove `IMPLEMENTATION_STATUS.md`
 
 #### Customer API Status Files
 - `serverless/customer-api/MIGRATION_COMPLETE.md`
 - `serverless/customer-api/INTEGRATION_COMPLETE.md`
 - `serverless/customer-api/COMPLETE_STATUS.md`
 - `serverless/customer-api/FINAL_STATUS.md`
-❓ **Consolidate into single `FINAL_STATUS.md`**
+⏳ **Consolidate into single `FINAL_STATUS.md`**
 
 #### OTP Auth Phase Status Files
 - `serverless/otp-auth-service/PHASE_1_IMPLEMENTATION_STATUS.md`
 - `serverless/otp-auth-service/PHASE_2_IMPLEMENTATION_STATUS.md`
 - `serverless/otp-auth-service/PHASE_3_IMPLEMENTATION_STATUS.md`
 - `serverless/otp-auth-service/PHASE_1_COMPLETE.md`
-❓ **Keep only `PHASE_1_COMPLETE.md` if needed, remove status files**
+⏳ **Keep only `PHASE_1_COMPLETE.md` if needed, remove status files**
 
 #### Encryption Documentation
 - `ENCRYPTION_SUITE_COMPLETE.md` - ✅ Keep (comprehensive)

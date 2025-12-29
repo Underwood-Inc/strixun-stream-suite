@@ -1,10 +1,6 @@
 # End-to-End Testing Guide
 
-> **Complete guide for setting up and running end-to-end tests using Playwright**
-
 This guide covers setting up and running end-to-end (E2E) tests using Playwright against development Cloudflare Workers.
-
----
 
 ## Overview
 
@@ -13,59 +9,31 @@ E2E tests verify the complete user experience by testing against live developmen
 - **100% accuracy**: Tests use real services, not mocks
 - **Full integration**: Tests verify the entire stack from frontend to backend
 
----
-
 ## Architecture
 
-```mermaid
-graph TB
-    subgraph "E2E Testing Architecture"
-        A[Playwright Tests]
-        B[Frontend Dev Server]
-        C[Development Workers]
-    end
-    
-    subgraph "Development Environment"
-        D[OTP Auth Service Dev]
-        E[Mods API Dev]
-        F[Customer API Dev]
-        G[Game API Dev]
-        H[Twitch API Dev]
-        I[Chat Signaling Dev]
-        J[URL Shortener Dev]
-    end
-    
-    A --> B
-    A --> C
-    C --> D
-    C --> E
-    C --> F
-    C --> G
-    C --> H
-    C --> I
-    C --> J
-    
-    style A fill:#edae49,stroke:#c68214,stroke-width:2px,color:#1a1611
-    style B fill:#6495ed,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style C fill:#6495ed,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style D fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style E fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style F fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style G fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style H fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style I fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
-    style J fill:#28a745,stroke:#252017,stroke-width:2px,color:#f9f9f9
 ```
-
----
+┌─────────────────┐
+│   Frontend      │  (Local dev server: localhost:5173)
+│   (Svelte App)  │
+└────────┬────────┘
+         │
+         │ HTTP Requests
+         │
+┌────────▼────────────────────────────────────────┐
+│         Development Cloudflare Workers          │
+│  ┌──────────────┐  ┌──────────────┐           │
+│  │ OTP Auth     │  │ Mods API     │  ...       │
+│  │ Service      │  │              │           │
+│  └──────────────┘  └──────────────┘           │
+│  (Deployed to *.workers.dev)                  │
+└────────────────────────────────────────────────┘
+```
 
 ## Prerequisites
 
 1. **Playwright installed**: Already included in `package.json`
 2. **Cloudflare Workers CLI**: `wrangler` (already installed)
 3. **Development worker deployments**: All workers must be deployed to development environment
-
----
 
 ## Setup
 
@@ -136,8 +104,6 @@ wrangler secret put ALLOWED_EMAILS --env development
 
 **Important**: Use the same `JWT_SECRET` across all services for authentication to work.
 
----
-
 ## Running Tests
 
 ### Run All E2E Tests
@@ -178,8 +144,6 @@ After running tests, view the HTML report:
 pnpm test:e2e:report
 ```
 
----
-
 ## Test Structure
 
 E2E tests are **co-located** with the code they test, following the pattern `*.e2e.spec.ts`:
@@ -208,8 +172,6 @@ serverless/
 - Easy to find and maintain
 - Clear ownership and context
 - No monolithic test directory
-
----
 
 ## Writing Tests
 
@@ -262,8 +224,6 @@ test('should wait for API call', async ({ page }) => {
 });
 ```
 
----
-
 ## Test Helpers
 
 ### `authenticateUser(page, email, otpCode?)`
@@ -281,8 +241,6 @@ Verifies all development workers are accessible. Throws an error if any are unhe
 ### `authenticatedRequest(page, url, options?)`
 
 Makes an authenticated API request using the user's auth token from localStorage/cookies.
-
----
 
 ## Configuration
 
@@ -307,8 +265,6 @@ Worker URLs are configured in `playwright.config.ts` and can be overridden via e
 - `E2E_CHAT_SIGNALING_URL`
 - `E2E_URL_SHORTENER_URL`
 - `E2E_FRONTEND_URL`
-
----
 
 ## Development Environment Setup
 
@@ -342,8 +298,6 @@ wrangler deployments list
 # View worker logs
 wrangler tail --env development
 ```
-
----
 
 ## Best Practices
 
@@ -421,8 +375,6 @@ test.afterEach(async ({ page }) => {
 });
 ```
 
----
-
 ## Troubleshooting
 
 ### Workers Not Accessible
@@ -459,8 +411,6 @@ pnpm deploy:dev:all
 1. Increase timeout in test: `test.setTimeout(60000)`
 2. Check network connectivity to workers
 3. Verify workers are responding: `curl https://worker-url/health`
-
----
 
 ## CI/CD Integration
 
@@ -508,8 +458,6 @@ jobs:
           path: playwright-report/
 ```
 
----
-
 ## Next Steps
 
 1. **Add more test coverage**: Create tests for critical user flows
@@ -518,24 +466,8 @@ jobs:
 4. **Set up CI/CD**: Automate E2E tests in your deployment pipeline
 5. **Monitor test stability**: Track flaky tests and improve reliability
 
----
-
 ## Resources
 
 - [Playwright Documentation](https://playwright.dev/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Wrangler CLI Reference](https://developers.cloudflare.com/workers/wrangler/)
-
----
-
-## Related Documentation
-
-- [E2E Environment Verification](./E2E_ENVIRONMENT_VERIFICATION.md) - Verify development environment setup
-- [E2E Test Structure](./E2E_TEST_STRUCTURE.md) - Test organization and structure
-- [E2E Quick Start](./E2E_QUICK_START.md) - Quick reference guide
-- [Development Deployment Setup](../04_DEPLOYMENT/DEVELOPMENT_DEPLOYMENT_SETUP.md) - Worker deployment configuration
-
----
-
-**Last Updated**: 2025-12-29
-

@@ -127,7 +127,7 @@ Ensure `app.js` loads after all dependencies:
 - ✅ Text Cycler (line 15)
 - ✅ Source Swaps (line 19)
 - ✅ UI Utils (line 29)
-- ✅ app.js loads last (line 35) ❓
+- ✅ app.js loads last (line 35) ⏳
 
 ## Code to Remove
 

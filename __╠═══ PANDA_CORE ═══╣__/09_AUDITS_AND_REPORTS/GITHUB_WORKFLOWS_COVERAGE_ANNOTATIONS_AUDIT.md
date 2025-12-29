@@ -1,8 +1,7 @@
 # GitHub Workflows Test Coverage Annotations Audit
 
-> **Comprehensive coverage annotations for all test-related workflows**
-
-**Date:** 2025-12-29
+**Date:** 2025-01-27  
+**Purpose:** Audit all GitHub workflows for test-related jobs and ensure proper annotations for files with test coverage, files without coverage, and files with defects
 
 ---
 
@@ -99,10 +98,56 @@ node scripts/annotate-coverage.js <coverage-file> <workspace-root> <service-name
 
 ### Deployment Workflows
 
-#### 7-14. All deployment workflows ✅
+#### 7. `deploy-otp-auth.yml` ✅
+- **Status**: Updated with coverage annotations
+- **Coverage Annotations Added For:**
+  - OTP Auth Service coverage
+- **Annotation Step**: 1 new step added after coverage generation
+
+#### 8. `deploy-mods-api.yml` ✅
 - **Status**: Updated with coverage annotations and defect detection
 - **Coverage Annotations Added For:**
-  - Service-specific coverage (if tests exist)
+  - Mods API coverage (if tests exist)
+- **Defect Annotations**: Added for missing test scripts
+- **Annotation Steps**: 2 new steps added (coverage generation + annotation)
+
+#### 9. `deploy-customer-api.yml` ✅
+- **Status**: Updated with coverage annotations and defect detection
+- **Coverage Annotations Added For:**
+  - Customer API coverage (if tests exist)
+- **Defect Annotations**: Added for missing test scripts
+- **Annotation Steps**: 2 new steps added (coverage generation + annotation)
+
+#### 10. `deploy-game-api.yml` ✅
+- **Status**: Updated with coverage annotations and defect detection
+- **Coverage Annotations Added For:**
+  - Game API coverage (if tests exist)
+- **Defect Annotations**: Added for missing test scripts
+- **Annotation Steps**: 2 new steps added (coverage generation + annotation)
+
+#### 11. `deploy-twitch-api.yml` ✅
+- **Status**: Updated with coverage annotations and defect detection
+- **Coverage Annotations Added For:**
+  - Twitch API coverage (if tests exist)
+- **Defect Annotations**: Added for missing test scripts
+- **Annotation Steps**: 2 new steps added (coverage generation + annotation)
+
+#### 12. `deploy-mods-hub.yml` ✅
+- **Status**: Updated with coverage annotations
+- **Coverage Annotations Added For:**
+  - Root/Client coverage
+- **Annotation Step**: 1 new step added after coverage generation
+
+#### 13. `deploy-storybook.yml` ✅
+- **Status**: Updated with coverage annotations
+- **Coverage Annotations Added For:**
+  - Root/Client coverage
+- **Annotation Step**: 1 new step added after coverage generation
+
+#### 14. `deploy-url-shortener.yml` ✅
+- **Status**: Updated with coverage annotations and defect detection
+- **Coverage Annotations Added For:**
+  - URL Shortener coverage (if tests exist)
 - **Defect Annotations**: Added for missing test scripts
 - **Annotation Steps**: 2 new steps added (coverage generation + annotation)
 
@@ -447,6 +492,3 @@ The annotation system is now fully operational and will provide comprehensive vi
 ---
 
 **Audit Complete** ✅
-
-**Last Updated**: 2025-12-29
-

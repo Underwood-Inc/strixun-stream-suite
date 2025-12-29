@@ -1,16 +1,8 @@
 # E2E Test Structure - Co-Located Architecture
 
-> **E2E tests are co-located with the code they test for easy discovery and maintenance**
-
-**Date:** 2025-12-29
-
----
-
 ## Overview
 
 E2E tests are **co-located** with the code they test, following the naming pattern `*.e2e.spec.ts` or `*.e2e.test.ts`. This ensures tests live next to the code they verify, making them easy to find and maintain.
-
----
 
 ## Directory Structure
 
@@ -47,8 +39,6 @@ serverless/
     └── health.e2e.spec.ts            # URL Shortener health checks
 ```
 
----
-
 ## Benefits
 
 1. **Co-location**: Tests live next to the code they test
@@ -57,16 +47,12 @@ serverless/
 4. **No Monolithic Directory**: No single `e2e/` directory to maintain
 5. **Consistent Pattern**: Follows the same pattern as unit/integration tests
 
----
-
 ## Naming Convention
 
 - **E2E tests**: `*.e2e.spec.ts` or `*.e2e.test.ts`
 - **Unit tests**: `*.test.ts`
 - **Integration tests**: `*.integration.test.ts`
 - **Live tests**: `*.live.test.ts`
-
----
 
 ## Shared Utilities
 
@@ -82,8 +68,6 @@ import { verifyWorkersHealth, authenticateUser } from '../../../serverless/share
 import { test, expect } from '../../../serverless/shared/e2e/fixtures';
 ```
 
----
-
 ## Playwright Configuration
 
 Playwright automatically discovers all E2E tests using the pattern:
@@ -93,8 +77,6 @@ testMatch: /.*\.e2e\.(spec|test)\.(ts|js)/
 ```
 
 This finds all `*.e2e.spec.ts` and `*.e2e.test.ts` files throughout the codebase.
-
----
 
 ## Adding New E2E Tests
 
@@ -113,8 +95,6 @@ This finds all `*.e2e.spec.ts` and `*.e2e.test.ts` files throughout the codebase
 
 4. **Run tests**: `pnpm test:e2e`
 
----
-
 ## Migration from Monolithic Structure
 
 If you have existing tests in a monolithic `e2e/` directory:
@@ -124,8 +104,6 @@ If you have existing tests in a monolithic `e2e/` directory:
 3. Rename to `*.e2e.spec.ts`
 4. Update imports to use shared utilities from `serverless/shared/e2e/`
 5. Delete the old `e2e/` directory
-
----
 
 ## Examples
 
@@ -163,15 +141,7 @@ test.describe('OTP Auth Service Health', () => {
 });
 ```
 
----
-
 ## See Also
 
-- [E2E Testing Guide](./E2E_TESTING_GUIDE.md) - Complete E2E testing guide
-- [E2E Quick Start](./E2E_QUICK_START.md) - Quick reference
-- [E2E Environment Verification](./E2E_ENVIRONMENT_VERIFICATION.md) - Verify development environment setup
-
----
-
-**Last Updated**: 2025-12-29
-
+- [E2E_TESTING_GUIDE.md](./E2E_TESTING_GUIDE.md) - Complete E2E testing guide
+- [e2E_QUICK_START.md](./e2E_QUICK_START.md) - Quick reference

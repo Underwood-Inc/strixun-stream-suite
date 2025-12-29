@@ -1,20 +1,13 @@
 # Development Worker Deployment Setup
 
-> **Complete guide for deploying workers to development environment for E2E testing**
-
-**Date:** 2025-12-29
-
----
+This document explains how to set up and deploy workers to the development environment for E2E testing.
 
 ## Overview
 
 All workers now support **development** and **production** environments. Development deployments are used for:
-
 - E2E testing (to avoid affecting production data)
 - Local development with live services
 - Testing new features before production
-
----
 
 ## Worker Configuration
 
@@ -56,8 +49,6 @@ id = "production-kv-id"  # Can use same KV for testing, or separate test KV
 ENVIRONMENT = "production"
 ```
 
----
-
 ## Deployment
 
 ### Deploy All Workers to Development
@@ -84,8 +75,6 @@ wrangler deploy --env development
 pnpm deploy:dev:all:dry-run
 ```
 
----
-
 ## Setting Development Secrets
 
 After deploying to development, set secrets for the development environment:
@@ -107,8 +96,6 @@ wrangler secret put ALLOWED_EMAILS --env development
 
 **Important**: Use the **same `JWT_SECRET`** across all services in development for authentication to work.
 
----
-
 ## Development Worker URLs
 
 When deployed to development, workers are accessible at:
@@ -122,8 +109,6 @@ When deployed to development, workers are accessible at:
 - `https://strixun-url-shortener-dev.strixuns-script-suite.workers.dev`
 
 Note the `-dev` suffix in the worker name.
-
----
 
 ## E2E Test Configuration
 
@@ -141,8 +126,6 @@ const WORKER_URLS = {
 - No production data is affected
 - Tests run against isolated development environment
 - Safe testing of new features
-
----
 
 ## Verifying Development Deployments
 
@@ -174,8 +157,6 @@ cd serverless/mods-api
 wrangler tail --env development
 ```
 
----
-
 ## Production vs Development
 
 | Aspect | Production | Development |
@@ -186,8 +167,6 @@ wrangler tail --env development
 | **Routes** | Custom domains (idling.app) | workers.dev subdomain only |
 | **Secrets** | Production secrets | Development secrets (can be same) |
 | **Purpose** | Live production traffic | E2E testing, development |
-
----
 
 ## Troubleshooting
 
@@ -221,8 +200,6 @@ wrangler tail --env development
    ```
 3. Update `wrangler.toml` development section with new namespace ID
 
----
-
 ## Best Practices
 
 1. **Use Same JWT_SECRET**: All services must use the same `JWT_SECRET` in development
@@ -230,8 +207,6 @@ wrangler tail --env development
 3. **Regular Updates**: Keep development deployments in sync with production code
 4. **Clean Up**: Periodically clean up test data in development KV namespaces
 5. **Monitor Costs**: Development deployments count toward Cloudflare Workers usage
-
----
 
 ## CI/CD Integration
 
@@ -247,15 +222,7 @@ For CI/CD, deploy to development before running E2E tests:
   run: pnpm test:e2e
 ```
 
----
-
 ## See Also
 
-- [E2E Testing Guide](../08_TESTING/E2E_TESTING_GUIDE.md) - Complete E2E testing guide
-- [Workflow Updates Summary](./WORKFLOW_UPDATES_SUMMARY.md) - GitHub Actions workflow updates
-- [E2E Environment Verification](../08_TESTING/E2E_ENVIRONMENT_VERIFICATION.md) - Verify development environment setup
-
----
-
-**Last Updated**: 2025-12-29
-
+- [E2E_TESTING_GUIDE.md](../08_TESTING/E2E_TESTING_GUIDE.md) - Complete E2E testing guide
+- [mods-hub/E2E_TESTING.md](../../mods-hub/E2E_TESTING.md) - Mods Hub E2E testing
