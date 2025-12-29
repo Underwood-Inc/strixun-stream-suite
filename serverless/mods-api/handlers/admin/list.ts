@@ -164,17 +164,17 @@ export async function handleListAllMods(
 
         // Fetch display names for all unique authors
         // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
+        // If auth API times out or fails, we still have the stored value
         const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId))];
         const { fetchDisplayNamesByUserIds } = await import('../../utils/displayName.js');
         const displayNames = await fetchDisplayNamesByUserIds(uniqueAuthorIds, env);
         
         // Map display names to mods (use fetched displayName if available, otherwise keep stored one)
         mods.forEach(mod => {
+            const storedDisplayName = mod.authorDisplayName; // Preserve stored value
             const fetchedDisplayName = displayNames.get(mod.authorId);
-            if (fetchedDisplayName) {
-                mod.authorDisplayName = fetchedDisplayName;
-            }
-            // If no fetched displayName and no stored one, leave as null (UI will show "Unknown User")
+            // Use fetched value if available, otherwise fall back to stored value
+            mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
         });
 
         // Paginate
