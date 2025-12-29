@@ -216,16 +216,32 @@ export async function wrapResponseWithIntegrity(
       hasKeyphrase: !!env.NETWORK_INTEGRITY_KEYPHRASE
     });
     
-    // Only add integrity header for service-to-service calls
+    // Check if this is an image response (should always have integrity headers)
+    const contentType = response.headers.get('content-type') || '';
+    const isImageResponse = contentType.startsWith('image/') || 
+                           contentType === 'image/svg+xml' ||
+                           request.url.includes('/badge') ||
+                           request.url.includes('/thumbnail') ||
+                           request.url.includes('/og-image');
+    
+    // Only add integrity header for service-to-service calls OR image responses
     const isServiceCall = isServiceToServiceCall(request, auth);
-    if (!isServiceCall) {
-        console.log('[wrapResponseWithIntegrity] Not a service-to-service call, skipping integrity header', {
+    if (!isServiceCall && !isImageResponse) {
+        console.log('[wrapResponseWithIntegrity] Not a service-to-service call and not an image, skipping integrity header', {
             hasAuth: !!auth,
             userId: auth?.userId,
             hasJwtToken: !!auth?.jwtToken,
-            serviceKey: request.headers.get('X-Service-Key') ? 'present' : 'missing'
+            serviceKey: request.headers.get('X-Service-Key') ? 'present' : 'missing',
+            contentType
         });
         return response;
+    }
+    
+    if (isImageResponse && !isServiceCall) {
+        console.log('[wrapResponseWithIntegrity] Image response detected, adding integrity header', {
+            contentType,
+            url: request.url
+        });
     }
     
     console.log('[wrapResponseWithIntegrity] Service call confirmed, proceeding with integrity header');

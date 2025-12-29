@@ -297,8 +297,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const response = await handleThumbnail(request, env, modId, auth);
             console.log('[Router] Thumbnail response:', { status: response.status, contentType: response.headers.get('content-type') });
-            // Don't encrypt binary image data
-            return { response, customerId: auth?.customerId || null };
+            // Use wrapWithEncryption to add integrity headers (won't encrypt image data)
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: GET /mods/:slug/og-image or GET /:slug/og-image - Get Open Graph preview image
@@ -310,8 +310,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleOGImage(request, env, modId, auth);
-            // Don't encrypt image data
-            return { response, customerId: auth?.customerId || null };
+            // Use wrapWithEncryption to add integrity headers (won't encrypt image data)
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // Route: GET /mods/:slug/versions/:versionId/download or GET /:slug/versions/:versionId/download - Download version
@@ -427,8 +427,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleBadge } = await import('../handlers/versions/badge.js');
             const response = await handleBadge(request, env, modId, versionId, auth);
-            // Badges are SVG images - DO NOT encrypt
-            return { response, customerId: auth?.customerId || null };
+            // Use wrapWithEncryption to add integrity headers (won't encrypt SVG image data)
+            return await wrapWithEncryption(response, auth || undefined, request, env);
         }
 
         // 404 for unknown mod routes
