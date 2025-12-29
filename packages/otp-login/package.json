@@ -11,16 +11,14 @@
       "types": "./otp-login.d.ts",
       "default": "./core.ts"
     },
-    "./dist/svelte": "./dist/svelte/index.js",
     "./dist/react": "./dist/react/index.js",
     "./dist/react/otp-login.css": "./dist/react/otp-login.css",
     "./dist/js": "./dist/js/index.js"
   },
   "scripts": {
-    "build": "node scripts/build-vanilla.js && node scripts/build-react.js && node scripts/build-svelte.js",
+    "build": "node scripts/build-vanilla.js && node scripts/build-react.js",
     "build:vanilla": "node scripts/build-vanilla.js",
     "build:react": "node scripts/build-react.js",
-    "build:svelte": "node scripts/build-svelte.js",
     "build:all": "pnpm build",
     "prebuild": "node scripts/clean-dist.js",
     "test": "vitest run",

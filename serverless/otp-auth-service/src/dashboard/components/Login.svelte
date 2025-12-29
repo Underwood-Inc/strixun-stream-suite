@@ -1,7 +1,7 @@
 <script lang="ts">
   import { apiClient } from '$lib/api-client';
-  import type { LoginSuccessData } from '@strixun/otp-login/dist/svelte';
-  import OtpLogin from '@strixun/otp-login/dist/svelte';
+  import type { LoginSuccessData } from '@strixun/otp-login';
+  import OtpLogin from '@strixun/otp-login/svelte/OtpLogin.svelte';
 
   // Get API URL - dashboard uses production worker in dev for testing real workflow
   // In production, this would be the same origin

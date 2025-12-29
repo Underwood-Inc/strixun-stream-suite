@@ -1,6 +1,6 @@
 <script lang="ts">
   import { apiClient } from '$lib/api-client';
-  import type { LoginSuccessData } from '@strixun/otp-login/dist/svelte';
+  import type { LoginSuccessData } from '@strixun/otp-login';
 
   // Get API URL - same logic as Login component
   function getApiUrl(): string {
