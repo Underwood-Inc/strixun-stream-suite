@@ -9,6 +9,11 @@ import { colors, spacing } from '../../theme';
 import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
 import { GamesPicker } from './GamesPicker';
 import { useAdminSettings } from '../../hooks/useMods';
+import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
+
+// File size limits (must match server-side limits in serverless/mods-api/utils/upload-limits.ts)
+const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
+const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from shared framework)
 
 // Wizard Container
 const WizardContainer = styled.div`
@@ -446,6 +451,8 @@ export function ModUploadWizard({
     const [isDragging, setIsDragging] = useState(false);
     const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+    const [fileSizeError, setFileSizeError] = useState<string | null>(null);
+    const [thumbnailSizeError, setThumbnailSizeError] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const thumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -469,7 +476,7 @@ export function ModUploadWizard({
     const validateStep = (step: number): boolean => {
         switch (step) {
             case 1:
-                return !!(file && title.trim() && category);
+                return !!(file && !fileSizeError && title.trim() && category && !thumbnailSizeError);
             case 2:
                 return !!(version.trim());
             case 3:
@@ -519,7 +526,14 @@ export function ModUploadWizard({
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile) {
-            setFile(droppedFile);
+            const validation = validateFileSize(droppedFile.size, MAX_MOD_FILE_SIZE);
+            if (validation.valid) {
+                setFile(droppedFile);
+                setFileSizeError(null);
+            } else {
+                setFileSizeError(validation.error || `File size exceeds maximum allowed size of ${formatFileSize(MAX_MOD_FILE_SIZE)}`);
+                setFile(null);
+            }
         }
     }, []);
 
@@ -540,8 +554,20 @@ export function ModUploadWizard({
         e.stopPropagation();
         setIsThumbnailDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && droppedFile.type.startsWith('image/')) {
-            setThumbnail(droppedFile);
+        if (droppedFile) {
+            if (!droppedFile.type.startsWith('image/')) {
+                setThumbnailSizeError('File must be an image');
+                setThumbnail(null);
+                return;
+            }
+            const validation = validateFileSize(droppedFile.size, MAX_THUMBNAIL_SIZE);
+            if (validation.valid) {
+                setThumbnail(droppedFile);
+                setThumbnailSizeError(null);
+            } else {
+                setThumbnailSizeError(validation.error || `Thumbnail size exceeds maximum allowed size of ${formatFileSize(MAX_THUMBNAIL_SIZE)}`);
+                setThumbnail(null);
+            }
         }
     }, []);
 
@@ -659,7 +685,7 @@ export function ModUploadWizard({
                                 {file ? (
                                     <FileInfo>
                                         <FileName>{file.name}</FileName>
-                                        <FileSize>({(file.size / 1024 / 1024).toFixed(2)} MB)</FileSize>
+                                        <FileSize>({formatFileSize(file.size)})</FileSize>
                                         <RemoveButton 
                                             type="button"
                                             onClick={(e) => {
@@ -683,8 +709,44 @@ export function ModUploadWizard({
                                 ref={fileInputRef}
                                 type="file"
                                 accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
-                                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                onChange={(e) => {
+                                    const selectedFile = e.target.files?.[0] || null;
+                                    if (selectedFile) {
+                                        const validation = validateFileSize(selectedFile.size, MAX_MOD_FILE_SIZE);
+                                        if (validation.valid) {
+                                            setFile(selectedFile);
+                                            setFileSizeError(null);
+                                        } else {
+                                            setFileSizeError(validation.error || `File size exceeds maximum allowed size of ${formatFileSize(MAX_MOD_FILE_SIZE)}`);
+                                            setFile(null);
+                                            // Reset input so user can try again
+                                            e.target.value = '';
+                                        }
+                                    } else {
+                                        setFile(null);
+                                        setFileSizeError(null);
+                                    }
+                                }}
                             />
+                            {fileSizeError && (
+                                <div style={{ 
+                                    marginTop: spacing.xs, 
+                                    padding: spacing.xs, 
+                                    background: `${colors.danger}20`, 
+                                    color: colors.danger, 
+                                    borderRadius: 4,
+                                    fontSize: '0.875rem'
+                                }}>
+                                    {fileSizeError}
+                                </div>
+                            )}
+                            <div style={{ 
+                                marginTop: spacing.xs, 
+                                fontSize: '0.75rem', 
+                                color: colors.textMuted 
+                            }}>
+                                Maximum file size: {formatFileSize(MAX_MOD_FILE_SIZE)}
+                            </div>
                         </div>
                         <div style={{ flex: '1', minWidth: 0 }}>
                             <Label style={{ marginBottom: spacing.xs }}>Thumbnail (optional)</Label>
@@ -726,8 +788,49 @@ export function ModUploadWizard({
                                 ref={thumbnailInputRef}
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => setThumbnail(e.target.files?.[0] || null)}
+                                onChange={(e) => {
+                                    const selectedFile = e.target.files?.[0] || null;
+                                    if (selectedFile) {
+                                        if (!selectedFile.type.startsWith('image/')) {
+                                            setThumbnailSizeError('File must be an image');
+                                            setThumbnail(null);
+                                            e.target.value = '';
+                                            return;
+                                        }
+                                        const validation = validateFileSize(selectedFile.size, MAX_THUMBNAIL_SIZE);
+                                        if (validation.valid) {
+                                            setThumbnail(selectedFile);
+                                            setThumbnailSizeError(null);
+                                        } else {
+                                            setThumbnailSizeError(validation.error || `Thumbnail size exceeds maximum allowed size of ${formatFileSize(MAX_THUMBNAIL_SIZE)}`);
+                                            setThumbnail(null);
+                                            e.target.value = '';
+                                        }
+                                    } else {
+                                        setThumbnail(null);
+                                        setThumbnailSizeError(null);
+                                    }
+                                }}
                             />
+                            {thumbnailSizeError && (
+                                <div style={{ 
+                                    marginTop: spacing.xs, 
+                                    padding: spacing.xs, 
+                                    background: `${colors.danger}20`, 
+                                    color: colors.danger, 
+                                    borderRadius: 4,
+                                    fontSize: '0.875rem'
+                                }}>
+                                    {thumbnailSizeError}
+                                </div>
+                            )}
+                            <div style={{ 
+                                marginTop: spacing.xs, 
+                                fontSize: '0.75rem', 
+                                color: colors.textMuted 
+                            }}>
+                                Maximum thumbnail size: {formatFileSize(MAX_THUMBNAIL_SIZE)}
+                            </div>
                         </div>
                     </div>
                 </FormGroup>

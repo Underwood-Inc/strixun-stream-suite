@@ -121,8 +121,21 @@ export function useUploadMod() {
             });
         },
         onError: (error: Error) => {
+            // Extract file size error messages from API responses
+            let errorMessage = error.message || 'Failed to upload mod';
+            
+            // Check if error contains file size information
+            if (errorMessage.includes('File size') || errorMessage.includes('exceeds maximum')) {
+                // Error message is already user-friendly from the API
+                errorMessage = errorMessage;
+            } else if (errorMessage.includes('File Must Be Encrypted')) {
+                errorMessage = 'File encryption error. Please try uploading again.';
+            } else if (errorMessage.includes('413') || errorMessage.includes('Payload Too Large')) {
+                errorMessage = 'File size exceeds maximum allowed size. Please use a smaller file.';
+            }
+            
             addNotification({
-                message: error.message || 'Failed to upload mod',
+                message: errorMessage,
                 type: 'error',
             });
         },
