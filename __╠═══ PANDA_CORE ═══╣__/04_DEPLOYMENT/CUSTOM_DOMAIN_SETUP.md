@@ -1,8 +1,8 @@
 # Custom Domain Setup Guide - idling.app
 
-> **Complete guide for setting up custom domains for all Cloudflare Workers**
+This guide covers setting up custom domains for all Cloudflare Workers using `idling.app`.
 
-**Date:** 2025-12-29
+**Last Updated:** 2025-12-29
 
 ---
 
@@ -44,37 +44,31 @@ wrangler deploy
 # Chat Signaling
 cd serverless/chat-signaling
 wrangler deploy
-
-# Mods API
-cd serverless/mods-api
-wrangler deploy
 ```
 
 ### 2. Verify Routes in Cloudflare Dashboard
 
 After deployment, verify routes are active:
 
-1. Go to **Cloudflare Dashboard** → **Workers & Pages**
+1. Go to **Cloudflare Dashboard** -> **Workers & Pages**
 2. Select each worker
-3. Go to **Settings** → **Triggers** → **Routes**
+3. Go to **Settings** -> **Triggers** -> **Routes**
 4. Verify the custom domain routes are listed:
    - `api.idling.app/*`
    - `auth.idling.app/*` (if using standalone auth service)
    - `s.idling.app/*`
    - `chat.idling.app/*`
-   - `mods-api.idling.app/*`
 
 ### 3. DNS Configuration
 
 Cloudflare automatically manages DNS records for custom domains. Verify in:
 
-1. **Cloudflare Dashboard** → **DNS** → **Records**
+1. **Cloudflare Dashboard** -> **DNS** -> **Records**
 2. Look for CNAME records:
-   - `api` → `strixun-twitch-api.strixuns-script-suite.workers.dev`
-   - `auth` → `otp-auth-service.strixuns-script-suite.workers.dev`
-   - `s` → `strixun-url-shortener.strixuns-script-suite.workers.dev`
-   - `chat` → `strixun-chat-signaling.strixuns-script-suite.workers.dev`
-   - `mods-api` → `strixun-mods-api.strixuns-script-suite.workers.dev`
+   - `api` -> `strixun-twitch-api.strixuns-script-suite.workers.dev`
+   - `auth` -> `otp-auth-service.strixuns-script-suite.workers.dev`
+   - `s` -> `strixun-url-shortener.strixuns-script-suite.workers.dev`
+   - `chat` -> `strixun-chat-signaling.strixuns-script-suite.workers.dev`
 
 **Note:** DNS records are automatically created by Cloudflare when you deploy with routes configured.
 
@@ -133,18 +127,18 @@ curl https://design.idling.app
 The following files have been updated with custom domain configuration:
 
 ### Workers
-- ✅ `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
-- ✅ `serverless/otp-auth-service/wrangler.toml` - Auth service
-- ✅ `serverless/url-shortener/wrangler.toml` - URL shortener
-- ✅ `serverless/chat-signaling/wrangler.toml` - Chat signaling
-- ✅ `serverless/mods-api/wrangler.toml` - Mods API worker
+- [SUCCESS] `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
+- [SUCCESS] `serverless/otp-auth-service/wrangler.toml` - Auth service
+- [SUCCESS] `serverless/url-shortener/wrangler.toml` - URL shortener
+- [SUCCESS] `serverless/chat-signaling/wrangler.toml` - Chat signaling
+- [SUCCESS] `serverless/mods-api/wrangler.toml` - Mods API worker
 
 ### Pages (Frontend)
-- ✅ `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
-- ✅ `shared-components/` - Storybook component library
+- [SUCCESS] `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
+- [SUCCESS] `shared-components/` - Storybook component library
 
 ### Frontend Configuration
-- ✅ `config.js` - Frontend configuration (hardcoded fallbacks)
+- [SUCCESS] `config.js` - Frontend configuration (hardcoded fallbacks)
 
 ---
 
@@ -208,5 +202,4 @@ For production, you can:
 
 ---
 
-**Last Updated**: 2025-12-29
-
+**Last Updated:** 2025-12-29
