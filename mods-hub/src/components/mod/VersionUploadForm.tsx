@@ -7,6 +7,7 @@ import { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { VersionUploadRequest } from '../../types/mod';
+import { useAdminSettings } from '../../hooks/useMods';
 
 const Form = styled.form`
   display: flex;
@@ -113,6 +114,7 @@ interface VersionUploadFormProps {
 }
 
 export function VersionUploadForm({ modId: _modId, onSubmit, isLoading }: VersionUploadFormProps) {
+    const { data: settings } = useAdminSettings();
     const [version, setVersion] = useState('');
     const [changelog, setChangelog] = useState('');
     const [gameVersions, setGameVersions] = useState('');
@@ -151,9 +153,15 @@ export function VersionUploadForm({ modId: _modId, onSubmit, isLoading }: Versio
                     ref={fileInputRef}
                     type="file"
                     required
+                    accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.zip,.json,.txt,.xml,.yaml,.yml'}
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                 />
                 {file && <FileInfo>Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</FileInfo>}
+                {!file && (
+                    <FileInfo style={{ fontSize: '0.75rem', color: colors.textMuted }}>
+                        Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .java, .zip, .json, .txt, .xml, .yaml, .yml'}
+                    </FileInfo>
+                )}
             </FormGroup>
 
             <FormGroup>

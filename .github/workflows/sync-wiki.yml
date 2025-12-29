@@ -36,12 +36,12 @@ concurrency:
   cancel-in-progress: false
 
 # Sets permissions for GITHUB_TOKEN
-# GITHUB_TOKEN automatically has permissions to push to the wiki
-# Note: Wiki permissions are separate from repository permissions
+# IMPORTANT: For wiki access, the repository must have "Read and write permissions" enabled
+# Go to: Settings → Actions → General → Workflow permissions → Read and write permissions
+# Wiki access is granted automatically when workflow has write permissions
 permissions:
-  contents: read
-  # Wiki write permissions are automatically granted to GITHUB_TOKEN
-  # No additional permissions needed for wiki access
+  contents: write  # Write permission required for wiki access
+  # Wiki write permissions are automatically granted when contents: write is set
 
 jobs:
   sync-wiki:
@@ -96,7 +96,7 @@ jobs:
           # No custom token needed - the built-in token works for wiki access
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🚀 Starting wiki sync..."
+          echo "[INFO] Starting wiki sync..."
           echo ""
           echo "Repository: ${{ github.repository }}"
           echo "Commit: ${{ github.sha }}"
@@ -105,45 +105,62 @@ jobs:
           
           # Verify token is set (should always be set by GitHub Actions)
           if [ -z "$GITHUB_TOKEN" ]; then
-            echo "❌ ERROR: GITHUB_TOKEN is not set!"
+            echo "[ERROR] GITHUB_TOKEN is not set!"
             echo ""
             echo "GITHUB_TOKEN should be automatically provided by GitHub Actions."
             echo "If you're seeing this error, check repository settings:"
-            echo "1. Go to Settings → Actions → General → Workflow permissions"
-            echo "2. Ensure 'Read and write permissions' is enabled"
-            echo "3. The built-in GITHUB_TOKEN will then have wiki write access"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/actions"
+            echo "2. Scroll to 'Workflow permissions' section"
+            echo "3. Ensure 'Read and write permissions' is selected (NOT 'Read repository contents')"
+            echo "4. Click 'Save' and re-run the workflow"
             exit 1
           fi
+          
+          echo "[INFO] GITHUB_TOKEN is set (length: ${#GITHUB_TOKEN} characters)"
+          echo "[INFO] Repository: ${{ github.repository }}"
+          echo "[INFO] Wiki URL: https://github.com/${{ github.repository }}.wiki.git"
+          echo ""
           
           # Run the migration script using node
           node scripts/migrate-wiki.js || {
             echo ""
-            echo "❌ Wiki sync failed!"
+            echo "[ERROR] Wiki sync failed!"
             echo ""
-            echo "Common issues:"
-            echo "1. Wiki repository may not exist yet - create it by:"
-            echo "   - Going to repository Settings → Features → Wikis"
-            echo "   - Enable wikis and save"
+            echo "Common issues and fixes:"
+            echo ""
+            echo "1. WORKFLOW PERMISSIONS (Most Common Fix):"
+            echo "   - Go to: https://github.com/${{ github.repository }}/settings/actions"
+            echo "   - Scroll to 'Workflow permissions' section"
+            echo "   - Select 'Read and write permissions' (NOT 'Read repository contents')"
+            echo "   - Click 'Save'"
+            echo "   - Re-run this workflow"
+            echo ""
+            echo "2. WIKI NOT ENABLED:"
+            echo "   - Go to: https://github.com/${{ github.repository }}/settings"
+            echo "   - Click 'Features' in the left sidebar"
+            echo "   - Find 'Wikis' section"
+            echo "   - Check 'Wikis' checkbox and save"
             echo "   - Then re-run this workflow"
             echo ""
-            echo "2. Workflow permissions - ensure the workflow has write access:"
-            echo "   - Go to Settings → Actions → General → Workflow permissions"
-            echo "   - Select 'Read and write permissions'"
-            echo "   - The built-in GITHUB_TOKEN will automatically have wiki access"
-            echo ""
-            echo "3. If issues persist, check the wiki repository exists:"
+            echo "3. VERIFY WIKI EXISTS:"
             echo "   - Visit: https://github.com/${{ github.repository }}/wiki"
-            echo "   - If it doesn't exist, enable wikis in repository settings"
+            echo "   - If you see 404, the wiki is not enabled (see step 2)"
+            echo ""
+            echo "4. TOKEN PERMISSIONS:"
+            echo "   - The GITHUB_TOKEN should have wiki access automatically"
+            echo "   - But only if workflow permissions are set to 'Read and write'"
+            echo "   - Check repository settings (step 1) first"
+            echo ""
             exit 1
           }
           
           echo ""
-          echo "✅ Wiki sync completed!"
+          echo "[SUCCESS] Wiki sync completed!"
       
       - name: Summary
         if: steps.check-changes.outputs.should_sync == 'true'
         run: |
-          echo "## 📚 Wiki Sync Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "## [INFO] Wiki Sync Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Documentation has been synced to the GitHub wiki." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -155,5 +172,5 @@ jobs:
       - name: Skip message
         if: steps.check-changes.outputs.should_sync == 'false'
         run: |
-          echo "⏭️ No markdown files were changed in this commit, skipping wiki sync."
+          echo "[INFO] No markdown files were changed in this commit, skipping wiki sync."
 

@@ -119,10 +119,9 @@ export async function handleUploadVersion(
             });
         }
 
-        // SECURITY: Files are already encrypted by the client
-        // Store encrypted files in R2 as-is (encryption at rest)
-        // Files are decrypted on-the-fly during download
-        // Support both binary encryption (v4) and legacy JSON encryption (v3)
+        // Validate file extension
+        const { getAllowedFileExtensions } = await import('../admin/settings.js');
+        const allowedExtensions = await getAllowedFileExtensions(env);
         
         let originalFileName = file.name;
         
@@ -130,6 +129,36 @@ export async function handleUploadVersion(
         if (originalFileName.endsWith('.encrypted')) {
             originalFileName = originalFileName.slice(0, -10); // Remove '.encrypted'
         }
+        
+        // Get file extension
+        const fileExtension = originalFileName.includes('.') 
+            ? originalFileName.substring(originalFileName.lastIndexOf('.'))
+            : '';
+        
+        // Validate extension
+        if (!fileExtension || !allowedExtensions.includes(fileExtension.toLowerCase())) {
+            const rfcError = createError(
+                request, 
+                400, 
+                'Invalid File Type', 
+                `File type "${fileExtension}" is not allowed. Allowed extensions: ${allowedExtensions.join(', ')}`
+            );
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // SECURITY: Files are already encrypted by the client
+        // Store encrypted files in R2 as-is (encryption at rest)
+        // Files are decrypted on-the-fly during download
+        // Support both binary encryption (v4) and legacy JSON encryption (v3)
         
         // Get JWT token for temporary decryption (to calculate hash)
         const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';

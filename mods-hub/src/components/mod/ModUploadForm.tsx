@@ -7,6 +7,7 @@ import { useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
+import { useAdminSettings } from '../../hooks/useMods';
 
 const Form = styled.form`
   display: flex;
@@ -255,6 +256,7 @@ export function ModUploadForm({
     isLoading,
     initialData 
 }: ModUploadFormProps) {
+    const { data: settings } = useAdminSettings();
     const [title, setTitle] = useState(initialData?.title || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [category, setCategory] = useState<ModCategory>(initialData?.category || 'script');
@@ -405,7 +407,7 @@ export function ModUploadForm({
                     ) : (
                         <>
                             <div>📁 Drop mod file here or click to browse</div>
-                            <DragDropText>Supports .lua, .js, .zip, and other mod file formats</DragDropText>
+                            <DragDropText>Supports .lua, .js, .java, .zip, and other mod file formats</DragDropText>
                         </>
                     )}
                 </DragDropZone>
@@ -572,6 +574,7 @@ export function ModUploadForm({
                             <Label>Variant File</Label>
                             <Input
                                 type="file"
+                                accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.zip,.json,.txt,.xml,.yaml,.yml'}
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
