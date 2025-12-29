@@ -2,7 +2,7 @@
 "strixun-stream-suite": minor
 "strixun-twitch-api": minor
 "strixun-chat-signaling": minor
-"otp-auth-service": minor
+"@strixun/otp-auth-service": minor
 "strixun-url-shortener": minor
 ---
 

@@ -1,5 +1,5 @@
 ---
-"otp-auth-service": patch
+"@strixun/otp-auth-service": patch
 "strixun-stream-suite": patch
 ---
 
