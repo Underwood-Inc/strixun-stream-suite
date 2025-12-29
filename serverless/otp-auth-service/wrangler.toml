@@ -32,10 +32,8 @@ CUSTOMER_API_URL = "https://customer-api.idling.app"
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
-# Production routes
-[[env.production.routes]]
-pattern = "auth.idling.app/*"
-zone_name = "idling.app"
+# Routes are configured in Cloudflare Dashboard, not here
+# This prevents creating environment-specific workers
 
 # Development environment
 [env.development]
@@ -49,10 +47,8 @@ CUSTOMER_API_URL = "https://strixun-customer-api-dev.strixuns-script-suite.worke
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
-# Development routes
-[[env.development.routes]]
-pattern = "auth.idling.app/*"
-zone_name = "idling.app"
+# Routes are configured in Cloudflare Dashboard, not here
+# This prevents creating environment-specific workers
 
 # Default to production for backward compatibility
 [vars]
@@ -64,10 +60,8 @@ CUSTOMER_API_URL = "https://customer-api.idling.app"
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
-# Default routes (production)
-routes = [
-  { pattern = "auth.idling.app/*", zone_name = "idling.app" }
-]
+# Routes are configured in Cloudflare Dashboard, not in wrangler.toml
+# This ensures we deploy to the base worker name (otp-auth-service) without environment suffixes
 
 # Alternative: Configure in Cloudflare Dashboard (recommended for production):
 # 1. Go to Cloudflare Dashboard → Workers & Pages → otp-auth-service
