@@ -8,7 +8,7 @@
  */
 
 import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
-import { initializeServiceTypes } from '../shared/types.js';
+import { initializeServiceTypes } from '@strixun/types';
 import { route } from './router/routes.js';
 
 /**

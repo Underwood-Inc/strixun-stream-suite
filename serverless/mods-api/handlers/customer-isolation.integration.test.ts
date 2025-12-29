@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { calculateRequestIntegrity } from '../../shared/service-client/integrity.js';
-import { createJWT } from '../../otp-auth-service/utils/crypto.js';
+import { calculateRequestIntegrity } from '@strixun/service-client/integrity';
+import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 import { authenticateRequest } from '../utils/auth.js';
 
 // Mock external dependencies

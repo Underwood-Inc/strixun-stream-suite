@@ -12,7 +12,7 @@ import { verifyApiKey } from '../services/api-key.js';
 import { verifyJWT, getJWTSecret, hashEmail } from '../utils/crypto.js';
 import { getCustomerKey, getCustomerByEmail } from '../services/customer.js';
 import { requireSuperAdmin } from '../utils/super-admin.js';
-import { wrapWithEncryption } from '../../shared/encryption/middleware.js';
+import { wrapWithEncryption } from '@strixun/api-framework';
 import * as adminHandlers from '../handlers/admin.js';
 import * as domainHandlers from '../handlers/domain.js';
 import * as publicHandlers from '../handlers/public.js';

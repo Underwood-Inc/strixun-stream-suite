@@ -5,7 +5,7 @@
  */
 
 import { createErrorResponse, createEnhancedResponse, extractUserFromRequest } from './enhanced-wrapper.js';
-import type { ExecutionContext } from './types.js';
+import type { ExecutionContext } from '@strixun/types';
 
 interface EnhancedContext {
   user?: {

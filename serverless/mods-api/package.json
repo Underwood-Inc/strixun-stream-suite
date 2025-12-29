@@ -16,7 +16,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@strixun/api-framework": "workspace:*"
+    "@strixun/api-framework": "workspace:*",
+    "@strixun/otp-auth-service": "workspace:*",
+    "@strixun/service-client": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",

@@ -5,7 +5,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey } from '../../utils/customer.js';
+import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 
 /**
@@ -56,7 +56,7 @@ export async function handleListAllMods(
         // CRITICAL: Normalize modIds in global list for comparison
         // Global list stores normalized modIds (without mod_ prefix)
         // Customer lists may store modIds with or without prefix
-        const { normalizeModId } = await import('../../utils/customer.js');
+        // normalizeModId is already imported at the top of the file
         const normalizedGlobalModIdsSet = new Set<string>();
         globalModIdsSet.forEach(id => {
             normalizedGlobalModIdsSet.add(normalizeModId(id));
@@ -113,10 +113,10 @@ export async function handleListAllMods(
         // CRITICAL: Search across ALL customer scopes, not just admin's customerId
         // Since we've already prevented duplicate mod IDs during collection, we don't need additional deduplication
         const mods: ModMetadata[] = [];
-        const { normalizeModId } = await import('../../utils/customer.js');
         
         for (const modId of allModIds) {
             // Normalize modId (strip mod_ prefix if present)
+            // normalizeModId is already imported above at line 59
             const normalizedModId = normalizeModId(modId);
             
             // Try to find mod in global scope first (for approved/published public mods)

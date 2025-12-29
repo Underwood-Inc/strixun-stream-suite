@@ -10,6 +10,10 @@
     ".": {
       "types": "./index.ts",
       "default": "./index.ts"
+    },
+    "./integrity": {
+      "types": "./integrity.ts",
+      "default": "./integrity.ts"
     }
   },
   "files": [

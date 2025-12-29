@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { authenticateRequest } from '../../utils/auth.js';
-import { createJWT } from '../../otp-auth-service/utils/crypto.js';
+import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 
 // Mock external dependencies
 vi.mock('../../utils/admin.js', () => ({

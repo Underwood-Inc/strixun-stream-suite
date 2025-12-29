@@ -12,7 +12,7 @@
  */
 
 import { createCORSMiddleware } from '@strixun/api-framework/enhanced';
-import { initializeServiceTypes, type ExecutionContext } from '../shared/types.js';
+import { initializeServiceTypes, type ExecutionContext } from '@strixun/types';
 import { route } from './router.js';
 
 interface Env {

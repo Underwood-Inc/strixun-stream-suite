@@ -5,7 +5,7 @@
  * Maintains backward compatibility while adding enhanced features
  */
 
-import { initializeServiceTypes, getServiceFilterConfig, getTypeRegistry } from './types.js';
+import { initializeServiceTypes, getServiceFilterConfig, getTypeRegistry } from '@strixun/types';
 
 interface EnhancedHandlerOptions {
   typeName?: string;

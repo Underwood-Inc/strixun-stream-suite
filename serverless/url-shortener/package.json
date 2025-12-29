@@ -21,7 +21,8 @@
     "tail:prod": "wrangler tail --env production"
   },
   "dependencies": {
-    "@strixun/api-framework": "workspace:*"
+    "@strixun/api-framework": "workspace:*",
+    "@strixun/types": "workspace:*"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

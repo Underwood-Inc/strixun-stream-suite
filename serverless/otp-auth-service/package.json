@@ -1,10 +1,22 @@
 {
-  "name": "otp-auth-service",
+  "name": "@strixun/otp-auth-service",
   "version": "1.0.0",
   "description": "Multi-tenant OTP authentication service - Cloudflare Worker with email OTP, JWT tokens, API key management, and analytics - Strixun Stream Suite",
   "private": true,
   "packageManager": "pnpm@9.15.1",
   "type": "module",
+  "main": "./worker.ts",
+  "types": "./worker.ts",
+  "exports": {
+    ".": {
+      "types": "./worker.ts",
+      "default": "./worker.ts"
+    },
+    "./utils/crypto": {
+      "types": "./utils/crypto.ts",
+      "default": "./utils/crypto.ts"
+    }
+  },
   "scripts": {
     "dev": "wrangler dev",
     "dev:app": "vite",
@@ -30,6 +42,8 @@
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
+    "@strixun/service-client": "workspace:*",
+    "@strixun/types": "workspace:*",
     "mermaid": "^11.12.2",
     "prismjs": "^1.30.0",
     "svelte": "^5.46.0",

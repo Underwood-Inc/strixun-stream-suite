@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createJWT } from '../../otp-auth-service/utils/crypto.js';
+import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 import { isSuperAdminEmail } from '../utils/admin.js';
 
 // Mock external dependencies

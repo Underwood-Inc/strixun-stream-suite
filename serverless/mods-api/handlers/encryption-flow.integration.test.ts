@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
-import { createJWT } from '../../otp-auth-service/utils/crypto.js';
+import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 
 // Mock external dependencies
 vi.mock('@strixun/api-framework/enhanced', () => ({
