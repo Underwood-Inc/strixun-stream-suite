@@ -66,6 +66,40 @@ const Thumbnail = styled.img`
   background: ${colors.bgTertiary};
 `;
 
+const ThumbnailError = styled.div`
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 4px;
+  background: ${colors.bgTertiary};
+  border: 2px dashed ${colors.warning || colors.accent}40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: ${spacing.md};
+  text-align: center;
+  color: ${colors.textSecondary};
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 2rem;
+  margin-bottom: ${spacing.xs};
+  opacity: 0.7;
+`;
+
+const ErrorMessage = styled.div`
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: ${colors.warning || colors.accent};
+  margin-bottom: ${spacing.xs};
+`;
+
+const ErrorDetail = styled.div`
+  font-size: 0.625rem;
+  color: ${colors.textMuted};
+  line-height: 1.4;
+`;
+
 const Title = styled.h3`
   font-size: 1.25rem;
   font-weight: 600;
@@ -129,13 +163,21 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                 </DeleteButton>
             )}
             <Card to={`/${mod.slug}`}>
-                {mod.thumbnailUrl && !thumbnailError && (
-                    <Thumbnail 
-                        src={mod.thumbnailUrl} 
-                        alt={mod.title}
-                        onError={handleThumbnailError}
-                    />
-                )}
+                {mod.thumbnailUrl ? (
+                    thumbnailError ? (
+                        <ThumbnailError>
+                            <ErrorIcon>⚠</ErrorIcon>
+                            <ErrorMessage>Thumbnail unavailable</ErrorMessage>
+                            <ErrorDetail>Image failed to load</ErrorDetail>
+                        </ThumbnailError>
+                    ) : (
+                        <Thumbnail 
+                            src={mod.thumbnailUrl} 
+                            alt={mod.title}
+                            onError={handleThumbnailError}
+                        />
+                    )
+                ) : null}
                 <Title>{mod.title}</Title>
                 <Description>{mod.description || 'No description'}</Description>
                 <Meta>
