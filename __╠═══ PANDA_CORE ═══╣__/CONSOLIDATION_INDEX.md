@@ -108,9 +108,13 @@ All documentation is being consolidated into 12 main categories:
 
 | Original File | Consolidated Location | Status |
 |--------------|----------------------|--------|
-| All `serverless/*/README.md` | `07_SERVICES/[service-name]/README.md` | ⏳ Pending |
-| All `serverless/*/SETUP.md` | `07_SERVICES/[service-name]/SETUP.md` | ⏳ Pending |
-| All `serverless/*/SECURITY*.md` | `07_SERVICES/[service-name]/SECURITY.md` | ⏳ Pending |
+| `serverless/mods-api/README.md` | `07_SERVICES/MODS_API_README.md` | ✅ Consolidated |
+| `serverless/otp-auth-service/README.md` | `07_SERVICES/OTP_AUTH_SERVICE_README.md` | ✅ Consolidated |
+| `serverless/url-shortener/README.md` | `07_SERVICES/URL_SHORTENER_README.md` | ✅ Consolidated |
+| `serverless/chat-signaling/README.md` | `07_SERVICES/CHAT_SIGNALING_README.md` | ✅ Consolidated |
+| All other `serverless/*/README.md` | `07_SERVICES/[service-name]_README.md` | ⏳ Pending |
+| All `serverless/*/SETUP.md` | `07_SERVICES/[service-name]_SETUP.md` | ⏳ Pending |
+| All `serverless/*/SECURITY*.md` | `07_SERVICES/[service-name]_SECURITY.md` | ⏳ Pending |
 | `serverless/CORS_CONFIGURATION_GUIDE.md` + `serverless/CORS_QUICK_REFERENCE.md` | `10_GUIDES_AND_TUTORIALS/CORS_CONFIGURATION_GUIDE.md` | ✅ Consolidated |
 | `serverless/CUSTOM_DOMAIN_SETUP.md` | `04_DEPLOYMENT/CUSTOM_DOMAIN_SETUP.md` | ✅ Consolidated |
 | `serverless/ENCRYPTION_GUIDE.md` | `05_SECURITY/CLOUD_STORAGE_ENCRYPTION_GUIDE.md` | ✅ Consolidated |
@@ -120,18 +124,18 @@ All documentation is being consolidated into 12 main categories:
 
 | Original File | Consolidated Location | Status |
 |--------------|----------------------|--------|
-| `product-docs/COMPREHENSIVE_PRODUCT_OVERVIEW.md` | `12_REFERENCE/PRODUCT_OVERVIEW.md` | ⏳ Pending |
-| `product-docs/ARCHITECTURAL_OVERVIEW.md` | `02_ARCHITECTURE/SYSTEM_OVERVIEW.md` | ⏳ Pending |
-| `product-docs/DOCS_AUDIT.md` | `09_AUDITS_AND_REPORTS/PRODUCT_DOCS_AUDIT.md` | ⏳ Pending |
+| `product-docs/COMPREHENSIVE_PRODUCT_OVERVIEW.md` | `12_REFERENCE/PRODUCT_OVERVIEW.md` | ✅ Consolidated |
+| `product-docs/ARCHITECTURAL_OVERVIEW.md` | `02_ARCHITECTURE/SYSTEM_OVERVIEW.md` | ✅ Consolidated |
+| `product-docs/DOCS_AUDIT.md` | `09_AUDITS_AND_REPORTS/PRODUCT_DOCS_AUDIT.md` | ✅ Consolidated |
 
 ---
 
 ## Consolidation Progress
 
 - **Total Files**: 300+
-- **Consolidated**: ~9
-- **Pending**: ~291
-- **Progress**: ~3%
+- **Consolidated**: ~16
+- **Pending**: ~284
+- **Progress**: ~5%
 
 ---
 
