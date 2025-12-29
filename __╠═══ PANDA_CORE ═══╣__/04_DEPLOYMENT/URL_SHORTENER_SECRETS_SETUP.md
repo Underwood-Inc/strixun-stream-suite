@@ -86,4 +86,3 @@ This could mean:
 3. The token format is incorrect
 
 Verify the JWT_SECRET matches exactly between both services.
-

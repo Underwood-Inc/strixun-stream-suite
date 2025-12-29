@@ -151,4 +151,3 @@ Cloudflare Workers free tier includes:
 - 50ms CPU time per request (paid tier)
 
 For production use, consider upgrading to Cloudflare Workers paid tier for higher limits.
-

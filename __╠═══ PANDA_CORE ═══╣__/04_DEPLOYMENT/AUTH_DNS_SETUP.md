@@ -102,4 +102,3 @@ wrangler secret put ALLOWED_ORIGINS      # CORS origins (comma-separated)
 1. Ensure both services use the **SAME** JWT_SECRET
 2. Check secrets: `wrangler secret list` in both directories
 3. Redeploy both services after setting secrets
-

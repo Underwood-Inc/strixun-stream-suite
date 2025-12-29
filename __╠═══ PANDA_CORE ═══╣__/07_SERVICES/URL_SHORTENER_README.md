@@ -1,10 +1,8 @@
 # URL Shortener - Strixun Stream Suite
 
-Cloudflare Worker for URL shortening with OTP authentication, click analytics, and standalone web interface.
-
 **Last Updated:** 2025-12-29
 
----
+Cloudflare Worker for URL shortening with OTP authentication, click analytics, and standalone web interface.
 
 ## Features
 
@@ -16,8 +14,6 @@ Cloudflare Worker for URL shortening with OTP authentication, click analytics, a
 - [SUCCESS] Custom URL codes
 - [SUCCESS] Automatic expiration support
 - [SUCCESS] User-specific URL management
-
----
 
 ## Setup
 
@@ -58,8 +54,6 @@ wrangler secret put ALLOWED_ORIGINS
 ```
 
 **Note:** The `JWT_SECRET` must match the one used in your OTP auth service for authentication to work.
-
----
 
 ## Local Development
 
@@ -116,8 +110,6 @@ pnpm --filter @strixun/otp-login build
 
 The `predev` script automatically rebuilds everything, so just restart `pnpm dev` after making changes.
 
----
-
 ## Production Deployment
 
 ```bash
@@ -127,8 +119,6 @@ pnpm deploy
 # Or deploy to production environment
 pnpm deploy:prod
 ```
-
----
 
 ## API Endpoints
 
@@ -147,8 +137,6 @@ pnpm deploy:prod
 
 - `GET /:code` - Redirect to original URL (public, tracks clicks)
 - `GET /health` - Health check
-
----
 
 ## Request/Response Examples
 
@@ -242,8 +230,6 @@ curl -I https://s.idling.app/mycode
 # Returns 302 redirect to original URL
 ```
 
----
-
 ## Data Models
 
 ### URL Data (stored in KV)
@@ -285,8 +271,6 @@ curl -I https://s.idling.app/mycode
 
 **Note:** The `customCode` parameter name matches the API, but the request body uses `customCode` (camelCase).
 
----
-
 ## Storage
 
 ### KV Structure
@@ -306,8 +290,6 @@ Click tracking stores (per click):
 
 Analytics entries expire after 1 year (31536000 seconds).
 
----
-
 ## Authentication
 
 All authenticated endpoints require a JWT token in the `Authorization` header:
@@ -326,8 +308,6 @@ The JWT token is obtained from the OTP auth service (`https://auth.idling.app`) 
 4. JWT token received and stored in localStorage
 5. Token used for all API requests
 
----
-
 ## CORS
 
 CORS is configured via the `ALLOWED_ORIGINS` environment variable. If not set, all origins are allowed (development only).
@@ -337,8 +317,6 @@ For production, set:
 wrangler secret put ALLOWED_ORIGINS
 # Paste: https://s.idling.app,https://idling.app,https://www.idling.app
 ```
-
----
 
 ## Error Handling
 
@@ -367,15 +345,11 @@ Common errors:
 - `409` - Conflict (custom code already in use)
 - `500` - Internal Server Error (includes `message` field with details)
 
----
-
 ## Encryption
 
 All API responses are automatically encrypted when authenticated using JWT-based encryption. The client must decrypt responses using the bundled `decryptWithJWT` function from `/decrypt.js`.
 
 Responses include an `X-Encrypted: true` header when encrypted.
-
----
 
 ## Security
 
@@ -387,16 +361,12 @@ Responses include an `X-Encrypted: true` header when encrypted.
 - Input validation
 - Encrypted API responses
 
----
-
 ## Performance
 
 - KV for fast URL lookups (sub-millisecond)
 - Automatic code generation with collision detection
 - TTL-based expiration (automatic cleanup)
 - Click analytics stored separately for performance
-
----
 
 ## Architecture
 
@@ -407,14 +377,10 @@ Responses include an `X-Encrypted: true` header when encrypted.
 - **Scripts**: `scripts/*.js` - Build scripts for dependencies
 - **Utils**: `utils/*.js` - Utility functions (auth, CORS, URL validation)
 
----
-
 ## Dependencies
 
 - `@strixun/api-framework` - Shared API framework
 - `@strixun/otp-login` - Shared OTP login component (built at dev time)
-
----
 
 ## Notes
 
@@ -425,12 +391,6 @@ Responses include an `X-Encrypted: true` header when encrypted.
 - Default expiration is 1 year (configurable up to 10 years)
 - Click analytics are tracked automatically on redirects
 
----
-
 ## License
 
 Private - Strixun Stream Suite
-
----
-
-**Last Updated:** 2025-12-29
