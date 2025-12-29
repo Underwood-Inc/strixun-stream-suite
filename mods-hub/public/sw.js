@@ -66,11 +66,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip API requests - always use network
-  if (event.request.url.includes('/mods-api') || 
-      event.request.url.includes('/auth-api') ||
-      event.request.url.includes('api.')) {
-    return; // Let browser handle API requests directly
+  // Skip image requests to mods-api (badges, thumbnails) - let browser handle directly
+  // These are static assets that shouldn't be cached by service worker
+  try {
+    const url = new URL(event.request.url);
+    const pathname = url.pathname.toLowerCase();
+    const hostname = url.hostname.toLowerCase();
+    
+    // Skip if it's an image request to mods-api (badge or thumbnail endpoints)
+    if ((hostname.includes('mods-api.idling.app') || hostname.includes('api.idling.app')) &&
+        (pathname.includes('/badge') || pathname.includes('/thumbnail') || pathname.includes('/og-image'))) {
+      return; // Let browser handle image requests directly
+    }
+  } catch (error) {
+    // If URL parsing fails, continue with normal handling
+    console.debug('[SW] Failed to parse URL for image check:', error.message);
   }
 
   event.respondWith(
@@ -114,22 +124,36 @@ self.addEventListener('fetch', (event) => {
 
             return response;
           })
-          .catch(() => {
-            // If network fails and we have a cached version, return it
-            // Otherwise return a basic offline page
+          .catch((error) => {
+            // If network fails, always return a Response object (never undefined)
             if (event.request.destination === 'document') {
-              return caches.match('/index.html');
+              return caches.match('/index.html').then((offlinePage) => {
+                return offlinePage || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+              });
             }
+            // For images and other resources, return the original fetch
+            // This ensures we always return a Response, preventing "Failed to convert value to 'Response'" errors
+            return fetch(event.request);
           });
       })
       .catch((error) => {
-        // If cache match fails, just let the browser handle it
-        console.debug('[SW] Cache match failed, letting browser handle request:', error.message);
-        return fetch(event.request).catch(() => {
-          // If fetch also fails, return offline page for documents
+        // If cache match fails, fetch from network
+        // Always return a Response object - never return undefined
+        console.debug('[SW] Cache match failed, fetching from network:', error.message);
+        return fetch(event.request).catch((fetchError) => {
+          // If fetch also fails, return appropriate response
           if (event.request.destination === 'document') {
-            return caches.match('/index.html');
+            return caches.match('/index.html').then((offlinePage) => {
+              return offlinePage || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+            });
           }
+          // For images and other resources, return a proper error response
+          // This prevents "Failed to convert value to 'Response'" errors
+          return new Response('Network error', { 
+            status: 503, 
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' }
+          });
         });
       })
   );
