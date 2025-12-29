@@ -1,0 +1,19 @@
+{
+  "name": "@strixun/error-mapping",
+  "version": "1.0.0",
+  "description": "Composable error mapping system for API error handling",
+  "private": true,
+  "type": "module",
+  "main": "./error-legend.ts",
+  "types": "./error-legend.ts",
+  "exports": {
+    ".": {
+      "types": "./error-legend.ts",
+      "default": "./error-legend.ts"
+    }
+  },
+  "files": [
+    "*.ts"
+  ]
+}
+

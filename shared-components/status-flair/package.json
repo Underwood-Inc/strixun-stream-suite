@@ -1,0 +1,23 @@
+{
+  "name": "@strixun/status-flair",
+  "version": "1.0.0",
+  "description": "Shared component for displaying feature status indicators",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "files": [
+    "*.ts",
+    "*.svelte"
+  ],
+  "peerDependencies": {
+    "svelte": "^5.46.0"
+  }
+}
+

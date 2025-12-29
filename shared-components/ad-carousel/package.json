@@ -1,0 +1,23 @@
+{
+  "name": "@strixun/ad-carousel",
+  "version": "1.0.0",
+  "description": "Shared components for draggable, dimmable ad carousels",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "files": [
+    "*.ts",
+    "*.svelte"
+  ],
+  "peerDependencies": {
+    "svelte": "^5.46.0"
+  }
+}
+

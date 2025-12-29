@@ -1,0 +1,24 @@
+{
+  "name": "@strixun/idle-game-overlay",
+  "version": "1.0.0",
+  "description": "Idle game overlay system with components, stores, and services",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "files": [
+    "*.ts",
+    "*.svelte",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "svelte": "^5.46.0"
+  }
+}
+

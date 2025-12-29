@@ -1,0 +1,26 @@
+{
+  "name": "@strixun/virtualized-table",
+  "version": "1.0.0",
+  "description": "Virtualized table component for React with efficient rendering of large datasets",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "files": [
+    "*.ts",
+    "*.tsx",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-window": "^1.8.10"
+  }
+}
+

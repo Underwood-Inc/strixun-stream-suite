@@ -1,0 +1,23 @@
+{
+  "name": "@strixun/tooltip",
+  "version": "1.0.0",
+  "description": "Reusable tooltip component for Svelte applications",
+  "private": true,
+  "type": "module",
+  "main": "./Tooltip.svelte",
+  "types": "./Tooltip.svelte",
+  "exports": {
+    ".": {
+      "types": "./Tooltip.svelte",
+      "default": "./Tooltip.svelte"
+    }
+  },
+  "files": [
+    "*.svelte",
+    "*.ts"
+  ],
+  "peerDependencies": {
+    "svelte": "^5.46.0"
+  }
+}
+
