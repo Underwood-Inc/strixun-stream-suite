@@ -333,19 +333,46 @@ pnpm dev</code></pre>
     // Check if this is an asset request (has file extension and is not index.html)
     const isAssetRequest = filePath.includes('.') && filePath !== 'index.html';
     
+    // Try to find the file - check multiple path variations
+    let fileContent = assets[filePath];
+    
+    // If not found and it's an asset request, try alternative paths
+    if (!fileContent && isAssetRequest) {
+        // Try with dashboard/ prefix (in case assets were built with base: '/dashboard/')
+        if (!filePath.startsWith('dashboard/')) {
+            const dashboardPath = `dashboard/${filePath}`;
+            fileContent = assets[dashboardPath];
+            if (fileContent) {
+                filePath = dashboardPath;
+            }
+        }
+        
+        // Try without assets/ prefix (fallback)
+        if (!fileContent && filePath.startsWith('assets/')) {
+            const altPath = filePath.replace(/^assets\//, '');
+            fileContent = assets[altPath];
+            if (fileContent) {
+                filePath = altPath;
+            }
+        }
+    }
+    
     // Handle SPA routing - all non-file routes serve index.html
     // BUT: if it's an asset request, don't fallback to index.html
-    if (!assets[filePath] && !isAssetRequest) {
+    if (!fileContent && !isAssetRequest) {
         filePath = 'index.html';
+        fileContent = assets[filePath];
     }
     
     // Get file content
-    const fileContent = assets[filePath];
     if (!fileContent) {
         // If it's an asset request that's not found, return 404 immediately
         // Don't fallback to index.html for asset requests
         if (isAssetRequest) {
-            return new Response('File not found: ' + filePath, {
+            // Log for debugging - show first few available keys
+            const availableKeys = Object.keys(assets).slice(0, 5).join(', ');
+            console.error(`[Dashboard Assets] File not found: ${filePath}. Sample available keys: ${availableKeys}...`);
+            return new Response(`File not found: ${filePath}`, {
                 status: 404,
                 headers: getCorsHeaders(env, request),
             });
