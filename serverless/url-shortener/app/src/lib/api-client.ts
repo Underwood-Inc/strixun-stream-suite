@@ -3,7 +3,7 @@
  * TypeScript client for URL shortener API
  */
 
-import type { LoginSuccessData } from '@shared-components/otp-login/dist/svelte';
+import type { LoginSuccessData } from '@strixun/otp-login/dist/svelte';
 
 const API_URL = typeof window !== 'undefined' 
     ? window.location.origin 

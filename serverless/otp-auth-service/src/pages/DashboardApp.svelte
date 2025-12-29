@@ -10,7 +10,7 @@
   import ApiKeys from '../dashboard/pages/ApiKeys.svelte';
   import AuditLogs from '../dashboard/pages/AuditLogs.svelte';
   import Dashboard from '../dashboard/pages/Dashboard.svelte';
-  import TwitchAdCarousel from '@shared-components/ad-carousel/TwitchAdCarousel.svelte';
+  import TwitchAdCarousel from '@strixun/ad-carousel/TwitchAdCarousel.svelte';
 
   let user: User | null = null;
   let customer: Customer | null = null;

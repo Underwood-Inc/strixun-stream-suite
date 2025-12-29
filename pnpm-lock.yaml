@@ -16,22 +16,22 @@ importers:
     dependencies:
       '@strixun/ad-carousel':
         specifier: workspace:*
-        version: link:shared-components/ad-carousel
+        version: link:packages/ad-carousel
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:serverless/shared/e2e
+        version: link:packages/e2e-helpers
       '@strixun/error-mapping':
         specifier: workspace:*
-        version: link:shared-components/error-mapping
+        version: link:packages/error-mapping
       '@strixun/otp-login':
         specifier: workspace:*
-        version: link:shared-components/otp-login
+        version: link:packages/otp-login
       '@strixun/search-query-parser':
         specifier: workspace:*
-        version: link:shared-components/search-query-parser
+        version: link:packages/search-query-parser
       '@strixun/status-flair':
         specifier: workspace:*
-        version: link:shared-components/status-flair
+        version: link:packages/status-flair
       swiper:
         specifier: ^11.2.10
         version: 11.2.10
@@ -171,16 +171,16 @@ importers:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../serverless/shared/api
+        version: link:../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../serverless/shared/e2e
+        version: link:../packages/e2e-helpers
       '@strixun/search-query-parser':
         specifier: workspace:*
-        version: link:../shared-components/search-query-parser
+        version: link:../packages/search-query-parser
       '@strixun/virtualized-table':
         specifier: workspace:*
-        version: link:../shared-components/virtualized-table
+        version: link:../packages/virtualized-table
       '@tanstack/react-query':
         specifier: ^5.62.11
         version: 5.90.12(react@19.2.3)
@@ -258,11 +258,118 @@ importers:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@22.19.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)
 
+  packages/ad-carousel:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  packages/api-framework: {}
+
+  packages/e2e-helpers:
+    dependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+
+  packages/error-mapping: {}
+
+  packages/idle-game-overlay:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  packages/otp-login:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.1
+        version: 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1))
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.1.0
+        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@testing-library/svelte':
+        specifier: ^4.1.2
+        version: 4.2.3(svelte@5.46.0)
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.0.1
+        version: 19.2.3(@types/react@19.2.7)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1))
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.0
+        version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)
+
+  packages/rate-limit-info:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  packages/search-query-parser: {}
+
+  packages/service-client: {}
+
+  packages/status-flair:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  packages/tooltip:
+    dependencies:
+      svelte:
+        specifier: ^5.46.0
+        version: 5.46.0
+
+  packages/types: {}
+
+  packages/virtualized-table:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+      react-window:
+        specifier: ^1.8.10
+        version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+
   serverless:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:shared/api
+        version: link:../packages/api-framework
     devDependencies:
       '@iarna/toml':
         specifier: ^2.2.5
@@ -272,25 +379,25 @@ importers:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
 
   serverless/customer-api:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241106.0
@@ -306,31 +413,31 @@ importers:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
 
   serverless/mods-api:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
       '@strixun/otp-auth-service':
         specifier: workspace:*
         version: link:../otp-auth-service
       '@strixun/service-client':
         specifier: workspace:*
-        version: link:../shared/service-client
+        version: link:../../packages/service-client
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
@@ -344,18 +451,27 @@ importers:
 
   serverless/otp-auth-service:
     dependencies:
+      '@strixun/ad-carousel':
+        specifier: workspace:*
+        version: link:../../packages/ad-carousel
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
+      '@strixun/otp-login':
+        specifier: workspace:*
+        version: link:../../packages/otp-login
       '@strixun/service-client':
         specifier: workspace:*
-        version: link:../shared/service-client
+        version: link:../../packages/service-client
+      '@strixun/status-flair':
+        specifier: workspace:*
+        version: link:../../packages/status-flair
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
       mermaid:
         specifier: ^11.12.2
         version: 11.12.2
@@ -417,6 +533,12 @@ importers:
       '@observablehq/plot':
         specifier: ^0.6.15
         version: 0.6.17
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../../../packages/api-framework
+      '@strixun/otp-login':
+        specifier: workspace:*
+        version: link:../../../packages/otp-login
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -461,29 +583,17 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)
 
-  serverless/shared/api: {}
-
-  serverless/shared/e2e:
-    dependencies:
-      '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.57.0
-
-  serverless/shared/service-client: {}
-
-  serverless/shared/types: {}
-
   serverless/twitch-api:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
@@ -502,13 +612,13 @@ importers:
     dependencies:
       '@strixun/api-framework':
         specifier: workspace:*
-        version: link:../shared/api
+        version: link:../../packages/api-framework
       '@strixun/e2e-helpers':
         specifier: workspace:*
-        version: link:../shared/e2e
+        version: link:../../packages/e2e-helpers
       '@strixun/types':
         specifier: workspace:*
-        version: link:../shared/types
+        version: link:../../packages/types
     devDependencies:
       concurrently:
         specifier: ^9.2.1
@@ -518,6 +628,10 @@ importers:
         version: 0.19.12
 
   serverless/url-shortener/app:
+    dependencies:
+      '@strixun/otp-login':
+        specifier: workspace:*
+        version: link:../../../packages/otp-login
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
@@ -612,101 +726,6 @@ importers:
       wrangler:
         specifier: ^4.54.0
         version: 4.56.0(@cloudflare/workers-types@4.20251225.0)
-
-  shared-components/ad-carousel:
-    dependencies:
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-
-  shared-components/error-mapping: {}
-
-  shared-components/idle-game-overlay:
-    dependencies:
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-
-  shared-components/otp-login:
-    dependencies:
-      react:
-        specifier: ^19.0.0
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.3(react@19.2.3)
-    devDependencies:
-      '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.1
-        version: 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1))
-      '@testing-library/jest-dom':
-        specifier: ^6.6.3
-        version: 6.9.1
-      '@testing-library/react':
-        specifier: ^16.1.0
-        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@testing-library/svelte':
-        specifier: ^4.1.2
-        version: 4.2.3(svelte@5.46.0)
-      '@types/react':
-        specifier: ^19.0.1
-        version: 19.2.7
-      '@types/react-dom':
-        specifier: ^19.0.1
-        version: 19.2.3(@types/react@19.2.7)
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1))
-      esbuild:
-        specifier: ^0.24.0
-        version: 0.24.2
-      jsdom:
-        specifier: ^25.0.1
-        version: 25.0.1
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vite:
-        specifier: ^7.3.0
-        version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)
-      vitest:
-        specifier: ^4.0.16
-        version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)
-
-  shared-components/rate-limit-info:
-    dependencies:
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-
-  shared-components/search-query-parser: {}
-
-  shared-components/status-flair:
-    dependencies:
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-
-  shared-components/tooltip:
-    dependencies:
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-
-  shared-components/virtualized-table:
-    dependencies:
-      react:
-        specifier: ^19.0.0
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.3(react@19.2.3)
-      react-window:
-        specifier: ^1.8.10
-        version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
 
 packages:
 
@@ -8016,8 +8035,8 @@ snapshots:
       '@storybook/theming': 8.6.15(storybook@8.6.15(prettier@3.7.4))
       better-opn: 3.0.2
       browser-assert: 1.2.1
-      esbuild: 0.19.12
-      esbuild-register: 3.6.0(esbuild@0.19.12)
+      esbuild: 0.24.2
+      esbuild-register: 3.6.0(esbuild@0.24.2)
       jsdoc-type-pratt-parser: 4.8.0
       process: 0.11.10
       recast: 0.23.11
@@ -9506,10 +9525,10 @@ snapshots:
 
   es6-promise@3.3.1: {}
 
-  esbuild-register@3.6.0(esbuild@0.19.12):
+  esbuild-register@3.6.0(esbuild@0.24.2):
     dependencies:
       debug: 4.4.3
-      esbuild: 0.19.12
+      esbuild: 0.24.2
     transitivePeerDependencies:
       - supports-color
 

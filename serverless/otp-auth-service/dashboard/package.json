@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.15",
+    "@strixun/api-framework": "workspace:*",
+    "@strixun/otp-login": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "svelte": "^5.46.0"

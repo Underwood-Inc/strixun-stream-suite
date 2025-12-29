@@ -3,7 +3,7 @@
   import { apiClient } from '$lib/api-client';
   import type { Customer, Analytics, RealtimeAnalytics, ErrorAnalytics } from '$lib/types';
   import Card from '$components/Card.svelte';
-  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
+  import StatusFlair from '@strixun/status-flair/StatusFlair.svelte';
 
   export let customer: Customer | null = null;
 

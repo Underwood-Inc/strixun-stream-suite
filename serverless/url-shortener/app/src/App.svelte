@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/api-client';
-  import type { LoginSuccessData } from '@shared-components/otp-login/core';
-  import OtpLogin from '@shared-components/otp-login/svelte/OtpLogin.svelte';
+  import type { LoginSuccessData } from '@strixun/otp-login/dist/svelte';
+  import OtpLogin from '@strixun/otp-login/dist/svelte';
   import UrlManager from './pages/UrlManager.svelte';
 
   let isAuthenticated = false;

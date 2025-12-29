@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
+  import StatusFlair from '@strixun/status-flair/StatusFlair.svelte';
 
   export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
 
