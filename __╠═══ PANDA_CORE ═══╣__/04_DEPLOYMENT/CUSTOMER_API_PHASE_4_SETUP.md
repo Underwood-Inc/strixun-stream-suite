@@ -1,10 +1,6 @@
 # Phase 4: Customer API Worker - Setup Instructions
 
-> **Complete step-by-step setup instructions for Customer API worker**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Overview
 
@@ -12,7 +8,7 @@ The Customer API worker has been created and is ready for deployment. This docum
 
 ---
 
-## ✅ What's Been Created
+## [SUCCESS] What's Been Created
 
 1. **Worker Structure** - Complete customer-api worker following game-api pattern
 2. **Routes & Handlers** - Customer CRUD endpoints with automatic encryption
@@ -23,7 +19,7 @@ The Customer API worker has been created and is ready for deployment. This docum
 
 ---
 
-## 📋 Setup Steps
+## Setup Steps
 
 ### Step 1: Create KV Namespace
 
@@ -38,13 +34,13 @@ wrangler kv namespace create "CUSTOMER_API_KV"
 
 **Expected Output:**
 ```
-[SUCCESS] Creating namespace with title "CUSTOMER_API_KV"
-✨  Success!
+[INFO] Creating namespace with title "CUSTOMER_API_KV"
+[SUCCESS] Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "CUSTOMER_KV", id = "abc123def456ghi789..." }
 ```
 
-**⚠️ IMPORTANT:** Copy the `id` value - you'll need it in the next step!
+**[WARNING] IMPORTANT:** Copy the `id` value - you'll need it in the next step!
 
 **Option B: Automatic Creation via GitHub Workflow**
 
@@ -59,7 +55,7 @@ Open `serverless/customer-api/wrangler.toml` and replace `PLACEHOLDER_ID` with t
 ```toml
 [[kv_namespaces]]
 binding = "CUSTOMER_KV"
-id = "abc123def456ghi789..."  # Replace PLACEHOLDER_ID with your actual ID
+id = "abc123def456ghi789..."  # -> Replace PLACEHOLDER_ID with your actual ID
 ```
 
 ---
@@ -90,7 +86,7 @@ wrangler secret put ALLOWED_ORIGINS
 # See CORS_ORIGINS_AUDIT.md for complete list and details
 ```
 
-**⚠️ CRITICAL:** The JWT_SECRET must be **identical** to the one in the OTP auth service, otherwise authentication will fail!
+**[WARNING] CRITICAL:** The JWT_SECRET must be **identical** to the one in the OTP auth service, otherwise authentication will fail!
 
 ---
 
@@ -119,8 +115,8 @@ wrangler deploy
 
 **Expected Output:**
 ```
-✨ Compiled Worker successfully
-✨ Uploaded strixun-customer-api (X.XX sec)
+[SUCCESS] Compiled Worker successfully
+[SUCCESS] Uploaded strixun-customer-api (X.XX sec)
 Published strixun-customer-api (X.XX sec)
   https://strixun-customer-api.YOUR_SUBDOMAIN.workers.dev
 ```
@@ -128,13 +124,13 @@ Published strixun-customer-api (X.XX sec)
 **Option B: Automated Deployment via GitHub (Recommended)**
 
 The GitHub workflow will automatically:
-- ✅ Create KV namespace if it doesn't exist
-- ✅ Deploy the worker
-- ✅ Set secrets from GitHub repository secrets
-- ✅ Show deployment summary with KV namespace ID
+- [SUCCESS] Create KV namespace if it doesn't exist
+- [SUCCESS] Deploy the worker
+- [SUCCESS] Set secrets from GitHub repository secrets
+- [SUCCESS] Show deployment summary with KV namespace ID
 
 **To use automated deployment:**
-1. Ensure GitHub secrets are set (see [GitHub Workflow Setup](./CUSTOMER_API_GITHUB_WORKFLOW_SETUP.md))
+1. Ensure GitHub secrets are set (see `GITHUB_WORKFLOW_SETUP.md`)
 2. Push changes to `main` branch (or trigger manually via Actions tab)
 3. Workflow will automatically deploy
 
@@ -147,8 +143,8 @@ The GitHub workflow will automatically:
 #### Option A: Via Cloudflare Dashboard (Recommended)
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Navigate to **Workers & Pages** → **strixun-customer-api**
-3. Go to **Settings** → **Triggers** → **Routes**
+2. Navigate to **Workers & Pages** -> **strixun-customer-api**
+3. Go to **Settings** -> **Triggers** -> **Routes**
 4. Click **Add Route**
 5. Enter: `customer.idling.app/*`
 6. Select zone: `idling.app`
@@ -187,13 +183,13 @@ curl https://customer.idling.app/health
   "status": "ok",
   "message": "Customer API is running",
   "service": "strixun-customer-api",
-  "timestamp": "2025-12-29T..."
+  "timestamp": "2024-12-19T..."
 }
 ```
 
 ---
 
-## 🔍 Verification Checklist
+## Verification Checklist
 
 - [ ] KV namespace created and ID updated in wrangler.toml
 - [ ] JWT_SECRET set (matches OTP auth service)
@@ -205,7 +201,7 @@ curl https://customer.idling.app/health
 
 ---
 
-## 📝 Quick Reference Commands
+## Quick Reference Commands
 
 ```bash
 # Create KV namespace
@@ -234,7 +230,7 @@ wrangler dev
 
 ---
 
-## ❓ Troubleshooting
+## Troubleshooting
 
 ### Error: "JWT_SECRET environment variable is required"
 
@@ -261,13 +257,13 @@ wrangler secret put JWT_SECRET
 
 **Solution:**
 1. Check DNS records in Cloudflare Dashboard
-2. Verify route is configured in Workers & Pages → Routes
+2. Verify route is configured in Workers & Pages -> Routes
 3. Wait a few minutes for DNS propagation
 4. Check zone name matches: `idling.app`
 
 ---
 
-## 📊 API Endpoints
+## API Endpoints
 
 Once deployed, the following endpoints are available:
 
@@ -285,7 +281,7 @@ All endpoints:
 
 ---
 
-## 🔄 Next Steps (After Setup)
+## Next Steps (After Setup)
 
 1. **Update OTP Auth Service** to call customer-api instead of local customer service
 2. **Update Dashboard** to use customer-api endpoints
@@ -294,19 +290,14 @@ All endpoints:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-- **Setup Guide:** [Customer API Setup](../07_SERVICES/CUSTOMER_API_SETUP.md) (detailed setup instructions)
-- **Integration Guide:** [Customer API Integration Guide](../07_SERVICES/CUSTOMER_API_INTEGRATION_GUIDE.md)
+- **Setup Guide:** `SETUP.md` (detailed setup instructions)
 - **API Documentation:** See handlers for endpoint details
 - **Architecture:** Follows game-api pattern for consistency
 
 ---
 
-**Status:** ✅ Ready for deployment  
-**Need Help?** Check [Customer API Setup](../07_SERVICES/CUSTOMER_API_SETUP.md) for detailed troubleshooting or review the game-api worker for reference implementation.
+**Status:** [SUCCESS] Ready for deployment
 
----
-
-**Last Updated**: 2025-12-29
-
+**Need Help?** Check `SETUP.md` for detailed troubleshooting or review the game-api worker for reference implementation.

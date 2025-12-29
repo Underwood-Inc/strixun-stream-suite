@@ -1,8 +1,8 @@
 # Customer API Setup Guide
 
-> **Complete setup guide for Customer API Cloudflare Worker**
+**Last Updated:** 2025-12-29
 
-**Date:** 2025-12-29
+This guide will walk you through setting up the Customer API worker with its dedicated KV namespace.
 
 ---
 
@@ -28,8 +28,8 @@ wrangler kv namespace create "CUSTOMER_API_KV"
 
 **Output will look like:**
 ```
-[SUCCESS] Creating namespace with title "CUSTOMER_API_KV"
-✨  Success!
+[INFO] Creating namespace with title "CUSTOMER_API_KV"
+[SUCCESS] Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "CUSTOMER_KV", id = "abc123def456..." }
 ```
@@ -94,8 +94,8 @@ wrangler deploy
 
 **Expected output:**
 ```
-✨ Compiled Worker successfully
-✨ Uploaded customer-api (X.XX sec)
+[SUCCESS] Compiled Worker successfully
+[SUCCESS] Uploaded customer-api (X.XX sec)
 Published strixun-customer-api (X.XX sec)
   https://strixun-customer-api.YOUR_SUBDOMAIN.workers.dev
 ```
@@ -107,8 +107,8 @@ Published strixun-customer-api (X.XX sec)
 ### Option A: Via Cloudflare Dashboard (Recommended)
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Navigate to **Workers & Pages** → **strixun-customer-api**
-3. Go to **Settings** → **Triggers** → **Routes**
+2. Navigate to **Workers & Pages** -> **strixun-customer-api**
+3. Go to **Settings** -> **Triggers** -> **Routes**
 4. Click **Add Route**
 5. Enter: `customer.idling.app/*`
 6. Select zone: `idling.app`
@@ -147,7 +147,7 @@ curl https://customer.idling.app/health
   "status": "ok",
   "message": "Customer API is running",
   "service": "strixun-customer-api",
-  "timestamp": "2025-12-29T..."
+  "timestamp": "2024-12-19T..."
 }
 ```
 
@@ -197,7 +197,7 @@ wrangler secret put JWT_SECRET
 
 **Solution:**
 1. Check DNS records in Cloudflare Dashboard
-2. Verify route is configured in Workers & Pages → Routes
+2. Verify route is configured in Workers & Pages -> Routes
 3. Wait a few minutes for DNS propagation
 4. Check zone name matches: `idling.app`
 
@@ -217,9 +217,9 @@ After setup is complete:
 
 | Variable | Type | Required | Description |
 |----------|------|----------|-------------|
-| `JWT_SECRET` | Secret | ✅ Yes | JWT signing secret (must match OTP auth service) |
-| `ALLOWED_ORIGINS` | Secret | ❌ No | Comma-separated CORS origins |
-| `ENVIRONMENT` | Var | ❌ No | Environment name (default: "production") |
+| `JWT_SECRET` | Secret | [SUCCESS] Yes | JWT signing secret (must match OTP auth service) |
+| `ALLOWED_ORIGINS` | Secret | [ERROR] No | Comma-separated CORS origins |
+| `ENVIRONMENT` | Var | [ERROR] No | Environment name (default: "production") |
 
 ---
 
@@ -250,6 +250,4 @@ wrangler dev
 
 ---
 
-**Status:** ✅ Ready for setup  
-**Last Updated:** 2025-12-29
-
+**Status:** [SUCCESS] Ready for setup

@@ -1,10 +1,6 @@
 # Customer Data Migration Guide
 
-> **Complete guide for migrating customer data from OTP_AUTH_KV to CUSTOMER_KV**
-
-**Date:** 2025-12-29
-
----
+**Last Updated:** 2025-12-29
 
 ## Overview
 
@@ -12,7 +8,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## ⚠️ Important Notes
+## [WARNING] Important Notes
 
 - **Backup First:** Always backup your KV data before migration
 - **Test Environment:** Test migration in a development environment first
@@ -21,7 +17,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## 📋 Pre-Migration Checklist
+## Pre-Migration Checklist
 
 - [ ] Customer-api worker is deployed and accessible
 - [ ] `CUSTOMER_KV` namespace is created and configured
@@ -32,7 +28,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## 🔍 Data to Migrate
+## Data to Migrate
 
 ### Customer Records
 
@@ -69,7 +65,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## 🚀 Migration Methods
+## Migration Methods
 
 ### Method 1: Manual Migration Script (Recommended)
 
@@ -131,7 +127,7 @@ async function migrateCustomers() {
 
 ---
 
-## 📝 Migration Script Example
+## Migration Script Example
 
 ```typescript
 /**
@@ -231,7 +227,7 @@ async function migrateCustomerData(env: Env) {
 
 ---
 
-## ✅ Post-Migration Verification
+## Post-Migration Verification
 
 ### 1. Verify Customer Count
 
@@ -269,7 +265,7 @@ async function migrateCustomerData(env: Env) {
 
 ---
 
-## 🔄 Rollback Plan
+## Rollback Plan
 
 If migration fails or data is corrupted:
 
@@ -283,7 +279,7 @@ If migration fails or data is corrupted:
 
 ---
 
-## 📊 Migration Checklist
+## Migration Checklist
 
 - [ ] Backup `OTP_AUTH_KV` data
 - [ ] Test migration script in development
@@ -298,7 +294,7 @@ If migration fails or data is corrupted:
 
 ---
 
-## 🐛 Common Issues
+## Common Issues
 
 ### Issue: Customer Already Exists (409 Conflict)
 
@@ -326,7 +322,7 @@ If migration fails or data is corrupted:
 
 ---
 
-## 📝 Notes
+## Notes
 
 - **Zero Downtime:** Migration can be done with zero downtime using gradual migration method
 - **Data Integrity:** Always verify data integrity after migration
@@ -335,10 +331,5 @@ If migration fails or data is corrupted:
 
 ---
 
-**Status:** 📋 **GUIDE CREATED**  
+**Status:** [INFO] **GUIDE CREATED**
 **Next Step:** Implement migration script based on your specific requirements
-
----
-
-**Last Updated**: 2025-12-29
-
