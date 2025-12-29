@@ -337,17 +337,18 @@ const ThumbnailImage = styled.img`
 `;
 
 const ThumbnailLabel = styled.div`
-  position: absolute;
-  top: ${spacing.xs};
-  left: ${spacing.xs};
   background: ${colors.warning}dd;
   color: ${colors.bg};
-  padding: 2px ${spacing.xs};
+  padding: 4px ${spacing.sm};
   border-radius: 3px;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  text-align: center;
+  width: 100%;
+  max-width: 200px;
+  margin-bottom: ${spacing.xs};
 `;
 
 const ThumbnailPreviewContainer = styled.div`
@@ -697,8 +698,8 @@ export function ModUploadWizard({
                             >
                                 {thumbnail && thumbnailPreview ? (
                                     <ThumbnailPreviewContainer>
+                                        <ThumbnailLabel>Preview</ThumbnailLabel>
                                         <ThumbnailPreview>
-                                            <ThumbnailLabel>Preview</ThumbnailLabel>
                                             <ThumbnailImage src={thumbnailPreview} alt="Thumbnail preview" />
                                         </ThumbnailPreview>
                                         <FileInfo>
@@ -920,8 +921,8 @@ export function ModUploadWizard({
                     <ReviewSection>
                         <ReviewLabel>Thumbnail</ReviewLabel>
                         <ThumbnailPreviewContainer>
+                            <ThumbnailLabel>Preview (Not Uploaded)</ThumbnailLabel>
                             <ThumbnailPreview>
-                                <ThumbnailLabel>Preview (Not Uploaded)</ThumbnailLabel>
                                 <ThumbnailImage src={thumbnailPreview} alt="Thumbnail preview" />
                             </ThumbnailPreview>
                             <ReviewValue style={{ fontSize: '0.75rem', color: colors.textMuted }}>
