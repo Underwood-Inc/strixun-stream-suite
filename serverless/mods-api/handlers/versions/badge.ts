@@ -150,10 +150,38 @@ export async function handleBadge(
             version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
         }
         
-        // Last resort: check auth customer scope (for backward compatibility)
+        // Check auth customer scope (if authenticated and different from mod's customer scope)
         if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
             const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
             version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
+        }
+        
+        // Last resort: search all customer scopes (for cross-customer access)
+        // This handles cases where versions might be in unexpected scopes
+        if (!version) {
+            console.log('[Badge] Version not found in expected scopes, searching all customer scopes');
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        if (customerId) {
+                            const customerVersionKey = getCustomerKey(customerId, `version_${versionId}`);
+                            version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+                            if (version) {
+                                console.log('[Badge] Found version in customer scope:', { customerId, versionId: version.versionId });
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (version) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         // Check version belongs to mod (compare with mod.modId, not the input parameter)

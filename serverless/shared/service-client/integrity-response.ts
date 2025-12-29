@@ -217,12 +217,19 @@ export async function wrapResponseWithIntegrity(
     });
     
     // Check if this is an image response (should always have integrity headers)
+    // CRITICAL: Only treat as image if status is 200 AND content type is actually an image
+    // This prevents error responses (404, 500) from being treated as images
     const contentType = response.headers.get('content-type') || '';
-    const isImageResponse = contentType.startsWith('image/') || 
-                           contentType === 'image/svg+xml' ||
-                           request.url.includes('/badge') ||
-                           request.url.includes('/thumbnail') ||
-                           request.url.includes('/og-image');
+    const isSuccessfulImage = response.status === 200 && (
+        contentType.startsWith('image/') || 
+        contentType === 'image/svg+xml'
+    );
+    const isImageUrl = request.url.includes('/badge') ||
+                      request.url.includes('/thumbnail') ||
+                      request.url.includes('/og-image');
+    // Only treat as image response if it's successful AND has image content type
+    // OR if it's an image URL pattern (for cases where content-type might not be set yet)
+    const isImageResponse = isSuccessfulImage || (response.status === 200 && isImageUrl);
     
     // Only add integrity header for service-to-service calls OR image responses
     const isServiceCall = isServiceToServiceCall(request, auth);
@@ -232,7 +239,10 @@ export async function wrapResponseWithIntegrity(
             userId: auth?.userId,
             hasJwtToken: !!auth?.jwtToken,
             serviceKey: request.headers.get('X-Service-Key') ? 'present' : 'missing',
-            contentType
+            contentType,
+            status: response.status,
+            isImageUrl,
+            isSuccessfulImage
         });
         return response;
     }
@@ -240,6 +250,7 @@ export async function wrapResponseWithIntegrity(
     if (isImageResponse && !isServiceCall) {
         console.log('[wrapResponseWithIntegrity] Image response detected, adding integrity header', {
             contentType,
+            status: response.status,
             url: request.url
         });
     }

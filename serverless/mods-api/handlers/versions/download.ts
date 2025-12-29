@@ -258,7 +258,7 @@ export async function handleDownloadVersion(
 
         // Check if file is encrypted (should always be true for new uploads)
         const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
-        const encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
+        let encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
         console.log('[Download] File retrieved from R2:', { 
             size: encryptedFile.size, 
             isEncrypted, 
@@ -292,11 +292,24 @@ export async function handleDownloadVersion(
                     });
                 }
                 
+                // Read encrypted file once
+                const encryptedBinary = await encryptedFile.arrayBuffer();
+                const fileBytes = new Uint8Array(encryptedBinary);
+                
+                // If encryption format is not in metadata, detect it from file header
+                if (!encryptionFormat) {
+                    // Check for binary format: first byte should be 4 or 5
+                    if (fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5)) {
+                        encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
+                        console.log('[Download] Detected encryption format from file header:', encryptionFormat);
+                    }
+                }
+                
                 // Check encryption format and decrypt accordingly
-                if (encryptionFormat === 'binary-v4') {
-                    // Binary encrypted format - decrypt directly
-                    console.log('[Download] Using binary decryption (v4)...');
-                    const encryptedBinary = await encryptedFile.arrayBuffer();
+                if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
+                    // Binary encrypted format (v4 or v5) - decrypt directly
+                    const version = encryptionFormat === 'binary-v5' ? 'v5' : 'v4';
+                    console.log(`[Download] Using binary decryption (${version})...`);
                     const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
                     decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
                     console.log('[Download] Binary decryption successful, size:', decryptedFileBytes.length);
