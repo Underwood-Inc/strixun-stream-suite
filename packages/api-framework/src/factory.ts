@@ -7,13 +7,8 @@
 import type { APIClientConfig } from './types';
 import { EnhancedAPIClient } from './enhanced-client';
 
-// Auth functions must be provided by the consuming app
-// These are type definitions for the factory functions
-type AuthTokenGetter = () => string | null | Promise<string | null>;
-type CsrfTokenGetter = () => string | null | Promise<string | null>;
-
 /**
- * Get API URL from config
+ * Get API URL from config or window
  */
 function getApiUrl(): string {
   if (typeof window !== 'undefined' && (window as any).getWorkerApiUrl) {
@@ -24,9 +19,12 @@ function getApiUrl(): string {
 
 /**
  * Create default API client instance
+ * 
+ * Note: Auth functions (tokenGetter, csrfTokenGetter) must be provided in config
+ * by the consuming app. This factory does not import app-specific auth code.
  */
 export function createAPIClient(config: Partial<APIClientConfig> = {}): EnhancedAPIClient {
-  const apiUrl = getApiUrl();
+  const apiUrl = config.baseURL || getApiUrl();
 
   const defaultConfig: APIClientConfig = {
     baseURL: apiUrl,
@@ -49,14 +47,8 @@ export function createAPIClient(config: Partial<APIClientConfig> = {}): Enhanced
       syncOnReconnect: true,
       retryOnReconnect: true,
     },
-    auth: {
-      tokenGetter: getAuthToken,
-      csrfTokenGetter: getCsrfToken,
-      onTokenExpired: async () => {
-        // Token expired - could trigger refresh here
-        console.warn('[API] Token expired');
-      },
-    },
+    // Auth must be provided by consuming app in config
+    // No default auth - library should not depend on app-specific stores
     ...config,
   };
 

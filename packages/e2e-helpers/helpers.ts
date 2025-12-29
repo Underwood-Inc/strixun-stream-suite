@@ -6,7 +6,7 @@
  */
 
 import { Page, type APIResponse } from '@playwright/test';
-import { WORKER_URLS } from '../../../playwright.config.js';
+import { WORKER_URLS } from '../../playwright.config.js';
 
 // Re-export WORKER_URLS for convenience
 export { WORKER_URLS };

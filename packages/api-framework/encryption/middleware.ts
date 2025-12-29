@@ -167,7 +167,7 @@ export async function wrapWithEncryption(
         // Still add integrity header for service-to-service error responses
         if (request && env && (!auth?.jwtToken || auth.userId === 'service')) {
             try {
-                const { wrapResponseWithIntegrity } = await import('../service-client/integrity-response.js');
+                const { wrapResponseWithIntegrity } = await import('@strixun/service-client/integrity-response');
                 const responseWithIntegrity = await wrapResponseWithIntegrity(handlerResponse, request, auth ?? null, env);
                 return {
                     response: responseWithIntegrity,
