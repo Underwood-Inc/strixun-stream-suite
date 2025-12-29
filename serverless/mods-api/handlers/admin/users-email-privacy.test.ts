@@ -33,7 +33,7 @@ vi.mock('../../utils/errors.js', () => ({
 import { getApprovedUploaders } from '../../utils/admin.js';
 
 // Mock the service client to avoid actual network calls
-vi.mock('../../../shared/service-client/index.js', () => ({
+vi.mock('@strixun/service-client', () => ({
     createServiceClient: vi.fn(() => ({
         get: vi.fn().mockResolvedValue({
             status: 200,
@@ -57,6 +57,8 @@ describe('Email Privacy in Admin User Handlers', () => {
     const mockEnv = {
         ALLOWED_ORIGINS: '*',
         AUTH_API_URL: 'https://auth.idling.app',
+        SUPER_ADMIN_API_KEY: 'test-key',
+        NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
         MODS_KV: {
             get: vi.fn(),
             list: vi.fn(),
@@ -67,8 +69,28 @@ describe('Email Privacy in Admin User Handlers', () => {
         },
     } as any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.clearAllMocks();
+        
+        // Reset the service client mock for each test
+        const { createServiceClient } = await import('@strixun/service-client');
+        vi.mocked(createServiceClient).mockReturnValue({
+            get: vi.fn().mockResolvedValue({
+                status: 200,
+                data: {
+                    users: [
+                        {
+                            userId: 'user_123',
+                            displayName: 'CoolUser123',
+                            customerId: 'cust_abc',
+                            createdAt: '2024-01-01T00:00:00Z',
+                            lastLogin: '2024-01-02T00:00:00Z',
+                        },
+                    ],
+                    total: 1,
+                },
+            }),
+        } as any);
         
         // Mock KV operations to return empty immediately (prevents hanging on cursor loops)
         vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(null);
@@ -136,7 +158,7 @@ describe('Email Privacy in Admin User Handlers', () => {
 
         it('should handle null displayName gracefully', async () => {
             // Mock service client for this specific test
-            const { createServiceClient } = await import('../../../shared/service-client/index.js');
+            const { createServiceClient } = await import('@strixun/service-client');
             vi.mocked(createServiceClient).mockReturnValueOnce({
                 get: vi.fn().mockResolvedValue({
                     status: 200,
@@ -184,7 +206,7 @@ describe('Email Privacy in Admin User Handlers', () => {
             });
 
             // Mock service client for this specific test
-            const { createServiceClient } = await import('../../../shared/service-client/index.js');
+            const { createServiceClient } = await import('@strixun/service-client');
             vi.mocked(createServiceClient).mockReturnValueOnce({
                 get: vi.fn().mockResolvedValue({
                     status: 200,
@@ -239,7 +261,7 @@ describe('Email Privacy in Admin User Handlers', () => {
             });
 
             // Mock service client for this specific test
-            const { createServiceClient } = await import('../../../shared/service-client/index.js');
+            const { createServiceClient } = await import('@strixun/service-client');
             vi.mocked(createServiceClient).mockReturnValueOnce({
                 get: vi.fn().mockResolvedValue({
                     status: 200,

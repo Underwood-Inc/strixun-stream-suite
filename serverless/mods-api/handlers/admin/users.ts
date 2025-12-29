@@ -54,7 +54,7 @@ async function listAllUsers(env: Env): Promise<User[]> {
     // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
     console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
     try {
-        const { createServiceClient } = await import('../../../shared/service-client/index.js');
+        const { createServiceClient } = await import('@strixun/service-client');
         const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
         
         // For admin endpoints, we need SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
