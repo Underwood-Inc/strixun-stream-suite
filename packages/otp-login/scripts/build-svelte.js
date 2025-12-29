@@ -35,6 +35,11 @@ try {
         configFile: svelteConfigPath,
         compilerOptions: {
           css: 'injected',
+          // Ensure proper handling of empty blocks in Svelte 5
+          generate: 'dom',
+          hydratable: false,
+          // Disable dev mode to avoid development-only code generation
+          dev: false,
         },
         onwarn: (warning, handler) => {
           // Suppress CSS unused selector warnings

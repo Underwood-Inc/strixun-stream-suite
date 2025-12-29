@@ -4,6 +4,11 @@ export default {
   preprocess: vitePreprocess(),
   compilerOptions: {
     css: 'injected',
+    // Explicitly set DOM generation mode to avoid issues with empty blocks
+    generate: 'dom',
+    hydratable: false,
+    // Disable dev mode warnings that might cause issues in CI
+    dev: false,
   },
   onwarn: (warning, handler) => {
     // Ignore a11y warnings
