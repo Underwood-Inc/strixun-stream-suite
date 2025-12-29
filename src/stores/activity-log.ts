@@ -7,7 +7,7 @@
 
 import { writable, derived, get } from 'svelte/store';
 import { createFilterState } from './filter-state';
-import { matchesSearchQuery as matchesSearchQueryUtil } from '../../shared-components/search-query-parser/index.js';
+import { matchesSearchQuery as matchesSearchQueryUtil } from '@strixun/search-query-parser';
 
 export type LogType = 'info' | 'success' | 'error' | 'warning' | 'debug';
 

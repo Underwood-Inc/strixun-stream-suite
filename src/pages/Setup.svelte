@@ -6,7 +6,7 @@
    */
   
   import { ConfirmationModal, LoginModal, Tooltip } from '@components';
-  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
   import { onMount } from 'svelte';
   import { stagger } from '../core/animations';
   import { EventBus } from '../core/events/EventBus';

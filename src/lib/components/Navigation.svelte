@@ -18,7 +18,7 @@ import { domInterferenceDetected } from '../../stores/dom-interference';
   import { celebrateClick } from '../../utils/particles';
   import Tooltip from './Tooltip.svelte';
   import { animate, stagger } from '../../core/animations';
-  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
   
   const tabs = [
     { 

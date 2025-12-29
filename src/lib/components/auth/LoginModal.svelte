@@ -9,8 +9,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { setAuth } from '../../../stores/auth';
   import { showToast } from '../../../stores/toast-queue';
-  import OtpLogin from '../../../../shared-components/otp-login/svelte/OtpLogin.svelte';
-  import type { LoginSuccessData } from '../../../../shared-components/otp-login/core';
+  import OtpLogin from '@strixun/otp-login/dist/svelte';
+  import type { LoginSuccessData } from '@strixun/otp-login';
   import { getOtpEncryptionKey as getKey } from '../../../../shared-config/otp-encryption';
   
   export let onClose: () => void;

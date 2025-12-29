@@ -18,15 +18,20 @@
   import { celebrateClick, celebrateConnection } from '../../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../../stores/toast-queue';
   import { isAuthenticated, logout as logoutUser, user } from '../../stores/auth';
+  import { themeSettingsVisible } from '../../stores/theme-settings';
   import Tooltip from './Tooltip.svelte';
   import TruncatedText from './TruncatedText.svelte';
   import AlertsDropdown from './ui/AlertsDropdown.svelte';
-  import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
   
   let statusClass = 'disconnected';
   let reloadButton: HTMLButtonElement;
   let connectButton: HTMLButtonElement;
   let alertsOpen = false;
+  
+  function toggleThemeSettings(): void {
+    themeSettingsVisible.set(!$themeSettingsVisible);
+  }
   
   // Computed values for super admin check
   $: isSuperAdmin = $user?.isSuperAdmin ?? false;
@@ -116,6 +121,14 @@
     </TruncatedText>
   </h1>
   <div class="header-actions">
+    <Tooltip text="Theme Settings | Customize fonts and UI appearance" position="bottom">
+      <button class="btn-icon" on:click={toggleThemeSettings} title="Theme Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </Tooltip>
     <Tooltip text="Floating Support Panel | This panel can be dragged, dimmed, and repositioned. Look for the support card in the bottom-right corner!" position="bottom">
       <button class="btn-icon" title="Support Panel Info">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

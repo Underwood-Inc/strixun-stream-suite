@@ -5,7 +5,7 @@
    * Wrapper for shared AdCarousel component with main app's storage adapter.
    */
 
-  import AdCarouselShared from '@shared-components/ad-carousel/AdCarousel.svelte';
+  import { AdCarousel as AdCarouselShared } from '@strixun/ad-carousel';
   import { storage } from '../../../../modules/storage';
   
   // Create storage adapter from main app's storage module

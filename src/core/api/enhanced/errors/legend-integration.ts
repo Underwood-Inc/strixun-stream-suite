@@ -8,8 +8,7 @@ import type { RFC7807Error } from '../types';
 import type { APIRequest, APIError } from '../../types';
 
 // Import error legend from shared-components
-// Using relative path from src/core/api/enhanced/errors to shared-components
-import { getErrorInfo as getErrorInfoFromLegend } from '../../../../../shared-components/error-mapping/error-legend';
+import { getErrorInfo as getErrorInfoFromLegend } from '@strixun/error-mapping';
 
 /**
  * Enhance RFC 7807 error with error legend information

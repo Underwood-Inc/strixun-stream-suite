@@ -60,6 +60,9 @@ $colors: (
   --text-secondary: #{map.get($colors, text-secondary)};
   --muted: #{map.get($colors, muted)};
   
+  // Typography
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
   // Glass Effects
   --glass-bg: rgba(37, 32, 23, 0.95);
   --glass-bg-dark: rgba(26, 22, 17, 0.98);

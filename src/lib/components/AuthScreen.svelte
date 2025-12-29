@@ -82,7 +82,7 @@
     justify-content: center;
     z-index: 999999;
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     @include gpu-accelerated;
     animation: fade-in 0.3s ease-out;
   }

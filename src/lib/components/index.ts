@@ -17,6 +17,7 @@ export { default as LoadingSkeleton } from './LoadingSkeleton.svelte';
 export { default as SearchBox } from './SearchBox.svelte';
 export { default as SourceSelect } from './SourceSelect.svelte';
 export { default as EncryptionSettings } from './EncryptionSettings.svelte';
+export { default as ThemeSettings } from './ThemeSettings.svelte';
 
 // Activity Log Components
 export { default as ActivityLog } from './ActivityLog.svelte';
@@ -66,8 +67,8 @@ export { default as ProductCarousel } from './ProductCarousel.svelte';
 export type { Product, ProductStats } from './ProductCarousel.svelte';
 
 // Ad Carousels (reusable)
-export { default as TwitchAdCarousel } from '@shared-components/ad-carousel/TwitchAdCarousel.svelte';
+export { TwitchAdCarousel } from '@strixun/ad-carousel';
 
 // Support Cards
-export { default as TwitchSupportCard } from '@shared-components/ad-carousel/TwitchSupportCard.svelte';
+export { TwitchSupportCard } from '@strixun/ad-carousel';
 
