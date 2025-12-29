@@ -21,23 +21,23 @@ This document tracks the complete audit and fix of all workspace library depende
 
 | Library Name | Location | Package.json | Status |
 |-------------|----------|--------------|--------|
-| `@strixun/api-framework` | `serverless/shared/api` | ✅ Exists | ✅ Configured |
-| `@strixun/types` | `serverless/shared/types` | ✅ Exists | ✅ Configured |
-| `@strixun/service-client` | `serverless/shared/service-client` | ✅ Exists | ✅ Configured |
-| `@strixun/e2e-helpers` | `serverless/shared/e2e` | ✅ Exists | ✅ Configured |
+| `@strixun/api-framework` | `packages/api-framework` | ✅ Exists | ✅ Configured |
+| `@strixun/types` | `packages/types` | ✅ Exists | ✅ Configured |
+| `@strixun/service-client` | `packages/service-client` | ✅ Exists | ✅ Configured |
+| `@strixun/e2e-helpers` | `packages/e2e-helpers` | ✅ Exists | ✅ Configured |
 | `@strixun/otp-auth-service` | `serverless/otp-auth-service` | ✅ Exists | ✅ Configured |
 | `@strixun/mods-hub` | `mods-hub` | ✅ Exists | ✅ Configured |
 | `@strixun/control-panel` | `control-panel` | ✅ Exists | ⚠️ Needs audit |
 | `@strixun/shared-components` | `shared-components` | ✅ Exists | ✅ Configured |
-| `@strixun/otp-login` | `shared-components/otp-login` | ✅ Exists | ✅ Configured |
-| `@strixun/search-query-parser` | `shared-components/search-query-parser` | ✅ Exists | ✅ Configured |
-| `@strixun/virtualized-table` | `shared-components/virtualized-table` | ✅ Exists | ✅ Configured |
-| `@strixun/status-flair` | `shared-components/status-flair` | ✅ Exists | ✅ Configured |
-| `@strixun/error-mapping` | `shared-components/error-mapping` | ✅ Exists | ✅ Configured |
-| `@strixun/ad-carousel` | `shared-components/ad-carousel` | ✅ Exists | ✅ Configured |
-| `@strixun/tooltip` | `shared-components/tooltip` | ✅ Exists | ✅ Configured |
-| `@strixun/idle-game-overlay` | `shared-components/idle-game-overlay` | ✅ Exists | ✅ Configured |
-| `@strixun/rate-limit-info` | `shared-components/rate-limit-info` | ✅ Exists | ✅ Configured |
+| `@strixun/otp-login` | `packages/otp-login` | ✅ Exists | ✅ Configured |
+| `@strixun/search-query-parser` | `packages/search-query-parser` | ✅ Exists | ✅ Configured |
+| `@strixun/virtualized-table` | `packages/virtualized-table` | ✅ Exists | ✅ Configured |
+| `@strixun/status-flair` | `packages/status-flair` | ✅ Exists | ✅ Configured |
+| `@strixun/error-mapping` | `packages/error-mapping` | ✅ Exists | ✅ Configured |
+| `@strixun/ad-carousel` | `packages/ad-carousel` | ✅ Exists | ✅ Configured |
+| `@strixun/tooltip` | `packages/tooltip` | ✅ Exists | ✅ Configured |
+| `@strixun/idle-game-overlay` | `packages/idle-game-overlay` | ✅ Exists | ✅ Configured |
+| `@strixun/rate-limit-info` | `packages/rate-limit-info` | ✅ Exists | ✅ Configured |
 | `@strixun/url-shortener-app` | `serverless/url-shortener/app` | ✅ Exists | ⚠️ Needs audit |
 
 ---
@@ -271,20 +271,31 @@ This document tracks the complete audit and fix of all workspace library depende
 
 **Goal:** Move all workspace libraries from `serverless/shared/*` to `packages/` at root level for better organization and maintenance.
 
-**Libraries to Move:**
-- [ ] `serverless/shared/api` → `packages/api-framework`
-- [ ] `serverless/shared/service-client` → `packages/service-client`
-- [ ] `serverless/shared/types` → `packages/types`
-- [ ] `serverless/shared/e2e` → `packages/e2e-helpers`
-- [ ] `serverless/shared/encryption` → `packages/encryption` (if separate, or keep with api-framework?)
+**Libraries Moved:**
+- [x] `serverless/shared/api` → `packages/api-framework` ✅
+- [x] `serverless/shared/service-client` → `packages/service-client` ✅
+- [x] `serverless/shared/types` → `packages/types` ✅
+- [x] `serverless/shared/e2e` → `packages/e2e-helpers` ✅
+- [x] `serverless/shared/encryption` → `packages/api-framework/encryption` ✅ (moved into api-framework)
 
-**Steps:**
-1. [ ] Create `packages/` directory
-2. [ ] Move each library directory
-3. [ ] Update internal imports within moved libraries (relative paths)
-4. [ ] Update `pnpm-workspace.yaml` to point to new locations
-5. [ ] Verify all workspace package imports still work (they should - using package names)
-6. [ ] Remove empty `serverless/shared/` directory
+**Component Libraries Moved:**
+- [x] `shared-components/otp-login` → `packages/otp-login` ✅
+- [x] `shared-components/search-query-parser` → `packages/search-query-parser` ✅
+- [x] `shared-components/virtualized-table` → `packages/virtualized-table` ✅
+- [x] `shared-components/rate-limit-info` → `packages/rate-limit-info` ✅
+- [x] `shared-components/status-flair` → `packages/status-flair` ✅
+- [x] `shared-components/tooltip` → `packages/tooltip` ✅
+- [x] `shared-components/ad-carousel` → `packages/ad-carousel` ✅
+- [x] `shared-components/error-mapping` → `packages/error-mapping` ✅
+- [x] `shared-components/idle-game-overlay` → `packages/idle-game-overlay` ✅
+
+**Steps Completed:**
+1. [x] Create `packages/` directory ✅
+2. [x] Move each library directory ✅
+3. [x] Update internal imports within moved libraries (relative paths) ✅ (verified - all relative paths still valid)
+4. [x] Update `pnpm-workspace.yaml` to point to new locations ✅
+5. [ ] Verify all workspace package imports still work (they should - using package names) ⚠️ **PENDING: Run pnpm install and test builds**
+6. [x] Handle remaining files in `serverless/shared/` ✅ **COMPLETED: enhanced-router.ts and enhanced-wrapper.ts moved to packages/api-framework, compiled .js files removed, directory removed if empty**
 
 ---
 

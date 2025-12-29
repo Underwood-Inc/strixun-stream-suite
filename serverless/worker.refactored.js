@@ -23,7 +23,7 @@ import { handleClips, handleFollowing, handleGame, handleUser, getAppAccessToken
 import { handleCloudSave, handleCloudLoad, handleCloudList, handleCloudDelete } from './handlers/cloud-storage.js';
 import { handleNotesSave, handleNotesLoad, handleNotesList, handleNotesDelete } from './handlers/notes.js';
 import { handleOBSCredentialsSave, handleOBSCredentialsLoad, handleOBSCredentialsDelete } from './handlers/obs.js';
-import { createEnhancedRouter } from './shared/enhanced-router.js';
+import { createEnhancedRouter } from '../../packages/api-framework/enhanced-router.js';
 import { initializeServiceTypes } from '@strixun/types';
 
 // Initialize service types for enhanced framework
