@@ -143,9 +143,9 @@ jobs:
             echo "✅ dashboard-assets.js created with $ASSET_COUNT files"
           fi
           
-          # Deploy to Cloudflare Workers (production environment)
+          # Deploy to Cloudflare Workers (default worker, not production-specific)
           echo "🚀 Deploying to Cloudflare Workers..."
-          pnpm exec wrangler deploy --env production
+          pnpm run deploy
       
       - name: Rollback on Failure
         if: failure()
