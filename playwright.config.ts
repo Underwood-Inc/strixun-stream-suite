@@ -8,12 +8,17 @@ const __dirname = dirname(__filename);
 
 /**
  * Load .dev.vars files into process.env for E2E tests
+ * Returns the encryption key from OTP Auth Service for use in mods-hub
+ * Priority: SERVICE_ENCRYPTION_KEY (worker key) > VITE_SERVICE_ENCRYPTION_KEY (frontend key)
  */
-function loadDevVars() {
+function loadDevVars(): string | undefined {
   const devVarsPaths = [
     join(__dirname, 'serverless', 'mods-api', '.dev.vars'),
     join(__dirname, 'serverless', 'otp-auth-service', '.dev.vars'),
   ];
+  
+  let serviceEncryptionKey: string | undefined;
+  let viteServiceEncryptionKey: string | undefined;
   
   for (const devVarsPath of devVarsPaths) {
     if (existsSync(devVarsPath)) {
@@ -33,10 +38,23 @@ function loadDevVars() {
           if (!process.env[key]) {
             process.env[key] = value;
           }
+          
+          // Extract encryption keys from OTP Auth Service .dev.vars
+          if (devVarsPath.includes('otp-auth-service')) {
+            if (key === 'SERVICE_ENCRYPTION_KEY') {
+              serviceEncryptionKey = value;
+            } else if (key === 'VITE_SERVICE_ENCRYPTION_KEY') {
+              viteServiceEncryptionKey = value;
+            }
+          }
         }
       }
     }
   }
+  
+  // Priority: SERVICE_ENCRYPTION_KEY (worker uses this) > VITE_SERVICE_ENCRYPTION_KEY
+  // Both should match, but SERVICE_ENCRYPTION_KEY is what the worker actually uses
+  return serviceEncryptionKey || viteServiceEncryptionKey;
 }
 
 // Load .dev.vars before tests run
@@ -76,7 +94,11 @@ const WORKER_URLS = {
 };
 
 // Load .dev.vars before config is evaluated (so we can pass to workers)
-loadDevVars();
+// Get encryption key for mods-hub (must match OTP Auth Service)
+const E2E_ENCRYPTION_KEY = loadDevVars() || 
+  process.env.SERVICE_ENCRYPTION_KEY || 
+  process.env.VITE_SERVICE_ENCRYPTION_KEY || 
+  'test-service-encryption-key-for-local-development-12345678901234567890123456789012';
 
 export default defineConfig({
   // Global setup to load .dev.vars before tests run
@@ -152,11 +174,21 @@ export default defineConfig({
       url: WORKER_URLS.MODS_HUB,
       reuseExistingServer: !process.env.CI,
       timeout: 60 * 1000, // 60 seconds to start mods-hub
+      env: {
+        // Override Vite proxy URLs with direct local worker URLs for E2E tests
+        VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
+        VITE_MODS_API_URL: WORKER_URLS.MODS_API,
+        // Use the same encryption key as OTP Auth Service (must match SERVICE_ENCRYPTION_KEY)
+        // This ensures mods-hub encrypts requests with the same key the worker expects
+        VITE_SERVICE_ENCRYPTION_KEY: E2E_ENCRYPTION_KEY,
+      },
     },
     // Start all local workers (E2E tests replicate production with all services running)
     // Each service runs on its own port to replicate production deployment
     ...(process.env.E2E_START_LOCAL_WORKER !== 'false' ? [
       // OTP Auth Service (port 8787)
+      // --local flag ensures .dev.vars is used (not Cloudflare secrets)
+      // This matches the deployment pattern where .dev.vars is the source for local testing
       {
         command: process.platform === 'win32' 
           ? `cd serverless/otp-auth-service && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && wrangler dev --port ${BASE_PORT} --local`

@@ -234,12 +234,15 @@ export async function uploadMod(
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
     // Determine encryption method based on mod visibility
-    // Public mods use service key for anonymous downloads, private/draft use JWT
-    const isPublic = metadata.visibility === 'public' && (metadata.status === 'published' || !metadata.status);
+    // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
+    // This allows anonymous downloads once mod is published, even if uploaded as pending
+    // Private/draft mods use JWT (requires authentication to download)
+    const isPublic = metadata.visibility === 'public';
     let encryptedFile: Uint8Array;
     
     if (isPublic) {
         // Public mods: encrypt with service key for anonymous downloads
+        // This works even if status is 'pending' - allows downloads once published
         const serviceKey = getOtpEncryptionKey();
         if (!serviceKey) {
             throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
@@ -312,10 +315,11 @@ export async function uploadVersion(
     metadata: VersionUploadRequest
 ): Promise<any> {
     // Fetch mod to check visibility - versions inherit mod's visibility
+    // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
     let isPublic = false;
     try {
         const mod = await getModDetail(modId);
-        isPublic = mod.visibility === 'public' && (mod.status === 'published' || !mod.status);
+        isPublic = mod.visibility === 'public';
     } catch (error) {
         console.warn('[uploadVersion] Could not fetch mod to check visibility, defaulting to private encryption:', error);
         // Default to private if we can't fetch mod (backward compatible)

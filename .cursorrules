@@ -346,6 +346,69 @@ Always use bracketed text labels for status indicators:
 - Use dependency injection for services
 - Mock external dependencies in tests
 
+## Testing and Build Verification Rules - CRITICAL
+
+### MANDATORY: Verify Tests and Builds Before Completion
+- **ABSOLUTE REQUIREMENT**: ALWAYS run tests and verify builds are error-free before marking work as complete or ready for testing
+- **NEVER** say work is complete, done, or ready for testing without first:
+  1. Running relevant test suites (unit, integration, E2E)
+  2. Verifying builds compile without errors
+  3. Checking for linting errors
+  4. Confirming no TypeScript errors
+  5. Verifying affected functionality works
+
+### Before Marking Work Complete:
+1. **Run TypeScript Build Check**:
+   ```bash
+   pnpm build
+   # OR for specific packages:
+   cd <package-dir> && pnpm build
+   ```
+   - Must complete with zero errors
+   - Fix any TypeScript compilation errors before proceeding
+
+2. **Run Linting**:
+   ```bash
+   pnpm lint
+   # OR check specific files:
+   # Use read_lints tool to check edited files
+   ```
+   - Must have zero linting errors
+   - Fix all linting issues before proceeding
+
+3. **Run Relevant Tests**:
+   - **For E2E tests**: `pnpm test:e2e <test-file>` or `pnpm test:e2e --grep "<test-name>"`
+   - **For unit tests**: `pnpm test <test-file>`
+   - **For integration tests**: `pnpm test:integration`
+   - Tests must pass or be appropriately skipped
+   - If tests fail, fix issues before marking complete
+
+4. **Verify Functionality**:
+   - If adding/changing features, verify they work as expected
+   - If fixing bugs, verify the fix works
+   - Test edge cases and error scenarios
+
+### Completion Checklist:
+Before saying "work is complete", "ready for testing", or similar:
+- [ ] TypeScript builds successfully (no compilation errors)
+- [ ] Linting passes (no linting errors)
+- [ ] Relevant tests pass (or are appropriately skipped)
+- [ ] Functionality verified (manual or automated)
+- [ ] No console errors or warnings in test output
+
+### Exception Cases:
+- **Documentation-only changes**: Still verify markdown renders correctly
+- **Config-only changes**: Still verify config is valid
+- **Test-only changes**: Still verify tests run and pass
+- **If tests/builds fail due to unrelated issues**: Document the issue and note it, but still attempt to verify your changes work
+
+### Error Handling:
+- If tests fail, DO NOT mark work as complete
+- If builds fail, DO NOT mark work as complete
+- If linting fails, DO NOT mark work as complete
+- Fix issues or document why they cannot be fixed immediately
+- Always report test/build status in your completion message
+
 ## HTML/Anchor Tag Rules - CRITICAL
 
 ### NEVER Add href to Non-Anchor Elements

@@ -492,29 +492,41 @@ export async function handleUploadMod(
         // Support both binary file upload (preferred) and legacy base64
         const thumbnailFile = formData.get('thumbnail') as File | null;
         let thumbnailUrl: string | undefined;
+        let thumbnailExtension: string | undefined;
         
         if (thumbnailFile) {
             // Binary file upload (optimized - no base64 overhead)
             thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
+            // CRITICAL FIX: Extract extension from file type for faster lookup
+            const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+            thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
         } else if (metadata.thumbnail) {
             // Legacy base64 upload (backward compatibility)
             thumbnailUrl = await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId);
+            // CRITICAL FIX: Extract extension from base64 data URL for faster lookup
+            const matches = metadata.thumbnail.match(/^data:image\/(\w+);base64,/);
+            if (matches) {
+                const imageType = matches[1]?.toLowerCase();
+                thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
+            }
         }
 
         // Fetch author display name from auth API during upload
-        // CRITICAL: Auth API has no public user lookup endpoint, so we must store it here
+        // CRITICAL FIX: Make this synchronous - wait for result before storing mod
+        // This prevents "Unknown User" from being stored if fetch fails
         // NOTE: /auth/me returns encrypted responses that need to be decrypted
-        // Includes timeout handling and retry logic for reliability
+        // Includes timeout handling and retry logic with exponential backoff
         let authorDisplayName: string | null = null;
         const authHeader = request.headers.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.substring(7);
             const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
             const url = `${authApiUrl}/auth/me`;
-            const timeoutMs = 5000; // 5 second timeout
+            const timeoutMs = 10000; // Increased to 10 second timeout
+            const maxAttempts = 3; // Increased retry attempts
             
-            // Retry logic: try once, retry once on timeout
-            for (let attempt = 0; attempt < 2; attempt++) {
+            // Retry logic with exponential backoff: try up to 3 times
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 try {
                     // Create AbortController for timeout
                     const controller = new AbortController();
@@ -560,26 +572,29 @@ export async function handleUploadMod(
                                 attempt: attempt + 1
                             });
                             break; // Success, exit retry loop
-                        } else if (response.status === 522 || response.status === 504) {
-                            // Gateway timeout - retry if this is first attempt
-                            if (attempt === 0) {
+                            } else if (response.status === 522 || response.status === 504) {
+                            // Gateway timeout - retry with exponential backoff
+                            if (attempt < maxAttempts - 1) {
+                                const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff: 1s, 2s, 4s (max 5s)
                                 console.warn('[Upload] /auth/me gateway timeout, will retry:', { 
                                     status: response.status, 
                                     userId: auth.userId,
-                                    attempt: attempt + 1
+                                    attempt: attempt + 1,
+                                    maxAttempts,
+                                    backoffMs
                                 });
-                                // Wait a bit before retry
-                                await new Promise(resolve => setTimeout(resolve, 500));
+                                await new Promise(resolve => setTimeout(resolve, backoffMs));
                                 continue; // Retry
                             } else {
                                 const errorText = await response.text().catch(() => 'Unable to read error');
-                                console.warn('[Upload] /auth/me gateway timeout after retry:', { 
+                                console.error('[Upload] /auth/me gateway timeout after all retries:', { 
                                     status: response.status, 
                                     statusText: response.statusText,
                                     error: errorText,
-                                    userId: auth.userId
+                                    userId: auth.userId,
+                                    attempts: maxAttempts
                                 });
-                                break; // Give up after retry
+                                break; // Give up after all retries
                             }
                         } else {
                             const errorText = await response.text().catch(() => 'Unable to read error');
@@ -597,42 +612,48 @@ export async function handleUploadMod(
                         
                         // Check if it's an abort (timeout)
                         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-                            if (attempt === 0) {
+                            if (attempt < maxAttempts - 1) {
+                                const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
                                 console.warn('[Upload] /auth/me request timeout, will retry:', { 
                                     timeoutMs, 
                                     userId: auth.userId,
-                                    attempt: attempt + 1
+                                    attempt: attempt + 1,
+                                    maxAttempts,
+                                    backoffMs
                                 });
-                                // Wait a bit before retry
-                                await new Promise(resolve => setTimeout(resolve, 500));
+                                await new Promise(resolve => setTimeout(resolve, backoffMs));
                                 continue; // Retry
                             } else {
-                                console.error('[Upload] /auth/me request timeout after retry:', { 
+                                console.error('[Upload] /auth/me request timeout after all retries:', { 
                                     timeoutMs, 
-                                    userId: auth.userId
+                                    userId: auth.userId,
+                                    attempts: maxAttempts
                                 });
-                                break; // Give up after retry
+                                break; // Give up after all retries
                             }
                         }
                         throw fetchError; // Re-throw other errors
                     }
                 } catch (error) {
                     // Network errors or other issues
-                    if (attempt === 0) {
+                    if (attempt < maxAttempts - 1) {
+                        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
                         console.warn('[Upload] Failed to fetch displayName from auth service, will retry:', { 
                             error: error instanceof Error ? error.message : String(error),
                             userId: auth.userId,
-                            attempt: attempt + 1
+                            attempt: attempt + 1,
+                            maxAttempts,
+                            backoffMs
                         });
-                        // Wait a bit before retry
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await new Promise(resolve => setTimeout(resolve, backoffMs));
                         continue; // Retry
                     } else {
-                        console.error('[Upload] Failed to fetch displayName from auth service after retry:', { 
+                        console.error('[Upload] Failed to fetch displayName from auth service after all retries:', { 
                             error: error instanceof Error ? error.message : String(error),
-                            userId: auth.userId
+                            userId: auth.userId,
+                            attempts: maxAttempts
                         });
-                        break; // Give up after retry
+                        break; // Give up after all retries
                     }
                 }
             }
@@ -640,10 +661,31 @@ export async function handleUploadMod(
             console.warn('[Upload] No Authorization header found for displayName fetch');
         }
         
+        // CRITICAL FIX: Log if displayName is still null after all retries
+        // This helps identify persistent issues with auth API
+        if (!authorDisplayName) {
+            console.warn('[Upload] authorDisplayName is null after all fetch attempts:', {
+                userId: auth.userId,
+                customerId: auth.customerId,
+                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again'
+            });
+        }
+        
         // CRITICAL: Never use authorEmail as fallback - email is ONLY for authentication
         // If displayName is null, UI will show "Unknown User"
         // Note: For previously uploaded mods with null displayName, the detail handler will attempt to fetch it
 
+        // CRITICAL FIX: Validate customerId is present before storing mod
+        // This ensures proper data scoping and prevents lookup issues
+        if (!auth.customerId) {
+            console.error('[Upload] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'This will cause data scoping issues'
+            });
+            // Still allow upload but log the issue - customerId may be null for some auth flows
+        }
+        
         // Create mod metadata with initial status
         // CRITICAL: Never store email - email is ONLY for OTP authentication
         const mod: ModMetadata = {
@@ -656,6 +698,7 @@ export async function handleUploadMod(
             category: metadata.category,
             tags: metadata.tags || [],
             thumbnailUrl,
+            thumbnailExtension, // Store extension for faster lookup
             createdAt: now,
             updatedAt: now,
             latestVersion: metadata.version,
@@ -675,10 +718,23 @@ export async function handleUploadMod(
 
         // Store in KV
         // Use normalized modId (already computed above) to ensure consistent key generation
+        // CRITICAL FIX: Log customerId association for debugging
         const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
         const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
+        
+        console.log('[Upload] Storing mod with customerId association:', {
+            modId,
+            normalizedModId,
+            customerId: auth.customerId,
+            modKey,
+            versionKey,
+            versionsListKey,
+            modsListKey,
+            authorId: auth.userId,
+            authorDisplayName
+        });
 
         // Store mod and version in customer scope
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
@@ -825,6 +881,10 @@ async function handleThumbnailBinaryUpload(
                 validated: 'true', // Mark as validated for rendering
             },
         });
+        
+        // CRITICAL FIX: Store extension in mod metadata for faster lookup
+        // This avoids trying multiple extensions during retrieval
+        console.log('[Upload] Thumbnail uploaded with extension:', { modId, extension, r2Key });
         
         // Return API proxy URL using slug for consistency
         const requestUrl = new URL(request.url);

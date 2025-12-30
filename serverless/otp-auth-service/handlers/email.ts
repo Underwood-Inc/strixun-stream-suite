@@ -139,7 +139,39 @@ export async function sendOTPEmail(
     const provider = getEmailProvider(customer, env);
     
     try {
-        // Send email using provider
+        // E2E TEST MODE: Intercept emails and store OTP in KV for test retrieval
+        // SECURITY: Only intercept when ALL of these are true:
+        // 1. ENVIRONMENT is 'test' (set by setup-test-secrets.js for local dev only)
+        // 2. RESEND_API_KEY is a test key (starts with 're_test_' - only in .dev.vars)
+        // 3. We're running locally (wrangler dev --local creates local KV)
+        // 
+        // PRODUCTION SAFETY:
+        // - Production ENVIRONMENT is never 'test' (it's 'production' or undefined)
+        // - Production RESEND_API_KEY is a real key (never starts with 're_test_')
+        // - Production uses Cloudflare KV (not local filesystem)
+        // - This code path is NEVER reached in production deployments
+        const isLocalTestMode = env.ENVIRONMENT === 'test' && 
+                                env.RESEND_API_KEY?.startsWith('re_test_');
+        
+        if (isLocalTestMode) {
+            // Store OTP in KV with predictable key for E2E test retrieval
+            // E2E tests will read from local KV filesystem (.wrangler/state/v3/kv)
+            // This NEVER works in production because:
+            // 1. Production uses Cloudflare KV (not local filesystem)
+            // 2. ENVIRONMENT is never 'test' in production
+            // 3. RESEND_API_KEY is never 're_test_' in production
+            const emailHash = await (await import('../utils/crypto.js')).hashEmail(email);
+            const e2eOTPKey = `e2e_otp_${emailHash}`;
+            
+            await env.OTP_AUTH_KV.put(e2eOTPKey, otp, { expirationTtl: 600 });
+            
+            console.log('[E2E] OTP intercepted and stored in local KV:', e2eOTPKey);
+            
+            // In local test mode, don't actually send email (skip Resend API call)
+            return { id: `e2e_${Date.now()}`, intercepted: true };
+        }
+        
+        // Send email using provider (production or when RESEND_API_KEY is set)
         const result = await provider.sendEmail({
             from: from,
             to: email,

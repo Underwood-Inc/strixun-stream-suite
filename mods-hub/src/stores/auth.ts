@@ -26,9 +26,12 @@ interface AuthState {
 }
 
 // Use proxy in development (via Vite), direct URL in production
-const AUTH_API_URL = import.meta.env.DEV 
-  ? '/auth-api'  // Vite proxy in development
-  : (import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app');
+// E2E tests can override with VITE_AUTH_API_URL to use direct local worker URLs
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL 
+  ? import.meta.env.VITE_AUTH_API_URL  // Explicit URL override (for E2E tests)
+  : (import.meta.env.DEV 
+    ? '/auth-api'  // Vite proxy in development
+    : 'https://auth.idling.app');  // Production default
 
 /**
  * Restore session from backend based on IP address

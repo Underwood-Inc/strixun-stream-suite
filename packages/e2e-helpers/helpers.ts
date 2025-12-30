@@ -11,6 +11,9 @@ import { WORKER_URLS } from '../../playwright.config.js';
 // Re-export WORKER_URLS for convenience
 export { WORKER_URLS };
 
+// Re-export email interception helpers
+export { getInterceptedOTP, waitForInterceptedOTP } from './email-interception.js';
+
 /**
  * Test user credentials for E2E testing
  * These should be test accounts that won't affect production data

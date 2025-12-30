@@ -27,6 +27,7 @@ export interface ModMetadata {
     category: ModCategory;
     tags: string[];
     thumbnailUrl?: string;
+    thumbnailExtension?: string; // Extension stored for faster lookup (png, jpg, jpeg, webp, gif)
     createdAt: string;
     updatedAt: string;
     latestVersion: string;

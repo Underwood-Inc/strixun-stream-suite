@@ -17,12 +17,14 @@ const OTP_AUTH_DIR = join(__dirname, '..');
 
 // Test secrets - safe defaults for local development
 // IMPORTANT: JWT_SECRET must match mods-api JWT_SECRET for auth to work
-// IMPORTANT: VITE_SERVICE_ENCRYPTION_KEY must match mods-api SERVICE_ENCRYPTION_KEY
+// IMPORTANT: SERVICE_ENCRYPTION_KEY must match frontend VITE_SERVICE_ENCRYPTION_KEY
+// NOTE: Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
 const TEST_SECRETS = {
   ENVIRONMENT: 'test', // Set to 'test' for E2E mode to skip Vite proxy
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
   RESEND_API_KEY: 're_test_key_for_local_development',
   RESEND_FROM_EMAIL: 'test@example.com',
+  SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
   VITE_SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
   ALLOWED_ORIGINS: '*',
   SUPER_ADMIN_EMAILS: 'test@example.com',
@@ -64,6 +66,9 @@ function setupDevVars() {
       if (!content.includes('ENVIRONMENT=')) {
         content = `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}\n${content}`;
       }
+      if (!content.includes('SERVICE_ENCRYPTION_KEY=')) {
+        content += `\nSERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}\n`;
+      }
       if (!content.includes('VITE_SERVICE_ENCRYPTION_KEY=')) {
         content += `\nVITE_SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.VITE_SERVICE_ENCRYPTION_KEY}\n`;
       }
@@ -83,6 +88,7 @@ ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
 RESEND_API_KEY=${TEST_SECRETS.RESEND_API_KEY}
 RESEND_FROM_EMAIL=${TEST_SECRETS.RESEND_FROM_EMAIL}
+SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}
 VITE_SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.VITE_SERVICE_ENCRYPTION_KEY}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
 SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
@@ -97,7 +103,36 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
     let updated = false;
     let newContent = existingContent;
     
+    // Special handling for SUPER_ADMIN_EMAILS - ensure test@example.com is included
+    const testEmail = 'test@example.com';
+    if (secretExistsInDevVars('SUPER_ADMIN_EMAILS')) {
+      // Check if test@example.com is already in the list
+      const superAdminMatch = existingContent.match(/^SUPER_ADMIN_EMAILS=(.+)$/m);
+      if (superAdminMatch) {
+        const existingEmails = superAdminMatch[1].split(',').map(e => e.trim().toLowerCase());
+        if (!existingEmails.includes(testEmail.toLowerCase())) {
+          console.log(`[Setup] Adding ${testEmail} to SUPER_ADMIN_EMAILS (required for E2E tests)`);
+          // Add test@example.com to the existing list
+          newContent = newContent.replace(
+            /^SUPER_ADMIN_EMAILS=(.+)$/m,
+            `SUPER_ADMIN_EMAILS=$1,${testEmail}`
+          );
+          updated = true;
+        }
+      }
+    } else {
+      // SUPER_ADMIN_EMAILS doesn't exist, add it
+      console.log(`[Setup] Adding SUPER_ADMIN_EMAILS with ${testEmail}`);
+      newContent += `\nSUPER_ADMIN_EMAILS=${testEmail}\n`;
+      updated = true;
+    }
+    
+    // Handle other secrets normally
     for (const [key, value] of Object.entries(TEST_SECRETS)) {
+      if (key === 'SUPER_ADMIN_EMAILS') {
+        // Already handled above
+        continue;
+      }
       if (!secretExistsInDevVars(key)) {
         console.log(`[Setup] Adding missing secret: ${key}`);
         newContent += `\n${key}=${value}\n`;

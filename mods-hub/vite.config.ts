@@ -20,7 +20,7 @@ export default defineConfig({
     // IMPORTANT: Proxy must be defined before Vite's SPA fallback
     proxy: {
       '/mods-api': {
-        target: 'http://localhost:8787',
+        target: 'http://localhost:8788', // Mods API runs on port 8788
         changeOrigin: true,
         // Remove /mods-api prefix and send to worker
         // Worker supports both /mods/* and root-level paths for subdomain routing
@@ -41,7 +41,7 @@ export default defineConfig({
         },
       },
       '/auth-api': {
-        target: 'http://localhost:8788', // Auth service runs on port 8788
+        target: 'http://localhost:8787', // OTP Auth Service runs on port 8787
         changeOrigin: true,
         // Remove /auth-api prefix - auth service handles /auth/* routes
         // /auth-api/auth/restore-session -> /auth/restore-session

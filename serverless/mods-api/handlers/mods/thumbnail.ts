@@ -166,14 +166,20 @@ export async function handleThumbnail(
 
         // Reconstruct R2 key from mod metadata
         // Thumbnails are stored as: customer_xxx/thumbnails/normalizedModId.ext
-        // CRITICAL: Search mod's customer scope first, then all customer scopes if not found
-        // This matches the pattern used by badge handler for version lookups
+        // CRITICAL FIX: Use stored extension first, then fall back to trying all extensions
+        // This improves performance by avoiding unnecessary R2 lookups
         const normalizedStoredModId = normalizeModId(mod.modId);
-        console.log('[Thumbnail] Looking up R2 file:', { modCustomerId: mod.customerId, normalizedStoredModId, originalModId: mod.modId });
+        console.log('[Thumbnail] Looking up R2 file:', { 
+            modCustomerId: mod.customerId, 
+            normalizedStoredModId, 
+            originalModId: mod.modId,
+            storedExtension: mod.thumbnailExtension
+        });
         
-        // Try common image extensions to find the actual file
-        // This handles cases where extension wasn't stored in metadata
-        const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+        // CRITICAL FIX: Use stored extension first if available
+        const extensions = mod.thumbnailExtension 
+            ? [mod.thumbnailExtension, 'png', 'jpg', 'jpeg', 'webp', 'gif'] // Try stored extension first
+            : ['png', 'jpg', 'jpeg', 'webp', 'gif']; // Fall back to all extensions if not stored
         let r2Key: string | null = null;
         let thumbnail: R2ObjectBody | null = null;
         
