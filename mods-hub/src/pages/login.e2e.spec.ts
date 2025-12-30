@@ -140,8 +140,41 @@ test.describe('Mods Hub Login', () => {
       { timeout: 10000 }
     );
     
+    // Wait for Zustand store to persist to localStorage (auth-storage)
+    // The store persists asynchronously, so we need to wait for it
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 5000 });
+    
     // Step 4: Verify authentication state
+    // mods-hub uses Zustand store which persists to 'auth-storage' key
     const authToken = await page.evaluate(() => {
+      // Check Zustand persisted store (auth-storage)
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          if (parsed?.user?.token) {
+            return parsed.user.token;
+          }
+          if (parsed?.state?.user?.token) {
+            return parsed.state.user.token;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      
+      // Fallback to legacy keys for backwards compatibility
       return localStorage.getItem('auth_token') || 
              localStorage.getItem('jwt_token') ||
              localStorage.getItem('token');
@@ -216,8 +249,25 @@ test.describe('Mods Hub Login', () => {
       { timeout: 10000 }
     );
     
-    // Get auth token
+    // Get auth token (mods-hub uses Zustand store which persists to 'auth-storage' key)
     const authTokenBefore = await page.evaluate(() => {
+      // Check Zustand persisted store (auth-storage)
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          if (parsed?.user?.token) {
+            return parsed.user.token;
+          }
+          if (parsed?.state?.user?.token) {
+            return parsed.state.user.token;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      
+      // Fallback to legacy keys for backwards compatibility
       return localStorage.getItem('auth_token') || 
              localStorage.getItem('jwt_token') ||
              localStorage.getItem('token');
@@ -231,6 +281,23 @@ test.describe('Mods Hub Login', () => {
     
     // Verify token still exists
     const authTokenAfter = await page.evaluate(() => {
+      // Check Zustand persisted store (auth-storage)
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          if (parsed?.user?.token) {
+            return parsed.user.token;
+          }
+          if (parsed?.state?.user?.token) {
+            return parsed.state.user.token;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      
+      // Fallback to legacy keys for backwards compatibility
       return localStorage.getItem('auth_token') || 
              localStorage.getItem('jwt_token') ||
              localStorage.getItem('token');
@@ -286,8 +353,25 @@ test.describe('Mods Hub Login', () => {
         { timeout: 5000 }
       );
       
-      // Verify token is cleared
+      // Verify token is cleared (mods-hub uses Zustand store which persists to 'auth-storage' key)
       const authToken = await page.evaluate(() => {
+        // Check Zustand persisted store (auth-storage)
+        try {
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            const parsed = JSON.parse(authStorage);
+            if (parsed?.user?.token) {
+              return parsed.user.token;
+            }
+            if (parsed?.state?.user?.token) {
+              return parsed.state.user.token;
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+        
+        // Fallback to legacy keys for backwards compatibility
         return localStorage.getItem('auth_token') || 
                localStorage.getItem('jwt_token') ||
                localStorage.getItem('token');

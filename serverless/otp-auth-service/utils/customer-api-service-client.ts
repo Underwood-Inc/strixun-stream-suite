@@ -148,7 +148,8 @@ export async function createCustomerService(customerData: Partial<CustomerData>,
         const client = createServiceApiClient(env);
         const response = await client.post<any>('/customer', customerData);
         
-        if (response.status !== 200 || !response.data) {
+        // POST requests return 201 Created, not 200 OK
+        if (response.status !== 201 && response.status !== 200 || !response.data) {
             const error = response.data as { detail?: string; error?: string; message?: string } | undefined;
             const errorDetail = error?.detail || error?.error || error?.message || 'Failed to create customer';
             
