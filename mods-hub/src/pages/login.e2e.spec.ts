@@ -203,8 +203,8 @@ test.describe('Mods Hub Login', () => {
     await requestOTPCode(page, TEST_EMAIL);
     await waitForOTPForm(page);
     
-    // Enter invalid OTP
-    const { response } = await verifyOTPCode(page, '000000');
+    // Enter invalid OTP (must be 9 digits to enable the button)
+    const { response } = await verifyOTPCode(page, '000000000');
     
     // Should show error (API might return error or UI shows error)
     if (!response.ok()) {
@@ -344,11 +344,11 @@ test.describe('Mods Hub Login', () => {
     if (logoutCount > 0) {
       await logoutButton.click();
       
-      // Wait for redirect to login
+      // Wait for redirect to landing page (/)
       await page.waitForURL(
         (url) => {
-          const urlStr = url.toString();
-          return urlStr.includes('/login');
+          const urlObj = new URL(url);
+          return urlObj.pathname === '/';
         },
         { timeout: 5000 }
       );
