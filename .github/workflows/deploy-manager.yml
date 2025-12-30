@@ -568,10 +568,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          ENV_FLAG=""
           if [ "${{ inputs.environment }}" == "development" ]; then
             ENV_FLAG="--env development"
-          else
-            ENV_FLAG="--env production"
           fi
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET $ENV_FLAG || true
