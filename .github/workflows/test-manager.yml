@@ -200,8 +200,8 @@ jobs:
         id: test_result
       
       - name: Generate coverage report
-        working-directory: serverless/otp-auth-service
-        run: pnpm test:coverage
+        working-directory: .
+        run: pnpm --filter @strixun/otp-auth-service test:coverage
         continue-on-error: true
       
       - name: Upload coverage to Codecov

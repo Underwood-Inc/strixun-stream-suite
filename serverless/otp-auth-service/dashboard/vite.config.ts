@@ -1,10 +1,9 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [svelte(), react()],
+  plugins: [svelte()],
   css: {
     preprocessorOptions: {
       scss: {
@@ -25,6 +24,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     base: '/dashboard/',
+    cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')

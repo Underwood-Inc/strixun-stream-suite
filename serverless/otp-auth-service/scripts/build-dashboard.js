@@ -129,6 +129,14 @@ function getMimeType(filePath) {
 console.log(`❓ Reading dashboard dist directory: ${distDir}`);
 readDirectory(distDir);
 
+// Verify CSS files are included
+const cssFiles = Object.keys(files).filter(key => key.endsWith('.css'));
+if (cssFiles.length === 0) {
+  console.warn('⚠️  WARNING: No CSS files found in build output!');
+} else {
+  console.log(`✅ Found ${cssFiles.length} CSS file(s): ${cssFiles.join(', ')}`);
+}
+
 // Verify we have files to embed
 const fileCount = Object.keys(files).length;
 if (fileCount === 0) {
@@ -149,10 +157,11 @@ console.log('🔧 Fixing asset paths in index.html...');
 let htmlContent = files['index.html'];
 // Vite with base: '/dashboard/' should generate /dashboard/assets/... but it's generating /assets/...
 // We need to convert /assets/... to /dashboard/assets/... so they resolve correctly
+// Also handle both absolute paths (/assets/...) and relative paths (assets/...)
 htmlContent = htmlContent.replace(
-  /(href|src)=(["'])\/(assets\/[^"']+)\2/g,
-  (match, attr, quote, path) => {
-    // Convert /assets/... to /dashboard/assets/...
+  /(href|src)=(["'])(\/?)(assets\/[^"']+)\2/g,
+  (match, attr, quote, leadingSlash, path) => {
+    // Convert /assets/... or assets/... to /dashboard/assets/...
     return `${attr}=${quote}/dashboard/${path}${quote}`;
   }
 );
