@@ -25,6 +25,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     base: '/',
+    cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')

@@ -66,6 +66,7 @@ export default defineConfig({
     // Optimize for production
     minify: 'esbuild',
     target: 'es2020',
+    cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
     rollupOptions: {
       output: {
         // Consistent chunk naming for better caching

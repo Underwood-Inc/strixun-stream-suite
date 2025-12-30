@@ -159,6 +159,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
