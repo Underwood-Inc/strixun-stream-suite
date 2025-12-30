@@ -26,7 +26,10 @@
     "deploy:mods-api": "cd mods-api && wrangler deploy",
     "deploy:mods-api:dry-run": "node validate-service.js mods-api",
     "deploy:chat-signaling": "cd chat-signaling && wrangler deploy",
-    "deploy:chat-signaling:dry-run": "node validate-service.js chat-signaling"
+    "deploy:chat-signaling:dry-run": "node validate-service.js chat-signaling",
+    "validate:all": "node validate-configs.js",
+    "validate": "node validate-service.js",
+    "verify:deploy": "node verify-deploy-configs.js"
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*"

@@ -160,29 +160,31 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
+          # Use --env="" to explicitly target the base/top-level environment
+          # This eliminates warnings and ensures secrets go to the correct worker
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET
+            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env=""
           fi
           if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY
+            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY --env=""
           fi
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
-            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL
+            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL --env=""
           fi
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS
+            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS --env=""
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
-            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY
+            echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY --env=""
           fi
           # CRITICAL: Workers use SERVICE_ENCRYPTION_KEY (not VITE_SERVICE_ENCRYPTION_KEY)
           # Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
           # They must have the SAME value, but different names for their respective environments
           if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY
+            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY --env=""
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
-            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
+            echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE --env=""
           fi
         continue-on-error: true
       
