@@ -105,8 +105,6 @@ jobs:
             exit 1
           fi
           echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
-          echo "[DEBUG] First 8 chars: ${OTP_KEY:0:8}..."
-          echo "[DEBUG] Last 8 chars: ...${OTP_KEY: -8}"
         
       - name: Build Svelte app
         env:

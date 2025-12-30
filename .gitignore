@@ -87,6 +87,14 @@ CONTEXT_SUMMARY.md
 *PROMPT*
 *COMPLETE*
 
+# Playwright E2E Test Artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+**/test-results/
+**/playwright-report/
+**/.playwright/
+
 # Explicitly include PANDA_CORE directory (do not ignore)
 !__╠═══ PANDA_CORE ═══╣__/
 !__╠═══ PANDA_CORE ═══╣__/**

@@ -98,10 +98,8 @@ export async function authenticateServiceRequest(request: Request, env: Env): Pr
         console.log('[Customer API Auth] Service authentication attempt', {
             hasServiceKeyHeader: !!serviceKey,
             serviceKeyLength: serviceKey?.length || 0,
-            serviceKeyPreview: serviceKey ? `${serviceKey.substring(0, 8)}...` : 'missing',
             hasEnvServiceApiKey: !!env.SERVICE_API_KEY,
             envServiceApiKeyLength: env.SERVICE_API_KEY?.length || 0,
-            envServiceApiKeyPreview: env.SERVICE_API_KEY ? `${env.SERVICE_API_KEY.substring(0, 8)}...` : 'missing',
             allHeaders: Array.from(request.headers.entries()).map(([k]) => k),
         });
         

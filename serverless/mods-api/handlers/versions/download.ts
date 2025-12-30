@@ -108,8 +108,30 @@ export async function handleDownloadVersion(
         // Status = admin review workflow (pending/approved/published/etc.) - affects listings, NOT downloads
         const modVisibility = mod.visibility || 'public';
         
-        // Private mods: only author can download
-        if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
+        // Check if user is admin (for admin access to private mods)
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAuthor = mod.authorId === auth?.userId;
+        
+        // Private mods: only author or admin can download
+        if (modVisibility === 'private' && !isAuthor && !isAdmin) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Draft status mods: only author or admin can download (regardless of visibility)
+        // This prevents public draft mods from being downloaded before they're ready
+        const modStatus = mod.status || 'published';
+        if (modStatus === 'draft' && !isAuthor && !isAdmin) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -130,32 +152,71 @@ export async function handleDownloadVersion(
         // 2. OR server-side: Re-encrypt public mods with service key after upload
         // For now, we check visibility and try service key decryption for public mods
 
-        // Get version metadata - check global scope first, then customer scopes
+        // Get version metadata - check mod's customer scope first (most reliable), then global, then search all
         // CRITICAL: Use mod's customerId (not auth customerId) to find version
         // Versions are stored with the mod's customerId, not the downloader's customerId
         let version: ModVersion | null = null;
         console.log('[Download] Looking up version:', { versionId, modId: mod.modId, modCustomerId: mod.customerId, authCustomerId: auth?.customerId });
         
-        // Check global scope first (for published public mods)
-        const globalVersionKey = `version_${versionId}`;
-        console.log('[Download] Checking global scope for version:', { globalVersionKey });
-        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
-        if (version) console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
-        
-        // If not found in global scope, check mod's customer scope (where version was uploaded)
-        if (!version && mod.customerId) {
+        // Strategy 1: Check mod's customer scope first (where version was uploaded)
+        // This is the most reliable location for the version
+        if (mod.customerId) {
             const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
             console.log('[Download] Checking mod customer scope for version:', { modCustomerVersionKey });
             version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
-            if (version) console.log('[Download] Found version in mod customer scope:', { versionId: version.versionId, modId: version.modId });
+            if (version) {
+                console.log('[Download] Found version in mod customer scope:', { versionId: version.versionId, modId: version.modId });
+            }
         }
         
-        // Last resort: check auth customer scope (for backward compatibility)
+        // Strategy 2: Check global scope (for published public mods)
+        if (!version) {
+            const globalVersionKey = `version_${versionId}`;
+            console.log('[Download] Checking global scope for version:', { globalVersionKey });
+            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+            if (version) {
+                console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
+            }
+        }
+        
+        // Strategy 3: Check auth customer scope (for backward compatibility)
         if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
             const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
             console.log('[Download] Checking auth customer scope for version:', { authCustomerVersionKey });
             version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
-            if (version) console.log('[Download] Found version in auth customer scope:', { versionId: version.versionId, modId: version.modId });
+            if (version) {
+                console.log('[Download] Found version in auth customer scope:', { versionId: version.versionId, modId: version.modId });
+            }
+        }
+        
+        // Strategy 4: Last resort - search all customer scopes (for cross-customer access to public mods)
+        if (!version) {
+            console.log('[Download] Version not found in expected scopes, searching all customer scopes');
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        
+                        if (customerId) {
+                            const customerVersionKey = getCustomerKey(customerId, `version_${versionId}`);
+                            version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+                            if (version) {
+                                console.log('[Download] Found version in customer scope:', { customerId, versionId: version.versionId });
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (version) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         // Check version belongs to mod - version.modId must match mod.modId (source of truth)
@@ -271,13 +332,16 @@ export async function handleDownloadVersion(
                 
                 if (!jwtToken) {
                     // Public or unlisted mods: try service key decryption (allows anonymous downloads)
-                    if (modVisibility === 'public' || modVisibility === 'unlisted') {
-                        // Public/unlisted mod - try service key decryption (status doesn't matter)
+                    // CRITICAL: Only allow service key decryption for published/approved mods
+                    // Draft mods require auth even if visibility is public
+                    if ((modVisibility === 'public' || modVisibility === 'unlisted') && 
+                        (modStatus === 'published' || modStatus === 'approved')) {
+                        // Public/unlisted published mod - try service key decryption
                         const serviceKey = getServiceKey(env);
                         if (serviceKey) {
                             decryptionKey = serviceKey;
                             useServiceKey = true;
-                            console.log('[Download] Using service key for public mod decryption');
+                            console.log('[Download] Using service key for public published mod decryption');
                         } else {
                             console.error('[Download] Public mod but no service key configured');
                             const rfcError = createError(
@@ -298,7 +362,7 @@ export async function handleDownloadVersion(
                             });
                         }
                     } else {
-                        // Private/draft mods require user JWT
+                        // Private/draft/pending mods require user JWT
                         const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
                         const corsHeaders = createCORSHeaders(request, {
                             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -461,6 +525,23 @@ export async function handleDownloadVersion(
         });
     } catch (error: any) {
         console.error('Download version error:', error);
+        
+        // If mod or version not found, return 404 instead of 500
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('not found') || errorMessage.includes('Not Found')) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod or version was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
         const rfcError = createError(
             request,
             500,

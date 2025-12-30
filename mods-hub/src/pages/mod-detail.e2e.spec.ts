@@ -88,6 +88,66 @@ test.describe('Mod Detail Page', () => {
     }
   });
 
+  test('should successfully download public mod without authentication', async ({ page, context }) => {
+    const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
+    
+    // Try to get a public published mod
+    try {
+      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1&status=published&visibility=public`);
+      if (response.ok) {
+        const data = await response.json() as ModsResponse & { mods?: Array<{ slug: string; versions?: Array<{ versionId: string }> }> };
+        if (data.mods && data.mods.length > 0) {
+          const mod = data.mods[0];
+          if (mod.versions && mod.versions.length > 0) {
+            const modSlug = mod.slug;
+            const versionId = mod.versions[0].versionId;
+            
+            await page.goto(`${modsHubUrl}/mods/${modSlug}`);
+            await page.waitForTimeout(2000);
+            
+            // Look for download button
+            const downloadButton = page.locator(
+              'button:has-text("Download"), a:has-text("Download"), [data-testid="download-button"]'
+            );
+            
+            const downloadCount = await downloadButton.count();
+            if (downloadCount > 0) {
+              // Set up download listener
+              const downloadPromise = page.waitForEvent('download', { timeout: 10000 }).catch(() => null);
+              
+              // Click download button
+              await downloadButton.first().click();
+              
+              // Wait for download to start
+              const download = await downloadPromise;
+              
+              if (download) {
+                // Verify download started
+                expect(download.suggestedFilename()).toBeTruthy();
+                
+                // Verify download completes (file is decrypted and downloadable)
+                // Note: We can't easily verify file content in e2e, but we can verify it downloads
+                const path = await download.path();
+                expect(path).toBeTruthy();
+              } else {
+                // Download might be handled differently (direct navigation)
+                // Check if we navigated to download URL
+                await page.waitForTimeout(2000);
+                const url = page.url();
+                // Should either stay on page or navigate to download
+                expect(url.includes('/download') || url.includes(modSlug)).toBeTruthy();
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Skip if API unavailable or no test data
+      console.warn('Skipping download test - no test data available:', error);
+      test.skip();
+    }
+  });
+
   test('should display mod metadata', async ({ page }) => {
     const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
     

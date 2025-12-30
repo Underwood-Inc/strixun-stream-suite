@@ -504,65 +504,145 @@ export async function handleUploadMod(
         // Fetch author display name from auth API during upload
         // CRITICAL: Auth API has no public user lookup endpoint, so we must store it here
         // NOTE: /auth/me returns encrypted responses that need to be decrypted
+        // Includes timeout handling and retry logic for reliability
         let authorDisplayName: string | null = null;
-        try {
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
-                const response = await fetch(`${authApiUrl}/auth/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
-                });
-                if (response.ok) {
-                    const responseData = await response.json();
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+            const url = `${authApiUrl}/auth/me`;
+            const timeoutMs = 5000; // 5 second timeout
+            
+            // Retry logic: try once, retry once on timeout
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    // Create AbortController for timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
                     
-                    // Check if response is encrypted (has X-Encrypted header or encrypted field)
-                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                    
-                    let userData: { displayName?: string | null; [key: string]: any };
-                    if (isEncrypted) {
-                        // Decrypt the response using JWT token
-                        const { decryptWithJWT } = await import('@strixun/api-framework');
-                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                    } else {
-                        userData = responseData;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            // CRITICAL: Prevent caching of service-to-service API calls
+                            // Even server-side calls should not be cached to ensure fresh data
+                            cache: 'no-store',
+                            signal: controller.signal,
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        if (response.ok) {
+                            const responseData = await response.json();
+                            
+                            // Check if response is encrypted (has X-Encrypted header or encrypted field)
+                            const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                                               (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
+                            
+                            let userData: { displayName?: string | null; [key: string]: any };
+                            if (isEncrypted) {
+                                // Decrypt the response using JWT token
+                                const { decryptWithJWT } = await import('@strixun/api-framework');
+                                userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
+                            } else {
+                                userData = responseData;
+                            }
+                            
+                            authorDisplayName = userData?.displayName || null;
+                            console.log('[Upload] Fetched authorDisplayName:', { 
+                                authorDisplayName, 
+                                hasDisplayName: !!authorDisplayName,
+                                userId: auth.userId,
+                                userDataKeys: userData ? Object.keys(userData) : [],
+                                attempt: attempt + 1
+                            });
+                            break; // Success, exit retry loop
+                        } else if (response.status === 522 || response.status === 504) {
+                            // Gateway timeout - retry if this is first attempt
+                            if (attempt === 0) {
+                                console.warn('[Upload] /auth/me gateway timeout, will retry:', { 
+                                    status: response.status, 
+                                    userId: auth.userId,
+                                    attempt: attempt + 1
+                                });
+                                // Wait a bit before retry
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                continue; // Retry
+                            } else {
+                                const errorText = await response.text().catch(() => 'Unable to read error');
+                                console.warn('[Upload] /auth/me gateway timeout after retry:', { 
+                                    status: response.status, 
+                                    statusText: response.statusText,
+                                    error: errorText,
+                                    userId: auth.userId
+                                });
+                                break; // Give up after retry
+                            }
+                        } else {
+                            const errorText = await response.text().catch(() => 'Unable to read error');
+                            console.warn('[Upload] /auth/me returned non-200 status:', { 
+                                status: response.status, 
+                                statusText: response.statusText,
+                                error: errorText,
+                                userId: auth.userId,
+                                attempt: attempt + 1
+                            });
+                            break; // Don't retry on non-timeout errors
+                        }
+                    } catch (fetchError) {
+                        clearTimeout(timeoutId);
+                        
+                        // Check if it's an abort (timeout)
+                        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+                            if (attempt === 0) {
+                                console.warn('[Upload] /auth/me request timeout, will retry:', { 
+                                    timeoutMs, 
+                                    userId: auth.userId,
+                                    attempt: attempt + 1
+                                });
+                                // Wait a bit before retry
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                continue; // Retry
+                            } else {
+                                console.error('[Upload] /auth/me request timeout after retry:', { 
+                                    timeoutMs, 
+                                    userId: auth.userId
+                                });
+                                break; // Give up after retry
+                            }
+                        }
+                        throw fetchError; // Re-throw other errors
                     }
-                    
-                    authorDisplayName = userData?.displayName || null;
-                    console.log('[Upload] Fetched authorDisplayName:', { 
-                        authorDisplayName, 
-                        hasDisplayName: !!authorDisplayName,
-                        userId: auth.userId,
-                        userDataKeys: userData ? Object.keys(userData) : []
-                    });
-                } else {
-                    const errorText = await response.text().catch(() => 'Unable to read error');
-                    console.warn('[Upload] /auth/me returned non-200 status:', { 
-                        status: response.status, 
-                        statusText: response.statusText,
-                        error: errorText
-                    });
+                } catch (error) {
+                    // Network errors or other issues
+                    if (attempt === 0) {
+                        console.warn('[Upload] Failed to fetch displayName from auth service, will retry:', { 
+                            error: error instanceof Error ? error.message : String(error),
+                            userId: auth.userId,
+                            attempt: attempt + 1
+                        });
+                        // Wait a bit before retry
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        continue; // Retry
+                    } else {
+                        console.error('[Upload] Failed to fetch displayName from auth service after retry:', { 
+                            error: error instanceof Error ? error.message : String(error),
+                            userId: auth.userId
+                        });
+                        break; // Give up after retry
+                    }
                 }
-            } else {
-                console.warn('[Upload] No Authorization header found for displayName fetch');
             }
-        } catch (error) {
-            console.error('[Upload] Failed to fetch displayName from auth service:', { 
-                error: error instanceof Error ? error.message : String(error),
-                userId: auth.userId
-            });
+        } else {
+            console.warn('[Upload] No Authorization header found for displayName fetch');
         }
         
         // CRITICAL: Never use authorEmail as fallback - email is ONLY for authentication
         // If displayName is null, UI will show "Unknown User"
+        // Note: For previously uploaded mods with null displayName, the detail handler will attempt to fetch it
 
         // Create mod metadata with initial status
         // CRITICAL: Never store email - email is ONLY for OTP authentication

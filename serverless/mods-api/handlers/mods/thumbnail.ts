@@ -109,12 +109,26 @@ export async function handleThumbnail(
         }
         
         // Status check: allow thumbnails for published/approved mods to everyone
-        // For pending/changes_requested/denied: allow if public (images are part of public presentation)
-        // OR if user is author/admin (for private pending mods)
+        // For pending/changes_requested: allow if public (images are part of public presentation)
+        // Draft mods: only author/admin (draft means not ready for public viewing)
         // CRITICAL: Image requests from <img> tags don't include auth, so we can't check isAuthor
         // Solution: Allow public pending mods to be accessible (they're public, just pending review)
-        if (modStatus !== 'published' && modStatus !== 'approved') {
-            // Allow if mod is public (even if pending) - images are part of public presentation
+        // But block draft mods from public access (they're not ready)
+        if (modStatus === 'draft' && !isAuthor && !isAdmin) {
+            // Draft mods are not ready for public viewing
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        } else if (modStatus !== 'published' && modStatus !== 'approved') {
+            // For pending/changes_requested: allow if public (images are part of public presentation)
             // OR if authenticated user is author/admin (for private pending mods)
             const isPublicPending = modVisibility === 'public';
             if (!isPublicPending && (!isAuthor && !isAdmin)) {

@@ -368,20 +368,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     console.log('[Router] Resolved slug to modId:', { slug: slugOrModId, modId });
                 } else {
                     console.error('[Router] Failed to resolve slug to modId:', { slug: slugOrModId });
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return {
-                        response: new Response(JSON.stringify(rfcError), {
-                            status: 404,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        }),
-                        customerId: auth?.customerId || null
-                    };
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
@@ -468,6 +455,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         return await createErrorResponse(request, env, 404, 'Endpoint Not Found', 'The requested mod endpoint was not found', auth);
     } catch (error: any) {
         console.error('Mod route handler error:', error);
+        // Use createErrorResponse helper which properly handles CORS
         return await createErrorResponse(
             request,
             env,

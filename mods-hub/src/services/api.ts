@@ -4,7 +4,8 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import { encryptBinaryWithJWT } from '@strixun/api-framework';
+import { encryptBinaryWithJWT, encryptBinaryWithServiceKey } from '@strixun/api-framework';
+import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
 
@@ -232,15 +233,28 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
-    // Get token for encryption
-    const token = await getAuthToken();
-    if (!token) {
-        throw new Error('Authentication token required for file encryption');
+    // Determine encryption method based on mod visibility
+    // Public mods use service key for anonymous downloads, private/draft use JWT
+    const isPublic = metadata.visibility === 'public' && (metadata.status === 'published' || !metadata.status);
+    let encryptedFile: Uint8Array;
+    
+    if (isPublic) {
+        // Public mods: encrypt with service key for anonymous downloads
+        const serviceKey = getOtpEncryptionKey();
+        if (!serviceKey) {
+            throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
+        }
+        const fileBuffer = await file.arrayBuffer();
+        encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
+    } else {
+        // Private/draft mods: encrypt with JWT (requires authentication to download)
+        const token = await getAuthToken();
+        if (!token) {
+            throw new Error('Authentication token required for file encryption');
+        }
+        const fileBuffer = await file.arrayBuffer();
+        encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     }
-
-    // Encrypt file before upload
-    const fileBuffer = await file.arrayBuffer();
-    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
@@ -297,15 +311,35 @@ export async function uploadVersion(
     file: File,
     metadata: VersionUploadRequest
 ): Promise<any> {
-    // Get token for encryption
-    const token = await getAuthToken();
-    if (!token) {
-        throw new Error('Authentication token required for file encryption');
+    // Fetch mod to check visibility - versions inherit mod's visibility
+    let isPublic = false;
+    try {
+        const mod = await getModDetail(modId);
+        isPublic = mod.visibility === 'public' && (mod.status === 'published' || !mod.status);
+    } catch (error) {
+        console.warn('[uploadVersion] Could not fetch mod to check visibility, defaulting to private encryption:', error);
+        // Default to private if we can't fetch mod (backward compatible)
     }
-
-    // Encrypt file before upload
-    const fileBuffer = await file.arrayBuffer();
-    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    
+    let encryptedFile: Uint8Array;
+    
+    if (isPublic) {
+        // Public mods: encrypt with service key for anonymous downloads
+        const serviceKey = getOtpEncryptionKey();
+        if (!serviceKey) {
+            throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
+        }
+        const fileBuffer = await file.arrayBuffer();
+        encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
+    } else {
+        // Private/draft mods: encrypt with JWT (requires authentication to download)
+        const token = await getAuthToken();
+        if (!token) {
+            throw new Error('Authentication token required for file encryption');
+        }
+        const fileBuffer = await file.arrayBuffer();
+        encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    }
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility

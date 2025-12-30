@@ -139,13 +139,26 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
  * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
  */
 async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean; displayName?: string | null } | null> {
+    // CRITICAL: Validate token exists before making request
+    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+        console.error('[Auth] fetchUserInfo called with invalid token:', { hasToken: !!token, tokenType: typeof token, tokenLength: token?.length });
+        return null;
+    }
+    
     try {
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
             timeout: 10000, // Increased to 10 seconds to handle slower responses
             auth: {
-                tokenGetter: () => token,
+                tokenGetter: () => {
+                    // Double-check token is still valid
+                    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+                        console.warn('[Auth] tokenGetter returned invalid token');
+                        return null;
+                    }
+                    return token;
+                },
             },
             cache: {
                 enabled: false, // CRITICAL: Never cache /auth/me - always fetch fresh to avoid undefined cache hits

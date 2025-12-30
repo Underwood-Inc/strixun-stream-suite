@@ -265,7 +265,6 @@ export class ServiceClient {
                 console.log('[ServiceClient] Setting auth header', {
                     authHeaderName,
                     authHeaderValueLength: authHeaderValue.length,
-                    authHeaderValuePreview: authHeaderValue.substring(0, 8) + '...',
                     hasSuperAdminKey: !!this.config.auth.superAdminKey,
                     hasServiceKey: !!this.config.auth.serviceKey,
                     serviceKeyHeader: this.config.auth.serviceKeyHeader,
@@ -283,7 +282,6 @@ export class ServiceClient {
                     console.log('[ServiceClient] Auth header verified', {
                         authHeaderName,
                         headerValueLength: verifyHeader.length,
-                        headerValuePreview: verifyHeader.substring(0, 8) + '...',
                     });
                 }
                 
@@ -333,7 +331,6 @@ export class ServiceClient {
                     hasAuthHeader: !!retrievedAuthHeaderValue,
                     authHeaderName: authHeaderName,
                     authHeaderValueLength: retrievedAuthHeaderValue?.length || 0,
-                    authHeaderValuePreview: retrievedAuthHeaderValue ? `${retrievedAuthHeaderValue.substring(0, 8)}...` : 'missing',
                     hasIntegrityHeader: headers.has('X-Strixun-Request-Integrity'),
                     allHeaders: Array.from(headers.entries()).map(([k]) => k),
                 });

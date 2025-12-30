@@ -21,6 +21,8 @@
     "dev": "wrangler dev",
     "dev:app": "vite",
     "dev:all": "concurrently -n worker,app -c yellow,cyan \"pnpm dev\" \"pnpm dev:app\"",
+    "setup:test-secrets": "node scripts/setup-test-secrets.js",
+    "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev",
     "build": "node scripts/build-with-key.js",
     "build:app": "node scripts/build-with-key.js",
     "preview": "pnpm build && wrangler dev --env production",

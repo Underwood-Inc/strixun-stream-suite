@@ -54,6 +54,8 @@ export {
   findMatchingPolicy,
   encryptWithServiceKey,
   decryptWithServiceKey,
+  encryptBinaryWithServiceKey,
+  decryptBinaryWithServiceKey,
   DEFAULT_ENCRYPTION_POLICIES,
 } from './route-encryption.js';
 

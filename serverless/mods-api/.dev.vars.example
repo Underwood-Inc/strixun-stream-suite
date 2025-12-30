@@ -1,0 +1,35 @@
+# Mods API - Development Environment Variables
+# Copy this file to .dev.vars and customize for your local development
+# .dev.vars is gitignored and used by wrangler dev
+#
+# For E2E testing and TDD, these defaults are automatically set if missing
+# CI secrets will override these values (they take precedence)
+
+# JWT Secret (REQUIRED)
+# For local dev, you can use any value. For CI, this must match other services
+# Generate with: openssl rand -hex 32
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+
+# Service Encryption Key (REQUIRED for public mod encryption/decryption)
+# Must be 32+ characters. For local dev, use any value.
+# Generate with: openssl rand -hex 32
+SERVICE_ENCRYPTION_KEY=test-service-encryption-key-for-local-development-12345678901234567890123456789012
+
+# Allowed Origins (OPTIONAL)
+# Use "*" to allow all origins locally, or specify comma-separated list
+# For production, specify exact origins
+ALLOWED_ORIGINS=*
+
+# Allowed Emails (OPTIONAL)
+# Comma-separated list of emails allowed to upload/manage mods
+# Leave unset to allow all authenticated users
+# ALLOWED_EMAILS=test@example.com,admin@example.com
+
+# Super Admin Emails (OPTIONAL)
+# Comma-separated list of emails with admin access
+# SUPER_ADMIN_EMAILS=admin@example.com
+
+# Network Integrity Keyphrase (OPTIONAL)
+# Used for network integrity checks
+# NETWORK_INTEGRITY_KEYPHRASE=your-keyphrase-here
+

@@ -13,7 +13,9 @@
     "tail:prod": "wrangler tail --env production",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --passWithNoTests"
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "setup:test-secrets": "node scripts/setup-test-secrets.js",
+    "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev"
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",

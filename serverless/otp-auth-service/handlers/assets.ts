@@ -76,6 +76,15 @@ export async function handleLandingPage(request: Request, env: Env): Promise<Res
     // In local dev (wrangler dev), always try Vite first
     // ENVIRONMENT is not set by default in wrangler dev, so !env.ENVIRONMENT means local dev
     const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
+    const isE2E = env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'e2e';
+    
+    // Skip Vite proxy in E2E/test mode - return simple response
+    if (isE2E) {
+        return new Response('OTP Auth Service - E2E Test Mode', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' },
+        });
+    }
     
     // In dev mode, always try Vite first (don't even try to load built assets)
     if (isDev) {
@@ -93,7 +102,13 @@ export async function handleLandingPage(request: Request, env: Env): Promise<Res
                 body: request.body,
             });
             
-            return fetch(proxiedRequest);
+            // Wrap fetch in Promise to handle rejections properly
+            const fetchPromise = fetch(proxiedRequest);
+            const timeoutPromise = new Promise<Response>((_, reject) => {
+                setTimeout(() => reject(new Error('Vite proxy timeout')), 2000);
+            });
+            
+            return await Promise.race([fetchPromise, timeoutPromise]);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return new Response(`Landing page dev server not running. Start with: pnpm dev:landing\n\nError: ${errorMessage}`, {
@@ -272,6 +287,15 @@ export async function handleDashboard(request: Request, env: Env): Promise<Respo
     // In development, proxy to main Vite dev server (same as landing page)
     // In production, serve built files from main app
     const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT || env.ENVIRONMENT === 'local';
+    const isE2E = env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'e2e';
+    
+    // Skip Vite proxy in E2E/test mode - return simple response
+    if (isE2E) {
+        return new Response('OTP Auth Service Dashboard - E2E Test Mode', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' },
+        });
+    }
     
     if (isDev) {
         // Proxy to main Vite dev server - dashboard is part of the main app now
@@ -284,7 +308,13 @@ export async function handleDashboard(request: Request, env: Env): Promise<Respo
                 body: request.body,
             });
             
-            const viteResponse = await fetch(viteRequest);
+            // Wrap fetch in Promise with timeout to handle rejections properly
+            const fetchPromise = fetch(viteRequest);
+            const timeoutPromise = new Promise<Response>((_, reject) => {
+                setTimeout(() => reject(new Error('Vite proxy timeout')), 2000);
+            });
+            
+            const viteResponse = await Promise.race([fetchPromise, timeoutPromise]);
             
             // Clone response and update any absolute URLs in HTML to be relative
             const body = await viteResponse.text();

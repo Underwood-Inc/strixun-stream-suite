@@ -41,15 +41,27 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
             ['verify']
         );
         
-        // Decode signature
-        const signature = Uint8Array.from(atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+        // Decode signature (handle base64url encoding - add padding if needed)
+        let signatureBase64 = signatureB64.replace(/-/g, '+').replace(/_/g, '/');
+        while (signatureBase64.length % 4) {
+            signatureBase64 += '=';
+        }
+        const signature = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0));
         
         // Verify signature
         const isValid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(signatureInput));
-        if (!isValid) return null;
+        console.log(`[Auth] JWT signature verification: isValid=${isValid}, signatureLength=${signature.length}, signatureInputLength=${signatureInput.length}, signatureBase64Length=${signatureBase64.length}`);
+        if (!isValid) {
+            console.log('[Auth] JWT signature verification failed - signature does not match');
+            return null;
+        }
         
-        // Decode payload
-        const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+        // Decode payload (handle base64url encoding - add padding if needed)
+        let payloadBase64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+        while (payloadBase64.length % 4) {
+            payloadBase64 += '=';
+        }
+        const payloadJson = atob(payloadBase64);
         const payload = JSON.parse(payloadJson) as JWTPayload;
         
         // Check expiration
@@ -120,15 +132,19 @@ async function fetchEmailFromAuthService(token: string, env: Env): Promise<strin
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
     try {
         const authHeader = request.headers.get('Authorization');
+        console.debug(`[Auth] Authorization header check: hasHeader=${!!authHeader}, headerLength=${authHeader?.length || 0}, startsWithBearer=${authHeader?.startsWith('Bearer ') || false}, firstChars=${authHeader?.substring(0, 20) || 'none'}`);
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return null;
         }
 
         const token = authHeader.substring(7);
         const jwtSecret = getJWTSecret(env);
+        console.debug(`[Auth] Verifying JWT: tokenLength=${token.length}, secretLength=${jwtSecret.length}, secretFirstChars=${jwtSecret.substring(0, 20)}`);
         const payload = await verifyJWT(token, jwtSecret);
+        console.debug(`[Auth] JWT verification result: hasPayload=${!!payload}, hasSub=${!!payload?.sub}, sub=${payload?.sub || 'none'}`);
 
         if (!payload || !payload.sub) {
+            console.error('[Auth] JWT verification failed: missing payload or sub');
             return null;
         }
 
@@ -138,7 +154,7 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             console.warn('[Auth] Email missing from JWT payload, fetching from auth service...');
             email = await fetchEmailFromAuthService(token, env);
             if (email) {
-                console.log('[Auth] Successfully fetched email from auth service');
+                console.info('[Auth] Successfully fetched email from auth service');
             } else {
                 console.warn('[Auth] Could not fetch email from auth service - admin checks may fail');
             }
