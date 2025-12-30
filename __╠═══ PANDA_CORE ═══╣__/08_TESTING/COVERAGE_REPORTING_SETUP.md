@@ -1,16 +1,8 @@
 # Test Coverage Reporting Setup
 
-> **Non-blocking coverage reporting for all GitHub Actions workflows**
-
-**Date:** 2025-12-29
-
----
-
 ## Overview
 
 Test coverage reporting has been added to all GitHub Actions workflows that run tests. All coverage steps are configured to be **non-blocking** - they will not cause workflows to fail, but will provide visibility into test coverage.
-
----
 
 ## Changes Made
 
@@ -57,8 +49,6 @@ Test coverage reporting has been added to all GitHub Actions workflows that run 
    - Already had non-blocking coverage (no changes needed)
    - Uses flag `encryption-libs`
 
----
-
 ## Coverage Reporters
 
 All vitest configs now generate:
@@ -67,8 +57,6 @@ All vitest configs now generate:
 - `json-summary` - Summary with percentages (`coverage-summary.json`)
 - `html` - HTML report for local viewing
 - `lcov` - LCOV format for Codecov compatibility
-
----
 
 ## Codecov Integration
 
@@ -83,16 +71,12 @@ All workflows upload coverage to Codecov with:
 - `encryption-libs` - Encryption library tests
 - `mods-hub-api` - Mods Hub API tests
 
----
-
 ## Coverage Display
 
 Coverage percentages are displayed in:
 1. **GitHub Actions workflow summary** - Shows coverage percentage after tests
 2. **Codecov dashboard** - Detailed coverage reports and trends
 3. **Console output** - Text format during test runs
-
----
 
 ## Non-Blocking Configuration
 
@@ -108,8 +92,6 @@ This ensures:
 - ✅ Coverage is reported but doesn't block
 - ✅ Coverage failures are visible but don't stop CI/CD
 - ✅ Coverage data is available for analysis
-
----
 
 ## Viewing Coverage
 
@@ -131,8 +113,6 @@ pnpm test:coverage
 open coverage/index.html
 ```
 
----
-
 ## Files Modified
 
 1. `package.json` - Added `test:coverage` script
@@ -144,16 +124,12 @@ open coverage/index.html
 7. `.github/workflows/test-manager.yml` - Added coverage reporting
 8. `.github/workflows/mods-hub-tests.yml` - Made coverage non-blocking
 
----
-
 ## Notes
 
 - **No coverage requirements**: Coverage is informational only
 - **No blocking thresholds**: Workflows will not fail due to low coverage
 - **Optional Codecov**: If Codecov is not configured, uploads will fail silently (non-blocking)
 - **Coverage generation may fail**: If coverage generation fails, it's logged but doesn't block the workflow
-
----
 
 ## Future Enhancements
 
@@ -164,8 +140,3 @@ If you want to add coverage requirements later:
 4. Add coverage badges to README
 
 For now, coverage is purely informational and helps track test coverage trends over time.
-
----
-
-**Last Updated**: 2025-12-29
-

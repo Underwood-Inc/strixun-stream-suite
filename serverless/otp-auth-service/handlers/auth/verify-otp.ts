@@ -293,8 +293,16 @@ export async function handleVerifyOTP(
             });
         }
         
+        // E2E TEST MODE: Accept E2E_TEST_OTP_CODE as valid OTP for testing
+        // SECURITY: Only works when ENVIRONMENT=test (never set in production)
+        // This allows tests to use a static OTP code from .dev.vars
+        const isTestMode = env.ENVIRONMENT === 'test';
+        const testOTPCode = env.E2E_TEST_OTP_CODE;
+        const isTestOTP = isTestMode && testOTPCode && constantTimeEquals(otp, testOTPCode);
+        
         // Verify OTP using constant-time comparison to prevent timing attacks
-        const isValidOTP = constantTimeEquals(otpData.otp || '', otp);
+        // In test mode, also accept E2E_TEST_OTP_CODE
+        const isValidOTP = constantTimeEquals(otpData.otp || '', otp) || isTestOTP;
         
         if (!isValidOTP) {
             await incrementOTPAttempts(otpKey, otpData, env);

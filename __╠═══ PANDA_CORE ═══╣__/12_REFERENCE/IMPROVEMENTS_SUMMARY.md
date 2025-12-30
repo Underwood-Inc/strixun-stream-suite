@@ -87,66 +87,6 @@ Priority 4: Null (configuration required)
   └─ Guides user to Setup tab
 ```
 
-### Configuration Flow
-
-```mermaid
-graph TD
-    A[User opens control panel] --> B{config.js loaded?}
-    B -->|Yes| C{Manual override exists?}
-    B -->|No| Z[Fallback to localStorage only]
-    
-    C -->|Yes| D[Use manual override]
-    C -->|No| E{Injected config exists?}
-    
-    E -->|Yes| F[Use injected config]
-    E -->|No| G{Can auto-detect?}
-    
-    G -->|Yes| H[Use auto-detected URL]
-    G -->|No| I[Show config required message]
-    
-    D --> J[Run health check]
-    F --> J
-    H --> J
-    
-    J --> K{Healthy?}
-    K -->|Yes| L[✅ Ready to use]
-    K -->|No| M[⚠️ Show error & guide to Setup]
-```
-
-### Deployment Flow
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant GH as GitHub Actions
-    participant CF as Cloudflare
-    participant Pages as GitHub Pages
-    participant User as End User
-
-    Dev->>GH: git push main
-    
-    Note over GH: Read wrangler.toml
-    GH->>GH: Extract worker name
-    GH->>GH: Construct Worker URL
-    GH->>GH: Inject into config.js
-    
-    par Deploy Worker
-        GH->>CF: Deploy Cloudflare Worker
-    and Deploy Pages
-        GH->>Pages: Deploy with injected config
-    end
-    
-    User->>Pages: Load control panel
-    Pages->>User: Return HTML + config.js
-    
-    Note over User: config.js auto-runs
-    User->>User: Detect Worker URL
-    User->>CF: Test /health endpoint
-    CF->>User: 200 OK (healthy)
-    
-    Note over User: ✅ Auto-configured!
-```
-
 ## Benefits
 
 ### ❓ For Users

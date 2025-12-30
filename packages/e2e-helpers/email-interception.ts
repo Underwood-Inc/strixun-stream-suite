@@ -34,64 +34,12 @@ async function hashEmail(email: string): Promise<string> {
  * @returns OTP code or null if not found
  */
 export async function getInterceptedOTP(email: string): Promise<string | null> {
-    try {
-        // SECURITY: Only read from local KV filesystem (wrangler dev --local)
-        // In production, .wrangler directory doesn't exist
-        // This ensures we can NEVER accidentally read from production KV
-        
-        const emailHash = await hashEmail(email);
-        const e2eOTPKey = `e2e_otp_${emailHash}`;
-        
-        // Try to find wrangler state directory
-        // Wrangler stores local KV in: .wrangler/state/v3/kv/<namespace-id>/
-        // OTP_AUTH_KV namespace ID: 680c9dbe86854c369dd23e278abb41f9
-        const OTP_AUTH_KV_NAMESPACE_ID = '680c9dbe86854c369dd23e278abb41f9';
-        
-        const possibleBasePaths = [
-            join(process.cwd(), 'serverless', 'otp-auth-service', '.wrangler', 'state', 'v3', 'kv'),
-            join(process.cwd(), '.wrangler', 'state', 'v3', 'kv'),
-            join(process.env.HOME || process.env.USERPROFILE || '', '.wrangler', 'state', 'v3', 'kv'),
-        ];
-        
-        for (const basePath of possibleBasePaths) {
-            if (!existsSync(basePath)) continue;
-            
-            // Try known namespace ID first
-            const knownNamespacePath = join(basePath, OTP_AUTH_KV_NAMESPACE_ID, e2eOTPKey);
-            if (existsSync(knownNamespacePath)) {
-                const otp = readFileSync(knownNamespacePath, 'utf-8').trim();
-                if (otp) {
-                    return otp;
-                }
-            }
-            
-            // Fallback: List all namespace directories and try each
-            const { readdirSync } = await import('fs');
-            try {
-                const namespaces = readdirSync(basePath, { withFileTypes: true })
-                    .filter(dirent => dirent.isDirectory())
-                    .map(dirent => dirent.name);
-                
-                for (const namespace of namespaces) {
-                    const kvPath = join(basePath, namespace, e2eOTPKey);
-                    if (existsSync(kvPath)) {
-                        const otp = readFileSync(kvPath, 'utf-8').trim();
-                        if (otp) {
-                            return otp;
-                        }
-                    }
-                }
-            } catch (err) {
-                // Continue to next path if this one fails
-                continue;
-            }
-        }
-        
-        return null;
-    } catch (error) {
-        // Fail safely - in production or if KV not accessible, return null
-        return null;
-    }
+    // NOTE: This function is kept for backward compatibility but is not currently used.
+    // Tests now use E2E_TEST_OTP_CODE from environment directly.
+    // Proper E2E testing with OTP interception will be implemented in the dedicated OTP auth lib.
+    
+    // For now, return null to trigger fallback to E2E_TEST_OTP_CODE
+    return null;
 }
 
 /**

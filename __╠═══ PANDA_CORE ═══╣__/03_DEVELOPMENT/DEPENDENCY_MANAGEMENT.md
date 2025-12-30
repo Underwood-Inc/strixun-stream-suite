@@ -1,16 +1,8 @@
 # Dependency Management with pnpm Workspaces
 
-> **Efficient dependency management using pnpm workspaces with centralized version overrides**
-
-**Date:** 2025-12-29
-
----
-
 ## Overview
 
 This project uses **pnpm workspaces** for efficient dependency management. Shared dependencies like `wrangler` are managed centrally in the root `package.json` with version overrides to ensure consistency across all serverless services.
-
----
 
 ## Workspace Structure
 
@@ -29,8 +21,6 @@ This project uses **pnpm workspaces** for efficient dependency management. Share
 └── control-panel/
     └── package.json          # Control panel package
 ```
-
----
 
 ## How It Works
 
@@ -86,8 +76,6 @@ Each service can still declare `wrangler` in its `devDependencies`:
 - The override ensures they all get the same version
 - If you remove wrangler from root, services still have it declared
 
----
-
 ## Updating Dependencies
 
 ### Update Shared Dependencies (All Services)
@@ -114,8 +102,6 @@ pnpm install
 pnpm add -g wrangler@latest
 ```
 
----
-
 ## Shared Dependencies
 
 The following dependencies are managed centrally in the root `package.json`:
@@ -126,8 +112,6 @@ The following dependencies are managed centrally in the root `package.json`:
 
 All other dependencies are workspace-specific and managed locally.
 
----
-
 ## Benefits
 
 ✅ **Single Source of Truth**: Update shared deps once in root, all workspaces get it  
@@ -136,8 +120,6 @@ All other dependencies are workspace-specific and managed locally.
 ✅ **Fast Installs**: Single lockfile, deduplicated dependencies  
 ✅ **Workspace Protocol**: Services can reference each other easily  
 ✅ **Automatic Hoisting**: pnpm automatically hoists shared deps to root  
-
----
 
 ## Commands Reference
 
@@ -158,8 +140,6 @@ pnpm --filter url-shortener deploy
 pnpm -r list
 ```
 
----
-
 ## Workspace Names
 
 - `strixun-stream-suite` - Root workspace
@@ -169,8 +149,6 @@ pnpm -r list
 - `strixun-chat-signaling` - Chat signaling service
 - `@strixun/control-panel` - Control panel
 
----
-
 ## Notes
 
 - The `pnpm.overrides` field ensures version consistency
@@ -178,8 +156,3 @@ pnpm -r list
 - All dependencies are hoisted to root when possible
 - Use `-w` flag to add to root workspace
 - Use `--filter` to target specific workspaces
-
----
-
-**Last Updated**: 2025-12-29
-

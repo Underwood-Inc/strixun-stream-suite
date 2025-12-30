@@ -11,6 +11,10 @@ import { WORKER_URLS } from '../../playwright.config.js';
 // Re-export WORKER_URLS for convenience
 export { WORKER_URLS };
 
+// Define BASE_PORT (must match playwright.config.ts)
+// Used for error messages when workers are unhealthy
+const BASE_PORT = parseInt(process.env.E2E_LOCAL_WORKER_PORT || '8787', 10);
+
 // Re-export email interception helpers
 export { getInterceptedOTP, waitForInterceptedOTP } from './email-interception.js';
 
