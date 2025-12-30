@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT } from '@strixun/api-framework';
+import { decryptWithJWT, decryptBinaryWithJWT, decryptBinaryWithServiceKey, getServiceKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
@@ -103,8 +103,12 @@ export async function handleDownloadVersion(
             });
         }
 
-        // Check visibility - legacy mods without visibility field are treated as public
+        // CRITICAL: Download access is controlled ONLY by visibility, NOT by status
+        // Visibility = user's choice of who can access (public/unlisted/private)
+        // Status = admin review workflow (pending/approved/published/etc.) - affects listings, NOT downloads
         const modVisibility = mod.visibility || 'public';
+        
+        // Private mods: only author can download
         if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
@@ -118,33 +122,13 @@ export async function handleDownloadVersion(
                 },
             });
         }
-
-        // Check status: only allow downloads of published/approved mods to public, admins and authors can download all statuses
-        // Legacy mods without status field are treated as published
-        const { isSuperAdminEmail } = await import('../../utils/admin.js');
-        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
-        const isAuthor = mod.authorId === auth?.userId;
         
-        // Legacy mods might not have status field - treat undefined/null as published
-        const modStatus = mod.status || 'published';
-        
-        // Allow 'published' and 'approved' status for public downloads
-        if (modStatus !== 'published' && modStatus !== 'approved') {
-            // Only allow downloads of non-published/approved mods to admins or the author
-            if (!isAuthor && !isAdmin) {
-                const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                const corsHeaders = createCORSHeaders(request, {
-                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                });
-                return new Response(JSON.stringify(rfcError), {
-                    status: 404,
-                    headers: {
-                        'Content-Type': 'application/problem+json',
-                        ...Object.fromEntries(corsHeaders.entries()),
-                    },
-                });
-            }
-        }
+        // NOTE: Public/unlisted mods should be encrypted with service key during upload to allow
+        // anonymous downloads. Currently, all files are encrypted with user's JWT client-side,
+        // which prevents public downloads without authentication. The proper fix requires:
+        // 1. Client-side: Check if mod is public, encrypt with service key instead of JWT
+        // 2. OR server-side: Re-encrypt public mods with service key after upload
+        // For now, we check visibility and try service key decryption for public mods
 
         // Get version metadata - check global scope first, then customer scopes
         // CRITICAL: Use mod's customerId (not auth customerId) to find version
@@ -274,22 +258,59 @@ export async function handleDownloadVersion(
         if (isEncrypted) {
             console.log('[Download] File is encrypted, decrypting...');
             // File is encrypted - decrypt it
+            // Get JWT token for decryption (outside try block for error handling)
+            const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+            console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length, modVisibility: modVisibility });
+            
             try {
-                // Get JWT token for decryption
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-                console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length });
+                // CRITICAL: Decryption key selection based on visibility ONLY, not status
+                // Public/unlisted mods: try service key if no JWT (allows anonymous downloads)
+                // Private mods: require JWT (already checked above)
+                let decryptionKey: string | null = jwtToken;
+                let useServiceKey = false;
+                
                 if (!jwtToken) {
-                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
+                    // Public or unlisted mods: try service key decryption (allows anonymous downloads)
+                    if (modVisibility === 'public' || modVisibility === 'unlisted') {
+                        // Public/unlisted mod - try service key decryption (status doesn't matter)
+                        const serviceKey = getServiceKey(env);
+                        if (serviceKey) {
+                            decryptionKey = serviceKey;
+                            useServiceKey = true;
+                            console.log('[Download] Using service key for public mod decryption');
+                        } else {
+                            console.error('[Download] Public mod but no service key configured');
+                            const rfcError = createError(
+                                request, 
+                                500, 
+                                'Configuration Error', 
+                                'Service key not configured for public mod decryption'
+                            );
+                            const corsHeaders = createCORSHeaders(request, {
+                                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                            });
+                            return new Response(JSON.stringify(rfcError), {
+                                status: 500,
+                                headers: {
+                                    'Content-Type': 'application/problem+json',
+                                    ...Object.fromEntries(corsHeaders.entries()),
+                                },
+                            });
+                        }
+                    } else {
+                        // Private/draft mods require user JWT
+                        const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
+                        const corsHeaders = createCORSHeaders(request, {
+                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        });
+                        return new Response(JSON.stringify(rfcError), {
+                            status: 401,
+                            headers: {
+                                'Content-Type': 'application/problem+json',
+                                ...Object.fromEntries(corsHeaders.entries()),
+                            },
+                        });
+                    }
                 }
                 
                 // Normalize encryption format (trim whitespace, handle undefined)
@@ -325,11 +346,17 @@ export async function handleDownloadVersion(
                 
                 // Check encryption format and decrypt accordingly
                 if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                    // Binary encrypted format (v4 or v5) - decrypt directly
+                    // Binary encrypted format (v4 or v5) - decrypt with JWT or service key
                     const version = encryptionFormat === 'binary-v5' ? 'v5' : 'v4';
-                    console.log(`[Download] Using binary decryption (${version})...`);
-                    const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
-                    decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
+                    console.log(`[Download] Using binary decryption (${version}) with ${useServiceKey ? 'service key' : 'JWT'}...`);
+                    
+                    if (useServiceKey && decryptionKey) {
+                        decryptedFileBytes = await decryptBinaryWithServiceKey(encryptedBinary, decryptionKey);
+                    } else if (decryptionKey) {
+                        decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, decryptionKey);
+                    } else {
+                        throw new Error('No decryption key available');
+                    }
                     console.log('[Download] Binary decryption successful, size:', decryptedFileBytes.length);
                 } else {
                     // Legacy JSON encrypted format - need to read as text
@@ -341,9 +368,17 @@ export async function handleDownloadVersion(
                     const encryptedJson = JSON.parse(encryptedData);
                     console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
                     
-                    // Decrypt the file
-                    console.log('[Download] Decrypting with JWT...');
-                    const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                    // Decrypt the file with JWT or service key
+                    console.log(`[Download] Decrypting with ${useServiceKey ? 'service key' : 'JWT'}...`);
+                    let decryptedBase64: string;
+                    if (useServiceKey && decryptionKey) {
+                        const { decryptWithServiceKey } = await import('@strixun/api-framework');
+                        decryptedBase64 = await decryptWithServiceKey(encryptedJson, decryptionKey) as string;
+                    } else if (decryptionKey) {
+                        decryptedBase64 = await decryptWithJWT(encryptedJson, decryptionKey) as string;
+                    } else {
+                        throw new Error('No decryption key available');
+                    }
                     console.log('[Download] Decryption successful, base64 length:', decryptedBase64.length);
                     
                     // Convert base64 back to binary
@@ -360,7 +395,21 @@ export async function handleDownloadVersion(
                 console.log('[Download] Original content type:', originalContentType);
             } catch (error) {
                 console.error('[Download] File decryption error:', error);
-                const rfcError = createError(request, 500, 'Decryption Failed', 'Failed to decrypt file. Please ensure you are authenticated.');
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                const isKeyMismatch = errorMessage.includes('does not match') || errorMessage.includes('token does not match');
+                
+                let detail = 'Failed to decrypt file.';
+                if (isKeyMismatch && modVisibility === 'public' && !jwtToken) {
+                    detail = 'This file was encrypted with a different key type. Public mods uploaded before this update may require re-uploading with service key encryption.';
+                } else if (isKeyMismatch) {
+                    detail = 'Decryption key does not match. The file may have been encrypted with a different key.';
+                } else if (modVisibility === 'public' && !jwtToken) {
+                    detail = 'Failed to decrypt public mod file. Please ensure the file was encrypted with service key.';
+                } else {
+                    detail = 'Failed to decrypt file. Please ensure you are authenticated and using the correct key.';
+                }
+                
+                const rfcError = createError(request, 500, 'Decryption Failed', detail);
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
