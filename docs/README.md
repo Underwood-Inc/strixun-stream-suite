@@ -58,6 +58,7 @@ Welcome to the Strixun Stream Suite documentation! This suite provides complete 
 - [TypeScript Conversion](./development/typescript-conversion.md)
 - [Code Style & Standards](./development/code-style.md)
 - [Modularization Guide](./development/modularization.md)
+- **[Worker Port Mapping](../../serverless/WORKER_PORT_MAPPING.md)** - **CRITICAL:** Standard port assignments for local development
 
 ### ❓ [Deployment](./deployment/)
 **Deployment and operations**

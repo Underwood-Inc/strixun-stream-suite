@@ -232,6 +232,8 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture
 - **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows and deployment
+- **[Worker Port Mapping](./serverless/WORKER_PORT_MAPPING.md)** - **CRITICAL:** Standard port assignments for local development
+- **[Wrangler Troubleshooting](./serverless/TROUBLESHOOTING_WRANGLER.md)** - Common issues and solutions for `wrangler dev`
 
 #### Development Scripts
 

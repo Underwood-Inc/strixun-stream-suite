@@ -168,6 +168,12 @@ export default defineConfig({
       url: WORKER_URLS.FRONTEND,
       reuseExistingServer: !process.env.CI,
       timeout: 60 * 1000, // 60 seconds to start frontend
+      env: {
+        // Override API URL and encryption key for E2E tests (same as mods-hub)
+        // This ensures the main app uses local worker URLs and matching encryption keys
+        VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
+        VITE_SERVICE_ENCRYPTION_KEY: E2E_ENCRYPTION_KEY,
+      },
     },
     {
       command: 'cd mods-hub && pnpm dev',

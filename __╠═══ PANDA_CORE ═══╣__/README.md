@@ -139,6 +139,7 @@ graph TB
 - TypeScript conversion guides
 - Modularization guides
 - Contributing guidelines
+- **[Worker Port Mapping](../../serverless/WORKER_PORT_MAPPING.md)** - **CRITICAL:** Standard port assignments for local development
 
 ### [04_DEPLOYMENT](./04_DEPLOYMENT/)
 **Deployment and operations documentation**

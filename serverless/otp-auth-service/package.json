@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --port 8787",
     "dev:app": "vite",
     "dev:all": "concurrently -n worker,app -c yellow,cyan \"pnpm dev\" \"pnpm dev:app\"",
     "setup:test-secrets": "node scripts/setup-test-secrets.js",

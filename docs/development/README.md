@@ -8,6 +8,7 @@ Development guides, best practices, and contributing information.
 
 - [TypeScript Conversion](./typescript-conversion.md) - TypeScript migration status
 - [Modularization Guide](./modularization.md) - Code modularization progress
+- **[Worker Port Mapping](../../../serverless/WORKER_PORT_MAPPING.md)** - **CRITICAL:** Standard port assignments for local development
 
 ---
 
@@ -16,6 +17,7 @@ Development guides, best practices, and contributing information.
 - **Code Style:** See repository rules
 - **Testing:** See testing documentation
 - **Contributing:** See contributing guidelines
+- **Worker Ports:** See [Worker Port Mapping](../../../serverless/WORKER_PORT_MAPPING.md)
 
 ---
 

@@ -162,11 +162,17 @@ export async function wrapWithEncryption(
   request?: Request,
   env?: { NETWORK_INTEGRITY_KEYPHRASE?: string; [key: string]: any }
 ): Promise<RouteResult> {
+    // Import isServiceToServiceCall to properly detect service-to-service calls
+    // This distinguishes between browser requests (no auth) and service-to-service calls (API key/service key)
+    let isServiceCall = false;
+    if (request) {
+        const { isServiceToServiceCall } = await import('@strixun/service-client/integrity-response');
+        isServiceCall = isServiceToServiceCall(request, auth ?? null);
+    }
+    
     // Don't encrypt if response is not OK
     if (!handlerResponse.ok) {
         // Still add integrity header for service-to-service error responses
-        // Check if this is a service call: userId === 'service' OR no JWT token (empty string or undefined)
-        const isServiceCall = auth?.userId === 'service' || !auth?.jwtToken || auth?.jwtToken === '';
         if (request && env && isServiceCall) {
             try {
                 const { wrapResponseWithIntegrity } = await import('@strixun/service-client/integrity-response');
@@ -185,16 +191,15 @@ export async function wrapWithEncryption(
         if (isServiceCall) {
             throw new Error('[NetworkIntegrity] Service-to-service error responses require request and env to add integrity headers');
         }
+        // Browser request without auth - return error response as-is (no integrity header needed)
         return {
             response: handlerResponse,
             customerId: auth?.customerId || null,
         };
     }
 
-  // If no auth token, return unencrypted (but still set header to false for clarity)
-  // This is likely a service-to-service call - add integrity header
-  // Check if this is a service call: userId === 'service' OR no JWT token (empty string or undefined)
-  const isServiceCall = auth?.userId === 'service' || !auth?.jwtToken || auth?.jwtToken === '';
+  // If this is a service-to-service call, add integrity header (CRITICAL for security)
+  // Browser requests without auth don't need integrity headers - they're not service-to-service calls
   if (isServiceCall) {
     // Add integrity header for service-to-service calls (CRITICAL for security)
     if (request && env) {
@@ -242,6 +247,37 @@ export async function wrapWithEncryption(
     throw new Error('[NetworkIntegrity] Service-to-service calls require request and env to add integrity headers');
   }
 
+  // If no JWT token and not a service call, return unencrypted (browser request without auth)
+  if (!auth?.jwtToken) {
+    // Browser request without authentication - return unencrypted
+    const contentType = handlerResponse.headers.get('content-type');
+    const headers = new Headers(handlerResponse.headers);
+    headers.set('X-Encrypted', 'false');
+    
+    // If JSON, we need to clone and read the body
+    if (contentType?.includes('application/json')) {
+      const bodyText = await handlerResponse.text();
+      return {
+        response: new Response(bodyText, {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        }),
+        customerId: auth?.customerId || null,
+      };
+    }
+    
+    // Not JSON, return as-is
+    return {
+      response: new Response(handlerResponse.body, {
+        status: handlerResponse.status,
+        statusText: handlerResponse.statusText,
+        headers: headers,
+      }),
+      customerId: auth?.customerId || null,
+    };
+  }
+
   // Declare variables outside try block for use in catch block
   let responseData: unknown = null;
   let thumbnailUrlsMap: Record<string, string> | null = null;
@@ -263,7 +299,7 @@ export async function wrapWithEncryption(
       };
     }
 
-    // Parse and encrypt
+    // Parse and encrypt (we know auth.jwtToken exists from check above)
     responseData = await handlerResponse.json();
     
     // CRITICAL: Exclude thumbnailUrl from encryption - it's a public URL that browsers need to fetch directly
