@@ -55,7 +55,8 @@ async function listAllUsers(env: Env): Promise<User[]> {
     console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
     try {
         const { createServiceClient } = await import('@strixun/service-client');
-        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+        const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
         
         // For admin endpoints, we need SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
         // createServiceClient will automatically use SUPER_ADMIN_API_KEY if available

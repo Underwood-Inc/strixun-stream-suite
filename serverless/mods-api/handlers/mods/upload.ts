@@ -13,6 +13,7 @@ import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
+import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
 
 /**
@@ -263,21 +264,45 @@ export async function handleUploadMod(
         // Files are decrypted on-the-fly during download
         // Support both binary encryption (v4) and legacy JSON encryption (v3)
         
-        // Get JWT token for temporary decryption (to calculate hash)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-        if (!jwtToken) {
-            const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required for file processing');
+        // Parse metadata FIRST to determine encryption method
+        const metadataJson = formData.get('metadata') as string | null;
+        if (!metadataJson) {
+            const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
-                status: 401,
+                status: 400,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
         }
+
+        const metadata = JSON.parse(metadataJson) as ModUploadRequest;
+        
+        // Validate required fields
+        if (!metadata.title || !metadata.version || !metadata.category) {
+            const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Get JWT token for decryption (required for private mods)
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        
+        // Determine expected encryption method from metadata visibility
+        const isPublic = metadata.visibility === 'public';
+        const expectedServiceKeyEncryption = isPublic;
         
         // Check file format: binary encrypted (v4/v5) or legacy JSON encrypted (v3)
         const fileBuffer = await file.arrayBuffer();
@@ -303,43 +328,81 @@ export async function handleUploadMod(
         }
         
         // Temporarily decrypt to calculate file hash (for integrity verification)
-        // CRITICAL: Try service key first (for public mods), then JWT (for private mods)
+        // CRITICAL: Use metadata visibility to determine which decryption method to try first
         let fileHash: string;
         let fileSize: number;
         let encryptionFormat: string;
         
         try {
             if (isBinaryEncrypted) {
-                // Binary encrypted format - try service key first, then JWT
+                // Binary encrypted format - try expected method first based on visibility
                 const { decryptBinaryWithServiceKey, decryptBinaryWithJWT } = await import('@strixun/api-framework');
                 let decryptedBytes: Uint8Array;
                 let decryptionAttempted = false;
+                let lastError: Error | null = null;
                 
-                // Try service key decryption first (for public mods)
-                const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                if (serviceKey && serviceKey.length >= 32) {
-                    try {
-                        decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
-                        decryptionAttempted = true;
-                        console.log('[Upload] Binary decryption successful with service key');
-                    } catch (serviceKeyError) {
-                        // Service key decryption failed - try JWT as fallback (for private mods)
-                        console.log('[Upload] Service key decryption failed, trying JWT fallback:', serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError));
+                // Try expected encryption method first (based on metadata visibility)
+                if (expectedServiceKeyEncryption) {
+                    // Public mod: try service key first
+                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                    if (serviceKey && serviceKey.length >= 32) {
+                        try {
+                            decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
+                            decryptionAttempted = true;
+                            console.log('[Upload] Binary decryption successful with service key (public mod)');
+                        } catch (serviceKeyError) {
+                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
+                        }
                     }
-                }
-                
-                // Try JWT decryption if service key didn't work (for private mods)
-                if (!decryptionAttempted) {
+                } else {
+                    // Private mod: try JWT first
                     if (!jwtToken) {
                         throw new Error('JWT token required for private mod decryption');
                     }
-                    decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
-                    decryptionAttempted = true;
-                    console.log('[Upload] Binary decryption successful with JWT');
+                    try {
+                        decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                        decryptionAttempted = true;
+                        console.log('[Upload] Binary decryption successful with JWT (private mod)');
+                    } catch (jwtError) {
+                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
+                    }
+                }
+                
+                // Try fallback method if expected method didn't work
+                if (!decryptionAttempted) {
+                    if (expectedServiceKeyEncryption) {
+                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
+                        if (jwtToken) {
+                            try {
+                                decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                                decryptionAttempted = true;
+                                console.log('[Upload] Binary decryption successful with JWT fallback (public mod)');
+                            } catch (jwtError) {
+                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                            }
+                        }
+                    } else {
+                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
+                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                        if (serviceKey && serviceKey.length >= 32) {
+                            try {
+                                decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
+                                decryptionAttempted = true;
+                                console.log('[Upload] Binary decryption successful with service key fallback (private mod)');
+                            } catch (serviceKeyError) {
+                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            }
+                        }
+                    }
                 }
                 
                 if (!decryptionAttempted) {
-                    throw new Error('Failed to decrypt file - neither service key nor JWT worked');
+                    const errorMsg = lastError 
+                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
+                        : 'Failed to decrypt file - neither service key nor JWT worked';
+                    throw new Error(errorMsg);
                 }
                 
                 fileSize = decryptedBytes.length;
@@ -347,7 +410,7 @@ export async function handleUploadMod(
                 // Determine version from first byte (4 or 5)
                 encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
-                // Legacy JSON encrypted format - try service key first, then JWT
+                // Legacy JSON encrypted format - try expected method first based on visibility
                 const encryptedData = await file.text();
                 const encryptedJson = JSON.parse(encryptedData);
                 
@@ -359,32 +422,70 @@ export async function handleUploadMod(
                 const { decryptWithServiceKey, decryptWithJWT } = await import('@strixun/api-framework');
                 let decryptedBase64: string;
                 let decryptionAttempted = false;
+                let lastError: Error | null = null;
                 
-                // Try service key decryption first (for public mods)
-                const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                if (serviceKey && serviceKey.length >= 32) {
-                    try {
-                        decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
-                        decryptionAttempted = true;
-                        console.log('[Upload] JSON decryption successful with service key');
-                    } catch (serviceKeyError) {
-                        // Service key decryption failed - try JWT as fallback (for private mods)
-                        console.log('[Upload] Service key decryption failed, trying JWT fallback:', serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError));
+                // Try expected encryption method first (based on metadata visibility)
+                if (expectedServiceKeyEncryption) {
+                    // Public mod: try service key first
+                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                    if (serviceKey && serviceKey.length >= 32) {
+                        try {
+                            decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
+                            decryptionAttempted = true;
+                            console.log('[Upload] JSON decryption successful with service key (public mod)');
+                        } catch (serviceKeyError) {
+                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
+                        }
                     }
-                }
-                
-                // Try JWT decryption if service key didn't work (for private mods)
-                if (!decryptionAttempted) {
+                } else {
+                    // Private mod: try JWT first
                     if (!jwtToken) {
                         throw new Error('JWT token required for private mod decryption');
                     }
-                    decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                    decryptionAttempted = true;
-                    console.log('[Upload] JSON decryption successful with JWT');
+                    try {
+                        decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                        decryptionAttempted = true;
+                        console.log('[Upload] JSON decryption successful with JWT (private mod)');
+                    } catch (jwtError) {
+                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
+                    }
+                }
+                
+                // Try fallback method if expected method didn't work
+                if (!decryptionAttempted) {
+                    if (expectedServiceKeyEncryption) {
+                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
+                        if (jwtToken) {
+                            try {
+                                decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                                decryptionAttempted = true;
+                                console.log('[Upload] JSON decryption successful with JWT fallback (public mod)');
+                            } catch (jwtError) {
+                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                            }
+                        }
+                    } else {
+                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
+                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                        if (serviceKey && serviceKey.length >= 32) {
+                            try {
+                                decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
+                                decryptionAttempted = true;
+                                console.log('[Upload] JSON decryption successful with service key fallback (private mod)');
+                            } catch (serviceKeyError) {
+                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            }
+                        }
+                    }
                 }
                 
                 if (!decryptionAttempted) {
-                    throw new Error('Failed to decrypt file - neither service key nor JWT worked');
+                    const errorMsg = lastError 
+                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
+                        : 'Failed to decrypt file - neither service key nor JWT worked';
+                    throw new Error(errorMsg);
                 }
                 
                 // Convert base64 back to binary for hash calculation
@@ -412,38 +513,7 @@ export async function handleUploadMod(
             });
         }
 
-        // Parse metadata from form data
-        const metadataJson = formData.get('metadata') as string | null;
-        if (!metadataJson) {
-            const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        const metadata = JSON.parse(metadataJson) as ModUploadRequest;
-
-        // Validate required fields
-        if (!metadata.title || !metadata.version || !metadata.category) {
-            const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // Metadata already parsed above for encryption detection
 
         // Generate IDs
         const modId = generateModId();
@@ -507,12 +577,16 @@ export async function handleUploadMod(
             contentType = 'application/json';
         }
         
+        // Add R2 source metadata to track storage location
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
                 contentType: contentType,
                 cacheControl: 'private, no-cache', // Don't cache encrypted files
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
                 uploadedBy: auth.userId,
@@ -522,7 +596,7 @@ export async function handleUploadMod(
                 originalFileName,
                 originalContentType: 'application/zip', // Original file type
                 sha256: fileHash, // Hash of decrypted file for verification
-            },
+            }, env, request),
         });
 
         // Generate download URL
@@ -579,7 +653,8 @@ export async function handleUploadMod(
         const authHeader = request.headers.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.substring(7);
-            const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
             const url = `${authApiUrl}/auth/me`;
             const timeoutMs = 10000; // Increased to 10 second timeout
             const maxAttempts = 3; // Increased retry attempts
@@ -929,16 +1004,21 @@ async function handleThumbnailBinaryUpload(
         const normalizedModId = normalizeModId(modId);
         const extension = getImageExtension(thumbnailFile.type);
         const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${extension}`);
+        
+        // Add R2 source metadata
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] Thumbnail R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: thumbnailFile.type,
                 cacheControl: 'public, max-age=31536000',
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 extension: extension,
                 validated: 'true', // Mark as validated for rendering
-            },
+            }, env, request),
         });
         
         // CRITICAL FIX: Store extension in mod metadata for faster lookup
@@ -1012,16 +1092,21 @@ async function handleThumbnailUpload(
         // Normalize modId to ensure consistent storage (strip mod_ prefix if present)
         const normalizedModId = normalizeModId(modId);
         const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${normalizedType}`);
+        
+        // Add R2 source metadata
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] Thumbnail (base64) R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: `image/${normalizedType}`,
                 cacheControl: 'public, max-age=31536000',
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 extension: normalizedType, // Store extension for easy retrieval
                 validated: 'true', // Mark as validated for rendering
-            },
+            }, env, request),
         });
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)

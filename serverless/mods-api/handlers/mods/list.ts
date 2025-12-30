@@ -36,6 +36,16 @@ export async function handleListMods(
         const globalListKey = 'mods_list_public';
         const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
         const globalModIds = globalListData || [];
+        
+        // Log for debugging - verify we're using local KV
+        if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
+            console.log('[ListMods] Local dev mode - using local KV storage:', {
+                environment: env.ENVIRONMENT,
+                globalListSize: globalModIds.length,
+                globalListKey,
+                note: 'If you see production mods here, clear local KV storage'
+            });
+        }
 
         // Get customer-specific mods if:
         // 1. User is super admin (needs to see everything), OR

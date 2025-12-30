@@ -115,12 +115,24 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
             timeout: 5000, // 5 second timeout for validation
+            auth: {
+                tokenGetter: () => {
+                    // CRITICAL: Return token so Authorization header is set
+                    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+                        return null;
+                    }
+                    return token;
+                },
+            },
+            cache: {
+                enabled: false, // Never cache validation requests
+            },
         });
         
         // Use /auth/me endpoint to validate token (returns 401 if invalid/blacklisted)
         const response = await authClient.get('/auth/me', undefined, {
             metadata: {
-                token: token, // Pass token for authentication
+                token: token, // Pass token in metadata for decryption (if response is encrypted)
                 cache: false, // Never cache validation requests
             },
         });

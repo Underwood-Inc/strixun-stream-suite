@@ -82,6 +82,7 @@ export async function handleBadge(
         }
         
         // If still not found, search all customer scopes (for cross-customer access)
+        // CRITICAL: This must work for unauthenticated requests (badge images loaded in <img> tags)
         if (!mod) {
             const customerListPrefix = 'customer_';
             let cursor: string | undefined;
@@ -89,13 +90,26 @@ export async function handleBadge(
             do {
                 const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
                 for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
+                    // Match both customer_{id}_mods_list and customer_{id}/mods_list patterns
+                    if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
+                        // CRITICAL: Customer IDs can contain underscores (e.g., cust_0ab4c4434c48)
+                        // Extract everything between "customer_" and the final "_mods_list" or "/mods_list"
+                        let customerId: string | null = null;
+                        if (key.name.endsWith('_mods_list')) {
+                            const match = key.name.match(/^customer_(.+)_mods_list$/);
+                            customerId = match ? match[1] : null;
+                        } else if (key.name.endsWith('/mods_list')) {
+                            const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                            customerId = match ? match[1] : null;
+                        }
+                        
                         if (customerId) {
                             const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
                             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            if (mod) break;
+                            if (mod) {
+                                console.log('[Badge] Found mod in customer scope:', { customerId, modId: mod.modId, key: key.name });
+                                break;
+                            }
                         }
                     }
                 }
@@ -175,9 +189,19 @@ export async function handleBadge(
             do {
                 const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
                 for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
+                    // Match both customer_{id}_mods_list and customer_{id}/mods_list patterns
+                    if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
+                        // CRITICAL: Customer IDs can contain underscores (e.g., cust_0ab4c4434c48)
+                        // Extract everything between "customer_" and the final "_mods_list" or "/mods_list"
+                        let customerId: string | null = null;
+                        if (key.name.endsWith('_mods_list')) {
+                            const match = key.name.match(/^customer_(.+)_mods_list$/);
+                            customerId = match ? match[1] : null;
+                        } else if (key.name.endsWith('/mods_list')) {
+                            const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                            customerId = match ? match[1] : null;
+                        }
+                        
                         if (customerId) {
                             const customerVersionKey = getCustomerKey(customerId, `version_${versionId}`);
                             version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;

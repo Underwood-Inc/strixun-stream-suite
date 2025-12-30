@@ -3,6 +3,25 @@
  */
 
 /**
+ * Get the auth API URL with auto-detection for local dev
+ * Priority:
+ * 1. AUTH_API_URL env var (if explicitly set)
+ * 2. localhost:8787 if ENVIRONMENT is 'test' or 'development'
+ * 3. Production default (https://auth.idling.app)
+ */
+function getAuthApiUrl(env: Env): string {
+    if (env.AUTH_API_URL) {
+        return env.AUTH_API_URL;
+    }
+    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
+        // Local dev - use localhost (otp-auth-service runs on port 8787)
+        return 'http://localhost:8787';
+    }
+    // Production default
+    return 'https://auth.idling.app';
+}
+
+/**
  * Fetch display name for a user by userId
  * Uses the public /auth/user/:userId endpoint in the auth API
  * Includes timeout handling and retry logic for reliability
@@ -13,7 +32,7 @@ export async function fetchDisplayNameByUserId(userId: string, env: Env, timeout
         return null;
     }
     
-    const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+    const authApiUrl = getAuthApiUrl(env);
     const url = `${authApiUrl}/auth/user/${userId}`;
     
     console.log('[DisplayName] Fetching displayName for userId:', { userId, url, timeoutMs });

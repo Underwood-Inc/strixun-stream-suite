@@ -99,9 +99,28 @@ export function isEmailAllowed(email: string | undefined, env: Env): boolean {
  * Fetch user email from auth service if missing from JWT
  * This is a fallback for older tokens that don't include email
  */
+/**
+ * Get the auth API URL with auto-detection for local dev
+ * Priority:
+ * 1. AUTH_API_URL env var (if explicitly set)
+ * 2. localhost:8787 if ENVIRONMENT is 'test' or 'development'
+ * 3. Production default (https://auth.idling.app)
+ */
+function getAuthApiUrl(env: Env): string {
+    if (env.AUTH_API_URL) {
+        return env.AUTH_API_URL;
+    }
+    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
+        // Local dev - use localhost (otp-auth-service runs on port 8787)
+        return 'http://localhost:8787';
+    }
+    // Production default
+    return 'https://auth.idling.app';
+}
+
 async function fetchEmailFromAuthService(token: string, env: Env): Promise<string | undefined> {
     try {
-        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        const authApiUrl = getAuthApiUrl(env);
         const response = await fetch(`${authApiUrl}/auth/me`, {
             method: 'GET',
             headers: {

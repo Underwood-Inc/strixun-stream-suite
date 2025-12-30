@@ -206,7 +206,8 @@ export async function handleUpdateModStatus(
         // Fetch displayName from auth API if available
         let changedByDisplayName: string | null = null;
         try {
-            const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
             const authHeader = request.headers.get('Authorization');
             if (authHeader && authHeader.startsWith('Bearer ')) {
                 const token = authHeader.substring(7);
@@ -454,7 +455,8 @@ export async function handleAddReviewComment(
         // Fetch displayName from auth API if available
         let authorDisplayName: string | null = null;
         try {
-            const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
             const authHeader = request.headers.get('Authorization');
             if (authHeader && authHeader.startsWith('Bearer ')) {
                 const token = authHeader.substring(7);

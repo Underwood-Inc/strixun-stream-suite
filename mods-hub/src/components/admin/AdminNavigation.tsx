@@ -19,6 +19,7 @@ const NavContainer = styled.nav`
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: ${colors.border} transparent;
+  flex-shrink: 0;
   
   &::-webkit-scrollbar {
     height: 4px;

@@ -194,6 +194,39 @@ When using `--local`, this bucket is created automatically in `~/.wrangler/state
 - To clear: Delete `~/.wrangler/state/v3/r2/` directory
 - Or use `wrangler dev --local --persist-to=./.wrangler` for project-specific storage
 
+### Seeing Production Data in Local Dev
+
+**Problem:** You see mods in local dev that you didn't upload locally (e.g., "compressy LITE")
+
+**Cause:** Local KV storage contains production data from a previous run without `--local` flag
+
+**Solution:**
+1. **Clear local KV storage:**
+   ```powershell
+   # Windows PowerShell
+   Remove-Item "$env:USERPROFILE\.wrangler\state\v3" -Recurse -Force
+   ```
+   ```bash
+   # Mac/Linux
+   rm -rf ~/.wrangler/state/v3
+   ```
+
+2. **Restart dev servers:**
+   ```bash
+   cd mods-hub
+   pnpm dev:all
+   ```
+
+3. **Verify isolation:**
+   - Upload a test mod
+   - It should only appear in local dev, not production
+   - Check worker logs for `[ListMods] Local dev mode` message
+
+**Prevention:**
+- Always use `--local` flag in dev scripts (already configured)
+- Never run `wrangler dev` without `--local` flag
+- Clear local storage if you suspect production data contamination
+
 ### Want to Use Cloud R2 Instead?
 
 If you want to use real cloud R2 during local dev (not recommended for testing):

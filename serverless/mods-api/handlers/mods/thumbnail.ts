@@ -51,11 +51,12 @@ export async function handleThumbnail(
                 const listResult = await env.MODS_KV.list({ prefix: customerModPrefix, cursor });
                 for (const key of listResult.keys) {
                     // Look for keys matching pattern: customer_*_mod_{normalizedModId}
+                    // CRITICAL: Customer IDs can contain underscores (e.g., cust_0ab4c4434c48)
                     if (key.name.endsWith(`_mod_${normalizedModId}`)) {
                         mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
                         if (mod) {
-                            // Extract customerId from key name
-                            const match = key.name.match(/^customer_([^_/]+)_mod_/);
+                            // Extract customerId from key name - match everything between "customer_" and "_mod_"
+                            const match = key.name.match(/^customer_(.+)_mod_/);
                             const customerId = match ? match[1] : null;
                             console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
                             found = true;

@@ -283,7 +283,14 @@ export async function handleDownloadVersion(
         // Get encrypted file from R2
         // SECURITY: Files are stored encrypted in R2 (encryption at rest)
         // We decrypt on-the-fly during download to return usable files
-        console.log('[Download] Fetching file from R2:', { r2Key: version.r2Key });
+        const { getR2SourceInfo } = await import('../../utils/r2-source.js');
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Download] Fetching file from R2:', { 
+            r2Key: version.r2Key,
+            r2Source: r2SourceInfo.source,
+            isLocal: r2SourceInfo.isLocal,
+            storageLocation: r2SourceInfo.storageLocation
+        });
         const encryptedFile = await env.MODS_R2.get(version.r2Key);
         
         if (!encryptedFile) {
@@ -304,9 +311,13 @@ export async function handleDownloadVersion(
         // Check if file is encrypted (should always be true for new uploads)
         const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
         let encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
+        const r2Source = encryptedFile.customMetadata?.['r2-source'] || 'unknown';
+        const r2IsLocal = encryptedFile.customMetadata?.['r2-is-local'] === 'true';
         console.log('[Download] File retrieved from R2:', { 
             size: encryptedFile.size, 
-            isEncrypted, 
+            isEncrypted,
+            r2Source,
+            r2IsLocal,
             encryptionFormat,
             contentType: encryptedFile.httpMetadata?.contentType,
             hasCustomMetadata: !!encryptedFile.customMetadata

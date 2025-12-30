@@ -157,9 +157,10 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth, request, env);
         }
 
-        // Route: PATCH /mods/:slug or PATCH /:slug - Update mod (by slug)
+        // Route: PUT /mods/:slug or PUT /:slug - Update mod (by slug)
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        if (pathSegments.length === 1 && request.method === 'PATCH') {
+        // Also supports PATCH for backward compatibility
+        if (pathSegments.length === 1 && (request.method === 'PUT' || request.method === 'PATCH')) {
             if (!auth) {
                 return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }

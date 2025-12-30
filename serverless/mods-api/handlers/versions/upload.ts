@@ -13,6 +13,7 @@ import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import { MAX_VERSION_FILE_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
+import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, VersionUploadRequest } from '../../types/mod.js';
 
 /**
@@ -338,12 +339,16 @@ export async function handleUploadVersion(
             contentType = 'application/json';
         }
         
+        // Add R2 source metadata to track storage location
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[VersionUpload] R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
                 contentType: contentType,
                 cacheControl: 'private, no-cache', // Don't cache encrypted files
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
                 uploadedBy: auth.userId,
@@ -353,7 +358,7 @@ export async function handleUploadVersion(
                 originalFileName,
                 originalContentType: 'application/zip', // Original file type
                 sha256: fileHash, // Hash of decrypted file for verification
-            },
+            }, env, request),
         });
 
         // Generate download URL

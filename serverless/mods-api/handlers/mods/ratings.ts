@@ -14,7 +14,8 @@ import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../type
  */
 async function fetchUserDisplayName(token: string, env: Env): Promise<string | null> {
     try {
-        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+        const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
         const response = await fetch(`${authApiUrl}/auth/me`, {
             method: 'GET',
             headers: {

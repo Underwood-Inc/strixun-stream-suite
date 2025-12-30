@@ -33,7 +33,8 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.xl};
-  height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);
+  height: 100%;
   overflow: hidden;
 `;
 
@@ -50,6 +51,7 @@ const PageHeader = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: ${spacing.md};
+  flex-shrink: 0;
 `;
 
 const Filters = styled.div`
@@ -86,6 +88,7 @@ const Toolbar = styled.div`
   background: ${colors.bgSecondary};
   border-radius: 8px;
   border: 1px solid ${colors.border};
+  flex-shrink: 0;
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
@@ -177,12 +180,21 @@ const Error = styled.div`
 `;
 
 const TableContainer = styled.div`
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 400px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  
+  /* Ensure table container takes available space */
+  @media (max-height: 800px) {
+    min-height: 300px;
+  }
+  
+  @media (max-height: 600px) {
+    min-height: 200px;
+  }
 `;
 
 export function AdminPanel() {

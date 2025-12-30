@@ -11,6 +11,7 @@ import { generateUniqueSlug } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { createModSnapshot } from '../../utils/snapshot.js';
+import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
@@ -339,16 +340,21 @@ async function handleThumbnailBinaryUpload(
         const normalizedModId = normalizeModId(modId);
         const extension = getImageExtension(thumbnailFile.type);
         const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${extension}`);
+        
+        // Add R2 source metadata
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[UpdateMod] Thumbnail R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: thumbnailFile.type,
                 cacheControl: 'public, max-age=31536000',
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 extension: extension,
                 validated: 'true', // Mark as validated for rendering
-            },
+            }, env, request),
         });
         
         // Return API proxy URL using slug for consistency
@@ -418,16 +424,21 @@ async function handleThumbnailUpload(
         // Normalize modId to ensure consistent storage (strip mod_ prefix if present)
         const normalizedModId = normalizeModId(modId);
         const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${normalizedType}`);
+        
+        // Add R2 source metadata
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[UpdateMod] Thumbnail (base64) R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: `image/${normalizedType}`,
                 cacheControl: 'public, max-age=31536000',
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 extension: normalizedType, // Store extension for easy retrieval
                 validated: 'true', // Mark as validated for rendering
-            },
+            }, env, request),
         });
 
         // Return API proxy URL using slug (thumbnails should be served through API, not direct R2)
