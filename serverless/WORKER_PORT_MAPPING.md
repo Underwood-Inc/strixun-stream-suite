@@ -72,9 +72,9 @@ To verify all workers are using correct ports:
 grep -r '"dev":' serverless/*/package.json
 
 # Should show:
-# "dev": "wrangler dev --port 8787"  (otp-auth-service)
-# "dev": "wrangler dev --port 8788"  (mods-api)
-# "dev": "wrangler dev --port 8789"  (twitch-api)
+# "dev": "wrangler dev --port 8787 --local"  (otp-auth-service)
+# "dev": "wrangler dev --port 8788 --local"  (mods-api)
+# "dev": "wrangler dev --port 8789 --local"  (twitch-api)
 # etc...
 ```
 

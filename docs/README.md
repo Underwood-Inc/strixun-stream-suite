@@ -46,7 +46,7 @@ Welcome to the Strixun Stream Suite documentation! This suite provides complete 
 - [URL Shortener](./services/url-shortener/)
 - [Chat Signaling](./services/chat-signaling/)
 - [Game API](./services/game-api/)
-- [Mods API](./services/mods-api/)
+- [Mods API](./services/mods-api/) - [Local R2 Storage](./services/mods-api/local-r2-storage.md)
 - [Twitch API](./services/twitch-api/)
 
 ### 💻 [Development](./development/)

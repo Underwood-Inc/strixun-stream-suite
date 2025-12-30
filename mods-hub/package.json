@@ -3,6 +3,9 @@
   "packageManager": "pnpm@9.15.1",
   "private": true,
   "scripts": {
+    "setup:env": "node setup-env.js",
+    "predev": "pnpm setup:env",
+    "predev:all": "pnpm setup:env",
     "build": "tsc -b && vite build",
     "dev": "vite",
     "dev:all": "concurrently -n frontend,api,auth,customer -c cyan,yellow,magenta,green \"pnpm dev\" \"pnpm dev:api\" \"pnpm dev:auth\" \"pnpm dev:customer\"",

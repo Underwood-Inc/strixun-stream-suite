@@ -8,6 +8,7 @@ import { trackError, trackResponseTime } from './services/analytics.js';
 import { sendWebhook } from './services/webhooks.js';
 import { getPlanLimits } from './utils/validation.js';
 import { handlePublicRoutes } from './router/public-routes.js';
+import { handleDevRoutes } from './router/dev-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
@@ -76,6 +77,17 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         const publicResponse = await handlePublicRoutes(request, path, env);
         if (publicResponse) {
             response = publicResponse;
+        }
+        
+        // Try dev routes (ONLY in test mode - disabled in production)
+        // SECURITY: handleDevRoutes returns null in production, so this code path is safe
+        // Production ENVIRONMENT is always 'production' (set in wrangler.toml)
+        if (!response) {
+            const devResult = await handleDevRoutes(request, path, env);
+            if (devResult) {
+                customerId = devResult.customerId || null;
+                response = devResult.response;
+            }
         }
         
         // Try admin routes

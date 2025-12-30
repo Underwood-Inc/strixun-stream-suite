@@ -303,21 +303,51 @@ export async function handleUploadMod(
         }
         
         // Temporarily decrypt to calculate file hash (for integrity verification)
+        // CRITICAL: Try service key first (for public mods), then JWT (for private mods)
         let fileHash: string;
         let fileSize: number;
         let encryptionFormat: string;
         
         try {
             if (isBinaryEncrypted) {
-                // Binary encrypted format - decrypt directly
-                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
-                const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                // Binary encrypted format - try service key first, then JWT
+                const { decryptBinaryWithServiceKey, decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                let decryptedBytes: Uint8Array;
+                let decryptionAttempted = false;
+                
+                // Try service key decryption first (for public mods)
+                const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                if (serviceKey && serviceKey.length >= 32) {
+                    try {
+                        decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
+                        decryptionAttempted = true;
+                        console.log('[Upload] Binary decryption successful with service key');
+                    } catch (serviceKeyError) {
+                        // Service key decryption failed - try JWT as fallback (for private mods)
+                        console.log('[Upload] Service key decryption failed, trying JWT fallback:', serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError));
+                    }
+                }
+                
+                // Try JWT decryption if service key didn't work (for private mods)
+                if (!decryptionAttempted) {
+                    if (!jwtToken) {
+                        throw new Error('JWT token required for private mod decryption');
+                    }
+                    decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                    decryptionAttempted = true;
+                    console.log('[Upload] Binary decryption successful with JWT');
+                }
+                
+                if (!decryptionAttempted) {
+                    throw new Error('Failed to decrypt file - neither service key nor JWT worked');
+                }
+                
                 fileSize = decryptedBytes.length;
                 fileHash = await calculateStrixunHash(decryptedBytes, env);
                 // Determine version from first byte (4 or 5)
                 encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
-                // Legacy JSON encrypted format
+                // Legacy JSON encrypted format - try service key first, then JWT
                 const encryptedData = await file.text();
                 const encryptedJson = JSON.parse(encryptedData);
                 
@@ -326,7 +356,36 @@ export async function handleUploadMod(
                     throw new Error('Invalid encrypted file format');
                 }
                 
-                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                const { decryptWithServiceKey, decryptWithJWT } = await import('@strixun/api-framework');
+                let decryptedBase64: string;
+                let decryptionAttempted = false;
+                
+                // Try service key decryption first (for public mods)
+                const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                if (serviceKey && serviceKey.length >= 32) {
+                    try {
+                        decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
+                        decryptionAttempted = true;
+                        console.log('[Upload] JSON decryption successful with service key');
+                    } catch (serviceKeyError) {
+                        // Service key decryption failed - try JWT as fallback (for private mods)
+                        console.log('[Upload] Service key decryption failed, trying JWT fallback:', serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError));
+                    }
+                }
+                
+                // Try JWT decryption if service key didn't work (for private mods)
+                if (!decryptionAttempted) {
+                    if (!jwtToken) {
+                        throw new Error('JWT token required for private mod decryption');
+                    }
+                    decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                    decryptionAttempted = true;
+                    console.log('[Upload] JSON decryption successful with JWT');
+                }
+                
+                if (!decryptionAttempted) {
+                    throw new Error('Failed to decrypt file - neither service key nor JWT worked');
+                }
                 
                 // Convert base64 back to binary for hash calculation
                 const binaryString = atob(decryptedBase64);
@@ -340,7 +399,7 @@ export async function handleUploadMod(
             }
         } catch (error) {
             console.error('File decryption error during upload:', error);
-            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated and the file was encrypted with your token.');
+            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure the file was encrypted with either the service key (for public mods) or your JWT token (for private mods).');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });

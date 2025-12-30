@@ -165,7 +165,10 @@ export async function sendOTPEmail(
             
             await env.OTP_AUTH_KV.put(e2eOTPKey, otp, { expirationTtl: 600 });
             
+            // Log OTP code to console for easy dev access
             console.log('[E2E] OTP intercepted and stored in local KV:', e2eOTPKey);
+            console.log(`[DEV] OTP Code for ${email}: ${otp}`);
+            console.log(`[DEV] Retrieve OTP via: GET /dev/otp?email=${encodeURIComponent(email)}`);
             
             // In local test mode, don't actually send email (skip Resend API call)
             return { id: `e2e_${Date.now()}`, intercepted: true };

@@ -9,6 +9,7 @@ Development guides, best practices, and contributing information.
 - [TypeScript Conversion](./typescript-conversion.md) - TypeScript migration status
 - [Modularization Guide](./modularization.md) - Code modularization progress
 - **[Worker Port Mapping](../../../serverless/WORKER_PORT_MAPPING.md)** - **CRITICAL:** Standard port assignments for local development
+- **[Local R2 Storage](../services/mods-api/local-r2-storage.md)** - Local development R2 storage guide
 
 ---
 

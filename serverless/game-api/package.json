@@ -6,7 +6,7 @@
   "packageManager": "pnpm@9.15.1",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8791",
+    "dev": "wrangler dev --port 8791 --local",
     "deploy": "wrangler deploy",
     "deploy:prod": "wrangler deploy --env production",
     "tail": "wrangler tail",
