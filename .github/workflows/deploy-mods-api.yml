@@ -106,7 +106,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: pnpm exec wrangler deploy --env production
       
       - name: Rollback on Failure
         if: failure()

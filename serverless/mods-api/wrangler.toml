@@ -113,6 +113,6 @@ head_sampling_rate = 1
 
 # Scheduled triggers (cron jobs)
 # R2 cleanup job - runs daily at 2 AM UTC to permanently delete files marked for deletion 5+ days ago
-[[triggers.crons]]
-cron = "0 2 * * *"
+[triggers]
+crons = ["0 2 * * *"]
 
