@@ -1,11 +1,13 @@
 /**
  * Mod list page
  * Displays all available mods with filtering and search
+ * Uses virtualized list for efficient rendering
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
-import { ModCard } from '../components/mod/ModCard';
+import { ModListItem } from '../components/mod/ModListItem';
 import { ModFilters } from '../components/mod/ModFilters';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -14,12 +16,16 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.xl};
+  width: 100%;
+  height: calc(100vh - 200px);
+  min-height: 600px;
 `;
 
 const Header = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
+  flex-shrink: 0;
 `;
 
 const Title = styled.h1`
@@ -35,10 +41,13 @@ const FiltersContainer = styled.div`
   flex-wrap: wrap;
 `;
 
-const ModsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: ${spacing.lg};
+const ListContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  background: ${colors.bg};
+  border: 1px solid ${colors.border};
+  border-radius: 8px;
+  overflow: hidden;
 `;
 
 const Loading = styled.div`
@@ -67,6 +76,27 @@ const ErrorMessage = styled.p`
   margin: ${spacing.sm} 0;
   color: ${colors.textSecondary};
   font-size: 0.9rem;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: ${colors.textSecondary};
+  font-size: 1rem;
+`;
+
+const EndOfListIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${spacing.xl} ${spacing.lg};
+  color: ${colors.textMuted};
+  font-size: 0.875rem;
+  background: ${colors.bgSecondary};
+  border-top: 1px solid ${colors.border};
+  font-style: italic;
 `;
 
 function getErrorMessage(error: unknown): { title: string; message: string; details?: string } {
@@ -124,6 +154,8 @@ export function ModListPage() {
     const [page] = useState(1);
     const [category, setCategory] = useState<string>('');
     const [search, setSearch] = useState('');
+    const [listHeight, setListHeight] = useState(600);
+    const containerRef = useRef<HTMLDivElement>(null);
     
     const { data, isLoading, error } = useModsList({
         page,
@@ -133,10 +165,25 @@ export function ModListPage() {
         visibility: 'public',
     });
 
+    // Calculate list height based on available space
+    useEffect(() => {
+        const updateHeight = () => {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const availableHeight = window.innerHeight - rect.top - 100;
+                setListHeight(Math.max(400, availableHeight));
+            }
+        };
+
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        return () => window.removeEventListener('resize', updateHeight);
+    }, []);
+
     const errorInfo = error ? getErrorMessage(error) : null;
 
     return (
-        <PageContainer>
+        <PageContainer ref={containerRef}>
             <Header>
                 <Title>Browse Mods</Title>
                 <FiltersContainer>
@@ -160,17 +207,37 @@ export function ModListPage() {
             
             {data && (
                 <>
-                    <ModsGrid>
-                        {data.mods.map((mod) => (
-                            <ModCard key={mod.modId} mod={mod} />
-                        ))}
-                    </ModsGrid>
-                    {data.mods.length === 0 && (
-                        <Loading>No mods found</Loading>
+                    {data.mods.length === 0 ? (
+                        <EmptyState>No mods found</EmptyState>
+                    ) : (
+                        <ListContainer>
+                            <List
+                                height={listHeight}
+                                itemCount={data.mods.length + 1}
+                                itemSize={110}
+                                width="100%"
+                            >
+                                {({ index, style }) => {
+                                    if (index === data.mods.length) {
+                                        return (
+                                            <div style={style}>
+                                                <EndOfListIndicator>
+                                                    End of mods list — no more mods to display
+                                                </EndOfListIndicator>
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div style={style}>
+                                            <ModListItem mod={data.mods[index]} />
+                                        </div>
+                                    );
+                                }}
+                            </List>
+                        </ListContainer>
                     )}
                 </>
             )}
         </PageContainer>
     );
 }
-
