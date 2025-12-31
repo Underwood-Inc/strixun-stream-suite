@@ -13,7 +13,7 @@
     "dev:auth": "cd ../serverless/otp-auth-service && pnpm dev",
     "dev:customer": "cd ../serverless/customer-api && pnpm dev",
     "lint": "eslint .",
-    "prebuild": "pnpm --filter @strixun/otp-login build:react",
+    "prebuild": "pnpm --filter @strixun/otp-login build:react && pnpm --filter @strixun/dice-board-game build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:api": "vitest run --passWithNoTests src/services/api",
@@ -27,6 +27,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
+    "@strixun/dice-board-game": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",
     "@strixun/search-query-parser": "workspace:*",
     "@strixun/virtualized-table": "workspace:*",

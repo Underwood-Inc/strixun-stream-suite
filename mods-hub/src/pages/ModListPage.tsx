@@ -220,7 +220,7 @@ export function ModListPage() {
                                 {({ index, style }) => {
                                     if (index === data.mods.length) {
                                         return (
-                                            <div style={style}>
+                                            <div style={{ ...style, paddingTop: spacing.xl, paddingBottom: spacing.xl }}>
                                                 <EndOfListIndicator>
                                                     End of mods list — no more mods to display
                                                 </EndOfListIndicator>

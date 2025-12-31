@@ -120,7 +120,18 @@ jobs:
       
       - name: Build workspace dependencies
         working-directory: .
-        run: pnpm --filter "@strixun/api-framework" run build || echo "Workspace dependency build skipped if no build script"
+        run: |
+          echo "🔨 Building workspace dependencies required for mods-hub..."
+          # Build OTP Login (required for mods-hub login page)
+          echo "  → Building @strixun/otp-login..."
+          pnpm --filter "@strixun/otp-login" run build:react || (echo "⚠️  OTP Login build failed or skipped" && exit 1)
+          # Build Dice Board Game (required for mods-hub admin panel)
+          echo "  → Building @strixun/dice-board-game..."
+          pnpm --filter "@strixun/dice-board-game" run build || (echo "⚠️  Dice Board Game build failed or skipped" && exit 1)
+          # Build API Framework (if it has a build script)
+          echo "  → Building @strixun/api-framework (if needed)..."
+          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ️  API Framework has no build script (skipped)"
+          echo "✅ All workspace dependencies built successfully"
       
       - name: Verify OTP Encryption Key
         env:

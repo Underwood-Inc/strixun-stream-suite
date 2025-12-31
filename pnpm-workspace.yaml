@@ -17,6 +17,7 @@ packages:
   - 'packages/ad-carousel'
   - 'packages/error-mapping'
   - 'packages/idle-game-overlay'
+  - 'dice-board-game'
   - 'control-panel'
   - 'mods-hub'
   - 'shared-components'

@@ -12,7 +12,7 @@
  * - Optimized for performance
  */
 
-import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
@@ -28,6 +28,13 @@ import { getBadgeStyles } from '../utils/sharedStyles';
 import { getStatusBadgeType } from '../utils/badgeHelpers';
 import { exportModsToCSV, exportModsToJSON } from '../utils/exportMods';
 import { filterModsBySearchQuery } from '../utils/searchMods';
+
+// Lazy load dice board game to avoid loading if not needed
+const DiceBoardGameContainer = React.lazy(() => 
+  import('@strixun/dice-board-game/react').then(module => ({
+    default: module.DiceBoardGameContainer,
+  }))
+);
 
 const PageContainer = styled.div`
   max-width: 1800px;
@@ -178,6 +185,46 @@ const TableContainer = styled.div`
   }
 `;
 
+const TestSection = styled.div`
+  margin-top: ${spacing.lg};
+  padding: ${spacing.md};
+  background: ${colors.bgSecondary};
+  border: 1px solid ${colors.border};
+  border-radius: 6px;
+`;
+
+const TestSectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${spacing.md};
+  cursor: pointer;
+  user-select: none;
+`;
+
+const TestSectionTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: ${colors.text};
+  margin: 0;
+`;
+
+const TestSectionContent = styled.div<{ $isOpen: boolean }>`
+  display: ${props => props.$isOpen ? 'block' : 'none'};
+  height: ${props => props.$isOpen ? '600px' : '0'};
+  transition: height 0.3s ease;
+  overflow: hidden;
+`;
+
+const GameContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  border: 2px solid ${colors.border};
+  border-radius: 6px;
+  overflow: hidden;
+  background: ${colors.bg};
+`;
+
 export function AdminPanel() {
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -189,6 +236,34 @@ export function AdminPanel() {
     const [modToDelete, setModToDelete] = useState<{ modId: string; title: string } | null>(null);
     const [tableHeight, setTableHeight] = useState<number>(600);
     const tableContainerRef = useRef<HTMLDivElement>(null);
+    const [testSectionOpen, setTestSectionOpen] = useState(false);
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    
+    // Memoized game configs to prevent re-renders
+    const gameConfig = useMemo(() => ({
+        width: 15,
+        height: 15,
+        tileSize: 1,
+        wrapEdges: true,
+        forkProbability: 0.3,
+        minForkChainLength: 5,
+    }), []);
+    
+    const diceConfig = useMemo(() => ({
+        sides: 6,
+        count: 2,
+        size: 0.5,
+        material: 'standard' as const,
+    }), []);
+    
+    // Memoized callbacks to prevent re-renders
+    const handleGameStateChange = useCallback((state: unknown) => {
+        console.log('[Dice Board Game] State changed:', state);
+    }, []);
+    
+    const handleGameEvent = useCallback((event: unknown) => {
+        console.log('[Dice Board Game] Event triggered:', event);
+    }, []);
     
     const { data, isLoading, error } = useAdminModsList({
         page: 1,
@@ -621,6 +696,36 @@ export function AdminPanel() {
                 cancelText="Cancel"
                 isLoading={updateStatus.isPending || deleteMod.isPending}
             />
+
+            {/* Test Section - Dice Board Game */}
+            <TestSection>
+                <TestSectionHeader onClick={() => setTestSectionOpen(!testSectionOpen)}>
+                    <TestSectionTitle>Test: Dice Board Game (Experimental)</TestSectionTitle>
+                    <Button variant="secondary" onClick={(e) => {
+                        e.stopPropagation();
+                        setTestSectionOpen(!testSectionOpen);
+                    }}>
+                        {testSectionOpen ? 'Hide' : 'Show'}
+                    </Button>
+                </TestSectionHeader>
+                <TestSectionContent $isOpen={testSectionOpen}>
+                    <GameContainer ref={gameContainerRef}>
+                        <React.Suspense fallback={<div style={{ padding: spacing.lg, textAlign: 'center', color: colors.textSecondary }}>Loading dice board game...</div>}>
+                            {testSectionOpen && (
+                                <DiceBoardGameContainer
+                                    containerRef={gameContainerRef as React.RefObject<HTMLElement>}
+                                    width="100%"
+                                    height="600px"
+                                    config={gameConfig}
+                                    diceConfig={diceConfig}
+                                    onStateChange={handleGameStateChange}
+                                    onEventTriggered={handleGameEvent}
+                                />
+                            )}
+                        </React.Suspense>
+                    </GameContainer>
+                </TestSectionContent>
+            </TestSection>
         </PageContainer>
     );
 }
