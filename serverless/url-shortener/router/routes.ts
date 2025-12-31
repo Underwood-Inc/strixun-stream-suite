@@ -6,7 +6,7 @@
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
-import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls, handleDeleteUrl } from '../handlers/url.js';
+import { handleCreateShortUrl, handleRedirect, handleGetUrlInfo, handleListUrls, handleDeleteUrl, handleGetStats } from '../handlers/url.js';
 import { handleHealth } from '../handlers/health.js';
 import { handleDecryptScript } from '../handlers/decrypt-script.js';
 import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
@@ -18,38 +18,20 @@ interface Env {
 }
 
 /**
- * Helper to wrap handlers with automatic encryption
- * Uses shared encryption suite from serverless/shared/encryption
+ * Helper to wrap handlers with automatic encryption and integrity checks
+ * Uses API framework's wrapWithEncryption for proper service-to-service support
  */
-async function wrapWithEncryption(handlerResponse: Response, request: Request): Promise<Response> {
-  // Check if response should be encrypted (has JWT token and is OK)
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-  
-  if (token && token.length >= 10 && handlerResponse.ok) {
-    try {
-      const contentType = handlerResponse.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        const { encryptWithJWT } = await import('@strixun/api-framework');
-        const responseData = await handlerResponse.json();
-        const encrypted = await encryptWithJWT(responseData, token);
-        
-        const headers = new Headers(handlerResponse.headers);
-        headers.set('Content-Type', 'application/json');
-        headers.set('X-Encrypted', 'true');
-        
-        return new Response(JSON.stringify(encrypted), {
-          status: handlerResponse.status,
-          statusText: handlerResponse.statusText,
-          headers: headers,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to encrypt response:', error);
-    }
+async function wrapWithEncryption(handlerResponse: Response, request: Request, env: Env, auth: any = null): Promise<Response> {
+  try {
+    // Use API framework's wrapWithEncryption for proper integrity headers and encryption
+    const { wrapWithEncryption: apiWrapWithEncryption } = await import('@strixun/api-framework');
+    const result = await apiWrapWithEncryption(handlerResponse, auth, request, env);
+    return result.response;
+  } catch (error) {
+    console.error('[URL Shortener] Failed to wrap with encryption:', error);
+    // Fallback to original response if encryption fails
+    return handlerResponse;
   }
-  
-  return handlerResponse;
 }
 
 export function createRouter() {
@@ -73,25 +55,45 @@ export function createRouter() {
         return handleOtpCoreScript();
       }
 
+      // Public stats endpoint (service-to-service only, no JWT required)
+      if (path === '/api/stats' && request.method === 'GET') {
+        const response = await handleGetStats(request, env);
+        // Pass null auth for public endpoint - API framework will detect service-to-service calls
+        return await wrapWithEncryption(response, request, env, null);
+      }
+
       // API endpoints (require authentication)
       if (path === '/api/create' && request.method === 'POST') {
         const response = await handleCreateShortUrl(request, env);
-        return await wrapWithEncryption(response, request);
+        // Extract auth from response if available, otherwise null
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const auth = token ? { jwtToken: token } : null;
+        return await wrapWithEncryption(response, request, env, auth);
       }
 
       if (path.startsWith('/api/info/') && request.method === 'GET') {
         const response = await handleGetUrlInfo(request, env);
-        return await wrapWithEncryption(response, request);
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const auth = token ? { jwtToken: token } : null;
+        return await wrapWithEncryption(response, request, env, auth);
       }
 
       if (path === '/api/list' && request.method === 'GET') {
         const response = await handleListUrls(request, env);
-        return await wrapWithEncryption(response, request);
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const auth = token ? { jwtToken: token } : null;
+        return await wrapWithEncryption(response, request, env, auth);
       }
 
       if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
         const response = await handleDeleteUrl(request, env);
-        return await wrapWithEncryption(response, request);
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const auth = token ? { jwtToken: token } : null;
+        return await wrapWithEncryption(response, request, env, auth);
       }
 
       // Redirect endpoint (public, no auth required)

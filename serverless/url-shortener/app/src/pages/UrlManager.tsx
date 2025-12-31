@@ -17,6 +17,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
   const [urlInput, setUrlInput] = useState('');
   const [customCodeInput, setCustomCodeInput] = useState('');
   const [creating, setCreating] = useState(false);
+  const [totalUrls, setTotalUrls] = useState<number | null>(null);
 
   useEffect(() => {
     loadUrls();
@@ -91,6 +92,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
       if (response.success) {
         showToast('Short URL deleted successfully', 'success');
         await loadUrls();
+        await loadStats(); // Refresh stats after deleting URL
       } else {
         if (response.error?.includes('Unauthorized')) {
           showToast('Session expired. Please sign in again.', 'error');
@@ -169,6 +171,9 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
           <div>
             <h1>URL Shortener</h1>
             <p className="user-info">Signed in as: <strong>{userDisplayName || 'User'}</strong></p>
+            {totalUrls !== null && (
+              <p className="stats-info">Total URLs shortened: <strong>{totalUrls.toLocaleString()}</strong></p>
+            )}
           </div>
           <button className="btn btn-secondary" onClick={handleLogout}>
             Sign Out

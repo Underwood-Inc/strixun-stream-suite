@@ -213,6 +213,18 @@ body {
     color: var(--accent);
 }
 
+.stats-info {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-top: var(--spacing-xs);
+    opacity: 0.8;
+}
+
+.stats-info strong {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
 .main-content {
     flex: 1;
     max-width: 1200px;

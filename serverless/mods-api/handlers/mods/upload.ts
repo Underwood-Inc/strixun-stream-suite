@@ -849,10 +849,23 @@ export async function handleUploadMod(
         await env.MODS_KV.put(customerSlugIndexKey, modId);
         console.log('[Upload] Created slug index:', { slug, modId, customerSlugIndexKey });
 
+        // CRITICAL: Also create global slug index if mod is public and approved/published
+        // This allows slug resolution to work immediately for public mods
+        // Note: If customerId is null, getCustomerKey already returns the global format, so this is a no-op
+        const modVisibility = mod.visibility || 'public';
+        const modStatus = mod.status || 'pending';
+        if (modVisibility === 'public' && (modStatus === 'published' || modStatus === 'approved')) {
+            const globalSlugKey = `slug_${slug}`;
+            // Only create if different from customer key (i.e., customerId is not null)
+            if (globalSlugKey !== customerSlugIndexKey) {
+                await env.MODS_KV.put(globalSlugKey, modId);
+                console.log('[Upload] Created global slug index:', { slug, modId, globalSlugKey });
+            }
+        }
+        
         // NOTE: Do NOT add to global public list yet - mods start as 'pending' status
         // They will only be added to the public list when an admin changes status to 'published'
         // This ensures pending mods are not visible to the public, even if visibility is 'public'
-        // NOTE: Global slug index will be created when mod is approved/published and public
 
         // Track successful upload (skip for super admins)
         if (!isSuperAdmin) {

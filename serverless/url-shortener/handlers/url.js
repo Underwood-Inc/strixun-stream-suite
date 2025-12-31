@@ -108,6 +108,11 @@ export async function handleCreateShortUrl(request, env) {
     });
     await env.URL_KV.put(userUrlsKey, JSON.stringify(userUrls), { expirationTtl });
 
+    // Increment total URL counter (for all users)
+    const totalCountKey = 'total_urls_count';
+    const currentCount = parseInt(await env.URL_KV.get(totalCountKey) || '0', 10);
+    await env.URL_KV.put(totalCountKey, String(currentCount + 1));
+
     // Get base URL from request
     const requestUrl = new URL(request.url);
     const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
@@ -314,6 +319,42 @@ export async function handleListUrls(request, env) {
 }
 
 /**
+ * Get total URL count (public, service-to-service only)
+ * GET /api/stats
+ */
+export async function handleGetStats(request, env) {
+  try {
+    // Get total count from KV
+    const totalCountKey = 'total_urls_count';
+    const countStr = await env.URL_KV.get(totalCountKey);
+    const totalCount = countStr ? parseInt(countStr, 10) : 0;
+
+    // Return with no-cache headers to ensure fresh data on each request
+    return new Response(JSON.stringify({
+      success: true,
+      totalUrls: totalCount,
+    }), {
+      status: 200,
+      headers: {
+        ...getCorsHeaders(env, request),
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Failed to get stats',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
  * Delete short URL
  * DELETE /api/delete/:shortCode
  */
@@ -366,6 +407,13 @@ export async function handleDeleteUrl(request, env) {
     const userUrls = await env.URL_KV.get(userUrlsKey, { type: 'json' }) || [];
     const filtered = userUrls.filter(u => u.shortCode !== shortCode);
     await env.URL_KV.put(userUrlsKey, JSON.stringify(filtered));
+
+    // Decrement total URL counter (for all users)
+    const totalCountKey = 'total_urls_count';
+    const currentCount = parseInt(await env.URL_KV.get(totalCountKey) || '0', 10);
+    if (currentCount > 0) {
+      await env.URL_KV.put(totalCountKey, String(currentCount - 1));
+    }
 
     return new Response(JSON.stringify({
       success: true,

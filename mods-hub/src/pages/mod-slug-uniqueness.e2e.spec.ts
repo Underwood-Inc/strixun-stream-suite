@@ -16,7 +16,7 @@
 
 import { test, expect } from '@playwright/test';
 import { WORKER_URLS, verifyWorkersHealth } from '@strixun/e2e-helpers';
-import { encryptBinaryWithServiceKey, encryptBinaryWithJWT } from '@strixun/api-framework';
+import { encryptBinaryWithServiceKey, encryptBinaryWithJWT, decryptWithJWT } from '@strixun/api-framework';
 import { existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -55,6 +55,25 @@ function generateUniqueTestTitle(baseTitle: string): string {
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 10000);
   return `${baseTitle} ${timestamp}-${random}`;
+}
+
+/**
+ * Helper: Decrypt API response if encrypted
+ */
+async function decryptResponseIfNeeded(response: Response, responseData: any, token?: string): Promise<any> {
+  const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                     (typeof responseData === 'object' && responseData && 'encrypted' in responseData && responseData.encrypted === true);
+  
+  if (isEncrypted && token) {
+    try {
+      return await decryptWithJWT(responseData, token);
+    } catch (error) {
+      console.error('[E2E] Failed to decrypt response:', error);
+      throw new Error(`Failed to decrypt API response: ${error}`);
+    }
+  }
+  
+  return responseData;
 }
 
 /**
@@ -166,12 +185,15 @@ async function createTestMod(
     throw new Error(`Failed to create mod: ${response.status} ${error}`);
   }
 
-  const data = await response.json() as { modId?: string; slug?: string; versionId?: string; mod?: { modId: string; slug: string; latestVersion: string } };
+  let responseData = await response.json() as any;
+  responseData = await decryptResponseIfNeeded(response, responseData, token);
   
-  // Handle both response formats
+  // Handle both response formats: { mod, version } or { modId, slug, versionId }
+  const data = responseData as { modId?: string; slug?: string; versionId?: string; mod?: { modId: string; slug: string; latestVersion: string }; version?: { versionId: string } };
+  
   const modId = data.modId || data.mod?.modId;
   const slug = data.slug || data.mod?.slug;
-  const versionId = data.versionId || data.mod?.latestVersion;
+  const versionId = data.versionId || data.mod?.latestVersion || data.version?.versionId;
 
   if (!modId || !slug || !versionId) {
     throw new Error(`Invalid response from mod upload: missing modId, slug, or versionId. Response: ${JSON.stringify(data)}`);
@@ -207,7 +229,10 @@ async function getModBySlug(slug: string, token?: string): Promise<{ modId: stri
     throw new Error(`Failed to get mod by slug: ${response.status} ${error}`);
   }
 
-  const data = await response.json() as { mod: { modId: string; slug: string } };
+  let responseData = await response.json() as any;
+  responseData = await decryptResponseIfNeeded(response, responseData, token);
+  
+  const data = responseData as { mod: { modId: string; slug: string } };
   return data.mod;
 }
 
@@ -233,11 +258,48 @@ async function updateMod(
     throw new Error(`Failed to update mod: ${response.status} ${error}`);
   }
 
-  return await response.json() as { mod: { modId: string; slug: string } };
+  let responseData = await response.json() as any;
+  responseData = await decryptResponseIfNeeded(response, responseData, token);
+  
+  return responseData as { mod: { modId: string; slug: string } };
 }
+
+/**
+ * Helper: Delete a mod via API
+ */
+async function deleteMod(modId: string, token: string): Promise<void> {
+  const response = await fetch(`${TEST_CONFIG.API_URL}/mods/${modId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    const error = await response.text();
+    console.warn(`[E2E] Failed to delete mod ${modId}: ${response.status} ${error}`);
+    // Don't throw - cleanup failures shouldn't fail tests
+  }
+}
+
+// Track mods created during tests for cleanup
+const createdMods: Array<{ modId: string; token: string }> = [];
 
 test.beforeAll(async () => {
   await verifyWorkersHealth();
+});
+
+test.afterEach(async () => {
+  // Clean up all mods created during tests
+  for (const { modId, token } of createdMods) {
+    try {
+      await deleteMod(modId, token);
+    } catch (error) {
+      console.warn(`[E2E] Error cleaning up mod ${modId}:`, error);
+    }
+  }
+  // Clear the array for next test
+  createdMods.length = 0;
 });
 
 test.describe('ModId Uniqueness', () => {
@@ -273,7 +335,8 @@ test.describe('ModId Uniqueness', () => {
     });
     
     expect(response.ok).toBe(true);
-    const data = await response.json() as { mod: { modId: string } };
+    let dataRaw = await response.json() as any;
+    const data = await decryptResponseIfNeeded(response, dataRaw, token) as { mod: { modId: string } };
     expect(data.mod.modId).toBe(mod.modId);
   });
 });
@@ -334,12 +397,13 @@ test.describe('Slug Uniqueness', () => {
   test('should allow same slug for same mod (update scenario)', async () => {
     const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     
-    // Create mod
-    const mod = await createTestMod(token, 'Update Slug Test', 'public', false);
+    // Create mod with unique title for test isolation
+    const uniqueTitle = generateUniqueTestTitle('Update Slug Test');
+    const mod = await createTestMod(token, uniqueTitle, 'public', false);
     const originalSlug = mod.slug;
     
     // Update mod with same title (should succeed - same mod, same slug)
-    const updated = await updateMod(mod.modId, { title: 'Update Slug Test' }, token);
+    const updated = await updateMod(mod.modId, { title: uniqueTitle }, token);
     
     // Slug should remain the same since title didn't change
     expect(updated.mod.modId).toBe(mod.modId);
@@ -349,9 +413,11 @@ test.describe('Slug Uniqueness', () => {
   test('should reject duplicate slug when updating to existing slug', async () => {
     const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     
-    // Create two mods with different titles
-    const mod1 = await createTestMod(token, 'First Mod', 'public', false);
-    const mod2 = await createTestMod(token, 'Second Mod', 'public', false);
+    // Create two mods with different unique titles for test isolation
+    const title1 = generateUniqueTestTitle('First Mod');
+    const title2 = generateUniqueTestTitle('Second Mod');
+    const mod1 = await createTestMod(token, title1, 'public', false);
+    const mod2 = await createTestMod(token, title2, 'public', false);
     
     // Try to update mod2 to have the same slug as mod1 (should fail)
     const response = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod2.modId}`, {
@@ -360,7 +426,7 @@ test.describe('Slug Uniqueness', () => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: 'First Mod' }), // Same title as mod1
+      body: JSON.stringify({ title: title1 }), // Same title as mod1
     });
     
     // Should reject with 409
@@ -505,8 +571,9 @@ test.describe('Cross-Customer Slug Uniqueness', () => {
   test('should enforce slug uniqueness across all customers', async () => {
     const token1 = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     
-    // Create mod with customer1
-    const mod1 = await createTestMod(token1, 'Cross Customer Test', 'public', true);
+    // Create mod with customer1 (use unique title for test isolation)
+    const uniqueTitle = generateUniqueTestTitle('Cross Customer Test');
+    const mod1 = await createTestMod(token1, uniqueTitle, 'public', false);
     
     // Try to create another mod with same title (should fail even for same user)
     const testFileContent = Buffer.from([0x50, 0x4B, 0x03, 0x04]);
@@ -547,6 +614,8 @@ test.describe('Cross-Customer Slug Uniqueness', () => {
 
     // Should fail with 409 - slug already exists
     expect(response.status).toBe(409);
+    const error = await response.json() as { detail?: string; title?: string };
+    expect(error.detail || error.title).toContain('Slug Already Exists');
   });
 });
 
@@ -564,7 +633,8 @@ test.describe('ModId and Slug as Index Keys', () => {
     });
     
     expect(responseById.ok).toBe(true);
-    const dataById = await responseById.json() as { mod: { modId: string; slug: string } };
+    let dataByIdRaw = await responseById.json() as any;
+    const dataById = await decryptResponseIfNeeded(responseById, dataByIdRaw, token) as { mod: { modId: string; slug: string } };
     expect(dataById.mod.modId).toBe(mod.modId);
     
     // Access by slug
@@ -573,7 +643,8 @@ test.describe('ModId and Slug as Index Keys', () => {
     });
     
     expect(responseBySlug.ok).toBe(true);
-    const dataBySlug = await responseBySlug.json() as { mod: { modId: string; slug: string } };
+    let dataBySlugRaw = await responseBySlug.json() as any;
+    const dataBySlug = await decryptResponseIfNeeded(responseBySlug, dataBySlugRaw, token) as { mod: { modId: string; slug: string } };
     expect(dataBySlug.mod.modId).toBe(mod.modId);
     expect(dataBySlug.mod.slug).toBe(mod.slug);
     
@@ -613,14 +684,16 @@ test.describe('ModId and Slug as Index Keys', () => {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     expect(responseById.ok).toBe(true);
-    const dataById = await responseById.json() as { mod: { modId: string; slug: string } };
+    let dataByIdRaw = await responseById.json() as any;
+    const dataById = await decryptResponseIfNeeded(responseById, dataByIdRaw, token) as { mod: { modId: string; slug: string } };
     
     // Access by slug
     const responseBySlug = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.slug}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     expect(responseBySlug.ok).toBe(true);
-    const dataBySlug = await responseBySlug.json() as { mod: { modId: string; slug: string } };
+    let dataBySlugRaw = await responseBySlug.json() as any;
+    const dataBySlug = await decryptResponseIfNeeded(responseBySlug, dataBySlugRaw, token) as { mod: { modId: string; slug: string } };
     
     // Both should return identical mod data
     expect(dataById.mod.modId).toBe(dataBySlug.mod.modId);

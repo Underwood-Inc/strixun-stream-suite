@@ -53,7 +53,7 @@ export async function handleGetModDetail(
                         const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
                         const customerId = match ? match[1] : null;
                         if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const customerModKey = getCustomerKey(customerId, modId);
                             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                             if (mod) break;
                         }
@@ -186,19 +186,19 @@ export async function handleGetModDetail(
         let versionIds: string[] = [];
         
         // Check global scope first
-        // Use normalizedStoredModId (from mod.modId) to ensure we're using the correct modId
-        const globalVersionsKey = `mod_${normalizedStoredModId}_versions`;
+        // Use storedModId directly - it already includes 'mod_' prefix
+        const globalVersionsKey = `${storedModId}_versions`;
         const globalVersionsData = await env.MODS_KV.get(globalVersionsKey, { type: 'json' }) as string[] | null;
         if (globalVersionsData) {
             versionIds = globalVersionsData;
         } else if (mod.customerId) {
             // Fall back to mod's customer scope (where it was uploaded)
-            const customerVersionsKey = getCustomerKey(mod.customerId, `mod_${normalizedStoredModId}_versions`);
+            const customerVersionsKey = getCustomerKey(mod.customerId, `${storedModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         } else if (auth?.customerId) {
             // Last resort: try auth user's customer scope (for backward compatibility)
-            const customerVersionsKey = getCustomerKey(auth.customerId, `mod_${normalizedStoredModId}_versions`);
+            const customerVersionsKey = getCustomerKey(auth.customerId, `${storedModId}_versions`);
             const customerVersionsData = await env.MODS_KV.get(customerVersionsKey, { type: 'json' }) as string[] | null;
             versionIds = customerVersionsData || [];
         }
