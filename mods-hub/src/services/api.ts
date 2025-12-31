@@ -644,16 +644,70 @@ export async function downloadVariant(modSlug: string, variantId: string, fileNa
 }
 
 /**
+ * Associated data types for R2 files
+ */
+export interface R2FileAssociatedMod {
+    modId: string;
+    title: string;
+    slug: string;
+    authorId: string;
+    authorDisplayName?: string | null;
+    description: string;
+    category: string;
+    status: string;
+    customerId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    latestVersion: string;
+    downloadCount: number;
+    visibility: string;
+    featured: boolean;
+}
+
+export interface R2FileAssociatedVersion {
+    versionId: string;
+    modId: string;
+    version: string;
+    changelog: string;
+    fileSize: number;
+    fileName: string;
+    sha256: string;
+    createdAt: string;
+    downloads: number;
+    gameVersions: string[];
+    dependencies?: Array<{ modId: string; version?: string; required: boolean }>;
+}
+
+export interface R2FileAssociatedUser {
+    userId: string;
+    displayName?: string | null;
+}
+
+export interface R2FileAssociatedData {
+    mod?: R2FileAssociatedMod;
+    version?: R2FileAssociatedVersion;
+    uploadedBy?: R2FileAssociatedUser;
+    isThumbnail?: boolean;
+    isModFile?: boolean;
+}
+
+export interface R2FileInfo {
+    key: string;
+    size: number;
+    uploaded: Date;
+    contentType?: string;
+    customMetadata?: Record<string, string>;
+    isOrphaned?: boolean;
+    associatedModId?: string;
+    associatedVersionId?: string;
+    associatedData?: R2FileAssociatedData;
+}
+
+/**
  * List R2 files
  */
 export async function listR2Files(options?: { limit?: number }): Promise<{
-    files: Array<{
-        key: string;
-        size: number;
-        uploaded: Date;
-        contentType?: string;
-        customMetadata?: Record<string, string>;
-    }>;
+    files: R2FileInfo[];
     total: number;
 }> {
     const params = new URLSearchParams();
@@ -668,6 +722,10 @@ export async function listR2Files(options?: { limit?: number }): Promise<{
             uploaded: string;
             contentType?: string;
             customMetadata?: Record<string, string>;
+            isOrphaned?: boolean;
+            associatedModId?: string;
+            associatedVersionId?: string;
+            associatedData?: R2FileAssociatedData;
         }>;
         total: number;
     }>(`/admin/r2/files${queryString}`);
@@ -693,24 +751,12 @@ export async function detectDuplicates(): Promise<{
         duplicateWastedSize: number;
     };
     duplicateGroups: Array<{
-        files: Array<{
-            key: string;
-            size: number;
-            uploaded: Date;
-            contentType?: string;
-            customMetadata?: Record<string, string>;
-        }>;
+        files: R2FileInfo[];
         count: number;
         totalSize: number;
         recommendedKeep?: string;
     }>;
-    orphanedFiles: Array<{
-        key: string;
-        size: number;
-        uploaded: Date;
-        contentType?: string;
-        customMetadata?: Record<string, string>;
-    }>;
+    orphanedFiles: R2FileInfo[];
 }> {
     const response = await api.get<{
         summary: {
@@ -728,6 +774,10 @@ export async function detectDuplicates(): Promise<{
                 uploaded: string;
                 contentType?: string;
                 customMetadata?: Record<string, string>;
+                isOrphaned?: boolean;
+                associatedModId?: string;
+                associatedVersionId?: string;
+                associatedData?: R2FileAssociatedData;
             }>;
             count: number;
             totalSize: number;
@@ -739,6 +789,10 @@ export async function detectDuplicates(): Promise<{
             uploaded: string;
             contentType?: string;
             customMetadata?: Record<string, string>;
+            isOrphaned?: boolean;
+            associatedModId?: string;
+            associatedVersionId?: string;
+            associatedData?: R2FileAssociatedData;
         }>;
     }>('/admin/r2/duplicates');
     return {
@@ -771,12 +825,14 @@ export async function deleteR2File(key: string): Promise<void> {
 export async function bulkDeleteR2Files(keys: string[]): Promise<{
     deleted: number;
     failed: number;
-    errors?: Array<{ key: string; error: string }>;
+    protected?: number;
+    results?: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean }>;
 }> {
     const response = await api.post<{
         deleted: number;
         failed: number;
-        errors?: Array<{ key: string; error: string }>;
+        protected?: number;
+        results?: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean }>;
     }>('/admin/r2/files/delete', { keys });
     return response.data;
 }

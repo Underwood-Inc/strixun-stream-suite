@@ -99,7 +99,10 @@ async function getOrCreateUser(
             changedAt: new Date().toISOString(),
             reason: 'auto-generated',
         });
-        preferences.displayName.lastChangedAt = new Date().toISOString();
+        // CRITICAL: Do NOT set lastChangedAt for auto-generated names
+        // This allows users to change their name immediately after account creation
+        // lastChangedAt should remain null until the user actually changes it themselves
+        preferences.displayName.lastChangedAt = null;
         await storeUserPreferences(userId, customerId, preferences, env);
     } else {
         // Ensure displayName exists (for users created before this feature)

@@ -17,6 +17,7 @@ import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
+import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
 
 /**
  * Route configuration interface
@@ -223,7 +224,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 }
 
 /**
- * Export worker with CORS support
+ * Export worker with CORS support and scheduled events
  */
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -244,6 +245,23 @@ export default {
         
         // Handle request
         return handleRequest(request, env, ctx);
+    },
+    
+    /**
+     * Handle scheduled events (cron triggers)
+     */
+    async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+        console.log('[Worker] Scheduled event triggered:', {
+            scheduledTime: new Date(event.scheduledTime).toISOString(),
+            cron: event.cron,
+        });
+        
+        // Handle R2 cleanup cron job
+        if (event.cron === '0 2 * * *') { // Daily at 2 AM UTC
+            await handleR2Cleanup(event, env, ctx);
+        } else {
+            console.warn('[Worker] Unknown cron schedule:', event.cron);
+        }
     },
 };
 
@@ -266,5 +284,11 @@ interface Env {
     ROUTES?: string; // OPTIONAL: JSON string array of route configurations (matches wrangler.toml routes)
     
     [key: string]: any;
+}
+
+interface ScheduledEvent {
+    scheduledTime: number;
+    cron: string;
+    noRetry: () => void;
 }
 

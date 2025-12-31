@@ -1,4 +1,4 @@
-﻿# Mods API Service - Cloudflare Worker Configuration
+# Mods API Service - Cloudflare Worker Configuration
 # Dedicated worker for mod hosting and version control
 
 name = "strixun-mods-api"
@@ -110,4 +110,9 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+# Scheduled triggers (cron jobs)
+# R2 cleanup job - runs daily at 2 AM UTC to permanently delete files marked for deletion 5+ days ago
+[[triggers.crons]]
+cron = "0 2 * * *"
 

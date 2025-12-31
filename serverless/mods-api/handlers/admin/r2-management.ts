@@ -821,8 +821,50 @@ export async function handleDetectDuplicates(
 }
 
 /**
+ * Check if a thumbnail is associated with an existing mod
+ * Returns true if the mod exists and the thumbnail should be protected
+ */
+async function isThumbnailProtected(
+    r2Key: string,
+    env: Env
+): Promise<{ protected: boolean; modId?: string; reason?: string }> {
+    // Check if this is a thumbnail file
+    if (!r2Key.includes('/thumbnails/')) {
+        return { protected: false };
+    }
+
+    // Extract modId from R2 key
+    // Format: customer_xxx/thumbnails/modId.ext or thumbnails/modId.ext
+    const thumbnailMatch = r2Key.match(/thumbnails\/([^/]+)\.(png|jpg|jpeg|webp|gif)$/i);
+    if (!thumbnailMatch) {
+        return { protected: false };
+    }
+
+    const thumbnailModId = thumbnailMatch[1];
+    const normalizedModId = normalizeModId(thumbnailModId);
+    
+    // Extract customer ID from key if present
+    const customerId = extractCustomerIdFromR2Key(r2Key);
+    
+    // Check if mod exists in KV
+    const mod = await fetchModMetadata(normalizedModId, customerId, env);
+    
+    if (mod) {
+        return {
+            protected: true,
+            modId: mod.modId,
+            reason: `Thumbnail is associated with mod "${mod.title}" (${mod.modId})`
+        };
+    }
+    
+    return { protected: false };
+}
+
+/**
  * Delete R2 file(s)
  * DELETE /admin/r2/files/:key or POST /admin/r2/files/delete (bulk)
+ * 
+ * CRITICAL: Prevents deletion of thumbnails that are associated with existing mods
  */
 export async function handleDeleteR2File(
     request: Request,
@@ -849,11 +891,43 @@ export async function handleDeleteR2File(
                 });
             }
 
-            const results: Array<{ key: string; deleted: boolean; error?: string }> = [];
+            const results: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean; marked?: boolean }> = [];
             for (const fileKey of body.keys) {
                 try {
-                    await env.MODS_R2.delete(fileKey);
-                    results.push({ key: fileKey, deleted: true });
+                    // Check if thumbnail is protected (associated with existing mod)
+                    const protectionCheck = await isThumbnailProtected(fileKey, env);
+                    if (protectionCheck.protected) {
+                        results.push({
+                            key: fileKey,
+                            deleted: false,
+                            protected: true,
+                            error: protectionCheck.reason || 'Thumbnail is associated with an existing mod'
+                        });
+                        continue;
+                    }
+
+                    // Mark file for deletion instead of deleting immediately
+                    // Get current file and metadata to preserve it
+                    const file = await env.MODS_R2.get(fileKey);
+                    if (!file) {
+                        results.push({ key: fileKey, deleted: false, error: 'File not found' });
+                        continue;
+                    }
+                    
+                    const existingMetadata = file.customMetadata || {};
+                    const fileBody = await file.arrayBuffer();
+                    
+                    // Mark for deletion with timestamp
+                    await env.MODS_R2.put(fileKey, fileBody, {
+                        httpMetadata: file.httpMetadata,
+                        customMetadata: {
+                            ...existingMetadata,
+                            marked_for_deletion: 'true',
+                            marked_for_deletion_on: Date.now().toString(),
+                        },
+                    });
+                    
+                    results.push({ key: fileKey, deleted: true, marked: true });
                 } catch (error: any) {
                     results.push({ key: fileKey, deleted: false, error: error.message });
                 }
@@ -863,9 +937,14 @@ export async function handleDeleteR2File(
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
 
+            const protectedCount = results.filter(r => r.protected).length;
+            const deletedCount = results.filter(r => r.deleted).length;
+            const failedCount = results.filter(r => !r.deleted && !r.protected).length;
+
             return new Response(JSON.stringify({
-                deleted: results.filter(r => r.deleted).length,
-                failed: results.filter(r => !r.deleted).length,
+                deleted: deletedCount,
+                failed: failedCount,
+                protected: protectedCount,
                 results,
             }), {
                 status: 200,
@@ -891,7 +970,56 @@ export async function handleDeleteR2File(
             });
         }
 
-        await env.MODS_R2.delete(key);
+        // Check if thumbnail is protected (associated with existing mod)
+        const protectionCheck = await isThumbnailProtected(key, env);
+        if (protectionCheck.protected) {
+            const rfcError = createError(
+                request,
+                403,
+                'Protected File',
+                protectionCheck.reason || 'This thumbnail is associated with an existing mod and cannot be deleted'
+            );
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Mark file for deletion instead of deleting immediately
+        // Get current file and metadata to preserve it
+        const file = await env.MODS_R2.get(key);
+        if (!file) {
+            const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const existingMetadata = file.customMetadata || {};
+        const fileBody = await file.arrayBuffer();
+        
+        // Mark for deletion with timestamp
+        await env.MODS_R2.put(key, fileBody, {
+            httpMetadata: file.httpMetadata,
+            customMetadata: {
+                ...existingMetadata,
+                marked_for_deletion: 'true',
+                marked_for_deletion_on: Date.now().toString(),
+            },
+        });
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -899,7 +1027,9 @@ export async function handleDeleteR2File(
 
         return new Response(JSON.stringify({
             deleted: true,
+            marked: true,
             key,
+            message: 'File marked for deletion. It will be permanently deleted after 5 days.',
         }), {
             status: 200,
             headers: {

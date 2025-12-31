@@ -143,7 +143,7 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
         if (!validateDisplayName(sanitized)) {
             return new Response(JSON.stringify({ 
                 error: 'Invalid display name format',
-                detail: 'Display name must be 3-30 characters, start with a letter, and contain only alphanumeric characters and spaces'
+                detail: 'Display name must be 3-30 characters, start with a letter, contain only letters and spaces (no numbers or special characters), and have a maximum of 5 words'
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

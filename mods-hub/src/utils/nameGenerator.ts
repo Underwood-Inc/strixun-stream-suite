@@ -44,7 +44,8 @@ function generateNamePattern(
         case 'adjective-noun':
             return includeNumber ? `${adjective} ${noun} ${number}` : `${adjective} ${noun}`;
         case 'adjective-noun-number':
-            return `${adjective} ${noun} ${number}`;
+            // Only include number if explicitly requested (for display names, this should be false)
+            return includeNumber ? `${adjective} ${noun} ${number}` : `${adjective} ${noun}`;
         case 'noun-adjective':
             return includeNumber ? `${noun} ${adjective} ${number}` : `${noun} ${adjective}`;
         case 'random':
@@ -62,10 +63,13 @@ function generateNamePattern(
 
 /**
  * Generate a random name for confirmation dialogs
- * @param includeNumber - Whether to include a random number (default: true for better uniqueness)
+ * @param includeNumber - Whether to include a random number (default: false to match display name validation rules)
  * @returns A randomly generated name
+ * 
+ * Note: Display names cannot contain numbers, so this defaults to false for consistency.
+ * Set includeNumber=true only when numbers are explicitly allowed.
  */
-export function generateRandomName(includeNumber: boolean = true): string {
+export function generateRandomName(includeNumber: boolean = false): string {
     const patterns: Array<'adjective-noun' | 'adjective-noun-number' | 'noun-adjective' | 'random'> = [
         'adjective-noun',
         'adjective-noun-number',

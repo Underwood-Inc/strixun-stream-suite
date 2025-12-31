@@ -398,26 +398,43 @@ export async function generateUniqueDisplayName(
     }
   }
 
-  // Last resort: Use timestamp suffix (still with spaces)
-  const timestamp = Date.now().toString(36).substring(7);
-  const adjective = randomElement(ADJECTIVES);
-  const noun = randomElement(NOUNS);
-  name = `${adjective} ${noun} ${timestamp}`;
-  
-  // Ensure it doesn't exceed maxWords
-  const words = name.split(/\s+/).slice(0, maxWords);
-  name = words.join(' ');
-  
-  const isUnique = await isNameUnique(name, customerId, env);
-  if (isUnique) {
-    return name;
+  // Last resort: Use additional adjectives/nouns to ensure uniqueness (no numbers allowed)
+  // Try multiple adjective-noun combinations
+  for (let i = 0; i < 10; i++) {
+    const adj1 = randomElement(ADJECTIVES);
+    const adj2 = randomElement(ADJECTIVES);
+    const noun1 = randomElement(NOUNS);
+    const noun2 = randomElement(NOUNS);
+    
+    // Try different patterns to ensure uniqueness
+    const patterns = [
+      `${adj1} ${noun1} ${adj2}`,
+      `${adj1} ${adj2} ${noun1}`,
+      `${noun1} ${adj1} ${adj2}`,
+      `${adj1} ${noun1} ${noun2}`,
+    ];
+    
+    for (const pattern of patterns) {
+      const words = pattern.split(/\s+/).slice(0, maxWords);
+      name = words.join(' ');
+      
+      const wordCount = countWords(name);
+      if (wordCount > maxWords) continue;
+      
+      const isUnique = await isNameUnique(name, customerId, env);
+      if (isUnique) {
+        return name;
+      }
+    }
   }
 
-  // Final fallback: UUID-like suffix (guaranteed unique, still with spaces)
-  const uuid = crypto.randomUUID ? crypto.randomUUID().substring(0, 8) : 
-    Array.from(crypto.getRandomValues(new Uint8Array(4)))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-  name = `${adjective} ${noun} ${uuid}`;
+  // Final fallback: Use a longer combination (still letters only)
+  // This should be extremely rare given the large word pools
+  const adj1 = randomElement(ADJECTIVES);
+  const adj2 = randomElement(ADJECTIVES);
+  const adj3 = randomElement(ADJECTIVES);
+  const noun1 = randomElement(NOUNS);
+  name = `${adj1} ${adj2} ${adj3} ${noun1}`;
   
   // Ensure it doesn't exceed maxWords
   const finalWords = name.split(/\s+/).slice(0, maxWords);
@@ -427,14 +444,22 @@ export async function generateUniqueDisplayName(
 /**
  * Validate display name format
  * Ensures name doesn't exceed 5 words and uses proper spacing
+ * 
+ * Rules:
+ * - 3-30 characters
+ * - Letters and spaces only (no numbers, no special characters)
+ * - Must start with a letter
+ * - Maximum 5 words
+ * - No consecutive spaces
  */
 export function validateDisplayName(name: string): boolean {
   if (!name || typeof name !== 'string') return false;
   
   const trimmed = name.trim();
   
-  // Check basic format: 3-30 characters, alphanumeric and spaces, must start with letter
-  const pattern = /^[a-zA-Z][a-zA-Z0-9\s]{2,29}$/;
+  // Check basic format: 3-30 characters, letters and spaces only, must start with letter
+  // NO NUMBERS, NO SPECIAL CHARACTERS
+  const pattern = /^[a-zA-Z][a-zA-Z\s]{2,29}$/;
   if (!pattern.test(trimmed)) return false;
   
   // Check word count (max 5 words, min 1 word)
@@ -449,12 +474,13 @@ export function validateDisplayName(name: string): boolean {
 
 /**
  * Sanitize display name (remove invalid characters, trim)
+ * Removes numbers and special characters, keeps only letters and spaces
  */
 export function sanitizeDisplayName(name: string): string {
   if (!name || typeof name !== 'string') return '';
   return name
     .trim()
-    .replace(/[^a-zA-Z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/[^a-zA-Z\s]/g, '') // Remove numbers and special characters, keep only letters and spaces
+    .replace(/\s+/g, ' ') // Collapse multiple spaces to single space
     .substring(0, 30);
 }

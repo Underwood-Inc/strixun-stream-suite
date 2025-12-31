@@ -95,40 +95,28 @@ export async function handleDownloadVariant(
             });
         }
 
-        // Check if variant has a file
-        if (!variant.fileUrl) {
-            const rfcError = createError(request, 404, 'Variant File Not Found', 'The variant does not have a file associated with it');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        // Extract R2 key from fileUrl
+        // Extract R2 key from fileUrl if available, otherwise construct from metadata
         // fileUrl format: https://pub-xxx.r2.dev/mods/modId/variants/variantId.ext
         // or: ${MODS_PUBLIC_URL}/mods/modId/variants/variantId.ext
         let r2Key: string | null = null;
-        try {
-            const url = new URL(variant.fileUrl);
-            // Remove leading slash if present
-            r2Key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-        } catch {
-            // If fileUrl is not a valid URL, try to extract from the path
-            // Assume it's already an R2 key or path
-            r2Key = variant.fileUrl.includes('mods/') ? variant.fileUrl.split('mods/')[1] : null;
-            if (r2Key && !r2Key.startsWith('mods/')) {
-                r2Key = `mods/${normalizedModId}/variants/${variantId}${r2Key}`;
+        
+        if (variant.fileUrl) {
+            try {
+                const url = new URL(variant.fileUrl);
+                // Remove leading slash if present
+                r2Key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+            } catch {
+                // If fileUrl is not a valid URL, try to extract from the path
+                // Assume it's already an R2 key or path
+                r2Key = variant.fileUrl.includes('mods/') ? variant.fileUrl.split('mods/')[1] : null;
+                if (r2Key && !r2Key.startsWith('mods/')) {
+                    r2Key = `mods/${normalizedModId}/variants/${variantId}${r2Key}`;
+                }
             }
         }
 
+        // Fallback: construct R2 key from variant metadata if fileUrl extraction failed
         if (!r2Key) {
-            // Fallback: construct R2 key from variant metadata
             const fileExtension = variant.fileName?.includes('.') 
                 ? variant.fileName.substring(variant.fileName.lastIndexOf('.'))
                 : '.zip';

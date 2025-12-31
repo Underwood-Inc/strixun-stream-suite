@@ -12,6 +12,7 @@ import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
+import { downloadVersion } from '../services/api';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { getButtonStyles } from '../utils/buttonStyles';
@@ -137,6 +138,14 @@ const ManageButton = styled.button`
   font-size: 1rem;
 `;
 
+const DownloadButton = styled.button`
+  ${getButtonStyles('primary')}
+  display: inline-flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  font-size: 1rem;
+`;
+
 export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
@@ -144,6 +153,8 @@ export function ModDetailPage() {
     const { user } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
     const [thumbnailError, setThumbnailError] = useState(false);
+    const [downloading, setDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState<string | null>(null);
     
     // Fetch ratings for this mod
     const { data: ratingsData } = useModRatings(data?.mod.modId || '');
@@ -166,6 +177,24 @@ export function ModDetailPage() {
 
     const handleThumbnailError = () => {
         setThumbnailError(true);
+    };
+
+    const handleDownloadLatest = async () => {
+        if (!latestVersion || !slug) return;
+        
+        setDownloading(true);
+        setDownloadError(null);
+        
+        try {
+            const fileName = latestVersion.fileName || `mod-${slug}-v${latestVersion.version}.jar`;
+            await downloadVersion(slug, latestVersion.versionId, fileName);
+        } catch (error) {
+            console.error('[ModDetailPage] Download failed:', error);
+            setDownloadError((error as Error).message || 'Failed to download file');
+            setTimeout(() => setDownloadError(null), 5000);
+        } finally {
+            setDownloading(false);
+        }
     };
 
     return (
@@ -223,6 +252,17 @@ export function ModDetailPage() {
                                 >
                                     Manage Mod
                                 </ManageButton>
+                            )}
+                            <DownloadButton
+                                onClick={handleDownloadLatest}
+                                disabled={downloading || !latestVersion}
+                            >
+                                {downloading ? 'Downloading...' : 'Download Latest'}
+                            </DownloadButton>
+                            {downloadError && (
+                                <span style={{ color: colors.danger, fontSize: '0.875rem' }}>
+                                    {downloadError}
+                                </span>
                             )}
                         </Actions>
                     )}

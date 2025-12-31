@@ -10,6 +10,7 @@ import { colors, spacing } from '../theme';
 import { useNavigate } from 'react-router-dom';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles, getCardStyles } from '../utils/sharedStyles';
+import { DisplayNameEditor } from '../components/common/DisplayNameEditor';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -153,13 +154,23 @@ export function UserProfilePage() {
             <ProfileSection>
                 <SectionTitle>Account Information</SectionTitle>
                 <InfoGrid>
-                    <InfoItem>
-                        <InfoLabel>Username</InfoLabel>
-                        <InfoValue>{user.displayName || 'Not set'}</InfoValue>
-                    </InfoItem>
-                    <InfoItem>
+                    <InfoItem style={{ gridColumn: '1 / -1' }}>
                         <InfoLabel>Display Name</InfoLabel>
-                        <InfoValue>{user.displayName || 'Not set'}</InfoValue>
+                        <DisplayNameEditor
+                            currentDisplayName={user.displayName}
+                            onUpdate={async (newDisplayName) => {
+                                // Update the user in the auth store
+                                const { setUser } = useAuthStore.getState();
+                                setUser({
+                                    ...user,
+                                    displayName: newDisplayName,
+                                });
+                                // Refresh user info to get latest from server
+                                await useAuthStore.getState().fetchUserInfo();
+                            }}
+                            apiEndpoint="/user/display-name"
+                            authToken={user.token}
+                        />
                     </InfoItem>
                     <InfoItem>
                         <InfoLabel>User ID</InfoLabel>

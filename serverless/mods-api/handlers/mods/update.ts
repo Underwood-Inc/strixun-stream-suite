@@ -117,9 +117,11 @@ export async function handleUpdateMod(
         let updateData: ModUpdateRequest;
         const contentType = request.headers.get('content-type') || '';
         
+        // Read formData once if it's multipart, store it for later use
+        let formData: FormData | null = null;
         if (contentType.includes('multipart/form-data')) {
             // Handle multipart form data (for binary thumbnail uploads)
-            const formData = await request.formData();
+            formData = await request.formData();
             const metadataJson = formData.get('metadata') as string | null;
             if (metadataJson) {
                 updateData = JSON.parse(metadataJson) as ModUpdateRequest;
@@ -191,10 +193,8 @@ export async function handleUpdateMod(
         mod.updatedAt = new Date().toISOString();
 
         // Handle thumbnail update - support both binary file upload and legacy base64
-        // Reuse contentType declared earlier at line 115
-        let formData: FormData | null = null;
-        if (contentType.includes('multipart/form-data')) {
-            formData = await request.formData();
+        // Reuse formData already read above (or null if JSON request)
+        if (formData) {
             // Check for binary thumbnail file upload
             const thumbnailFile = formData.get('thumbnail') as File | null;
             if (thumbnailFile) {
