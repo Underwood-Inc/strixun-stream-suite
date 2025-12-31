@@ -412,12 +412,18 @@ export function R2ManagementPage() {
     });
 
     // Bulk delete mutation
-    const bulkDeleteMutation = useMutation({
-        mutationFn: bulkDeleteR2Files,
+    const bulkDeleteMutation = useMutation<
+        { deleted: number; failed: number; protected?: number; results?: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean }> },
+        Error,
+        { keys: string[]; force?: boolean }
+    >({
+        mutationFn: ({ keys, force }) => bulkDeleteR2Files(keys, force),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['r2-duplicates'] });
             queryClient.invalidateQueries({ queryKey: ['r2-files'] });
             setSelectedFiles(new Set());
+            setProtectedFileModalOpen(false);
+            setProtectedFileInfo(null);
         },
     });
 
@@ -668,7 +674,7 @@ export function R2ManagementPage() {
         return filtered;
     }, [getAllFiles, searchQuery, filterType, sortField, sortDirection]);
 
-    const renderFileItem = useCallback((file: R2FileInfo, showCheckbox: boolean = true, disableDelete: boolean = false) => {
+    const renderFileItem = useCallback((file: R2FileInfo, showCheckbox: boolean = true, _disableDelete: boolean = false) => {
         const associated = file.associatedData;
         const customerId = extractCustomerId(file.key);
         const isThumbnail = associated?.isThumbnail;
@@ -676,7 +682,6 @@ export function R2ManagementPage() {
         
         // Check if thumbnail is protected (associated with existing mod)
         const isThumbnailProtected = isThumbnail && associated?.mod !== undefined;
-        const shouldDisableDelete = disableDelete || isThumbnailProtected;
         
         // Get thumbnail URL if it's a thumbnail and we have mod slug
         const thumbnailUrl = isThumbnail && associated?.mod?.slug 
@@ -1152,7 +1157,6 @@ export function R2ManagementPage() {
                 onClose={() => {
                     setProtectedFileModalOpen(false);
                     setFileToDelete(null);
-                    setIsFileProtected(false);
                     setProtectedFileInfo(null);
                 }}
                 onConfirm={handleProtectedFileConfirm}
