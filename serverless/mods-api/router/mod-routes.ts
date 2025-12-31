@@ -157,9 +157,10 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             return await wrapWithEncryption(response, auth, request, env);
         }
 
-        // Route: PATCH /mods/:slug or PATCH /:slug - Update mod (by slug)
+        // Route: PUT /mods/:slug or PUT /:slug - Update mod (by slug)
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        if (pathSegments.length === 1 && request.method === 'PATCH') {
+        // Also supports PATCH for backward compatibility
+        if (pathSegments.length === 1 && (request.method === 'PUT' || request.method === 'PATCH')) {
             if (!auth) {
                 return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }
@@ -368,20 +369,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                     console.log('[Router] Resolved slug to modId:', { slug: slugOrModId, modId });
                 } else {
                     console.error('[Router] Failed to resolve slug to modId:', { slug: slugOrModId });
-                    const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return {
-                        response: new Response(JSON.stringify(rfcError), {
-                            status: 404,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        }),
-                        customerId: auth?.customerId || null
-                    };
+                    return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
@@ -468,6 +456,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         return await createErrorResponse(request, env, 404, 'Endpoint Not Found', 'The requested mod endpoint was not found', auth);
     } catch (error: any) {
         console.error('Mod route handler error:', error);
+        // Use createErrorResponse helper which properly handles CORS
         return await createErrorResponse(
             request,
             env,

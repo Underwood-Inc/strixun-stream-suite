@@ -9,15 +9,15 @@
 ## Overview
 
 We're migrating from:
-- ❌ Vanilla JavaScript in HTML files
-- ❌ Inline CSS and monolithic CSS files
-- ❌ Manual module loading
+- [ERROR] Vanilla JavaScript in HTML files
+- [ERROR] Inline CSS and monolithic CSS files
+- [ERROR] Manual module loading
 
 To:
-- ✅ **Svelte** - Lightweight, reactive UI framework
-- ✅ **TypeScript** - Type-safe JavaScript
-- ✅ **Sass** - Powerful CSS preprocessor
-- ✅ **Vite** - Blazing fast build tool
+- [OK] **Svelte** - Lightweight, reactive UI framework
+- [OK] **TypeScript** - Type-safe JavaScript
+- [OK] **Sass** - Powerful CSS preprocessor
+- [OK] **Vite** - Blazing fast build tool
 
 ---
 
@@ -93,7 +93,7 @@ This creates an optimized build in the `dist/` directory.
 
 ## Migration Steps
 
-### Phase 1: Setup ✅ (COMPLETE)
+### Phase 1: Setup [OK] (COMPLETE)
 
 - [x] Create configuration files
 - [x] Set up project structure
@@ -106,30 +106,30 @@ This creates an optimized build in the `dist/` directory.
 
 **Priority Order:**
 
-1. **Storage Module** (`assets/js/storage.js` → `src/modules/storage.ts`)
+1. **Storage Module** (`assets/js/storage.js` [EMOJI] `src/modules/storage.ts`)
    - Core dependency for everything
    - Convert to TypeScript
    - Create proper interfaces
 
-2. **WebSocket Module** (`assets/js/websocket.js` → `src/modules/websocket.ts`)
+2. **WebSocket Module** (`assets/js/websocket.js` [EMOJI] `src/modules/websocket.ts`)
    - Connection management
    - Update stores when connection changes
    - Type-safe message handling
 
-3. **Text Cycler** (`assets/js/text-cycler.js` → `src/modules/text-cycler.ts`)
+3. **Text Cycler** (`assets/js/text-cycler.js` [EMOJI] `src/modules/text-cycler.ts`)
    - Already partially modular
    - Convert to TypeScript
    - Create Svelte component wrapper
 
-4. **Source Swaps** (`assets/js/source-swaps.js` → `src/modules/source-swaps.ts`)
+4. **Source Swaps** (`assets/js/source-swaps.js` [EMOJI] `src/modules/source-swaps.ts`)
    - Convert to TypeScript
    - Create Svelte component
 
-5. **Layouts** (`assets/js/modules/layouts.js` → `src/modules/layouts.ts`)
+5. **Layouts** (`assets/js/modules/layouts.js` [EMOJI] `src/modules/layouts.ts`)
    - Convert to TypeScript
    - Create Svelte component
 
-6. **UI Utils** (`assets/js/ui-utils.js` → `src/utils/ui.ts`)
+6. **UI Utils** (`assets/js/ui-utils.js` [EMOJI] `src/utils/ui.ts`)
    - Convert to TypeScript
    - Make utilities available to components
 

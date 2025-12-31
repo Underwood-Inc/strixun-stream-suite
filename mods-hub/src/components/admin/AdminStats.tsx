@@ -13,6 +13,7 @@ const StatsContainer = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: ${spacing.md};
   margin-bottom: ${spacing.xl};
+  flex-shrink: 0;
 `;
 
 const StatCard = styled.div`

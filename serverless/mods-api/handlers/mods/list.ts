@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { getCustomerKey } from '../../utils/customer.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 
@@ -36,6 +36,16 @@ export async function handleListMods(
         const globalListKey = 'mods_list_public';
         const globalListData = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
         const globalModIds = globalListData || [];
+        
+        // Log for debugging - verify we're using local KV
+        if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
+            console.log('[ListMods] Local dev mode - using local KV storage:', {
+                environment: env.ENVIRONMENT,
+                globalListSize: globalModIds.length,
+                globalListKey,
+                note: 'If you see production mods here, clear local KV storage'
+            });
+        }
 
         // Get customer-specific mods if:
         // 1. User is super admin (needs to see everything), OR
@@ -47,28 +57,24 @@ export async function handleListMods(
             customerModIds = customerListData || [];
         }
 
-        // Combine and deduplicate mod IDs (normalize to ensure consistent comparison)
-        const normalizedGlobalModIds = globalModIds.map(id => normalizeModId(id));
-        const normalizedCustomerModIds = customerModIds.map(id => normalizeModId(id));
-        const allModIds = [...new Set([...normalizedGlobalModIds, ...normalizedCustomerModIds])];
+        // Combine and deduplicate mod IDs - use modId directly, no normalization
+        const allModIds = [...new Set([...globalModIds, ...customerModIds])];
 
         // Fetch all mod metadata and deduplicate by modId to prevent duplicates
         const mods: ModMetadata[] = [];
         const seenModIds = new Set<string>(); // Track modIds we've already added
         for (const modId of allModIds) {
             // Try to find mod in global scope first, then customer scope
+            // Use modId directly - it already includes 'mod_' prefix
             let mod: ModMetadata | null = null;
             
-            // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-            const normalizedModId = normalizeModId(modId);
-            
             // Check global/public scope (no customer prefix)
-            const globalModKey = `mod_${normalizedModId}`;
+            const globalModKey = modId;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             
             // If not found and authenticated, check customer scope
             if (!mod && auth?.customerId) {
-                const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+                const customerModKey = getCustomerKey(auth.customerId, modId);
                 mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
             }
             
@@ -83,11 +89,11 @@ export async function handleListMods(
             
             // CRITICAL: Deduplicate by mod.modId to prevent same mod appearing twice
             // This can happen if mod exists in both global and customer lists
-            const modUniqueId = normalizeModId(mod.modId);
-            if (seenModIds.has(modUniqueId)) {
+            // Use mod.modId directly - no normalization needed
+            if (seenModIds.has(mod.modId)) {
                 continue; // Skip if we've already added this mod
             }
-            seenModIds.add(modUniqueId);
+            seenModIds.add(mod.modId);
 
             // Apply filters
             if (category && mod.category !== category) continue;

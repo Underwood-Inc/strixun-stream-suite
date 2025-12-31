@@ -11,6 +11,7 @@ import { createError } from '../../utils/errors.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import { getCustomerR2Key, getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { fetchDisplayNameByUserId, fetchDisplayNamesByUserIds } from '../../utils/displayName.js';
+import { getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
 /**
@@ -512,7 +513,9 @@ export async function handleDetectDuplicates(
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
+        const r2SourceInfo = getR2SourceInfo(env, request);
         console.log('[R2Duplicates] Starting duplicate detection scan...');
+        console.log('[R2Duplicates] R2 storage source:', r2SourceInfo);
 
         // Step 1: List all R2 files
         const allFiles: R2FileInfo[] = [];
@@ -782,18 +785,23 @@ export async function handleDetectDuplicates(
             },
         });
     } catch (error: any) {
-        console.error('Detect duplicates error:', error);
+        console.error('[R2Duplicates] Detect duplicates error:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('Timeout') || errorMessage.includes('aborted');
+        
         const rfcError = createError(
             request,
-            500,
-            'Failed to Detect Duplicates',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while detecting duplicates'
+            isTimeout ? 504 : 500,
+            isTimeout ? 'Request Timeout' : 'Failed to Detect Duplicates',
+            env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'test' 
+                ? errorMessage 
+                : (isTimeout ? 'The duplicate detection scan timed out. Try again or contact support.' : 'An error occurred while detecting duplicates')
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         return new Response(JSON.stringify(rfcError), {
-            status: 500,
+            status: isTimeout ? 504 : 500,
             headers: {
                 'Content-Type': 'application/problem+json',
                 ...Object.fromEntries(corsHeaders.entries()),

@@ -179,7 +179,7 @@ export class AuditLogsPage {
                     </div>
                     ${this.logs.length === 0 ? `
                         <div class="empty-state">
-                            <div class="empty-state__icon">📝</div>
+                            <div class="empty-state__icon">[EMOJI]</div>
                             <p>No audit logs found</p>
                             <p style="margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--muted);">
                                 Try adjusting your filters or check back later

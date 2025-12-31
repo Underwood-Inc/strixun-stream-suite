@@ -4,11 +4,11 @@ Framework-agnostic email OTP authentication component for the Strixun Stream Sui
 
 ## Features
 
-- ✅ **Framework Agnostic** - Core logic works with any framework
-- ✅ **TypeScript** - Fully typed for better DX
-- ✅ **Reusable** - Use in multiple projects
-- ✅ **Consistent UX** - Same login experience everywhere
-- ✅ **Easy Integration** - Simple API, works out of the box
+- [OK] **Framework Agnostic** - Core logic works with any framework
+- [OK] **TypeScript** - Fully typed for better DX
+- [OK] **Reusable** - Use in multiple projects
+- [OK] **Consistent UX** - Same login experience everywhere
+- [OK] **Easy Integration** - Simple API, works out of the box
 
 ## Installation
 
@@ -29,7 +29,7 @@ This creates dist files for React, Svelte, and Vanilla JS.
 
 ### Svelte
 
-**✅ CORRECT - Import from dist:**
+**[OK] CORRECT - Import from dist:**
 ```svelte
 <script>
   import OtpLogin from '../../../shared-components/otp-login/dist/svelte';
@@ -79,7 +79,7 @@ This creates dist files for React, Svelte, and Vanilla JS.
 
 ### Vanilla JavaScript/TypeScript
 
-**✅ CORRECT - Import from dist:**
+**[OK] CORRECT - Import from dist:**
 ```typescript
 import { OtpLoginCore } from './shared-components/otp-login/dist/js';
 

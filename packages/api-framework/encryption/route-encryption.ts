@@ -265,6 +265,231 @@ export async function decryptWithServiceKey(
   }
 }
 
+// ============ Binary Service Key Encryption ============
+// Reuses existing deriveKeyFromServiceKey and hashServiceKey functions above
+
+/**
+ * Compress data with gzip (reused from JWT encryption pattern)
+ */
+async function compressDataForServiceKey(data: Uint8Array & { buffer: ArrayBuffer }): Promise<Uint8Array> {
+  const stream = new CompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  const reader = stream.readable.getReader();
+  
+  writer.write(data);
+  writer.close();
+  
+  const chunks: Uint8Array[] = [];
+  let done = false;
+  while (!done) {
+    const { value, done: readerDone } = await reader.read();
+    done = readerDone;
+    if (value) chunks.push(value);
+  }
+  
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  return result;
+}
+
+/**
+ * Decompress gzip data (reused from JWT encryption pattern)
+ */
+async function decompressDataForServiceKey(compressedData: Uint8Array): Promise<Uint8Array> {
+  const stream = new DecompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  const reader = stream.readable.getReader();
+  
+  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
+  if (compressedData.buffer instanceof ArrayBuffer) {
+    dataBuffer = compressedData as Uint8Array & { buffer: ArrayBuffer };
+  } else {
+    const arrayBuffer = compressedData.buffer.slice(compressedData.byteOffset, compressedData.byteOffset + compressedData.byteLength) as unknown as ArrayBuffer;
+    dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
+  }
+  writer.write(dataBuffer);
+  writer.close();
+  
+  const chunks: Uint8Array[] = [];
+  let done = false;
+  while (!done) {
+    const { value, done: readerDone } = await reader.read();
+    done = readerDone;
+    if (value) chunks.push(value);
+  }
+  
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  return result;
+}
+
+/**
+ * Encrypt binary data using service key (for public mods)
+ * Uses same binary format as JWT encryption (version 5) but with service key
+ */
+export async function encryptBinaryWithServiceKey(
+  data: ArrayBuffer | Uint8Array,
+  serviceKey: string
+): Promise<Uint8Array> {
+  if (!serviceKey || serviceKey.length < 32) {
+    throw new Error('Valid service key is required for encryption (minimum 32 characters)');
+  }
+
+  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
+  if (data instanceof ArrayBuffer) {
+    dataBuffer = new Uint8Array(data) as Uint8Array & { buffer: ArrayBuffer };
+  } else {
+    if (data.buffer instanceof SharedArrayBuffer || 
+        data.byteOffset !== 0 || 
+        data.byteLength !== data.buffer.byteLength) {
+      const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+      dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
+    } else {
+      dataBuffer = new Uint8Array(data.buffer as ArrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
+    }
+  }
+
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+
+  const key = await deriveKeyFromServiceKey(serviceKey, salt);
+  const keyHashHex = await hashServiceKey(serviceKey);
+  const keyHash = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    keyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
+  }
+
+  const compressedData = await compressDataForServiceKey(dataBuffer);
+  const useCompression = compressedData.length < dataBuffer.length - 18;
+  const dataToEncrypt = useCompression ? (compressedData as Uint8Array & { buffer: ArrayBuffer }) : dataBuffer;
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv },
+    key,
+    dataToEncrypt
+  );
+
+  const encryptedArray = new Uint8Array(encrypted);
+  const headerSize = 5;
+  const totalSize = headerSize + salt.length + iv.length + keyHash.length + encryptedArray.length;
+  const result = new Uint8Array(totalSize);
+  let offset = 0;
+
+  result[offset++] = 5; // Version 5
+  result[offset++] = useCompression ? 1 : 0;
+  result[offset++] = salt.length;
+  result[offset++] = iv.length;
+  result[offset++] = keyHash.length;
+
+  result.set(salt, offset);
+  offset += salt.length;
+  result.set(iv, offset);
+  offset += iv.length;
+  result.set(keyHash, offset);
+  offset += keyHash.length;
+  result.set(encryptedArray, offset);
+
+  return result;
+}
+
+/**
+ * Decrypt binary data encrypted with service key
+ * Detects format and handles compression automatically
+ */
+export async function decryptBinaryWithServiceKey(
+  encryptedBinary: ArrayBuffer | Uint8Array,
+  serviceKey: string
+): Promise<Uint8Array> {
+  if (!serviceKey || serviceKey.length < 32) {
+    throw new Error('Valid service key is required for decryption (minimum 32 characters)');
+  }
+
+  const data = encryptedBinary instanceof ArrayBuffer 
+    ? new Uint8Array(encryptedBinary) 
+    : encryptedBinary;
+
+  if (data.length < 4) {
+    throw new Error('Invalid encrypted binary format: too short');
+  }
+
+  let offset = 0;
+  const version = data[offset++];
+  
+  if (version !== 4 && version !== 5) {
+    throw new Error(`Unsupported binary encryption version: ${version}`);
+  }
+
+  let isCompressed = false;
+  if (version === 5) {
+    isCompressed = data[offset++] === 1;
+  }
+
+  const saltLength = data[offset++];
+  const ivLength = data[offset++];
+  const keyHashLength = data[offset++];
+
+  if (saltLength !== SALT_LENGTH || ivLength !== IV_LENGTH || keyHashLength !== 32) {
+    throw new Error('Invalid encrypted binary format: invalid header lengths');
+  }
+
+  const salt = data.slice(offset, offset + saltLength);
+  offset += saltLength;
+  const iv = data.slice(offset, offset + ivLength);
+  offset += ivLength;
+  const storedKeyHash = data.slice(offset, offset + keyHashLength);
+  offset += keyHashLength;
+  const encryptedData = data.slice(offset);
+
+  const keyHashHex = await hashServiceKey(serviceKey);
+  const expectedKeyHash = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    expectedKeyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
+  }
+
+  let hashMatch = true;
+  for (let i = 0; i < 32; i++) {
+    if (storedKeyHash[i] !== expectedKeyHash[i]) {
+      hashMatch = false;
+    }
+  }
+
+  if (!hashMatch) {
+    throw new Error('Decryption failed - service key does not match');
+  }
+
+  const key = await deriveKeyFromServiceKey(serviceKey, salt);
+
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      encryptedData
+    );
+
+    const decryptedData = new Uint8Array(decrypted);
+
+    if (isCompressed) {
+      return await decompressDataForServiceKey(decryptedData);
+    }
+
+    return decryptedData;
+  } catch (error) {
+    throw new Error('Decryption failed - incorrect service key or corrupted data');
+  }
+}
+
 // ============ Route Pattern Matching ============
 
 /**
@@ -507,11 +732,18 @@ export function extractJWTToken(request: Request): string | null {
 /**
  * Get service key from environment
  * Service key should be stored as a Cloudflare Worker secret
- * CRITICAL: Uses VITE_SERVICE_ENCRYPTION_KEY (not SERVICE_ENCRYPTION_KEY which was compromised)
+ * 
+ * CRITICAL: This function is for BACKEND WORKERS ONLY
+ * - Backend workers use: SERVICE_ENCRYPTION_KEY
+ * - Frontend uses: VITE_SERVICE_ENCRYPTION_KEY (via shared-config/otp-encryption.ts)
+ * 
+ * These are DIFFERENT variable names for the SAME key value, but each environment
+ * uses its own naming convention (Vite requires VITE_ prefix for client-side vars)
  */
 export function getServiceKey(env: any): string | null {
-  // Service key should be set as: wrangler secret put VITE_SERVICE_ENCRYPTION_KEY
-  return env.VITE_SERVICE_ENCRYPTION_KEY || null;
+  // Backend workers ONLY use SERVICE_ENCRYPTION_KEY
+  // Frontend has its own getOtpEncryptionKey() function that uses VITE_SERVICE_ENCRYPTION_KEY
+  return env.SERVICE_ENCRYPTION_KEY || null;
 }
 
 /**

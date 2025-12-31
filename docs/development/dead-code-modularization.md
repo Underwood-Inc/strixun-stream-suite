@@ -3,14 +3,14 @@
 ## Current State
 
 ### File Sizes
-- `serverless/worker.js`: **3277 lines** ❌ (should be ~300)
-- `serverless/url-shortener/worker.js`: **1628 lines** ❌ (should be ~300)
-- `serverless/chat-signaling/worker.js`: **915 lines** ❌ (should be ~300)
-- `serverless/otp-auth-service/worker.js`: **25 lines** ✅ (already modularized)
+- `serverless/worker.js`: **3277 lines** [ERROR] (should be ~300)
+- `serverless/url-shortener/worker.js`: **1628 lines** [ERROR] (should be ~300)
+- `serverless/chat-signaling/worker.js`: **915 lines** [ERROR] (should be ~300)
+- `serverless/otp-auth-service/worker.js`: **25 lines** [OK] (already modularized)
 
 ## Dead Code Identified
 
-### 1. Duplicate OTP Auth in Root Worker ❌
+### 1. Duplicate OTP Auth in Root Worker [ERROR]
 **Location**: `serverless/worker.js` lines ~1774-2534
 
 **Problem**: Root worker has its own OTP auth implementation that duplicates `otp-auth-service/`
@@ -41,18 +41,18 @@
 - `/auth/refresh` - line 3207
 - `/debug/clear-rate-limit` - line 3224
 
-### 2. Duplicate CORS Function ❌
+### 2. Duplicate CORS Function [ERROR]
 **Location**: Multiple files
 
 **Problem**: `getCorsHeaders()` is duplicated in:
 - `serverless/worker.js` - line 18
 - `serverless/url-shortener/worker.js` - line 16
 - `serverless/chat-signaling/worker.js` - line 16
-- `serverless/otp-auth-service/utils/cors.js` - ✅ (already extracted)
+- `serverless/otp-auth-service/utils/cors.js` - [OK] (already extracted)
 
 **Action**: Use shared `serverless/utils/cors.js` (already created)
 
-### 3. Duplicate JWT Functions ❌
+### 3. Duplicate JWT Functions [ERROR]
 **Location**: `serverless/url-shortener/worker.js` and `serverless/chat-signaling/worker.js`
 
 **Problem**: Both have their own `verifyJWT()` implementations
@@ -68,7 +68,7 @@
 
 **Extract to Modules**:
 
-1. **Twitch API** ❓ `serverless/handlers/twitch.js` ✅ (created)
+1. **Twitch API**  `serverless/handlers/twitch.js` [OK] (created)
    - `handleClips()`
    - `handleFollowing()`
    - `handleGame()`
@@ -77,35 +77,35 @@
    - `twitchApiRequest()`
    - `getUserId()`
 
-2. **Cloud Storage** ❓ `serverless/handlers/cloud-storage.js`
+2. **Cloud Storage**  `serverless/handlers/cloud-storage.js`
    - `handleCloudSave()`
    - `handleCloudLoad()`
    - `handleCloudList()`
    - `handleCloudDelete()`
    - `updateCloudSaveSlotList()`
 
-3. **Notes** ❓ `serverless/handlers/notes.js`
+3. **Notes**  `serverless/handlers/notes.js`
    - `handleNotesSave()`
    - `handleNotesLoad()`
    - `handleNotesList()`
    - `handleNotesDelete()`
 
-4. **OBS Credentials** ❓ `serverless/handlers/obs.js`
+4. **OBS Credentials**  `serverless/handlers/obs.js`
    - `handleOBSCredentialsSave()`
    - `handleOBSCredentialsLoad()`
    - `handleOBSCredentialsDelete()`
 
-5. **Scrollbar CDN** ❓ `serverless/cdn/scrollbar.js`
+5. **Scrollbar CDN**  `serverless/cdn/scrollbar.js`
    - Extract inline code strings to separate files
    - `handleScrollbar()`
    - `handleScrollbarCustomizer()`
    - `handleScrollbarCompensation()`
 
-6. **Auth Utilities** ❓ `serverless/utils/auth.js`
+6. **Auth Utilities**  `serverless/utils/auth.js`
    - `authenticateRequest()` (keep, used by other handlers)
    - Move JWT functions here if needed
 
-7. **Test Endpoints** ❓ `serverless/handlers/test.js`
+7. **Test Endpoints**  `serverless/handlers/test.js`
    - `handleTestEmail()`
 
 ### URL Shortener (`serverless/url-shortener/worker.js`)
@@ -115,7 +115,7 @@
 
 **Extract to Modules**:
 
-1. **Handlers** ❓ `serverless/url-shortener/handlers/`
+1. **Handlers**  `serverless/url-shortener/handlers/`
    - `handleCreateShortUrl()`
    - `handleGetUrlInfo()`
    - `handleListUrls()`
@@ -124,14 +124,14 @@
    - `handleHealth()`
    - `handleStandalonePage()`
 
-2. **Utils** ❓ `serverless/url-shortener/utils/`
-   - `verifyJWT()` ❓ use shared or OTP auth service
+2. **Utils**  `serverless/url-shortener/utils/`
+   - `verifyJWT()`  use shared or OTP auth service
    - `generateShortCode()`
    - `isValidUrl()`
    - `isValidShortCode()`
    - `getJWTSecret()`
 
-3. **Services** ❓ `serverless/url-shortener/services/`
+3. **Services**  `serverless/url-shortener/services/`
    - URL storage/retrieval logic
 
 ### Chat Signaling (`serverless/chat-signaling/worker.js`)
@@ -141,7 +141,7 @@
 
 **Extract to Modules**:
 
-1. **Handlers** ❓ `serverless/chat-signaling/handlers/`
+1. **Handlers**  `serverless/chat-signaling/handlers/`
    - `handleCreateRoom()`
    - `handleJoinRoom()`
    - `handleSendOffer()`
@@ -156,27 +156,27 @@
    - `handleInviteToPartyRoom()`
    - `handleHealth()`
 
-2. **Utils** ❓ `serverless/chat-signaling/utils/`
-   - `hashEmail()` ❓ use shared
-   - `verifyJWT()` ❓ use shared or OTP auth service
+2. **Utils**  `serverless/chat-signaling/utils/`
+   - `hashEmail()`  use shared
+   - `verifyJWT()`  use shared or OTP auth service
 
-3. **Services** ❓ `serverless/chat-signaling/services/`
+3. **Services**  `serverless/chat-signaling/services/`
    - Room management
    - Signaling logic
 
 ## Implementation Order
 
-1. ✅ Create shared CORS utility
-2. ✅ Extract Twitch handlers
-3. ❓ Remove duplicate OTP auth from root worker
-4. ❓ Extract Cloud Storage handlers
-5. ❓ Extract Notes handlers
-6. ❓ Extract OBS handlers
-7. ❓ Extract Scrollbar CDN code
-8. ❓ Modularize URL Shortener
-9. ❓ Modularize Chat Signaling
-10. ❓ Create shared auth utilities
-11. ❓ Update all workers to use shared utilities
+1. [OK] Create shared CORS utility
+2. [OK] Extract Twitch handlers
+3.  Remove duplicate OTP auth from root worker
+4.  Extract Cloud Storage handlers
+5.  Extract Notes handlers
+6.  Extract OBS handlers
+7.  Extract Scrollbar CDN code
+8.  Modularize URL Shortener
+9.  Modularize Chat Signaling
+10.  Create shared auth utilities
+11.  Update all workers to use shared utilities
 
 ## Dead Code Removal Checklist
 

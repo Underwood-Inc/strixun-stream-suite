@@ -80,11 +80,11 @@ try {
   writeFileSync(outputFile, wrapBundle(bundled));
   writeFileSync(outputFileMin, wrapBundle(bundledMin));
   
-  console.log(`✅ Bundled OtpLoginCore:`);
+  console.log(`[OK] Bundled OtpLoginCore:`);
   console.log(`   - Development: ${outputFile}`);
   console.log(`   - Production (minified): ${outputFileMin}`);
 } catch (error) {
-  console.error('❌ Failed to bundle OtpLoginCore:', error);
+  console.error('[ERROR] Failed to bundle OtpLoginCore:', error);
   process.exit(1);
 }
 

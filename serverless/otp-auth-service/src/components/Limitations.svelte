@@ -28,7 +28,7 @@
       </li>
       <li>
         <strong>Exceeded Free Tier?</strong>
-        <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon. ❓</p>
+        <p>No problem! This application is open-source and can be self-hosted. Subscription tiers with enhanced rate limits are coming soon. </p>
       </li>
     </ul>
   </div>

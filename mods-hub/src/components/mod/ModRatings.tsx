@@ -220,11 +220,11 @@ function renderStars(rating: number) {
     
     for (let i = 0; i < 5; i++) {
         if (i < fullStars) {
-            stars.push(<Star key={i} filled={true}>★</Star>);
+            stars.push(<Star key={i} filled={true}>[EMOJI]</Star>);
         } else if (i === fullStars && hasHalfStar) {
-            stars.push(<Star key={i} filled={true}>★</Star>);
+            stars.push(<Star key={i} filled={true}>[EMOJI]</Star>);
         } else {
-            stars.push(<Star key={i} filled={false}>☆</Star>);
+            stars.push(<Star key={i} filled={false}>[EMOJI]</Star>);
         }
     }
     
@@ -294,7 +294,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                                 const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
                                 return (
                                     <RatingBar key={star}>
-                                        <RatingLabel>{star}★</RatingLabel>
+                                        <RatingLabel>{star}[EMOJI]</RatingLabel>
                                         <BarContainer>
                                             <BarFill percentage={percentage} />
                                         </BarContainer>
@@ -323,7 +323,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                                 onClick={() => setSelectedRating(rating)}
                                 style={{ cursor: 'pointer', fontSize: '1.5rem' }}
                             >
-                                {rating <= selectedRating ? '★' : '☆'}
+                                {rating <= selectedRating ? '[EMOJI]' : '[EMOJI]'}
                             </Star>
                         ))}
                     </RatingInput>

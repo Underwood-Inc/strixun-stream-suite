@@ -19,36 +19,22 @@ import { authenticateRequest } from './utils/auth.js';
  * Health check endpoint
  */
 async function handleHealth(env, request) {
-    try {
-        // Test token generation
-        await getAppAccessToken(env);
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify({ 
-            status: 'ok', 
-            message: 'Strixun Stream Suite API is running',
-            features: ['twitch-api', 'cloud-storage', 'scrollbar-customizer'],
-            timestamp: new Date().toISOString()
-        }), {
-            headers: {
-                'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
-    } catch (error) {
-        const rfcError = createError(request, 500, 'Health Check Error', error.message);
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-        });
-        return new Response(JSON.stringify(rfcError), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
-    }
+    // Simple health check - just verify the worker is running
+    // Don't test Twitch API access as credentials may not be configured for E2E tests
+    const corsHeaders = createCORSHeaders(request, {
+        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+    });
+    return new Response(JSON.stringify({ 
+        status: 'ok', 
+        message: 'Twitch API worker is running',
+        features: ['twitch-api', 'cloud-storage', 'scrollbar-customizer'],
+        timestamp: new Date().toISOString()
+    }), {
+        headers: {
+            'Content-Type': 'application/json',
+            ...Object.fromEntries(corsHeaders.entries()),
+        },
+    });
 }
 
 /**

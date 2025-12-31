@@ -1,14 +1,14 @@
-# 🔒 Shared Encryption Suite
+# [EMOJI] Shared Encryption Suite
 
 Unified encryption utilities for all Strixun Stream Suite services.
 
 ## Features
 
-- ✅ **Universal JWT Encryption** - Works in Cloudflare Workers and browser
-- ✅ **Multi-Stage Encryption** - Support for 2+ parties (all keys required to decrypt)
-- ✅ **Two-Stage Encryption** - Backward compatible with existing two-stage implementation
-- ✅ **Router Middleware** - Automatic response encryption for API routes
-- ✅ **TypeScript First** - Full type safety throughout
+- [OK] **Universal JWT Encryption** - Works in Cloudflare Workers and browser
+- [OK] **Multi-Stage Encryption** - Support for 2+ parties (all keys required to decrypt)
+- [OK] **Two-Stage Encryption** - Backward compatible with existing two-stage implementation
+- [OK] **Router Middleware** - Automatic response encryption for API routes
+- [OK] **TypeScript First** - Full type safety throughout
 
 ## Installation
 
@@ -89,21 +89,21 @@ Multi-stage encryption uses a master key approach for order-independent decrypti
 
 ```
 1. Generate random master key
-2. Encrypt data with master key ❓ Encrypted Data
+2. Encrypt data with master key  Encrypted Data
 3. Encrypt master key with each party's key independently (parallel)
-   ❓ Encrypted Master Key 1 (Party1)
-   ❓ Encrypted Master Key 2 (Party2)
-   ❓ Encrypted Master Key 3 (Party3)
+    Encrypted Master Key 1 (Party1)
+    Encrypted Master Key 2 (Party2)
+    Encrypted Master Key 3 (Party3)
 ```
 
 To decrypt, you need ALL parties' keys (order does NOT matter):
 
 ```
 For each party:
-  Encrypted Master Key ❓ [Decrypt with Party's Key] ❓ Master Key (verify all match)
+  Encrypted Master Key  [Decrypt with Party's Key]  Master Key (verify all match)
   
 Once ALL parties verified:
-  Master Key ❓ [Decrypt Data] ❓ Original Data
+  Master Key  [Decrypt Data]  Original Data
 ```
 
 **Important:** ALL parties must successfully decrypt their encrypted master keys before the data can be decrypted. The order in which parties are verified does NOT matter.
@@ -294,14 +294,14 @@ const decrypted = await decryptMultiStage(encrypted, [
 
 Comprehensive unit tests are available in `multi-stage-encryption.test.ts` covering:
 
-- ✅ Order-independent decryption (all order combinations)
-- ✅ All parties required verification
-- ✅ Missing/wrong key detection
-- ✅ Different key types (JWT, request-key, custom)
-- ✅ Multi-party scenarios (2-10 parties)
-- ✅ Edge cases (empty data, large data, special characters)
-- ✅ Security properties (tampering detection, master key verification)
-- ✅ Performance benchmarks
+- [OK] Order-independent decryption (all order combinations)
+- [OK] All parties required verification
+- [OK] Missing/wrong key detection
+- [OK] Different key types (JWT, request-key, custom)
+- [OK] Multi-party scenarios (2-10 parties)
+- [OK] Edge cases (empty data, large data, special characters)
+- [OK] Security properties (tampering detection, master key verification)
+- [OK] Performance benchmarks
 
 ### Running Tests
 

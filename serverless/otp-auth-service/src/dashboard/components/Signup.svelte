@@ -289,7 +289,7 @@
       </form>
     {:else if step === 'success' && successData}
       <div class="signup-success">
-        <div class="signup-success-icon">❓</div>
+        <div class="signup-success-icon"></div>
         <h2>Account Created Successfully!</h2>
         <p class="signup-success-message">{successData.message}</p>
         

@@ -40,28 +40,28 @@ print_option() {
     local title=$2
     local desc=$3
     echo -e "${GREEN}[${num}]${NC} ${BOLD}${title}${NC}"
-    echo -e "    ${YELLOW}❓${NC} ${desc}"
+    echo -e "    ${YELLOW}${NC} ${desc}"
     echo ""
 }
 
 # Function to print info
 print_info() {
-    echo -e "${CYAN}ℹ${NC} $1"
+    echo -e "${CYAN}[INFO]${NC} $1"
 }
 
 # Function to print warning
 print_warning() {
-    echo -e "${YELLOW}❓${NC} $1"
+    echo -e "${YELLOW}${NC} $1"
 }
 
 # Function to print error
 print_error() {
-    echo -e "${RED}❓${NC} $1"
+    echo -e "${RED}${NC} $1"
 }
 
 # Function to print success
 print_success() {
-    echo -e "${GREEN}❓${NC} $1"
+    echo -e "${GREEN}${NC} $1"
 }
 
 # Check if wrangler is installed
@@ -304,7 +304,7 @@ main() {
                 else
                     print_warning "Could not automatically open browser."
                     print_info "Please visit: $dashboard_url"
-                    print_info "Then navigate to: Workers & Pages ❓ $SERVICE_NAME ❓ Logs"
+                    print_info "Then navigate to: Workers & Pages  $SERVICE_NAME  Logs"
                 fi
                 
                 echo ""
@@ -318,7 +318,7 @@ main() {
                 ;;
             0)
                 print_section "Exiting"
-                print_info "Goodbye! ❓"
+                print_info "Goodbye! "
                 exit 0
                 ;;
             *)

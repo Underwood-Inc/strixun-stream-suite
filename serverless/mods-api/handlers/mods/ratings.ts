@@ -14,7 +14,8 @@ import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../type
  */
 async function fetchUserDisplayName(token: string, env: Env): Promise<string | null> {
     try {
-        const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
+        // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+        const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
         const response = await fetch(`${authApiUrl}/auth/me`, {
             method: 'GET',
             headers: {
@@ -103,11 +104,18 @@ export async function handleGetModRatings(
             });
         }
         
-        // Check visibility - only show ratings for public mods or if user owns the mod
-        if (mod.visibility !== 'public' && mod.status !== 'published') {
-            // Only allow viewing ratings if user is the author or mod is public
-            if (!auth || mod.authorId !== auth.userId) {
-                const rfcError = createError(request, 403, 'Forbidden', 'Ratings are only available for published public mods');
+        // Check visibility and status - only show ratings for public/approved mods or if user owns the mod
+        // Legacy mods without status field are treated as published
+        const modVisibility = mod.visibility || 'public';
+        const modStatus = mod.status || 'published';
+        const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
+        const isPublic = modVisibility === 'public';
+        const isAuthor = auth && mod.authorId === auth.userId;
+        
+        // Allow if: (public AND approved/published) OR user is the author
+        if (!isPublic || !isAllowedStatus) {
+            if (!isAuthor) {
+                const rfcError = createError(request, 403, 'Forbidden', 'Ratings are only available for published or approved public mods');
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });
@@ -264,19 +272,26 @@ export async function handleSubmitModRating(
             });
         }
         
-        // Check if mod is published (only published mods can be rated)
-        if (mod.status !== 'published') {
-            const rfcError = createError(request, 403, 'Forbidden', 'Only published mods can be rated');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        // Check if mod can be rated (published or approved mods can be rated)
+        // Legacy mods without status field are treated as published
+        const modStatus = mod.status || 'published';
+        const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
+        if (!isAllowedStatus) {
+            // Only allow rating if user is the author (authors can rate their own mods even if not published/approved)
+            const isAuthor = mod.authorId === auth.userId;
+            if (!isAuthor) {
+                const rfcError = createError(request, 403, 'Forbidden', 'Only published or approved mods can be rated');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
         }
         
         // Get user displayName from auth service (once, reuse for both create and update)

@@ -3,64 +3,64 @@
 ## Overview
 This audit identifies all component libraries in `shared-components/` that need to be converted to proper workspace packages for npm deployment.
 
-## ✅ Already Set Up as Workspace Packages
+## [OK] Already Set Up as Workspace Packages
 
 ### 1. `@strixun/otp-login`
 - **Location**: `shared-components/otp-login/`
-- **Status**: ✅ Properly configured
+- **Status**: [OK] Properly configured
 - **Package**: `@strixun/otp-login`
 - **Used by**: Frontend apps (mods-hub, control-panel, etc.)
 
 ### 2. `@strixun/search-query-parser`
 - **Location**: `shared-components/search-query-parser/`
-- **Status**: ✅ Properly configured
+- **Status**: [OK] Properly configured
 - **Package**: `@strixun/search-query-parser`
 - **Used by**: mods-hub
 
-## ✅ All Component Libraries Now Set Up as Workspace Packages
+## [OK] All Component Libraries Now Set Up as Workspace Packages
 
 All component libraries have been converted to workspace packages:
 
-### 1. `@strixun/virtualized-table` ✅ COMPLETED
+### 1. `@strixun/virtualized-table` [OK] COMPLETED
 - **Location**: `shared-components/virtualized-table/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/virtualized-table`
 - **Used by**: mods-hub
 
-### 2. `@strixun/rate-limit-info` ✅ COMPLETED
+### 2. `@strixun/rate-limit-info` [OK] COMPLETED
 - **Location**: `shared-components/rate-limit-info/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/rate-limit-info`
 
-### 3. `@strixun/status-flair` ✅ COMPLETED
+### 3. `@strixun/status-flair` [OK] COMPLETED
 - **Location**: `shared-components/status-flair/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/status-flair`
 - **Used by**: Main app
 
-### 4. `@strixun/tooltip` ✅ COMPLETED
+### 4. `@strixun/tooltip` [OK] COMPLETED
 - **Location**: `shared-components/tooltip/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/tooltip`
 
-### 5. `@strixun/ad-carousel` ✅ COMPLETED
+### 5. `@strixun/ad-carousel` [OK] COMPLETED
 - **Location**: `shared-components/ad-carousel/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/ad-carousel`
 - **Used by**: Main app
 
-### 6. `@strixun/error-mapping` ✅ COMPLETED
+### 6. `@strixun/error-mapping` [OK] COMPLETED
 - **Location**: `shared-components/error-mapping/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/error-mapping`
 - **Used by**: Main app
 
-### 7. `@strixun/idle-game-overlay` ✅ COMPLETED
+### 7. `@strixun/idle-game-overlay` [OK] COMPLETED
 - **Location**: `shared-components/idle-game-overlay/`
-- **Status**: ✅ Converted to workspace package
+- **Status**: [OK] Converted to workspace package
 - **Package**: `@strixun/idle-game-overlay`
 
-## ❌ Previously Needed Conversion (Now Complete)
+## [ERROR] Previously Needed Conversion (Now Complete)
 
 ### 1. `@strixun/virtualized-table` (HIGH PRIORITY)
 - **Location**: `shared-components/virtualized-table/`
@@ -70,14 +70,14 @@ All component libraries have been converted to workspace packages:
 
 **Current Import:**
 ```typescript
-// ❌ Current (relative import)
+// [ERROR] Current (relative import)
 import { VirtualizedTable } from '../../../shared-components/virtualized-table/VirtualizedTable';
 import type { Column } from '../../../shared-components/virtualized-table/VirtualizedTable';
 ```
 
 **Should be:**
 ```typescript
-// ✅ Should be (workspace package)
+// [OK] Should be (workspace package)
 import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
 ```
 
@@ -89,13 +89,13 @@ import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
 
 **Current Import:**
 ```typescript
-// ❌ Current (path alias)
+// [ERROR] Current (path alias)
 import { RateLimitInfoCard } from '@shared-components/rate-limit-info';
 ```
 
 **Should be:**
 ```typescript
-// ✅ Should be (workspace package)
+// [OK] Should be (workspace package)
 import { RateLimitInfoCard } from '@strixun/rate-limit-info';
 ```
 
@@ -107,13 +107,13 @@ import { RateLimitInfoCard } from '@strixun/rate-limit-info';
 
 **Current Import:**
 ```svelte
-<!-- ❌ Current (path alias) -->
+<!-- [ERROR] Current (path alias) -->
 import StatusFlair from '@shared-components/status-flair/StatusFlair.svelte';
 ```
 
 **Should be:**
 ```svelte
-<!-- ✅ Should be (workspace package) -->
+<!-- [OK] Should be (workspace package) -->
 import { StatusFlair } from '@strixun/status-flair';
 ```
 
@@ -141,7 +141,7 @@ import { StatusFlair } from '@strixun/status-flair';
 - **Files**: Multiple components, stores, services
 - **Used by**: Needs investigation
 
-## 📋 Migration Checklist
+## [EMOJI] Migration Checklist
 
 ### Priority 1: High-Usage Components
 - [ ] Create `@strixun/virtualized-table` package.json
@@ -163,7 +163,7 @@ import { StatusFlair } from '@strixun/status-flair';
 - [ ] Create `@strixun/idle-game-overlay` package.json if needed
 - [ ] Update imports
 
-## 🎯 Next Steps
+## [EMOJI] Next Steps
 
 1. **Immediate**: Set up workspace packages for high-priority components
 2. **Follow-up**: Replace all path alias imports with workspace packages

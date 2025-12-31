@@ -32,7 +32,7 @@
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
         </span>
-        Support the Services! ❓
+        Support the Services! 
       </h3>
       <p class="support-card__message">
         Help keep these services running with generous free tiers! Your support helps maintain and improve the platform.
@@ -43,7 +43,7 @@
       <span class="support-card__powered-by-wrapper" role="none" on:click|stopPropagation on:keydown|stopPropagation>
         <OtpAuthLink />
       </span>
-      <span class="support-card__link">Show Support ❓</span>
+      <span class="support-card__link">Show Support </span>
     </div>
   </div>
 </a>

@@ -88,10 +88,10 @@ export default APP_ASSETS;
     throw new Error(`Failed to create ${outputFile}`);
   }
   
-  console.log(`✅ Built app assets to ${outputFile}`);
+  console.log(`[OK] Built app assets to ${outputFile}`);
   console.log(`   Found ${Object.keys(assets).length} files`);
 } catch (error) {
-  console.error('❌ Failed to build app:', error);
+  console.error('[ERROR] Failed to build app:', error);
   process.exit(1);
 }
 

@@ -4,14 +4,14 @@ A modern mod hosting platform built with React, TypeScript, and Cloudflare Worke
 
 ## Features
 
-- ✅ **Mod Upload & Management** - Upload, update, and manage your mods
-- ✅ **Version Control** - Full semantic versioning with changelogs
-- ✅ **Direct Download Links** - Share direct download links in any application
-- ✅ **Authentication** - Integrated with OTP auth service
-- ✅ **Search & Filtering** - Find mods by category, tags, and search terms
-- ✅ **Modern UI** - Beautiful, responsive interface with gold theme
-- ✅ **Type-Safe** - Full TypeScript coverage
-- ✅ **Scalable** - Built on Cloudflare Workers and R2 storage
+- [OK] **Mod Upload & Management** - Upload, update, and manage your mods
+- [OK] **Version Control** - Full semantic versioning with changelogs
+- [OK] **Direct Download Links** - Share direct download links in any application
+- [OK] **Authentication** - Integrated with OTP auth service
+- [OK] **Search & Filtering** - Find mods by category, tags, and search terms
+- [OK] **Modern UI** - Beautiful, responsive interface with gold theme
+- [OK] **Type-Safe** - Full TypeScript coverage
+- [OK] **Scalable** - Built on Cloudflare Workers and R2 storage
 
 ## Architecture
 

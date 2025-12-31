@@ -1,6 +1,6 @@
 # API Framework Migration Guide
 
-> **Complete guide for migrating all workers and apps to use the shared API framework** 🚀
+> **Complete guide for migrating all workers and apps to use the shared API framework** [EMOJI]
 
 ---
 
@@ -8,22 +8,22 @@
 
 This guide covers migrating all Strixun Stream Suite workers and frontend apps to use the shared `@strixun/api-framework` package.
 
-**Status**: ✅ Shared package created, ⏳ Migration in progress
+**Status**: [OK] Shared package created, [EMOJI] Migration in progress
 
 ---
 
 ## Workers to Migrate
 
-1. ✅ **mods-api** - TypeScript, needs full migration
-2. ⏳ **game-api** - JavaScript, needs full migration
-3. ⏳ **otp-auth-service** - Uses `enhanced-router` wrapper (partial), needs full migration
-4. ⏳ **url-shortener** - Uses `enhanced-router` wrapper (partial), needs full migration
-5. ⏳ **chat-signaling** - Uses `enhanced-router` wrapper (partial), needs full migration
-6. ⏳ **twitch-api** - Needs full migration
+1. [OK] **mods-api** - TypeScript, needs full migration
+2. [EMOJI] **game-api** - JavaScript, needs full migration
+3. [EMOJI] **otp-auth-service** - Uses `enhanced-router` wrapper (partial), needs full migration
+4. [EMOJI] **url-shortener** - Uses `enhanced-router` wrapper (partial), needs full migration
+5. [EMOJI] **chat-signaling** - Uses `enhanced-router` wrapper (partial), needs full migration
+6. [EMOJI] **twitch-api** - Needs full migration
 
 ## Frontend Apps to Migrate
 
-1. ⏳ **mods-hub** - React app, needs client migration
+1. [EMOJI] **mods-hub** - React app, needs client migration
 
 ---
 
@@ -41,7 +41,7 @@ All packages now have `@strixun/api-framework` as a dependency:
 }
 ```
 
-✅ **Completed** for all packages
+[OK] **Completed** for all packages
 
 ### Step 2: Migrate Worker Handlers
 
@@ -202,7 +202,7 @@ export async function listMods(params: any) {
 
 ### mods-api
 
-**Status**: ⏳ In Progress
+**Status**: [EMOJI] In Progress
 
 **Changes Needed**:
 1. Replace `getCorsHeaders` with framework CORS
@@ -221,7 +221,7 @@ export async function listMods(params: any) {
 
 ### game-api
 
-**Status**: ⏳ Pending
+**Status**: [EMOJI] Pending
 
 **Changes Needed**:
 1. Convert to TypeScript
@@ -230,7 +230,7 @@ export async function listMods(params: any) {
 
 ### otp-auth-service
 
-**Status**: ⏳ Pending (Currently uses `enhanced-router` wrapper)
+**Status**: [EMOJI] Pending (Currently uses `enhanced-router` wrapper)
 
 **Changes Needed**:
 1. Replace `enhanced-router` wrapper with full framework
@@ -239,7 +239,7 @@ export async function listMods(params: any) {
 
 ### url-shortener
 
-**Status**: ⏳ Pending (Currently uses `enhanced-router` wrapper)
+**Status**: [EMOJI] Pending (Currently uses `enhanced-router` wrapper)
 
 **Changes Needed**:
 1. Replace `enhanced-router` wrapper with full framework
@@ -247,7 +247,7 @@ export async function listMods(params: any) {
 
 ### chat-signaling
 
-**Status**: ⏳ Pending (Currently uses `enhanced-router` wrapper)
+**Status**: [EMOJI] Pending (Currently uses `enhanced-router` wrapper)
 
 **Changes Needed**:
 1. Replace `enhanced-router` wrapper with full framework
@@ -255,7 +255,7 @@ export async function listMods(params: any) {
 
 ### twitch-api
 
-**Status**: ⏳ Pending
+**Status**: [EMOJI] Pending
 
 **Changes Needed**:
 1. Migrate to use framework
@@ -267,7 +267,7 @@ export async function listMods(params: any) {
 
 ### mods-hub
 
-**Status**: ⏳ Pending
+**Status**: [EMOJI] Pending
 
 **Files to Update**:
 - `src/services/api.ts` - Replace with framework client
@@ -330,17 +330,17 @@ If issues arise:
 
 ## Next Steps
 
-1. ✅ Create shared API framework package
-2. ✅ Update all package.json files
-3. ⏳ Migrate mods-api (in progress)
-4. ⏳ Migrate game-api
-5. ⏳ Migrate otp-auth-service
-6. ⏳ Migrate url-shortener
-7. ⏳ Migrate chat-signaling
-8. ⏳ Migrate twitch-api
-9. ⏳ Migrate mods-hub frontend
-10. ⏳ Test all services
-11. ⏳ Remove old utilities (cors.ts, auth.ts, etc.)
+1. [OK] Create shared API framework package
+2. [OK] Update all package.json files
+3. [EMOJI] Migrate mods-api (in progress)
+4. [EMOJI] Migrate game-api
+5. [EMOJI] Migrate otp-auth-service
+6. [EMOJI] Migrate url-shortener
+7. [EMOJI] Migrate chat-signaling
+8. [EMOJI] Migrate twitch-api
+9. [EMOJI] Migrate mods-hub frontend
+10. [EMOJI] Test all services
+11. [EMOJI] Remove old utilities (cors.ts, auth.ts, etc.)
 
 ---
 

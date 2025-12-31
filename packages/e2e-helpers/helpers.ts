@@ -5,11 +5,18 @@
  * Used across all E2E tests in the codebase
  */
 
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { WORKER_URLS } from '../../playwright.config.js';
 
 // Re-export WORKER_URLS for convenience
 export { WORKER_URLS };
+
+// Define BASE_PORT (must match playwright.config.ts)
+// Used for error messages when workers are unhealthy
+const BASE_PORT = parseInt(process.env.E2E_LOCAL_WORKER_PORT || '8787', 10);
+
+// Re-export email interception helpers
+export { getInterceptedOTP, waitForInterceptedOTP } from './email-interception.js';
 
 /**
  * Test user credentials for E2E testing
@@ -39,6 +46,161 @@ export async function waitForOTP(_page: Page): Promise<string> {
   // return extractOTPFromEmail(email);
   
   throw new Error('OTP extraction not yet implemented. Integrate with test email service.');
+}
+
+/**
+ * OTP-specific test helpers
+ */
+
+/**
+ * Request OTP code for an email address
+ * Returns the API response for inspection
+ */
+export async function requestOTPCode(
+  page: Page,
+  email: string,
+  apiUrl: string = WORKER_URLS.OTP_AUTH
+): Promise<{ response: any; body: any }> {
+  // Find email input
+  const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+  await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+  
+  // Fill email
+  await emailInput.clear();
+  await emailInput.fill(email);
+  
+  // Find and click submit button
+  const submitButton = page.locator(
+    'button:has-text("Send OTP"), button:has-text("Send"), button[type="submit"]'
+  ).first();
+  
+  await expect(submitButton).toBeVisible({ timeout: 10000 });
+  
+  // Wait for API response
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().includes('/auth/request-otp'),
+    { timeout: 30000 }
+  );
+  
+  await submitButton.click();
+  
+  const response = await responsePromise;
+  const body = await response.json();
+  
+  return { response, body };
+}
+
+/**
+ * Verify OTP code
+ * Returns the API response for inspection
+ */
+export async function verifyOTPCode(
+  page: Page,
+  otpCode: string,
+  apiUrl: string = WORKER_URLS.OTP_AUTH
+): Promise<{ response: any; body: any }> {
+  // Find OTP input
+  const otpInput = page.locator(
+    'input[type="tel"], input[type="text"][inputmode="numeric"], input#otp-login-otp'
+  ).first();
+  
+  await otpInput.waitFor({ state: 'visible', timeout: 10000 });
+  
+  // Fill OTP
+  await otpInput.clear();
+  await otpInput.fill(otpCode);
+  
+  // Find and click verify button
+  const verifyButton = page.locator(
+    'button:has-text("Verify"), button:has-text("Verify & Login"), button[type="submit"]'
+  ).first();
+  
+  await expect(verifyButton).toBeVisible({ timeout: 10000 });
+  
+  // Wait for API response
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().includes('/auth/verify-otp'),
+    { timeout: 30000 }
+  );
+  
+  await verifyButton.click();
+  
+  const response = await responsePromise;
+  const body = await response.json();
+  
+  return { response, body };
+}
+
+/**
+ * Wait for OTP form to appear after requesting OTP
+ */
+export async function waitForOTPForm(page: Page, timeout: number = 10000): Promise<void> {
+  const otpInput = page.locator(
+    'input[type="tel"], input[type="text"][inputmode="numeric"], input#otp-login-otp'
+  ).first();
+  
+  await otpInput.waitFor({ state: 'visible', timeout });
+}
+
+/**
+ * Check if email form is visible
+ */
+export async function isEmailFormVisible(page: Page): Promise<boolean> {
+  const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+  return await emailInput.isVisible().catch(() => false);
+}
+
+/**
+ * Check if OTP form is visible
+ */
+export async function isOTPFormVisible(page: Page): Promise<boolean> {
+  const otpInput = page.locator(
+    'input[type="tel"], input[type="text"][inputmode="numeric"], input#otp-login-otp'
+  ).first();
+  return await otpInput.isVisible().catch(() => false);
+}
+
+/**
+ * Navigate back to email form from OTP form
+ */
+export async function goBackToEmailForm(page: Page): Promise<void> {
+  const backButton = page.locator('button:has-text("Back")').first();
+  await expect(backButton).toBeVisible({ timeout: 10000 });
+  await backButton.click();
+  
+  // Wait for email form to appear
+  await page.locator('input[type="email"], input#otp-login-email').first().waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
+}
+
+/**
+ * Extract OTP from intercepted API response (for dev/test environments)
+ * Note: This only works if the API returns OTP in the response (dev mode)
+ */
+export async function extractOTPFromResponse(
+  page: Page,
+  timeout: number = 30000
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => resolve(null), timeout);
+    
+    page.on('response', async (response) => {
+      const url = response.url();
+      if (url.includes('/auth/request-otp')) {
+        try {
+          const body = await response.json();
+          if (body.otp && typeof body.otp === 'string') {
+            clearTimeout(timeoutId);
+            resolve(body.otp);
+          }
+        } catch {
+          // Response might not be JSON or might not contain OTP
+        }
+      }
+    });
+  });
 }
 
 /**
@@ -135,9 +297,16 @@ export async function waitForAPIResponse(
 /**
  * Check worker health
  */
-export async function checkWorkerHealth(workerUrl: string): Promise<boolean> {
+export async function checkWorkerHealth(workerUrl: string, timeout = 5000): Promise<boolean> {
   try {
-    const response = await fetch(`${workerUrl}/health`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(`${workerUrl}/health`, {
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
     return response.ok;
   } catch {
     return false;
@@ -145,9 +314,32 @@ export async function checkWorkerHealth(workerUrl: string): Promise<boolean> {
 }
 
 /**
- * Verify all development workers are accessible
+ * Verify local workers are accessible
+ * 
+ * E2E tests ONLY use local workers (localhost) - no deployed workers.
+ * This ensures complete isolation from production and development deployments.
  */
 export async function verifyWorkersHealth(): Promise<void> {
+  // Safety check: Ensure all URLs are localhost (no deployed workers)
+  const allUrls = Object.values(WORKER_URLS);
+  const nonLocalUrls = allUrls.filter(url => 
+    typeof url === 'string' && 
+    !url.includes('localhost') && 
+    !url.includes('127.0.0.1')
+  );
+  
+  if (nonLocalUrls.length > 0) {
+    throw new Error(
+      `[E2E SAFETY] Non-local URLs detected in test configuration:\n` +
+      `${nonLocalUrls.join('\n')}\n\n` +
+      `E2E tests MUST only use local workers (localhost).\n` +
+      `This ensures complete isolation from production and development deployments.`
+    );
+  }
+  
+  // Check all workers that are started locally (replicating production deployment)
+  // All services are started automatically in playwright.config.ts
+  // ALL workers must be healthy for E2E tests to run properly
   const workers = [
     { name: 'OTP Auth', url: WORKER_URLS.OTP_AUTH },
     { name: 'Mods API', url: WORKER_URLS.MODS_API },
@@ -161,16 +353,24 @@ export async function verifyWorkersHealth(): Promise<void> {
   const results = await Promise.all(
     workers.map(async (worker) => ({
       ...worker,
-      healthy: await checkWorkerHealth(worker.url),
+      healthy: await checkWorkerHealth(worker.url, 10000),
     }))
   );
   
   const unhealthy = results.filter((r) => !r.healthy);
   if (unhealthy.length > 0) {
     throw new Error(
-      `Unhealthy workers: ${unhealthy.map((w) => w.name).join(', ')}\n` +
-      `Make sure all workers are deployed to development environment.\n` +
-      `Run: pnpm deploy:dev:all`
+      `Unhealthy local workers: ${unhealthy.map((w) => w.name).join(', ')}\n` +
+      `All workers must be healthy for E2E tests to run properly.\n` +
+      `Make sure local workers are running. They should start automatically.\n` +
+      `If not, start manually:\n` +
+      `  cd serverless/otp-auth-service && pnpm dev (port ${BASE_PORT})\n` +
+      `  cd serverless/mods-api && pnpm dev (port ${BASE_PORT + 1})\n` +
+      `  cd serverless/twitch-api && pnpm dev (port ${BASE_PORT + 2})\n` +
+      `  cd serverless/customer-api && pnpm dev (port ${BASE_PORT + 3})\n` +
+      `  cd serverless/game-api && pnpm dev (port ${BASE_PORT + 4})\n` +
+      `  cd serverless/chat-signaling && pnpm dev (port ${BASE_PORT + 5})\n` +
+      `  cd serverless/url-shortener && pnpm dev (port ${BASE_PORT + 6})`
     );
   }
 }

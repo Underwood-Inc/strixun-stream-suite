@@ -26,9 +26,12 @@ interface AuthState {
 }
 
 // Use proxy in development (via Vite), direct URL in production
-const AUTH_API_URL = import.meta.env.DEV 
-  ? '/auth-api'  // Vite proxy in development
-  : (import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app');
+// E2E tests can override with VITE_AUTH_API_URL to use direct local worker URLs
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL 
+  ? import.meta.env.VITE_AUTH_API_URL  // Explicit URL override (for E2E tests)
+  : (import.meta.env.DEV 
+    ? '/auth-api'  // Vite proxy in development
+    : 'https://auth.idling.app');  // Production default
 
 /**
  * Restore session from backend based on IP address
@@ -112,12 +115,24 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
             timeout: 5000, // 5 second timeout for validation
+            auth: {
+                tokenGetter: () => {
+                    // CRITICAL: Return token so Authorization header is set
+                    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+                        return null;
+                    }
+                    return token;
+                },
+            },
+            cache: {
+                enabled: false, // Never cache validation requests
+            },
         });
         
         // Use /auth/me endpoint to validate token (returns 401 if invalid/blacklisted)
         const response = await authClient.get('/auth/me', undefined, {
             metadata: {
-                token: token, // Pass token for authentication
+                token: token, // Pass token in metadata for decryption (if response is encrypted)
                 cache: false, // Never cache validation requests
             },
         });
@@ -139,13 +154,26 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
  * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
  */
 async function fetchUserInfo(token: string): Promise<{ isSuperAdmin: boolean; displayName?: string | null } | null> {
+    // CRITICAL: Validate token exists before making request
+    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+        console.error('[Auth] fetchUserInfo called with invalid token:', { hasToken: !!token, tokenType: typeof token, tokenLength: token?.length });
+        return null;
+    }
+    
     try {
         const { createAPIClient } = await import('@strixun/api-framework/client');
         const authClient = createAPIClient({
             baseURL: AUTH_API_URL,
             timeout: 10000, // Increased to 10 seconds to handle slower responses
             auth: {
-                tokenGetter: () => token,
+                tokenGetter: () => {
+                    // Double-check token is still valid
+                    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+                        console.warn('[Auth] tokenGetter returned invalid token');
+                        return null;
+                    }
+                    return token;
+                },
             },
             cache: {
                 enabled: false, // CRITICAL: Never cache /auth/me - always fetch fresh to avoid undefined cache hits

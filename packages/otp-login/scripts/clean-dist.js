@@ -14,11 +14,11 @@ const distDir = resolve(__dirname, '../dist');
 
 try {
   rmSync(distDir, { recursive: true, force: true });
-  console.log(`✅ Cleaned dist directory: ${distDir}`);
+  console.log(`[OK] Cleaned dist directory: ${distDir}`);
 } catch (error) {
   // Directory might not exist, which is fine
   if (error.code !== 'ENOENT') {
-    console.error('❌ Failed to clean dist directory:', error);
+    console.error('[ERROR] Failed to clean dist directory:', error);
     process.exit(1);
   }
 }

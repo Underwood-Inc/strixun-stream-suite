@@ -4,16 +4,16 @@ Dedicated Cloudflare Worker for mod hosting and version control. Provides a comp
 
 ## Features
 
-- ✅ **Mod Upload** - Upload mods with metadata and files
-- ✅ **Version Control** - Full semantic versioning system
-- ✅ **R2 Storage** - Files stored in Cloudflare R2
-- ✅ **KV Metadata** - Fast metadata storage in Cloudflare KV
-- ✅ **Authentication** - JWT-based auth integration
-- ✅ **Direct Downloads** - Direct download links for mods
-- ✅ **Multi-tenant** - Customer isolation support
-- ✅ **TypeScript** - Fully typed API
-- ✅ **Client-Side Encryption** - Files encrypted before upload (zero server CPU)
-- ✅ **Default Compression** - Automatic gzip compression (maximizes free tier)
+- [OK] **Mod Upload** - Upload mods with metadata and files
+- [OK] **Version Control** - Full semantic versioning system
+- [OK] **R2 Storage** - Files stored in Cloudflare R2
+- [OK] **KV Metadata** - Fast metadata storage in Cloudflare KV
+- [OK] **Authentication** - JWT-based auth integration
+- [OK] **Direct Downloads** - Direct download links for mods
+- [OK] **Multi-tenant** - Customer isolation support
+- [OK] **TypeScript** - Fully typed API
+- [OK] **Client-Side Encryption** - Files encrypted before upload (zero server CPU)
+- [OK] **Default Compression** - Automatic gzip compression (maximizes free tier)
 
 ## Data Flow
 
@@ -21,18 +21,18 @@ Dedicated Cloudflare Worker for mod hosting and version control. Provides a comp
 
 ```mermaid
 flowchart TB
-    subgraph Client["🌐 Client Browser"]
+    subgraph Client["[EMOJI] Client Browser"]
         A[User Selects File] --> B[Read File as ArrayBuffer]
         B --> C[Compress with Gzip<br/>Default: Always Enabled]
         C --> D[Encrypt with AES-GCM<br/>JWT Token Key]
         D --> E[Create Encrypted File]
     end
     
-    subgraph Upload["❓ Upload to API"]
+    subgraph Upload[" Upload to API"]
         E --> F[POST /mods/upload<br/>Multipart Form Data]
     end
     
-    subgraph Server["❓❓ Cloudflare Worker"]
+    subgraph Server[" Cloudflare Worker"]
         F --> G[Receive Compressed + Encrypted File]
         G --> H[Store in R2<br/>No Processing Needed!]
         H --> I[Save Metadata to KV]
@@ -49,14 +49,14 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph Server["❓❓ Cloudflare Worker"]
+    subgraph Server[" Cloudflare Worker"]
         A[Receive Download Request] --> B[Retrieve from R2<br/>Compressed + Encrypted]
         B --> C[Decrypt with AES-GCM<br/>JWT Token Key]
         C --> D[Decompress Gzip]
         D --> E[Return Original File]
     end
     
-    subgraph Client["🌐 Client Browser"]
+    subgraph Client["[EMOJI] Client Browser"]
         E --> F[Receive File]
         F --> G[Display/Download]
     end

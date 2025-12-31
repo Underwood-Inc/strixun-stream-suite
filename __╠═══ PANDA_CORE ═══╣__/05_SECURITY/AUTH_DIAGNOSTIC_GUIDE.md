@@ -20,7 +20,7 @@ The code now has comprehensive debug logging that will show you exactly what's h
 
 ### Step 1: Check Cloudflare Worker Logs
 
-1. Go to Cloudflare Dashboard → Workers & Pages
+1. Go to Cloudflare Dashboard [EMOJI] Workers & Pages
 2. Select `otp-auth-service` worker
 3. Go to Logs tab
 4. Make a request (try to log in)
@@ -171,7 +171,7 @@ When prompted for `SERVICE_API_KEY`, enter the SAME key you want to use for both
 
 The browser logs show:
 ```
-[OtpLogin] ❌ CRITICAL ERROR: otpEncryptionKey is missing!
+[OtpLogin] [ERROR] CRITICAL ERROR: otpEncryptionKey is missing!
 ```
 
 This means `VITE_SERVICE_ENCRYPTION_KEY` is not set in your frontend build environment.

@@ -51,11 +51,12 @@ export async function handleThumbnail(
                 const listResult = await env.MODS_KV.list({ prefix: customerModPrefix, cursor });
                 for (const key of listResult.keys) {
                     // Look for keys matching pattern: customer_*_mod_{normalizedModId}
+                    // CRITICAL: Customer IDs can contain underscores (e.g., cust_0ab4c4434c48)
                     if (key.name.endsWith(`_mod_${normalizedModId}`)) {
                         mod = await env.MODS_KV.get(key.name, { type: 'json' }) as ModMetadata | null;
                         if (mod) {
-                            // Extract customerId from key name
-                            const match = key.name.match(/^customer_([^_/]+)_mod_/);
+                            // Extract customerId from key name - match everything between "customer_" and "_mod_"
+                            const match = key.name.match(/^customer_(.+)_mod_/);
                             const customerId = match ? match[1] : null;
                             console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
                             found = true;
@@ -109,12 +110,26 @@ export async function handleThumbnail(
         }
         
         // Status check: allow thumbnails for published/approved mods to everyone
-        // For pending/changes_requested/denied: allow if public (images are part of public presentation)
-        // OR if user is author/admin (for private pending mods)
+        // For pending/changes_requested: allow if public (images are part of public presentation)
+        // Draft mods: only author/admin (draft means not ready for public viewing)
         // CRITICAL: Image requests from <img> tags don't include auth, so we can't check isAuthor
         // Solution: Allow public pending mods to be accessible (they're public, just pending review)
-        if (modStatus !== 'published' && modStatus !== 'approved') {
-            // Allow if mod is public (even if pending) - images are part of public presentation
+        // But block draft mods from public access (they're not ready)
+        if (modStatus === 'draft' && !isAuthor && !isAdmin) {
+            // Draft mods are not ready for public viewing
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        } else if (modStatus !== 'published' && modStatus !== 'approved') {
+            // For pending/changes_requested: allow if public (images are part of public presentation)
             // OR if authenticated user is author/admin (for private pending mods)
             const isPublicPending = modVisibility === 'public';
             if (!isPublicPending && (!isAuthor && !isAdmin)) {
@@ -152,14 +167,20 @@ export async function handleThumbnail(
 
         // Reconstruct R2 key from mod metadata
         // Thumbnails are stored as: customer_xxx/thumbnails/normalizedModId.ext
-        // CRITICAL: Search mod's customer scope first, then all customer scopes if not found
-        // This matches the pattern used by badge handler for version lookups
+        // CRITICAL FIX: Use stored extension first, then fall back to trying all extensions
+        // This improves performance by avoiding unnecessary R2 lookups
         const normalizedStoredModId = normalizeModId(mod.modId);
-        console.log('[Thumbnail] Looking up R2 file:', { modCustomerId: mod.customerId, normalizedStoredModId, originalModId: mod.modId });
+        console.log('[Thumbnail] Looking up R2 file:', { 
+            modCustomerId: mod.customerId, 
+            normalizedStoredModId, 
+            originalModId: mod.modId,
+            storedExtension: mod.thumbnailExtension
+        });
         
-        // Try common image extensions to find the actual file
-        // This handles cases where extension wasn't stored in metadata
-        const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+        // CRITICAL FIX: Use stored extension first if available
+        const extensions = mod.thumbnailExtension 
+            ? [mod.thumbnailExtension, 'png', 'jpg', 'jpeg', 'webp', 'gif'] // Try stored extension first
+            : ['png', 'jpg', 'jpeg', 'webp', 'gif']; // Fall back to all extensions if not stored
         let r2Key: string | null = null;
         let thumbnail: R2ObjectBody | null = null;
         

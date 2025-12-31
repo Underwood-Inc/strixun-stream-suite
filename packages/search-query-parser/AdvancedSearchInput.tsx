@@ -133,7 +133,7 @@ export function AdvancedSearchInput({
   return (
     <Container>
       <Wrapper>
-        <Icon>🔍</Icon>
+        <Icon>[EMOJI]</Icon>
         <Input
           ref={inputRef}
           type="text"
@@ -149,7 +149,7 @@ export function AdvancedSearchInput({
             aria-label="Clear search"
             title="Clear search"
           >
-            ❓
+            
           </ClearButton>
         )}
       </Wrapper>

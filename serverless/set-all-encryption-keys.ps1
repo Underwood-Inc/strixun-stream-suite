@@ -1,7 +1,7 @@
 # PowerShell script to set all encryption keys for frontend and backend
 # Usage: .\set-all-encryption-keys.ps1
 
-Write-Host "🔒 Setting all encryption keys for frontend and backend..." -ForegroundColor Cyan
+Write-Host "[EMOJI] Setting all encryption keys for frontend and backend..." -ForegroundColor Cyan
 Write-Host ""
 
 # Prompt for SERVICE_ENCRYPTION_KEY (used for OTP encryption)
@@ -9,12 +9,12 @@ $serviceEncryptionKey = Read-Host "Enter SERVICE_ENCRYPTION_KEY (input will be h
 $serviceEncryptionKeyPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($serviceEncryptionKey))
 
 if ([string]::IsNullOrWhiteSpace($serviceEncryptionKeyPlain)) {
-    Write-Host "❌ Error: Key cannot be empty" -ForegroundColor Red
+    Write-Host "[ERROR] Error: Key cannot be empty" -ForegroundColor Red
     exit 1
 }
 
 if ($serviceEncryptionKeyPlain.Length -lt 32) {
-    Write-Host "❌ Error: Key must be at least 32 characters" -ForegroundColor Red
+    Write-Host "[ERROR] Error: Key must be at least 32 characters" -ForegroundColor Red
     exit 1
 }
 
@@ -26,7 +26,7 @@ $serviceApiKey = Read-Host "Enter SERVICE_API_KEY (input will be hidden)" -AsSec
 $serviceApiKeyPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($serviceApiKey))
 
 if ([string]::IsNullOrWhiteSpace($serviceApiKeyPlain)) {
-    Write-Host "⚠️ SERVICE_API_KEY is empty. Customer API calls will fail with 401." -ForegroundColor Yellow
+    Write-Host "[WARNING] SERVICE_API_KEY is empty. Customer API calls will fail with 401." -ForegroundColor Yellow
     Write-Host "Do you want to continue without SERVICE_API_KEY? (y/n)" -ForegroundColor Yellow
     $continue = Read-Host
     if ($continue -ne "y" -and $continue -ne "Y") {
@@ -63,7 +63,7 @@ foreach ($app in $frontendApps) {
     
     $dir = Split-Path -Parent $fullPath
     if (-not (Test-Path $dir)) {
-        Write-Host "  ⚠️ Skipping $($app.Name) (directory not found: $dir)" -ForegroundColor Yellow
+        Write-Host "  [WARNING] Skipping $($app.Name) (directory not found: $dir)" -ForegroundColor Yellow
         continue
     }
     
@@ -87,10 +87,10 @@ foreach ($app in $frontendApps) {
     
     try {
         Set-Content -Path $fullPath -Value $envContent -NoNewline
-        Write-Host "    ✅ $($app.Name)" -ForegroundColor Green
+        Write-Host "    [OK] $($app.Name)" -ForegroundColor Green
         $successCount++
     } catch {
-        Write-Host "    ❌ Failed: $_" -ForegroundColor Red
+        Write-Host "    [ERROR] Failed: $_" -ForegroundColor Red
         $failCount++
     }
 }
@@ -114,7 +114,7 @@ foreach ($worker in $workers) {
     $workerPath = Join-Path "serverless" $worker
     
     if (-not (Test-Path $workerPath)) {
-        Write-Host "  ⚠️ Skipping $worker (directory not found)" -ForegroundColor Yellow
+        Write-Host "  [WARNING] Skipping $worker (directory not found)" -ForegroundColor Yellow
         continue
     }
     
@@ -125,14 +125,14 @@ foreach ($worker in $workers) {
         $serviceEncryptionKeyPlain | wrangler secret put SERVICE_ENCRYPTION_KEY
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "    ✅ $worker" -ForegroundColor Green
+            Write-Host "    [OK] $worker" -ForegroundColor Green
             $successCount++
         } else {
-            Write-Host "    ❌ Failed to set SERVICE_ENCRYPTION_KEY in $worker" -ForegroundColor Red
+            Write-Host "    [ERROR] Failed to set SERVICE_ENCRYPTION_KEY in $worker" -ForegroundColor Red
             $failCount++
         }
     } catch {
-        Write-Host "    ❌ Failed: $_" -ForegroundColor Red
+        Write-Host "    [ERROR] Failed: $_" -ForegroundColor Red
         $failCount++
     } finally {
         Pop-Location
@@ -153,7 +153,7 @@ if (-not [string]::IsNullOrWhiteSpace($serviceApiKeyPlain)) {
         $workerPath = Join-Path "serverless" $worker
         
         if (-not (Test-Path $workerPath)) {
-            Write-Host "  ⚠️ Skipping $worker (directory not found)" -ForegroundColor Yellow
+            Write-Host "  [WARNING] Skipping $worker (directory not found)" -ForegroundColor Yellow
             continue
         }
         
@@ -164,14 +164,14 @@ if (-not [string]::IsNullOrWhiteSpace($serviceApiKeyPlain)) {
             $serviceApiKeyPlain | wrangler secret put SERVICE_API_KEY
             
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "    ✅ $worker" -ForegroundColor Green
+                Write-Host "    [OK] $worker" -ForegroundColor Green
                 $successCount++
             } else {
-                Write-Host "    ❌ Failed to set SERVICE_API_KEY in $worker" -ForegroundColor Red
+                Write-Host "    [ERROR] Failed to set SERVICE_API_KEY in $worker" -ForegroundColor Red
                 $failCount++
             }
         } catch {
-            Write-Host "    ❌ Failed: $_" -ForegroundColor Red
+            Write-Host "    [ERROR] Failed: $_" -ForegroundColor Red
             $failCount++
         } finally {
             Pop-Location
@@ -181,18 +181,18 @@ if (-not [string]::IsNullOrWhiteSpace($serviceApiKeyPlain)) {
 }
 
 Write-Host "Summary:" -ForegroundColor Cyan
-Write-Host "  ✅ Success: $successCount" -ForegroundColor Green
-Write-Host "  ❌ Failed: $failCount" -ForegroundColor $(if ($failCount -gt 0) { "Red" } else { "Green" })
+Write-Host "  [OK] Success: $successCount" -ForegroundColor Green
+Write-Host "  [ERROR] Failed: $failCount" -ForegroundColor $(if ($failCount -gt 0) { "Red" } else { "Green" })
 Write-Host ""
 
 if ($failCount -eq 0) {
-    Write-Host "✅ All keys configured successfully!" -ForegroundColor Green
+    Write-Host "[OK] All keys configured successfully!" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Yellow
     Write-Host "  1. Rebuild frontend apps: cd serverless/url-shortener && pnpm build:app" -ForegroundColor Gray
     Write-Host "  2. Rebuild mods-hub if needed: cd mods-hub && pnpm build" -ForegroundColor Gray
     Write-Host "  3. Rebuild OTP dashboard if needed: cd serverless/otp-auth-service/dashboard && pnpm build" -ForegroundColor Gray
 } else {
-    Write-Host "⚠️ Some keys failed to set. Please check the errors above." -ForegroundColor Yellow
+    Write-Host "[WARNING] Some keys failed to set. Please check the errors above." -ForegroundColor Yellow
 }
 

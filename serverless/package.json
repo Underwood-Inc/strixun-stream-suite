@@ -6,7 +6,7 @@
   "packageManager": "pnpm@9.15.1",
   "type": "module",
   "scripts": {
-    "dev": "cd twitch-api && wrangler dev",
+    "dev": "cd twitch-api && wrangler dev --port 8789 --local",
     "deploy": "cd twitch-api && wrangler deploy",
     "deploy:prod": "cd twitch-api && wrangler deploy --env production",
     "tail": "cd twitch-api && wrangler tail",

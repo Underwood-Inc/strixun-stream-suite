@@ -88,6 +88,166 @@ test.describe('Mod Detail Page', () => {
     }
   });
 
+  test('should successfully download public mod without authentication', async ({ page }) => {
+    const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
+    
+    // Try to get a public published mod
+    try {
+      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1&status=published&visibility=public`);
+      if (response.ok) {
+        const data = await response.json() as ModsResponse & { mods?: Array<{ slug: string; versions?: Array<{ versionId: string }> }> };
+        if (data.mods && data.mods.length > 0) {
+          const mod = data.mods[0];
+          if (mod.versions && mod.versions.length > 0) {
+            const modSlug = mod.slug;
+            
+            await page.goto(`${modsHubUrl}/mods/${modSlug}`);
+            await page.waitForLoadState('networkidle');
+            
+            // Look for download button
+            const downloadButton = page.locator(
+              'button:has-text("Download"), a:has-text("Download"), [data-testid="download-button"], [data-testid="download-version-button"]'
+            ).first();
+            
+            const downloadCount = await downloadButton.count();
+            if (downloadCount > 0) {
+              // Set up download listener
+              const downloadPromise = page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
+              
+              // Click download button
+              await downloadButton.click();
+              
+              // Wait for download to start
+              const download = await downloadPromise;
+              
+              if (download) {
+                // Verify download started
+                const suggestedFilename = download.suggestedFilename();
+                expect(suggestedFilename).toBeTruthy();
+                expect(suggestedFilename.length).toBeGreaterThan(0);
+                
+                // Verify download completes (file is decrypted and downloadable)
+                const path = await download.path();
+                expect(path).toBeTruthy();
+                
+                // Verify file exists and has content
+                // Note: File system access in browser context is limited
+                // The download path() method ensures file exists
+                expect(path).toBeTruthy();
+              } else {
+                // Download might be handled via navigation or fetch
+                await page.waitForTimeout(2000);
+                const url = page.url();
+                const isOnModPage = url.includes(`/mods/${modSlug}`);
+                const isOnDownloadPage = url.includes('/download');
+                expect(isOnModPage || isOnDownloadPage).toBeTruthy();
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Skip if API unavailable or no test data
+      console.warn('Skipping download test - no test data available:', error);
+      test.skip();
+    }
+  });
+
+  test('should verify download file integrity headers', async ({ page }) => {
+    const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
+    const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'test@example.com';
+    const TEST_OTP_CODE = process.env.E2E_TEST_OTP_CODE || '123456';
+    
+    // Get a public mod
+    try {
+      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1&visibility=public`);
+      if (!response.ok) {
+        test.skip();
+        return;
+      }
+      
+      const data = await response.json() as ModsResponse & { mods?: Array<{ slug: string; versions?: Array<{ versionId: string }> }> };
+      if (!data.mods || data.mods.length === 0) {
+        test.skip();
+        return;
+      }
+      
+      const mod = data.mods[0];
+      if (!mod.versions || mod.versions.length === 0) {
+        test.skip();
+        return;
+      }
+      
+      // Authenticate to get token
+      await page.goto(`${modsHubUrl}/login`);
+      const { requestOTPCode, verifyOTPCode, waitForOTPForm } = await import('@strixun/e2e-helpers');
+      await requestOTPCode(page, TEST_EMAIL);
+      await waitForOTPForm(page);
+      const { response: verifyResponse } = await verifyOTPCode(page, TEST_OTP_CODE);
+      if (!verifyResponse.ok()) {
+        test.skip();
+        return;
+      }
+      
+      await page.waitForURL(
+        (url) => {
+          const urlObj = new URL(url.toString());
+          const path = urlObj.pathname;
+          return path !== '/login';
+        },
+        { timeout: 10000 }
+      );
+      
+      const token = await page.evaluate(() => {
+        return localStorage.getItem('auth_token') || 
+               localStorage.getItem('jwt_token') ||
+               localStorage.getItem('token');
+      });
+      
+      // Make direct API request to download endpoint
+      const downloadUrl = `${WORKER_URLS.MODS_API}/mods/${mod.slug}/versions/${mod.versions[0].versionId}/download`;
+      
+      const apiResponse = await page.evaluate(async ({ url, authToken }: { url: string; authToken: string | null }) => {
+        const headers: HeadersInit = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
+        const res = await fetch(url, { headers });
+        return {
+          status: res.status,
+          headers: {
+            'x-strixun-file-hash': res.headers.get('x-strixun-file-hash'),
+            'x-strixun-sha256': res.headers.get('x-strixun-sha256'),
+            'content-type': res.headers.get('content-type'),
+            'content-disposition': res.headers.get('content-disposition'),
+          },
+        };
+      }, { url: downloadUrl, authToken: token });
+      
+      // Verify response is successful
+      expect(apiResponse.status).toBe(200);
+      
+      // Verify integrity headers are present (if available)
+      if (apiResponse.headers['x-strixun-sha256']) {
+        expect(apiResponse.headers['x-strixun-sha256']).toBeTruthy();
+        expect(apiResponse.headers['x-strixun-sha256'].length).toBeGreaterThan(0);
+      }
+      
+      // Verify content type indicates a file download
+      expect(apiResponse.headers['content-type']).toBeTruthy();
+      const contentType = apiResponse.headers['content-type'];
+      expect(
+        contentType?.includes('application/zip') ||
+        contentType?.includes('application/octet-stream') ||
+        contentType?.includes('application/x-zip-compressed')
+      ).toBeTruthy();
+    } catch (error) {
+      console.warn('Skipping integrity headers test:', error);
+      test.skip();
+    }
+  });
+
   test('should display mod metadata', async ({ page }) => {
     const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
     

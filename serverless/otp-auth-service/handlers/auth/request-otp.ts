@@ -221,7 +221,19 @@ export async function handleRequestOTP(
         }
         
         // Generate OTP
-        const otp = generateOTP();
+        // E2E TEST MODE: Use E2E_TEST_OTP_CODE if available (allows tests to use static code)
+        // SECURITY: Only works when ENVIRONMENT=test (never set in production)
+        let otp = generateOTP();
+        if (env.ENVIRONMENT === 'test' && env.E2E_TEST_OTP_CODE) {
+            otp = env.E2E_TEST_OTP_CODE;
+            console.log('[E2E] Using E2E_TEST_OTP_CODE for test mode');
+        }
+        
+        // Log OTP for dev convenience (only in test/development mode)
+        if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
+            console.log(`[DEV] Generated OTP for ${email}: ${otp}`);
+            console.log(`[DEV] Retrieve OTP via: GET http://localhost:8787/dev/otp?email=${encodeURIComponent(email)}`);
+        }
         
         // Store OTP in KV with customer isolation
         const { otpKey, expiresAt } = await storeOTP(email, otp, customerId, env);

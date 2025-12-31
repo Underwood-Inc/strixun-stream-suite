@@ -1,4 +1,4 @@
-# Security 🔒
+# Security [EMOJI]
 
 Security documentation, audits, and best practices.
 

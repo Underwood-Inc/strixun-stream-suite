@@ -29,7 +29,7 @@
 
 <div class="auth-screen">
   <div class="auth-screen__content">
-    <div class="auth-screen__icon">🔐</div>
+    <div class="auth-screen__icon">[EMOJI]</div>
     <h1 class="auth-screen__title">Authentication Required</h1>
     <p class="auth-screen__description">
       Encryption is enabled for this application. You must authenticate via email OTP to access the app.

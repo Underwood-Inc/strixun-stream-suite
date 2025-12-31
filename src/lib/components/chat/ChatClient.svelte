@@ -262,12 +262,12 @@
         {#if $chatState.room}
           <Tooltip text="Message History | This feature is incomplete and still in progress" level="warning" position="bottom">
             <button class="chat-header__action-btn wip" disabled>
-              ❓ History
+               History
             </button>
           </Tooltip>
           <Tooltip text="User Presence | This feature is incomplete and still in progress" level="warning" position="bottom">
             <button class="chat-header__action-btn wip" disabled>
-              👥 Presence
+              [EMOJI] Presence
             </button>
           </Tooltip>
         {/if}

@@ -79,10 +79,10 @@ If using GitHub Actions for automated deployment, add these secrets to your repo
 
 | Secret Name | Description | How to Get |
 |-------------|-------------|------------|
-| `CF_API_TOKEN` | Cloudflare API token | Cloudflare Dashboard → API Tokens → Create Token → "Edit Workers" template |
-| `CF_ACCOUNT_ID` | Your Cloudflare account ID | Cloudflare Dashboard → Workers → Overview (right sidebar) |
-| `TWITCH_CLIENT_ID` | Twitch app client ID | dev.twitch.tv/console/apps → Your App → Client ID |
-| `TWITCH_CLIENT_SECRET` | Twitch app client secret | dev.twitch.tv/console/apps → Your App → New Secret |
+| `CF_API_TOKEN` | Cloudflare API token | Cloudflare Dashboard [EMOJI] API Tokens [EMOJI] Create Token [EMOJI] "Edit Workers" template |
+| `CF_ACCOUNT_ID` | Your Cloudflare account ID | Cloudflare Dashboard [EMOJI] Workers [EMOJI] Overview (right sidebar) |
+| `TWITCH_CLIENT_ID` | Twitch app client ID | dev.twitch.tv/console/apps [EMOJI] Your App [EMOJI] Client ID |
+| `TWITCH_CLIENT_SECRET` | Twitch app client secret | dev.twitch.tv/console/apps [EMOJI] Your App [EMOJI] New Secret |
 
 ---
 

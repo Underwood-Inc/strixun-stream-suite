@@ -13,9 +13,12 @@ import '@strixun/otp-login/dist/react/otp-login.css';
 import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 
 // Use proxy in development (via Vite), direct URL in production
-const AUTH_API_URL = import.meta.env.DEV 
-  ? '/auth-api'  // Vite proxy in development
-  : (import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app');
+// E2E tests can override with VITE_AUTH_API_URL to use direct local worker URLs
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL 
+  ? import.meta.env.VITE_AUTH_API_URL  // Explicit URL override (for E2E tests)
+  : (import.meta.env.DEV 
+    ? '/auth-api'  // Vite proxy in development
+    : 'https://auth.idling.app');  // Production default
 
 export function LoginPage() {
     const navigate = useNavigate();

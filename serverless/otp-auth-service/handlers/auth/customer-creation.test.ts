@@ -2,7 +2,7 @@
  * Unit Tests for Customer Account Creation
  * Tests ensureCustomerAccount function for legacy user migration
  * 
- * ⚠️ NOTE: These are MOCKED unit tests - they will NOT catch:
+ * [WARNING] NOTE: These are MOCKED unit tests - they will NOT catch:
  * - Incorrect CUSTOMER_API_URL configuration
  * - Network/connectivity issues
  * - Authentication problems (SERVICE_API_KEY)

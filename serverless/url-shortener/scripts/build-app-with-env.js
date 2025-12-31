@@ -28,7 +28,7 @@ function getEncryptionKey() {
   if (process.env.VITE_SERVICE_ENCRYPTION_KEY) {
     const key = process.env.VITE_SERVICE_ENCRYPTION_KEY.trim();
     if (key.length >= 32) {
-      console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in environment');
+      console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in environment');
       return key;
     }
   }
@@ -42,12 +42,12 @@ function getEncryptionKey() {
       if (match && match[1]) {
         const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
         if (key.length >= 32) {
-          console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in app/.env');
+          console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in app/.env');
           return key;
         }
       }
     } catch (error) {
-      console.warn('⚠️  Could not read .env file:', error.message);
+      console.warn('[WARNING]  Could not read .env file:', error.message);
     }
   }
 
@@ -60,12 +60,12 @@ function getEncryptionKey() {
       if (match && match[1]) {
         const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
         if (key.length >= 32) {
-          console.log('✅ Found VITE_SERVICE_ENCRYPTION_KEY in project root .env');
+          console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in project root .env');
           return key;
         }
       }
     } catch (error) {
-      console.warn('⚠️  Could not read root .env file:', error.message);
+      console.warn('[WARNING]  Could not read root .env file:', error.message);
     }
   }
 
@@ -76,7 +76,7 @@ function getEncryptionKey() {
 const encryptionKey = getEncryptionKey();
 
 if (!encryptionKey) {
-  console.error('❌ VITE_SERVICE_ENCRYPTION_KEY is not set');
+  console.error('[ERROR] VITE_SERVICE_ENCRYPTION_KEY is not set');
   console.error('');
   console.error('This key is required for building the app. Please set it in one of the following ways:');
   console.error('');
@@ -97,11 +97,11 @@ if (!encryptionKey) {
 }
 
 if (encryptionKey.length < 32) {
-  console.error(`❌ VITE_SERVICE_ENCRYPTION_KEY is too short (${encryptionKey.length} chars, need 32+)`);
+  console.error(`[ERROR] VITE_SERVICE_ENCRYPTION_KEY is too short (${encryptionKey.length} chars, need 32+)`);
   process.exit(1);
 }
 
-console.log(`ℹ️ Building app with encryption key (length: ${encryptionKey.length})`);
+console.log(`[INFO] Building app with encryption key (length: ${encryptionKey.length})`);
 
 // Set the environment variable and run the build
 // This ensures Vite can access it during the build process
@@ -119,9 +119,9 @@ try {
     },
   });
   
-  console.log('✅ App build completed');
+  console.log('[OK] App build completed');
 } catch (error) {
-  console.error('❌ App build failed:', error.message);
+  console.error('[ERROR] App build failed:', error.message);
   process.exit(1);
 }
 

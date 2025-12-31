@@ -18,17 +18,17 @@ All service-to-service calls now use the correct authentication method. This doc
 
 ## Service-to-Service Call Matrix
 
-### ✅ otp-auth-service → customer-api
+### [OK] otp-auth-service [EMOJI] customer-api
 - **Endpoint**: `/customer`, `/customer/by-email/:email`, etc.
 - **Auth Method**: `SERVICE_API_KEY` (X-Service-Key header)
-- **Status**: ✅ **FIXED** - Now explicitly uses `SERVICE_API_KEY` only
+- **Status**: [OK] **FIXED** - Now explicitly uses `SERVICE_API_KEY` only
 - **File**: `serverless/otp-auth-service/utils/customer-api-service-client.ts`
 - **Key**: Both services must have the **SAME** `SERVICE_API_KEY` value
 
-### ✅ mods-api → otp-auth-service
+### [OK] mods-api [EMOJI] otp-auth-service
 - **Endpoint**: `/admin/users`
 - **Auth Method**: `SUPER_ADMIN_API_KEY` (Authorization: Bearer header)
-- **Status**: ✅ **CORRECT** - Admin endpoints require super-admin access
+- **Status**: [OK] **CORRECT** - Admin endpoints require super-admin access
 - **File**: `serverless/mods-api/handlers/admin/users.ts`
 - **Key**: `mods-api` must have `SUPER_ADMIN_API_KEY` set (matches `otp-auth-service`)
 
@@ -95,7 +95,7 @@ After making a request, check the Cloudflare Worker logs for:
 
 ## Recent Fixes
 
-### ✅ Fixed: otp-auth-service → customer-api
+### [OK] Fixed: otp-auth-service [EMOJI] customer-api
 **Problem**: Service client was using `SUPER_ADMIN_API_KEY` instead of `SERVICE_API_KEY`, causing 401 errors.
 
 **Solution**: Modified `createServiceApiClient` to explicitly filter the env object to only include `SERVICE_API_KEY`, excluding `SUPER_ADMIN_API_KEY`.
@@ -117,10 +117,10 @@ return createServiceClient(getCustomerApiUrl(env), serviceEnv, {...});
 
 ## Summary
 
-- ✅ **otp-auth-service → customer-api**: Uses `SERVICE_API_KEY` (X-Service-Key header)
-- ✅ **mods-api → otp-auth-service**: Uses `SUPER_ADMIN_API_KEY` (Authorization: Bearer header) - **CORRECT** for admin endpoints
-- ✅ All services now use the correct authentication method
-- ✅ Keys must match between communicating services
+- [OK] **otp-auth-service [EMOJI] customer-api**: Uses `SERVICE_API_KEY` (X-Service-Key header)
+- [OK] **mods-api [EMOJI] otp-auth-service**: Uses `SUPER_ADMIN_API_KEY` (Authorization: Bearer header) - **CORRECT** for admin endpoints
+- [OK] All services now use the correct authentication method
+- [OK] Keys must match between communicating services
 
 ## Next Steps
 

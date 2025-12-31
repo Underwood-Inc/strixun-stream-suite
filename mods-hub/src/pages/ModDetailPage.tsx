@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useModDetail, useModRatings, useSubmitModRating } from '../hooks/useMods';
 import { ModVersionList } from '../components/mod/ModVersionList';
 import { ModAnalytics } from '../components/mod/ModAnalytics';
@@ -151,8 +151,28 @@ const DownloadButton = styled.button`
   }
 `;
 
+const ManageButton = styled.button`
+  padding: ${spacing.md} ${spacing.lg};
+  background: ${colors.bgSecondary};
+  color: ${colors.text};
+  border: 1px solid ${colors.border};
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  
+  &:hover {
+    background: ${colors.bgTertiary};
+  }
+`;
+
 export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
+    const navigate = useNavigate();
     const { data, isLoading, error } = useModDetail(slug || '');
     const { user } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
@@ -266,6 +286,13 @@ export function ModDetailPage() {
                             >
                                 {downloading ? 'Downloading...' : `Download Latest Version (v${latestVersion.version})`}
                             </DownloadButton>
+                            {isUploader && (
+                                <ManageButton
+                                    onClick={() => navigate(`/manage/${mod.slug}`)}
+                                >
+                                    Manage Mod
+                                </ManageButton>
+                            )}
                         </Actions>
                     )}
                 </Info>

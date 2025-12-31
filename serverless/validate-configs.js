@@ -24,7 +24,7 @@ const workers = [
   'chat-signaling',
 ];
 
-console.log('🔍 Validating all worker configurations with wrangler...\n');
+console.log('[EMOJI] Validating all worker configurations with wrangler...\n');
 
 let successCount = 0;
 let failCount = 0;
@@ -35,13 +35,13 @@ for (const worker of workers) {
   const wranglerPath = join(workerPath, 'wrangler.toml');
   
   if (!existsSync(wranglerPath)) {
-    console.log(`❌ ${worker}: Missing wrangler.toml`);
+    console.log(`[ERROR] ${worker}: Missing wrangler.toml`);
     failCount++;
     failures.push(`${worker}: Missing wrangler.toml`);
     continue;
   }
   
-  console.log(`📦 Validating ${worker}...`);
+  console.log(`[EMOJI] Validating ${worker}...`);
   
   try {
     // Use wrangler's dry-run to validate the config
@@ -50,11 +50,11 @@ for (const worker of workers) {
       stdio: 'pipe',
       encoding: 'utf-8',
     });
-    console.log(`   ✅ ${worker}: Configuration valid\n`);
+    console.log(`   [OK] ${worker}: Configuration valid\n`);
     successCount++;
   } catch (error) {
     const errorOutput = error.stdout || error.stderr || error.message;
-    console.log(`   ❌ ${worker}: Validation failed`);
+    console.log(`   [ERROR] ${worker}: Validation failed`);
     // Extract meaningful error messages
     if (errorOutput.includes('Error')) {
       const errorLines = errorOutput.split('\n').filter(line => 
@@ -68,15 +68,15 @@ for (const worker of workers) {
   }
 }
 
-console.log('📊 Validation Summary:');
-console.log(`   ✅ Passed: ${successCount}`);
-console.log(`   ❌ Failed: ${failCount}`);
+console.log('[EMOJI] Validation Summary:');
+console.log(`   [OK] Passed: ${successCount}`);
+console.log(`   [ERROR] Failed: ${failCount}`);
 
 if (failCount === 0) {
-  console.log('\n✅ All worker configurations are valid!');
+  console.log('\n[OK] All worker configurations are valid!');
   process.exit(0);
 } else {
-  console.log('\n❌ Some configurations have issues:');
+  console.log('\n[ERROR] Some configurations have issues:');
   failures.forEach(failure => console.log(`   • ${failure}`));
   process.exit(1);
 }

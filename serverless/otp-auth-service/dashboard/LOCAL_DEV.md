@@ -1,4 +1,4 @@
-# Local Development Guide 🚀
+# Local Development Guide [EMOJI]
 
 ## Quick Start
 
@@ -81,17 +81,17 @@ dashboard/
 
 ## Features
 
-- ✅ Svelte 5 with runes
-- ✅ TypeScript
-- ✅ Vite for fast HMR
-- ✅ Path aliases (`$lib`, `$components`)
-- ✅ Composable component architecture
-- ✅ Follows Strixun design system
+- [OK] Svelte 5 with runes
+- [OK] TypeScript
+- [OK] Vite for fast HMR
+- [OK] Path aliases (`$lib`, `$components`)
+- [OK] Composable component architecture
+- [OK] Follows Strixun design system
 
 ## Troubleshooting
 
 **Port already in use?**
-- Change port in `vite.config.ts` ❓ `server.port`
+- Change port in `vite.config.ts`  `server.port`
 
 **API calls failing?**
 - Check `API_BASE_URL` in `api-client.ts`

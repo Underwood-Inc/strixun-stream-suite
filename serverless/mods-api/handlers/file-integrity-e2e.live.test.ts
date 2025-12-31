@@ -1,8 +1,8 @@
 /**
  * Integration Tests for File Integrity End-to-End
- * Tests: Upload file ❓ Download file ❓ Verify hash matches
+ * Tests: Upload file  Download file  Verify hash matches
  * 
- * ⚠️ IMPORTANT: These tests use REAL R2 storage
+ * [WARNING] IMPORTANT: These tests use REAL R2 storage
  * 
  * These tests only run when:
  * - USE_LIVE_API=true environment variable is set
@@ -72,7 +72,7 @@ describe.skipIf(!USE_LIVE_API)(`File Integrity E2E Tests (Live R2) [${testEnv}]`
         }, 5000);
     });
 
-    describe('Upload ❓ Download Hash Verification', () => {
+    describe('Upload  Download Hash Verification', () => {
         it('should maintain hash integrity through upload/download cycle', async () => {
             const originalContent = new TextEncoder().encode('test mod file content for upload/download cycle');
             

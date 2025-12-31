@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { WORKER_URLS } from '../../../playwright.config';
+import { WORKER_URLS } from '@strixun/e2e-helpers';
 
 test.describe('Chat Signaling Health', () => {
   test('should be healthy', async ({ request }) => {

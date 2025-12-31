@@ -281,7 +281,7 @@
     {#if !analytics?.today && !realtime?.activeUsers && (!errors?.total || errors.total === 0)}
       <Card>
         <div class="analytics__empty">
-          <div class="analytics__empty-icon">📊</div>
+          <div class="analytics__empty-icon">[EMOJI]</div>
           <p>No analytics data available yet</p>
           <p class="analytics__empty-hint">Analytics will appear here once you start using the API</p>
         </div>

@@ -77,7 +77,7 @@
         }
         
         pendingStorageRequest = true;
-        dependencies.log('❓ Pulling storage from OBS persistent data...', 'info');
+        dependencies.log(' Pulling storage from OBS persistent data...', 'info');
         
         try {
             // Get persistent data stored in OBS (realm: OBS_WEBSOCKET_DATA_REALM_GLOBAL, slot: strixun_configs)
@@ -89,12 +89,12 @@
             if (response && response.slotValue) {
                 const storedConfigs = JSON.parse(response.slotValue);
                 pendingStorageRequest = false;
-                console.log('[Storage Sync] ✅ Retrieved from OBS persistent data:', storedConfigs);
+                console.log('[Storage Sync] [OK] Retrieved from OBS persistent data:', storedConfigs);
                 applyIncomingStorage(storedConfigs);
-                dependencies.log('✅ Storage synced from OBS!', 'success');
+                dependencies.log('[OK] Storage synced from OBS!', 'success');
             } else {
                 pendingStorageRequest = false;
-                dependencies.log('ℹ️ No shared storage found in OBS (OBS dock may need to save first)', 'info');
+                dependencies.log('[INFO] No shared storage found in OBS (OBS dock may need to save first)', 'info');
             }
         } catch (e) {
             pendingStorageRequest = false;
@@ -102,9 +102,9 @@
             
             // If persistent data doesn't exist yet, that's okay
             if (e.toString().includes('does not exist')) {
-                dependencies.log('ℹ️ No configs saved to OBS yet. Save something in the OBS dock first.', 'info');
+                dependencies.log('[INFO] No configs saved to OBS yet. Save something in the OBS dock first.', 'info');
             } else {
-                dependencies.log('⚠️ Storage sync failed: ' + e.message, 'error');
+                dependencies.log('[WARNING] Storage sync failed: ' + e.message, 'error');
             }
         }
     }
@@ -186,13 +186,13 @@
                 slotValue: dataStr
             });
             
-            console.log('[Storage Sync] ✅ Saved to OBS persistent data', {
+            console.log('[Storage Sync] [OK] Saved to OBS persistent data', {
                 swaps: storageData.swapConfigs.length,
                 texts: storageData.textCyclerConfigs.length,
                 layouts: storageData.layoutPresets.length
             });
         } catch (e) {
-            console.warn('[Storage Sync] ⚠️ Failed to write:', e);
+            console.warn('[Storage Sync] [WARNING] Failed to write:', e);
             lastBroadcastTime = 0; // Allow retry immediately on next change
         }
     }
@@ -221,7 +221,7 @@
             
             dependencies.log(`Received ${incomingTotal} configs from OBS dock - applying...`, 'info');
             applyIncomingStorage(data.data);
-            dependencies.log('✅ Storage synced from OBS dock!', 'success');
+            dependencies.log('[OK] Storage synced from OBS dock!', 'success');
             return;
         }
         
@@ -234,7 +234,7 @@
         if (localTotal === 0 && incomingTotal > 0) {
             dependencies.log(`Auto-syncing ${incomingTotal} configs from connected client...`, 'info');
             applyIncomingStorage(data.data);
-            dependencies.log('✅ Storage auto-synced!', 'success');
+            dependencies.log('[OK] Storage auto-synced!', 'success');
         }
     }
 
@@ -318,10 +318,10 @@
                 return;
             }
             
-            dependencies.log('❓ Received storage broadcast from another client', 'info');
+            dependencies.log(' Received storage broadcast from another client', 'info');
             handleStorageBroadcast(customData);
         } else if (customData?.type === 'strixun_storage_request') {
-            console.log('[Storage Sync] 🔔 Storage request received!', {
+            console.log('[Storage Sync] [EMOJI] Storage request received!', {
                 requesterId: customData.requesterId,
                 ourClientId: getClientId(),
                 isOurOwn: customData.requesterId === getClientId()
@@ -333,8 +333,8 @@
                 return;
             }
             
-            console.log('[Storage Sync] ❓ Responding to storage request!');
-            dependencies.log('❓ Another client requesting storage - broadcasting...', 'info');
+            console.log('[Storage Sync]  Responding to storage request!');
+            dependencies.log(' Another client requesting storage - broadcasting...', 'info');
             broadcastStorage();
         }
     }

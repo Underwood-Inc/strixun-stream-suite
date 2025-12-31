@@ -19,6 +19,7 @@ const NavContainer = styled.nav`
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: ${colors.border} transparent;
+  flex-shrink: 0;
   
   &::-webkit-scrollbar {
     height: 4px;
@@ -86,7 +87,7 @@ const adminTabs: AdminTab[] = [
   { path: '/admin', label: 'Mod Triage', icon: '[CARD]' },
   { path: '/admin/users', label: 'User Management', icon: '[USERS]' },
   { path: '/admin/r2', label: 'R2 Management', icon: '[?]' },
-  { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/admin/settings', label: 'Settings', icon: '[SETTINGS]' },
 ];
 
 export function AdminNavigation() {

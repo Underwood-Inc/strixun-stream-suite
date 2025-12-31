@@ -7,12 +7,13 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
 import { MAX_MOD_FILE_SIZE, MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { checkUploadQuota, trackUpload } from '../../utils/upload-quota.js';
+import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion, ModUploadRequest } from '../../types/mod.js';
 
 /**
@@ -28,64 +29,41 @@ export function generateSlug(title: string): string {
 }
 
 /**
- * Check if slug already exists - searches ALL scopes (global + all customer scopes)
+ * Check if slug already exists using slug index
  * CRITICAL: Slugs must be globally unique across all scopes
+ * Uses direct index lookup for O(1) performance
  */
 export async function slugExists(slug: string, env: Env, excludeModId?: string): Promise<boolean> {
-    // Check in global scope (public mods)
-    const globalListKey = 'mods_list_public';
-    const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+    // Check global slug index first
+    const globalSlugKey = `slug_${slug}`;
+    const existingModId = await env.MODS_KV.get(globalSlugKey, { type: 'text' });
     
-    if (globalModsList) {
-        for (const modId of globalModsList) {
-            if (excludeModId) {
-                const normalizedExclude = normalizeModId(excludeModId);
-                const normalizedList = normalizeModId(modId);
-                if (normalizedExclude === normalizedList) continue;
-            }
-            // Normalize modId for key lookup
-            const normalizedListModId = normalizeModId(modId);
-            const globalModKey = `mod_${normalizedListModId}`;
-            const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-            if (mod && mod.slug === slug) {
-                return true;
-            }
+    if (existingModId) {
+        // If excludeModId is provided, check if it's the same mod (for updates)
+        if (excludeModId && existingModId === excludeModId) {
+            return false; // Same mod, slug is available for this mod
         }
+        return true; // Slug exists for a different mod
     }
     
     // CRITICAL: Search ALL customer scopes to ensure global uniqueness
-    const customerListPrefix = 'customer_';
+    const customerSlugPrefix = 'customer_';
     let cursor: string | undefined;
     
     do {
-        const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+        const listResult = await env.MODS_KV.list({ prefix: customerSlugPrefix, cursor });
         
         for (const key of listResult.keys) {
-            // Look for customer mod lists: customer_{id}_mods_list
-            if (key.name.endsWith('_mods_list')) {
-                const customerModsList = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+            // Look for slug index keys: customer_{id}_slug_{slug}
+            if (key.name.includes(`_slug_${slug}`) || key.name.includes(`/slug_${slug}`)) {
+                const existingModId = await env.MODS_KV.get(key.name, { type: 'text' });
                 
-                if (customerModsList) {
-                    for (const modId of customerModsList) {
-                        if (excludeModId) {
-                            const normalizedExclude = normalizeModId(excludeModId);
-                            const normalizedList = normalizeModId(modId);
-                            if (normalizedExclude === normalizedList) continue;
-                        }
-                        
-                        const normalizedModId = normalizeModId(modId);
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        
-                        if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                            const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            
-                            if (mod && mod.slug === slug) {
-                                return true;
-                            }
-                        }
+                if (existingModId) {
+                    // If excludeModId is provided, check if it's the same mod (for updates)
+                    if (excludeModId && existingModId === excludeModId) {
+                        continue; // Same mod, check other scopes
                     }
+                    return true; // Slug exists for a different mod
                 }
             }
         }
@@ -96,26 +74,6 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
     return false;
 }
 
-/**
- * Generate unique slug with conflict resolution
- */
-export async function generateUniqueSlug(title: string, env: Env, excludeModId?: string): Promise<string> {
-    let baseSlug = generateSlug(title);
-    if (!baseSlug) {
-        baseSlug = 'untitled-mod';
-    }
-    
-    let slug = baseSlug;
-    let counter = 1;
-    
-    // Check for conflicts and append number if needed
-    while (await slugExists(slug, env, excludeModId)) {
-        slug = `${baseSlug}-${counter}`;
-        counter++;
-    }
-    
-    return slug;
-}
 
 /**
  * Generate unique mod ID
@@ -263,21 +221,45 @@ export async function handleUploadMod(
         // Files are decrypted on-the-fly during download
         // Support both binary encryption (v4) and legacy JSON encryption (v3)
         
-        // Get JWT token for temporary decryption (to calculate hash)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-        if (!jwtToken) {
-            const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required for file processing');
+        // Parse metadata FIRST to determine encryption method
+        const metadataJson = formData.get('metadata') as string | null;
+        if (!metadataJson) {
+            const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
-                status: 401,
+                status: 400,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
         }
+
+        const metadata = JSON.parse(metadataJson) as ModUploadRequest;
+        
+        // Validate required fields
+        if (!metadata.title || !metadata.version || !metadata.category) {
+            const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // Get JWT token for decryption (required for private mods)
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        
+        // Determine expected encryption method from metadata visibility
+        const isPublic = metadata.visibility === 'public';
+        const expectedServiceKeyEncryption = isPublic;
         
         // Check file format: binary encrypted (v4/v5) or legacy JSON encrypted (v3)
         const fileBuffer = await file.arrayBuffer();
@@ -303,21 +285,89 @@ export async function handleUploadMod(
         }
         
         // Temporarily decrypt to calculate file hash (for integrity verification)
+        // CRITICAL: Use metadata visibility to determine which decryption method to try first
         let fileHash: string;
         let fileSize: number;
         let encryptionFormat: string;
         
         try {
             if (isBinaryEncrypted) {
-                // Binary encrypted format - decrypt directly
-                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
-                const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                // Binary encrypted format - try expected method first based on visibility
+                const { decryptBinaryWithServiceKey, decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                let decryptedBytes: Uint8Array;
+                let decryptionAttempted = false;
+                let lastError: Error | null = null;
+                
+                // Try expected encryption method first (based on metadata visibility)
+                if (expectedServiceKeyEncryption) {
+                    // Public mod: try service key first
+                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                    if (serviceKey && serviceKey.length >= 32) {
+                        try {
+                            decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
+                            decryptionAttempted = true;
+                            console.log('[Upload] Binary decryption successful with service key (public mod)');
+                        } catch (serviceKeyError) {
+                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
+                        }
+                    }
+                } else {
+                    // Private mod: try JWT first
+                    if (!jwtToken) {
+                        throw new Error('JWT token required for private mod decryption');
+                    }
+                    try {
+                        decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                        decryptionAttempted = true;
+                        console.log('[Upload] Binary decryption successful with JWT (private mod)');
+                    } catch (jwtError) {
+                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
+                    }
+                }
+                
+                // Try fallback method if expected method didn't work
+                if (!decryptionAttempted) {
+                    if (expectedServiceKeyEncryption) {
+                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
+                        if (jwtToken) {
+                            try {
+                                decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                                decryptionAttempted = true;
+                                console.log('[Upload] Binary decryption successful with JWT fallback (public mod)');
+                            } catch (jwtError) {
+                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                            }
+                        }
+                    } else {
+                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
+                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                        if (serviceKey && serviceKey.length >= 32) {
+                            try {
+                                decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
+                                decryptionAttempted = true;
+                                console.log('[Upload] Binary decryption successful with service key fallback (private mod)');
+                            } catch (serviceKeyError) {
+                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            }
+                        }
+                    }
+                }
+                
+                if (!decryptionAttempted) {
+                    const errorMsg = lastError 
+                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
+                        : 'Failed to decrypt file - neither service key nor JWT worked';
+                    throw new Error(errorMsg);
+                }
+                
                 fileSize = decryptedBytes.length;
                 fileHash = await calculateStrixunHash(decryptedBytes, env);
                 // Determine version from first byte (4 or 5)
                 encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
-                // Legacy JSON encrypted format
+                // Legacy JSON encrypted format - try expected method first based on visibility
                 const encryptedData = await file.text();
                 const encryptedJson = JSON.parse(encryptedData);
                 
@@ -326,7 +376,74 @@ export async function handleUploadMod(
                     throw new Error('Invalid encrypted file format');
                 }
                 
-                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                const { decryptWithServiceKey, decryptWithJWT } = await import('@strixun/api-framework');
+                let decryptedBase64: string;
+                let decryptionAttempted = false;
+                let lastError: Error | null = null;
+                
+                // Try expected encryption method first (based on metadata visibility)
+                if (expectedServiceKeyEncryption) {
+                    // Public mod: try service key first
+                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                    if (serviceKey && serviceKey.length >= 32) {
+                        try {
+                            decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
+                            decryptionAttempted = true;
+                            console.log('[Upload] JSON decryption successful with service key (public mod)');
+                        } catch (serviceKeyError) {
+                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
+                        }
+                    }
+                } else {
+                    // Private mod: try JWT first
+                    if (!jwtToken) {
+                        throw new Error('JWT token required for private mod decryption');
+                    }
+                    try {
+                        decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                        decryptionAttempted = true;
+                        console.log('[Upload] JSON decryption successful with JWT (private mod)');
+                    } catch (jwtError) {
+                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
+                    }
+                }
+                
+                // Try fallback method if expected method didn't work
+                if (!decryptionAttempted) {
+                    if (expectedServiceKeyEncryption) {
+                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
+                        if (jwtToken) {
+                            try {
+                                decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                                decryptionAttempted = true;
+                                console.log('[Upload] JSON decryption successful with JWT fallback (public mod)');
+                            } catch (jwtError) {
+                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
+                            }
+                        }
+                    } else {
+                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
+                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
+                        if (serviceKey && serviceKey.length >= 32) {
+                            try {
+                                decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
+                                decryptionAttempted = true;
+                                console.log('[Upload] JSON decryption successful with service key fallback (private mod)');
+                            } catch (serviceKeyError) {
+                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
+                            }
+                        }
+                    }
+                }
+                
+                if (!decryptionAttempted) {
+                    const errorMsg = lastError 
+                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
+                        : 'Failed to decrypt file - neither service key nor JWT worked';
+                    throw new Error(errorMsg);
+                }
                 
                 // Convert base64 back to binary for hash calculation
                 const binaryString = atob(decryptedBase64);
@@ -340,7 +457,7 @@ export async function handleUploadMod(
             }
         } catch (error) {
             console.error('File decryption error during upload:', error);
-            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated and the file was encrypted with your token.');
+            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure the file was encrypted with either the service key (for public mods) or your JWT token (for private mods).');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -353,38 +470,7 @@ export async function handleUploadMod(
             });
         }
 
-        // Parse metadata from form data
-        const metadataJson = formData.get('metadata') as string | null;
-        if (!metadataJson) {
-            const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for mod upload');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        const metadata = JSON.parse(metadataJson) as ModUploadRequest;
-
-        // Validate required fields
-        if (!metadata.title || !metadata.version || !metadata.category) {
-            const rfcError = createError(request, 400, 'Validation Error', 'Title, version, and category are required');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
+        // Metadata already parsed above for encryption detection
 
         // Generate IDs
         const modId = generateModId();
@@ -429,9 +515,8 @@ export async function handleUploadMod(
         // Files are decrypted on-the-fly during download
         // Get extension without dot for R2 key (fileExtension already includes the dot)
         const extensionForR2 = fileExtension ? fileExtension.substring(1) : 'zip';
-        // Use normalized modId for R2 key consistency
-        const normalizedModId = normalizeModId(modId);
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${extensionForR2}`);
+        // Use modId directly for R2 key - it already includes 'mod_' prefix
+        const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${extensionForR2}`);
         
         // Store encrypted file data as-is (binary or JSON format)
         let encryptedFileBytes: Uint8Array;
@@ -448,12 +533,16 @@ export async function handleUploadMod(
             contentType = 'application/json';
         }
         
+        // Add R2 source metadata to track storage location
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
                 contentType: contentType,
                 cacheControl: 'private, no-cache', // Don't cache encrypted files
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
                 uploadedBy: auth.userId,
@@ -463,7 +552,7 @@ export async function handleUploadMod(
                 originalFileName,
                 originalContentType: 'application/zip', // Original file type
                 sha256: fileHash, // Hash of decrypted file for verification
-            },
+            }, env, request),
         });
 
         // Generate download URL
@@ -492,78 +581,201 @@ export async function handleUploadMod(
         // Support both binary file upload (preferred) and legacy base64
         const thumbnailFile = formData.get('thumbnail') as File | null;
         let thumbnailUrl: string | undefined;
+        let thumbnailExtension: string | undefined;
         
         if (thumbnailFile) {
             // Binary file upload (optimized - no base64 overhead)
             thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
+            // CRITICAL FIX: Extract extension from file type for faster lookup
+            const imageType = thumbnailFile.type.split('/')[1]?.toLowerCase();
+            thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
         } else if (metadata.thumbnail) {
             // Legacy base64 upload (backward compatibility)
             thumbnailUrl = await handleThumbnailUpload(metadata.thumbnail, modId, slug, request, env, auth.customerId);
+            // CRITICAL FIX: Extract extension from base64 data URL for faster lookup
+            const matches = metadata.thumbnail.match(/^data:image\/(\w+);base64,/);
+            if (matches) {
+                const imageType = matches[1]?.toLowerCase();
+                thumbnailExtension = imageType === 'jpeg' ? 'jpg' : imageType; // Normalize jpeg to jpg
+            }
         }
 
         // Fetch author display name from auth API during upload
-        // CRITICAL: Auth API has no public user lookup endpoint, so we must store it here
+        // CRITICAL FIX: Make this synchronous - wait for result before storing mod
+        // This prevents "Unknown User" from being stored if fetch fails
         // NOTE: /auth/me returns encrypted responses that need to be decrypted
+        // Includes timeout handling and retry logic with exponential backoff
         let authorDisplayName: string | null = null;
-        try {
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const authApiUrl = env.AUTH_API_URL || 'https://auth.idling.app';
-                const response = await fetch(`${authApiUrl}/auth/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
-                });
-                if (response.ok) {
-                    const responseData = await response.json();
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
+            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
+            const url = `${authApiUrl}/auth/me`;
+            const timeoutMs = 10000; // Increased to 10 second timeout
+            const maxAttempts = 3; // Increased retry attempts
+            
+            // Retry logic with exponential backoff: try up to 3 times
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                try {
+                    // Create AbortController for timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
                     
-                    // Check if response is encrypted (has X-Encrypted header or encrypted field)
-                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                    
-                    let userData: { displayName?: string | null; [key: string]: any };
-                    if (isEncrypted) {
-                        // Decrypt the response using JWT token
-                        const { decryptWithJWT } = await import('@strixun/api-framework');
-                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                    } else {
-                        userData = responseData;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            // CRITICAL: Prevent caching of service-to-service API calls
+                            // Even server-side calls should not be cached to ensure fresh data
+                            cache: 'no-store',
+                            signal: controller.signal,
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        if (response.ok) {
+                            const responseData = await response.json();
+                            
+                            // Check if response is encrypted (has X-Encrypted header or encrypted field)
+                            const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                                               (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
+                            
+                            let userData: { displayName?: string | null; [key: string]: any };
+                            if (isEncrypted) {
+                                // Decrypt the response using JWT token
+                                const { decryptWithJWT } = await import('@strixun/api-framework');
+                                userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
+                            } else {
+                                userData = responseData;
+                            }
+                            
+                            authorDisplayName = userData?.displayName || null;
+                            console.log('[Upload] Fetched authorDisplayName:', { 
+                                authorDisplayName, 
+                                hasDisplayName: !!authorDisplayName,
+                                userId: auth.userId,
+                                userDataKeys: userData ? Object.keys(userData) : [],
+                                attempt: attempt + 1
+                            });
+                            break; // Success, exit retry loop
+                            } else if (response.status === 522 || response.status === 504) {
+                            // Gateway timeout - retry with exponential backoff
+                            if (attempt < maxAttempts - 1) {
+                                const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff: 1s, 2s, 4s (max 5s)
+                                console.warn('[Upload] /auth/me gateway timeout, will retry:', { 
+                                    status: response.status, 
+                                    userId: auth.userId,
+                                    attempt: attempt + 1,
+                                    maxAttempts,
+                                    backoffMs
+                                });
+                                await new Promise(resolve => setTimeout(resolve, backoffMs));
+                                continue; // Retry
+                            } else {
+                                const errorText = await response.text().catch(() => 'Unable to read error');
+                                console.error('[Upload] /auth/me gateway timeout after all retries:', { 
+                                    status: response.status, 
+                                    statusText: response.statusText,
+                                    error: errorText,
+                                    userId: auth.userId,
+                                    attempts: maxAttempts
+                                });
+                                break; // Give up after all retries
+                            }
+                        } else {
+                            const errorText = await response.text().catch(() => 'Unable to read error');
+                            console.warn('[Upload] /auth/me returned non-200 status:', { 
+                                status: response.status, 
+                                statusText: response.statusText,
+                                error: errorText,
+                                userId: auth.userId,
+                                attempt: attempt + 1
+                            });
+                            break; // Don't retry on non-timeout errors
+                        }
+                    } catch (fetchError) {
+                        clearTimeout(timeoutId);
+                        
+                        // Check if it's an abort (timeout)
+                        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+                            if (attempt < maxAttempts - 1) {
+                                const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
+                                console.warn('[Upload] /auth/me request timeout, will retry:', { 
+                                    timeoutMs, 
+                                    userId: auth.userId,
+                                    attempt: attempt + 1,
+                                    maxAttempts,
+                                    backoffMs
+                                });
+                                await new Promise(resolve => setTimeout(resolve, backoffMs));
+                                continue; // Retry
+                            } else {
+                                console.error('[Upload] /auth/me request timeout after all retries:', { 
+                                    timeoutMs, 
+                                    userId: auth.userId,
+                                    attempts: maxAttempts
+                                });
+                                break; // Give up after all retries
+                            }
+                        }
+                        throw fetchError; // Re-throw other errors
                     }
-                    
-                    authorDisplayName = userData?.displayName || null;
-                    console.log('[Upload] Fetched authorDisplayName:', { 
-                        authorDisplayName, 
-                        hasDisplayName: !!authorDisplayName,
-                        userId: auth.userId,
-                        userDataKeys: userData ? Object.keys(userData) : []
-                    });
-                } else {
-                    const errorText = await response.text().catch(() => 'Unable to read error');
-                    console.warn('[Upload] /auth/me returned non-200 status:', { 
-                        status: response.status, 
-                        statusText: response.statusText,
-                        error: errorText
-                    });
+                } catch (error) {
+                    // Network errors or other issues
+                    if (attempt < maxAttempts - 1) {
+                        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
+                        console.warn('[Upload] Failed to fetch displayName from auth service, will retry:', { 
+                            error: error instanceof Error ? error.message : String(error),
+                            userId: auth.userId,
+                            attempt: attempt + 1,
+                            maxAttempts,
+                            backoffMs
+                        });
+                        await new Promise(resolve => setTimeout(resolve, backoffMs));
+                        continue; // Retry
+                    } else {
+                        console.error('[Upload] Failed to fetch displayName from auth service after all retries:', { 
+                            error: error instanceof Error ? error.message : String(error),
+                            userId: auth.userId,
+                            attempts: maxAttempts
+                        });
+                        break; // Give up after all retries
+                    }
                 }
-            } else {
-                console.warn('[Upload] No Authorization header found for displayName fetch');
             }
-        } catch (error) {
-            console.error('[Upload] Failed to fetch displayName from auth service:', { 
-                error: error instanceof Error ? error.message : String(error),
-                userId: auth.userId
+        } else {
+            console.warn('[Upload] No Authorization header found for displayName fetch');
+        }
+        
+        // CRITICAL FIX: Log if displayName is still null after all retries
+        // This helps identify persistent issues with auth API
+        if (!authorDisplayName) {
+            console.warn('[Upload] authorDisplayName is null after all fetch attempts:', {
+                userId: auth.userId,
+                customerId: auth.customerId,
+                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again'
             });
         }
         
         // CRITICAL: Never use authorEmail as fallback - email is ONLY for authentication
         // If displayName is null, UI will show "Unknown User"
+        // Note: For previously uploaded mods with null displayName, the detail handler will attempt to fetch it
 
+        // CRITICAL FIX: Validate customerId is present before storing mod
+        // This ensures proper data scoping and prevents lookup issues
+        if (!auth.customerId) {
+            console.error('[Upload] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'This will cause data scoping issues'
+            });
+            // Still allow upload but log the issue - customerId may be null for some auth flows
+        }
+        
         // Create mod metadata with initial status
         // CRITICAL: Never store email - email is ONLY for OTP authentication
         const mod: ModMetadata = {
@@ -576,6 +788,7 @@ export async function handleUploadMod(
             category: metadata.category,
             tags: metadata.tags || [],
             thumbnailUrl,
+            thumbnailExtension, // Store extension for faster lookup
             createdAt: now,
             updatedAt: now,
             latestVersion: metadata.version,
@@ -594,11 +807,23 @@ export async function handleUploadMod(
         };
 
         // Store in KV
-        // Use normalized modId (already computed above) to ensure consistent key generation
-        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+        // Use modId directly - it already includes 'mod_' prefix
+        // CRITICAL FIX: Log customerId association for debugging
+        const modKey = getCustomerKey(auth.customerId, modId);
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-        const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
+        const versionsListKey = getCustomerKey(auth.customerId, `${modId}_versions`);
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
+        
+        console.log('[Upload] Storing mod with customerId association:', {
+            modId,
+            customerId: auth.customerId,
+            modKey,
+            versionKey,
+            versionsListKey,
+            modsListKey,
+            authorId: auth.userId,
+            authorDisplayName
+        });
 
         // Store mod and version in customer scope
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
@@ -618,6 +843,26 @@ export async function handleUploadMod(
         const updatedModsList = [...(modsList || []), modId];
         await env.MODS_KV.put(modsListKey, JSON.stringify(updatedModsList));
 
+        // CRITICAL: Create slug index - slug is a unique index key
+        // Store slug -> modId mapping in customer scope
+        const customerSlugIndexKey = getCustomerKey(auth.customerId, `slug_${slug}`);
+        await env.MODS_KV.put(customerSlugIndexKey, modId);
+        console.log('[Upload] Created slug index:', { slug, modId, customerSlugIndexKey });
+
+        // CRITICAL: Also create global slug index if mod is public and approved/published
+        // This allows slug resolution to work immediately for public mods
+        // Note: If customerId is null, getCustomerKey already returns the global format, so this is a no-op
+        const modVisibility = mod.visibility || 'public';
+        const modStatus = mod.status || 'pending';
+        if (modVisibility === 'public' && (modStatus === 'published' || modStatus === 'approved')) {
+            const globalSlugKey = `slug_${slug}`;
+            // Only create if different from customer key (i.e., customerId is not null)
+            if (globalSlugKey !== customerSlugIndexKey) {
+                await env.MODS_KV.put(globalSlugKey, modId);
+                console.log('[Upload] Created global slug index:', { slug, modId, globalSlugKey });
+            }
+        }
+        
         // NOTE: Do NOT add to global public list yet - mods start as 'pending' status
         // They will only be added to the public list when an admin changes status to 'published'
         // This ensures pending mods are not visible to the public, even if visibility is 'public'
@@ -731,20 +976,29 @@ async function handleThumbnailBinaryUpload(
         }
         
         // Upload to R2
-        const normalizedModId = normalizeModId(modId);
+        // Use modId directly - it already includes 'mod_' prefix
         const extension = getImageExtension(thumbnailFile.type);
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${extension}`);
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${extension}`);
+        
+        // Add R2 source metadata
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] Thumbnail R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: thumbnailFile.type,
                 cacheControl: 'public, max-age=31536000',
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 extension: extension,
                 validated: 'true', // Mark as validated for rendering
-            },
+            }, env, request),
         });
+        
+        // CRITICAL FIX: Store extension in mod metadata for faster lookup
+        // This avoids trying multiple extensions during retrieval
+        console.log('[Upload] Thumbnail uploaded with extension:', { modId, extension, r2Key });
         
         // Return API proxy URL using slug for consistency
         const requestUrl = new URL(request.url);
@@ -810,19 +1064,23 @@ async function handleThumbnailUpload(
         }
 
         // Upload to R2
-        // Normalize modId to ensure consistent storage (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(modId);
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${normalizedType}`);
+        // Use modId directly - it already includes 'mod_' prefix
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${normalizedType}`);
+        
+        // Add R2 source metadata
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] Thumbnail (base64) R2 storage source:', r2SourceInfo);
+        
         await env.MODS_R2.put(r2Key, imageBuffer, {
             httpMetadata: {
                 contentType: `image/${normalizedType}`,
                 cacheControl: 'public, max-age=31536000',
             },
-            customMetadata: {
+            customMetadata: addR2SourceMetadata({
                 modId,
                 extension: normalizedType, // Store extension for easy retrieval
                 validated: 'true', // Mark as validated for rendering
-            },
+            }, env, request),
         });
 
         // Return API proxy URL using slug for consistency (thumbnails should be served through API, not direct R2)

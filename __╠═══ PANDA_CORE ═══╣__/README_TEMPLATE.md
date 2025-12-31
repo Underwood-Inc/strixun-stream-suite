@@ -125,21 +125,21 @@ That's it! [Brief explanation of what just happened] [*]
 
 ### [Process Name] (High Level)
 
-1. **[Step 1]** ❓ [What happens]
-2. **[Step 2]** ❓ [What happens]
-3. **[Step 3]** ❓ [What happens]
-4. **[Step 4]** ❓ [What happens]
-5. **[Step 5]** ❓ [What happens]
-6. **[Step 6]** ❓ [What happens]
+1. **[Step 1]**  [What happens]
+2. **[Step 2]**  [What happens]
+3. **[Step 3]**  [What happens]
+4. **[Step 4]**  [What happens]
+5. **[Step 5]**  [What happens]
+6. **[Step 6]**  [What happens]
 
 ### [Process Name] (High Level)
 
-1. **[Step 1]** ❓ [What happens]
-2. **[Step 2]** ❓ [What happens]
-3. **[Step 3]** ❓ [What happens]
-4. **[Step 4]** ❓ [What happens]
-5. **[Step 5]** ❓ [What happens]
-6. **[Step 6]** ❓ [What happens]
+1. **[Step 1]**  [What happens]
+2. **[Step 2]**  [What happens]
+3. **[Step 3]**  [What happens]
+4. **[Step 4]**  [What happens]
+5. **[Step 5]**  [What happens]
+6. **[Step 6]**  [What happens]
 
 ### [Technical Details] (For the Curious)
 

@@ -68,7 +68,7 @@ function findMarkdownFiles(dir, baseDir = rootDir) {
 }
 
 function main() {
-  console.log('📋 Finding documentation files that can be removed after wiki migration...\n');
+  console.log('[EMOJI] Finding documentation files that can be removed after wiki migration...\n');
   
   const allFiles = [];
   
@@ -96,19 +96,21 @@ function main() {
   
   // Print organized list
   for (const [dir, files] of Object.entries(byDir).sort()) {
-    console.log(`📁 ${dir}/`);
+    console.log(`[EMOJI] ${dir}/`);
     for (const file of files.sort()) {
       console.log(`   - ${file}`);
     }
     console.log('');
   }
   
-  console.log(`\n✨ Total: ${allFiles.length} files`);
-  console.log(`\n💡 These files can be removed from the codebase after verifying they're in the wiki.`);
+  console.log(`\n[FEATURE] Total: ${allFiles.length} files`);
+  console.log(`\n[EMOJI] These files can be removed from the codebase after verifying they're in the wiki.`);
   console.log(`   Keep only README.md files (needed for GitHub repo display).`);
 }
 
 main();
+
+
 
 
 

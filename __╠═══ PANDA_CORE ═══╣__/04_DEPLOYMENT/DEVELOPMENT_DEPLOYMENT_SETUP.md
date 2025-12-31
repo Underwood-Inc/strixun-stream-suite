@@ -13,7 +13,7 @@ All workers now support **development** and **production** environments. Develop
 
 All workers have `[env.development]` sections in their `wrangler.toml` files:
 
-### ✅ Configured Workers
+### [OK] Configured Workers
 
 1. **mods-api** - `serverless/mods-api/wrangler.toml`
 2. **otp-auth-service** - `serverless/otp-auth-service/wrangler.toml`

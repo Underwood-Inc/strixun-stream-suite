@@ -106,7 +106,7 @@
         on:click={() => handleToolSelect('pencil')}
         title="Pencil"
       >
-        ❓❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -114,7 +114,7 @@
         on:click={() => handleToolSelect('eraser')}
         title="Eraser"
       >
-        ❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -122,7 +122,7 @@
         on:click={() => handleToolSelect('bucket')}
         title="Bucket Fill"
       >
-        ❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -130,7 +130,7 @@
         on:click={() => handleToolSelect('eyedropper')}
         title="Eyedropper"
       >
-        ❓❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -138,7 +138,7 @@
         on:click={() => handleToolSelect('line')}
         title="Line"
       >
-        ❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -154,7 +154,7 @@
         on:click={() => handleToolSelect('circle')}
         title="Circle"
       >
-        ❓
+        
       </button>
     </div>
 
@@ -165,7 +165,7 @@
         on:click={handleUndo}
         title="Undo (Ctrl+Z)"
       >
-        ❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -173,7 +173,7 @@
         on:click={handleRedo}
         title="Redo (Ctrl+Y)"
       >
-        ❓
+        
       </button>
       <button
         class="pixel-editor__tool"
@@ -191,14 +191,14 @@
         on:click={handleClear}
         title="Clear Canvas"
       >
-        🗑️
+        [EMOJI]️
       </button>
       <button
         class="pixel-editor__tool pixel-editor__tool--primary"
         on:click={handleSave}
         title="Save"
       >
-        ❓ Save
+         Save
       </button>
     </div>
   </div>

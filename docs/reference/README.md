@@ -1,4 +1,4 @@
-# Reference 📋
+# Reference [EMOJI]
 
 Technical reference documentation and specifications.
 

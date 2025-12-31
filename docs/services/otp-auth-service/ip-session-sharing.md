@@ -1,46 +1,46 @@
 # OTP Auth IP-Based Session Sharing
 
 > **Implementation Date**: 2025-12-26  
-> **Status**: ✅ **FULLY IMPLEMENTED AND PRODUCTION READY**  
+> **Status**: [OK] **FULLY IMPLEMENTED AND PRODUCTION READY**  
 > **Purpose**: Enable cross-application session sharing using IP-based session discovery
 
 ---
 
-## 📊 Implementation Status
+## [EMOJI] Implementation Status
 
-### ✅ Core Features - **COMPLETE**
+### [OK] Core Features - **COMPLETE**
 
-- ✅ IP address tracking in session storage
-- ✅ IP-to-session mapping/index service
-- ✅ Session lookup endpoint (`GET /auth/session-by-ip`)
-- ✅ Session lifecycle management (create, update, delete)
-- ✅ Automatic cleanup of expired IP mappings
-- ✅ Multiple sessions per IP support
-- ✅ Admin-only specific IP lookup
-- ✅ Privacy-preserving (IPs hashed in storage)
+- [OK] IP address tracking in session storage
+- [OK] IP-to-session mapping/index service
+- [OK] Session lookup endpoint (`GET /auth/session-by-ip`)
+- [OK] Session lifecycle management (create, update, delete)
+- [OK] Automatic cleanup of expired IP mappings
+- [OK] Multiple sessions per IP support
+- [OK] Admin-only specific IP lookup
+- [OK] Privacy-preserving (IPs hashed in storage)
 
-### ⚠️ Optional Enhancements - **PARTIALLY IMPLEMENTED**
+### [WARNING] Optional Enhancements - **PARTIALLY IMPLEMENTED**
 
-- ✅ **Rate limiting on session lookup endpoint** - **COMPLETE**
+- [OK] **Rate limiting on session lookup endpoint** - **COMPLETE**
   - Uses consolidated `checkIPRateLimit` from existing rate limiting service
   - Respects customer plan limits (free: 10/hour, pro: 50/hour, enterprise: 500/hour)
   - Super admins exempt from rate limits
   - Rate limit headers included in responses
-- ⚠️ Strict IP validation (optional per-customer config)
-- ⚠️ City tracking (`CF-IPCity` header)
-- ⚠️ Separate last access time per IP
+- [WARNING] Strict IP validation (optional per-customer config)
+- [WARNING] City tracking (`CF-IPCity` header)
+- [WARNING] Separate last access time per IP
 
 **Note**: The core functionality is complete and ready for use. Rate limiting is implemented using the consolidated rate limiting service. Optional enhancements can be added based on specific requirements.
 
 ---
 
-## 🎯 Overview
+## [EMOJI] Overview
 
 The OTP auth backend now supports **IP-based session tracking** and **cross-application session sharing**. This allows users logged in on a given IP address to access other applications using the same OTP auth backend without re-authentication.
 
 ---
 
-## 🔧 How It Works
+## [EMOJI] How It Works
 
 ### Session Storage with IP Tracking
 
@@ -72,7 +72,7 @@ GET /auth/session-by-ip?ip={ip}
 
 ---
 
-## ❓ API Endpoints
+##  API Endpoints
 
 ### Get Sessions by IP
 
@@ -132,7 +132,7 @@ Authorization: Bearer {admin_jwt_token}
 
 ---
 
-## 💻 Usage Examples
+## [EMOJI] Usage Examples
 
 ### Example 1: Discover Active Sessions for Current IP
 
@@ -215,7 +215,7 @@ async function getSessionsForIP(ip: string, adminToken: string) {
 
 ---
 
-## 🔒 Security Considerations
+## [EMOJI] Security Considerations
 
 ### IP Address Privacy
 
@@ -235,14 +235,14 @@ async function getSessionsForIP(ip: string, adminToken: string) {
    - Only super admins can query specific IPs
    - Prevents unauthorized IP surveillance
 
-### Rate Limiting ✅ **IMPLEMENTED**
+### Rate Limiting [OK] **IMPLEMENTED**
 
-- ✅ IP lookup endpoint is rate-limited using consolidated rate limiting service
-- ✅ Per-IP rate limits based on customer plan (free/pro/enterprise)
-- ✅ Uses `checkIPRateLimit` from `services/rate-limit.ts`
-- ✅ Rate limit headers included in responses (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
-- ✅ Super admins exempt from rate limits
-- ✅ Prevents abuse of session discovery
+- [OK] IP lookup endpoint is rate-limited using consolidated rate limiting service
+- [OK] Per-IP rate limits based on customer plan (free/pro/enterprise)
+- [OK] Uses `checkIPRateLimit` from `services/rate-limit.ts`
+- [OK] Rate limit headers included in responses (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`)
+- [OK] Super admins exempt from rate limits
+- [OK] Prevents abuse of session discovery
 
 ### Data Retention
 
@@ -252,7 +252,7 @@ async function getSessionsForIP(ip: string, adminToken: string) {
 
 ---
 
-## ❓❓ Architecture
+##  Architecture
 
 ### Storage Structure
 
@@ -288,25 +288,25 @@ async function getSessionsForIP(ip: string, adminToken: string) {
 
 ```
 Login (OTP Verify)
-  ❓
+  
 Create Session (with IP)
-  ❓
+  
 Create IP Mapping
-  ❓
+  
 [Session Active]
-  ❓
+  
 Refresh Session (update IP if changed)
-  ❓
+  
 Logout/Expiration
-  ❓
+  
 Delete IP Mapping
-  ❓
+  
 Delete Session
 ```
 
 ---
 
-## ✅ Benefits
+## [OK] Benefits
 
 1. **Seamless Cross-Application Access**
    - Users logged in on one app can access other apps without re-authentication
@@ -328,7 +328,7 @@ Delete Session
 
 ---
 
-## 🚀 Migration Guide
+## [EMOJI] Migration Guide
 
 ### For Existing Applications
 
@@ -351,7 +351,7 @@ No changes required! The new functionality is backward compatible:
 
 ---
 
-## 📊 Monitoring
+## [EMOJI] Monitoring
 
 ### Key Metrics
 
@@ -369,7 +369,7 @@ The system logs:
 
 ---
 
-## 🔍 Troubleshooting
+## [EMOJI] Troubleshooting
 
 ### Issue: No sessions returned for IP
 
@@ -406,7 +406,7 @@ The system logs:
 
 ---
 
-## 📚 Related Documentation
+## [EMOJI] Related Documentation
 
 - [OTP Auth Session Audit](./OTP_AUTH_SESSION_AUDIT.md) - Detailed audit and implementation plan
 - [OTP Auth API Documentation](./OTP_AUTH_API_DOCUMENTATION.md) - Complete API reference

@@ -37,6 +37,12 @@ export interface DeleteUrlResponse {
     error?: string;
 }
 
+export interface StatsResponse {
+    success: boolean;
+    totalUrls?: number;
+    error?: string;
+}
+
 class UrlShortenerApiClient {
     private token: string | null = null;
 
@@ -125,6 +131,28 @@ class UrlShortenerApiClient {
         return this.request<DeleteUrlResponse>(`/api/delete/${shortCode}`, {
             method: 'DELETE',
         });
+    }
+
+    /**
+     * Get total URL count (public endpoint, no auth required)
+     * This endpoint is service-to-service only but accessible from frontend
+     */
+    async getStats(): Promise<StatsResponse> {
+        // Public endpoint - don't include auth token
+        const response = await fetch(`${API_URL}/api/stats`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            // CRITICAL: Prevent caching to ensure fresh data on each page load
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch stats: ${response.statusText}`);
+        }
+
+        return this.decryptResponse<StatsResponse>(response);
     }
 
     logout(): void {

@@ -38,13 +38,13 @@ cache: {
 **File Updated:** `vite.config.ts`
 
 **Patterns:**
-- ✅ All API endpoints ❓ `NetworkOnly` (no cache)
-- ✅ Static assets (images, fonts) ❓ `CacheFirst` (1 year)
-- ✅ CDN resources ❓ `CacheFirst` (1 year)
-- ✅ Profile pictures ❓ `CacheFirst` (1 year)
+- [OK] All API endpoints  `NetworkOnly` (no cache)
+- [OK] Static assets (images, fonts)  `CacheFirst` (1 year)
+- [OK] CDN resources  `CacheFirst` (1 year)
+- [OK] Profile pictures  `CacheFirst` (1 year)
 
 **Removed:**
-- ❌ Twitch API caching (should not be cached)
+- [ERROR] Twitch API caching (should not be cached)
 
 ### 3. OTP Endpoints Cache Headers
 
@@ -65,25 +65,25 @@ cache: {
 
 ## What Gets Cached (Explicit Opt-In)
 
-### ✅ Static Assets
+### [OK] Static Assets
 - Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.ico`
 - Fonts: `.woff`, `.woff2`, `.ttf`, `.eot`, `.otf`
 - Strategy: `CacheFirst`
 - TTL: 1 year (immutable)
 
-### ✅ CDN Resources
+### [OK] CDN Resources
 - External CDNs: `cdn.jsdelivr.net`
 - Strategy: `CacheFirst`
 - TTL: 1 year
 
-### ✅ Profile Pictures
+### [OK] Profile Pictures
 - R2/CDN URLs with immutable filenames
 - Strategy: `CacheFirst`
 - TTL: 1 year
 
 ## What Does NOT Get Cached (Default)
 
-### ❌ All API Calls
+### [ERROR] All API Calls
 - `/api/*`
 - `/auth/*`
 - `/admin/*`
@@ -96,16 +96,16 @@ cache: {
 
 **Strategy:** `NetworkOnly` (always fetch from network)
 
-### ❌ All POST/PUT/DELETE Requests
+### [ERROR] All POST/PUT/DELETE Requests
 - Never cached (by HTTP spec and our implementation)
 
-### ❌ Dynamic Data
+### [ERROR] Dynamic Data
 - User-specific data
 - Real-time data
 - Session data
 - OTP codes
 
-### ❌ Auth Tokens
+### [ERROR] Auth Tokens
 - Stored in localStorage only
 - Never in HTTP cache
 - Never in service worker cache
@@ -123,15 +123,15 @@ cache: {
 ## Impact
 
 ### Benefits
-✅ No stale data after deployments  
-✅ Fresh data for all users  
-✅ No cache invalidation complexity  
-✅ Security: Auth data never cached  
-✅ Simplicity: Clear cache strategy  
+[OK] No stale data after deployments  
+[OK] Fresh data for all users  
+[OK] No cache invalidation complexity  
+[OK] Security: Auth data never cached  
+[OK] Simplicity: Clear cache strategy  
 
 ### Trade-offs
-⚠️ More network requests (but only for API calls)  
-⚠️ No offline fallback for API calls (but static assets still cached)  
+[WARNING] More network requests (but only for API calls)  
+[WARNING] No offline fallback for API calls (but static assets still cached)  
 
 **Mitigation:** Static assets and CDN resources are still cached, so only dynamic API calls go to network.
 

@@ -113,7 +113,7 @@
 <div class="page text-cycler-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <!-- Saved Configs -->
   <div class="card">
-    <h3>❓ Saved Configs</h3>
+    <h3> Saved Configs</h3>
     <SearchBox
       inputId="textConfigsSearchInput"
       placeholder="Search configs..."
@@ -131,16 +131,16 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleNewConfig} disabled={!$connected}>➕ New Config</button>
+        <button on:click={handleNewConfig} disabled={!$connected}>[ADD] New Config</button>
       </Tooltip>
-      <button on:click={handleExportConfigs}>❓ Export</button>
-      <button on:click={handleImportConfigs}>❓ Import</button>
+      <button on:click={handleExportConfigs}> Export</button>
+      <button on:click={handleImportConfigs}> Import</button>
     </div>
   </div>
 
   <!-- Config Editor -->
   <div class="card" id="textConfigEditor" style="display:none">
-    <h3>❓❓ Edit Config</h3>
+    <h3> Edit Config</h3>
     <label>Config Name</label>
     <input type="text" id="textConfigName" placeholder="My Text Cycler">
     
@@ -155,7 +155,7 @@
       <label>Config ID (for browser source URL)</label>
       <div class="url-box">
         <input type="text" id="textConfigId" placeholder="config1" style="flex:1" on:input={handleUpdateBrowserSourceUrlPreview}>
-        <button on:click={handleCopyBrowserSourceUrl}>📋 Copy URL</button>
+        <button on:click={handleCopyBrowserSourceUrl}>[EMOJI] Copy URL</button>
       </div>
       <p style="font-size:0.7em;color:var(--muted);margin-top:4px">
         Add as OBS Browser Source: <code id="browserSourceUrlPreview"></code>
@@ -183,13 +183,13 @@
 
   <!-- Text Lines -->
   <div class="card" id="textLinesCard" style="display:none">
-    <h3>📝 Text Lines</h3>
+    <h3>[EMOJI] Text Lines</h3>
     <textarea id="textLines" placeholder="Enter text lines (one per line)&#10;Line 1&#10;Line 2&#10;Line 3" rows="5"></textarea>
   </div>
   
   <!-- Animation Settings -->
   <div class="card" id="textAnimationCard" style="display:none">
-    <h3>❓ Animation</h3>
+    <h3> Animation</h3>
     <label>Transition Effect</label>
     <select id="textTransition" on:change={handleUpdateTransitionMode}>
       <option value="none">None (instant)</option>
@@ -197,7 +197,7 @@
       <option value="obfuscate">Obfuscate (Minecraft enchant)</option>
       <option value="typewriter">Typewriter</option>
       <option value="glitch">Glitch</option>
-      <option value="scramble">Scramble ❓ Snap</option>
+      <option value="scramble">Scramble  Snap</option>
       <option value="wave">Wave Reveal</option>
       <option value="slide_left">Slide Left</option>
       <option value="slide_right">Slide Right</option>
@@ -220,7 +220,7 @@
 
   <!-- Style Settings (Browser Mode Only) -->
   <div class="card" id="textStyleCard" style="display:none">
-    <h3>🎨 Style (Browser Mode)</h3>
+    <h3>[EMOJI] Style (Browser Mode)</h3>
     
     <label>Font Family</label>
     <select id="textFontFamily">
@@ -324,7 +324,7 @@
 
   <!-- Preview -->
   <div class="card" id="textPreviewCard" style="display:none">
-    <h3>❓❓ Preview</h3>
+    <h3> Preview</h3>
     <div class="text-preview" id="textPreview">Select or create a config</div>
   </div>
   
@@ -356,7 +356,7 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleSaveConfig} disabled={!$connected}>❓ Save Config</button>
+        <button on:click={handleSaveConfig} disabled={!$connected}> Save Config</button>
       </Tooltip>
       <Tooltip 
         text={$connected ? 'Delete current configuration' : 'Connect to OBS first to delete configs'} 
@@ -364,7 +364,7 @@
         level={$connected ? 'log' : 'warning'}
       >
         <button on:click={handleDeleteConfig} style="background:var(--danger);border-color:var(--danger)" disabled={!$connected}>
-          🗑️ Delete
+          [EMOJI]️ Delete
         </button>
       </Tooltip>
     </div>

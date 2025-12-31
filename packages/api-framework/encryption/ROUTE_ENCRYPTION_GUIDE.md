@@ -1,10 +1,10 @@
-# Per-Route Encryption System Guide 🔒
+# Per-Route Encryption System Guide [EMOJI]
 
 > **Industry-standard encryption middleware that ensures ALL routes encrypt responses with appropriate keys based on route type and authentication status.**
 
 ---
 
-## 🎯 Overview
+## [EMOJI] Overview
 
 The Per-Route Encryption System provides:
 
@@ -17,7 +17,7 @@ The Per-Route Encryption System provides:
 
 ---
 
-## ❓❓ Architecture
+##  Architecture
 
 ### Encryption Strategies
 
@@ -63,7 +63,7 @@ The system comes with sensible defaults:
 
 ---
 
-## 🚀 Quick Start
+## [EMOJI] Quick Start
 
 ### 1. Set Service Key
 
@@ -97,10 +97,10 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 **Recommended: Same Key for All Services**
 
 Using the **same service key** across all services is recommended because:
-- ✅ **Simpler key management** - One key to rotate instead of seven
-- ✅ **Service interoperability** - Services can decrypt each other's responses
-- ✅ **Consistent encryption** - All services use the same standard
-- ✅ **Easier client implementation** - Clients only need one service key
+- [OK] **Simpler key management** - One key to rotate instead of seven
+- [OK] **Service interoperability** - Services can decrypt each other's responses
+- [OK] **Consistent encryption** - All services use the same standard
+- [OK] **Easier client implementation** - Clients only need one service key
 
 **Security Consideration:** Since service-key encryption is for **public routes** (not sensitive authenticated data), sharing the key is an acceptable trade-off for operational simplicity. Sensitive data should use JWT encryption (user-specific keys).
 
@@ -137,7 +137,7 @@ export const handleGetUser = withEncryption(async (request: Request, env: Env) =
 
 ---
 
-## 📋 Advanced Usage
+## [EMOJI] Advanced Usage
 
 ### Custom Policies
 
@@ -220,7 +220,7 @@ const encryptedResponse = await applyEncryptionMiddleware(
 
 ---
 
-## 🔧 Integration Examples
+## [EMOJI] Integration Examples
 
 ### Example 1: Update Existing Router
 
@@ -235,7 +235,7 @@ async function handleUserRoute(handler, request, env, auth) {
     return new Response(JSON.stringify(encrypted), { ... });
   }
   
-  return handlerResponse; // ⚠️ Unencrypted if no JWT
+  return handlerResponse; // [WARNING] Unencrypted if no JWT
 }
 
 // After (mandatory encryption)
@@ -244,7 +244,7 @@ import { applyEncryptionMiddleware } from '@strixun/api-framework';
 async function handleUserRoute(handler, request, env, auth) {
   const handlerResponse = await handler(request, env);
   
-  // ✅ Always encrypts (JWT or service key)
+  // [OK] Always encrypts (JWT or service key)
   return await applyEncryptionMiddleware(handlerResponse, request, env);
 }
 ```
@@ -260,7 +260,7 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
     headers: { 'Content-Type': 'application/json' },
   });
   
-  // ✅ Encrypts with service key (no JWT required)
+  // [OK] Encrypts with service key (no JWT required)
   return await applyEncryptionMiddleware(response, request, env);
 }
 ```
@@ -284,14 +284,14 @@ export async function route(request: Request, env: Env): Promise<Response> {
     response = await handlePublicRoutes(request, path, env);
   }
   
-  // ✅ Apply encryption middleware to ALL responses
+  // [OK] Apply encryption middleware to ALL responses
   return await applyEncryptionMiddleware(response, request, env);
 }
 ```
 
 ---
 
-## 🔒 Security Benefits
+## [EMOJI] Security Benefits
 
 ### Defense in Depth
 
@@ -313,7 +313,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
 ---
 
-## 📊 Response Headers
+## [EMOJI] Response Headers
 
 Encrypted responses include:
 
@@ -322,7 +322,7 @@ Encrypted responses include:
 
 ---
 
-## ❓❓ Configuration
+##  Configuration
 
 ### Environment Variables
 
@@ -340,7 +340,7 @@ Policies are defined in code and can be:
 
 ---
 
-## ⚠️ Important Notes
+## [WARNING] Important Notes
 
 1. **Service Key Security**
    - Store service key as Cloudflare Worker secret
@@ -363,7 +363,7 @@ Policies are defined in code and can be:
 
 ---
 
-## 📚 Related Documentation
+## [EMOJI] Related Documentation
 
 - [JWT Encryption](./jwt-encryption.ts) - JWT-based encryption
 - [Multi-Stage Encryption](./multi-stage-encryption.ts) - Multi-party encryption

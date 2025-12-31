@@ -11,6 +11,8 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleCustomerRoutes } from './router/customer-routes.js';
+import { wrapWithEncryption } from '@strixun/api-framework';
+import { authenticateRequest } from './utils/auth.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -63,24 +65,32 @@ export default {
                 return await handleHealth(env, request);
             }
 
-            // Handle customer routes
+            // Handle customer routes (they authenticate internally)
             const customerResult = await handleCustomerRoutes(request, path, env);
             if (customerResult) {
                 return customerResult.response;
             }
 
-            // 404 for unknown routes
+            // 404 for unknown routes - wrap with encryption to add integrity headers for service-to-service calls
+            // Check if this is a service call by looking for X-Service-Key header
+            const isServiceCall = request.headers.has('X-Service-Key');
+            const auth = isServiceCall ? { userId: 'service', jwtToken: '' } : null;
+            
             const rfcError = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
             const corsHeaders404 = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
-            return new Response(JSON.stringify(rfcError), {
+            const errorResponse = new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders404.entries()),
                 },
             });
+            
+            // Wrap with encryption to add integrity headers for service-to-service calls
+            const wrappedResult = await wrapWithEncryption(errorResponse, auth, request, env);
+            return wrappedResult.response;
         } catch (error: any) {
             console.error('Request handler error:', error);
             

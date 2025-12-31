@@ -1,10 +1,10 @@
-# OTP Auth Service 🔐
+# OTP Auth Service [EMOJI]
 
 Multi-tenant OTP authentication service built on Cloudflare Workers.
 
 ## Quick Start
 
-### 🚀 Local Development (Recommended)
+### [EMOJI] Local Development (Recommended)
 
 **1. Install dependencies:**
 ```bash
@@ -93,14 +93,14 @@ otp-auth-service/
 
 ## Features
 
-- ✅ Passwordless OTP authentication
-- ✅ JWT token management
-- ✅ API key management (multi-tenant)
-- ✅ Audit logging
-- ✅ Analytics dashboard
-- ✅ OpenAPI 3.1.0 spec
-- ✅ Swagger UI integration
-- ✅ Developer dashboard (Svelte 5 + TypeScript)
+- [OK] Passwordless OTP authentication
+- [OK] JWT token management
+- [OK] API key management (multi-tenant)
+- [OK] Audit logging
+- [OK] Analytics dashboard
+- [OK] OpenAPI 3.1.0 spec
+- [OK] Swagger UI integration
+- [OK] Developer dashboard (Svelte 5 + TypeScript)
 
 ## Documentation
 

@@ -108,8 +108,30 @@ export async function handleDownloadVersion(
         // Status = admin review workflow (pending/approved/published/etc.) - affects listings, NOT downloads
         const modVisibility = mod.visibility || 'public';
         
-        // Private mods: only author can download
-        if (modVisibility === 'private' && mod.authorId !== auth?.userId) {
+        // Check if user is admin (for admin access to private mods)
+        const { isSuperAdminEmail } = await import('../../utils/admin.js');
+        const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
+        const isAuthor = mod.authorId === auth?.userId;
+        
+        // Private mods: only author or admin can download
+        if (modVisibility === 'private' && !isAuthor && !isAdmin) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Draft status mods: only author or admin can download (regardless of visibility)
+        // This prevents public draft mods from being downloaded before they're ready
+        const modStatus = mod.status || 'published';
+        if (modStatus === 'draft' && !isAuthor && !isAdmin) {
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -130,32 +152,71 @@ export async function handleDownloadVersion(
         // 2. OR server-side: Re-encrypt public mods with service key after upload
         // For now, we check visibility and try service key decryption for public mods
 
-        // Get version metadata - check global scope first, then customer scopes
+        // Get version metadata - check mod's customer scope first (most reliable), then global, then search all
         // CRITICAL: Use mod's customerId (not auth customerId) to find version
         // Versions are stored with the mod's customerId, not the downloader's customerId
         let version: ModVersion | null = null;
         console.log('[Download] Looking up version:', { versionId, modId: mod.modId, modCustomerId: mod.customerId, authCustomerId: auth?.customerId });
         
-        // Check global scope first (for published public mods)
-        const globalVersionKey = `version_${versionId}`;
-        console.log('[Download] Checking global scope for version:', { globalVersionKey });
-        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
-        if (version) console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
-        
-        // If not found in global scope, check mod's customer scope (where version was uploaded)
-        if (!version && mod.customerId) {
+        // Strategy 1: Check mod's customer scope first (where version was uploaded)
+        // This is the most reliable location for the version
+        if (mod.customerId) {
             const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
             console.log('[Download] Checking mod customer scope for version:', { modCustomerVersionKey });
             version = await env.MODS_KV.get(modCustomerVersionKey, { type: 'json' }) as ModVersion | null;
-            if (version) console.log('[Download] Found version in mod customer scope:', { versionId: version.versionId, modId: version.modId });
+            if (version) {
+                console.log('[Download] Found version in mod customer scope:', { versionId: version.versionId, modId: version.modId });
+            }
         }
         
-        // Last resort: check auth customer scope (for backward compatibility)
+        // Strategy 2: Check global scope (for published public mods)
+        if (!version) {
+            const globalVersionKey = `version_${versionId}`;
+            console.log('[Download] Checking global scope for version:', { globalVersionKey });
+            version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+            if (version) {
+                console.log('[Download] Found version in global scope:', { versionId: version.versionId, modId: version.modId });
+            }
+        }
+        
+        // Strategy 3: Check auth customer scope (for backward compatibility)
         if (!version && auth?.customerId && auth.customerId !== mod.customerId) {
             const authCustomerVersionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
             console.log('[Download] Checking auth customer scope for version:', { authCustomerVersionKey });
             version = await env.MODS_KV.get(authCustomerVersionKey, { type: 'json' }) as ModVersion | null;
-            if (version) console.log('[Download] Found version in auth customer scope:', { versionId: version.versionId, modId: version.modId });
+            if (version) {
+                console.log('[Download] Found version in auth customer scope:', { versionId: version.versionId, modId: version.modId });
+            }
+        }
+        
+        // Strategy 4: Last resort - search all customer scopes (for cross-customer access to public mods)
+        if (!version) {
+            console.log('[Download] Version not found in expected scopes, searching all customer scopes');
+            const customerListPrefix = 'customer_';
+            let cursor: string | undefined;
+            
+            do {
+                const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+                
+                for (const key of listResult.keys) {
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
+                        const customerId = match ? match[1] : null;
+                        
+                        if (customerId) {
+                            const customerVersionKey = getCustomerKey(customerId, `version_${versionId}`);
+                            version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+                            if (version) {
+                                console.log('[Download] Found version in customer scope:', { customerId, versionId: version.versionId });
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (version) break;
+                cursor = listResult.listComplete ? undefined : listResult.cursor;
+            } while (cursor);
         }
 
         // Check version belongs to mod - version.modId must match mod.modId (source of truth)
@@ -222,7 +283,14 @@ export async function handleDownloadVersion(
         // Get encrypted file from R2
         // SECURITY: Files are stored encrypted in R2 (encryption at rest)
         // We decrypt on-the-fly during download to return usable files
-        console.log('[Download] Fetching file from R2:', { r2Key: version.r2Key });
+        const { getR2SourceInfo } = await import('../../utils/r2-source.js');
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Download] Fetching file from R2:', { 
+            r2Key: version.r2Key,
+            r2Source: r2SourceInfo.source,
+            isLocal: r2SourceInfo.isLocal,
+            storageLocation: r2SourceInfo.storageLocation
+        });
         const encryptedFile = await env.MODS_R2.get(version.r2Key);
         
         if (!encryptedFile) {
@@ -243,9 +311,13 @@ export async function handleDownloadVersion(
         // Check if file is encrypted (should always be true for new uploads)
         const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
         let encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
+        const r2Source = encryptedFile.customMetadata?.['r2-source'] || 'unknown';
+        const r2IsLocal = encryptedFile.customMetadata?.['r2-is-local'] === 'true';
         console.log('[Download] File retrieved from R2:', { 
             size: encryptedFile.size, 
-            isEncrypted, 
+            isEncrypted,
+            r2Source,
+            r2IsLocal,
             encryptionFormat,
             contentType: encryptedFile.httpMetadata?.contentType,
             hasCustomMetadata: !!encryptedFile.customMetadata
@@ -263,23 +335,26 @@ export async function handleDownloadVersion(
             console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length, modVisibility: modVisibility });
             
             try {
-                // CRITICAL: Decryption key selection based on visibility ONLY, not status
-                // Public/unlisted mods: try service key if no JWT (allows anonymous downloads)
+                // CRITICAL FIX: Decryption key selection based on visibility
+                // Public/unlisted mods: try service key first (allows anonymous downloads)
+                // If service key fails, try JWT as fallback (for backward compatibility)
                 // Private mods: require JWT (already checked above)
                 let decryptionKey: string | null = jwtToken;
                 let useServiceKey = false;
                 
-                if (!jwtToken) {
-                    // Public or unlisted mods: try service key decryption (allows anonymous downloads)
-                    if (modVisibility === 'public' || modVisibility === 'unlisted') {
-                        // Public/unlisted mod - try service key decryption (status doesn't matter)
-                        const serviceKey = getServiceKey(env);
-                        if (serviceKey) {
-                            decryptionKey = serviceKey;
-                            useServiceKey = true;
-                            console.log('[Download] Using service key for public mod decryption');
-                        } else {
-                            console.error('[Download] Public mod but no service key configured');
+                // For public/unlisted mods, try service key first (even if JWT is present)
+                // This handles files encrypted with service key during upload
+                if (modVisibility === 'public' || modVisibility === 'unlisted') {
+                    const serviceKey = getServiceKey(env);
+                    if (serviceKey) {
+                        // Try service key first for public mods
+                        decryptionKey = serviceKey;
+                        useServiceKey = true;
+                        console.log('[Download] Using service key for public mod decryption (visibility-based)');
+                    } else {
+                        console.warn('[Download] Public mod but no service key configured, falling back to JWT');
+                        // Fall back to JWT if service key not available
+                        if (!jwtToken) {
                             const rfcError = createError(
                                 request, 
                                 500, 
@@ -297,20 +372,20 @@ export async function handleDownloadVersion(
                                 },
                             });
                         }
-                    } else {
-                        // Private/draft mods require user JWT
-                        const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
-                        const corsHeaders = createCORSHeaders(request, {
-                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                        });
-                        return new Response(JSON.stringify(rfcError), {
-                            status: 401,
-                            headers: {
-                                'Content-Type': 'application/problem+json',
-                                ...Object.fromEntries(corsHeaders.entries()),
-                            },
-                        });
                     }
+                } else if (!jwtToken) {
+                    // Private mods require JWT
+                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
                 }
                 
                 // Normalize encryption format (trim whitespace, handle undefined)
@@ -346,18 +421,40 @@ export async function handleDownloadVersion(
                 
                 // Check encryption format and decrypt accordingly
                 if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                    // Binary encrypted format (v4 or v5) - decrypt with JWT or service key
+                    // Binary encrypted format (v4 or v5) - decrypt with service key or JWT
+                    // CRITICAL FIX: Try service key first for public mods, fallback to JWT if it fails
                     const version = encryptionFormat === 'binary-v5' ? 'v5' : 'v4';
                     console.log(`[Download] Using binary decryption (${version}) with ${useServiceKey ? 'service key' : 'JWT'}...`);
                     
+                    let decryptionAttempted = false;
                     if (useServiceKey && decryptionKey) {
-                        decryptedFileBytes = await decryptBinaryWithServiceKey(encryptedBinary, decryptionKey);
+                        try {
+                            decryptedFileBytes = await decryptBinaryWithServiceKey(encryptedBinary, decryptionKey);
+                            decryptionAttempted = true;
+                            console.log('[Download] Binary decryption successful with service key, size:', decryptedFileBytes.length);
+                        } catch (serviceKeyError) {
+                            // Service key decryption failed - try JWT as fallback (for backward compatibility)
+                            console.warn('[Download] Service key decryption failed, trying JWT fallback:', {
+                                error: serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError),
+                                hasJWT: !!jwtToken
+                            });
+                            if (jwtToken) {
+                                decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
+                                decryptionAttempted = true;
+                                console.log('[Download] Binary decryption successful with JWT fallback, size:', decryptedFileBytes.length);
+                            } else {
+                                throw serviceKeyError; // Re-throw if no JWT fallback available
+                            }
+                        }
                     } else if (decryptionKey) {
                         decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, decryptionKey);
-                    } else {
+                        decryptionAttempted = true;
+                        console.log('[Download] Binary decryption successful with JWT, size:', decryptedFileBytes.length);
+                    }
+                    
+                    if (!decryptionAttempted) {
                         throw new Error('No decryption key available');
                     }
-                    console.log('[Download] Binary decryption successful, size:', decryptedFileBytes.length);
                 } else {
                     // Legacy JSON encrypted format - need to read as text
                     // CRITICAL: We already read as arrayBuffer above, so we need to convert back
@@ -368,18 +465,40 @@ export async function handleDownloadVersion(
                     const encryptedJson = JSON.parse(encryptedData);
                     console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
                     
-                    // Decrypt the file with JWT or service key
+                    // Decrypt the file with service key or JWT
+                    // CRITICAL FIX: Try service key first for public mods, fallback to JWT if it fails
                     console.log(`[Download] Decrypting with ${useServiceKey ? 'service key' : 'JWT'}...`);
                     let decryptedBase64: string;
+                    let decryptionAttempted = false;
                     if (useServiceKey && decryptionKey) {
-                        const { decryptWithServiceKey } = await import('@strixun/api-framework');
-                        decryptedBase64 = await decryptWithServiceKey(encryptedJson, decryptionKey) as string;
+                        try {
+                            const { decryptWithServiceKey } = await import('@strixun/api-framework');
+                            decryptedBase64 = await decryptWithServiceKey(encryptedJson, decryptionKey) as string;
+                            decryptionAttempted = true;
+                            console.log('[Download] JSON decryption successful with service key, base64 length:', decryptedBase64.length);
+                        } catch (serviceKeyError) {
+                            // Service key decryption failed - try JWT as fallback (for backward compatibility)
+                            console.warn('[Download] Service key decryption failed, trying JWT fallback:', {
+                                error: serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError),
+                                hasJWT: !!jwtToken
+                            });
+                            if (jwtToken) {
+                                decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                                decryptionAttempted = true;
+                                console.log('[Download] JSON decryption successful with JWT fallback, base64 length:', decryptedBase64.length);
+                            } else {
+                                throw serviceKeyError; // Re-throw if no JWT fallback available
+                            }
+                        }
                     } else if (decryptionKey) {
                         decryptedBase64 = await decryptWithJWT(encryptedJson, decryptionKey) as string;
-                    } else {
+                        decryptionAttempted = true;
+                        console.log('[Download] JSON decryption successful with JWT, base64 length:', decryptedBase64.length);
+                    }
+                    
+                    if (!decryptionAttempted) {
                         throw new Error('No decryption key available');
                     }
-                    console.log('[Download] Decryption successful, base64 length:', decryptedBase64.length);
                     
                     // Convert base64 back to binary
                     const binaryString = atob(decryptedBase64);
@@ -461,6 +580,23 @@ export async function handleDownloadVersion(
         });
     } catch (error: any) {
         console.error('Download version error:', error);
+        
+        // If mod or version not found, return 404 instead of 500
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('not found') || errorMessage.includes('Not Found')) {
+            const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod or version was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
         const rfcError = createError(
             request,
             500,

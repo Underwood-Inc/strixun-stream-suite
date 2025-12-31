@@ -1,10 +1,10 @@
 # Idle Game System - Examples
 
-> **Realistic examples of what players will see and experience** ❓✨
+> **Realistic examples of what players will see and experience** [FEATURE]
 
 ---
 
-## ❓ Generated Items (Path of Exile Style)
+##  Generated Items (Path of Exile Style)
 
 ### Example 1: Rare Sword
 ```
@@ -96,7 +96,7 @@
 
 ---
 
-## 🎨 Character Customization Examples
+## [EMOJI] Character Customization Examples
 
 ### Pixel Editor Output
 ```
@@ -148,12 +148,12 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## 📦 Daily Loot Box Examples
+## [EMOJI] Daily Loot Box Examples
 
 ### Day 1 (No Streak)
 ```
 ┌─────────────────────────────────────────────┐
-│  ❓ Daily Loot Box - Day 1                  │
+│   Daily Loot Box - Day 1                  │
 │  Streak: None (0 days)                      │
 ├─────────────────────────────────────────────┤
 │  You received:                              │
@@ -169,7 +169,7 @@ Custom Textures: [Advanced Tier Required]
 ### Day 7 (Dedicated Streak)
 ```
 ┌─────────────────────────────────────────────┐
-│  ❓ Daily Loot Box - Day 7                  │
+│   Daily Loot Box - Day 7                  │
 │  Streak: Dedicated (7 days) • +10% Bonus    │
 ├─────────────────────────────────────────────┤
 │  You received:                              │
@@ -187,18 +187,18 @@ Custom Textures: [Advanced Tier Required]
 ```
 ┌─────────────────────────────────────────────┐
 │  ╔═══════════════════════════════════════╗ │
-│  ║  ❓ Daily Loot Box - Day 35            ║ │
+│  ║   Daily Loot Box - Day 35            ║ │
 │  ║  Streak: LEGENDARY (35 days) • 2x!     ║ │
 │  ╚═══════════════════════════════════════╝ │
 ├─────────────────────────────────────────────┤
 │  You received (DOUBLE REWARDS):            │
 │                                              │
 │  • 4,000 Gold (2x bonus)                    │
-│  • ❓ Epic Equipment: Blessed Plate         │
+│  •  Epic Equipment: Blessed Plate         │
 │  • 200 Experience (2x bonus)                │
 │  • 10x Rare Materials                       │
 │                                              │
-│  🏆 LEGENDARY STREAK REWARD!                │
+│  [EMOJI] LEGENDARY STREAK REWARD!                │
 │  • Exclusive Title: "The Dedicated"         │
 │  • Unique Cosmetic: Legendary Glow          │
 │                                              │
@@ -208,7 +208,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## ❓❓ End-Game Crafting Examples
+##  End-Game Crafting Examples
 
 ### Master Tier Crafting
 ```
@@ -240,7 +240,7 @@ Custom Textures: [Advanced Tier Required]
 ### Crafting Result
 ```
 ┌─────────────────────────────────────────────┐
-│  ✅ Crafting Complete!                      │
+│  [OK] Crafting Complete!                      │
 ├─────────────────────────────────────────────┤
 │  You crafted:                               │
 │                                              │
@@ -264,7 +264,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## ❓ Dungeon Examples
+##  Dungeon Examples
 
 ### Dungeon Entry
 ```
@@ -303,7 +303,7 @@ Custom Textures: [Advanced Tier Required]
 │  Floor 5 - Boss Room                        │
 ├─────────────────────────────────────────────┤
 │  ╔═══════════════════════════════════════╗ │
-│  ║  ❓ SHADOW DRAGON                      ║ │
+│  ║   SHADOW DRAGON                      ║ │
 │  ║  [BOSS] • Level 65                     ║ │
 │  ╚═══════════════════════════════════════╝ │
 │                                              │
@@ -322,7 +322,7 @@ Custom Textures: [Advanced Tier Required]
 ### Dungeon Completion
 ```
 ┌─────────────────────────────────────────────┐
-│  ✅ DUNGEON COMPLETE!                       │
+│  [OK] DUNGEON COMPLETE!                       │
 │  The Shadow Depths - Master Difficulty     │
 ├─────────────────────────────────────────────┤
 │  Completion Time: 38:42                    │
@@ -337,8 +337,8 @@ Custom Textures: [Advanced Tier Required]
 │  • 25,000 Gold (10k base x2.5)            │
 │                                              │
 │  Items:                                     │
-│  • ❓ Shadow Dragon Scale [LEGENDARY]     │
-│  • ❓ Void Blade of Shadows [EPIC]        │
+│  •  Shadow Dragon Scale [LEGENDARY]     │
+│  •  Void Blade of Shadows [EPIC]        │
 │  • Shadow Essence x15 [RARE]               │
 │  • Dark Crystal x8 [RARE]                  │
 │                                              │
@@ -351,12 +351,12 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## ⏱️ Idle Progress Examples
+## [TIME] Idle Progress Examples
 
 ### Offline Progress Claim
 ```
 ┌─────────────────────────────────────────────┐
-│  ⏱️ Offline Progress                         │
+│  [TIME] Offline Progress                         │
 │  Last Active: 12 hours ago                  │
 ├─────────────────────────────────────────────┤
 │  You were away for: 12 hours                │
@@ -397,7 +397,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## 🎯 Inventory Screen Example
+## [EMOJI] Inventory Screen Example
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -407,12 +407,12 @@ Custom Textures: [Advanced Tier Required]
 │  Search: [________________]                │
 ├─────────────────────────────────────────────┤
 │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐       │
-│  │ ❓ │ │ ❓ │ │ 🔵 │ │ 🔵 │ │ ⚪ │       │
+│  │  │ │  │ │ [EMOJI] │ │ [EMOJI] │ │ [WHITE] │       │
 │  │Epic│ │Epic│ │Rare│ │Rare│ │Comm│       │
 │  └────┘ └────┘ └────┘ └────┘ └────┘       │
 │                                              │
 │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐       │
-│  │ ⚪ │ │ ⚪ │ │ ⚪ │ │ ⚪ │ │ ⚪ │       │
+│  │ [WHITE] │ │ [WHITE] │ │ [WHITE] │ │ [WHITE] │ │ [WHITE] │       │
 │  │Comm│ │Comm│ │Comm│ │Comm│ │Comm│       │
 │  └────┘ └────┘ └────┘ └────┘ └────┘       │
 │                                              │
@@ -435,7 +435,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## 📊 Summary
+## [EMOJI] Summary
 
 These examples show:
 - **Complex item generation** with multiple modifiers
@@ -444,5 +444,5 @@ These examples show:
 - **End-game progression** via crafting and dungeons
 - **Passive income** through idle mechanics
 
-All systems work together to create a deep, engaging RPG experience! ❓✨
+All systems work together to create a deep, engaging RPG experience! [FEATURE]
 

@@ -107,7 +107,7 @@
 - All admin routes in `serverless/mods-api/router/admin-routes.ts`
 - Require super-admin authentication via `isSuperAdminEmail()`
 - Wrap responses with `wrapWithEncryption(response, auth)`
-- Pattern: Check auth → verify admin → resolve slug if needed → call handler → wrap response
+- Pattern: Check auth [EMOJI] verify admin [EMOJI] resolve slug if needed [EMOJI] call handler [EMOJI] wrap response
 
 ### Virtualized Table Component
 - Located in: `shared-components/virtualized-table/VirtualizedTable`
