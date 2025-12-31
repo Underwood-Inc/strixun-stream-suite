@@ -2,7 +2,7 @@
 
 Interactive helper scripts to tail Cloudflare Worker logs with smart guidance and explanations.
 
-## 📋 Available Scripts
+## [EMOJI] Available Scripts
 
 ### Unix/Linux/macOS (Bash)
 **File:** `tail-logs.sh`
@@ -10,7 +10,7 @@ Interactive helper scripts to tail Cloudflare Worker logs with smart guidance an
 ### Windows (PowerShell)
 **File:** `tail-logs.ps1`
 
-## 🚀 Quick Start
+## [EMOJI] Quick Start
 
 ### Option 1: Using npm/pnpm (Recommended - Auto-detects OS)
 
@@ -57,7 +57,7 @@ or
 powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 ```
 
-## 🎯 Features
+## [EMOJI] Features
 
 The scripts provide an interactive menu with the following options:
 
@@ -72,7 +72,7 @@ The scripts provide an interactive menu with the following options:
 9. **Open Cloudflare Dashboard** - Open the Cloudflare Dashboard in your browser
 0. **Exit** - Exit the script
 
-## ❓ What Each Option Does
+##  What Each Option Does
 
 ### Real-time Stream (Live)
 - **Best for:** Monitoring active traffic in real-time
@@ -120,14 +120,14 @@ The scripts provide an interactive menu with the following options:
 - **Behavior:** Opens browser to Cloudflare Dashboard
 - **Use case:** Viewing historical logs, advanced filtering, searching
 
-## ⚙️ Prerequisites
+## [SETTINGS] Prerequisites
 
 - **wrangler CLI** must be installed and in your PATH
   - Install with: `npm install -g wrangler` or `pnpm add -g wrangler`
 - Script must be run from the `otp-auth-service` directory (where `wrangler.toml` is located)
 - You must be authenticated with Cloudflare (`wrangler login`)
 
-## 🔧 Troubleshooting
+## [EMOJI] Troubleshooting
 
 ### "wrangler CLI is not installed"
 Install wrangler globally:
@@ -161,7 +161,7 @@ Or run with bypass flag:
 powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 ```
 
-## 📝 Notes
+## [EMOJI] Notes
 
 - **Important:** `wrangler tail` only supports real-time streaming, not historical logs
 - To view recent/past logs, you must use the Cloudflare Dashboard (options 2 or 9)
@@ -171,7 +171,7 @@ powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 - The Cloudflare Dashboard provides more advanced features like time-range filtering and search
 - Historical logs require Cloudflare Logpush setup for programmatic access
 
-## 🎨 Script Features
+## [EMOJI] Script Features
 
 - **Color-coded output** for better readability
 - **Smart explanations** for each option

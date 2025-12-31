@@ -1,4 +1,4 @@
-# Environment Variable Setup Guide 🔐
+# Environment Variable Setup Guide [EMOJI]
 
 ## Where to Put .env Files
 
@@ -51,15 +51,15 @@ echo "VITE_AUTH_API_URL=https://auth.idling.app" >> serverless/url-shortener/app
 
 ```
 .
-├── .env                          ❓ CREATE THIS (root)
+├── .env                           CREATE THIS (root)
 ├── package.json
 ├── mods-hub/
-│   ├── .env                      ❓ CREATE THIS
+│   ├── .env                       CREATE THIS
 │   └── package.json
 └── serverless/
     └── url-shortener/
         └── app/
-            ├── .env              ❓ CREATE THIS
+            ├── .env               CREATE THIS
             └── package.json
 ```
 
@@ -76,10 +76,10 @@ ls -la serverless/url-shortener/app/.env
 
 ## Security Notes
 
-- ✅ `.env` files are already in `.gitignore` (won't be committed)
-- ✅ Never commit `.env` files to git
-- ✅ Use the same key in all 3 locations
-- ✅ Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
+- [OK] `.env` files are already in `.gitignore` (won't be committed)
+- [OK] Never commit `.env` files to git
+- [OK] Use the same key in all 3 locations
+- [OK] Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
 
 ## Frontend vs Backend Naming Convention
 

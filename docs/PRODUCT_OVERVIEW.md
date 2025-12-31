@@ -6,7 +6,7 @@ Welcome to the Strixun Stream Suite! This document explains what the product doe
 
 ---
 
-## 🎯 What Is Strixun Stream Suite?
+## [EMOJI] What Is Strixun Stream Suite?
 
 **Strixun Stream Suite (SSS)** is a professional streaming toolkit that helps content creators automate and enhance their live streams on platforms like Twitch, YouTube, and more. Think of it as a "smart assistant" for streamers that handles repetitive tasks, creates smooth animations, and keeps everything organized—all while you focus on entertaining your audience.
 
@@ -23,13 +23,13 @@ Streaming is hard work. Between managing your scenes, switching between layouts,
 
 ---
 
-## ❓ How It Works (The Big Picture)
+##  How It Works (The Big Picture)
 
 Imagine you're a streamer setting up for a broadcast. Here's how Strixun Stream Suite fits into your workflow:
 
 ```mermaid
 flowchart TB
-    subgraph Setup["❓ Pre-Stream Setup"]
+    subgraph Setup[" Pre-Stream Setup"]
         A[Open OBS Studio]
         B[Load Strixun Stream Suite]
         C[Configure Your Scenes]
@@ -37,7 +37,7 @@ flowchart TB
         E[Set Up Clips Player]
     end
     
-    subgraph Live["🔴 During Stream"]
+    subgraph Live["[EMOJI] During Stream"]
         F[Switch Between Layouts]
         G[Play Clips on Command]
         H[Animate Sources Smoothly]
@@ -45,7 +45,7 @@ flowchart TB
         J[Swap Source Positions]
     end
     
-    subgraph Backup["❓❓ Cloud Backup"]
+    subgraph Backup[" Cloud Backup"]
         K[Auto-Save Configurations]
         L[Sync Across Devices]
         M[Restore if Needed]
@@ -62,9 +62,9 @@ flowchart TB
 
 ---
 
-## 🎨 Key Features Explained
+## [EMOJI] Key Features Explained
 
-### 1. Source Animations ❓
+### 1. Source Animations 
 
 **What it does:** Makes your sources (images, videos, text) animate smoothly when they appear or disappear.
 
@@ -86,7 +86,7 @@ sequenceDiagram
     Source-->>You: Smooth, Professional Transition
 ```
 
-### 2. Layout Presets ❓
+### 2. Layout Presets 
 
 **What it does:** Saves the exact position and size of all your sources, so you can switch between different layouts instantly.
 
@@ -113,7 +113,7 @@ stateDiagram-v2
     end note
 ```
 
-### 3. Source Swapping 🔄
+### 3. Source Swapping [EMOJI]
 
 **What it does:** Instantly swaps the position and size of two sources with smooth animation.
 
@@ -121,7 +121,7 @@ stateDiagram-v2
 
 **Example use case:** You have two cameras—one for close-up, one for wide shot. With one hotkey, they swap positions smoothly.
 
-### 4. Text Cycler 📝
+### 4. Text Cycler [EMOJI]
 
 **What it does:** Cycles through different text messages with animated transitions.
 
@@ -129,7 +129,7 @@ stateDiagram-v2
 
 **Example use case:** Your "Now Playing" text cycles through your social media links every 10 seconds with a typewriter effect.
 
-### 5. Twitch Clips Player ❓
+### 5. Twitch Clips Player 
 
 **What it does:** Automatically plays your best Twitch clips during breaks (BRB screens, starting soon, etc.).
 
@@ -137,7 +137,7 @@ stateDiagram-v2
 
 **Example use case:** During your "Starting Soon" screen, your top 20 clips play automatically in a shuffled order.
 
-### 6. Cloud Storage ❓❓
+### 6. Cloud Storage 
 
 **What it does:** Backs up all your configurations to the cloud, so you can access them from any device.
 
@@ -151,15 +151,15 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-    subgraph Device1["💻 Streaming PC"]
+    subgraph Device1["[EMOJI] Streaming PC"]
         A[Your Configurations]
     end
     
-    subgraph Cloud["❓❓ Cloud Storage"]
+    subgraph Cloud[" Cloud Storage"]
         B[(Backup Storage)]
     end
     
-    subgraph Device2["💻 Laptop"]
+    subgraph Device2["[EMOJI] Laptop"]
         C[Same Configurations]
     end
     
@@ -171,7 +171,7 @@ flowchart LR
 
 ---
 
-## ❓❓ System Architecture (Simplified)
+##  System Architecture (Simplified)
 
 Here's how all the pieces fit together:
 
@@ -217,7 +217,7 @@ flowchart TB
 
 ---
 
-## ❓ Business Value
+##  Business Value
 
 ### For Individual Streamers
 
@@ -240,7 +240,7 @@ flowchart TB
 
 ---
 
-## 🎯 Use Cases
+## [EMOJI] Use Cases
 
 ### The Gaming Streamer
 - **Layout Presets:** Quick switch between "Full Game" and "Game + Chat" layouts
@@ -264,7 +264,7 @@ flowchart TB
 
 ---
 
-## 🔒 Security & Privacy
+## [EMOJI] Security & Privacy
 
 **Your data is yours:**
 - All configurations are stored locally on your computer
@@ -279,7 +279,7 @@ flowchart TB
 
 ---
 
-## 📊 Success Metrics
+## [EMOJI] Success Metrics
 
 How do you know Strixun Stream Suite is working for you?
 
@@ -291,7 +291,7 @@ How do you know Strixun Stream Suite is working for you?
 
 ---
 
-## 🚀 Getting Started
+## [EMOJI] Getting Started
 
 1. **Download** the suite from GitHub
 2. **Install** the scripts in OBS Studio
@@ -304,7 +304,7 @@ For detailed installation instructions, see the [Installation Guide](../README.m
 
 ---
 
-## ❓ Support & Resources
+##  Support & Resources
 
 - **Documentation:** All technical details are in the [Technical Documentation](./TECHNICAL_ARCHITECTURE.md)
 - **GitHub Issues:** Report bugs or request features
@@ -312,7 +312,7 @@ For detailed installation instructions, see the [Installation Guide](../README.m
 
 ---
 
-## ❓ Next Steps
+##  Next Steps
 
 Now that you understand what Strixun Stream Suite does, you might want to:
 

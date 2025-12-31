@@ -4,14 +4,14 @@ Cloudflare Worker for URL shortening with OTP authentication, click analytics, a
 
 ## Features
 
-- ✅ Secure OTP authentication using shared Strixun OTP component
-- ✅ Create and manage short URLs
-- ✅ Click analytics tracking
-- ✅ Standalone web interface with Strixun branding
-- ✅ Full encryption support for API responses
-- ✅ Custom URL codes
-- ✅ Automatic expiration support
-- ✅ User-specific URL management
+- [OK] Secure OTP authentication using shared Strixun OTP component
+- [OK] Create and manage short URLs
+- [OK] Click analytics tracking
+- [OK] Standalone web interface with Strixun branding
+- [OK] Full encryption support for API responses
+- [OK] Custom URL codes
+- [OK] Automatic expiration support
+- [OK] User-specific URL management
 
 ## Setup
 

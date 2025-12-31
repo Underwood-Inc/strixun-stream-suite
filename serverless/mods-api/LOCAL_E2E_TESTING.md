@@ -178,11 +178,11 @@ pnpm test:e2e:local:debug
 
 For local development, you have **full flexibility**:
 
-✅ **Use any secret values** - They don't need to match production/development  
-✅ **Use test/dummy data** - Create test mods, versions, etc.  
-✅ **Custom ports** - Run on any available port  
-✅ **Skip optional secrets** - Only set what you need for your tests  
-✅ **Use `*` for ALLOWED_ORIGINS** - Allow all origins locally  
+[OK] **Use any secret values** - They don't need to match production/development  
+[OK] **Use test/dummy data** - Create test mods, versions, etc.  
+[OK] **Custom ports** - Run on any available port  
+[OK] **Skip optional secrets** - Only set what you need for your tests  
+[OK] **Use `*` for ALLOWED_ORIGINS** - Allow all origins locally  
 
 **Constraints:**
 - **KV/R2**: Still uses Cloudflare resources (not fully local)

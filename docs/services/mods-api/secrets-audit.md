@@ -2,22 +2,22 @@
 
 **Date:** 2025-01-XX  
 **Service:** strixun-mods-api  
-**Status:** ✅ Complete
+**Status:** [OK] Complete
 
 ## Required Secrets
 
-### 1. `JWT_SECRET` ⚠️ **REQUIRED**
+### 1. `JWT_SECRET` [WARNING] **REQUIRED**
 - **Purpose:** JWT signing secret for token verification
 - **Must Match:** OTP auth service JWT_SECRET
 - **Set via:** `wrangler secret put JWT_SECRET`
-- **Status:** ✅ Documented in wrangler.toml
+- **Status:** [OK] Documented in wrangler.toml
 - **Validation:** Throws error if missing (see `utils/auth.ts`)
 
-### 2. `ALLOWED_EMAILS` ⚠️ **REQUIRED** (NEW)
+### 2. `ALLOWED_EMAILS` [WARNING] **REQUIRED** (NEW)
 - **Purpose:** Comma-separated list of email addresses allowed to upload/manage mods
 - **Format:** `email1@example.com,email2@example.com`
 - **Set via:** `wrangler secret put ALLOWED_EMAILS`
-- **Status:** ✅ Implemented in handlers
+- **Status:** [OK] Implemented in handlers
 - **Behavior:** 
   - If unset: Allows all authenticated users (backward compatible)
   - If set: Only listed emails can upload/update/delete mods
@@ -29,19 +29,19 @@
 
 ## Optional Secrets
 
-### 3. `ALLOWED_ORIGINS` ⚠️ **RECOMMENDED**
+### 3. `ALLOWED_ORIGINS` [WARNING] **RECOMMENDED**
 - **Purpose:** Comma-separated CORS origins (recommended for production)
 - **Format:** `https://mods.idling.app,https://www.idling.app`
 - **Set via:** `wrangler secret put ALLOWED_ORIGINS`
-- **Status:** ✅ Documented and used throughout
+- **Status:** [OK] Documented and used throughout
 - **Default:** `*` (allows all origins) if not set
 - **Security:** Should be set in production to prevent CSRF attacks
 
-### 4. `MODS_PUBLIC_URL` ⚠️ **OPTIONAL**
+### 4. `MODS_PUBLIC_URL` [WARNING] **OPTIONAL**
 - **Purpose:** Public URL for R2 bucket (if using custom domain)
 - **Format:** `https://cdn.idling.app` or similar
 - **Set via:** `wrangler secret put MODS_PUBLIC_URL`
-- **Status:** ✅ Documented in wrangler.toml
+- **Status:** [OK] Documented in wrangler.toml
 - **Default:** Uses R2 public URL if not set
 - **Used in:** File download URL generation
 
@@ -50,24 +50,24 @@
 ### 5. `ENVIRONMENT`
 - **Purpose:** Environment identifier (development/production)
 - **Set via:** `wrangler.toml` [vars] section
-- **Status:** ✅ Configured
+- **Status:** [OK] Configured
 - **Value:** `production`
 
 ## KV Namespaces
 
-### 6. `MODS_KV` ⚠️ **REQUIRED**
+### 6. `MODS_KV` [WARNING] **REQUIRED**
 - **Purpose:** KV namespace for mod metadata storage
 - **Binding:** `MODS_KV`
-- **Status:** ✅ Configured in wrangler.toml
+- **Status:** [OK] Configured in wrangler.toml
 - **ID:** `0d3dafe0994046c6a47146c6bd082ad3`
 - **Created via:** `wrangler kv namespace create "MODS_KV"`
 
 ## R2 Buckets
 
-### 7. `MODS_R2` ⚠️ **REQUIRED**
+### 7. `MODS_R2` [WARNING] **REQUIRED**
 - **Purpose:** R2 bucket for mod file storage
 - **Binding:** `MODS_R2`
-- **Status:** ✅ Configured in wrangler.toml
+- **Status:** [OK] Configured in wrangler.toml
 - **Bucket Name:** `mods-storage`
 - **Created via:** `wrangler r2 bucket create "mods-storage"`
 

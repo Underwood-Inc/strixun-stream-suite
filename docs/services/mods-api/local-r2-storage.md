@@ -33,9 +33,9 @@ C:\Users\{YourUsername}\.wrangler\state\v3\r2\
 
 When you upload files in local dev:
 
-- **Mod files** → `~/.wrangler/state/v3/r2/{bucket-name}/mods/{modId}/{versionId}.zip`
-- **Thumbnails** → `~/.wrangler/state/v3/r2/{bucket-name}/thumbnails/{modId}.{ext}`
-- **Profile pictures** → `~/.wrangler/state/v3/r2/{bucket-name}/profile-pictures/{customerId}/...`
+- **Mod files** [EMOJI] `~/.wrangler/state/v3/r2/{bucket-name}/mods/{modId}/{versionId}.zip`
+- **Thumbnails** [EMOJI] `~/.wrangler/state/v3/r2/{bucket-name}/thumbnails/{modId}.{ext}`
+- **Profile pictures** [EMOJI] `~/.wrangler/state/v3/r2/{bucket-name}/profile-pictures/{customerId}/...`
 
 ## How to Use
 
@@ -47,10 +47,10 @@ pnpm dev:all
 ```
 
 This starts all workers with `--local` flag, which means:
-- ✅ R2 buckets are stored locally
-- ✅ KV namespaces are stored locally
-- ✅ No cloud access needed
-- ✅ Fast local file access
+- [OK] R2 buckets are stored locally
+- [OK] KV namespaces are stored locally
+- [OK] No cloud access needed
+- [OK] Fast local file access
 
 ### Browse Local R2 Files
 
@@ -105,10 +105,10 @@ All worker `package.json` files now use `--local` flag:
 ```
 
 This ensures:
-- ✅ Local R2 storage (not cloud)
-- ✅ Local KV storage (not cloud)
-- ✅ Uses `.dev.vars` (not cloud secrets)
-- ✅ Works offline
+- [OK] Local R2 storage (not cloud)
+- [OK] Local KV storage (not cloud)
+- [OK] Uses `.dev.vars` (not cloud secrets)
+- [OK] Works offline
 
 ### R2 Bucket Configuration
 
@@ -133,22 +133,22 @@ When using `--local`, this bucket is created automatically in `~/.wrangler/state
 
 ## Benefits of Local R2
 
-### ✅ Fast Development
+### [OK] Fast Development
 - **No network latency** - files stored on local disk
 - **Instant access** - no waiting for cloud uploads
 - **Unlimited bandwidth** - local disk speed
 
-### ✅ Safe Testing
+### [OK] Safe Testing
 - **No production data** - completely isolated
 - **No costs** - no Cloudflare R2 usage
 - **Easy cleanup** - just delete the directory
 
-### ✅ Offline Development
+### [OK] Offline Development
 - **Works without internet** - all storage is local
 - **No cloud dependencies** - fully self-contained
 - **Fast iteration** - no deployment needed
 
-### ✅ Easy Debugging
+### [OK] Easy Debugging
 - **Browse files directly** - see what's actually stored
 - **Inspect file contents** - open files in any editor
 - **Clear and reset** - delete directory to start fresh

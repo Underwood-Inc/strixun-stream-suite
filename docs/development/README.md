@@ -1,4 +1,4 @@
-# Development 💻
+# Development [EMOJI]
 
 Development guides, best practices, and contributing information.
 

@@ -36,12 +36,12 @@ Minimal Cloudflare Worker for WebRTC signaling in the P2P chat system.
 
 ## Features
 
-- ✅ JWT authentication
-- ✅ Room lifecycle management
-- ✅ WebRTC offer/answer exchange
-- ✅ Room discovery
-- ✅ Automatic cleanup (TTL-based)
-- ✅ Heartbeat system
+- [OK] JWT authentication
+- [OK] Room lifecycle management
+- [OK] WebRTC offer/answer exchange
+- [OK] Room discovery
+- [OK] Automatic cleanup (TTL-based)
+- [OK] Heartbeat system
 
 ## Storage
 

@@ -1,6 +1,6 @@
 # Framework & Modularization Proposal
 
-## 🎯 Current State Analysis
+## [EMOJI] Current State Analysis
 
 **app.js**: 1,132 lines - Too large, needs breaking down
 
@@ -15,7 +15,7 @@
 8. **Keyboard Shortcuts** (~25 lines) - Lines 1069-1092
 9. **Exports** (~35 lines) - Lines 1094-1130
 
-## ❓❓ Proposed Framework Architecture
+##  Proposed Framework Architecture
 
 ### Core Framework (`assets/js/core/`)
 
@@ -45,7 +45,7 @@ modules/
     └── bootstrap.js
 ```
 
-## 📋 Framework Features
+## [EMOJI] Framework Features
 
 ### 1. **Dependency Injection System**
 - Centralized dependency registry
@@ -75,7 +75,7 @@ modules/
 - `onReady()` - When DOM is ready
 - `onDestroy()` - Cleanup
 
-## 🎨 Proposed Module Breakdown
+## [EMOJI] Proposed Module Breakdown
 
 ### Module 1: Backup Manager (`modules/backup/backup-manager.js`)
 **Extract from app.js lines 14-352**
@@ -94,7 +94,7 @@ modules/
 - offerRecovery()
 ```
 
-**Size**: ~340 lines ❓ New module: ~300 lines
+**Size**: ~340 lines  New module: ~300 lines
 
 ### Module 2: UI State Manager (`modules/ui-state/ui-state-manager.js`)
 **Extract from app.js lines 392-456**
@@ -108,7 +108,7 @@ modules/
 - UI_CHECKBOXES constant
 ```
 
-**Size**: ~65 lines ❓ New module: ~80 lines
+**Size**: ~65 lines  New module: ~80 lines
 
 ### Module 3: Navigation Router (`modules/navigation/router.js`)
 **Extract from app.js lines 458-513**
@@ -121,7 +121,7 @@ modules/
 - Route guards
 ```
 
-**Size**: ~55 lines ❓ New module: ~120 lines (with framework features)
+**Size**: ~55 lines  New module: ~120 lines (with framework features)
 
 ### Module 4: Logger (`modules/logging/logger.js`)
 **Extract from app.js lines 515-541**
@@ -132,7 +132,7 @@ modules/
 - clearLog()
 ```
 
-**Size**: ~27 lines ❓ New module: ~50 lines (with enhancements)
+**Size**: ~27 lines  New module: ~50 lines (with enhancements)
 
 ### Module 5: Text Cycler UI (`modules/text-cycler-ui/text-cycler-ui.js`)
 **Extract from app.js lines 713-833**
@@ -149,7 +149,7 @@ modules/
 - loadTextSource()
 ```
 
-**Size**: ~120 lines ❓ New module: ~150 lines
+**Size**: ~120 lines  New module: ~150 lines
 
 ### Module 6: Keyboard Shortcuts (`modules/keyboard/shortcuts.js`)
 **Extract from app.js lines 1069-1092**
@@ -160,7 +160,7 @@ modules/
 - Shortcut definitions
 ```
 
-**Size**: ~25 lines ❓ New module: ~80 lines (with configurable shortcuts)
+**Size**: ~25 lines  New module: ~80 lines (with configurable shortcuts)
 
 ### Module 7: Bootstrap (`modules/initialization/bootstrap.js`)
 **Extract from app.js lines 835-1067**
@@ -172,14 +172,14 @@ modules/
 - Dependency setup
 ```
 
-**Size**: ~230 lines ❓ New module: ~200 lines (with framework)
+**Size**: ~230 lines  New module: ~200 lines (with framework)
 
 ### Module 8: Module Wrappers (Keep in app.js or create `modules/wrappers/`)
 **Extract from app.js lines 572-712**
 
 These are thin wrappers - could stay in app.js or be auto-generated.
 
-## 📦 Framework Implementation
+## [EMOJI] Framework Implementation
 
 ### Core Framework (`core/framework.js`)
 
@@ -247,7 +247,7 @@ class Module {
 }
 ```
 
-## 🚀 Migration Strategy
+## [EMOJI] Migration Strategy
 
 ### Phase 1: Create Framework Core (Week 1)
 1. Create `assets/js/core/` directory
@@ -275,7 +275,7 @@ class Module {
 3. Add TypeScript definitions (optional)
 4. Documentation
 
-## 📊 Expected Results
+## [EMOJI] Expected Results
 
 ### Before:
 - `app.js`: 1,132 lines
@@ -296,7 +296,7 @@ class Module {
 
 **Total**: ~1,280 lines (slight increase due to framework overhead, but much better organized)
 
-## 🎯 Benefits
+## [EMOJI] Benefits
 
 1. **Better Organization**: Each module has a single responsibility
 2. **Easier Testing**: Modules can be tested in isolation
@@ -307,7 +307,7 @@ class Module {
 7. **Scalability**: Easy to add new features
 8. **Type Safety**: Can add JSDoc/TypeScript later
 
-## 🔧 Alternative: Simpler Approach
+## [EMOJI] Alternative: Simpler Approach
 
 If full framework is too much, we could:
 
@@ -318,7 +318,7 @@ If full framework is too much, we could:
 
 This would be faster but less structured.
 
-## 💡 Recommendation
+## [EMOJI] Recommendation
 
 **Start with simpler approach**, then add framework features as needed:
 

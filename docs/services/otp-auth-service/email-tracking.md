@@ -42,7 +42,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
 ## Option 3: View in Dashboard (Future)
 
 The email tracking analytics can be integrated into the existing analytics dashboard at:
-- **URL**: `https://auth.idling.app/dashboard` ❓ Analytics tab
+- **URL**: `https://auth.idling.app/dashboard`  Analytics tab
 - **Status**: Not yet implemented (needs endpoint addition)
 
 ## Data Structure

@@ -9,7 +9,7 @@ cd serverless/url-shortener
 wrangler deploy
 ```
 
-That's it! ❓
+That's it! 
 
 ## What This Does
 
@@ -50,6 +50,6 @@ open https://s.idling.app
 
 If the page doesn't load:
 1. Check that the worker deployed successfully: `wrangler tail`
-2. Verify the route is configured: Cloudflare Dashboard ❓ Workers ❓ strixun-url-shortener ❓ Routes
+2. Verify the route is configured: Cloudflare Dashboard  Workers  strixun-url-shortener  Routes
 3. Check browser console for any JavaScript errors
 

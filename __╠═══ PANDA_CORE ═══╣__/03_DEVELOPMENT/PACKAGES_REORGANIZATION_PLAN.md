@@ -4,32 +4,32 @@
 
 ### Libraries (Should be in `packages/`)
 1. **Serverless Libraries** (currently in `serverless/shared/`):
-   - `@strixun/api-framework` → `serverless/shared/api/`
-   - `@strixun/service-client` → `serverless/shared/service-client/`
-   - `@strixun/types` → `serverless/shared/types/`
+   - `@strixun/api-framework` [EMOJI] `serverless/shared/api/`
+   - `@strixun/service-client` [EMOJI] `serverless/shared/service-client/`
+   - `@strixun/types` [EMOJI] `serverless/shared/types/`
 
 2. **Component Libraries** (currently in `shared-components/`):
-   - `@strixun/otp-login` → `shared-components/otp-login/`
-   - `@strixun/search-query-parser` → `shared-components/search-query-parser/`
-   - `@strixun/virtualized-table` → `shared-components/virtualized-table/`
-   - `@strixun/rate-limit-info` → `shared-components/rate-limit-info/`
-   - `@strixun/status-flair` → `shared-components/status-flair/`
-   - `@strixun/tooltip` → `shared-components/tooltip/`
-   - `@strixun/ad-carousel` → `shared-components/ad-carousel/`
-   - `@strixun/error-mapping` → `shared-components/error-mapping/`
-   - `@strixun/idle-game-overlay` → `shared-components/idle-game-overlay/`
+   - `@strixun/otp-login` [EMOJI] `shared-components/otp-login/`
+   - `@strixun/search-query-parser` [EMOJI] `shared-components/search-query-parser/`
+   - `@strixun/virtualized-table` [EMOJI] `shared-components/virtualized-table/`
+   - `@strixun/rate-limit-info` [EMOJI] `shared-components/rate-limit-info/`
+   - `@strixun/status-flair` [EMOJI] `shared-components/status-flair/`
+   - `@strixun/tooltip` [EMOJI] `shared-components/tooltip/`
+   - `@strixun/ad-carousel` [EMOJI] `shared-components/ad-carousel/`
+   - `@strixun/error-mapping` [EMOJI] `shared-components/error-mapping/`
+   - `@strixun/idle-game-overlay` [EMOJI] `shared-components/idle-game-overlay/`
 
 3. **Service with Library Export**:
-   - `@strixun/otp-auth-service` → `serverless/otp-auth-service/` (service, but exports `./utils/crypto`)
+   - `@strixun/otp-auth-service` [EMOJI] `serverless/otp-auth-service/` (service, but exports `./utils/crypto`)
 
 ### Applications (Should stay where they are)
-- `@strixun/mods-hub` → `mods-hub/` (application)
-- `@strixun/control-panel` → `control-panel/` (application)
-- `@strixun/url-shortener-app` → `serverless/url-shortener/app/` (application)
-- Main app → `src/` (application)
+- `@strixun/mods-hub` [EMOJI] `mods-hub/` (application)
+- `@strixun/control-panel` [EMOJI] `control-panel/` (application)
+- `@strixun/url-shortener-app` [EMOJI] `serverless/url-shortener/app/` (application)
+- Main app [EMOJI] `src/` (application)
 
 ### Meta Packages (Review needed)
-- `@strixun/shared-components` → `shared-components/` (Storybook meta package - may need to stay or be reorganized)
+- `@strixun/shared-components` [EMOJI] `shared-components/` (Storybook meta package - may need to stay or be reorganized)
 
 ## Target Structure
 

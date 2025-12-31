@@ -173,13 +173,13 @@ Add a verification step before running tests:
   working-directory: .
   run: |
     if [ ! -f "vitest.config.ts" ]; then
-      echo "❌ vitest.config.ts not found"
+      echo "[ERROR] vitest.config.ts not found"
       exit 1
     fi
     if [ ! -f "vitest.setup.ts" ]; then
-      echo "⚠️ vitest.setup.ts not found - tests may fail"
+      echo "[WARNING] vitest.setup.ts not found - tests may fail"
     fi
-    echo "✅ Test configuration verified"
+    echo "[OK] Test configuration verified"
 ```
 
 ## Recommended Fixes Priority

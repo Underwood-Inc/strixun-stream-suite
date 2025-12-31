@@ -1,12 +1,12 @@
 # Idle Game Overlay System
 
-> **Comprehensive idle/mini-game system with RPG elements, loot boxes, and OTP integration** ❓✨
+> **Comprehensive idle/mini-game system with RPG elements, loot boxes, and OTP integration** [FEATURE]
 
 ---
 
-## 📦 What's Implemented
+## [EMOJI] What's Implemented
 
-### ✅ Core Type System
+### [OK] Core Type System
 
 - **Character Customization** (`types/character-customization.ts`)
   - Pixel editor configuration
@@ -21,7 +21,7 @@
   - Generated item types
 
 - **End-Game Crafting** (`types/crafting.ts`)
-  - 6 crafting tiers (basic ❓ transcendent)
+  - 6 crafting tiers (basic  transcendent)
   - Special materials system
   - Modifier application
   - Quality calculation
@@ -45,7 +45,7 @@
   - Multiple reward pools
   - Tier-based bonuses
 
-### ✅ Core Systems
+### [OK] Core Systems
 
 - **Loot Generator** (`core/loot-generator.ts`)
   - Path of Exile-style generation
@@ -69,7 +69,7 @@
   - Portal rendering
   - User-customizable tooltips
 
-### ✅ API Integration
+### [OK] API Integration
 
 - **Game API Service** (`services/game-api.ts`)
   - Full API client for all game endpoints
@@ -82,7 +82,7 @@
   - Loading/error states
   - Reactive state updates
 
-### ✅ UI Components
+### [OK] UI Components
 
 - **GameOverlay** (`components/GameOverlay.svelte`)
   - Main overlay component with navigation
@@ -144,13 +144,13 @@
 
 ---
 
-## 🎯 Architecture
+## [EMOJI] Architecture
 
 See `docs/IDLE_GAME_SYSTEM_ARCHITECTURE.md` for full architecture documentation.
 
 ---
 
-## 🚀 Usage
+## [EMOJI] Usage
 
 ```svelte
 <script>
@@ -174,7 +174,7 @@ See `docs/IDLE_GAME_SYSTEM_ARCHITECTURE.md` for full architecture documentation.
 
 ---
 
-## 🔐 Security
+## [EMOJI] Security
 
 - **End-to-End Encryption**: All API responses automatically encrypted using existing JWT-based encryption
 - **OTP Integration**: Passwordless save states using existing OTP auth system
@@ -183,7 +183,7 @@ See `docs/IDLE_GAME_SYSTEM_ARCHITECTURE.md` for full architecture documentation.
 
 ---
 
-## 📋 API Endpoints
+## [EMOJI] API Endpoints
 
 All endpoints are documented in `docs/API_ENDPOINTS_REFERENCE.md`:
 
@@ -198,5 +198,5 @@ All endpoints are documented in `docs/API_ENDPOINTS_REFERENCE.md`:
 
 ---
 
-**Status**: ✅ **Complete** - All core systems, API integration, and UI components implemented. Ready for integration into applications.
+**Status**: [OK] **Complete** - All core systems, API integration, and UI components implemented. Ready for integration into applications.
 

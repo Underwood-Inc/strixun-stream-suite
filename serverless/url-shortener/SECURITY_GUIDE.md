@@ -1,4 +1,4 @@
-# 🔒 Security Guide - URL Shortener Encryption
+# [EMOJI] Security Guide - URL Shortener Encryption
 
 ## Encryption Key Management
 
@@ -6,13 +6,13 @@
 
 ### Key Management Approach
 
-- ✅ Keys must be provided at **BUILD TIME** via `VITE_SERVICE_ENCRYPTION_KEY`
-- ✅ Keys are bundled into JavaScript during build
-- ✅ No runtime key injection
+- [OK] Keys must be provided at **BUILD TIME** via `VITE_SERVICE_ENCRYPTION_KEY`
+- [OK] Keys are bundled into JavaScript during build
+- [OK] No runtime key injection
 
 ---
 
-## 🔐 Current Encryption Architecture
+## [EMOJI] Current Encryption Architecture
 
 ### How It Works Now
 
@@ -24,9 +24,9 @@
 ### Security Trade-offs
 
 **Current Approach (Build-time injection):**
-- ✅ Better than runtime injection (not in plain HTML)
-- ⚠️ Key is still in the JavaScript bundle (can be extracted)
-- ⚠️ Symmetric key exposed to clients (fundamental security issue)
+- [OK] Better than runtime injection (not in plain HTML)
+- [WARNING] Key is still in the JavaScript bundle (can be extracted)
+- [WARNING] Symmetric key exposed to clients (fundamental security issue)
 
 **Why This Is Still Problematic:**
 - Anyone can extract the key from the JavaScript bundle
@@ -36,7 +36,7 @@
 
 ---
 
-## 🎯 Recommended Solutions
+## [EMOJI] Recommended Solutions
 
 ### Option 1: Remove Client-Side Encryption (RECOMMENDED)
 
@@ -71,15 +71,15 @@
 
 **If you must use symmetric encryption:**
 
-- ✅ Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
-- ✅ Rotate keys frequently (monthly or more)
-- ✅ Document the security trade-off
-- ✅ Monitor for key extraction attempts
-- ❌ Never use runtime injection
+- [OK] Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
+- [OK] Rotate keys frequently (monthly or more)
+- [OK] Document the security trade-off
+- [OK] Monitor for key extraction attempts
+- [ERROR] Never use runtime injection
 
 ---
 
-## 📋 Configuration
+## [EMOJI] Configuration
 
 ### Build-Time Key Injection
 
@@ -113,7 +113,7 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 
 ---
 
-## ❓ Security Checklist
+##  Security Checklist
 
 - [x] Removed runtime key injection
 - [x] Using build-time injection only
@@ -125,7 +125,7 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 
 ---
 
-## 📚 Related Documentation
+## [EMOJI] Related Documentation
 
 - `shared-config/otp-encryption.ts` - Key retrieval function
 - `shared-config/README.md` - Configuration guide
@@ -134,7 +134,7 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 
 ---
 
-## ⚠️ Important Notes
+## [WARNING] Important Notes
 
 1. **Never commit `.env` files** with real keys to version control
 2. **Rotate keys** if they're ever exposed or compromised
@@ -144,7 +144,7 @@ wrangler secret put SERVICE_ENCRYPTION_KEY
 
 ---
 
-## 🔄 Migration Path
+## [EMOJI] Migration Path
 
 If you want to remove client-side encryption:
 

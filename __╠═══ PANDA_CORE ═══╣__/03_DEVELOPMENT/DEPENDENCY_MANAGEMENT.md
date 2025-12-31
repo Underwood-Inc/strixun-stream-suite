@@ -114,12 +114,12 @@ All other dependencies are workspace-specific and managed locally.
 
 ## Benefits
 
-✅ **Single Source of Truth**: Update shared deps once in root, all workspaces get it  
-✅ **Consistent Versions**: Overrides prevent version drift across workspaces  
-✅ **Efficient Storage**: Shared dependencies automatically hoisted to root `node_modules`  
-✅ **Fast Installs**: Single lockfile, deduplicated dependencies  
-✅ **Workspace Protocol**: Services can reference each other easily  
-✅ **Automatic Hoisting**: pnpm automatically hoists shared deps to root  
+[OK] **Single Source of Truth**: Update shared deps once in root, all workspaces get it  
+[OK] **Consistent Versions**: Overrides prevent version drift across workspaces  
+[OK] **Efficient Storage**: Shared dependencies automatically hoisted to root `node_modules`  
+[OK] **Fast Installs**: Single lockfile, deduplicated dependencies  
+[OK] **Workspace Protocol**: Services can reference each other easily  
+[OK] **Automatic Hoisting**: pnpm automatically hoists shared deps to root  
 
 ## Commands Reference
 

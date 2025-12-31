@@ -3,8 +3,8 @@
 ## Critical Dependencies to Update
 
 ### `@strixun/api-framework` (serverless/shared/api/)
-- Imports from: `../../../src/core/api/` → Will become `../../src/core/api/`
-- Imports from: `../encryption/index.js` → Will become `../encryption/index.js` (encryption also moves)
+- Imports from: `../../../src/core/api/` [EMOJI] Will become `../../src/core/api/`
+- Imports from: `../encryption/index.js` [EMOJI] Will become `../encryption/index.js` (encryption also moves)
 
 ### Encryption (serverless/shared/encryption/)
 - Currently referenced by: `serverless/shared/api/index.ts`
@@ -40,8 +40,8 @@ packages/
 
 ### After moving to packages/:
 1. `serverless/shared/api/index.ts`:
-   - `../../../src/core/api/` → `../../src/core/api/`
-   - `../encryption/index.js` → `../encryption/index.js` (if encryption also in packages/)
+   - `../../../src/core/api/` [EMOJI] `../../src/core/api/`
+   - `../encryption/index.js` [EMOJI] `../encryption/index.js` (if encryption also in packages/)
 
 2. All imports using `@strixun/*` will continue to work (workspace packages)
 

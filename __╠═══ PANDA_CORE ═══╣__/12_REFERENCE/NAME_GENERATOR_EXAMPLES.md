@@ -15,7 +15,7 @@ Examples of generated names for each pattern category using proper spacing (no n
 4. **Mystic Wolf** - Mystic (adjective) + Wolf (noun)
 5. **Golden Eagle** - Golden (adjective) + Eagle (noun)
 
-**Readability:** ❓❓❓❓❓ Excellent - Simple, clear, memorable, natural
+**Readability:**  Excellent - Simple, clear, memorable, natural
 
 ---
 
@@ -30,7 +30,7 @@ Examples of generated names for each pattern category using proper spacing (no n
 4. **Golden Eagle Noble** - Golden (adj) + Eagle (noun) + Noble (adj)
 5. **Cosmic Phoenix Eternal** - Cosmic (adj) + Phoenix (noun) + Eternal (adj)
 
-**Readability:** ❓❓❓❓❓ Excellent - Descriptive, natural flow, very readable
+**Readability:**  Excellent - Descriptive, natural flow, very readable
 
 ---
 
@@ -45,7 +45,7 @@ Examples of generated names for each pattern category using proper spacing (no n
 4. **Wolf Mystic** - Wolf (noun) + Mystic (adjective)
 5. **Eagle Golden** - Eagle (noun) + Golden (adjective)
 
-**Readability:** ❓❓❓❓❓ Excellent - Natural flow, noun-first feels more like a proper name
+**Readability:**  Excellent - Natural flow, noun-first feels more like a proper name
 
 ---
 
@@ -60,7 +60,7 @@ Examples of generated names for each pattern category using proper spacing (no n
 4. **Fierce Noble Wolf** - Fierce (adj) + Noble (adj) + Wolf (noun)
 5. **Eternal Divine Eagle** - Eternal (adj) + Divine (adj) + Eagle (noun)
 
-**Readability:** ❓❓❓❓❓ Excellent - Very descriptive, creates rich imagery, natural spacing
+**Readability:**  Excellent - Very descriptive, creates rich imagery, natural spacing
 
 ---
 
@@ -75,7 +75,7 @@ Examples of generated names for each pattern category using proper spacing (no n
 4. **Mystic Bear Raven** - Mystic (adj) + Bear (noun) + Raven (noun)
 5. **Golden Falcon Hawk** - Golden (adj) + Falcon (noun) + Hawk (noun)
 
-**Readability:** ❓❓❓❓ Good - Interesting compound names, natural spacing makes them readable
+**Readability:**  Good - Interesting compound names, natural spacing makes them readable
 
 ---
 
@@ -89,7 +89,7 @@ Examples of generated names for each pattern category using proper spacing (no n
 4. **Crimson Tiger Lion** - (adjective-noun-noun pattern)
 5. **Mystic Eagle** - (adjective-noun pattern)
 
-**Readability:** ❓❓❓❓❓ Excellent - Maximum variety, keeps names fresh, all properly spaced
+**Readability:**  Excellent - Maximum variety, keeps names fresh, all properly spaced
 
 ---
 
@@ -151,22 +151,22 @@ Examples of generated names for each pattern category using proper spacing (no n
 **Total across all patterns:** **~24 million+ unique combinations**
 
 **Note:** While this is fewer combinations than with numbers, the names are:
-- ✅ More readable and natural
-- ✅ Easier to remember
-- ✅ More professional
-- ✅ Still sufficient for millions of users (with uniqueness checking)
+- [OK] More readable and natural
+- [OK] Easier to remember
+- [OK] More professional
+- [OK] Still sufficient for millions of users (with uniqueness checking)
 
 ---
 
 ## Validation Rules
 
-✅ **Maximum 5 words**  
-✅ **3-30 characters** total length  
-✅ **Must start with letter**  
-✅ **Alphanumeric and spaces only**  
-✅ **Proper spacing** (no multiple consecutive spaces)  
-✅ **Uniqueness guaranteed** via KV storage check  
-✅ **No numbers** - Pure word-based names for better readability
+[OK] **Maximum 5 words**  
+[OK] **3-30 characters** total length  
+[OK] **Must start with letter**  
+[OK] **Alphanumeric and spaces only**  
+[OK] **Proper spacing** (no multiple consecutive spaces)  
+[OK] **Uniqueness guaranteed** via KV storage check  
+[OK] **No numbers** - Pure word-based names for better readability
 
 ---
 
@@ -193,9 +193,9 @@ Here are some realistic examples that might be generated:
 ---
 
 **Note:** All examples:
-- ✅ Respect the 5-word maximum
-- ✅ Use proper spacing (no camelCase)
-- ✅ Are natural and readable
-- ✅ Would pass validation
-- ✅ Uniqueness guaranteed via KV storage check
+- [OK] Respect the 5-word maximum
+- [OK] Use proper spacing (no camelCase)
+- [OK] Are natural and readable
+- [OK] Would pass validation
+- [OK] Uniqueness guaranteed via KV storage check
 

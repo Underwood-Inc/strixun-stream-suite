@@ -1,4 +1,4 @@
-# Architecture ❓❓
+# Architecture 
 
 Complete system architecture documentation for Strixun Stream Suite.
 

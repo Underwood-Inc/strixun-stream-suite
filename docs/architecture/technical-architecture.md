@@ -206,12 +206,12 @@ classDiagram
 
 **Communication Patterns:**
 
-1. **WebSocket (OBS ❓ Control Panel)**
+1. **WebSocket (OBS  Control Panel)**
    - Bidirectional communication
    - Request/response pattern with message IDs
    - Automatic reconnection on failure
 
-2. **BroadcastChannel (Control Panel ❓ Browser Sources)**
+2. **BroadcastChannel (Control Panel  Browser Sources)**
    - One-way messaging from control panel to displays
    - Used for text cycler and clips player updates
    - No response mechanism (fire-and-forget)
@@ -802,7 +802,7 @@ flowchart TB
 **Resilience Patterns:**
 
 1. **Storage Fallback Chain**
-   - IndexedDB ❓ localStorage ❓ Recovery Snapshot ❓ User Prompt
+   - IndexedDB  localStorage  Recovery Snapshot  User Prompt
 
 2. **WebSocket Reconnection**
    - Automatic reconnection with exponential backoff

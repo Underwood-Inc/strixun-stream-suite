@@ -59,9 +59,9 @@ When `wrangler dev` runs, secrets are loaded in this order (highest to lowest):
 3. **Environment variables** - System/env vars
 
 This ensures:
-- ✅ CI secrets always win (set via `wrangler secret put`)
-- ✅ Local dev has defaults (from `.dev.vars`)
-- ✅ No accidental overwrites of production secrets
+- [OK] CI secrets always win (set via `wrangler secret put`)
+- [OK] Local dev has defaults (from `.dev.vars`)
+- [OK] No accidental overwrites of production secrets
 
 ### Automatic Setup
 

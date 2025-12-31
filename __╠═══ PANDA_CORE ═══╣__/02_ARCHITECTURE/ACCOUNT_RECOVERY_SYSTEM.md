@@ -1,6 +1,4 @@
-# Account Recovery System
-
-**Last Updated:** 2025-12-29
+# Account Recovery System [EMOJI]
 
 ## Overview
 
@@ -34,33 +32,33 @@ The account recovery system ensures that customer accounts persist indefinitely 
 
 ```
 1. User signs in/up with email: user@example.com
-   ->
+   
 2. ensureCustomerAccount() is called:
    - Checks for existing customer by email
    - Finds customer account: cust_abc123
    - Reactivates customer if status was 'suspended' or 'cancelled'
    - Returns recovered customerId: cust_abc123
-   ->
+   
 3. getOrCreateUser() is called with recovered customerId:
    - User account doesn't exist (was deleted/expired)
    - Creates new user account with recovered customerId
    - Links user to existing customer account
-   ->
+   
 4. Result:
-   - Customer account: [SUCCESS] Recovered and reactivated
-   - User account: [SUCCESS] Recreated with recovered customerId
-   - Customer information: [SUCCESS] Retained indefinitely
+   - Customer account: [OK] Recovered and reactivated
+   - User account: [OK] Recreated with recovered customerId
+   - Customer information: [OK] Retained indefinitely
 ```
 
 ### Scenario: Both Accounts Exist
 
 ```
 1. User signs in with email: user@example.com
-   ->
+   
 2. ensureCustomerAccount() finds existing customer
    - Returns existing customerId
    - Reactivates if needed
-   ->
+   
 3. getOrCreateUser() finds existing user
    - Updates lastLogin timestamp
    - Resets TTL (extends account lifetime)
@@ -71,19 +69,19 @@ The account recovery system ensures that customer accounts persist indefinitely 
 
 ```
 1. User signs up with email: newuser@example.com
-   ->
+   
 2. ensureCustomerAccount() finds no existing customer
    - Creates new customer account
    - Stores email-to-customerId mapping (no TTL)
    - Returns new customerId
-   ->
+   
 3. getOrCreateUser() finds no existing user
    - Creates new user account (1-year TTL)
    - Links to new customer account
-   ->
+   
 4. Result:
-   - Customer account: [SUCCESS] Created (persists indefinitely)
-   - User account: [SUCCESS] Created (1-year TTL)
+   - Customer account: [OK] Created (persists indefinitely)
+   - User account: [OK] Created (1-year TTL)
 ```
 
 ---
@@ -94,6 +92,22 @@ The account recovery system ensures that customer accounts persist indefinitely 
 
 **File:** `services/customer.ts`
 
+```typescript
+export async function storeCustomer(
+    customerId: string, 
+    customerData: CustomerData, 
+    env: Env,
+    expirationTtl?: number  // Optional - defaults to no expiration
+): Promise<void> {
+    // Customer accounts persist indefinitely (no TTL) by default
+    const putOptions = expirationTtl ? { expirationTtl } : undefined;
+    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData), putOptions);
+    
+    // Email mapping also persists indefinitely
+    await env.OTP_AUTH_KV.put(emailMappingKey, customerId, putOptions);
+}
+```
+
 **Key Points:**
 - Customer accounts stored without TTL by default
 - Email-to-customerId mapping also persists indefinitely
@@ -102,6 +116,41 @@ The account recovery system ensures that customer accounts persist indefinitely 
 ### Customer Account Recovery
 
 **File:** `handlers/auth/customer-creation.ts`
+
+```typescript
+export async function ensureCustomerAccount(
+    email: string,
+    customerId: string | null,
+    env: Env
+): Promise<string | null> {
+    // 1. If customerId provided, verify it exists
+    if (customerId) {
+        const existing = await getCustomer(customerId, env);
+        if (existing) {
+            // Reactivate if suspended/cancelled
+            if (existing.status === 'suspended' || existing.status === 'cancelled') {
+                existing.status = 'active';
+                await storeCustomer(customerId, existing, env);
+            }
+            return customerId;
+        }
+    }
+    
+    // 2. Check for existing customer by email (smart recovery)
+    const existingCustomer = await getCustomerByEmail(emailLower, env);
+    if (existingCustomer) {
+        // Reactivate if suspended/cancelled
+        if (existingCustomer.status === 'suspended' || existingCustomer.status === 'cancelled') {
+            existingCustomer.status = 'active';
+            await storeCustomer(existingCustomer.customerId, existingCustomer, env);
+        }
+        return existingCustomer.customerId;
+    }
+    
+    // 3. Create new customer account if none exists
+    // ... (new account creation logic)
+}
+```
 
 **Key Points:**
 - Always checks for existing customer by email first
@@ -112,6 +161,37 @@ The account recovery system ensures that customer accounts persist indefinitely 
 ### User Account Recovery
 
 **File:** `handlers/auth/verify-otp.ts`
+
+```typescript
+async function getOrCreateUser(
+    email: string,
+    customerId: string | null,  // Recovered customerId from ensureCustomerAccount
+    env: Env
+): Promise<User> {
+    const userKey = getCustomerKey(customerId, `user_${emailHash}`);
+    let user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' });
+    
+    // If user doesn't exist but we have customerId, this is account recovery
+    if (!user && customerId) {
+        console.log(`[User Recovery] Recreating user account with recovered customerId: ${customerId}`);
+    }
+    
+    if (!user) {
+        // Create new user account with recovered customerId
+        user = {
+            userId,
+            email: emailLower,
+            displayName,
+            customerId: customerId || null,  // Uses recovered customerId
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+        };
+        await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
+    }
+    
+    return user;
+}
+```
 
 **Key Points:**
 - Uses recovered customerId when creating new user account
@@ -165,17 +245,17 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 1. **Email Lookup:**
    ```
-   email_to_customer_{emailHash} -> customerId
+   email_to_customer_{emailHash}  customerId
    ```
 
 2. **Customer Recovery:**
    ```
-   customer_{customerId} -> CustomerData
+   customer_{customerId}  CustomerData
    ```
 
 3. **User Recreation:**
    ```
-   cust_{customerId}_user_{emailHash} -> UserData (new, 1-year TTL)
+   cust_{customerId}_user_{emailHash}  UserData (new, 1-year TTL)
    ```
 
 ---
@@ -314,7 +394,8 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 ---
 
-**Status:** [SUCCESS] **IMPLEMENTED**
+**Status:** [OK] **IMPLEMENTED**
+**Last Updated:** 2024-12-19
 **Files Modified:**
 - `serverless/otp-auth-service/services/customer.ts`
 - `serverless/otp-auth-service/handlers/auth/customer-creation.ts`

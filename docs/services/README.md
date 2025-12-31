@@ -1,4 +1,4 @@
-# Services 🔧
+# Services [EMOJI]
 
 Documentation for individual services in Strixun Stream Suite.
 

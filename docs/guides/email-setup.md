@@ -4,13 +4,13 @@
 
 ---
 
-## 🎯 Overview
+## [EMOJI] Overview
 
 Resend is an email API service that we'll use to send OTP (One-Time Password) codes to users. It has a generous free tier (3,000 emails/month) and is perfect for Cloudflare Workers.
 
 ---
 
-## 📋 Step 1: Create Resend Account
+## [EMOJI] Step 1: Create Resend Account
 
 ### 1.1 Go to Resend Website
 1. Open your browser and navigate to: **https://resend.com**
@@ -32,7 +32,7 @@ You can sign up with:
 
 ---
 
-## 🔑 Step 2: Get Your API Key
+## [EMOJI] Step 2: Get Your API Key
 
 ### 2.1 Navigate to API Keys
 1. Once logged in, you'll be on the **Dashboard**
@@ -52,7 +52,7 @@ You can sign up with:
 
 ---
 
-## 🌐 Step 3: Verify Your Domain (Optional but Recommended)
+## [EMOJI] Step 3: Verify Your Domain (Optional but Recommended)
 
 ### 3.1 Why Verify Domain?
 - **Better deliverability**: Emails from verified domains are less likely to be marked as spam
@@ -91,7 +91,7 @@ Value: (provided by Resend)
 
 ---
 
-## ❓❓ Step 4: Add API Key to Cloudflare Workers
+##  Step 4: Add API Key to Cloudflare Workers
 
 ### 4.1 Install Wrangler CLI (If Not Already Installed)
 
@@ -143,7 +143,7 @@ You should see `RESEND_API_KEY` in the list.
 
 ---
 
-## 🧪 Step 5: Test Email Sending
+## [EMOJI] Step 5: Test Email Sending
 
 ### 5.1 Update Worker Code
 
@@ -260,7 +260,7 @@ https://your-worker.your-subdomain.workers.dev/test/email?to=your@email.com
 
 ---
 
-## 📊 Step 6: Monitor Usage
+## [EMOJI] Step 6: Monitor Usage
 
 ### 6.1 Check Resend Dashboard
 1. Go to **https://resend.com/dashboard**
@@ -273,7 +273,7 @@ https://your-worker.your-subdomain.workers.dev/test/email?to=your@email.com
 - **Automatic upgrade** if you exceed (you'll be notified)
 
 ### 6.3 Set Up Alerts (Optional)
-1. Go to **"Settings"** ❓ **"Notifications"**
+1. Go to **"Settings"**  **"Notifications"**
 2. Enable email alerts for:
    - Usage approaching limits
    - Failed deliveries
@@ -281,7 +281,7 @@ https://your-worker.your-subdomain.workers.dev/test/email?to=your@email.com
 
 ---
 
-## 🔧 Step 7: Configure Email Templates (Optional)
+## [EMOJI] Step 7: Configure Email Templates (Optional)
 
 ### 7.1 Create OTP Email Template
 
@@ -337,7 +337,7 @@ function generateOTPEmailHTML(otp) {
 
 ---
 
-## ✅ Step 8: Verify Everything Works
+## [OK] Step 8: Verify Everything Works
 
 ### 8.1 Checklist
 
@@ -370,7 +370,7 @@ function generateOTPEmailHTML(otp) {
 
 ---
 
-## 🚀 Next Steps
+## [EMOJI] Next Steps
 
 Once Resend is set up:
 
@@ -384,7 +384,7 @@ See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for the complete implementa
 
 ---
 
-## 📚 Additional Resources
+## [EMOJI] Additional Resources
 
 - **Resend Documentation**: https://resend.com/docs
 - **Resend API Reference**: https://resend.com/docs/api-reference
@@ -392,7 +392,7 @@ See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for the complete implementa
 
 ---
 
-## 💡 Pro Tips
+## [EMOJI] Pro Tips
 
 1. **Use Environment Variables**: Store your Resend API key as a Cloudflare secret (never commit to git)
 2. **Monitor Usage**: Check Resend dashboard regularly to stay within free tier
@@ -403,5 +403,5 @@ See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for the complete implementa
 ---
 
 **Last Updated**: 2025-01-01  
-**Status**: Ready to Use ✅
+**Status**: Ready to Use [OK]
 

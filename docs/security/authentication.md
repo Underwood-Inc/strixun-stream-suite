@@ -1,16 +1,16 @@
 # Email OTP Authentication Flow
 
-> **Complete user authentication flow documentation** 📧🔐
+> **Complete user authentication flow documentation** [EMOJI][EMOJI]
 
 ---
 
-## 🎯 Overview
+## [EMOJI] Overview
 
 The authentication system uses **email-based OTP (One-Time Password)** with JWT tokens for session management. No passwords, no OAuth complexity - just email verification.
 
 ---
 
-## 📋 Complete User Flow
+## [EMOJI] Complete User Flow
 
 ### **Step 1: User Requests OTP**
 
@@ -29,12 +29,12 @@ const response = await fetch(`${API_URL}/auth/request-otp`, {
 ```
 
 **Server-Side:**
-1. ✅ Validates email format
-2. ✅ Checks rate limit (3 requests per email per hour)
-3. ✅ Generates secure 9-digit OTP
-4. ✅ Stores OTP in KV (10-minute expiration)
-5. ✅ Sends email via Resend with OTP code
-6. ✅ Returns success response
+1. [OK] Validates email format
+2. [OK] Checks rate limit (3 requests per email per hour)
+3. [OK] Generates secure 9-digit OTP
+4. [OK] Stores OTP in KV (10-minute expiration)
+5. [OK] Sends email via Resend with OTP code
+6. [OK] Returns success response
 
 **Response:**
 ```json
@@ -47,10 +47,10 @@ const response = await fetch(`${API_URL}/auth/request-otp`, {
 ```
 
 **User Experience:**
-- ✅ Email sent notification appears
-- ✅ UI shows "Check your email" message
-- ✅ Countdown timer (10 minutes)
-- ✅ "Resend Code" button (if rate limit allows)
+- [OK] Email sent notification appears
+- [OK] UI shows "Check your email" message
+- [OK] Countdown timer (10 minutes)
+- [OK] "Resend Code" button (if rate limit allows)
 
 ---
 
@@ -92,16 +92,16 @@ const response = await fetch(`${API_URL}/auth/verify-otp`, {
 ```
 
 **Server-Side:**
-1. ✅ Validates email and OTP format
-2. ✅ Looks up OTP in KV storage
-3. ✅ Checks expiration (10 minutes)
-4. ✅ Checks attempt limit (5 attempts max)
-5. ✅ Verifies OTP matches
-6. ✅ Deletes OTP (single-use only)
-7. ✅ Creates/updates user account
-8. ✅ Generates JWT token (30-day expiration)
-9. ✅ Stores session in KV
-10. ✅ Returns token and user info
+1. [OK] Validates email and OTP format
+2. [OK] Looks up OTP in KV storage
+3. [OK] Checks expiration (10 minutes)
+4. [OK] Checks attempt limit (5 attempts max)
+5. [OK] Verifies OTP matches
+6. [OK] Deletes OTP (single-use only)
+7. [OK] Creates/updates user account
+8. [OK] Generates JWT token (30-day expiration)
+9. [OK] Stores session in KV
+10. [OK] Returns token and user info
 
 **Response:**
 ```json
@@ -131,10 +131,10 @@ setAuth({
 ```
 
 **User Experience:**
-- ✅ "Login successful" notification
-- ✅ User is redirected to app
-- ✅ Authentication state persists (localStorage)
-- ✅ Token is automatically included in API requests
+- [OK] "Login successful" notification
+- [OK] User is redirected to app
+- [OK] Authentication state persists (localStorage)
+- [OK] Token is automatically included in API requests
 
 ---
 
@@ -155,12 +155,12 @@ const response = await authenticatedFetch('/notes/save', {
 ```
 
 **Server-Side:**
-1. ✅ Extracts token from `Authorization: Bearer {token}` header
-2. ✅ Validates JWT signature
-3. ✅ Checks token expiration
-4. ✅ Checks token blacklist (for logged-out tokens)
-5. ✅ Extracts userId from token
-6. ✅ Processes request with user context
+1. [OK] Extracts token from `Authorization: Bearer {token}` header
+2. [OK] Validates JWT signature
+3. [OK] Checks token expiration
+4. [OK] Checks token blacklist (for logged-out tokens)
+5. [OK] Extracts userId from token
+6. [OK] Processes request with user context
 
 **Protected Endpoints:**
 - `POST /notes/save` - Save notebook
@@ -191,10 +191,10 @@ const response = await fetch(`${API_URL}/auth/refresh`, {
 ```
 
 **Server-Side:**
-1. ✅ Validates current token
-2. ✅ Generates new JWT token
-3. ✅ Updates session in KV
-4. ✅ Returns new token
+1. [OK] Validates current token
+2. [OK] Generates new JWT token
+3. [OK] Updates session in KV
+4. [OK] Returns new token
 
 **Response:**
 ```json
@@ -229,20 +229,20 @@ clearAuth();
 ```
 
 **Server-Side:**
-1. ✅ Validates token
-2. ✅ Adds token to blacklist
-3. ✅ Deletes session from KV
-4. ✅ Returns success
+1. [OK] Validates token
+2. [OK] Adds token to blacklist
+3. [OK] Deletes session from KV
+4. [OK] Returns success
 
 **User Experience:**
-- ✅ User is logged out
-- ✅ Token removed from storage
-- ✅ Redirected to login screen
-- ✅ Token cannot be reused (blacklisted)
+- [OK] User is logged out
+- [OK] Token removed from storage
+- [OK] Redirected to login screen
+- [OK] Token cannot be reused (blacklisted)
 
 ---
 
-## 🔄 Session Persistence
+## [EMOJI] Session Persistence
 
 ### **On App Load:**
 ```typescript
@@ -269,35 +269,35 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 
 ---
 
-## 🛡️ Security Features
+## [EMOJI]️ Security Features
 
 ### **OTP Security:**
-- ✅ 9-digit numeric codes (1,000,000,000 combinations)
-- ✅ Cryptographically secure random generation
-- ✅ 10-minute expiration
-- ✅ Single-use only (deleted after verification)
-- ✅ 5 attempt limit per OTP
+- [OK] 9-digit numeric codes (1,000,000,000 combinations)
+- [OK] Cryptographically secure random generation
+- [OK] 10-minute expiration
+- [OK] Single-use only (deleted after verification)
+- [OK] 5 attempt limit per OTP
 
 ### **Rate Limiting:**
-- ✅ 3 OTP requests per email per hour
-- ✅ Prevents spam/abuse
-- ✅ Automatic reset after 1 hour
+- [OK] 3 OTP requests per email per hour
+- [OK] Prevents spam/abuse
+- [OK] Automatic reset after 1 hour
 
 ### **Token Security:**
-- ✅ JWT tokens (HMAC-SHA256 signed)
-- ✅ 30-day expiration
-- ✅ Token blacklist (for logout)
-- ✅ HTTPS only (enforced by Cloudflare)
+- [OK] JWT tokens (HMAC-SHA256 signed)
+- [OK] 30-day expiration
+- [OK] Token blacklist (for logout)
+- [OK] HTTPS only (enforced by Cloudflare)
 
 ### **Data Protection:**
-- ✅ Email hashing (SHA-256) for storage keys
-- ✅ No plaintext passwords
-- ✅ CORS support
-- ✅ User isolation (userId in all requests)
+- [OK] Email hashing (SHA-256) for storage keys
+- [OK] No plaintext passwords
+- [OK] CORS support
+- [OK] User isolation (userId in all requests)
 
 ---
 
-## 📱 UI Flow (Expected)
+## [EMOJI] UI Flow (Expected)
 
 ### **Login Screen:**
 ```
@@ -334,9 +334,9 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 
 ---
 
-## 🔧 Implementation Status
+## [EMOJI] Implementation Status
 
-### ✅ **Server-Side (Complete):**
+### [OK] **Server-Side (Complete):**
 - [x] OTP generation endpoint
 - [x] OTP verification endpoint
 - [x] JWT token generation
@@ -347,7 +347,7 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 - [x] Token refresh endpoint
 - [x] Logout endpoint
 
-### ❓ **Client-Side (Pending):**
+###  **Client-Side (Pending):**
 - [ ] Login UI component
 - [ ] OTP input component
 - [ ] Email input validation
@@ -359,7 +359,7 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 
 ---
 
-## 🚀 Next Steps
+## [EMOJI] Next Steps
 
 1. **Create Login UI Component** (`src/components/auth/Login.svelte`)
    - Email input
@@ -388,47 +388,47 @@ loadAuthState(); // Loads token from localStorage/IndexedDB
 
 ---
 
-## 📊 Flow Diagram
+## [EMOJI] Flow Diagram
 
 ```
-User ❓ Enter Email ❓ Request OTP ❓ Server
-                                    ❓
+User  Enter Email  Request OTP  Server
+                                    
                               Generate OTP
-                                    ❓
+                                    
                               Send Email (Resend)
-                                    ❓
+                                    
                               Store in KV (10min TTL)
-                                    ❓
-User ❓ Email Received ❓────────────┘
-  ❓
-Enter OTP ❓ Verify OTP ❓ Server
-                          ❓
+                                    
+User  Email Received ────────────┘
+  
+Enter OTP  Verify OTP  Server
+                          
                     Validate OTP
-                          ❓
+                          
                     Create/Update User
-                          ❓
+                          
                     Generate JWT Token
-                          ❓
+                          
                     Store Session
-                          ❓
-User ❓ Token + User Info ❓┘
-  ❓
+                          
+User  Token + User Info ┘
+  
 Save to localStorage
-  ❓
+  
 isAuthenticated = true
-  ❓
+  
 Access Protected Features
-  ❓
+  
 API Calls (with Bearer token)
-  ❓
-Token Expires? ❓ Refresh Token
-  ❓
-Logout ❓ Blacklist Token ❓ Clear Storage
+  
+Token Expires?  Refresh Token
+  
+Logout  Blacklist Token  Clear Storage
 ```
 
 ---
 
 **Last Updated**: 2025-01-01  
-**Status**: ✅ Server Complete - ❓ Client UI Pending  
+**Status**: [OK] Server Complete -  Client UI Pending  
 **Version**: 2.1.0
 

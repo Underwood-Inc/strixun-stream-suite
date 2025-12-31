@@ -1,4 +1,4 @@
-# 🔐 Cloud Storage Encryption & Authentication Guide
+# [EMOJI] Cloud Storage Encryption & Authentication Guide
 
 ## The Problem You Identified
 
@@ -12,14 +12,14 @@
 
 Instead of building a traditional user/password database system, we implemented a **zero-knowledge passphrase-based encryption system** that:
 
-✅ **No User Database** - No accounts, no emails, no personal data stored  
-✅ **Client-Side Encryption** - Data encrypted BEFORE leaving your device  
-✅ **Cross-Device Access** - Same passphrase = access from any device  
-✅ **Zero-Knowledge** - Server never sees your passphrase or unencrypted data  
-✅ **Privacy-First** - No tracking, no analytics, completely anonymous  
-✅ **Simple UX** - Just one passphrase to remember  
+[OK] **No User Database** - No accounts, no emails, no personal data stored  
+[OK] **Client-Side Encryption** - Data encrypted BEFORE leaving your device  
+[OK] **Cross-Device Access** - Same passphrase = access from any device  
+[OK] **Zero-Knowledge** - Server never sees your passphrase or unencrypted data  
+[OK] **Privacy-First** - No tracking, no analytics, completely anonymous  
+[OK] **Simple UX** - Just one passphrase to remember  
 
-## 🎯 How It Works
+## [EMOJI] How It Works
 
 ### Architecture
 
@@ -28,17 +28,17 @@ Instead of building a traditional user/password database system, we implemented 
 │ Device A (Streaming PC)                                         │
 ├─────────────────────────────────────────────────────────────────┤
 │ User enters passphrase: "MyAwesomeStream2025!"                  │
-│   ❓                                                              │
+│                                                                 │
 │ Client derives (via PBKDF2):                                    │
 │   - Encryption Key: [256-bit AES-GCM key]                       │
 │   - Storage Key: sss_pass_abc123... (hashed passphrase)         │
-│   ❓                                                              │
+│                                                                 │
 │ Encrypt configs with AES-GCM-256                                │
 │   {encrypted: true, iv: "...", salt: "...", data: "..."}        │
-│   ❓                                                              │
+│                                                                 │
 │ Upload to cloud under storage key                               │
 └─────────────────────────────────────────────────────────────────┘
-                              ❓
+                              
 ┌──────────────────────────────────────────────────────────────────┐
 │ Cloudflare Worker (KV Storage)                                  │
 ├──────────────────────────────────────────────────────────────────┤
@@ -46,23 +46,23 @@ Instead of building a traditional user/password database system, we implemented 
 │ Key: sss_pass_abc123...                                          │
 │ Value: {encrypted: true, iv: "...", data: "...", ...}           │
 └──────────────────────────────────────────────────────────────────┘
-                              ❓
+                              
 ┌─────────────────────────────────────────────────────────────────┐
 │ Device B (Gaming PC / Remote Connection)                        │
 ├─────────────────────────────────────────────────────────────────┤
 │ User enters SAME passphrase: "MyAwesomeStream2025!"             │
-│   ❓                                                              │
+│                                                                 │
 │ Client derives SAME keys (deterministic)                        │
 │   - Encryption Key: [same 256-bit key]                          │
 │   - Storage Key: sss_pass_abc123... (same hash)                 │
-│   ❓                                                              │
+│                                                                 │
 │ Fetch encrypted blob from same storage key                      │
-│   ❓                                                              │
-│ Decrypt with derived key ❓ Original configs restored! ✅         │
+│                                                                 │
+│ Decrypt with derived key  Original configs restored! [OK]         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 🔑 Key Features
+## [EMOJI] Key Features
 
 ### 1. Client-Side Encryption (Zero-Knowledge)
 
@@ -86,7 +86,7 @@ await CloudStorage.saveToCloud('default', {}, 'MyAwesomeStream2025!');
 
 // Device B: Load with SAME passphrase
 const save = await CloudStorage.loadFromCloud('default', 'MyAwesomeStream2025!');
-// ✅ Automatic decryption, configs restored!
+// [OK] Automatic decryption, configs restored!
 ```
 
 ### 3. Passphrase Strength Checking
@@ -109,7 +109,7 @@ const suggested = CloudEncryption.generateStrongPassphrase();
 // Example: "TangoBravo7342!"
 ```
 
-## 🔒 Security Details
+## [EMOJI] Security Details
 
 ### Encryption Algorithm
 - **Algorithm:** AES-GCM-256
@@ -148,12 +148,12 @@ const suggested = CloudEncryption.generateStrongPassphrase();
 ```
 
 **The server CANNOT:**
-- ❌ Decrypt your data
-- ❌ See your passphrase
-- ❌ See your encryption key
-- ❌ Read your configs
+- [ERROR] Decrypt your data
+- [ERROR] See your passphrase
+- [ERROR] See your encryption key
+- [ERROR] Read your configs
 
-## ❓ Usage Examples
+##  Usage Examples
 
 ### Basic Usage
 
@@ -205,12 +205,12 @@ try {
   CloudStorage.applyCloudSave(save);
 } catch (error) {
   if (error.message.includes('Decryption failed')) {
-    alert('❌ Incorrect passphrase. Please try again.');
+    alert('[ERROR] Incorrect passphrase. Please try again.');
   }
 }
 ```
 
-## ❓ Comparison: Methods of Access
+##  Comparison: Methods of Access
 
 | Method | Pros | Cons | Best For |
 |--------|------|------|----------|
@@ -219,7 +219,7 @@ try {
 | **Passphrase (Encrypted)** | Secure, cross-device, memorable | Must remember passphrase | Multi-device, security-focused |
 | **Traditional Auth** | Familiar UX | Requires server database, more complex | Large-scale deployments |
 
-## ✅ Recommended Approach
+## [OK] Recommended Approach
 
 **For Most Users:**
 1. Use **passphrase-based encryption** for security and cross-device access
@@ -229,13 +229,13 @@ try {
 5. Access from any device with same passphrase
 
 **Example Strong Passphrases:**
-- ✅ `StreamSetup2025!@#`
-- ✅ `TwitchPro$treaM99`
-- ✅ `MyAwesomeChannel*2025`
-- ❌ `password123` (too weak)
-- ❌ `stream` (too short)
+- [OK] `StreamSetup2025!@#`
+- [OK] `TwitchPro$treaM99`
+- [OK] `MyAwesomeChannel*2025`
+- [ERROR] `password123` (too weak)
+- [ERROR] `stream` (too short)
 
-## 🔄 Migration Guide
+## [EMOJI] Migration Guide
 
 ### From Device-Based to Passphrase-Based
 
@@ -250,7 +250,7 @@ await CloudStorage.saveToCloud('default', {migrated: true}, newPassphrase);
 // Step 3: Mark as using passphrase
 CloudEncryption.setPassphraseState(true);
 
-console.log('✅ Migrated to encrypted storage!');
+console.log('[OK] Migrated to encrypted storage!');
 ```
 
 ### Backward Compatibility
@@ -260,30 +260,30 @@ The system supports **both encrypted and unencrypted** saves:
 ```javascript
 // Old saves (no encryption) still work
 const oldSave = await CloudStorage.loadFromCloud('old_slot');
-// ✅ Works fine, no passphrase needed
+// [OK] Works fine, no passphrase needed
 
 // New saves (encrypted) require passphrase
 const newSave = await CloudStorage.loadFromCloud('new_slot', passphrase);
-// ✅ Decrypts automatically
+// [OK] Decrypts automatically
 ```
 
-## ❓ Advanced: Passphrase Best Practices
+##  Advanced: Passphrase Best Practices
 
-### DO ✅
+### DO [OK]
 - Use 12+ characters
 - Mix uppercase, lowercase, numbers, symbols
 - Use a unique passphrase (not used elsewhere)
 - Write it down in a safe place
 - Consider using a password manager
 
-### DON'T ❌
+### DON'T [ERROR]
 - Use common words or phrases
 - Use personal information (name, birthday)
 - Share your passphrase
 - Reuse passwords from other sites
 - Use short passphrases (<8 chars)
 
-## ❓❓ Technical Implementation
+##  Technical Implementation
 
 ### Files Added
 - `assets/js/cloud-encryption.js` - Encryption module (~400 lines)
@@ -298,13 +298,13 @@ Uses modern browser cryptography (no external dependencies):
 - `crypto.getRandomValues()` - Cryptographically secure random
 
 ### Browser Support
-- ✅ Chrome 37+
-- ✅ Firefox 34+
-- ✅ Safari 11+
-- ✅ Edge 79+
-- ✅ OBS Browser Source (Chromium-based)
+- [OK] Chrome 37+
+- [OK] Firefox 34+
+- [OK] Safari 11+
+- [OK] Edge 79+
+- [OK] OBS Browser Source (Chromium-based)
 
-## ❓ Future Enhancements (Optional)
+##  Future Enhancements (Optional)
 
 1. **Key Stretching:** Increase PBKDF2 iterations over time
 2. **Hardware Keys:** Add support for YubiKey, WebAuthn
@@ -312,16 +312,16 @@ Uses modern browser cryptography (no external dependencies):
 4. **Passphrase Recovery:** Encrypted backup codes
 5. **Share Access:** Encrypted key sharing between users
 
-## ❓ Summary
+##  Summary
 
 **Your question was spot-on!** Device-based auth wasn't enough for true cross-device access. Now you have:
 
-✅ **Encrypted cloud storage** with AES-256  
-✅ **Zero-knowledge architecture** (server can't decrypt)  
-✅ **Cross-device access** with passphrases  
-✅ **Backward compatible** with old unencrypted saves  
-✅ **No user database** needed (privacy-first)  
-✅ **Production-grade security** (PBKDF2, 100K iterations)  
+[OK] **Encrypted cloud storage** with AES-256  
+[OK] **Zero-knowledge architecture** (server can't decrypt)  
+[OK] **Cross-device access** with passphrases  
+[OK] **Backward compatible** with old unencrypted saves  
+[OK] **No user database** needed (privacy-first)  
+[OK] **Production-grade security** (PBKDF2, 100K iterations)  
 
 **Result:** Professional-grade encrypted cloud storage without the complexity of traditional authentication systems!
 

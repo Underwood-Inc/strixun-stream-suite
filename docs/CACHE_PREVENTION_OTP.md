@@ -94,14 +94,14 @@ curl -I https://auth.idling.app/auth/request-otp \
 
 ### Check Service Worker
 
-1. Open browser DevTools ❓ Application ❓ Service Workers
+1. Open browser DevTools  Application  Service Workers
 2. Check that service worker is active
-3. Open Network tab ❓ Check "Disable cache" is NOT needed (cache is already bypassed)
-4. Make OTP request ❓ Verify it goes to network (not cache)
+3. Open Network tab  Check "Disable cache" is NOT needed (cache is already bypassed)
+4. Make OTP request  Verify it goes to network (not cache)
 
 ### Check Cloudflare Cache Status
 
-In browser DevTools ❓ Network tab:
+In browser DevTools  Network tab:
 - Look for `CF-Cache-Status` header in response
 - Should be `DYNAMIC` or `BYPASS` (not `HIT` or `MISS`)
 
@@ -127,15 +127,15 @@ If you want to be extra sure, you can configure Cloudflare Page Rules:
    ```
 
 2. **Clear service worker cache:**
-   - DevTools ❓ Application ❓ Service Workers ❓ Unregister
-   - Or: DevTools ❓ Application ❓ Clear storage ❓ Clear site data
+   - DevTools  Application  Service Workers  Unregister
+   - Or: DevTools  Application  Clear storage  Clear site data
 
 3. **Hard refresh browser:**
    - Ctrl+Shift+R (Windows/Linux)
    - Cmd+Shift+R (Mac)
 
 4. **Check Cloudflare dashboard:**
-   - Workers & Pages ❓ otp-auth-service ❓ Settings
+   - Workers & Pages  otp-auth-service  Settings
    - Verify no cache rules are configured
 
 ### Issue: Deployment still shows old code
@@ -155,10 +155,10 @@ If you want to be extra sure, you can configure Cloudflare Page Rules:
 
 ## Summary
 
-✅ **Server-side:** All OTP endpoints return `Cache-Control: no-store`  
-✅ **Cloudflare:** Headers prevent Cloudflare from caching  
-✅ **Service Worker:** `NetworkOnly` strategy bypasses cache  
-✅ **Browser:** Headers prevent browser caching  
+[OK] **Server-side:** All OTP endpoints return `Cache-Control: no-store`  
+[OK] **Cloudflare:** Headers prevent Cloudflare from caching  
+[OK] **Service Worker:** `NetworkOnly` strategy bypasses cache  
+[OK] **Browser:** Headers prevent browser caching  
 
 **Result:** OTP requests always go to the server, never use cached responses.
 

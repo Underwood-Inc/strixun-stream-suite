@@ -1,6 +1,6 @@
 # OTP Auth Service - Complete API Documentation
 
-> **Complete API reference for the OTP Authentication Service** 📚
+> **Complete API reference for the OTP Authentication Service** [EMOJI]
 
 ## Base URL
 
@@ -904,5 +904,5 @@ const user = await client.getMe(auth.token);
 
 ---
 
-**Complete API documentation for OTP Auth Service** 📚✨
+**Complete API documentation for OTP Auth Service** [EMOJI][FEATURE]
 

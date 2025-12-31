@@ -4,13 +4,13 @@ High-performance, agnostic virtualized table component that handles thousands of
 
 ## Features
 
-- ✅ **Virtualization** - Only renders visible rows, handles thousands of records smoothly
-- ✅ **Sortable Columns** - Click headers to sort, supports ascending/descending
-- ✅ **Row Selection** - Built-in checkbox selection with select all
-- ✅ **Composable** - Framework-agnostic, works with any styling system
-- ✅ **Customizable** - Full control over styling via props
-- ✅ **Type-Safe** - Full TypeScript support with generics
-- ✅ **Performant** - Optimized with useMemo and useCallback
+- [OK] **Virtualization** - Only renders visible rows, handles thousands of records smoothly
+- [OK] **Sortable Columns** - Click headers to sort, supports ascending/descending
+- [OK] **Row Selection** - Built-in checkbox selection with select all
+- [OK] **Composable** - Framework-agnostic, works with any styling system
+- [OK] **Customizable** - Full control over styling via props
+- [OK] **Type-Safe** - Full TypeScript support with generics
+- [OK] **Performant** - Optimized with useMemo and useCallback
 
 ## Installation
 
@@ -119,33 +119,33 @@ const columns: Column<Item>[] = [
 
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
-| `data` | `T[]` | ✅ | Array of data items to display |
-| `columns` | `Column<T>[]` | ✅ | Column definitions |
-| `height` | `number` | ✅ | Total height of the table in pixels |
-| `getItemId` | `(item: T) => string` | ✅ | Function to get unique ID for each item |
-| `rowHeight` | `number` | ❌ | Height of each row (default: 48) |
-| `onRowClick` | `(item: T, index: number) => void` | ❌ | Callback when row is clicked |
-| `selectedIds` | `Set<string>` | ❌ | Set of selected item IDs |
-| `onSelectionChange` | `(selectedIds: Set<string>) => void` | ❌ | Callback when selection changes |
-| `sortConfig` | `{ key: string; direction: 'asc' \| 'desc' } \| null` | ❌ | Current sort configuration |
-| `onSort` | `(key: string, direction: 'asc' \| 'desc') => void` | ❌ | Callback when column is sorted |
-| `colors` | `object` | ❌ | Custom color theme |
-| `className` | `string` | ❌ | CSS class for container |
-| `containerStyle` | `React.CSSProperties` | ❌ | Inline styles for container |
-| `headerStyle` | `React.CSSProperties` | ❌ | Inline styles for header |
-| `rowStyle` | `React.CSSProperties` | ❌ | Inline styles for rows |
-| `cellStyle` | `React.CSSProperties` | ❌ | Inline styles for cells |
+| `data` | `T[]` | [OK] | Array of data items to display |
+| `columns` | `Column<T>[]` | [OK] | Column definitions |
+| `height` | `number` | [OK] | Total height of the table in pixels |
+| `getItemId` | `(item: T) => string` | [OK] | Function to get unique ID for each item |
+| `rowHeight` | `number` | [ERROR] | Height of each row (default: 48) |
+| `onRowClick` | `(item: T, index: number) => void` | [ERROR] | Callback when row is clicked |
+| `selectedIds` | `Set<string>` | [ERROR] | Set of selected item IDs |
+| `onSelectionChange` | `(selectedIds: Set<string>) => void` | [ERROR] | Callback when selection changes |
+| `sortConfig` | `{ key: string; direction: 'asc' \| 'desc' } \| null` | [ERROR] | Current sort configuration |
+| `onSort` | `(key: string, direction: 'asc' \| 'desc') => void` | [ERROR] | Callback when column is sorted |
+| `colors` | `object` | [ERROR] | Custom color theme |
+| `className` | `string` | [ERROR] | CSS class for container |
+| `containerStyle` | `React.CSSProperties` | [ERROR] | Inline styles for container |
+| `headerStyle` | `React.CSSProperties` | [ERROR] | Inline styles for header |
+| `rowStyle` | `React.CSSProperties` | [ERROR] | Inline styles for rows |
+| `cellStyle` | `React.CSSProperties` | [ERROR] | Inline styles for cells |
 
 ### `Column<T>`
 
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
-| `key` | `string` | ✅ | Unique key for the column |
-| `label` | `string` | ✅ | Header label |
-| `width` | `string` | ❌ | Column width (CSS value, e.g., '200px', '1fr') |
-| `sortable` | `boolean` | ❌ | Whether column is sortable |
-| `render` | `(item: T, index: number) => React.ReactNode` | ❌ | Custom render function for cells |
-| `accessor` | `(item: T) => string \| number \| Date` | ❌ | Function to extract value for sorting |
+| `key` | `string` | [OK] | Unique key for the column |
+| `label` | `string` | [OK] | Header label |
+| `width` | `string` | [ERROR] | Column width (CSS value, e.g., '200px', '1fr') |
+| `sortable` | `boolean` | [ERROR] | Whether column is sortable |
+| `render` | `(item: T, index: number) => React.ReactNode` | [ERROR] | Custom render function for cells |
+| `accessor` | `(item: T) => string \| number \| Date` | [ERROR] | Function to extract value for sorting |
 
 ## Performance Tips
 

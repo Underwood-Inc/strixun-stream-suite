@@ -3,10 +3,10 @@
 ## Overview
 
 The OTP Login library is fully integrated into the pnpm workspace, ensuring:
-- ✅ Proper dependency hoisting
-- ✅ Workspace-aware build commands
-- ✅ Automatic builds via `prebuild` scripts
-- ✅ Efficient dependency management
+- [OK] Proper dependency hoisting
+- [OK] Workspace-aware build commands
+- [OK] Automatic builds via `prebuild` scripts
+- [OK] Efficient dependency management
 
 ## Workspace Configuration
 
@@ -90,10 +90,10 @@ Each project automatically builds the OTP library before its own build:
 ### Automatic Hoisting
 
 pnpm automatically hoists shared dependencies to the root `node_modules`:
-- `react`, `react-dom` ❓ Hoisted for React projects
-- `svelte` ❓ Hoisted for Svelte projects
-- `vite`, `typescript` ❓ Hoisted for all projects
-- `@vitejs/plugin-react`, `@sveltejs/vite-plugin-svelte` ❓ Hoisted
+- `react`, `react-dom`  Hoisted for React projects
+- `svelte`  Hoisted for Svelte projects
+- `vite`, `typescript`  Hoisted for all projects
+- `@vitejs/plugin-react`, `@sveltejs/vite-plugin-svelte`  Hoisted
 
 ### Workspace Dependencies
 

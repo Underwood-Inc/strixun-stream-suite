@@ -1,4 +1,4 @@
-# Setting SERVICE_ENCRYPTION_KEY 🔒
+# Setting SERVICE_ENCRYPTION_KEY [EMOJI]
 
 ## Quick Setup
 
@@ -85,10 +85,10 @@ wrangler secret list
 
 ## Security Notes
 
-- ✅ **Never commit the key to version control**
-- ✅ **Use the same key across all services** (recommended)
-- ✅ **Store the key securely** (password manager, etc.)
-- ✅ **Rotate periodically** (requires updating all services)
+- [OK] **Never commit the key to version control**
+- [OK] **Use the same key across all services** (recommended)
+- [OK] **Store the key securely** (password manager, etc.)
+- [OK] **Rotate periodically** (requires updating all services)
 
 ## Troubleshooting
 
