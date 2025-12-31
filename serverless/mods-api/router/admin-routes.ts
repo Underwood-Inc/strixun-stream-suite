@@ -134,6 +134,21 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth, request, env);
         }
 
+        // Route: POST /admin/r2/cleanup - Manually trigger cleanup job (for testing)
+        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'cleanup' && request.method === 'POST') {
+            const { handleManualCleanup } = await import('../handlers/admin/r2-cleanup.js');
+            const response = await handleManualCleanup(request, env, auth);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
+        // Route: PUT /admin/r2/files/:key/timestamp - Set deletion timestamp (for testing only)
+        if (pathSegments.length === 5 && pathSegments[0] === 'admin' && pathSegments[1] === 'r2' && pathSegments[2] === 'files' && pathSegments[4] === 'timestamp' && request.method === 'PUT') {
+            const key = decodeURIComponent(pathSegments[3]);
+            const { handleSetDeletionTimestamp } = await import('../handlers/admin/r2-management.js');
+            const response = await handleSetDeletionTimestamp(request, env, auth, key);
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+
         // Route: GET /admin/users - List all users
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'users' && request.method === 'GET') {
             const { handleListUsers } = await import('../handlers/admin/users.js');

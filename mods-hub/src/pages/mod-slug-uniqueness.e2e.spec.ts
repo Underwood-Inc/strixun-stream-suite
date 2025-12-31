@@ -416,10 +416,11 @@ test.describe('Slug Uniqueness', () => {
     // Create two mods with different unique titles for test isolation
     const title1 = generateUniqueTestTitle('First Mod');
     const title2 = generateUniqueTestTitle('Second Mod');
+    // Create first mod (not assigned as we only need its slug to exist)
     await createTestMod(token, title1, 'public', false);
     const mod2 = await createTestMod(token, title2, 'public', false);
     
-    // Try to update mod2 to have the same slug as mod1 (should fail)
+    // Try to update mod2 to have the same slug as the first mod (should fail)
     const response = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod2.modId}`, {
       method: 'PUT',
       headers: {
@@ -573,7 +574,7 @@ test.describe('Cross-Customer Slug Uniqueness', () => {
     
     // Create mod with customer1 (use unique title for test isolation)
     const uniqueTitle = generateUniqueTestTitle('Cross Customer Test');
-    await createTestMod(token1, uniqueTitle, 'public', false);
+    void await createTestMod(token1, uniqueTitle, 'public', false); // Create first mod to test duplicate slug rejection
     
     // Try to create another mod with same title (should fail even for same user)
     const testFileContent = Buffer.from([0x50, 0x4B, 0x03, 0x04]);

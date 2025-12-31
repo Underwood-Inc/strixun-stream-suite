@@ -125,9 +125,11 @@ export default defineConfig({
     video: 'off',
     // Pass E2E test credentials from .dev.vars to test workers
     // These are loaded by loadDevVars() above
-    ...(process.env.E2E_TEST_JWT_TOKEN ? { env: { E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN } } : {}),
-    ...(process.env.E2E_TEST_OTP_CODE ? { env: { E2E_TEST_OTP_CODE: process.env.E2E_TEST_OTP_CODE } } : {}),
-    ...(process.env.E2E_TEST_EMAIL ? { env: { E2E_TEST_EMAIL: process.env.E2E_TEST_EMAIL } } : {}),
+    env: {
+      ...(process.env.E2E_TEST_JWT_TOKEN ? { E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN } : {}),
+      ...(process.env.E2E_TEST_OTP_CODE ? { E2E_TEST_OTP_CODE: process.env.E2E_TEST_OTP_CODE } : {}),
+      ...(process.env.E2E_TEST_EMAIL ? { E2E_TEST_EMAIL: process.env.E2E_TEST_EMAIL } : {}),
+    },
   },
 
   projects: [

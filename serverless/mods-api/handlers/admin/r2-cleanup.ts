@@ -9,6 +9,8 @@
  */
 
 import { getR2SourceInfo } from '../../utils/r2-source.js';
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
+import { createError } from '../../utils/errors.js';
 
 /**
  * Number of days to wait before permanently deleting marked files
@@ -29,7 +31,18 @@ export async function handleR2Cleanup(
     env: Env,
     ctx: ExecutionContext
 ): Promise<void> {
-    console.log('[R2Cleanup] Starting scheduled cleanup job...');
+    await executeR2Cleanup(env, ctx);
+}
+
+/**
+ * Execute R2 cleanup logic
+ * Can be called from cron job or manually via admin endpoint
+ */
+export async function executeR2Cleanup(
+    env: Env,
+    ctx?: ExecutionContext
+): Promise<{ scanned: number; marked: number; deleted: number; errors: number }> {
+    console.log('[R2Cleanup] Starting cleanup job...');
     const startTime = Date.now();
     
     try {

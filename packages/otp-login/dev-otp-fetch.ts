@@ -54,11 +54,11 @@ export async function autoFetchDevOtp(email: string, config: DevOtpFetchConfig):
       return;
     }
 
-    const data = await response.json() as { otp?: string };
+    const data = await response.json() as unknown;
     
-    if (data.otp && typeof data.otp === 'string') {
+    if (data && typeof data === 'object' && 'otp' in data && typeof (data as { otp?: unknown }).otp === 'string') {
       // Auto-populate OTP code
-      config.setState({ otp: data.otp });
+      config.setState({ otp: (data as { otp: string }).otp });
       console.log('[OtpLoginCore] [DEV] Auto-populated OTP code from dev endpoint');
     }
   } catch (error) {

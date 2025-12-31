@@ -1059,6 +1059,101 @@ export async function handleDeleteR2File(
 }
 
 
+/**
+ * Set deletion timestamp for a file (for testing only)
+ * PUT /admin/r2/files/:key/timestamp
+ * Body: { timestamp: number } - Unix timestamp in milliseconds
+ */
+export async function handleSetDeletionTimestamp(
+    request: Request,
+    env: Env,
+    auth: { userId: string; email?: string; customerId: string | null },
+    key: string
+): Promise<Response> {
+    try {
+        // Route-level protection ensures user is super admin
+        const body = await request.json() as { timestamp?: number };
+        
+        if (!body.timestamp || typeof body.timestamp !== 'number') {
+            const rfcError = createError(request, 400, 'Invalid Request', 'timestamp (number) is required');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Get current file
+        const file = await env.MODS_R2.get(key);
+        if (!file) {
+            const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const existingMetadata = file.customMetadata || {};
+        const fileBody = await file.arrayBuffer();
+        
+        // Update metadata with new timestamp
+        await env.MODS_R2.put(key, fileBody, {
+            httpMetadata: file.httpMetadata,
+            customMetadata: {
+                ...existingMetadata,
+                marked_for_deletion: 'true',
+                marked_for_deletion_on: body.timestamp.toString(),
+            },
+        });
+        
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        
+        return new Response(JSON.stringify({
+            success: true,
+            key,
+            timestamp: body.timestamp,
+            message: 'Deletion timestamp updated',
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('Set deletion timestamp error:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Failed to Set Deletion Timestamp',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while setting the timestamp'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
+
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
