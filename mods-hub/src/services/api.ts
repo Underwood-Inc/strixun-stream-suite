@@ -813,16 +813,21 @@ export async function detectDuplicates(): Promise<{
 
 /**
  * Delete single R2 file
+ * @param key - File key to delete
+ * @param force - If true, allows deletion of protected files (files associated with mods)
  */
-export async function deleteR2File(key: string): Promise<void> {
+export async function deleteR2File(key: string, force?: boolean): Promise<void> {
     const encodedKey = encodeURIComponent(key);
-    await api.delete(`/admin/r2/files/${encodedKey}`);
+    const url = `/admin/r2/files/${encodedKey}${force ? '?force=true' : ''}`;
+    await api.delete(url);
 }
 
 /**
  * Bulk delete R2 files
+ * @param keys - Array of file keys to delete
+ * @param force - If true, allows deletion of protected files (files associated with mods)
  */
-export async function bulkDeleteR2Files(keys: string[]): Promise<{
+export async function bulkDeleteR2Files(keys: string[], force?: boolean): Promise<{
     deleted: number;
     failed: number;
     protected?: number;
@@ -833,6 +838,6 @@ export async function bulkDeleteR2Files(keys: string[]): Promise<{
         failed: number;
         protected?: number;
         results?: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean }>;
-    }>('/admin/r2/files/delete', { keys });
+    }>('/admin/r2/files/delete', { keys, force });
     return response.data;
 }

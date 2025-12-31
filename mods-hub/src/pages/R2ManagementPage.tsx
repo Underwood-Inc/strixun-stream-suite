@@ -375,7 +375,10 @@ export function R2ManagementPage() {
     const [activeTab, setActiveTab] = useState<TabType>('duplicates');
     const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [protectedFileModalOpen, setProtectedFileModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+    const [isFileProtected, setIsFileProtected] = useState(false);
+    const [protectedFileInfo, setProtectedFileInfo] = useState<{ key: string; reason?: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortField, setSortField] = useState<SortField>('uploaded');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -398,12 +401,15 @@ export function R2ManagementPage() {
 
     // Delete file mutation
     const deleteFileMutation = useMutation({
-        mutationFn: deleteR2File,
+        mutationFn: ({ key, force }: { key: string; force?: boolean }) => deleteR2File(key, force),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['r2-duplicates'] });
             queryClient.invalidateQueries({ queryKey: ['r2-files'] });
             setDeleteModalOpen(false);
+            setProtectedFileModalOpen(false);
             setFileToDelete(null);
+            setIsFileProtected(false);
+            setProtectedFileInfo(null);
         },
     });
 
@@ -418,51 +424,118 @@ export function R2ManagementPage() {
     });
 
     const handleDeleteClick = useCallback((key: string) => {
+        // Check if file is protected by looking it up in the files list
+        const allFiles = activeTab === 'files' ? filesData?.files || [] : 
+                        activeTab === 'duplicates' ? duplicatesData?.duplicateGroups.flatMap(g => g.files) || [] :
+                        duplicatesData?.orphanedFiles || [];
+        const file = allFiles.find(f => f.key === key);
+        const associated = file?.associatedData;
+        const isThumbnail = associated?.isThumbnail;
+        const isProtected = isThumbnail && associated?.mod !== undefined;
+        
         setFileToDelete(key);
-        setDeleteModalOpen(true);
-    }, []);
+        setIsFileProtected(isProtected);
+        
+        if (isProtected && associated?.mod) {
+            setProtectedFileInfo({
+                key,
+                reason: `This thumbnail is associated with mod "${associated.mod.title}" (${associated.mod.modId})`
+            });
+            setProtectedFileModalOpen(true);
+        } else {
+            setDeleteModalOpen(true);
+        }
+    }, [activeTab, filesData, duplicatesData]);
 
     const handleDeleteConfirm = useCallback(async () => {
         if (!fileToDelete) return;
-        await deleteFileMutation.mutateAsync(fileToDelete);
+        await deleteFileMutation.mutateAsync({ key: fileToDelete, force: false });
     }, [fileToDelete, deleteFileMutation]);
+
+    const handleProtectedFileConfirm = useCallback(async () => {
+        if (!fileToDelete) return;
+        
+        // Check if this is a bulk delete (comma-separated keys) or single delete
+        if (fileToDelete.includes(',')) {
+            const keys = fileToDelete.split(',').map(k => k.trim());
+            await bulkDeleteMutation.mutateAsync({ keys, force: true });
+        } else {
+            await deleteFileMutation.mutateAsync({ key: fileToDelete, force: true });
+        }
+    }, [fileToDelete, deleteFileMutation, bulkDeleteMutation]);
 
     const handleBulkDelete = useCallback(async () => {
         if (selectedFiles.size === 0) return;
         
-        // For duplicates tab, ensure we don't delete recommended keep files
+        // Get all files to check for protected ones
+        const allFiles = activeTab === 'files' ? filesData?.files || [] : 
+                        activeTab === 'duplicates' ? duplicatesData?.duplicateGroups.flatMap(g => g.files) || [] :
+                        duplicatesData?.orphanedFiles || [];
+        
+        // Check for protected files
+        const protectedFiles: Array<{ key: string; reason?: string }> = [];
         let filesToDelete = Array.from(selectedFiles);
+        
+        for (const key of filesToDelete) {
+            const file = allFiles.find(f => f.key === key);
+            const associated = file?.associatedData;
+            const isThumbnail = associated?.isThumbnail;
+            const isProtected = isThumbnail && associated?.mod !== undefined;
+            
+            if (isProtected && associated?.mod) {
+                protectedFiles.push({
+                    key,
+                    reason: `Thumbnail is associated with mod "${associated.mod.title}" (${associated.mod.modId})`
+                });
+            }
+        }
+        
+        // If there are protected files, show confirmation modal
+        if (protectedFiles.length > 0) {
+            setProtectedFileInfo({
+                key: protectedFiles.map(f => f.key).join(','),
+                reason: protectedFiles.length === 1 
+                    ? protectedFiles[0].reason
+                    : `${protectedFiles.length} files are protected and associated with mods`
+            });
+            setProtectedFileModalOpen(true);
+            setFileToDelete(protectedFiles.map(f => f.key).join(','));
+            return;
+        }
+        
+        // For duplicates tab, ensure we don't delete recommended keep files
+        let filteredFilesToDelete = filesToDelete;
         if (activeTab === 'duplicates' && duplicatesData) {
             const recommendedKeeps = new Set(
                 duplicatesData.duplicateGroups
                     .map(g => g.recommendedKeep)
                     .filter((key): key is string => !!key)
             );
-            filesToDelete = filesToDelete.filter(key => !recommendedKeeps.has(key));
+            filteredFilesToDelete = filteredFilesToDelete.filter(key => !recommendedKeeps.has(key));
             
-            if (filesToDelete.length < selectedFiles.size) {
-                const removed = selectedFiles.size - filesToDelete.length;
+            if (filteredFilesToDelete.length < selectedFiles.size) {
+                const removed = selectedFiles.size - filteredFilesToDelete.length;
                 const confirmed = window.confirm(
                     `${removed} file(s) are recommended to keep and cannot be deleted. ` +
-                    `Delete the remaining ${filesToDelete.length} duplicate file(s)? This action cannot be undone.`
+                    `Delete the remaining ${filteredFilesToDelete.length} duplicate file(s)? This action cannot be undone.`
                 );
                 if (!confirmed) return;
             } else {
-                const confirmed = window.confirm(`Are you sure you want to delete ${filesToDelete.length} duplicate file(s)? This action cannot be undone.`);
+                const confirmed = window.confirm(`Are you sure you want to delete ${filteredFilesToDelete.length} duplicate file(s)? This action cannot be undone.`);
                 if (!confirmed) return;
             }
         } else {
-            const confirmed = window.confirm(`Are you sure you want to delete ${filesToDelete.length} file(s)? This action cannot be undone.`);
+            const confirmed = window.confirm(`Are you sure you want to delete ${filteredFilesToDelete.length} file(s)? This action cannot be undone.`);
             if (!confirmed) return;
         }
         
-        if (filesToDelete.length === 0) {
+        if (filteredFilesToDelete.length === 0) {
             alert('No files to delete. Recommended keep files cannot be deleted.');
             return;
         }
         
         try {
-            const result = await bulkDeleteMutation.mutateAsync(filesToDelete);
+            const result = await bulkDeleteMutation.mutateAsync({ keys: filteredFilesToDelete, force: false });
             
             // Show warning if any files were protected
             if (result.protected && result.protected > 0) {
@@ -730,8 +803,8 @@ export function R2ManagementPage() {
                     <Button
                         variant="danger"
                         onClick={() => handleDeleteClick(file.key)}
-                        disabled={deleteFileMutation.isPending || shouldDisableDelete}
-                        title={isThumbnailProtected ? 'This thumbnail is associated with an existing mod and cannot be deleted' : undefined}
+                        disabled={deleteFileMutation.isPending}
+                        title={isThumbnailProtected ? 'This thumbnail is associated with an existing mod. Click to delete with additional confirmation.' : undefined}
                     >
                         Delete
                     </Button>
@@ -1068,6 +1141,7 @@ export function R2ManagementPage() {
                 onClose={() => {
                     setDeleteModalOpen(false);
                     setFileToDelete(null);
+                    setIsFileProtected(false);
                 }}
                 onConfirm={handleDeleteConfirm}
                 title="Delete R2 File"
@@ -1075,6 +1149,26 @@ export function R2ManagementPage() {
                 confirmText="Delete File"
                 cancelText="Cancel"
                 isLoading={deleteFileMutation.isPending}
+            />
+            
+            <ConfirmationModal
+                isOpen={protectedFileModalOpen}
+                onClose={() => {
+                    setProtectedFileModalOpen(false);
+                    setFileToDelete(null);
+                    setIsFileProtected(false);
+                    setProtectedFileInfo(null);
+                }}
+                onConfirm={handleProtectedFileConfirm}
+                title="Delete Protected File"
+                message={
+                    protectedFileInfo?.reason 
+                        ? `${protectedFileInfo.reason}\n\nAre you absolutely sure you want to delete this protected file? This will remove the thumbnail from the associated mod. This action cannot be undone.`
+                        : `This file is protected because it is associated with an existing mod.\n\nAre you absolutely sure you want to delete this protected file? This action cannot be undone.`
+                }
+                confirmText="Yes, Delete Protected File"
+                cancelText="Cancel"
+                isLoading={deleteFileMutation.isPending || bulkDeleteMutation.isPending}
             />
         </PageContainer>
     );

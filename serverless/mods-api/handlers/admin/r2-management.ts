@@ -876,7 +876,7 @@ export async function handleDeleteR2File(
         // Route-level protection ensures user is super admin
         // Handle bulk delete
         if (request.method === 'POST' && !key) {
-            const body = await request.json() as { keys: string[] };
+            const body = await request.json() as { keys: string[]; force?: boolean };
             if (!body.keys || !Array.isArray(body.keys)) {
                 const rfcError = createError(request, 400, 'Invalid Request', 'keys array is required');
                 const corsHeaders = createCORSHeaders(request, {
@@ -892,18 +892,22 @@ export async function handleDeleteR2File(
             }
 
             const results: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean; marked?: boolean }> = [];
+            const force = body.force === true;
             for (const fileKey of body.keys) {
                 try {
                     // Check if thumbnail is protected (associated with existing mod)
-                    const protectionCheck = await isThumbnailProtected(fileKey, env);
-                    if (protectionCheck.protected) {
-                        results.push({
-                            key: fileKey,
-                            deleted: false,
-                            protected: true,
-                            error: protectionCheck.reason || 'Thumbnail is associated with an existing mod'
-                        });
-                        continue;
+                    // Skip protection check if force=true
+                    if (!force) {
+                        const protectionCheck = await isThumbnailProtected(fileKey, env);
+                        if (protectionCheck.protected) {
+                            results.push({
+                                key: fileKey,
+                                deleted: false,
+                                protected: true,
+                                error: protectionCheck.reason || 'Thumbnail is associated with an existing mod'
+                            });
+                            continue;
+                        }
                     }
 
                     // Mark file for deletion instead of deleting immediately
@@ -971,24 +975,30 @@ export async function handleDeleteR2File(
         }
 
         // Check if thumbnail is protected (associated with existing mod)
-        const protectionCheck = await isThumbnailProtected(key, env);
-        if (protectionCheck.protected) {
-            const rfcError = createError(
-                request,
-                403,
-                'Protected File',
-                protectionCheck.reason || 'This thumbnail is associated with an existing mod and cannot be deleted'
-            );
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        // Allow deletion if force=true query parameter is provided
+        const url = new URL(request.url);
+        const force = url.searchParams.get('force') === 'true';
+        
+        if (!force) {
+            const protectionCheck = await isThumbnailProtected(key, env);
+            if (protectionCheck.protected) {
+                const rfcError = createError(
+                    request,
+                    403,
+                    'Protected File',
+                    protectionCheck.reason || 'This thumbnail is associated with an existing mod and cannot be deleted'
+                );
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
         }
 
         // Mark file for deletion instead of deleting immediately
