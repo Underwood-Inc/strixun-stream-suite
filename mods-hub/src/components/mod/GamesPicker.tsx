@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import { allGames, searchGames, type Game } from '../../data/games';
+import { allGames, searchGames } from '../../data/games';
 import { PortalSelect, type PortalSelectOption } from '../common/PortalSelect';
 
 const GameName = styled.div`

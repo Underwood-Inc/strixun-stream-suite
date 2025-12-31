@@ -231,14 +231,14 @@ export function FileUploader({
   imagePreviewUrl,
   existingFileName,
   existingFileSize,
-  existingFileUrl,
+  existingFileUrl: _existingFileUrl,
 }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(imagePreviewUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Determine if we have an existing file (metadata but no File object)
-  const hasExistingFile = !file && existingFileName;
+  const hasExistingFile = Boolean(!file && existingFileName);
 
   // Generate preview URL when file changes (for images)
   useEffect(() => {

@@ -123,13 +123,8 @@ export default defineConfig({
     trace: 'off',
     screenshot: 'off',
     video: 'off',
-    // Pass E2E test credentials from .dev.vars to test workers
-    // These are loaded by loadDevVars() above
-    env: {
-      ...(process.env.E2E_TEST_JWT_TOKEN ? { E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN } : {}),
-      ...(process.env.E2E_TEST_OTP_CODE ? { E2E_TEST_OTP_CODE: process.env.E2E_TEST_OTP_CODE } : {}),
-      ...(process.env.E2E_TEST_EMAIL ? { E2E_TEST_EMAIL: process.env.E2E_TEST_EMAIL } : {}),
-    },
+    // Note: E2E test credentials are loaded by loadDevVars() above and available via process.env
+    // They are automatically available to test files through process.env
   },
 
   projects: [

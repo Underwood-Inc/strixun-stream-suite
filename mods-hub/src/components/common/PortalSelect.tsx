@@ -128,6 +128,28 @@ const EmptyState = styled.div`
   font-size: 0.875rem;
 `;
 
+const ClearButton = styled.button`
+  background: none;
+  border: none;
+  color: ${colors.textSecondary};
+  font-size: 0.75rem;
+  padding: ${spacing.xs} ${spacing.sm};
+  margin-left: ${spacing.sm};
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: ${colors.bgTertiary};
+    color: ${colors.text};
+  }
+  
+  &:focus {
+    outline: 2px solid ${colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
 export interface PortalSelectOption {
   value: string;
   label: string;

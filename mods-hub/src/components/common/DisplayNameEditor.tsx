@@ -291,10 +291,11 @@ export function DisplayNameEditor({
         body: JSON.stringify({ displayName: trimmed }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as unknown;
 
       if (!response.ok) {
-        const errorMsg = data.detail || data.error || 'Failed to update display name';
+        const errorData = data as { detail?: string; error?: string };
+        const errorMsg = errorData.detail || errorData.error || 'Failed to update display name';
         setError(errorMsg);
         onError?.(errorMsg);
         setIsSaving(false);
