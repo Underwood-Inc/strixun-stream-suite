@@ -39,7 +39,7 @@ const CheckboxBox = styled.span<{ $checked: boolean }>`
   flex-shrink: 0;
   
   &::after {
-    content: '✓';
+    content: '[EMOJI]';
     color: ${colors.bgDark};
     font-size: 12px;
     font-weight: bold;

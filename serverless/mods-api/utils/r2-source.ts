@@ -81,9 +81,9 @@ export function getR2SourceInfo(
     }
     
     if (isLocal) {
-        // Local storage location (platform-specific)
-        const userHome = process.env.USERPROFILE || process.env.HOME || '~';
-        storageLocation = `${userHome}/.wrangler/state/v3/r2/`;
+        // Local storage location (wrangler dev --local)
+        // Note: In Workers environment, we can't access process.env, so we use a generic path
+        storageLocation = '.wrangler/state/v3/r2/ (local)';
     } else {
         storageLocation = 'Cloudflare R2 (cloud)';
     }

@@ -54,7 +54,7 @@
 
 <div class="page install-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <div class="card">
-    <h3>❓ Installation Wizard</h3>
+    <h3> Installation Wizard</h3>
     <p class="hint">Automatically install Lua scripts to your OBS scripts folder.</p>
     
     <!-- Step 1: Detect/Select Paths -->
@@ -64,22 +64,22 @@
       <label>Source Files Location</label>
       <div class="url-box">
         <input type="text" id="installSourcePath" readonly>
-        <button on:click={handleDetectSourcePath}>🔍 Detect</button>
+        <button on:click={handleDetectSourcePath}>[EMOJI] Detect</button>
       </div>
       <p class="hint">Where the script files are located (this folder)</p>
       
       <label>OBS Scripts Folder</label>
       <div class="url-box">
         <input type="text" id="installTargetPath" placeholder="C:\Users\YourName\AppData\Roaming\obs-studio\scripts">
-        <button on:click={handleBrowseTargetPath}>📁 Browse</button>
-        <button on:click={handleDetectOBSPath}>🔍 Auto-Detect</button>
+        <button on:click={handleBrowseTargetPath}>[EMOJI] Browse</button>
+        <button on:click={handleDetectOBSPath}>[EMOJI] Auto-Detect</button>
       </div>
       <p class="hint">Where scripts will be installed. Common locations:</p>
       <div class="path-suggestions" id="pathSuggestions"></div>
       
       <div class="row" style="margin-top:12px">
         <button on:click={() => handleGoToInstallStep(2)} class="btn-primary">
-          Next: Select Scripts ❓
+          Next: Select Scripts 
         </button>
       </div>
     </div>
@@ -91,9 +91,9 @@
       <div id="installScriptsList" class="install-scripts-list"></div>
       
       <div class="row" style="margin-top:12px">
-        <button on:click={() => handleGoToInstallStep(1)}>❓ Back</button>
+        <button on:click={() => handleGoToInstallStep(1)}> Back</button>
         <button on:click={() => handleGoToInstallStep(3)} class="btn-primary">
-          Next: Review ❓
+          Next: Review 
         </button>
       </div>
     </div>
@@ -115,7 +115,7 @@
       </div>
       
       <div class="row" style="margin-top:12px">
-        <button on:click={() => handleGoToInstallStep(2)}>❓ Back</button>
+        <button on:click={() => handleGoToInstallStep(2)}> Back</button>
         <button on:click={handleGenerateInstallScript} class="btn-primary">
           Generate Install Script
         </button>
@@ -129,9 +129,9 @@
       <div id="installScriptOutput" class="install-script-output"></div>
       
       <div class="row" style="margin-top:12px">
-        <button on:click={() => handleGoToInstallStep(3)}>❓ Back</button>
+        <button on:click={() => handleGoToInstallStep(3)}> Back</button>
         <button on:click={handleCopyInstallScript} class="btn-primary">
-          📋 Copy Script
+          [EMOJI] Copy Script
         </button>
       </div>
     </div>

@@ -698,7 +698,7 @@ export function ModUploadWizard({
                                     </FileInfo>
                                 ) : (
                                     <>
-                                        <div>📁 Drop mod file here or click to browse</div>
+                                        <div>[EMOJI] Drop mod file here or click to browse</div>
                                         <DragDropText>
                                             Allowed: {settings?.allowedFileExtensions.join(', ') || '.lua, .js, .java, .jar, .zip, .json, .txt, .xml, .yaml, .yml'}
                                         </DragDropText>

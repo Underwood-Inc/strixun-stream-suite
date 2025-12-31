@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -26,18 +26,18 @@ export async function handleGetModDetail(
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
         
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        // Use modId directly - it already includes 'mod_' prefix
         let mod: ModMetadata | null = null;
-        const normalizedModId = normalizeModId(modId);
         
         // Check customer scope first if authenticated
         if (auth?.customerId) {
-            const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+            const customerModKey = getCustomerKey(auth.customerId, modId);
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // Fall back to global scope if not found
         if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
+            const globalModKey = modId;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
         
@@ -97,8 +97,8 @@ export async function handleGetModDetail(
             });
         }
         
-        // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
-        const normalizedStoredModId = normalizeModId(mod.modId);
+        // Use mod.modId directly - no normalization needed
+        const storedModId = mod.modId;
 
         // isAdmin already checked above
         const isAuthor = mod.authorId === auth?.userId;

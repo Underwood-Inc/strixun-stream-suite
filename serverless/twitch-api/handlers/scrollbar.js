@@ -954,7 +954,7 @@ export async function handleScrollbarCustomizer(request, env) {
           transform: translateX(18px);
         }
       </style>
-      <h3>🎨 Scrollbar Customizer</h3>
+      <h3>[EMOJI] Scrollbar Customizer</h3>
       <div class="control-group">
         <label>Width: <span class="value" id="width-val">6</span>px</label>
         <input type="range" id="width" min="4" max="20" value="6">

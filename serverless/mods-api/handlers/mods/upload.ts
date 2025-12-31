@@ -7,7 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { hasUploadPermission, isSuperAdminEmail } from '../../utils/admin.js';
 import { calculateStrixunHash, formatStrixunHash } from '../../utils/hash.js';
@@ -29,64 +29,41 @@ export function generateSlug(title: string): string {
 }
 
 /**
- * Check if slug already exists - searches ALL scopes (global + all customer scopes)
+ * Check if slug already exists using slug index
  * CRITICAL: Slugs must be globally unique across all scopes
+ * Uses direct index lookup for O(1) performance
  */
 export async function slugExists(slug: string, env: Env, excludeModId?: string): Promise<boolean> {
-    // Check in global scope (public mods)
-    const globalListKey = 'mods_list_public';
-    const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
+    // Check global slug index first
+    const globalSlugKey = `slug_${slug}`;
+    const existingModId = await env.MODS_KV.get(globalSlugKey, { type: 'text' });
     
-    if (globalModsList) {
-        for (const modId of globalModsList) {
-            if (excludeModId) {
-                const normalizedExclude = normalizeModId(excludeModId);
-                const normalizedList = normalizeModId(modId);
-                if (normalizedExclude === normalizedList) continue;
-            }
-            // Normalize modId for key lookup
-            const normalizedListModId = normalizeModId(modId);
-            const globalModKey = `mod_${normalizedListModId}`;
-            const mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
-            if (mod && mod.slug === slug) {
-                return true;
-            }
+    if (existingModId) {
+        // If excludeModId is provided, check if it's the same mod (for updates)
+        if (excludeModId && existingModId === excludeModId) {
+            return false; // Same mod, slug is available for this mod
         }
+        return true; // Slug exists for a different mod
     }
     
     // CRITICAL: Search ALL customer scopes to ensure global uniqueness
-    const customerListPrefix = 'customer_';
+    const customerSlugPrefix = 'customer_';
     let cursor: string | undefined;
     
     do {
-        const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
+        const listResult = await env.MODS_KV.list({ prefix: customerSlugPrefix, cursor });
         
         for (const key of listResult.keys) {
-            // Look for customer mod lists: customer_{id}_mods_list
-            if (key.name.endsWith('_mods_list')) {
-                const customerModsList = await env.MODS_KV.get(key.name, { type: 'json' }) as string[] | null;
+            // Look for slug index keys: customer_{id}_slug_{slug}
+            if (key.name.includes(`_slug_${slug}`) || key.name.includes(`/slug_${slug}`)) {
+                const existingModId = await env.MODS_KV.get(key.name, { type: 'text' });
                 
-                if (customerModsList) {
-                    for (const modId of customerModsList) {
-                        if (excludeModId) {
-                            const normalizedExclude = normalizeModId(excludeModId);
-                            const normalizedList = normalizeModId(modId);
-                            if (normalizedExclude === normalizedList) continue;
-                        }
-                        
-                        const normalizedModId = normalizeModId(modId);
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
-                        
-                        if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
-                            const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
-                            
-                            if (mod && mod.slug === slug) {
-                                return true;
-                            }
-                        }
+                if (existingModId) {
+                    // If excludeModId is provided, check if it's the same mod (for updates)
+                    if (excludeModId && existingModId === excludeModId) {
+                        continue; // Same mod, check other scopes
                     }
+                    return true; // Slug exists for a different mod
                 }
             }
         }
@@ -97,26 +74,6 @@ export async function slugExists(slug: string, env: Env, excludeModId?: string):
     return false;
 }
 
-/**
- * Generate unique slug with conflict resolution
- */
-export async function generateUniqueSlug(title: string, env: Env, excludeModId?: string): Promise<string> {
-    let baseSlug = generateSlug(title);
-    if (!baseSlug) {
-        baseSlug = 'untitled-mod';
-    }
-    
-    let slug = baseSlug;
-    let counter = 1;
-    
-    // Check for conflicts and append number if needed
-    while (await slugExists(slug, env, excludeModId)) {
-        slug = `${baseSlug}-${counter}`;
-        counter++;
-    }
-    
-    return slug;
-}
 
 /**
  * Generate unique mod ID
@@ -558,9 +515,8 @@ export async function handleUploadMod(
         // Files are decrypted on-the-fly during download
         // Get extension without dot for R2 key (fileExtension already includes the dot)
         const extensionForR2 = fileExtension ? fileExtension.substring(1) : 'zip';
-        // Use normalized modId for R2 key consistency
-        const normalizedModId = normalizeModId(modId);
-        const r2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/${versionId}.${extensionForR2}`);
+        // Use modId directly for R2 key - it already includes 'mod_' prefix
+        const r2Key = getCustomerR2Key(auth.customerId, `mods/${modId}/${versionId}.${extensionForR2}`);
         
         // Store encrypted file data as-is (binary or JSON format)
         let encryptedFileBytes: Uint8Array;
@@ -851,16 +807,15 @@ export async function handleUploadMod(
         };
 
         // Store in KV
-        // Use normalized modId (already computed above) to ensure consistent key generation
+        // Use modId directly - it already includes 'mod_' prefix
         // CRITICAL FIX: Log customerId association for debugging
-        const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+        const modKey = getCustomerKey(auth.customerId, modId);
         const versionKey = getCustomerKey(auth.customerId, `version_${versionId}`);
-        const versionsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_versions`);
+        const versionsListKey = getCustomerKey(auth.customerId, `${modId}_versions`);
         const modsListKey = getCustomerKey(auth.customerId, 'mods_list');
         
         console.log('[Upload] Storing mod with customerId association:', {
             modId,
-            normalizedModId,
             customerId: auth.customerId,
             modKey,
             versionKey,
@@ -888,9 +843,16 @@ export async function handleUploadMod(
         const updatedModsList = [...(modsList || []), modId];
         await env.MODS_KV.put(modsListKey, JSON.stringify(updatedModsList));
 
+        // CRITICAL: Create slug index - slug is a unique index key
+        // Store slug -> modId mapping in customer scope
+        const customerSlugIndexKey = getCustomerKey(auth.customerId, `slug_${slug}`);
+        await env.MODS_KV.put(customerSlugIndexKey, modId);
+        console.log('[Upload] Created slug index:', { slug, modId, customerSlugIndexKey });
+
         // NOTE: Do NOT add to global public list yet - mods start as 'pending' status
         // They will only be added to the public list when an admin changes status to 'published'
         // This ensures pending mods are not visible to the public, even if visibility is 'public'
+        // NOTE: Global slug index will be created when mod is approved/published and public
 
         // Track successful upload (skip for super admins)
         if (!isSuperAdmin) {
@@ -1001,9 +963,9 @@ async function handleThumbnailBinaryUpload(
         }
         
         // Upload to R2
-        const normalizedModId = normalizeModId(modId);
+        // Use modId directly - it already includes 'mod_' prefix
         const extension = getImageExtension(thumbnailFile.type);
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${extension}`);
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${extension}`);
         
         // Add R2 source metadata
         const r2SourceInfo = getR2SourceInfo(env, request);
@@ -1089,9 +1051,8 @@ async function handleThumbnailUpload(
         }
 
         // Upload to R2
-        // Normalize modId to ensure consistent storage (strip mod_ prefix if present)
-        const normalizedModId = normalizeModId(modId);
-        const r2Key = getCustomerR2Key(customerId, `thumbnails/${normalizedModId}.${normalizedType}`);
+        // Use modId directly - it already includes 'mod_' prefix
+        const r2Key = getCustomerR2Key(customerId, `thumbnails/${modId}.${normalizedType}`);
         
         // Add R2 source metadata
         const r2SourceInfo = getR2SourceInfo(env, request);

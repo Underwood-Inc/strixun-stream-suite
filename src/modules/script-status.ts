@@ -250,28 +250,28 @@ export function updateDashboardStatus(): void {
     container.innerHTML = `
       <div class="script-status-grid">
         <div class="script-status-item installed">
-          <span class="script-status-item__icon">❓</span>
+          <span class="script-status-item__icon"></span>
           <span class="script-status-item__name">OBS Connection</span>
           <span class="script-status-item__badge">Online</span>
         </div>
         <div class="script-status-item installed">
-          <span class="script-status-item__icon">✨</span>
+          <span class="script-status-item__icon">[FEATURE]</span>
           <span class="script-status-item__name">Animations</span>
           <span class="script-status-item__badge">Ready</span>
         </div>
         <div class="script-status-item installed">
-          <span class="script-status-item__icon">🔄</span>
+          <span class="script-status-item__icon">[EMOJI]</span>
           <span class="script-status-item__name">Source Swap</span>
           <span class="script-status-item__badge">Ready</span>
         </div>
         <div class="script-status-item installed">
-          <span class="script-status-item__icon">📝</span>
+          <span class="script-status-item__icon">[EMOJI]</span>
           <span class="script-status-item__name">Text Cycler</span>
           <span class="script-status-item__badge">Ready</span>
         </div>
       </div>
       <p class="hint" style="margin-top:8px">
-        ✅ All features available! Use the tabs above to access each feature.
+        [OK] All features available! Use the tabs above to access each feature.
       </p>
     `;
   } else {
@@ -279,16 +279,16 @@ export function updateDashboardStatus(): void {
     container.innerHTML = `
       <div class="script-status-grid">
         <div class="script-status-item missing">
-          <span class="script-status-item__icon">❓</span>
+          <span class="script-status-item__icon"></span>
           <span class="script-status-item__name">OBS Connection</span>
           <span class="script-status-item__badge">Offline</span>
         </div>
       </div>
       <p class="hint" style="margin-top:8px">
-        <button onclick="window.showPage?.('setup')" class="btn-link">⚙️ Go to Setup</button> to connect to OBS WebSocket
+        <button onclick="window.showPage?.('setup')" class="btn-link">[SETTINGS] Go to Setup</button> to connect to OBS WebSocket
       </p>
       <p class="hint" style="margin-top:4px">
-        <button onclick="window.showPage?.('install')" class="btn-link">❓ Install Scripts</button> if you haven't already
+        <button onclick="window.showPage?.('install')" class="btn-link"> Install Scripts</button> if you haven't already
       </p>
     `;
   }
@@ -347,10 +347,10 @@ export function renderFeatureNotice(containerId: string, featureId: string, scri
     const notice = document.createElement('div');
     notice.className = 'feature-notice error';
     notice.innerHTML = `
-      <div class="feature-notice__title">⚠️ Connection Required</div>
+      <div class="feature-notice__title">[WARNING] Connection Required</div>
       <div class="feature-notice__text">
         Connect to OBS WebSocket to use this feature. 
-        <button onclick="window.showPage?.('setup')" class="btn-link">Go to Setup ❓</button>
+        <button onclick="window.showPage?.('setup')" class="btn-link">Go to Setup </button>
       </div>
     `;
     container.insertBefore(notice, container.firstChild);
@@ -358,10 +358,10 @@ export function renderFeatureNotice(containerId: string, featureId: string, scri
     const notice = document.createElement('div');
     notice.className = 'feature-notice';
     notice.innerHTML = `
-      <div class="feature-notice__title">❓ Script Required: ${scriptName}</div>
+      <div class="feature-notice__title"> Script Required: ${scriptName}</div>
       <div class="feature-notice__text">
         This feature requires the ${scriptName} Lua script. 
-        <button onclick="window.showPage?.('install')" class="btn-link">Go to Installer ❓</button>
+        <button onclick="window.showPage?.('install')" class="btn-link">Go to Installer </button>
       </div>
     `;
     container.insertBefore(notice, container.firstChild);

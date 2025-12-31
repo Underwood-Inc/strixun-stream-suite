@@ -39,9 +39,9 @@ export const HTML_TEMPLATE = ${JSON.stringify(html)};
   }
   
   writeFileSync(outputPath, output);
-  console.log(`✅ Bundled HTML template to ${outputPath}`);
+  console.log(`[OK] Bundled HTML template to ${outputPath}`);
 } catch (error) {
-  console.error('❌ Failed to bundle HTML template:', error);
+  console.error('[ERROR] Failed to bundle HTML template:', error);
   process.exit(1);
 }
 

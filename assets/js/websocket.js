@@ -225,10 +225,10 @@ function updateSecurityWarning() {
     
     if (remember && pw) {
         if (isEncrypted) {
-            warn.textContent = '🔐 Password encrypted with AES-256-GCM';
+            warn.textContent = '[EMOJI] Password encrypted with AES-256-GCM';
             warn.style.color = 'var(--success)';
         } else {
-            warn.textContent = '🔒 Password will be encrypted with your PIN';
+            warn.textContent = '[EMOJI] Password will be encrypted with your PIN';
             warn.style.color = 'var(--accent)';
         }
     } else {

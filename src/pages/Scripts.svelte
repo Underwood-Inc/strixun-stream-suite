@@ -18,7 +18,7 @@
 
 <div class="page scripts-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <div class="card">
-    <h3>❓ Stream Suite Scripts</h3>
+    <h3> Stream Suite Scripts</h3>
     <p class="hint" style="margin-bottom:12px">
       Lua scripts that run inside OBS Studio. Install via the Installer tab.
     </p>
@@ -27,7 +27,7 @@
   </div>
   
   <div class="card">
-    <h3>🌐 Browser Sources</h3>
+    <h3>[EMOJI] Browser Sources</h3>
     <p class="hint" style="margin-bottom:12px">
       HTML files to add as Browser Sources in OBS.
     </p>
@@ -35,7 +35,7 @@
     <div class="scripts-grid">
       <div class="script-card">
         <div class="script-header">
-          <span class="script-icon">❓</span>
+          <span class="script-icon"></span>
           <div>
             <div class="script-name">Text Cycler Display</div>
             <div class="script-version">Browser Source</div>
@@ -49,7 +49,7 @@
       
       <div class="script-card">
         <div class="script-header">
-          <span class="script-icon">🎛️</span>
+          <span class="script-icon">[EMOJI]️</span>
           <div>
             <div class="script-name">Control Panel Dock</div>
             <div class="script-version">Custom Dock</div>
@@ -64,11 +64,11 @@
   </div>
   
   <div class="card">
-    <h3>❓ Quick Reference</h3>
+    <h3> Quick Reference</h3>
     <div class="info-box">
       <strong>Adding Scripts to OBS:</strong>
       <ol style="margin:8px 0 0 16px;font-size:0.85em">
-        <li>Tools ❓ Scripts</li>
+        <li>Tools  Scripts</li>
         <li>Click + (Add Scripts)</li>
         <li>Navigate to your script folder</li>
         <li>Select the .lua files</li>
@@ -77,7 +77,7 @@
     <div class="info-box" style="margin-top:8px">
       <strong>Adding Custom Browser Dock:</strong>
       <ol style="margin:8px 0 0 16px;font-size:0.85em">
-        <li>View ❓ Docks ❓ Custom Browser Docks</li>
+        <li>View  Docks  Custom Browser Docks</li>
         <li>Name: "Stream Suite"</li>
         <li>URL: file:///path/to/control_panel.html</li>
       </ol>

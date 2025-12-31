@@ -221,7 +221,7 @@
     {:else}
       <Card>
         <div class="dashboard__empty">
-          <div class="dashboard__empty-icon">📊</div>
+          <div class="dashboard__empty-icon">[EMOJI]</div>
           <p>No analytics data available yet</p>
           <p class="dashboard__empty-hint">Analytics will appear here once you start using the API</p>
         </div>

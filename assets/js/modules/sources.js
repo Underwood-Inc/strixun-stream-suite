@@ -83,9 +83,9 @@ function renderScenesList() {
              onclick="onSceneSelect('${escapedName}')">
             <div>
                 <div class="name">${name}</div>
-                <div class="type">${isCurrent ? '🔴 Live' : 'Scene'}</div>
+                <div class="type">${isCurrent ? '[EMOJI] Live' : 'Scene'}</div>
             </div>
-            ${isSelected ? '<span style="color:var(--accent)">❓</span>' : ''}
+            ${isSelected ? '<span style="color:var(--accent)"></span>' : ''}
         </div>`;
     }).join('');
     
@@ -195,7 +195,7 @@ function renderSources() {
                 <button class="opacity-reset-btn" 
                         id="reset-${s.sceneItemId}"
                         onclick="resetOpacityWithLoader('${escapedName}', ${s.sceneItemId}, this)"
-                        title="Reset to 100%">❓ Reset</button>
+                        title="Reset to 100%"> Reset</button>
             </div>
         </div>
     `}).join('');

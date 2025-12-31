@@ -84,7 +84,7 @@
     <h3 class="sidebar__title">System Status</h3>
     <div class="sidebar__status">
       <div class="sidebar__status-item">
-        <span class="sidebar__status-icon">❓</span>
+        <span class="sidebar__status-icon"></span>
         <span class="sidebar__status-label">OBS</span>
         <span class="sidebar__status-badge" class:sidebar__status-badge--online={$connected} class:sidebar__status-badge--offline={!$connected}>
           {$connected ? 'Online' : 'Offline'}
@@ -92,7 +92,7 @@
       </div>
       {#if $connected && $currentScene}
         <div class="sidebar__status-item">
-          <span class="sidebar__status-icon">❓</span>
+          <span class="sidebar__status-icon"></span>
           <span class="sidebar__status-label">Scene</span>
           <span class="sidebar__status-value">{$currentScene}</span>
         </div>
@@ -110,7 +110,7 @@
         disabled={!$connected}
         title="Cycle aspect ratio override"
       >
-        🔄 Cycle Aspect
+        [EMOJI] Cycle Aspect
       </button>
       <button
         class="sidebar__action"
@@ -118,7 +118,7 @@
         disabled={!$connected}
         title="Refresh scene sources"
       >
-        ❓ Refresh
+         Refresh
       </button>
       <button
         class="sidebar__action"
@@ -126,7 +126,7 @@
         disabled={!$connected}
         title="Toggle text cycler (Space)"
       >
-        📝 Toggle Text Cycler
+        [EMOJI] Toggle Text Cycler
       </button>
     </div>
   </div>
@@ -185,7 +185,7 @@
         rel="noopener noreferrer"
         class="sidebar__link"
       >
-        📦 Modrinth Profile
+        [EMOJI] Modrinth Profile
       </a>
       <a
         href="https://github.com/strixun"
@@ -193,7 +193,7 @@
         rel="noopener noreferrer"
         class="sidebar__link"
       >
-        💻 GitHub
+        [EMOJI] GitHub
       </a>
     </div>
   </div>

@@ -3,8 +3,9 @@
  * Handles mod status changes and review management
  */
 
+import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
+import { getCustomerKey } from '../../utils/customer.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import { createCORSHeadersWithLocalhost } from '../../utils/cors.js';
 import type { ModMetadata, ModStatus, ModStatusHistory, ModReviewComment, ModVersion } from '../../types/mod.js';
@@ -24,13 +25,13 @@ export async function handleUpdateModStatus(
         // Get mod metadata
         // CRITICAL: Admin can approve mods from ANY customer, so we must search all scopes
         // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
-        const normalizedModId = normalizeModId(modId);
-        console.log('[UpdateModStatus] Looking up mod:', { originalModId: modId, normalizedModId });
+        // Use modId directly - it already includes 'mod_' prefix
+        console.log('[UpdateModStatus] Looking up mod:', { modId });
         let mod: ModMetadata | null = null;
         let modCustomerId: string | null = null;
         
         // Try global scope first (for already-approved mods)
-        const globalModKey = `mod_${normalizedModId}`;
+        const globalModKey = modId;
         console.log('[UpdateModStatus] Checking global scope:', { globalModKey });
         mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         if (mod) {
@@ -58,7 +59,7 @@ export async function handleUpdateModStatus(
                         const customerId = match ? match[1] : null;
                         if (customerId) {
                             customerScopesSearched++;
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const customerModKey = getCustomerKey(customerId, modId);
                             console.log('[UpdateModStatus] Checking customer scope:', { customerId, customerModKey, keyName: key.name });
                             const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                             if (candidateMod) {
@@ -85,9 +86,8 @@ export async function handleUpdateModStatus(
 
         if (!mod) {
             console.error('[UpdateModStatus] Mod not found after searching all scopes:', { 
-                originalModId: modId, 
-                normalizedModId,
-                globalModKey: `mod_${normalizedModId}`
+                modId,
+                globalModKey: modId
             });
             const rfcError = createError(request, 404, 'Mod Not Found', 'The requested mod was not found');
             const corsHeaders = createCORSHeaders(request, {
@@ -265,8 +265,10 @@ export async function handleUpdateModStatus(
         if (shouldBeInGlobalScope) {
             if (!wasInGlobalScope) {
                 // Add to global list when first approved/published
-                if (!globalModsList || !globalModsList.includes(normalizedModId)) {
-                    const updatedGlobalList = [...(globalModsList || []), normalizedModId];
+                // Use mod.modId directly - no normalization needed
+                const isInList = globalModsList?.includes(mod.modId) || false;
+                if (!isInList) {
+                    const updatedGlobalList = [...(globalModsList || []), mod.modId];
                     await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
                 }
             }
@@ -274,14 +276,19 @@ export async function handleUpdateModStatus(
             // Store in global scope for approved/published public mods
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
             
+            // CRITICAL: Create global slug index for public/approved mods
+            const globalSlugKey = `slug_${mod.slug}`;
+            await env.MODS_KV.put(globalSlugKey, mod.modId);
+            console.log('[Triage] Created global slug index:', { slug: mod.slug, modId: mod.modId });
+            
             // CRITICAL: Copy all versions to global scope when mod is approved/published and public
             // This ensures badges and downloads work without auth for public mods
             if (mod.customerId) {
-                const versionsListKey = getCustomerKey(mod.customerId, `mod_${normalizedModId}_versions`);
+                const versionsListKey = getCustomerKey(mod.customerId, `${mod.modId}_versions`);
                 const versionsList = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
                 
                 if (versionsList) {
-                    const globalVersionsListKey = `mod_${normalizedModId}_versions`;
+                    const globalVersionsListKey = `${mod.modId}_versions`;
                     await env.MODS_KV.put(globalVersionsListKey, JSON.stringify(versionsList));
                     
                     // Copy each version to global scope
@@ -298,12 +305,19 @@ export async function handleUpdateModStatus(
             }
         } else if (wasInGlobalScope && !shouldBeInGlobalScope) {
             // Remove from global list when unapproved/unpublished/delisted
-            if (globalModsList && globalModsList.includes(normalizedModId)) {
-                const updatedGlobalList = globalModsList.filter(id => id !== normalizedModId);
+            // Use mod.modId directly - no normalization needed
+            const isInList = globalModsList?.includes(mod.modId) || false;
+            if (isInList) {
+                const updatedGlobalList = (globalModsList || []).filter(id => id !== mod.modId);
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
                 
                 // Delete global mod metadata (it will still exist in customer scope)
                 await env.MODS_KV.delete(globalModKey);
+                
+                // CRITICAL: Delete global slug index when mod is no longer public/approved
+                const globalSlugKey = `slug_${mod.slug}`;
+                await env.MODS_KV.delete(globalSlugKey);
+                console.log('[Triage] Deleted global slug index:', { slug: mod.slug, modId: mod.modId });
             }
         }
 
@@ -312,7 +326,7 @@ export async function handleUpdateModStatus(
         // This ensures the mod remains accessible in its original location
         // The mod will also exist in global scope if approved/published and public
         if (modCustomerId) {
-            const modCustomerKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}`);
+            const modCustomerKey = getCustomerKey(modCustomerId, mod.modId);
             await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
         }
 
@@ -361,12 +375,12 @@ export async function handleAddReviewComment(
         // Get mod metadata
         // CRITICAL: Admin can comment on mods from ANY customer, so we must search all scopes
         // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)
-        const normalizedModId = normalizeModId(modId);
+        // Use modId directly - it already includes 'mod_' prefix
         let mod: ModMetadata | null = null;
         let modCustomerId: string | null = null;
         
         // Try global scope first (for already-approved mods)
-        const globalModKey = `mod_${normalizedModId}`;
+        const globalModKey = modId;
         mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         if (mod) {
             modCustomerId = mod.customerId || null;
@@ -384,7 +398,7 @@ export async function handleAddReviewComment(
                         const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
                         const customerId = match ? match[1] : null;
                         if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const customerModKey = getCustomerKey(customerId, modId);
                             const candidateMod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                             if (candidateMod) {
                                 mod = candidateMod;
@@ -503,13 +517,13 @@ export async function handleAddReviewComment(
         // CRITICAL: Save to mod's original customer scope, NOT admin's customer scope
         // This prevents duplication - mod stays in uploader's customer scope
         if (modCustomerId) {
-            const modCustomerKey = getCustomerKey(modCustomerId, `mod_${normalizedModId}`);
+            const modCustomerKey = getCustomerKey(modCustomerId, mod.modId);
             await env.MODS_KV.put(modCustomerKey, JSON.stringify(mod));
         }
         
         // Also update global scope if public (for public browsing)
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${normalizedModId}`;
+            const globalModKey = mod.modId;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
         }
 

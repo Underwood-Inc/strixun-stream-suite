@@ -2,7 +2,7 @@
 # Bash script to set all encryption keys for frontend and backend
 # Usage: ./set-service-encryption-key.sh
 
-echo "🔒 Setting all encryption keys for frontend and backend..."
+echo "[EMOJI] Setting all encryption keys for frontend and backend..."
 echo ""
 
 # Prompt for SERVICE_ENCRYPTION_KEY (used for OTP encryption)
@@ -10,12 +10,12 @@ read -sp "Enter SERVICE_ENCRYPTION_KEY (input will be hidden): " service_encrypt
 echo ""
 
 if [ -z "$service_encryption_key" ]; then
-    echo "❌ Error: SERVICE_ENCRYPTION_KEY cannot be empty"
+    echo "[ERROR] Error: SERVICE_ENCRYPTION_KEY cannot be empty"
     exit 1
 fi
 
 if [ ${#service_encryption_key} -lt 32 ]; then
-    echo "❌ Error: SERVICE_ENCRYPTION_KEY must be at least 32 characters"
+    echo "[ERROR] Error: SERVICE_ENCRYPTION_KEY must be at least 32 characters"
     exit 1
 fi
 
@@ -26,7 +26,7 @@ read -sp "Enter SERVICE_API_KEY (input will be hidden): " service_api_key
 echo ""
 
 if [ -z "$service_api_key" ]; then
-    echo "⚠️ SERVICE_API_KEY is empty. Customer API calls will fail with 401."
+    echo "[WARNING] SERVICE_API_KEY is empty. Customer API calls will fail with 401."
     echo "Do you want to continue without SERVICE_API_KEY? (y/n)"
     read -r continue_choice
     if [ "$continue_choice" != "y" ] && [ "$continue_choice" != "Y" ]; then
@@ -55,7 +55,7 @@ for app_entry in "${frontend_apps[@]}"; do
     IFS='|' read -r app_path app_name <<< "$app_entry"
     
     if [ ! -d "$app_path" ]; then
-        echo "  ⚠️ Skipping $app_name (directory not found: $app_path)"
+        echo "  [WARNING] Skipping $app_name (directory not found: $app_path)"
         continue
     fi
     
@@ -83,10 +83,10 @@ for app_entry in "${frontend_apps[@]}"; do
     fi
     
     if [ $? -eq 0 ]; then
-        echo "    ✅ $app_name"
+        echo "    [OK] $app_name"
         ((success_count++))
     else
-        echo "    ❌ Failed to set key in $app_name"
+        echo "    [ERROR] Failed to set key in $app_name"
         ((fail_count++))
     fi
 done
@@ -110,7 +110,7 @@ for worker in "${workers[@]}"; do
     worker_path="serverless/$worker"
     
     if [ ! -d "$worker_path" ]; then
-        echo "  ⚠️ Skipping $worker (directory not found)"
+        echo "  [WARNING] Skipping $worker (directory not found)"
         continue
     fi
     
@@ -122,10 +122,10 @@ for worker in "${workers[@]}"; do
         echo "$service_encryption_key" | wrangler secret put SERVICE_ENCRYPTION_KEY
         
         if [ $? -eq 0 ]; then
-            echo "    ✅ $worker"
+            echo "    [OK] $worker"
             ((success_count++))
         else
-            echo "    ❌ Failed to set SERVICE_ENCRYPTION_KEY in $worker"
+            echo "    [ERROR] Failed to set SERVICE_ENCRYPTION_KEY in $worker"
             ((fail_count++))
         fi
     )
@@ -145,7 +145,7 @@ if [ -n "$service_api_key" ]; then
         worker_path="serverless/$worker"
         
         if [ ! -d "$worker_path" ]; then
-            echo "  ⚠️ Skipping $worker (directory not found)"
+            echo "  [WARNING] Skipping $worker (directory not found)"
             continue
         fi
         
@@ -157,10 +157,10 @@ if [ -n "$service_api_key" ]; then
             echo "$service_api_key" | wrangler secret put SERVICE_API_KEY
             
             if [ $? -eq 0 ]; then
-                echo "    ✅ $worker"
+                echo "    [OK] $worker"
                 ((success_count++))
             else
-                echo "    ❌ Failed to set SERVICE_API_KEY in $worker"
+                echo "    [ERROR] Failed to set SERVICE_API_KEY in $worker"
                 ((fail_count++))
             fi
         )
@@ -169,18 +169,18 @@ if [ -n "$service_api_key" ]; then
 fi
 
 echo "Summary:"
-echo "  ✅ Success: $success_count"
-echo "  ❌ Failed: $fail_count"
+echo "  [OK] Success: $success_count"
+echo "  [ERROR] Failed: $fail_count"
 echo ""
 
 if [ $fail_count -eq 0 ]; then
-    echo "✅ All keys configured successfully!"
+    echo "[OK] All keys configured successfully!"
     echo ""
     echo "Next steps:"
     echo "  1. Rebuild frontend apps: cd serverless/url-shortener && pnpm build:app"
     echo "  2. Rebuild mods-hub if needed: cd mods-hub && pnpm build"
     echo "  3. Rebuild OTP dashboard if needed: cd serverless/otp-auth-service/dashboard && pnpm build"
 else
-    echo "⚠️ Some keys failed to set. Please check the errors above."
+    echo "[WARNING] Some keys failed to set. Please check the errors above."
 fi
 

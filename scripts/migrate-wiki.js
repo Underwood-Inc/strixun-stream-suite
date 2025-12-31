@@ -238,7 +238,7 @@ ${readmeContent}
 
 ---
 
-## 📚 Documentation Index
+## [EMOJI] Documentation Index
 
 All documentation has been automatically migrated from the codebase to this wiki. Browse the pages on the right sidebar to explore:
 

@@ -6,8 +6,8 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
-import { generateUniqueSlug } from './upload.js';
+import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { generateSlug, slugExists } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
 import { createModSnapshot } from '../../utils/snapshot.js';
@@ -41,20 +41,20 @@ export async function handleUpdateMod(
         }
 
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
+        // Use modId directly - it already includes 'mod_' prefix
         let mod: ModMetadata | null = null;
-        const normalizedModId = normalizeModId(modId);
         let modKey: string;
         
         // Try customer scope first
-        modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
+        modKey = getCustomerKey(auth.customerId, modId);
         mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
         
         // If not found in customer scope, try global scope (for public mods)
         if (!mod) {
-            const globalModKey = `mod_${normalizedModId}`;
+            const globalModKey = modId;
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
             if (mod) {
-                modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`); // Use customer key for storage
+                modKey = getCustomerKey(auth.customerId, modId); // Use customer key for storage
             }
         }
         
@@ -70,7 +70,7 @@ export async function handleUpdateMod(
                         const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
                         const customerId = match ? match[1] : null;
                         if (customerId) {
-                            const customerModKey = getCustomerKey(customerId, `mod_${normalizedModId}`);
+                            const customerModKey = getCustomerKey(customerId, modId);
                             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
                             if (mod) {
                                 modKey = customerModKey;
@@ -136,14 +136,51 @@ export async function handleUpdateMod(
         const wasPublic = mod.visibility === 'public';
         const visibilityChanged = updateData.visibility !== undefined && updateData.visibility !== mod.visibility;
         
-        const modId = mod.modId;
+        // Use the stored modId from the mod object directly
+        const storedModId = mod.modId;
 
+        // Track slug change for index update
+        const oldSlug = mod.slug;
+        let slugChanged = false;
+        
         // Update mod metadata
         if (updateData.title !== undefined) {
             mod.title = updateData.title;
-            // Regenerate slug if title changed
-            const newSlug = await generateUniqueSlug(updateData.title, env, modId);
-            mod.slug = newSlug;
+            // Regenerate slug if title changed - reject if duplicate (except for same mod)
+            const baseSlug = generateSlug(updateData.title);
+            if (!baseSlug) {
+                const rfcError = createError(request, 400, 'Invalid Title', 'Title must contain valid characters for slug generation');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 400,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+            
+            // Check if slug already exists (excluding this mod)
+            if (baseSlug !== oldSlug && await slugExists(baseSlug, env, storedModId)) {
+                const rfcError = createError(request, 409, 'Slug Already Exists', `A mod with the title "${updateData.title}" (slug: "${baseSlug}") already exists. Please choose a different title.`);
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 409,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+            
+            if (baseSlug !== oldSlug) {
+                mod.slug = baseSlug;
+                slugChanged = true;
+            }
         }
         if (updateData.description !== undefined) mod.description = updateData.description;
         if (updateData.category !== undefined) mod.category = updateData.category;
@@ -174,7 +211,7 @@ export async function handleUpdateMod(
         if (updateData.thumbnail) {
             try {
                 // Use current slug (may have been updated if title changed)
-                mod.thumbnailUrl = await handleThumbnailUpload(updateData.thumbnail, modId, mod.slug, request, env, auth.customerId);
+                mod.thumbnailUrl = await handleThumbnailUpload(updateData.thumbnail, storedModId, mod.slug, request, env, auth.customerId);
             } catch (error) {
                 console.error('Thumbnail update error:', error);
                 // Continue without thumbnail update
@@ -183,6 +220,28 @@ export async function handleUpdateMod(
 
         // Save updated mod (customer scope)
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
+
+        // CRITICAL: Update slug index if slug changed
+        if (slugChanged) {
+            // Delete old slug index
+            const oldCustomerSlugKey = getCustomerKey(auth.customerId, `slug_${oldSlug}`);
+            await env.MODS_KV.delete(oldCustomerSlugKey);
+            
+            // Delete old global slug index if it exists
+            const oldGlobalSlugKey = `slug_${oldSlug}`;
+            await env.MODS_KV.delete(oldGlobalSlugKey);
+            
+            // Create new slug index in customer scope
+            const newCustomerSlugKey = getCustomerKey(auth.customerId, `slug_${mod.slug}`);
+            await env.MODS_KV.put(newCustomerSlugKey, storedModId);
+            console.log('[Update] Updated slug index:', { oldSlug, newSlug: mod.slug, modId: storedModId });
+            
+            // Create global slug index if mod is public
+            if (mod.visibility === 'public') {
+                const newGlobalSlugKey = `slug_${mod.slug}`;
+                await env.MODS_KV.put(newGlobalSlugKey, storedModId);
+            }
+        }
 
         // Create snapshot after saving (captures state after update)
         // Fetch display name for snapshot
@@ -197,15 +256,23 @@ export async function handleUpdateMod(
         await env.MODS_KV.put(snapshotKey, JSON.stringify(snapshot));
         
         // Add snapshot to mod's snapshot list
-        const snapshotsListKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}_snapshots`);
+        const snapshotsListKey = getCustomerKey(auth.customerId, `${storedModId}_snapshots`);
         const snapshotsList = await env.MODS_KV.get(snapshotsListKey, { type: 'json' }) as string[] | null;
         const updatedSnapshotsList = [...(snapshotsList || []), snapshot.snapshotId];
         await env.MODS_KV.put(snapshotsListKey, JSON.stringify(updatedSnapshotsList));
 
         // Update global scope if mod is public
         if (mod.visibility === 'public') {
-            const globalModKey = `mod_${modId}`;
+            const globalModKey = storedModId;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
+            
+            // CRITICAL: Create/update global slug index for public mods
+            const globalSlugKey = `slug_${mod.slug}`;
+            await env.MODS_KV.put(globalSlugKey, storedModId);
+        } else {
+            // Remove global slug index if mod is no longer public
+            const globalSlugKey = `slug_${mod.slug}`;
+            await env.MODS_KV.delete(globalSlugKey);
         }
 
         // Update global public list if visibility changed
@@ -214,24 +281,34 @@ export async function handleUpdateMod(
             const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
             
             if (mod.visibility === 'public' && !wasPublic) {
-                // Add to global list
-                const updatedGlobalList = [...(globalModsList || []), modId];
-                await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+                // Add to global list (only if not already in list)
+                // CRITICAL: Normalize IDs for comparison since list may contain modIds with or without 'mod_' prefix
+                const isInList = globalModsList?.some(id => normalizeModId(id) === storedModId) || false;
+                if (!isInList) {
+                    const updatedGlobalList = [...(globalModsList || []), storedModId];
+                    await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
+                }
             } else if (mod.visibility !== 'public' && wasPublic) {
                 // Remove from global list and delete global mod metadata
-                const updatedGlobalList = (globalModsList || []).filter(id => id !== modId);
+                // CRITICAL: Normalize IDs for comparison since list may contain modIds with or without 'mod_' prefix
+                const updatedGlobalList = (globalModsList || []).filter(id => {
+                    const normalizedListId = normalizeModId(id);
+                    return normalizedListId !== storedModId;
+                });
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
                 
                 // Delete global mod metadata
-                const globalModKey = `mod_${modId}`;
+                const globalModKey = `mod_${storedModId}`;
                 await env.MODS_KV.delete(globalModKey);
             }
         } else if (mod.visibility === 'public') {
             // If visibility didn't change but mod is public, ensure it's in global list
             const globalListKey = 'mods_list_public';
             const globalModsList = await env.MODS_KV.get(globalListKey, { type: 'json' }) as string[] | null;
-            if (!globalModsList || !globalModsList.includes(modId)) {
-                const updatedGlobalList = [...(globalModsList || []), modId];
+            // CRITICAL: Normalize IDs for comparison since list may contain modIds with or without 'mod_' prefix
+            const isInList = globalModsList?.some(id => normalizeModId(id) === storedModId) || false;
+            if (!isInList) {
+                const updatedGlobalList = [...(globalModsList || []), storedModId];
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
             }
         }

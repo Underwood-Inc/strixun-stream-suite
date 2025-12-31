@@ -121,7 +121,7 @@ function generateOGImage(mod: ModMetadata, thumbnailUrl?: string): string {
       
       <!-- Downloads -->
       <g transform="translate(320, 0)">
-        <text x="0" y="16" fill="${textSecondary}" font-size="20" font-weight="500" font-family="system-ui, -apple-system, sans-serif">❓ ${mod.downloadCount.toLocaleString()} downloads</text>
+        <text x="0" y="16" fill="${textSecondary}" font-size="20" font-weight="500" font-family="system-ui, -apple-system, sans-serif"> ${mod.downloadCount.toLocaleString()} downloads</text>
       </g>
       
       <!-- Version -->

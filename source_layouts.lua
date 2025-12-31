@@ -1109,7 +1109,7 @@ end
 -- =============================================================================
 
 function script_description()
-    return [[<h2>❓ Source Layout Presets v1.0</h2>
+    return [[<h2> Source Layout Presets v1.0</h2>
 <p>Save and apply layout presets with smooth animations.</p>
 
 <h3>Features:</h3>
@@ -1128,7 +1128,7 @@ function script_description()
     <li>Click "Apply" to animate back to saved positions</li>
 </ol>
 
-<p><b>Tip:</b> Assign hotkeys in Settings ❓ Hotkeys for quick switching!</p>
+<p><b>Tip:</b> Assign hotkeys in Settings  Hotkeys for quick switching!</p>
 <hr>
 <p><i>Part of Strixun's Stream Suite</i></p>
 ]]
@@ -1146,7 +1146,7 @@ function script_properties()
     
     obs.obs_properties_add_text(props, "new_layout_name", "Layout Name", obs.OBS_TEXT_DEFAULT)
     
-    obs.obs_properties_add_button(props, "capture_btn", "❓ Save Current Layout",
+    obs.obs_properties_add_button(props, "capture_btn", " Save Current Layout",
         function(properties, property)
             if settings_ref == nil then return false end
             
@@ -1195,7 +1195,7 @@ function script_properties()
         obs.obs_property_list_add_string(layout_list, display, name)
     end
     
-    obs.obs_properties_add_button(props, "apply_btn", "▶❓ Apply Selected Layout",
+    obs.obs_properties_add_button(props, "apply_btn", "▶ Apply Selected Layout",
         function(properties, property)
             if settings_ref == nil then return false end
             
@@ -1219,7 +1219,7 @@ function script_properties()
     
     local easing_list = obs.obs_properties_add_list(props, "default_easing", "Easing",
         obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
-    obs.obs_property_list_add_string(easing_list, "Ease Out ❓", "ease_out")
+    obs.obs_property_list_add_string(easing_list, "Ease Out ", "ease_out")
     obs.obs_property_list_add_string(easing_list, "Ease In/Out", "ease_in_out")
     obs.obs_property_list_add_string(easing_list, "Ease In", "ease_in")
     obs.obs_property_list_add_string(easing_list, "Linear", "linear")
@@ -1242,7 +1242,7 @@ function script_properties()
         obs.obs_property_list_add_string(delete_list, name, name)
     end
     
-    obs.obs_properties_add_button(props, "delete_btn", "🗑️ Delete Selected",
+    obs.obs_properties_add_button(props, "delete_btn", "[EMOJI]️ Delete Selected",
         function(properties, property)
             if settings_ref == nil then return false end
             
@@ -1254,7 +1254,7 @@ function script_properties()
             return true
         end)
     
-    obs.obs_properties_add_button(props, "list_btn", "📋 List All Layouts",
+    obs.obs_properties_add_button(props, "list_btn", "[EMOJI] List All Layouts",
         function(properties, property)
             log_info("=== Layouts for Current Scene ===")
             local layouts = list_layouts()
@@ -1273,7 +1273,7 @@ function script_properties()
             return false
         end)
     
-    obs.obs_properties_add_button(props, "refresh_btn", "🔄 Refresh",
+    obs.obs_properties_add_button(props, "refresh_btn", "[EMOJI] Refresh",
         function(properties, property)
             return true
         end)
@@ -1284,7 +1284,7 @@ function script_properties()
     obs.obs_properties_add_text(props, "h5",
         "═══════════ INFO ═══════════", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "hotkey_info",
-        "💡 Hotkeys: Settings ❓ Hotkeys ❓ 'Apply Layout: [name]'", obs.OBS_TEXT_INFO)
+        "[EMOJI] Hotkeys: Settings  Hotkeys  'Apply Layout: [name]'", obs.OBS_TEXT_INFO)
     
     return props
 end

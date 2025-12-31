@@ -1,6 +1,6 @@
 <section class="self-hosting" id="self-hosting">
   <div class="self-hosting-content">
-    <h2>Outgrown the Free Tier? We've Got You Covered ❓</h2>
+    <h2>Outgrown the Free Tier? We've Got You Covered </h2>
     <p class="self-hosting-subtitle">
       Great news! This application is completely open-source on GitHub, so you can self-host with unlimited rate limits. 
       Or sit tight—subscription tiers with enhanced limits are coming soon.
@@ -8,7 +8,7 @@
     
     <div class="self-hosting-grid">
       <div class="self-hosting-card">
-        <h3>❓ Self-Host on GitHub</h3>
+        <h3> Self-Host on GitHub</h3>
         <p>
           The entire codebase is open-source and available on GitHub. Deploy it on your own infrastructure 
           with complete control over rate limits, configuration, and data.
@@ -22,13 +22,13 @@
         </ul>
         <div class="card-cta">
           <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
-            <span>📦</span> View on GitHub
+            <span>[EMOJI]</span> View on GitHub
           </a>
         </div>
       </div>
 
       <div class="self-hosting-card">
-        <h3>⚡ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        <h3>[PERF] Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
         <p>
           Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
           Get notified when they launch and keep using our managed service.
@@ -48,7 +48,7 @@
       </div>
 
       <div class="self-hosting-card">
-        <h3>🚀 Why Choose Self-Hosting?</h3>
+        <h3>[EMOJI] Why Choose Self-Hosting?</h3>
         <p>
           Self-hosting gives you complete freedom and control. Perfect for enterprises, high-traffic applications, 
           or when you need custom configurations.
@@ -181,7 +181,7 @@
   }
 
   .self-hosting-card li::before {
-    content: '❓';
+    content: '';
     position: absolute;
     left: 0;
     color: var(--success);

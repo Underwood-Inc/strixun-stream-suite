@@ -2,7 +2,7 @@
  * Integration Tests for Customer Account Creation
  * Tests ensureCustomerAccount function against LIVE customer-api
  * 
- * ⚠️ IMPORTANT: These tests use the REAL customer-api service
+ * [WARNING] IMPORTANT: These tests use the REAL customer-api service
  * 
  * These tests only run when:
  * - USE_LIVE_API=true environment variable is set
@@ -117,7 +117,7 @@ describe.skipIf(!USE_LIVE_API)(`ensureCustomerAccount - Integration Tests (Live 
             errorString.includes('dns') ||
             (errorString.includes('404') && errorString.includes('not found'))) {
           throw new Error(
-            `❌ Customer API URL is incorrect or unreachable!\n` +
+            `[ERROR] Customer API URL is incorrect or unreachable!\n` +
             `   Configured URL: ${CUSTOMER_API_URL}\n` +
             `   Error: ${errorMessage}\n` +
             `   \n` +

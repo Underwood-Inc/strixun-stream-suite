@@ -85,7 +85,7 @@ if ([string]::IsNullOrWhiteSpace($SecretName)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($SecretName)) {
-    Write-Host "❌ Secret name cannot be empty" -ForegroundColor Red
+    Write-Host "[ERROR] Secret name cannot be empty" -ForegroundColor Red
     exit 1
 }
 
@@ -100,7 +100,7 @@ $secretValue = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
 )
 
 if ([string]::IsNullOrWhiteSpace($secretValue)) {
-    Write-Host "❌ Secret value cannot be empty" -ForegroundColor Red
+    Write-Host "[ERROR] Secret value cannot be empty" -ForegroundColor Red
     exit 1
 }
 
@@ -113,7 +113,7 @@ Write-Host "Discovering services with wrangler.toml..." -ForegroundColor Yellow
 $allServices = Get-WranglerServices
 
 if ($allServices.Count -eq 0) {
-    Write-Host "❌ No services with wrangler.toml found" -ForegroundColor Red
+    Write-Host "[ERROR] No services with wrangler.toml found" -ForegroundColor Red
     exit 1
 }
 
@@ -166,7 +166,7 @@ if (-not [string]::IsNullOrWhiteSpace($Services)) {
         }
         
         if ($selectedServices.Count -eq 0) {
-            Write-Host "❌ No valid services selected" -ForegroundColor Red
+            Write-Host "[ERROR] No valid services selected" -ForegroundColor Red
             exit 1
         }
         
@@ -217,14 +217,14 @@ foreach ($service in $selectedServices) {
         $secretValue | wrangler secret put $SecretName 2>&1 | Out-Null
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Host " ✅" -ForegroundColor Green
+            Write-Host " [OK]" -ForegroundColor Green
             $successCount++
         } else {
             Write-Host " [FAILED] Exit code: $LASTEXITCODE" -ForegroundColor Red
             $failCount++
         }
     } catch {
-        Write-Host " ❌ $_" -ForegroundColor Red
+        Write-Host " [ERROR] $_" -ForegroundColor Red
         $failCount++
     } finally {
         Pop-Location
@@ -243,9 +243,9 @@ Write-Host "  Failed: $failCount" -ForegroundColor $(if ($failCount -eq 0) { "Gr
 Write-Host ""
 
 if ($failCount -eq 0) {
-    Write-Host "✅ All services configured successfully!" -ForegroundColor Green
+    Write-Host "[OK] All services configured successfully!" -ForegroundColor Green
 } else {
-    Write-Host "⚠️ Some services failed. Please check the errors above." -ForegroundColor Yellow
+    Write-Host "[WARNING] Some services failed. Please check the errors above." -ForegroundColor Yellow
 }
 
 Write-Host ""

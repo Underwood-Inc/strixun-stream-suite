@@ -115,14 +115,14 @@ export const encryptedStorage = {
           if (!warnedKeys.has(`password:${key}`)) {
             warnedKeys.add(`password:${key}`);
             console.warn(
-              `[EncryptedStorage] ⚠️ Cannot decrypt ${key}: password-protected item requires password`
+              `[EncryptedStorage] [WARNING] Cannot decrypt ${key}: password-protected item requires password`
             );
           }
         } else {
           // Only log error once per key to prevent spam
           if (!warnedKeys.has(`error:${key}`)) {
             warnedKeys.add(`error:${key}`);
-            console.error(`[EncryptedStorage] ❌ Failed to decrypt ${key}:`, error);
+            console.error(`[EncryptedStorage] [ERROR] Failed to decrypt ${key}:`, error);
           }
         }
         // If decryption fails, it means the token doesn't match - this is expected
@@ -161,7 +161,7 @@ export const encryptedStorage = {
       const encrypted = await encrypt(value, authToken);
       return storage.set(key, encrypted);
     } catch (error) {
-      console.error(`[EncryptedStorage] ❌ Failed to encrypt ${key}:`, error);
+      console.error(`[EncryptedStorage] [ERROR] Failed to encrypt ${key}:`, error);
       // Fallback to unencrypted storage
       return storage.set(key, value);
     }
@@ -296,7 +296,7 @@ export async function migrateToEncryption(): Promise<{ migrated: number; failed:
   }
 
   console.log(
-    `[EncryptedStorage] ✅ Migration complete: ${migrated} migrated, ${failed} failed`
+    `[EncryptedStorage] [OK] Migration complete: ${migrated} migrated, ${failed} failed`
   );
 
   return { migrated, failed };
