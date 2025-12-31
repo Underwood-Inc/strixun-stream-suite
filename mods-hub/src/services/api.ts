@@ -245,7 +245,21 @@ export async function uploadMod(
         // This works even if status is 'pending' - allows downloads once published
         const serviceKey = getOtpEncryptionKey();
         if (!serviceKey) {
-            throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
+            // Enhanced error message for production debugging
+            const isProduction = typeof window !== 'undefined' && import.meta.env?.MODE === 'production';
+            const errorMsg = isProduction
+                ? 'Service encryption key not configured in production build. The GitHub secret VITE_SERVICE_ENCRYPTION_KEY must match the Cloudflare Worker secret SERVICE_ENCRYPTION_KEY. Check the deployment workflow and ensure both secrets are set to the same value.'
+                : 'Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.';
+            console.error('[uploadMod] Service key missing:', {
+                isProduction,
+                hasImportMeta: typeof import.meta !== 'undefined',
+                hasEnv: !!import.meta?.env,
+                envKeys: typeof import.meta?.env === 'object' ? Object.keys(import.meta.env || {}).filter(k => k.startsWith('VITE_')) : [],
+            });
+            throw new Error(errorMsg);
+        }
+        if (serviceKey.length < 32) {
+            throw new Error(`Service encryption key is too short (${serviceKey.length} chars, minimum 32). Check VITE_SERVICE_ENCRYPTION_KEY configuration.`);
         }
         const fileBuffer = await file.arrayBuffer();
         encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
@@ -331,7 +345,21 @@ export async function uploadVersion(
         // Public mods: encrypt with service key for anonymous downloads
         const serviceKey = getOtpEncryptionKey();
         if (!serviceKey) {
-            throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
+            // Enhanced error message for production debugging
+            const isProduction = typeof window !== 'undefined' && import.meta.env?.MODE === 'production';
+            const errorMsg = isProduction
+                ? 'Service encryption key not configured in production build. The GitHub secret VITE_SERVICE_ENCRYPTION_KEY must match the Cloudflare Worker secret SERVICE_ENCRYPTION_KEY. Check the deployment workflow and ensure both secrets are set to the same value.'
+                : 'Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.';
+            console.error('[uploadVersion] Service key missing:', {
+                isProduction,
+                hasImportMeta: typeof import.meta !== 'undefined',
+                hasEnv: !!import.meta?.env,
+                envKeys: typeof import.meta?.env === 'object' ? Object.keys(import.meta.env || {}).filter(k => k.startsWith('VITE_')) : [],
+            });
+            throw new Error(errorMsg);
+        }
+        if (serviceKey.length < 32) {
+            throw new Error(`Service encryption key is too short (${serviceKey.length} chars, minimum 32). Check VITE_SERVICE_ENCRYPTION_KEY configuration.`);
         }
         const fileBuffer = await file.arrayBuffer();
         encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);

@@ -145,6 +145,13 @@ jobs:
             exit 1
           fi
           echo "✅ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
+          echo ""
+          echo "⚠️  CRITICAL: This key MUST match the SERVICE_ENCRYPTION_KEY secret in Cloudflare Workers"
+          echo "   - Frontend encrypts with: VITE_SERVICE_ENCRYPTION_KEY (GitHub secret)"
+          echo "   - Backend decrypts with: SERVICE_ENCRYPTION_KEY (Cloudflare secret)"
+          echo "   - If they don't match, mod uploads will fail with 'Decryption Failed' error"
+          echo "   - Verify both secrets are synchronized before deployment"
+          echo ""
         
       - name: Build Mods Hub
         working-directory: mods-hub
@@ -186,10 +193,17 @@ jobs:
           echo "- Mods API: \`https://mods-api.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "- Auth API: \`https://auth.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️  Encryption Key Verification:" >> $GITHUB_STEP_SUMMARY
+          echo "**CRITICAL**: Verify that \`VITE_SERVICE_ENCRYPTION_KEY\` (GitHub secret) matches \`SERVICE_ENCRYPTION_KEY\` (Cloudflare secret)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "If keys don't match, mod uploads will fail with 'Decryption Failed' error." >> $GITHUB_STEP_SUMMARY
+          echo "See \`mods-hub/PRODUCTION_ENCRYPTION_KEY_FIX.md\` for troubleshooting." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Next Steps:" >> $GITHUB_STEP_SUMMARY
           echo "1. Configure custom domain in Cloudflare Dashboard (if not already done)" >> $GITHUB_STEP_SUMMARY
           echo "2. Verify DNS CNAME record is created" >> $GITHUB_STEP_SUMMARY
           echo "3. Wait for SSL certificate provisioning (usually 1-5 minutes)" >> $GITHUB_STEP_SUMMARY
+          echo "4. **Test mod upload** to verify encryption keys are synchronized" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> 💡 The Mods Hub is deployed to Cloudflare Pages. Access it via your custom domain." >> $GITHUB_STEP_SUMMARY
 

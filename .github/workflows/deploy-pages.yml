@@ -105,6 +105,13 @@ jobs:
             exit 1
           fi
           echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
+          echo ""
+          echo "⚠️  CRITICAL: This key MUST match the SERVICE_ENCRYPTION_KEY secret in Cloudflare Workers"
+          echo "   - Frontend encrypts with: VITE_SERVICE_ENCRYPTION_KEY (GitHub secret)"
+          echo "   - Backend decrypts with: SERVICE_ENCRYPTION_KEY (Cloudflare secret)"
+          echo "   - If they don't match, encrypted operations will fail"
+          echo "   - Verify both secrets are synchronized before deployment"
+          echo ""
         
       - name: Build Svelte app
         env:
