@@ -377,7 +377,6 @@ export function R2ManagementPage() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [protectedFileModalOpen, setProtectedFileModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-    const [isFileProtected, setIsFileProtected] = useState(false);
     const [protectedFileInfo, setProtectedFileInfo] = useState<{ key: string; reason?: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortField, setSortField] = useState<SortField>('uploaded');
@@ -408,7 +407,6 @@ export function R2ManagementPage() {
             setDeleteModalOpen(false);
             setProtectedFileModalOpen(false);
             setFileToDelete(null);
-            setIsFileProtected(false);
             setProtectedFileInfo(null);
         },
     });
@@ -434,7 +432,6 @@ export function R2ManagementPage() {
         const isProtected = isThumbnail && associated?.mod !== undefined;
         
         setFileToDelete(key);
-        setIsFileProtected(isProtected);
         
         if (isProtected && associated?.mod) {
             setProtectedFileInfo({
@@ -1141,7 +1138,6 @@ export function R2ManagementPage() {
                 onClose={() => {
                     setDeleteModalOpen(false);
                     setFileToDelete(null);
-                    setIsFileProtected(false);
                 }}
                 onConfirm={handleDeleteConfirm}
                 title="Delete R2 File"
