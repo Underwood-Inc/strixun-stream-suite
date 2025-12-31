@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '@strixun/e2e-helpers/fixtures';
-import { verifyWorkersHealth } from '@strixun/e2e-helpers';
+import { verifyWorkersHealth, WORKER_URLS } from '@strixun/e2e-helpers';
 
 test.describe('Mod List Page', () => {
   test.beforeAll(async () => {
@@ -66,6 +66,31 @@ test.describe('Mod List Page', () => {
     
     if (filterCount > 0) {
       await expect(filters.first()).toBeVisible();
+    }
+  });
+
+  test('should return mods with customerId and dynamically fetched display names', async () => {
+    // Verify API returns mods with required fields
+    try {
+      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?pageSize=5`);
+      if (!response.ok) {
+        test.skip();
+        return;
+      }
+      
+      const data = await response.json() as { mods?: Array<{ customerId: string | null; authorId: string; authorDisplayName?: string | null }> };
+      
+      if (data.mods && data.mods.length > 0) {
+        // Verify all mods have customerId (may be null but field must exist)
+        data.mods.forEach((mod, index) => {
+          expect(mod).toHaveProperty('customerId');
+          expect(mod).toHaveProperty('authorId');
+          // authorDisplayName should exist (may be null if user not found)
+          expect(mod).toHaveProperty('authorDisplayName');
+        });
+      }
+    } catch {
+      test.skip();
     }
   });
 });

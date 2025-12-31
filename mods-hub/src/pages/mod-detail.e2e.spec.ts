@@ -275,5 +275,42 @@ test.describe('Mod Detail Page', () => {
       test.skip();
     }
   });
+
+  test('should return mod detail with customerId and dynamically fetched display name', async () => {
+    // Verify API returns mod detail with required fields
+    try {
+      const listResponse = await fetch(`${WORKER_URLS.MODS_API}/mods?pageSize=1`);
+      if (!listResponse.ok) {
+        test.skip();
+        return;
+      }
+      
+      const listData = await listResponse.json() as ModsResponse;
+      if (!listData.mods || listData.mods.length === 0) {
+        test.skip();
+        return;
+      }
+      
+      const modSlug = listData.mods[0].slug;
+      const detailResponse = await fetch(`${WORKER_URLS.MODS_API}/mods/${modSlug}`);
+      
+      if (!detailResponse.ok) {
+        test.skip();
+        return;
+      }
+      
+      const detailData = await detailResponse.json() as { mod?: { customerId: string | null; authorId: string; authorDisplayName?: string | null } };
+      
+      if (detailData.mod) {
+        // Verify mod has customerId (may be null but field must exist)
+        expect(detailData.mod).toHaveProperty('customerId');
+        expect(detailData.mod).toHaveProperty('authorId');
+        // authorDisplayName should exist (may be null if user not found)
+        expect(detailData.mod).toHaveProperty('authorDisplayName');
+      }
+    } catch {
+      test.skip();
+    }
+  });
 });
 

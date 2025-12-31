@@ -167,18 +167,35 @@ export async function handleListMods(
         // Sort by updatedAt (newest first)
         mods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-        // Fetch display names for all unique authors
-        // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
-        // If auth API times out or fails, we still have the stored value
+        // CRITICAL: Ensure all mods have customerId (for data scoping)
+        // Set customerId from auth context if missing (for legacy mods)
+        mods.forEach(mod => {
+            if (!mod.customerId && auth?.customerId) {
+                // Only set if we have auth context and mod is missing customerId
+                // This handles legacy mods that were created before customerId was required
+                console.log('[ListMods] Setting missing customerId on legacy mod:', {
+                    modId: mod.modId,
+                    customerId: auth.customerId
+                });
+                mod.customerId = auth.customerId;
+            }
+        });
+
+        // CRITICAL: Fetch display names dynamically for all unique authors
+        // Always fetch fresh display names from auth API - don't rely on baked-in values
+        // This ensures display names stay current when users change them
+        // Stored authorDisplayName is fallback only if fetch fails
         const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId))];
         const { fetchDisplayNamesByUserIds } = await import('../../utils/displayName.js');
         const displayNames = await fetchDisplayNamesByUserIds(uniqueAuthorIds, env);
         
-        // Map display names to mods (use fetched displayName if available, otherwise keep stored one)
+        // Map display names to mods - always use fetched value if available
+        // This ensures we have the latest display names, not stale baked-in values
         mods.forEach(mod => {
-            const storedDisplayName = mod.authorDisplayName; // Preserve stored value
+            const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
             const fetchedDisplayName = displayNames.get(mod.authorId);
-            // Use fetched value if available, otherwise fall back to stored value
+            // Always prefer fetched value - it's the current display name
+            // Fall back to stored value only if fetch failed (for backward compatibility)
             mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
         });
 

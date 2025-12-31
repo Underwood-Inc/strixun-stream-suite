@@ -252,13 +252,25 @@ export async function handleGetModDetail(
             return 0;
         });
 
-        // Fetch author display name from auth API
-        // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
-        // Always try to fetch latest, but preserve stored value if fetch fails
-        const storedDisplayName = mod.authorDisplayName;
+        // CRITICAL: Ensure mod has customerId (for data scoping)
+        // Set customerId from auth context if missing (for legacy mods)
+        if (!mod.customerId && auth?.customerId) {
+            console.log('[GetModDetail] Setting missing customerId on legacy mod:', {
+                modId: mod.modId,
+                customerId: auth.customerId
+            });
+            mod.customerId = auth.customerId;
+        }
+
+        // CRITICAL: Fetch author display name dynamically from auth API
+        // Always fetch fresh display name - don't rely on baked-in value
+        // This ensures display names stay current when users change them
+        // Stored authorDisplayName is fallback only if fetch fails
+        const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
         const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
         const fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env);
-        // Use fetched value if available, otherwise fall back to stored value
+        // Always prefer fetched value - it's the current display name
+        // Fall back to stored value only if fetch failed (for backward compatibility)
         mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
 
         const response: ModDetailResponse = {

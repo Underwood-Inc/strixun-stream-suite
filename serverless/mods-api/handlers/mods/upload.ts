@@ -644,24 +644,28 @@ export async function handleUploadMod(
         // If displayName is null, UI will show "Unknown User"
         // Note: For previously uploaded mods with null displayName, the detail handler will attempt to fetch it
 
-        // CRITICAL FIX: Validate customerId is present before storing mod
-        // This ensures proper data scoping and prevents lookup issues
+        // CRITICAL: Validate customerId is present before storing mod
+        // This ensures proper data scoping and display name lookups
+        // customerId is required for proper data isolation and user lookups
         if (!auth.customerId) {
             console.error('[Upload] CRITICAL: customerId is null for authenticated user:', {
                 userId: auth.userId,
                 email: auth.email,
-                note: 'This will cause data scoping issues'
+                note: 'This will cause data scoping and display name lookup issues'
             });
-            // Still allow upload but log the issue - customerId may be null for some auth flows
+            // Still allow upload but log the critical issue
+            // In production, you may want to reject uploads without customerId
         }
         
         // Create mod metadata with initial status
         // CRITICAL: Never store email - email is ONLY for OTP authentication
+        // CRITICAL: authorDisplayName is fetched dynamically - stored value is fallback only
+        // Display names are always fetched fresh from auth API to support user name changes
         const mod: ModMetadata = {
             modId,
             slug,
-            authorId: auth.userId, // userId from OTP auth service
-            authorDisplayName, // Display name fetched from /auth/me (never use email)
+            authorId: auth.userId, // userId from OTP auth service (used for display name lookups)
+            authorDisplayName, // Display name fetched dynamically (fallback only - always fetch fresh)
             title: metadata.title,
             description: metadata.description || '',
             category: metadata.category,
@@ -674,7 +678,7 @@ export async function handleUploadMod(
             downloadCount: 0,
             visibility: metadata.visibility || 'public',
             featured: false,
-            customerId: auth.customerId, // Customer ID for data scoping
+            customerId: auth.customerId, // Customer ID for data scoping (REQUIRED)
             status: 'pending', // New mods start as pending review
             statusHistory: [{
                 status: 'pending',

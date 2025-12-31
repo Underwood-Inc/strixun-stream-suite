@@ -295,18 +295,37 @@ export async function handleUpdateMod(
             }
         }
 
-        // CRITICAL: Fetch and update author display name before saving
-        // Use the same mechanism as the logout button - fetch from auth API by userId
-        // This ensures consistency with the display name shown in the UI
+        // CRITICAL: Ensure customerId is present (for data scoping and display name lookups)
+        // If mod doesn't have customerId, set it from auth context
+        // This ensures all mods have proper data scoping
+        if (!mod.customerId && auth.customerId) {
+            console.log('[Update] Setting missing customerId on mod:', {
+                modId: mod.modId,
+                oldCustomerId: mod.customerId,
+                newCustomerId: auth.customerId,
+                userId: auth.userId
+            });
+            mod.customerId = auth.customerId;
+        } else if (!mod.customerId && !auth.customerId) {
+            console.warn('[Update] WARNING: Mod and auth both missing customerId:', {
+                modId: mod.modId,
+                userId: auth.userId,
+                note: 'This may cause data scoping issues'
+            });
+        }
+
+        // CRITICAL: Fetch and update author display name dynamically before saving
+        // Always fetch fresh display name from auth API - don't rely on baked-in value
+        // This ensures display names stay current when users change them
         const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-        const storedDisplayName = mod.authorDisplayName; // Preserve stored value as fallback
-        const fetchedDisplayName = await fetchDisplayNameByUserId(auth.userId, env);
-        // Update mod's authorDisplayName: use fetched value if available, otherwise keep stored value
-        // This ensures the mod always has the latest display name, matching what's shown in logout button
+        const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
+        const fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env);
+        // Always use fetched value if available - this ensures we have the latest display name
+        // Fall back to stored value only if fetch fails (for backward compatibility)
         mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
         if (fetchedDisplayName && fetchedDisplayName !== storedDisplayName) {
-            console.log('[Update] Updated authorDisplayName:', { 
-                userId: auth.userId, 
+            console.log('[Update] Updated authorDisplayName dynamically:', { 
+                userId: mod.authorId, 
                 oldDisplayName: storedDisplayName, 
                 newDisplayName: fetchedDisplayName 
             });
