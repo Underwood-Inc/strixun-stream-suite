@@ -3,10 +3,16 @@
  * Allows updating mod metadata and deleting mods
  */
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
+import { FileUploader } from './FileUploader';
+import { useAdminSettings } from '../../hooks/useMods';
+import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
+
+const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
+const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from shared framework)
 
 const Form = styled.form`
   display: flex;
@@ -177,34 +183,6 @@ interface ModManageFormProps {
     isLoading: boolean;
 }
 
-const ThumbnailPreview = styled.img`
-    max-width: 200px;
-    max-height: 200px;
-    border-radius: 4px;
-    border: 1px solid ${colors.border};
-    margin-top: ${spacing.sm};
-`;
-
-const FileInput = styled.input`
-    display: none;
-`;
-
-const FileInputLabel = styled.label`
-    padding: ${spacing.sm} ${spacing.md};
-    background: ${colors.bg};
-    border: 1px solid ${colors.border};
-    border-radius: 4px;
-    color: ${colors.text};
-    font-size: 0.875rem;
-    cursor: pointer;
-    display: inline-block;
-    transition: all 0.2s ease;
-    
-    &:hover {
-        border-color: ${colors.accent};
-    }
-`;
-
 const VariantSection = styled.div`
     display: flex;
     flex-direction: column;
@@ -225,6 +203,7 @@ const VariantItem = styled.div`
 `;
 
 export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
+    const { data: settings } = useAdminSettings();
     const [title, setTitle] = useState(mod.title);
     const [description, setDescription] = useState(mod.description);
     const [category, setCategory] = useState<ModCategory>(mod.category);
@@ -234,17 +213,36 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     const [variants, setVariants] = useState<ModVariant[]>(mod.variants || []);
     const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(mod.thumbnailUrl || null);
-    const thumbnailInputRef = useRef<HTMLInputElement>(null);
+    const [variantFileErrors, setVariantFileErrors] = useState<Record<string, string | null>>({});
+    const [thumbnailError, setThumbnailError] = useState<string | null>(null);
 
-    const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+    const handleThumbnailFileChange = (file: File | null) => {
         if (file) {
-            setThumbnailFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setThumbnailPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            // Validate image type
+            if (!file.type.startsWith('image/')) {
+                setThumbnailError('File must be an image');
+                setThumbnailFile(null);
+                return;
+            }
+            // Validate file size
+            const validation = validateFileSize(file.size, MAX_THUMBNAIL_SIZE);
+            if (validation.valid) {
+                setThumbnailFile(file);
+                setThumbnailError(null);
+                // Generate preview URL
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setThumbnailPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                setThumbnailError(validation.error || `Thumbnail size exceeds maximum allowed size of ${formatFileSize(MAX_THUMBNAIL_SIZE)}`);
+                setThumbnailFile(null);
+            }
+        } else {
+            setThumbnailFile(null);
+            setThumbnailError(null);
+            // Keep existing preview if no new file selected
         }
     };
 
@@ -261,12 +259,35 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         setVariants(variants.filter(v => v.variantId !== variantId));
     };
 
-    const handleVariantChange = (variantId: string, field: keyof ModVariant, value: string) => {
+    const handleVariantChange = (variantId: string, field: keyof ModVariant, value: string | File | null) => {
         setVariants(variants.map(v => 
             v.variantId === variantId 
                 ? { ...v, [field]: value }
                 : v
         ));
+        // Clear error when file is successfully set
+        if (field === 'file' && value) {
+            setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+        }
+    };
+
+    const handleVariantFileChange = (variantId: string, file: File | null) => {
+        if (file) {
+            const validation = validateFileSize(file.size, MAX_MOD_FILE_SIZE);
+            if (validation.valid) {
+                handleVariantChange(variantId, 'file', file);
+                setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+            } else {
+                setVariantFileErrors(prev => ({ 
+                    ...prev, 
+                    [variantId]: validation.error || `File size exceeds maximum allowed size of ${formatFileSize(MAX_MOD_FILE_SIZE)}` 
+                }));
+                handleVariantChange(variantId, 'file', null);
+            }
+        } else {
+            handleVariantChange(variantId, 'file', null);
+            setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -361,18 +382,17 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
 
             <FormGroup>
                 <Label>Thumbnail</Label>
-                <FileInput
-                    ref={thumbnailInputRef}
-                    type="file"
+                <FileUploader
+                    file={thumbnailFile}
+                    onFileChange={handleThumbnailFileChange}
+                    maxSize={MAX_THUMBNAIL_SIZE}
                     accept="image/*"
-                    onChange={handleThumbnailChange}
+                    label="Drag and drop thumbnail image here, or click to browse"
+                    error={thumbnailError}
+                    disabled={isLoading}
+                    showImagePreview={true}
+                    imagePreviewUrl={thumbnailPreview}
                 />
-                <FileInputLabel onClick={() => thumbnailInputRef.current?.click()}>
-                    {thumbnailFile ? 'Change Thumbnail' : 'Upload Thumbnail'}
-                </FileInputLabel>
-                {thumbnailPreview && (
-                    <ThumbnailPreview src={thumbnailPreview} alt="Thumbnail preview" />
-                )}
             </FormGroup>
 
             <FormGroup>
@@ -409,6 +429,18 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                     onChange={(e) => handleVariantChange(variant.variantId, 'description', e.target.value)}
                                     style={{ minHeight: '60px' }}
                                 />
+                                <FormGroup>
+                                    <Label>Variant File (optional)</Label>
+                                    <FileUploader
+                                        file={variant.file || null}
+                                        onFileChange={(file) => handleVariantFileChange(variant.variantId, file)}
+                                        maxSize={MAX_MOD_FILE_SIZE}
+                                        accept={settings?.allowedFileExtensions.join(',') || '.lua,.js,.java,.jar,.zip,.json,.txt,.xml,.yaml,.yml'}
+                                        label="Drag and drop variant file here, or click to browse"
+                                        error={variantFileErrors[variant.variantId] || null}
+                                        disabled={isLoading}
+                                    />
+                                </FormGroup>
                             </VariantItem>
                         ))}
                     </VariantSection>

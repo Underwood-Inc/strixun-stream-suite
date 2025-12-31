@@ -216,35 +216,10 @@ export async function handleUpdateModStatus(
         // Fetch displayName from auth API if available
         let changedByDisplayName: string | null = null;
         try {
-            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const response = await fetch(`${authApiUrl}/auth/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
-                });
-                if (response.ok) {
-                    const responseData = await response.json();
-                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                    let userData: { displayName?: string | null; [key: string]: any };
-                    if (isEncrypted) {
-                        const { decryptWithJWT } = await import('@strixun/api-framework');
-                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                    } else {
-                        userData = responseData;
-                    }
-                    changedByDisplayName = userData?.displayName || null;
-                }
-            }
+            // Use the same fetchDisplayNameByUserId utility as other handlers
+            // This avoids the cache field issue (not supported in Cloudflare Workers)
+            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+            changedByDisplayName = await fetchDisplayNameByUserId(auth.userId, env);
         } catch (error) {
             console.warn('[Triage] Failed to fetch displayName for status history:', error);
         }
@@ -479,35 +454,10 @@ export async function handleAddReviewComment(
         // Fetch displayName from auth API if available
         let authorDisplayName: string | null = null;
         try {
-            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const response = await fetch(`${authApiUrl}/auth/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
-                });
-                if (response.ok) {
-                    const responseData = await response.json();
-                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                    let userData: { displayName?: string | null; [key: string]: any };
-                    if (isEncrypted) {
-                        const { decryptWithJWT } = await import('@strixun/api-framework');
-                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                    } else {
-                        userData = responseData;
-                    }
-                    authorDisplayName = userData?.displayName || null;
-                }
-            }
+            // Use the same fetchDisplayNameByUserId utility as other handlers
+            // This avoids the cache field issue (not supported in Cloudflare Workers)
+            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+            authorDisplayName = await fetchDisplayNameByUserId(auth.userId, env);
         } catch (error) {
             console.warn('[Triage] Failed to fetch displayName for comment:', error);
         }

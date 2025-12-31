@@ -6,7 +6,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
+import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { generateSlug, slugExists } from './upload.js';
 import { isEmailAllowed } from '../../utils/auth.js';
 import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.js';
@@ -218,6 +218,23 @@ export async function handleUpdateMod(
             }
         }
 
+        // CRITICAL: Fetch and update author display name before saving
+        // Use the same mechanism as the logout button - fetch from auth API by userId
+        // This ensures consistency with the display name shown in the UI
+        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+        const storedDisplayName = mod.authorDisplayName; // Preserve stored value as fallback
+        const fetchedDisplayName = await fetchDisplayNameByUserId(auth.userId, env);
+        // Update mod's authorDisplayName: use fetched value if available, otherwise keep stored value
+        // This ensures the mod always has the latest display name, matching what's shown in logout button
+        mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
+        if (fetchedDisplayName && fetchedDisplayName !== storedDisplayName) {
+            console.log('[Update] Updated authorDisplayName:', { 
+                userId: auth.userId, 
+                oldDisplayName: storedDisplayName, 
+                newDisplayName: fetchedDisplayName 
+            });
+        }
+
         // Save updated mod (customer scope)
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
 
@@ -244,9 +261,8 @@ export async function handleUpdateMod(
         }
 
         // Create snapshot after saving (captures state after update)
-        // Fetch display name for snapshot
-        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-        const displayName = await fetchDisplayNameByUserId(auth.userId, env) || mod.authorDisplayName || null;
+        // Use the updated authorDisplayName from the mod (already fetched and saved above)
+        const displayName = mod.authorDisplayName || null;
         
         // Create snapshot of the mod after update
         const snapshot = await createModSnapshot(mod, auth.userId, displayName, env);
