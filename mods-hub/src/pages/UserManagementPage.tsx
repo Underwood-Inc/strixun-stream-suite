@@ -508,7 +508,7 @@ export function UserManagementPage() {
                     </EmptyState>
                 ) : error ? (
                     <EmptyState>
-                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>[WARNING]</div>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⚠</div>
                         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs, color: colors.danger }}>
                             Failed to load users
                         </div>
@@ -531,7 +531,7 @@ export function UserManagementPage() {
                     />
                 ) : (
                     <EmptyState>
-                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>[EMOJI]</div>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}> ★ </div>
                         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>
                             {searchQuery.trim() 
                                 ? `No users found matching "${searchQuery}"`

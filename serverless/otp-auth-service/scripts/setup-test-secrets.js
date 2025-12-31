@@ -96,7 +96,7 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
     }
     
     writeFileSync(devVarsPath, content, 'utf-8');
-    console.log('[SUCCESS] Created .dev.vars with test secrets');
+    console.log('✓ Created .dev.vars with test secrets');
   } else {
     // Check if secrets are missing and add them
     const existingContent = readFileSync(devVarsPath, 'utf-8');
@@ -142,9 +142,9 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
     
     if (updated) {
       writeFileSync(devVarsPath, newContent, 'utf-8');
-      console.log('[SUCCESS] Updated .dev.vars with missing test secrets');
+      console.log('✓ Updated .dev.vars with missing test secrets');
     } else {
-      console.log('[INFO] .dev.vars already has all required secrets');
+      console.log('ℹ .dev.vars already has all required secrets');
     }
   }
 }
@@ -155,7 +155,7 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
 function main() {
   // Skip in CI - CI should use wrangler secret put directly
   if (process.env.CI === 'true') {
-    console.log('[INFO] Running in CI - skipping local secret setup');
+    console.log('ℹ Running in CI - skipping local secret setup');
     return;
   }
   
@@ -170,9 +170,9 @@ function main() {
       generateTestKeys();
     }
     
-    console.log('[SUCCESS] Test secrets are ready for local development');
+    console.log('✓ Test secrets are ready for local development');
   } catch (error) {
-    console.error('[ERROR] Failed to setup test secrets:', error.message);
+    console.error('✗ Failed to setup test secrets:', error.message);
     process.exit(1);
   }
 }
@@ -260,7 +260,7 @@ function generateTestKeys() {
   content += `E2E_TEST_JWT_TOKEN=${testJWTToken}\n`;
   
   writeFileSync(devVarsPath, content, 'utf-8');
-  console.log(`[SUCCESS] Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
+  console.log(`✓ Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
 }
 
 main();

@@ -5,7 +5,7 @@ This document explains how Storybook is integrated into the main application, al
 ## Overview
 
 The Storybook integration provides:
-- **Inline Documentation Access**: Small [EMOJI] buttons on components that open Storybook
+- **Inline Documentation Access**: Small ★ buttons on components that open Storybook
 - **Dock-Friendly Viewing**: Storybook opens in an iframe overlay (stays in OBS dock)
 - **Optional New Tab**: Users can choose to open Storybook in a new tab if needed
 - **Automatic URL Construction**: Storybook URL is automatically configured from GitHub Pages
@@ -22,7 +22,7 @@ The Storybook integration provides:
    - Keyboard support (Esc to close)
 
 2. **`ComponentDocsButton.svelte`**
-   - Small [EMOJI] icon button that can be added to any component
+   - Small ★ icon button that can be added to any component
    - Configurable position (top-right, top-left, etc.)
    - Configurable size (small, medium)
    - Opens StorybookViewer on click
@@ -54,7 +54,7 @@ The URL is injected during deployment via GitHub Actions.
 ### Component Name Mapping
 
 The component name should match the Storybook story title:
-- Component: `SearchBox` [EMOJI] Storybook: `Components/SearchBox` [EMOJI] URL: `/story/components-searchbox--default`
+- Component: `SearchBox` ★ Storybook: `Components/SearchBox` ★ URL: `/story/components-searchbox--default`
 
 ### Opening Storybook Programmatically
 
@@ -104,12 +104,12 @@ The `.storybook/main.ts` file is configured to:
 ## Components with Docs Buttons
 
 The following components have docs buttons enabled:
-- [OK] SearchBox
-- [OK] ProgressRing
-- [OK] SimpleTextEditor
-- [OK] LoadingSkeleton
-- [OK] TruncatedText
-- [OK] SourceSelect
+- ✓ SearchBox
+- ✓ ProgressRing
+- ✓ SimpleTextEditor
+- ✓ LoadingSkeleton
+- ✓ TruncatedText
+- ✓ SourceSelect
 
 ## Customization
 

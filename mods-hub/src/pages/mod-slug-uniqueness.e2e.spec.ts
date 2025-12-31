@@ -416,7 +416,7 @@ test.describe('Slug Uniqueness', () => {
     // Create two mods with different unique titles for test isolation
     const title1 = generateUniqueTestTitle('First Mod');
     const title2 = generateUniqueTestTitle('Second Mod');
-    const mod1 = await createTestMod(token, title1, 'public', false);
+    await createTestMod(token, title1, 'public', false);
     const mod2 = await createTestMod(token, title2, 'public', false);
     
     // Try to update mod2 to have the same slug as mod1 (should fail)
@@ -573,7 +573,7 @@ test.describe('Cross-Customer Slug Uniqueness', () => {
     
     // Create mod with customer1 (use unique title for test isolation)
     const uniqueTitle = generateUniqueTestTitle('Cross Customer Test');
-    const mod1 = await createTestMod(token1, uniqueTitle, 'public', false);
+    await createTestMod(token1, uniqueTitle, 'public', false);
     
     // Try to create another mod with same title (should fail even for same user)
     const testFileContent = Buffer.from([0x50, 0x4B, 0x03, 0x04]);

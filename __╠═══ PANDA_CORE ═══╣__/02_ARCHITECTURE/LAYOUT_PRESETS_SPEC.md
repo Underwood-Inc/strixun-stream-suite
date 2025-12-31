@@ -1,6 +1,6 @@
 # Layout Presets System - Technical Specification
 
-> **Status**: [OK] Implemented  
+> **Status**: ✓ Implemented  
 > **Version**: 1.0.0  
 > **Last Updated**: 2025-12-21
 
@@ -435,13 +435,13 @@ async function updateLayout(name, updates) { ... }
 │ │ ┌──────────────────────────────────────────────────┐   │ │
 │ │ │  Full Gameplay                                 │   │ │
 │ │ │ 5 sources • Saved 2 hours ago                    │   │ │
-│ │ │ [▶ Apply] [ Edit] [[EMOJI]️ Delete]                 │   │ │
+│ │ │ [▶ Apply] [ Edit] [ ★ ️ Delete]                 │   │ │
 │ │ └──────────────────────────────────────────────────┘   │ │
 │ │                                                        │ │
 │ │ ┌──────────────────────────────────────────────────┐   │ │
-│ │ │ [EMOJI] Just Chatting                                 │   │ │
+│ │ │ ★ Just Chatting                                 │   │ │
 │ │ │ 5 sources • Saved yesterday                      │   │ │
-│ │ │ [▶ Apply] [ Edit] [[EMOJI]️ Delete]                 │   │ │
+│ │ │ [▶ Apply] [ Edit] [ ★ ️ Delete]                 │   │ │
 │ │ └──────────────────────────────────────────────────┘   │ │
 │ │                                                        │ │
 │ └────────────────────────────────────────────────────────┘ │
@@ -478,13 +478,13 @@ async function updateLayout(name, updates) { ... }
 ## Changelog
 
 ### v1.0.0 (2025-12-21)
-- [OK] Initial implementation complete
-- [OK] `source_layouts.lua` - Full Lua script with capture/apply/hotkeys
-- [OK] Control Panel - Layouts tab with save/apply/delete UI
-- [OK] Multi-source animation engine with stagger support
-- [OK] Smart source diffing (exists/missing/new tracking)
-- [OK] Export/import/backup integration
-- [OK] Scene-specific layout filtering
+- ✓ Initial implementation complete
+- ✓ `source_layouts.lua` - Full Lua script with capture/apply/hotkeys
+- ✓ Control Panel - Layouts tab with save/apply/delete UI
+- ✓ Multi-source animation engine with stagger support
+- ✓ Smart source diffing (exists/missing/new tracking)
+- ✓ Export/import/backup integration
+- ✓ Scene-specific layout filtering
 
 ### v0.1.0 (2025-12-21)
 - Initial specification

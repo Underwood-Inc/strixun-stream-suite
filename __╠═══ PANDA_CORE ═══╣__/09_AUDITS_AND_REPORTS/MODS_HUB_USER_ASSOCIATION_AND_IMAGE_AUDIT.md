@@ -1,7 +1,7 @@
 # Mods Hub User Association and Image Loading Audit
 
 **Date:** 2025-12-29  
-**Status:** [WARNING] Multiple issues identified and fixes required
+**Status:** ⚠ Multiple issues identified and fixes required
 
 ---
 
@@ -18,7 +18,7 @@ This audit identifies and addresses four critical issues in the Mods Hub:
 
 ## Issue 1: Mod Editing Support
 
-### Status: [SUCCESS] Feature Exists
+### Status: ✓ Feature Exists
 
 **Finding:**
 - Mod editing functionality exists at route `/manage/:slug`
@@ -39,7 +39,7 @@ This audit identifies and addresses four critical issues in the Mods Hub:
 
 ## Issue 2: User Association Defect - "Unknown User"
 
-### Status: [ERROR] Critical Defect
+### Status: ✗ Critical Defect
 
 **Root Cause Analysis:**
 
@@ -77,7 +77,7 @@ This audit identifies and addresses four critical issues in the Mods Hub:
 
 ## Issue 3: Image Loading Failure
 
-### Status: [ERROR] Images Not Loading
+### Status: ✗ Images Not Loading
 
 **Root Cause Analysis:**
 
@@ -88,7 +88,7 @@ This audit identifies and addresses four critical issues in the Mods Hub:
 
 2. **Client-Side (`mods-hub/src/pages/ModDetailPage.tsx:208-222`):**
    - Images loaded via standard `<img src={mod.thumbnailUrl}>` tag
-   - Error handler shows "[WARNING] Thumbnail unavailable - Image failed to load"
+   - Error handler shows "⚠ Thumbnail unavailable - Image failed to load"
 
 3. **Potential Issues:**
    - **Integrity Header Verification:** Client might be trying to verify integrity headers on images
@@ -111,7 +111,7 @@ This audit identifies and addresses four critical issues in the Mods Hub:
 
 ## Issue 4: Auth /auth/me 401 Error
 
-### Status: [ERROR] Authorization Header Missing
+### Status: ✗ Authorization Header Missing
 
 **Root Cause Analysis:**
 

@@ -31,11 +31,11 @@ Our free-tier OTP Auth API gives you enterprise-grade passwordless authenticatio
 - Teams that need authentication yesterday
 
 **Key Features:**
-- [SUCCESS] 3 OTP requests per email/hour (perfect for MVPs)
-- [SUCCESS] 10-minute OTP expiration
-- [SUCCESS] 7-hour JWT token sessions
-- [SUCCESS] Works with any framework
-- [SUCCESS] GDPR compliant out of the box
+- ✓ 3 OTP requests per email/hour (perfect for MVPs)
+- ✓ 10-minute OTP expiration
+- ✓ 7-hour JWT token sessions
+- ✓ Works with any framework
+- ✓ GDPR compliant out of the box
 
 ---
 
@@ -62,12 +62,12 @@ Our OTP Auth API provides enterprise-grade security features at startup-friendly
 - Teams migrating from legacy password systems
 
 **Key Features:**
-- [SUCCESS] Multi-tenant customer isolation
-- [SUCCESS] Per-tenant rate limiting and configuration
-- [SUCCESS] 90-day audit log retention
-- [SUCCESS] API key management for enterprise
-- [SUCCESS] Custom email templates and providers
-- [SUCCESS] IP allowlisting and CORS policies
+- ✓ Multi-tenant customer isolation
+- ✓ Per-tenant rate limiting and configuration
+- ✓ 90-day audit log retention
+- ✓ API key management for enterprise
+- ✓ Custom email templates and providers
+- ✓ IP allowlisting and CORS policies
 
 ---
 
@@ -94,12 +94,12 @@ Our OTP Auth API is built by developers, for developers. Simple REST endpoints, 
 - Teams that need working code, not marketing fluff
 
 **Key Features:**
-- [SUCCESS] Simple REST API (no SDKs required)
-- [SUCCESS] Working code examples in 3+ frameworks
-- [SUCCESS] Interactive Swagger UI documentation
-- [SUCCESS] RFC 7807 compliant error responses
-- [SUCCESS] OAuth 2.0 / OIDC compatible
-- [SUCCESS] TypeScript types available
+- ✓ Simple REST API (no SDKs required)
+- ✓ Working code examples in 3+ frameworks
+- ✓ Interactive Swagger UI documentation
+- ✓ RFC 7807 compliant error responses
+- ✓ OAuth 2.0 / OIDC compatible
+- ✓ TypeScript types available
 
 ---
 
@@ -145,14 +145,14 @@ Our OTP Auth API is built by developers, for developers. Simple REST endpoints, 
 > Our free-tier OTP Auth API gives you enterprise-grade passwordless authentication in under 10 minutes. No infrastructure, no servers, no security headaches—just a simple REST API that works with any framework.
 
 **Proof Points:**
-- [SUCCESS] Cryptographically secure 9-digit OTP codes
-- [SUCCESS] JWT tokens with 7-hour expiration
-- [SUCCESS] Rate limiting (3 requests/email/hour)
-- [SUCCESS] Multi-tenant customer isolation
-- [SUCCESS] 90-day audit log retention
-- [SUCCESS] GDPR compliant data export/deletion
-- [SUCCESS] Global edge deployment (sub-100ms response times)
-- [SUCCESS] Works with React, Svelte, Vue, Angular, or vanilla JS
+- ✓ Cryptographically secure 9-digit OTP codes
+- ✓ JWT tokens with 7-hour expiration
+- ✓ Rate limiting (3 requests/email/hour)
+- ✓ Multi-tenant customer isolation
+- ✓ 90-day audit log retention
+- ✓ GDPR compliant data export/deletion
+- ✓ Global edge deployment (sub-100ms response times)
+- ✓ Works with React, Svelte, Vue, Angular, or vanilla JS
 
 **Call to Action:**
 > Ready to ship faster? [Get started free](#) No credit card required. Integrate in 10 minutes.

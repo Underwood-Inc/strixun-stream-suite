@@ -30,10 +30,10 @@ browserSync.init({
   reloadOnRestart: true,
 }, (err, bs) => {
   if (err) {
-    console.error('[BrowserSync] [ERROR] Failed to start:', err);
+    console.error('[BrowserSync] ✗ Failed to start:', err);
     process.exit(1);
   }
-  console.log('[BrowserSync] [SUCCESS] Started on http://localhost:3000');
+  console.log('[BrowserSync] ✓ Started on http://localhost:3000');
   console.log('[BrowserSync] Proxying to http://localhost:8787');
   console.log('[BrowserSync] Watching:', appDistDir);
 });

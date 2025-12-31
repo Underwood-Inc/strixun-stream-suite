@@ -138,7 +138,7 @@ export async function checkForUpdates(): Promise<void> {
         statusEl.style.background = 'rgba(255,200,0,0.15)';
         statusEl.style.borderLeft = '3px solid var(--warning)';
         statusEl.innerHTML = `
-          <span style="color:var(--warning);font-weight:600">[WARNING] Update Available!</span><br>
+          <span style="color:var(--warning);font-weight:600">⚠ Update Available!</span><br>
           <span style="font-size:0.9em;color:var(--muted)">
             ${localVersion}  ${remoteVersion}
           </span>
@@ -147,12 +147,12 @@ export async function checkForUpdates(): Promise<void> {
         // Local is ahead (development version)
         statusEl.style.background = 'rgba(100,200,255,0.15)';
         statusEl.style.borderLeft = '3px solid var(--accent)';
-        statusEl.innerHTML = '<span style="color:var(--accent)">[EMOJI] Development Version</span>';
+        statusEl.innerHTML = '<span style="color:var(--accent)"> ★ Development Version</span>';
       } else {
         // Up to date
         statusEl.style.background = 'rgba(0,255,100,0.1)';
         statusEl.style.borderLeft = '3px solid var(--success)';
-        statusEl.innerHTML = '<span style="color:var(--success)">[OK] Up to Date</span>';
+        statusEl.innerHTML = '<span style="color:var(--success)">✓ Up to Date</span>';
       }
     }
     
@@ -184,7 +184,7 @@ export async function checkForUpdates(): Promise<void> {
       statusEl.style.background = 'rgba(255,100,100,0.1)';
       statusEl.style.borderLeft = '3px solid var(--danger)';
       statusEl.innerHTML = `
-        <span style="color:var(--danger)">[ERROR] Check Failed</span><br>
+        <span style="color:var(--danger)">✗ Check Failed</span><br>
         <span style="font-size:0.85em;color:var(--muted)">${error.message}</span>
       `;
     }
@@ -242,7 +242,7 @@ export function initVersionDisplay(): void {
       statusEl.style.background = 'rgba(255,200,0,0.15)';
       statusEl.style.borderLeft = '3px solid var(--warning)';
       statusEl.innerHTML = `
-        <span style="color:var(--warning);font-weight:600">[WARNING] Update May Be Available</span><br>
+        <span style="color:var(--warning);font-weight:600">⚠ Update May Be Available</span><br>
         <span style="font-size:0.85em;color:var(--muted)">(cached - click to refresh)</span>
       `;
     }

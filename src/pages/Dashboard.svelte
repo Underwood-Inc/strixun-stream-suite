@@ -190,8 +190,7 @@
               class="source-btn requires-connection"
               on:click={handleCycleAspect}
               disabled={!$connected}
-            >
-              [EMOJI] Cycle Aspect
+            > ★ Cycle Aspect
             </button>
           </Tooltip>
           <Tooltip 

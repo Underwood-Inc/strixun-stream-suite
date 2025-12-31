@@ -117,14 +117,14 @@ scheduleUISync();
 
 ## Best Practices
 
-### [OK] DO
+### ✓ DO
 
 - Use `ui_` prefix for all UI state keys
 - Let `storage.set()` automatically trigger OBS sync for UI state
 - Use the storage system (not raw localStorage) for persistence
 - Add new UI state keys to `knownUIKeys` in `storage-sync.ts` for documentation
 
-### [ERROR] DON'T
+### ✗ DON'T
 
 - Don't use raw `localStorage` directly for UI state
 - Don't manually call `broadcastStorage()` for UI state (it's automatic)

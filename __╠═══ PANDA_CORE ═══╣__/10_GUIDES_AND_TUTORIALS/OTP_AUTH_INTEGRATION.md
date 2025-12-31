@@ -311,5 +311,5 @@ console.log('Service status:', health.status);
 
 ---
 
-**Happy integrating!** [SUCCESS]
+**Happy integrating!** ✓
 

@@ -1,6 +1,4 @@
-# Local Testing Guide [EMOJI]
-
-## Quick Start
+# Local Testing Guide ★ ## Quick Start
 
 1. **Navigate to the service directory:**
    ```bash
@@ -21,24 +19,24 @@
 
 ## What to Test
 
-### [OK] Landing Page
+### ✓ Landing Page
 - Open `http://localhost:8787/` in your browser
 - Check that the page loads with all sections
 - Test the self-hosting section you just added
 - Verify all accordions expand/collapse correctly
 
-### [OK] OpenAPI Spec
+### ✓ OpenAPI Spec
 - Visit `http://localhost:8787/openapi.json`
 - Should return valid JSON with all API endpoints
 - Check that all endpoints are documented
 
-### [OK] Swagger UI
+### ✓ Swagger UI
 - On the landing page, scroll to "Technical Documentation"
 - Click "API Endpoints" accordion to expand
 - Swagger UI should load below showing all endpoints
 - Try clicking "Try it out" on any endpoint to test
 
-### [OK] API Endpoints (if you have secrets configured)
+### ✓ API Endpoints (if you have secrets configured)
 If you have JWT_SECRET and RESEND_API_KEY configured:
 - Test `/auth/request-otp` with a real email
 - Test `/auth/verify-otp` with the OTP code
@@ -64,10 +62,10 @@ If you have JWT_SECRET and RESEND_API_KEY configured:
 ## Required Files Checklist
 
 Before testing, ensure these files exist:
-- [OK] `worker.js` - Main worker file
-- [OK] `landing-html.js` - Embedded landing page
-- [OK] `openapi-json.js` - Embedded OpenAPI spec
-- [OK] `wrangler.toml` - Worker configuration
+- ✓ `worker.js` - Main worker file
+- ✓ `landing-html.js` - Embedded landing page
+- ✓ `openapi-json.js` - Embedded OpenAPI spec
+- ✓ `wrangler.toml` - Worker configuration
 
 ## Next Steps After Testing
 

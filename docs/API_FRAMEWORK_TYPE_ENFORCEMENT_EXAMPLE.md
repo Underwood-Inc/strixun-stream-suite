@@ -8,21 +8,21 @@ This document demonstrates how the root config is enforced using TypeScript's ty
 ## The Problem
 
 Without type enforcement:
-- [ERROR] Have to manually check root config at runtime
-- [ERROR] Easy to forget to include root fields
-- [ERROR] No compile-time safety
-- [ERROR] Refactoring is error-prone
+- ✗ Have to manually check root config at runtime
+- ✗ Easy to forget to include root fields
+- ✗ No compile-time safety
+- ✗ Refactoring is error-prone
 
 ---
 
 ## The Solution: Type-Based Enforcement
 
 With TypeScript type system:
-- [OK] Root config enforced at compile-time
-- [OK] All responses automatically include root fields
-- [OK] TypeScript ensures correctness
-- [OK] IDE autocomplete shows root fields
-- [OK] Refactoring is safe
+- ✓ Root config enforced at compile-time
+- ✓ All responses automatically include root fields
+- ✓ TypeScript ensures correctness
+- ✓ IDE autocomplete shows root fields
+- ✓ Refactoring is safe
 
 ---
 
@@ -107,8 +107,8 @@ async function getCustomer(
   
   // Must return root fields (TypeScript error if missing)
   return {
-    id: customer.id,                    // [OK] Required by RootResponseConfig
-    customerId: customer.customerId,     // [OK] Required by RootResponseConfig
+    id: customer.id,                    // ✓ Required by RootResponseConfig
+    customerId: customer.customerId,     // ✓ Required by RootResponseConfig
     name: customer.name,                 // Optional
     email: customer.email,               // Optional
     // TypeScript error if id or customerId missing!
@@ -149,7 +149,7 @@ const config: ResponseBuilderConfig = {
 
 ## Type Safety Examples
 
-### [OK] Correct Usage
+### ✓ Correct Usage
 
 ```typescript
 // TypeScript ensures root fields are present
@@ -159,22 +159,22 @@ interface MyResponse {
 
 // This is correct - root fields automatically included
 const response: APIResponse<MyResponse> = {
-  id: '123',              // [OK] From RootResponseConfig
-  customerId: 'cust_456',  // [OK] From RootResponseConfig
-  data: 'hello',          // [OK] From MyResponse
+  id: '123',              // ✓ From RootResponseConfig
+  customerId: 'cust_456',  // ✓ From RootResponseConfig
+  data: 'hello',          // ✓ From MyResponse
 };
 ```
 
-### [ERROR] TypeScript Error (Missing Root Fields)
+### ✗ TypeScript Error (Missing Root Fields)
 
 ```typescript
 // TypeScript error: missing 'id' and 'customerId'
 const response: APIResponse<MyResponse> = {
-  data: 'hello', // [ERROR] Error: Property 'id' is missing
+  data: 'hello', // ✗ Error: Property 'id' is missing
 };
 ```
 
-### [OK] Automatic Type Inference
+### ✓ Automatic Type Inference
 
 ```typescript
 // Framework automatically infers full type
@@ -210,10 +210,10 @@ async function handleRequest(): Promise<APIResponse<CustomerResponse>> {
 
 // Response:
 {
-  id: 'user_123',              // [OK] Always included (root config)
-  customerId: 'cust_456',      // [OK] Always included (root config)
-  name: 'John Doe',            // [OK] Requested optional field
-  analytics: { ... },          // [OK] Requested metric (computed)
+  id: 'user_123',              // ✓ Always included (root config)
+  customerId: 'cust_456',      // ✓ Always included (root config)
+  name: 'John Doe',            // ✓ Requested optional field
+  analytics: { ... },          // ✓ Requested metric (computed)
   // email excluded (not requested)
 }
 ```
@@ -265,8 +265,8 @@ interface NestedResponse {
 
 // TypeScript enforces:
 // APIResponse<NestedResponse> = {
-//   id: string,              // [OK] Root level
-//   customerId: string,     // [OK] Root level
+//   id: string,              // ✓ Root level
+//   customerId: string,     // ✓ Root level
 //   user: { ... },          // Nested (no root fields)
 //   settings: { ... },      // Nested (no root fields)
 // }
@@ -279,7 +279,7 @@ interface NestedResponse {
 ### Before (Manual Root Config)
 
 ```typescript
-// [ERROR] Manual root config checking
+// ✗ Manual root config checking
 function buildResponse(data: any) {
   return {
     id: data.id,                    // Manual
@@ -292,7 +292,7 @@ function buildResponse(data: any) {
 ### After (Type Enforcement)
 
 ```typescript
-// [OK] TypeScript enforces root config
+// ✓ TypeScript enforces root config
 function buildResponse<T>(
   data: T
 ): APIResponse<T> {
@@ -311,16 +311,14 @@ function buildResponse<T>(
 ## Summary
 
 **Type-based root config enforcement**:
-- [OK] Defined once in `RootResponseConfig`
-- [OK] Automatically applied to all responses via `APIResponse<T>`
-- [OK] Enforced at compile-time by TypeScript
-- [OK] No runtime checks needed
-- [OK] Refactoring-safe
-- [OK] IDE-friendly
+- ✓ Defined once in `RootResponseConfig`
+- ✓ Automatically applied to all responses via `APIResponse<T>`
+- ✓ Enforced at compile-time by TypeScript
+- ✓ No runtime checks needed
+- ✓ Refactoring-safe
+- ✓ IDE-friendly
 
-**Result**: All responses automatically include root fields, guaranteed by TypeScript's type system! [EMOJI]
-
----
+**Result**: All responses automatically include root fields, guaranteed by TypeScript's type system! ★ ---
 
 **End of Example**
 

@@ -79,13 +79,13 @@ export function LoginPage() {
         const store = useAuthStore.getState();
         await store.fetchUserInfo();
 
-        console.log('[Login] [SUCCESS] User authenticated:', userData.email, 'Token expires at:', expiresAt);
+        console.log('[Login] ✓ User authenticated:', userData.email, 'Token expires at:', expiresAt);
 
         navigate('/');
     };
 
     const handleLoginError = (error: string) => {
-        console.error('[Login] [ERROR] Login failed:', error);
+        console.error('[Login] ✗ Login failed:', error);
     };
 
     return (

@@ -188,18 +188,18 @@ function updateDashboardStatus() {
                     <span class="script-status-item__badge">Ready</span>
                 </div>
                 <div class="script-status-item installed">
-                    <span class="script-status-item__icon">[EMOJI]</span>
+                    <span class="script-status-item__icon"> ★ </span>
                     <span class="script-status-item__name">Source Swap</span>
                     <span class="script-status-item__badge">Ready</span>
                 </div>
                 <div class="script-status-item installed">
-                    <span class="script-status-item__icon">[EMOJI]</span>
+                    <span class="script-status-item__icon"> ★ </span>
                     <span class="script-status-item__name">Text Cycler</span>
                     <span class="script-status-item__badge">Ready</span>
                 </div>
             </div>
             <p class="hint" style="margin-top:8px">
-                [OK] All features available! Use the tabs above to access each feature.
+                ✓ All features available! Use the tabs above to access each feature.
             </p>
         `;
     } else {
@@ -246,7 +246,7 @@ function renderStartupBanner() {
         // Connected - show success briefly then fade
         bannerHTML = `
             <div id="startupBanner" class="startup-banner success">
-                <span class="startup-banner__icon">[OK]</span>
+                <span class="startup-banner__icon">✓</span>
                 <div class="startup-banner__content">
                     <div class="startup-banner__title">Connected to OBS</div>
                     <div class="startup-banner__text">All features are available. Scripts detected and ready.</div>
@@ -291,7 +291,7 @@ function renderFeatureNotice(containerId, featureId, scriptName) {
         const notice = document.createElement('div');
         notice.className = 'feature-notice error';
         notice.innerHTML = `
-            <div class="feature-notice__title">[WARNING] Connection Required</div>
+            <div class="feature-notice__title">⚠ Connection Required</div>
             <div class="feature-notice__text">
                 Connect to OBS WebSocket to use this feature. 
                 <button onclick="showPage('setup')" class="btn-link">Go to Setup </button>

@@ -76,7 +76,7 @@ ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
     }
     
     writeFileSync(devVarsPath, content, 'utf-8');
-    console.log('[SUCCESS] Created .dev.vars with test secrets');
+    console.log('✓ Created .dev.vars with test secrets');
   } else {
     // Check if secrets are missing and add them
     const existingContent = readFileSync(devVarsPath, 'utf-8');
@@ -93,9 +93,9 @@ ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
     
     if (updated) {
       writeFileSync(devVarsPath, newContent, 'utf-8');
-      console.log('[SUCCESS] Updated .dev.vars with missing test secrets');
+      console.log('✓ Updated .dev.vars with missing test secrets');
     } else {
-      console.log('[INFO] .dev.vars already has all required secrets');
+      console.log('ℹ .dev.vars already has all required secrets');
     }
   }
 }
@@ -106,8 +106,8 @@ ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
 function main() {
   // Skip in CI - CI should use wrangler secret put directly
   if (process.env.CI === 'true') {
-    console.log('[INFO] Running in CI - skipping local secret setup');
-    console.log('[INFO] CI should use wrangler secret put to set secrets');
+    console.log('ℹ Running in CI - skipping local secret setup');
+    console.log('ℹ CI should use wrangler secret put to set secrets');
     return;
   }
   
@@ -123,11 +123,11 @@ function main() {
       generateTestKeys();
     }
     
-    console.log('\n[SUCCESS] Test secrets are ready for local development');
-    console.log('[INFO] Secrets are stored in .dev.vars (gitignored)');
-    console.log('[INFO] For CI, set E2E_TEST_OTP_CODE and E2E_TEST_JWT_TOKEN as environment variables');
+    console.log('\n✓ Test secrets are ready for local development');
+    console.log('ℹ Secrets are stored in .dev.vars (gitignored)');
+    console.log('ℹ For CI, set E2E_TEST_OTP_CODE and E2E_TEST_JWT_TOKEN as environment variables');
   } catch (error) {
-    console.error('[ERROR] Failed to setup test secrets:', error.message);
+    console.error('✗ Failed to setup test secrets:', error.message);
     process.exit(1);
   }
 }
@@ -214,7 +214,7 @@ function generateTestKeys() {
   content += `E2E_TEST_JWT_TOKEN=${testJWTToken}\n`;
   
   writeFileSync(devVarsPath, content, 'utf-8');
-  console.log(`[SUCCESS] Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
+  console.log(`✓ Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
 }
 
 main();

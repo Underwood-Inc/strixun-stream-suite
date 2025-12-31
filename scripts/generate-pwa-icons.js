@@ -61,7 +61,7 @@ async function createMaskableIcon(svgBuffer, size) {
 
 async function generateIcons() {
   try {
-    console.log('[EMOJI] Generating PWA icons from SVG...\n');
+    console.log(' ★ Generating PWA icons from SVG...\n');
     
     // Read the SVG file
     const svgBuffer = readFileSync(svgPath);
@@ -73,7 +73,7 @@ async function generateIcons() {
         // Generate maskable icon with padding
         const maskableBuffer = await createMaskableIcon(svgBuffer, icon.size);
         await sharp(maskableBuffer).png().toFile(outputPath);
-        console.log(`[OK] Generated ${icon.name} (${icon.size}x${icon.size} with safe zone)`);
+        console.log(`✓ Generated ${icon.name} (${icon.size}x${icon.size} with safe zone)`);
       } else {
         // Generate regular icon
         await sharp(svgBuffer)
@@ -83,7 +83,7 @@ async function generateIcons() {
           })
           .png()
           .toFile(outputPath);
-        console.log(`[OK] Generated ${icon.name} (${icon.size}x${icon.size})`);
+        console.log(`✓ Generated ${icon.name} (${icon.size}x${icon.size})`);
       }
     }
     
@@ -96,13 +96,13 @@ async function generateIcons() {
       })
       .png()
       .toFile(faviconPath);
-    console.log(`[OK] Generated favicon.ico (32x32)\n`);
+    console.log(`✓ Generated favicon.ico (32x32)\n`);
     
     console.log(' All PWA icons generated successfully!');
-    console.log('[EMOJI] Icons are in the public/ directory\n');
+    console.log(' ★ Icons are in the public/ directory\n');
     
   } catch (error) {
-    console.error('[ERROR] Error generating icons:', error);
+    console.error('✗ Error generating icons:', error);
     process.exit(1);
   }
 }

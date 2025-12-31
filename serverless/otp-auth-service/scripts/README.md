@@ -2,7 +2,7 @@
 
 Interactive helper scripts to tail Cloudflare Worker logs with smart guidance and explanations.
 
-## [EMOJI] Available Scripts
+## ★ Available Scripts
 
 ### Unix/Linux/macOS (Bash)
 **File:** `tail-logs.sh`
@@ -10,7 +10,7 @@ Interactive helper scripts to tail Cloudflare Worker logs with smart guidance an
 ### Windows (PowerShell)
 **File:** `tail-logs.ps1`
 
-## [EMOJI] Quick Start
+## ★ Quick Start
 
 ### Option 1: Using npm/pnpm (Recommended - Auto-detects OS)
 
@@ -57,7 +57,7 @@ or
 powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 ```
 
-## [EMOJI] Features
+## ★ Features
 
 The scripts provide an interactive menu with the following options:
 
@@ -127,7 +127,7 @@ The scripts provide an interactive menu with the following options:
 - Script must be run from the `otp-auth-service` directory (where `wrangler.toml` is located)
 - You must be authenticated with Cloudflare (`wrangler login`)
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### "wrangler CLI is not installed"
 Install wrangler globally:
@@ -161,7 +161,7 @@ Or run with bypass flag:
 powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 ```
 
-## [EMOJI] Notes
+## ★ Notes
 
 - **Important:** `wrangler tail` only supports real-time streaming, not historical logs
 - To view recent/past logs, you must use the Cloudflare Dashboard (options 2 or 9)
@@ -171,7 +171,7 @@ powershell -ExecutionPolicy Bypass -File scripts\tail-logs.ps1
 - The Cloudflare Dashboard provides more advanced features like time-range filtering and search
 - Historical logs require Cloudflare Logpush setup for programmatic access
 
-## [EMOJI] Script Features
+## ★ Script Features
 
 - **Color-coded output** for better readability
 - **Smart explanations** for each option

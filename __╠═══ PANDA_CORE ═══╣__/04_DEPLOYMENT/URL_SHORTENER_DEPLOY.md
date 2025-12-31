@@ -11,7 +11,7 @@ cd serverless/url-shortener
 wrangler deploy
 ```
 
-That's it! [SUCCESS]
+That's it! ✓
 
 ## What This Does
 

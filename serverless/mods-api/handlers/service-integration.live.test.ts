@@ -2,7 +2,7 @@
  * Integration Tests for Service-to-Service Integration
  * Tests Mods API  OTP Auth Service (user lookup)
  * 
- * [WARNING] IMPORTANT: These tests use REAL deployed services
+ * ⚠ IMPORTANT: These tests use REAL deployed services
  * 
  * These tests only run when:
  * - USE_LIVE_API=true environment variable is set

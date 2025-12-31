@@ -31,7 +31,7 @@ If this doesn't work, the worker itself has an issue.
    - **Type**: CNAME
    - **Name**: `s`
    - **Target**: `strixun-url-shortener.strixuns-script-suite.workers.dev`
-   - **Proxy status**: Proxied (orange cloud) [OK]
+   - **Proxy status**: Proxied (orange cloud) ✓
 
 If the DNS record doesn't exist:
 1. Click **Add record**
@@ -93,9 +93,9 @@ Then try accessing `https://s.idling.app/health` in another terminal/browser.
 The route pattern must be **exactly**: `s.idling.app/*`
 
 Common mistakes:
-- [ERROR] `s.idling.app` (missing `/*`)
-- [ERROR] `s.idling.app/` (missing `*`)
-- [OK] `s.idling.app/*` (correct)
+- ✗ `s.idling.app` (missing `/*`)
+- ✗ `s.idling.app/` (missing `*`)
+- ✓ `s.idling.app/*` (correct)
 
 ## Step 9: Force Route Update
 

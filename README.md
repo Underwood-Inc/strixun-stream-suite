@@ -50,7 +50,7 @@ https://underwood-inc.github.io/strixun-stream-suite
 #### Step 2: Add to OBS Studio as a Dock
 
 1. Open **OBS Studio**
-2. Go to **View [EMOJI] Docks [EMOJI] Custom Browser Docks**
+2. Go to **View Docks ★ Custom Browser Docks**
 3. Click **"+"** to add a new dock
 4. Enter a name (e.g., "Stream Suite")
 5. Paste your GitHub Pages URL: `https://underwood-inc.github.io/strixun-stream-suite`
@@ -61,7 +61,7 @@ https://underwood-inc.github.io/strixun-stream-suite
 The control panel will automatically attempt to connect to OBS via WebSocket. Make sure:
 
 - OBS Studio is running
-- WebSocket Server is enabled in **OBS [EMOJI] Tools [EMOJI] WebSocket Server Settings**
+- WebSocket Server is enabled in **OBS > Tools > WebSocket Server Settings**
 - Default port is **4455** (or configure custom port)
 
 #### Step 4: Install Scripts (First Time Only)
@@ -73,7 +73,7 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 
 ---
 
-## [EMOJI] What You'll See
+## ★ What You'll See
 
 ### Initial Setup Flow
 
@@ -84,7 +84,7 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Connection Status                                     │ │
-│  │  [!] Not Connected                                     │ │
+│  │  ⚠ Not Connected                                     │ │
 │  │  Connecting to OBS WebSocket (localhost:4455)...       │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                                                             │
@@ -114,7 +114,7 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 │  Scripts   Install   Setup                                  │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  [OK] Connected to OBS (localhost:4455)                     │
+│  ✓ Connected to OBS (localhost:4455)                     │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Quick Actions                                         │ │
@@ -126,10 +126,10 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Script Status                                         │ │
 │  │                                                        │ │
-│  │  [OK] Source Animations (v2.8.1)                       │ │
-│  │  [OK] Source Swap (v3.1.0)                             │ │
-│  │  [OK] Source Layouts (v1.0.0)                          │ │
-│  │  [OK] Text Cycler (v1.0.0)                             │ │
+│  │  ✓ Source Animations (v2.8.1)                       │ │
+│  │  ✓ Source Swap (v3.1.0)                             │ │
+│  │  ✓ Source Layouts (v1.0.0)                          │ │
+│  │  ✓ Text Cycler (v1.0.0)                             │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -143,7 +143,7 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 ├─────────────────────────────────────────────────────────────┤
 │  File  Edit  View  Docks  Tools  Help                       │
 │                                                             │
-│  View [EMOJI] Docks [EMOJI] Custom Browser Docks [EMOJI] [+]                  │
+│  View Docks ★ Custom Browser Docks ★ ✓                  │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Add Custom Browser Dock                               │ │
@@ -183,30 +183,30 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 
 ---
 
-## [EMOJI] Features
+## ★ Features
 
 | Feature | Description |
 |---------|-------------|
 | **Source Animations** | Fade, slide, zoom, pop effects on visibility toggle |
-| **[EMOJI] Source Swap** | Swap position and size of two sources with animation |
+| ** ★ Source Swap** | Swap position and size of two sources with animation |
 | ** Source Layouts** | Save and apply layout presets with multi-source animation |
-| **[EMOJI] Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
+| ** ★ Text Cycler** | Cycle text with animated transitions (obfuscate, typewriter, glitch, wave) |
 | **[PERF] Quick Controls** | Hotkey to cycle aspect override mode |
 | ** Script Manager** | Unified dashboard for all animation scripts |
-| **[EMOJI]️ Control Panel** | Web-based dock UI to control everything |
+| ** ★ ️ Control Panel** | Web-based dock UI to control everything |
 | ** Twitch Clips Player** | Auto-play Twitch clips with chat command support |
-| **[EMOJI] Scrollbar Customizer** | Free CDN-hosted tool to customize scrollbars on any website |
+| ** ★ Scrollbar Customizer** | Free CDN-hosted tool to customize scrollbars on any website |
 
 ---
 
-## [EMOJI] Requirements
+## ★ Requirements
 
 - **OBS Studio 28+** (includes WebSocket support)
 - **No additional plugins needed** - works out of the box!
 
 ---
 
-## [EMOJI] Manual Installation (Alternative)
+## ★ Manual Installation (Alternative)
 
 If you prefer to install scripts manually:
 
@@ -215,7 +215,7 @@ If you prefer to install scripts manually:
    - **Windows:** `%AppData%\obs-studio\basic\scripts\`
    - **macOS:** `~/Library/Application Support/obs-studio/basic/scripts/`
    - **Linux:** `~/.config/obs-studio/basic/scripts/`
-3. **In OBS:** `Tools [EMOJI] Scripts [EMOJI] + [EMOJI] Select all .lua files`
+3. **In OBS:** `Tools > Scripts ★ + ★ Select all .lua files`
 4. **Add the control panel** as a Custom Browser Dock (use local file path or GitHub Pages URL)
 
 ---
@@ -228,7 +228,7 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Product Overview](./docs/PRODUCT_OVERVIEW.md)** - Understand what Strixun Stream Suite does (non-technical)
 - **[Scrollbar Customizer](./serverless/SCROLLBAR_CUSTOMIZER.md)** - Free CDN tool to customize scrollbars on any website (super beginner-friendly!)
 
-### [EMOJI] For Developers
+### ★ For Developers
 - **[Technical Architecture](./docs/TECHNICAL_ARCHITECTURE.md)** - Complete system architecture
 - **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - CI/CD workflows and deployment
@@ -257,15 +257,15 @@ See [docs/README.md](./docs/README.md) for a complete documentation index.
 
 ---
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 **Scripts not appearing in OBS?**
 - Ensure `.lua` files are in the correct scripts folder
 - Restart OBS after adding scripts
-- Check `Tools [EMOJI] Scripts` for error messages
+- Check `Tools > Scripts` for error messages
 
 **Control panel not connecting?**
-- Verify OBS WebSocket Server is enabled (`Tools [EMOJI] WebSocket Server Settings`)
+- Verify OBS WebSocket Server is enabled (`Tools > WebSocket Server Settings`)
 - Check that port 4455 is not blocked by firewall
 - Try restarting OBS Studio
 
@@ -294,7 +294,7 @@ See [docs/README.md](./docs/README.md) for a complete documentation index.
 
 ---
 
-## [EMOJI] License
+## ★ License
 
 MIT License - feel free to use and modify.
 

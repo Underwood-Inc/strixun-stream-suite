@@ -1,6 +1,4 @@
-# Customer API Setup Guide [EMOJI]
-
-This guide will walk you through setting up the Customer API worker with its dedicated KV namespace.
+# Customer API Setup Guide ★ This guide will walk you through setting up the Customer API worker with its dedicated KV namespace.
 
 ---
 
@@ -215,9 +213,9 @@ After setup is complete:
 
 | Variable | Type | Required | Description |
 |----------|------|----------|-------------|
-| `JWT_SECRET` | Secret | [OK] Yes | JWT signing secret (must match OTP auth service) |
-| `ALLOWED_ORIGINS` | Secret | [ERROR] No | Comma-separated CORS origins |
-| `ENVIRONMENT` | Var | [ERROR] No | Environment name (default: "production") |
+| `JWT_SECRET` | Secret | ✓ Yes | JWT signing secret (must match OTP auth service) |
+| `ALLOWED_ORIGINS` | Secret | ✗ No | Comma-separated CORS origins |
+| `ENVIRONMENT` | Var | ✗ No | Environment name (default: "production") |
 
 ---
 
@@ -248,6 +246,6 @@ wrangler dev
 
 ---
 
-**Status:** [OK] Ready for setup
+**Status:** ✓ Ready for setup
 **Last Updated:** 2024-12-19
 

@@ -112,13 +112,6 @@ export default defineConfig({
   // Use multiple workers to better replicate production conditions
   // CI uses fewer workers for stability, local uses more for speed
   workers: process.env.CI ? 2 : 4,
-  // Pass environment variables to test workers
-  use: {
-    // Pass E2E test credentials from .dev.vars to test workers
-    ...(process.env.E2E_TEST_JWT_TOKEN ? { env: { E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN } } : {}),
-    ...(process.env.E2E_TEST_OTP_CODE ? { env: { E2E_TEST_OTP_CODE: process.env.E2E_TEST_OTP_CODE } } : {}),
-    ...(process.env.E2E_TEST_EMAIL ? { env: { E2E_TEST_EMAIL: process.env.E2E_TEST_EMAIL } } : {}),
-  },
   reporter: [
     ['html'],
     ['list'],

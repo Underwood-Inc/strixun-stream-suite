@@ -106,7 +106,7 @@
         level={$connected ? 'log' : 'warning'}
       >
         <button class="btn-primary btn-lg" on:click={handleExecuteSwap} disabled={!$connected}>
-          [EMOJI] Swap Now
+          → Swap Now
         </button>
       </Tooltip>
     </div>
@@ -224,7 +224,7 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleRefreshSwapSources} disabled={!$connected}>[EMOJI] Refresh Sources</button>
+        <button on:click={handleRefreshSwapSources} disabled={!$connected}>→ Refresh Sources</button>
       </Tooltip>
       <button on:click={handleExportConfigs}> Export</button>
       <button on:click={handleImportConfigs}> Import</button>

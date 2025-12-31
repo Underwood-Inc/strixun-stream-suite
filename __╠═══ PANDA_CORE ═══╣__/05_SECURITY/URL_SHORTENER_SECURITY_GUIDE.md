@@ -8,9 +8,9 @@
 
 ### Key Management Approach
 
-- [SUCCESS] Keys must be provided at **BUILD TIME** via `VITE_SERVICE_ENCRYPTION_KEY`
-- [SUCCESS] Keys are bundled into JavaScript during build
-- [SUCCESS] No runtime key injection
+- ✓ Keys must be provided at **BUILD TIME** via `VITE_SERVICE_ENCRYPTION_KEY`
+- ✓ Keys are bundled into JavaScript during build
+- ✓ No runtime key injection
 
 ---
 
@@ -26,9 +26,9 @@
 ### Security Trade-offs
 
 **Current Approach (Build-time injection):**
-- [SUCCESS] Better than runtime injection (not in plain HTML)
-- [WARNING] Key is still in the JavaScript bundle (can be extracted)
-- [WARNING] Symmetric key exposed to clients (fundamental security issue)
+- ✓ Better than runtime injection (not in plain HTML)
+- ⚠ Key is still in the JavaScript bundle (can be extracted)
+- ⚠ Symmetric key exposed to clients (fundamental security issue)
 
 **Why This Is Still Problematic:**
 - Anyone can extract the key from the JavaScript bundle
@@ -73,11 +73,11 @@
 
 **If you must use symmetric encryption:**
 
-- [SUCCESS] Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
-- [WARNING] Rotate keys frequently (monthly or more)
-- [WARNING] Document the security trade-off
-- [WARNING] Monitor for key extraction attempts
-- [ERROR] Never use runtime injection
+- ✓ Use build-time injection only (`VITE_SERVICE_ENCRYPTION_KEY`)
+- ⚠ Rotate keys frequently (monthly or more)
+- ⚠ Document the security trade-off
+- ⚠ Monitor for key extraction attempts
+- ✗ Never use runtime injection
 
 ---
 

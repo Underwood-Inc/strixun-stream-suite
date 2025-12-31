@@ -58,14 +58,14 @@ const workers = [
   },
 ];
 
-console.log('[EMOJI] Verifying worker configurations match wrangler deploy output...\n');
+console.log(' ★ Verifying worker configurations match wrangler deploy output...\n');
 
 let allMatch = true;
 
 for (const worker of workers) {
   const workerPath = join(rootDir, 'serverless', worker.path);
   
-  console.log(`[EMOJI] ${worker.name}`);
+  console.log(` ★ ${worker.name}`);
   
   try {
     const output = execSync('pnpm exec wrangler deploy --dry-run --env=""', {
@@ -77,7 +77,7 @@ for (const worker of workers) {
     // Extract bindings from output
     const bindingsSection = output.match(/Your Worker has access to the following bindings:([\s\S]*?)(?:\n\n|--dry-run|Total Upload)/);
     if (!bindingsSection) {
-      console.log(`   [WARNING]  Could not parse bindings from output`);
+      console.log(`   ⚠  Could not parse bindings from output`);
       allMatch = false;
       continue;
     }
@@ -112,31 +112,31 @@ for (const worker of workers) {
     let workerMatch = true;
     
     if (missingKVs.length > 0) {
-      console.log(`   [ERROR] Missing KV bindings: ${missingKVs.join(', ')}`);
+      console.log(`   ✗ Missing KV bindings: ${missingKVs.join(', ')}`);
       workerMatch = false;
     }
     
     if (extraKVs.length > 0) {
-      console.log(`   [WARNING]  Unexpected KV bindings: ${extraKVs.join(', ')}`);
+      console.log(`   ⚠  Unexpected KV bindings: ${extraKVs.join(', ')}`);
     }
     
     if (missingR2.length > 0) {
-      console.log(`   [ERROR] Missing R2 bindings: ${missingR2.join(', ')}`);
+      console.log(`   ✗ Missing R2 bindings: ${missingR2.join(', ')}`);
       workerMatch = false;
     }
     
     if (extraR2.length > 0) {
-      console.log(`   [WARNING]  Unexpected R2 bindings: ${extraR2.join(', ')}`);
+      console.log(`   ⚠  Unexpected R2 bindings: ${extraR2.join(', ')}`);
     }
     
     if (workerMatch && extraKVs.length === 0 && extraR2.length === 0) {
-      console.log(`   [OK] All bindings match expected configuration`);
+      console.log(`   ✓ All bindings match expected configuration`);
       console.log(`      KV: ${foundKVNames.join(', ')}`);
       if (foundR2Names.length > 0) {
         console.log(`      R2: ${foundR2Names.join(', ')}`);
       }
     } else if (workerMatch) {
-      console.log(`   [WARNING]  Bindings present but some unexpected ones found`);
+      console.log(`   ⚠  Bindings present but some unexpected ones found`);
       console.log(`      KV: ${foundKVNames.join(', ')}`);
       if (foundR2Names.length > 0) {
         console.log(`      R2: ${foundR2Names.join(', ')}`);
@@ -151,7 +151,7 @@ for (const worker of workers) {
     const errorOutput = error.stdout || error.stderr || error.message;
     // Check if it's just a warning about routes (which we can ignore)
     if (errorOutput.includes('Unexpected fields found') && errorOutput.includes('routes')) {
-      console.log(`   [WARNING]  TOML parsing warning (routes field) - but continuing...`);
+      console.log(`   ⚠  TOML parsing warning (routes field) - but continuing...`);
       // Try to extract bindings anyway
       try {
         const output = error.stdout || '';
@@ -163,18 +163,18 @@ for (const worker of workers) {
           const missingKVs = worker.expectedKVs.filter(kv => !foundKVNames.includes(kv));
           
           if (missingKVs.length === 0) {
-            console.log(`   [OK] All expected KV bindings found: ${foundKVNames.join(', ')}`);
+            console.log(`   ✓ All expected KV bindings found: ${foundKVNames.join(', ')}`);
           } else {
-            console.log(`   [ERROR] Missing KV bindings: ${missingKVs.join(', ')}`);
+            console.log(`   ✗ Missing KV bindings: ${missingKVs.join(', ')}`);
             allMatch = false;
           }
         }
       } catch (e) {
-        console.log(`   [ERROR] Failed to parse output: ${error.message}`);
+        console.log(`   ✗ Failed to parse output: ${error.message}`);
         allMatch = false;
       }
     } else {
-      console.log(`   [ERROR] Validation failed: ${error.message}`);
+      console.log(`   ✗ Validation failed: ${error.message}`);
       allMatch = false;
     }
   }
@@ -183,10 +183,10 @@ for (const worker of workers) {
 }
 
 if (allMatch) {
-  console.log('[OK] All worker configurations match expected bindings!');
+  console.log('✓ All worker configurations match expected bindings!');
   process.exit(0);
 } else {
-  console.log('[ERROR] Some configurations do not match expected bindings.');
+  console.log('✗ Some configurations do not match expected bindings.');
   process.exit(1);
 }
 

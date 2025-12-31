@@ -155,10 +155,10 @@ If you want to be extra sure, you can configure Cloudflare Page Rules:
 
 ## Summary
 
-[OK] **Server-side:** All OTP endpoints return `Cache-Control: no-store`  
-[OK] **Cloudflare:** Headers prevent Cloudflare from caching  
-[OK] **Service Worker:** `NetworkOnly` strategy bypasses cache  
-[OK] **Browser:** Headers prevent browser caching  
+✓ **Server-side:** All OTP endpoints return `Cache-Control: no-store`  
+✓ **Cloudflare:** Headers prevent Cloudflare from caching  
+✓ **Service Worker:** `NetworkOnly` strategy bypasses cache  
+✓ **Browser:** Headers prevent browser caching  
 
 **Result:** OTP requests always go to the server, never use cached responses.
 

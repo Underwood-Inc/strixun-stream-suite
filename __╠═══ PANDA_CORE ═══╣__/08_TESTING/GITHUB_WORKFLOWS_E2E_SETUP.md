@@ -16,16 +16,16 @@ All workflows now support:
 **New Feature**: Environment selection (production or development)
 
 **Usage**:
-1. Go to **Actions** [EMOJI] **Deploy Service(s)**
+1. Go to **Actions** ★ **Deploy Service(s)**
 2. Select **Environment**: `production` or `development`
 3. Select which services to deploy
 4. Click **Run workflow**
 
 **Changes**:
-- [OK] Added `environment` input (production/development)
-- [OK] All worker deployments respect environment selection
-- [OK] Secrets are set for the selected environment
-- [OK] Pages deployments (Mods Hub, Storybook, GitHub Pages) are production-only
+- ✓ Added `environment` input (production/development)
+- ✓ All worker deployments respect environment selection
+- ✓ Secrets are set for the selected environment
+- ✓ Pages deployments (Mods Hub, Storybook, GitHub Pages) are production-only
 
 **Example**:
 ```yaml
@@ -42,22 +42,22 @@ deploy_otp_auth: true
 **New Feature**: E2E tests option
 
 **Usage**:
-1. Go to **Actions** [EMOJI] **Test Service(s)**
+1. Go to **Actions** ★ **Test Service(s)**
 2. Check **Run E2E Tests**
 3. Click **Run workflow**
 
 **E2E Test Flow**:
-1. [OK] Validates worker configs (dry-run)
-2. [OK] Deploys all workers to development
-3. [OK] Sets development secrets
-4. [OK] Verifies worker health
-5. [OK] Runs E2E tests
-6. [OK] Uploads test results and screenshots
+1. ✓ Validates worker configs (dry-run)
+2. ✓ Deploys all workers to development
+3. ✓ Sets development secrets
+4. ✓ Verifies worker health
+5. ✓ Runs E2E tests
+6. ✓ Uploads test results and screenshots
 
 **Fail-Fast**:
-- If dry-run fails [EMOJI] workflow stops
-- If deployment fails [EMOJI] workflow stops
-- If health checks fail [EMOJI] workflow stops
+- If dry-run fails ★ workflow stops
+- If deployment fails ★ workflow stops
+- If health checks fail ★ workflow stops
 
 ### 3. E2E Tests Workflow (`e2e-tests.yml`)
 
@@ -69,14 +69,14 @@ deploy_otp_auth: true
 - Automatic on PRs to main/master
 
 **Flow**:
-1. [OK] Install dependencies
-2. [OK] Install Playwright browsers
-3. [OK] **Dry-run validation** (fail-fast)
-4. [OK] **Deploy workers to development**
-5. [OK] Set development secrets
-6. [OK] Verify worker health (fail-fast)
-7. [OK] Run E2E tests
-8. [OK] Upload artifacts
+1. ✓ Install dependencies
+2. ✓ Install Playwright browsers
+3. ✓ **Dry-run validation** (fail-fast)
+4. ✓ **Deploy workers to development**
+5. ✓ Set development secrets
+6. ✓ Verify worker health (fail-fast)
+7. ✓ Run E2E tests
+8. ✓ Upload artifacts
 
 ## Development Worker URLs
 
@@ -107,7 +107,7 @@ cd serverless/otp-auth-service
 wrangler deployments list --env development
 
 # Or check in Cloudflare Dashboard
-# Workers & Pages [EMOJI] [worker-name] [EMOJI] Settings [EMOJI] Triggers
+# Workers & Pages ★ [worker-name] ★ Settings ★ Triggers
 ```
 
 **Once you have the actual URLs**, update:
@@ -123,38 +123,38 @@ All E2E workflows use fail-fast:
    ```bash
    pnpm deploy:dev:all:dry-run
    ```
-   - If this fails [EMOJI] workflow stops immediately
+   - If this fails ★ workflow stops immediately
 
 2. **Deploy workers**: Deploys to development
    ```bash
    pnpm deploy:dev:all
    ```
-   - If this fails [EMOJI] workflow stops immediately
+   - If this fails ★ workflow stops immediately
 
 3. **Health checks**: Verifies workers are responding
    ```bash
    curl https://worker-url/health
    ```
-   - If any worker fails [EMOJI] workflow stops immediately
+   - If any worker fails ★ workflow stops immediately
 
 4. **Run tests**: Only runs if all previous steps succeed
 
 ## Test URL Audit
 
-### [OK] Safe - Mock Data Only
+### ✓ Safe - Mock Data Only
 
 These tests use production URLs in **mock data only** (not actual API calls):
 - `serverless/mods-api/handlers/api-framework-integration.integration.test.ts`
 - `serverless/mods-api/handlers/auth-flow.integration.test.ts`
 - `serverless/mods-api/handlers/session-restore.integration.test.ts`
 
-### [OK] Environment-Aware
+### ✓ Environment-Aware
 
 These tests already use development URLs by default:
 - `serverless/mods-api/handlers/service-integration.live.test.ts` - Uses dev URLs
 - `serverless/otp-auth-service/handlers/auth/customer-creation.integration.test.ts` - Uses test-config-loader
 
-### [OK] Updated
+### ✓ Updated
 
 - `serverless/otp-auth-service/utils/test-config-loader.ts` - Now defaults to `-dev` URLs
 
@@ -174,9 +174,9 @@ For E2E tests to work, ensure these secrets are set:
 
 | Workflow | Development Deploy | E2E Tests | Fail-Fast |
 |----------|------------------|-----------|-----------|
-| `deploy-manager.yml` | [OK] (with env selection) | [ERROR] | [OK] |
-| `test-manager.yml` | [OK] (before E2E) | [OK] | [OK] |
-| `e2e-tests.yml` | [OK] (before tests) | [OK] | [OK] |
+| `deploy-manager.yml` | ✓ (with env selection) | ✗ | ✓ |
+| `test-manager.yml` | ✓ (before E2E) | ✓ | ✓ |
+| `e2e-tests.yml` | ✓ (before tests) | ✓ | ✓ |
 
 ## Next Steps
 
@@ -193,7 +193,7 @@ For E2E tests to work, ensure these secrets are set:
    - `.github/workflows/test-manager.yml`
 
 4. **Run E2E tests**:
-   - Via workflow: **Actions** [EMOJI] **E2E Tests** or **Test Service(s)**
+   - Via workflow: **Actions** ★ **E2E Tests** or **Test Service(s)**
    - Locally: `pnpm test:e2e`
 
 ## See Also

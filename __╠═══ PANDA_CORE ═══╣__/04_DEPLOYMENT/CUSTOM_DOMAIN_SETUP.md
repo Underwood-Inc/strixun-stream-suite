@@ -2,7 +2,7 @@
 
 This guide covers setting up custom domains for all Cloudflare Workers using `idling.app`.
 
-## [EMOJI] Domain Configuration
+## ★ Domain Configuration
 
 All workers are configured to use the following subdomains:
 
@@ -16,7 +16,7 @@ All workers are configured to use the following subdomains:
 | Mods Hub | `mods.idling.app` | Mod hosting frontend (React) | Pages |
 | Storybook | `design.idling.app` | Component library documentation | Pages |
 
-## [EMOJI] Setup Steps
+## ★ Setup Steps
 
 ### 1. Deploy Workers with Custom Routes
 
@@ -114,25 +114,25 @@ curl https://mods.idling.app
 curl https://design.idling.app
 ```
 
-## [EMOJI] Configuration Files Updated
+## ★ Configuration Files Updated
 
 The following files have been updated with custom domain configuration:
 
 ### Workers
-- [OK] `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
-- [OK] `serverless/otp-auth-service/wrangler.toml` - Auth service
-- [OK] `serverless/url-shortener/wrangler.toml` - URL shortener
-- [OK] `serverless/chat-signaling/wrangler.toml` - Chat signaling
-- [OK] `serverless/mods-api/wrangler.toml` - Mods API worker
+- ✓ `serverless/twitch-api/wrangler.toml` - Main API worker (Twitch API proxy)
+- ✓ `serverless/otp-auth-service/wrangler.toml` - Auth service
+- ✓ `serverless/url-shortener/wrangler.toml` - URL shortener
+- ✓ `serverless/chat-signaling/wrangler.toml` - Chat signaling
+- ✓ `serverless/mods-api/wrangler.toml` - Mods API worker
 
 ### Pages (Frontend)
-- [OK] `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
-- [OK] `shared-components/` - Storybook component library
+- ✓ `mods-hub/` - Mods Hub React frontend (deployed via GitHub Actions)
+- ✓ `shared-components/` - Storybook component library
 
 ### Frontend Configuration
-- [OK] `config.js` - Frontend configuration (hardcoded fallbacks)
+- ✓ `config.js` - Frontend configuration (hardcoded fallbacks)
 
-## [EMOJI] Frontend Configuration
+## ★ Frontend Configuration
 
 The frontend `config.js` has been updated with custom domain fallbacks:
 
@@ -141,7 +141,7 @@ The frontend `config.js` has been updated with custom domain fallbacks:
 
 The frontend will automatically use these URLs if no other configuration is provided.
 
-## [EMOJI] Production Deployment
+## ★ Production Deployment
 
 For production, you can:
 
@@ -149,14 +149,14 @@ For production, you can:
 2. **Use wrangler.toml Routes**: Routes are already configured in `wrangler.toml` files
 3. **Environment Variables**: Set `WORKER_API_URL` and `URL_SHORTENER_API_URL` in your deployment pipeline
 
-## [WARNING] Important Notes
+## ⚠ Important Notes
 
 - **DNS Propagation**: DNS changes may take a few minutes to propagate
 - **SSL Certificates**: Cloudflare automatically provisions SSL certificates for custom domains
 - **Route Precedence**: Routes configured in the dashboard take precedence over `wrangler.toml`
 - **Workers.dev URLs**: The original `*.workers.dev` URLs will continue to work as fallbacks
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### Routes Not Working
 
@@ -177,7 +177,7 @@ For production, you can:
 2. Check SSL/TLS settings in Cloudflare Dashboard
 3. Ensure domain is fully proxied (orange cloud) in DNS settings
 
-## [EMOJI] Additional Resources
+## ★ Additional Resources
 
 - [Cloudflare Workers Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
 - [Wrangler Routes Documentation](https://developers.cloudflare.com/workers/wrangler/configuration/#routes)

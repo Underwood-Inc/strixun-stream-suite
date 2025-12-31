@@ -406,7 +406,7 @@ export function ModUploadForm({
                         </FileInfo>
                     ) : (
                         <>
-                            <div>[EMOJI] Drop mod file here or click to browse</div>
+                            <div> ★ Drop mod file here or click to browse</div>
                             <DragDropText>Supports .lua, .js, .java, .zip, and other mod file formats</DragDropText>
                         </>
                     )}

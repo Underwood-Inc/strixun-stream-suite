@@ -261,15 +261,14 @@
 
 <div class="url-shortener-page" use:stagger={{ preset: 'fadeIn', stagger: 80, config: { duration: 300 } }}>
   <Tooltip text="URL Shortener | This feature is currently in testing" level="info" position="bottom">
-    <div class="testing-banner in-testing">
-      [EMOJI] IN TESTING - This feature is currently in testing
+    <div class="testing-banner in-testing"> ★ IN TESTING - This feature is currently in testing
     </div>
   </Tooltip>
 
   {#if !$isAuthenticated}
     <div class="auth-required">
       <div class="auth-required-content">
-        <h1>[EMOJI] URL Shortener</h1>
+        <h1> ★ URL Shortener</h1>
         <p>Sign in to create and manage short URLs</p>
         <button class="btn btn-primary" on:click={() => showLoginModal = true}>
           Sign In
@@ -280,7 +279,7 @@
     <div class="url-shortener-content">
       <div class="header">
         <div>
-          <h1>[EMOJI] URL Shortener</h1>
+          <h1> ★ URL Shortener</h1>
           <p class="user-info">Signed in as {$user?.email}</p>
         </div>
         <div class="header-actions">
@@ -289,7 +288,7 @@
             on:click={loadUrls}
             disabled={isLoading}
           >
-            {isLoading ? 'Loading...' : '[EMOJI] Refresh'}
+            {isLoading ? 'Loading...' : '→ Refresh'}
           </button>
           <button class="btn btn-secondary" on:click={handleLogout}>
             Logout
@@ -353,9 +352,7 @@
                         class="btn-copy"
                         on:click={() => copyToClipboard(urlItem.shortUrl)}
                         title="Copy to clipboard"
-                      >
-                        [EMOJI]
-                      </button>
+                      > ★ </button>
                     </div>
                     <div class="url-original">
                       <a href={urlItem.url} target="_blank" rel="noopener noreferrer">
@@ -372,8 +369,7 @@
                     class="btn-delete"
                     on:click={() => deleteUrl(urlItem.shortCode)}
                     title="Delete"
-                  >
-                    [EMOJI]️
+                  > ★ ️
                   </button>
                 </div>
               </div>

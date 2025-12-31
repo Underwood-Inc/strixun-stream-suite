@@ -226,7 +226,7 @@
 
     {#if recommendations.length > 0}
       <div class="rate-limit-info-card__recommendations">
-        <div class="rate-limit-info-card__recommendations-header">[EMOJI] How to Improve Your Limit:</div>
+        <div class="rate-limit-info-card__recommendations-header"> ★ How to Improve Your Limit:</div>
         <div class="rate-limit-info-card__recommendations-list">
           {#each recommendations as rec}
             <div class="rate-limit-info-card__recommendation" class:rate-limit-info-card__recommendation--high={rec.priority === 'high'}>

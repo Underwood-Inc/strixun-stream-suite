@@ -1,86 +1,86 @@
-# [EMOJI] Chat Client Implementation Status
+# ★ Chat Client Implementation Status
 
 **Well shiver me timbers!** ‍ We've built the core infrastructure for yer P2P chat client!
 
-## [OK] What's Been Implemented
+## ✓ What's Been Implemented
 
 ### 1. Type Definitions (`src/types/chat.ts`)
-- [OK] `RoomMetadata` - Room information structure
-- [OK] `ChatMessage` - Message format with encryption support
-- [OK] `WebRTCOffer/Answer` - WebRTC signaling types
-- [OK] `EmoteData` - 7TV and custom emote structure
-- [OK] `ChatConnectionState` - Connection state management
+- ✓ `RoomMetadata` - Room information structure
+- ✓ `ChatMessage` - Message format with encryption support
+- ✓ `WebRTCOffer/Answer` - WebRTC signaling types
+- ✓ `EmoteData` - 7TV and custom emote structure
+- ✓ `ChatConnectionState` - Connection state management
 
 ### 2. WebRTC Service (`src/services/chat/webrtc.ts`)
-- [OK] Peer-to-peer connection management
-- [OK] Data channel setup and handling
-- [OK] Offer/Answer creation and handling
-- [OK] ICE candidate management
-- [OK] Message sending/receiving
-- [OK] Connection state monitoring
+- ✓ Peer-to-peer connection management
+- ✓ Data channel setup and handling
+- ✓ Offer/Answer creation and handling
+- ✓ ICE candidate management
+- ✓ Message sending/receiving
+- ✓ Connection state monitoring
 
 ### 3. Signaling Service (`src/services/chat/signaling.ts`)
-- [OK] Room creation/joining
-- [OK] Offer/Answer exchange
-- [OK] Heartbeat system
-- [OK] Active room discovery
-- [OK] Integration with existing OAuth
+- ✓ Room creation/joining
+- ✓ Offer/Answer exchange
+- ✓ Heartbeat system
+- ✓ Active room discovery
+- ✓ Integration with existing OAuth
 
 ### 4. Chat Store (`src/stores/chat.ts`)
-- [OK] Svelte store for chat state
-- [OK] Message management
-- [OK] Room state management
-- [OK] Connection state tracking
-- [OK] Participant management
-- [OK] Typing indicators
+- ✓ Svelte store for chat state
+- ✓ Message management
+- ✓ Room state management
+- ✓ Connection state tracking
+- ✓ Participant management
+- ✓ Typing indicators
 
 ### 5. 7TV Emote Service (`src/services/chat/emotes.ts`)
-- [OK] Emote fetching from 7TV API
-- [OK] Local caching (IndexedDB)
-- [OK] Global emotes support
-- [OK] User-specific emotes
-- [OK] Emote search functionality
-- [OK] Message parsing for emotes
+- ✓ Emote fetching from 7TV API
+- ✓ Local caching (IndexedDB)
+- ✓ Global emotes support
+- ✓ User-specific emotes
+- ✓ Emote search functionality
+- ✓ Message parsing for emotes
 
 ### 6. Custom Emoji Service (`src/services/chat/customEmojis.ts`)
-- [OK] Custom emoji fetching
-- [OK] Domain-specific emoji support
-- [OK] Emoji upload functionality
-- [OK] Emoji caching
-- [OK] Message parsing for custom emojis
+- ✓ Custom emoji fetching
+- ✓ Domain-specific emoji support
+- ✓ Emoji upload functionality
+- ✓ Emoji caching
+- ✓ Message parsing for custom emojis
 
 ### 7. Room Manager (`src/services/chat/roomManager.ts`)
-- [OK] Room creation as broadcaster
-- [OK] Room joining as participant
-- [OK] WebRTC connection orchestration
-- [OK] Message encryption/decryption
-- [OK] Heartbeat management
-- [OK] Error handling
+- ✓ Room creation as broadcaster
+- ✓ Room joining as participant
+- ✓ WebRTC connection orchestration
+- ✓ Message encryption/decryption
+- ✓ Heartbeat management
+- ✓ Error handling
 
 ---
 
-## [OK] What's Complete
+## ✓ What's Complete
 
-### Phase 1: UI Components [OK]
-- [OK] `ChatClient.svelte` - Main chat component
-- [OK] `ChatMessage.svelte` - Individual message display
-- [OK] `ChatInput.svelte` - Message input with emote picker
-- [OK] `EmotePicker.svelte` - 7TV + custom emote picker
-- [OK] `RoomList.svelte` - Available rooms list
-- [OK] `RoomCreator.svelte` - Create/join room UI
+### Phase 1: UI Components ✓
+- ✓ `ChatClient.svelte` - Main chat component
+- ✓ `ChatMessage.svelte` - Individual message display
+- ✓ `ChatInput.svelte` - Message input with emote picker
+- ✓ `EmotePicker.svelte` - 7TV + custom emote picker
+- ✓ `RoomList.svelte` - Available rooms list
+- ✓ `RoomCreator.svelte` - Create/join room UI
 
-### Phase 2: Signaling Server [OK]
-- [OK] Separate Cloudflare Worker for signaling
-- [OK] Room metadata storage (KV)
-- [OK] Offer/answer exchange
-- [OK] Heartbeat endpoint
-- [OK] Room discovery endpoint
-- [OK] JWT authentication
-- [OK] Automatic cleanup (TTL-based)
+### Phase 2: Signaling Server ✓
+- ✓ Separate Cloudflare Worker for signaling
+- ✓ Room metadata storage (KV)
+- ✓ Offer/answer exchange
+- ✓ Heartbeat endpoint
+- ✓ Room discovery endpoint
+- ✓ JWT authentication
+- ✓ Automatic cleanup (TTL-based)
 
 ### Phase 3: Integration (In Progress)
-- [OK] Integrate with existing OAuth system
-- [OK] Connect encryption service
+- ✓ Integrate with existing OAuth system
+- ✓ Connect encryption service
 - [ ] Add message history (local storage)
 - [ ] Implement typing indicators
 - [ ] Add user presence
@@ -94,7 +94,7 @@
 
 ---
 
-## [EMOJI] Configuration Needed
+## ★ Configuration Needed
 
 ### 1. Signaling Server URL
 Add to your config:
@@ -115,7 +115,7 @@ Currently using Google STUN servers. For production, consider:
 
 ---
 
-## [EMOJI] Usage Example
+## ★ Usage Example
 
 ```typescript
 import { RoomManager } from './services/chat/roomManager';
@@ -150,7 +150,7 @@ await roomManager.leaveRoom();
 
 ---
 
-## [EMOJI] Known Issues / TODOs
+## ★ Known Issues / TODOs
 
 1. **Encryption Integration**: Need to verify encryption/decryption flow works correctly with message format
 2. **ICE Candidates**: Currently handled via signaling server, but could be optimized
@@ -161,7 +161,7 @@ await roomManager.leaveRoom();
 
 ---
 
-## [EMOJI] Architecture Highlights
+## ★ Architecture Highlights
 
 ### Decoupled Design
 - Chat service is completely separate from dashboard

@@ -6,7 +6,7 @@
 
 The URL shortener requires the `JWT_SECRET` environment variable to verify JWT tokens from the OTP auth service.
 
-**[WARNING] CRITICAL**: This must be the **SAME** secret as your OTP auth service uses, otherwise authentication will fail.
+**⚠ CRITICAL**: This must be the **SAME** secret as your OTP auth service uses, otherwise authentication will fail.
 
 ## Setup Instructions
 

@@ -104,24 +104,24 @@ Refactor code while keeping tests green.
 
 ## Current Test Coverage
 
-### [OK] Mod List Page (`mod-list.e2e.spec.ts`)
+### ✓ Mod List Page (`mod-list.e2e.spec.ts`)
 - Display mod list page
 - Display mod cards when mods exist
 - Search functionality
 - Filter options
 
-### [OK] Login Page (`login.e2e.spec.ts`)
+### ✓ Login Page (`login.e2e.spec.ts`)
 - Display login page
 - Email input for OTP request
 - Submit button for OTP request
 - OTP input after request
 
-### [OK] Mod Upload (`mod-upload.e2e.spec.ts`)
+### ✓ Mod Upload (`mod-upload.e2e.spec.ts`)
 - Redirect to login when unauthenticated
 - Show upload form when authenticated
 - Required upload fields
 
-### [OK] Mod Detail Page (`mod-detail.e2e.spec.ts`)
+### ✓ Mod Detail Page (`mod-detail.e2e.spec.ts`)
 - Display mod detail page structure
 - Download button for published mods
 - Mod metadata display
@@ -184,7 +184,7 @@ test('should access protected route', async ({ authenticatedPage }) => {
 ### 1. Test User Flows, Not Implementation
 
 ```typescript
-// [OK] Good - Tests user flow
+// ✓ Good - Tests user flow
 test('should upload a mod', async ({ page }) => {
   await page.goto('/upload');
   await page.fill('input[name="title"]', 'My Mod');
@@ -193,7 +193,7 @@ test('should upload a mod', async ({ page }) => {
   await expect(page.locator('text=/success/i')).toBeVisible();
 });
 
-// [ERROR] Bad - Tests implementation details
+// ✗ Bad - Tests implementation details
 test('should call upload API', async ({ page }) => {
   // Don't test API calls directly, test the user experience
 });
@@ -202,21 +202,21 @@ test('should call upload API', async ({ page }) => {
 ### 2. Use Data Attributes for Test Selectors
 
 ```typescript
-// [OK] Good - Stable selector
+// ✓ Good - Stable selector
 await page.locator('[data-testid="mod-card"]').click();
 
-// [ERROR] Bad - Fragile selector
+// ✗ Bad - Fragile selector
 await page.locator('.mod-card-container > div:first-child').click();
 ```
 
 ### 3. Wait for Elements
 
 ```typescript
-// [OK] Good - Explicit wait
+// ✓ Good - Explicit wait
 await expect(page.locator('button')).toBeVisible();
 await page.locator('button').click();
 
-// [ERROR] Bad - No wait
+// ✗ Bad - No wait
 await page.locator('button').click(); // May fail if not ready
 ```
 

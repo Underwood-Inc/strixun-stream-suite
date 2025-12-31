@@ -52,7 +52,7 @@ export async function verifyOtp(context: OtpVerifyContext): Promise<void> {
         otp,
       }, config.otpEncryptionKey);
     } catch (encryptError) {
-      console.error('[OtpLoginCore] [ERROR] ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
+      console.error('[OtpLoginCore] ✗ ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
       console.error('[OtpLoginCore] Encryption error:', encryptError);
       setState({ 
         loading: false, 

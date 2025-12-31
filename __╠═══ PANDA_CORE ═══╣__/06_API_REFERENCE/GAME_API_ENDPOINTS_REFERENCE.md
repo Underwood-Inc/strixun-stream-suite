@@ -4,13 +4,13 @@
 
 ---
 
-## [EMOJI] Authentication
+## ★ Authentication
 
 All endpoints require JWT authentication via `Authorization: Bearer <token>` header.
 
 ---
 
-## [EMOJI] Save State
+## ★ Save State
 
 ### Save Game State
 ```
@@ -463,7 +463,7 @@ Response: {
 
 ---
 
-## [EMOJI] Character
+## ★ Character
 
 ### Get Character
 ```
@@ -629,7 +629,7 @@ Response: {
 
 ---
 
-## [EMOJI] Error Responses
+## ✗ Responses
 
 All endpoints return consistent error responses:
 
@@ -649,7 +649,7 @@ Common status codes:
 
 ---
 
-## [EMOJI] Integration Notes
+## ★ Integration Notes
 
 - All endpoints use **JWT authentication** from OTP auth system
 - All data stored in **Cloudflare KV** with customer isolation

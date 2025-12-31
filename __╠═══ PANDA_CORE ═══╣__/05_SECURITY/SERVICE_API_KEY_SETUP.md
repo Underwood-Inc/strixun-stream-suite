@@ -12,38 +12,38 @@
 
 ---
 
-## [OK] Current Status
+## ✓ Current Status
 
-You've already set `SERVICE_API_KEY` manually via `wrangler secret put`. That's perfect! [OK]
+You've already set `SERVICE_API_KEY` manually via `wrangler secret put`. That's perfect! ✓
 
 ---
 
-## [EMOJI] Optional: GitHub Secrets (For Automated Deployment)
+## ★ Optional: GitHub Secrets (For Automated Deployment)
 
 If you want the GitHub workflow to automatically set `SERVICE_API_KEY` during deployment:
 
 ### Step 1: Add to GitHub Repository Secrets
 
 1. Go to your GitHub repository
-2. Navigate to: **Settings** [EMOJI] **Secrets and variables** [EMOJI] **Actions**
+2. Navigate to: **Settings** ★ **Secrets and variables** ★ **Actions**
 3. Click **"New repository secret"**
 4. **Name:** `SERVICE_API_KEY`
 5. **Value:** The same secure random string you used when setting it manually
    - If you don't remember it, you can generate a new one: `openssl rand -hex 32`
-   - **[WARNING] IMPORTANT:** If you generate a new one, you must update BOTH workers with the new value
+   - **⚠ IMPORTANT:** If you generate a new one, you must update BOTH workers with the new value
 
 ### Step 2: Verify Workflow Will Set It
 
 The workflows are already configured to set `SERVICE_API_KEY` if it exists in GitHub secrets:
 
-- [OK] `.github/workflows/deploy-customer-api.yml` - Sets `SERVICE_API_KEY` for customer-api
-- [OK] `.github/workflows/deploy-otp-auth.yml` - Sets `SERVICE_API_KEY` for OTP auth service
+- ✓ `.github/workflows/deploy-customer-api.yml` - Sets `SERVICE_API_KEY` for customer-api
+- ✓ `.github/workflows/deploy-otp-auth.yml` - Sets `SERVICE_API_KEY` for OTP auth service
 
 **No code changes needed** - the workflows will automatically use the GitHub secret if it exists.
 
 ---
 
-## [EMOJI] Verification
+## ★ Verification
 
 ### Check Current Secrets
 
@@ -71,17 +71,17 @@ curl -X GET https://customer.idling.app/customer/by-email/test@example.com \
 
 ---
 
-## [EMOJI] Summary
+## ★ Summary
 
-- [OK] **Manual Setup:** Already done via `wrangler secret put`
-- [WARNING] **GitHub Secrets:** Optional - only needed if you want automated deployment to set it
-- [OK] **Workflows:** Already configured to use GitHub secret if it exists
+- ✓ **Manual Setup:** Already done via `wrangler secret put`
+- ⚠ **GitHub Secrets:** Optional - only needed if you want automated deployment to set it
+- ✓ **Workflows:** Already configured to use GitHub secret if it exists
 
 **Current State:** You're all set! The manual setup is sufficient. GitHub secrets are only needed if you want the workflow to automatically manage it.
 
 ---
 
-**Status:** [OK] **CONFIGURED**
+**Status:** ✓ **CONFIGURED**
 
 ---
 

@@ -6,7 +6,7 @@ Welcome to the Strixun Stream Suite! This document explains what the product doe
 
 ---
 
-## [EMOJI] What Is Strixun Stream Suite?
+## ★ What Is Strixun Stream Suite?
 
 **Strixun Stream Suite (SSS)** is a professional streaming toolkit that helps content creators automate and enhance their live streams on platforms like Twitch, YouTube, and more. Think of it as a "smart assistant" for streamers that handles repetitive tasks, creates smooth animations, and keeps everything organized—all while you focus on entertaining your audience.
 
@@ -37,7 +37,7 @@ flowchart TB
         E[Set Up Clips Player]
     end
     
-    subgraph Live["[EMOJI] During Stream"]
+    subgraph Live[" ★ During Stream"]
         F[Switch Between Layouts]
         G[Play Clips on Command]
         H[Animate Sources Smoothly]
@@ -62,7 +62,7 @@ flowchart TB
 
 ---
 
-## [EMOJI] Key Features Explained
+## ★ Key Features Explained
 
 ### 1. Source Animations 
 
@@ -101,7 +101,7 @@ Switch between them instantly during your stream!
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Layout1: Stream Starts
+    ★ --> Layout1: Stream Starts
     Layout1 --> Layout2: Click "Gaming + Chat"
     Layout2 --> Layout3: Click "Just Chatting"
     Layout3 --> Layout1: Click "Full Game"
@@ -113,17 +113,13 @@ stateDiagram-v2
     end note
 ```
 
-### 3. Source Swapping [EMOJI]
-
-**What it does:** Instantly swaps the position and size of two sources with smooth animation.
+### 3. Source Swapping ★ **What it does:** Instantly swaps the position and size of two sources with smooth animation.
 
 **Why it matters:** Perfect for switching between two cameras, swapping game feeds, or reorganizing your scene without manual dragging.
 
 **Example use case:** You have two cameras—one for close-up, one for wide shot. With one hotkey, they swap positions smoothly.
 
-### 4. Text Cycler [EMOJI]
-
-**What it does:** Cycles through different text messages with animated transitions.
+### 4. Text Cycler ★ **What it does:** Cycles through different text messages with animated transitions.
 
 **Why it matters:** Great for rotating announcements, social media handles, or dynamic messages without manually changing text.
 
@@ -151,7 +147,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-    subgraph Device1["[EMOJI] Streaming PC"]
+    subgraph Device1[" ★ Streaming PC"]
         A[Your Configurations]
     end
     
@@ -159,7 +155,7 @@ flowchart LR
         B[(Backup Storage)]
     end
     
-    subgraph Device2["[EMOJI] Laptop"]
+    subgraph Device2[" ★ Laptop"]
         C[Same Configurations]
     end
     
@@ -240,7 +236,7 @@ flowchart TB
 
 ---
 
-## [EMOJI] Use Cases
+## ★ Use Cases
 
 ### The Gaming Streamer
 - **Layout Presets:** Quick switch between "Full Game" and "Game + Chat" layouts
@@ -264,7 +260,7 @@ flowchart TB
 
 ---
 
-## [EMOJI] Security & Privacy
+## ★ Security & Privacy
 
 **Your data is yours:**
 - All configurations are stored locally on your computer
@@ -279,7 +275,7 @@ flowchart TB
 
 ---
 
-## [EMOJI] Success Metrics
+## ✓ Metrics
 
 How do you know Strixun Stream Suite is working for you?
 
@@ -291,7 +287,7 @@ How do you know Strixun Stream Suite is working for you?
 
 ---
 
-## [EMOJI] Getting Started
+## ★ Getting Started
 
 1. **Download** the suite from GitHub
 2. **Install** the scripts in OBS Studio

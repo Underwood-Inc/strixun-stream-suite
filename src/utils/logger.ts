@@ -43,7 +43,7 @@ export async function log(message: string, type: LogType = 'info', flair?: strin
  */
 export function logInfo(message: string, flair?: string, icon?: string): void {
   log(message, 'info', flair, icon).catch(() => {
-    console.log(`[INFO] ${message}`);
+    console.log(`ℹ ${message}`);
   });
 }
 
@@ -52,7 +52,7 @@ export function logInfo(message: string, flair?: string, icon?: string): void {
  */
 export function logSuccess(message: string, flair?: string, icon?: string): void {
   log(message, 'success', flair, icon).catch(() => {
-    console.log(`[OK] ${message}`);
+    console.log(`✓ ${message}`);
   });
 }
 
@@ -61,7 +61,7 @@ export function logSuccess(message: string, flair?: string, icon?: string): void
  */
 export function logError(message: string, flair?: string, icon?: string): void {
   log(message, 'error', flair, icon).catch(() => {
-    console.error(`[ERROR] ${message}`);
+    console.error(`✗ ${message}`);
   });
 }
 
@@ -70,7 +70,7 @@ export function logError(message: string, flair?: string, icon?: string): void {
  */
 export function logWarning(message: string, flair?: string, icon?: string): void {
   log(message, 'warning', flair, icon).catch(() => {
-    console.warn(`[WARNING] ${message}`);
+    console.warn(`⚠ ${message}`);
   });
 }
 

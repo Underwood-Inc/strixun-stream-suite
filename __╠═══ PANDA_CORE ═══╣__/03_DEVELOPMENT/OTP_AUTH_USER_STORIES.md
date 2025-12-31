@@ -1,4 +1,4 @@
-# [EMOJI] OTP Auth Service - User Stories & Work Items
+# ★ OTP Auth Service - User Stories & Work Items
 
 > **Detailed user stories for productizing the OTP authentication service** ‍
 
@@ -145,7 +145,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 2: Customer Configuration & Management
+## ★ Epic 2: Customer Configuration & Management
 
 ### Story 2.1: Implement Customer Configuration Storage
 **As a** customer  
@@ -283,7 +283,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 3: White-Label Email Templates
+## ★ Epic 3: White-Label Email Templates
 
 ### Story 3.1: Implement Custom Email Templates
 **As a** customer  
@@ -592,7 +592,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 5: Webhooks & Events
+## ★ Epic 5: Webhooks & Events
 
 ### Story 5.1: Implement Webhook System
 **As a** customer  
@@ -739,7 +739,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 6: Analytics & Monitoring
+## ★ Epic 6: Analytics & Monitoring
 
 ### Story 6.1: Add Real-Time Metrics Endpoint
 **As a** customer  
@@ -853,7 +853,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 7: Self-Service Onboarding
+## ★ Epic 7: Self-Service Onboarding
 
 ### Story 7.1: Create Public Signup Flow
 **As a** new customer  
@@ -1002,7 +1002,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 8: Documentation & SDKs
+## ★ Epic 8: Documentation & SDKs
 
 ### Story 8.1: Write Comprehensive API Documentation
 **As a** developer  
@@ -1167,7 +1167,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Epic 9: Security & Compliance
+## ★ Epic 9: Security & Compliance
 
 ### Story 9.1: Implement API Key Rotation
 **As a** customer  
@@ -1392,7 +1392,7 @@ This document contains all user stories organized by epic/phase for implementing
 
 ---
 
-## [EMOJI] Summary
+## ★ Summary
 
 ### Total Stories: 60+
 ### Estimated Total Effort: ~120 days (6 months with 1 developer)

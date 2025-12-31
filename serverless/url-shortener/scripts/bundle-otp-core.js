@@ -68,9 +68,9 @@ export const BUNDLED_OTP_CORE_SCRIPT = ${JSON.stringify(wrapped)};
 `;
 
   writeFileSync(outputTsFile, tsContent);
-  console.log(`[OK] Bundled OtpLoginCore to ${outputFile}`);
-  console.log(`[OK] Created TypeScript export at ${outputTsFile}`);
+  console.log(`✓ Bundled OtpLoginCore to ${outputFile}`);
+  console.log(`✓ Created TypeScript export at ${outputTsFile}`);
 } catch (error) {
-  console.error('[ERROR] Failed to bundle OtpLoginCore:', error);
+  console.error('✗ Failed to bundle OtpLoginCore:', error);
   process.exit(1);
 }

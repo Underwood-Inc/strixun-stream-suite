@@ -322,11 +322,11 @@ const cardStyle = {
 Always prefer CSS variables for runtime theming:
 
 ```css
-/* [OK] Good */
+/* ✓ Good */
 color: var(--text);
 background: var(--card);
 
-/* [ERROR] Bad */
+/* ✗ Bad */
 color: #f9f9f9;
 background: #252017;
 ```

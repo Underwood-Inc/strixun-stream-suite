@@ -1,8 +1,6 @@
 # OTP Auth Service - Complete API Documentation
 
-> **Complete API reference for the OTP Authentication Service** [EMOJI]
-
-## Base URL
+> **Complete API reference for the OTP Authentication Service** ★ ## Base URL
 
 ```
 https://your-worker.workers.dev
@@ -904,5 +902,5 @@ const user = await client.getMe(auth.token);
 
 ---
 
-**Complete API documentation for OTP Auth Service** [EMOJI][FEATURE]
+**Complete API documentation for OTP Auth Service** ★ [FEATURE]
 

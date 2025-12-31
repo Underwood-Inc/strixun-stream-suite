@@ -82,7 +82,7 @@ wrangler secret put RESEND_API_KEY
 ## Other Workers
 
 All other workers follow the same pattern:
-- `wrangler deploy` (no `--env`) [EMOJI] Uses root/default configuration
+- `wrangler deploy` (no `--env`) ★ Uses root/default configuration
 - Default KV/R2 bindings ensure they work with dashboard-configured routes
 - Secrets should be set with `--env=""` to explicitly target base environment
 

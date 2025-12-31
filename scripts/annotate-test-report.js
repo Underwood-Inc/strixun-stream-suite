@@ -13,14 +13,14 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
  */
 function readTestReport(reportPath = 'TEST_REPORT.md') {
   if (!existsSync(reportPath)) {
-    console.error(`[ERROR] Test report not found: ${reportPath}`);
+    console.error(`✗ Test report not found: ${reportPath}`);
     process.exit(1);
   }
 
   try {
     return readFileSync(reportPath, 'utf-8');
   } catch (error) {
-    console.error(`[ERROR] Failed to read test report: ${error.message}`);
+    console.error(`✗ Failed to read test report: ${error.message}`);
     process.exit(1);
   }
 }
@@ -115,7 +115,7 @@ function outputToStepSummary(reportContent) {
     try {
       writeFileSync(summaryPath, reportContent + '\n', { flag: 'a' });
     } catch (error) {
-      console.error(`[ERROR] Failed to write to step summary: ${error.message}`);
+      console.error(`✗ Failed to write to step summary: ${error.message}`);
       // Fallback: output to console
       console.log('\n' + reportContent);
     }
@@ -176,7 +176,7 @@ function main() {
 try {
   main();
 } catch (error) {
-  console.error('[ERROR] Failed to annotate test report:', error.message);
+  console.error('✗ Failed to annotate test report:', error.message);
   process.exit(1);
 }
 

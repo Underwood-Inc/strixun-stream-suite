@@ -1,17 +1,17 @@
-# [EMOJI] Chat Client Setup Guide
+# ★ Chat Client Setup Guide
 
 **Ahoy there!** ‍ Here's how to set up and use yer new P2P chat client!
 
-## [EMOJI] Prerequisites
+## ★ Prerequisites
 
-1. [OK] Cloudflare OAuth system set up and working
-2. [OK] JWT tokens configured
-3. [OK] Cloudflare Workers account
-4. [OK] KV namespace access
+1. ✓ Cloudflare OAuth system set up and working
+2. ✓ JWT tokens configured
+3. ✓ Cloudflare Workers account
+4. ✓ KV namespace access
 
 ---
 
-## [EMOJI] Step 1: Deploy Signaling Server
+## ★ Step 1: Deploy Signaling Server
 
 ### 1.1 Create KV Namespace
 
@@ -51,7 +51,7 @@ preview_id = "your-namespace-id-here"
 
 If you see `JWT_SECRET` in the list, you need to **retrieve and reuse** the same value:
 
-**[WARNING] Problem**: Wrangler doesn't let you view existing secret values (for security). You have two options:
+**⚠ Problem**: Wrangler doesn't let you view existing secret values (for security). You have two options:
 
 1. **If you remember the value**: Just set it again (same value) for the chat signaling worker:
    ```bash
@@ -143,7 +143,7 @@ You should see: `{"status":"ok","service":"chat-signaling",...}`
 
 ---
 
-## [EMOJI] Step 2: Configure Chat Client
+## ★ Step 2: Configure Chat Client
 
 ### 2.1 Set Signaling Server URL
 
@@ -178,7 +178,7 @@ Or set globally:
 
 ---
 
-## [EMOJI] Step 3: Usage Examples
+## ★ Step 3: Usage Examples
 
 ### Basic Usage
 
@@ -231,7 +231,7 @@ Or set globally:
 
 ---
 
-## [EMOJI] Step 4: Authentication
+## ★ Step 4: Authentication
 
 The chat client automatically uses your existing OAuth system:
 
@@ -240,11 +240,11 @@ The chat client automatically uses your existing OAuth system:
 3. Chat client reads token from `getAuthToken()`
 4. Token sent with all signaling requests
 
-**No additional auth setup needed!** [OK]
+**No additional auth setup needed!** ✓
 
 ---
 
-## [EMOJI] Step 5: Customization
+## ★ Step 5: Customization
 
 ### Styling
 
@@ -278,7 +278,7 @@ if (path === '/emoji/upload' && request.method === 'POST') {
 
 ---
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### "Not authenticated" Error
 
@@ -311,7 +311,7 @@ if (path === '/emoji/upload' && request.method === 'POST') {
 
 ---
 
-## [EMOJI] Monitoring
+## ★ Monitoring
 
 ### Signaling Server Health
 
@@ -328,19 +328,19 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ---
 
-## [EMOJI] Next Steps
+## ★ Next Steps
 
-1. [OK] Deploy signaling server
-2. [OK] Configure chat client
-3. [OK] Test room creation/joining
-4. [OK] Test message sending
-5. [OK] Test emote integration
-6. [OK] Add custom emoji support (optional)
-7. [OK] Customize styling (optional)
+1. ✓ Deploy signaling server
+2. ✓ Configure chat client
+3. ✓ Test room creation/joining
+4. ✓ Test message sending
+5. ✓ Test emote integration
+6. ✓ Add custom emoji support (optional)
+7. ✓ Customize styling (optional)
 
 ---
 
-## [EMOJI] Tips
+## ★ Tips
 
 - **Development**: Use `wrangler dev` for local testing
 - **Production**: Set `ENVIRONMENT=production` in worker vars

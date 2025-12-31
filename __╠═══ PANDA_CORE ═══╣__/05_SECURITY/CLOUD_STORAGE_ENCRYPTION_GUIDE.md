@@ -12,12 +12,12 @@
 
 Instead of building a traditional user/password database system, we implemented a **zero-knowledge passphrase-based encryption system** that:
 
-[SUCCESS] **No User Database** - No accounts, no emails, no personal data stored  
-[SUCCESS] **Client-Side Encryption** - Data encrypted BEFORE leaving your device  
-[SUCCESS] **Cross-Device Access** - Same passphrase = access from any device  
-[SUCCESS] **Zero-Knowledge** - Server never sees your passphrase or unencrypted data  
-[SUCCESS] **Privacy-First** - No tracking, no analytics, completely anonymous  
-[SUCCESS] **Simple UX** - Just one passphrase to remember  
+✓ **No User Database** - No accounts, no emails, no personal data stored  
+✓ **Client-Side Encryption** - Data encrypted BEFORE leaving your device  
+✓ **Cross-Device Access** - Same passphrase = access from any device  
+✓ **Zero-Knowledge** - Server never sees your passphrase or unencrypted data  
+✓ **Privacy-First** - No tracking, no analytics, completely anonymous  
+✓ **Simple UX** - Just one passphrase to remember  
 
 ## How It Works
 
@@ -91,7 +91,7 @@ flowchart TB
 │   ->                                                              │
 │ Fetch encrypted blob from same storage key                      │
 │   ->                                                              │
-│ Decrypt with derived key -> Original configs restored! [SUCCESS] │
+│ Decrypt with derived key -> Original configs restored! ✓ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -119,7 +119,7 @@ await CloudStorage.saveToCloud('default', {}, 'MyAwesomeStream2025!');
 
 // Device B: Load with SAME passphrase
 const save = await CloudStorage.loadFromCloud('default', 'MyAwesomeStream2025!');
-// [SUCCESS] Automatic decryption, configs restored!
+// ✓ Automatic decryption, configs restored!
 ```
 
 ### 3. Passphrase Strength Checking
@@ -181,10 +181,10 @@ const suggested = CloudEncryption.generateStrongPassphrase();
 ```
 
 **The server CANNOT:**
-- [ERROR] Decrypt your data
-- [ERROR] See your passphrase
-- [ERROR] See your encryption key
-- [ERROR] Read your configs
+- ✗ Decrypt your data
+- ✗ See your passphrase
+- ✗ See your encryption key
+- ✗ Read your configs
 
 ## Usage Examples
 
@@ -238,7 +238,7 @@ try {
   CloudStorage.applyCloudSave(save);
 } catch (error) {
   if (error.message.includes('Decryption failed')) {
-    alert('[ERROR] Incorrect passphrase. Please try again.');
+    alert('✗ Incorrect passphrase. Please try again.');
   }
 }
 ```
@@ -262,11 +262,11 @@ try {
 5. Access from any device with same passphrase
 
 **Example Strong Passphrases:**
-- [SUCCESS] `StreamSetup2025!@#`
-- [SUCCESS] `TwitchPro$treaM99`
-- [SUCCESS] `MyAwesomeChannel*2025`
-- [ERROR] `password123` (too weak)
-- [ERROR] `stream` (too short)
+- ✓ `StreamSetup2025!@#`
+- ✓ `TwitchPro$treaM99`
+- ✓ `MyAwesomeChannel*2025`
+- ✗ `password123` (too weak)
+- ✗ `stream` (too short)
 
 ## Migration Guide
 
@@ -283,7 +283,7 @@ await CloudStorage.saveToCloud('default', {migrated: true}, newPassphrase);
 // Step 3: Mark as using passphrase
 CloudEncryption.setPassphraseState(true);
 
-console.log('[SUCCESS] Migrated to encrypted storage!');
+console.log('✓ Migrated to encrypted storage!');
 ```
 
 ### Backward Compatibility
@@ -293,23 +293,23 @@ The system supports **both encrypted and unencrypted** saves:
 ```javascript
 // Old saves (no encryption) still work
 const oldSave = await CloudStorage.loadFromCloud('old_slot');
-// [SUCCESS] Works fine, no passphrase needed
+// ✓ Works fine, no passphrase needed
 
 // New saves (encrypted) require passphrase
 const newSave = await CloudStorage.loadFromCloud('new_slot', passphrase);
-// [SUCCESS] Decrypts automatically
+// ✓ Decrypts automatically
 ```
 
 ## Advanced: Passphrase Best Practices
 
-### DO [SUCCESS]
+### DO ✓
 - Use 12+ characters
 - Mix uppercase, lowercase, numbers, symbols
 - Use a unique passphrase (not used elsewhere)
 - Write it down in a safe place
 - Consider using a password manager
 
-### DON'T [ERROR]
+### DON'T ✗
 - Use common words or phrases
 - Use personal information (name, birthday)
 - Share your passphrase
@@ -331,11 +331,11 @@ Uses modern browser cryptography (no external dependencies):
 - `crypto.getRandomValues()` - Cryptographically secure random
 
 ### Browser Support
-- [SUCCESS] Chrome 37+
-- [SUCCESS] Firefox 34+
-- [SUCCESS] Safari 11+
-- [SUCCESS] Edge 79+
-- [SUCCESS] OBS Browser Source (Chromium-based)
+- ✓ Chrome 37+
+- ✓ Firefox 34+
+- ✓ Safari 11+
+- ✓ Edge 79+
+- ✓ OBS Browser Source (Chromium-based)
 
 ## Future Enhancements (Optional)
 
@@ -349,12 +349,12 @@ Uses modern browser cryptography (no external dependencies):
 
 **Your question was spot-on!** Device-based auth wasn't enough for true cross-device access. Now you have:
 
-[SUCCESS] **Encrypted cloud storage** with AES-256  
-[SUCCESS] **Zero-knowledge architecture** (server can't decrypt)  
-[SUCCESS] **Cross-device access** with passphrases  
-[SUCCESS] **Backward compatible** with old unencrypted saves  
-[SUCCESS] **No user database** needed (privacy-first)  
-[SUCCESS] **Production-grade security** (PBKDF2, 100K iterations)  
+✓ **Encrypted cloud storage** with AES-256  
+✓ **Zero-knowledge architecture** (server can't decrypt)  
+✓ **Cross-device access** with passphrases  
+✓ **Backward compatible** with old unencrypted saves  
+✓ **No user database** needed (privacy-first)  
+✓ **Production-grade security** (PBKDF2, 100K iterations)  
 
 **Result:** Professional-grade encrypted cloud storage without the complexity of traditional authentication systems!
 

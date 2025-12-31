@@ -4,7 +4,7 @@
 
 ---
 
-## [EMOJI] Overview
+## ★ Overview
 
 This document describes the architecture for an agnostic idle game overlay component that can be dropped into both applications. The system includes:
 
@@ -117,7 +117,7 @@ interface LootTable {
 
 ---
 
-## [EMOJI] Daily Loot Box System
+## ★ Daily Loot Box System
 
 ### Retention Mechanics
 
@@ -246,7 +246,7 @@ Time-limited events with unique rewards:
 
 ---
 
-## [EMOJI] OTP Integration
+## ★ OTP Integration
 
 ### Save State Management
 
@@ -295,7 +295,7 @@ Leverages existing marketplace system from `idling.app__UI`:
 
 ---
 
-## [EMOJI] Inventory System
+## ★ Inventory System
 
 ### Inventory Management
 
@@ -313,7 +313,7 @@ Leverages existing marketplace system from `idling.app__UI`:
 
 ---
 
-## [EMOJI] UI Components
+## ★ UI Components
 
 ### Main Overlay
 
@@ -336,7 +336,7 @@ Leverages existing marketplace system from `idling.app__UI`:
 
 ---
 
-## [EMOJI] Integration Points
+## ★ Integration Points
 
 ### With Existing Systems
 
@@ -358,7 +358,7 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## [EMOJI] Performance Considerations
+## ★ Performance Considerations
 
 ### Optimization
 
@@ -375,7 +375,7 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## [EMOJI] Testing Strategy
+## ★ Testing Strategy
 
 ### Unit Tests
 
@@ -397,9 +397,9 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## [EMOJI] Implementation Phases
+## ★ Implementation Phases
 
-### Phase 1: Core Systems [OK]
+### Phase 1: Core Systems ✓
 - [x] Loot generation system
 - [x] Daily loot boxes
 - [x] Idle mechanics
@@ -424,7 +424,7 @@ GET  /game/idle/progress       # Get idle progress
 
 ---
 
-## [EMOJI] Future Enhancements
+## ★ Future Enhancements
 
 - **Guild System** - Player groups and cooperation
 - **PvP** - Player vs. player combat

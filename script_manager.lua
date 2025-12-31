@@ -164,7 +164,7 @@ function script_properties()
     obs.obs_properties_add_text(props, "header_status", 
         "═══════════ SCRIPT STATUS ═══════════", obs.OBS_TEXT_INFO)
     
-    obs.obs_properties_add_button(props, "check_status_btn", "[EMOJI] Check All Scripts Status",
+    obs.obs_properties_add_button(props, "check_status_btn", "→ Check All Scripts Status",
         function(properties, property)
             log_info("=== Animation Scripts Status ===")
             
@@ -189,7 +189,7 @@ function script_properties()
     
     -- Source Animations Info
     obs.obs_properties_add_text(props, "info_source_anim", 
-        "[EMOJI] SOURCE ANIMATIONS (source_animations.lua)", obs.OBS_TEXT_INFO)
+        " ★ SOURCE ANIMATIONS (source_animations.lua)", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "info_source_anim_desc", 
         "   Adds fade/slide/zoom/pop animations when sources become visible or hidden.", 
         obs.OBS_TEXT_INFO)
@@ -205,7 +205,7 @@ function script_properties()
     
     -- Source Swap Info
     obs.obs_properties_add_text(props, "info_source_swap", 
-        "[EMOJI] SOURCE SWAP (source_swap.lua)", obs.OBS_TEXT_INFO)
+        " ★ SOURCE SWAP (source_swap.lua)", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "info_source_swap_desc", 
         "   Smoothly swap position/size of two sources. Great for PiP layouts!", 
         obs.OBS_TEXT_INFO)
@@ -221,7 +221,7 @@ function script_properties()
     
     -- Text Cycler Info
     obs.obs_properties_add_text(props, "info_text_cycler", 
-        "[EMOJI] TEXT CYCLER (text_cycler.lua)", obs.OBS_TEXT_INFO)
+        " ★ TEXT CYCLER (text_cycler.lua)", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "info_text_cycler_desc", 
         "   Cycle text with transitions: obfuscate, typewriter, glitch, wave.", 
         obs.OBS_TEXT_INFO)
@@ -237,7 +237,7 @@ function script_properties()
     
     -- Source Layouts Info
     obs.obs_properties_add_text(props, "info_source_layouts", 
-        "[EMOJI] SOURCE LAYOUTS (source_layouts.lua)", obs.OBS_TEXT_INFO)
+        " ★ SOURCE LAYOUTS (source_layouts.lua)", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "info_source_layouts_desc", 
         "   Save and apply layout presets - animate all sources to saved positions.", 
         obs.OBS_TEXT_INFO)
@@ -258,32 +258,32 @@ function script_properties()
     obs.obs_properties_add_text(props, "header_trouble", 
         "═══════════ TROUBLESHOOTING ═══════════", obs.OBS_TEXT_INFO)
     
-    obs.obs_properties_add_button(props, "open_log_btn", "[EMOJI] Show Common Issues",
+    obs.obs_properties_add_button(props, "open_log_btn", "⚠ Show Common Issues",
         function(properties, property)
             log_info("=== Common Issues & Solutions ===")
             log_info("")
-            log_info("[ERROR] Animation not playing on visibility toggle:")
+            log_info("✗ Animation not playing on visibility toggle:")
             log_info("    First toggle CACHES the state, second toggle animates")
             log_info("    Check 'Animate on SHOW/HIDE' is enabled")
             log_info("    Try clicking 'Refresh Source Lists'")
             log_info("")
-            log_info("[ERROR] Hide animation not working:")
+            log_info("✗ Hide animation not working:")
             log_info("    Update to v2.1+ of source_animations.lua")
             log_info("    Check 'Animate on HIDE' is enabled")
             log_info("")
-            log_info("[ERROR] Swap not working:")
+            log_info("✗ Swap not working:")
             log_info("    Both sources must be in CURRENT scene")
             log_info("    Click 'List Sources in Current Scene' to verify")
             log_info("    Source names are CASE-SENSITIVE")
             log_info("")
-            log_info("[ERROR] Script errors:")
+            log_info("✗ Script errors:")
             log_info("    View  Script Log for details")
             log_info("    Remove and re-add the script")
             log_info("=================================")
             return false
         end)
     
-    obs.obs_properties_add_button(props, "show_path_btn", "[EMOJI] Show Script Folder Path",
+    obs.obs_properties_add_button(props, "show_path_btn", "≡ Show Script Folder Path",
         function(properties, property)
             log_info("Script folder: " .. SCRIPT_PATH)
             return false

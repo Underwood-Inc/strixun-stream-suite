@@ -87,10 +87,10 @@ wrangler secret list
 
 ## Security Notes
 
-- [SUCCESS] **Never commit the key to version control**
-- [SUCCESS] **Use the same key across all services** (recommended)
-- [SUCCESS] **Store the key securely** (password manager, etc.)
-- [SUCCESS] **Rotate periodically** (requires updating all services)
+- ✓ **Never commit the key to version control**
+- ✓ **Use the same key across all services** (recommended)
+- ✓ **Store the key securely** (password manager, etc.)
+- ✓ **Rotate periodically** (requires updating all services)
 
 ## Troubleshooting
 

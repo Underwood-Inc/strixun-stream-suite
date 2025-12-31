@@ -29,14 +29,14 @@ The following logs were found to expose partial encryption key or API key materi
 
 **Before (COMPROMISED):**
 ```yaml
-echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
+echo "✓ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
 echo "[DEBUG] First 8 chars: ${OTP_KEY:0:8}..."
 echo "[DEBUG] Last 8 chars: ...${OTP_KEY: -8}"
 ```
 
 **After (SECURE):**
 ```yaml
-echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
+echo "✓ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
 ```
 
 **Risk Level:** HIGH  

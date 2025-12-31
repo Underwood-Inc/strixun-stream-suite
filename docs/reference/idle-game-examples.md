@@ -96,7 +96,7 @@
 
 ---
 
-## [EMOJI] Character Customization Examples
+## ★ Character Customization Examples
 
 ### Pixel Editor Output
 ```
@@ -148,7 +148,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## [EMOJI] Daily Loot Box Examples
+## ★ Daily Loot Box Examples
 
 ### Day 1 (No Streak)
 ```
@@ -198,7 +198,7 @@ Custom Textures: [Advanced Tier Required]
 │  • 200 Experience (2x bonus)                │
 │  • 10x Rare Materials                       │
 │                                              │
-│  [EMOJI] LEGENDARY STREAK REWARD!                │
+│ ★ LEGENDARY STREAK REWARD!                │
 │  • Exclusive Title: "The Dedicated"         │
 │  • Unique Cosmetic: Legendary Glow          │
 │                                              │
@@ -240,7 +240,7 @@ Custom Textures: [Advanced Tier Required]
 ### Crafting Result
 ```
 ┌─────────────────────────────────────────────┐
-│  [OK] Crafting Complete!                      │
+│  ✓ Crafting Complete!                      │
 ├─────────────────────────────────────────────┤
 │  You crafted:                               │
 │                                              │
@@ -322,7 +322,7 @@ Custom Textures: [Advanced Tier Required]
 ### Dungeon Completion
 ```
 ┌─────────────────────────────────────────────┐
-│  [OK] DUNGEON COMPLETE!                       │
+│  ✓ DUNGEON COMPLETE!                       │
 │  The Shadow Depths - Master Difficulty     │
 ├─────────────────────────────────────────────┤
 │  Completion Time: 38:42                    │
@@ -397,7 +397,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## [EMOJI] Inventory Screen Example
+## ★ Inventory Screen Example
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -407,7 +407,7 @@ Custom Textures: [Advanced Tier Required]
 │  Search: [________________]                │
 ├─────────────────────────────────────────────┤
 │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐       │
-│  │  │ │  │ │ [EMOJI] │ │ [EMOJI] │ │ [WHITE] │       │
+│  │  │ │  │ │ ★ │ │ ★ │ │ [WHITE] │       │
 │  │Epic│ │Epic│ │Rare│ │Rare│ │Comm│       │
 │  └────┘ └────┘ └────┘ └────┘ └────┘       │
 │                                              │
@@ -435,7 +435,7 @@ Custom Textures: [Advanced Tier Required]
 
 ---
 
-## [EMOJI] Summary
+## ★ Summary
 
 These examples show:
 - **Complex item generation** with multiple modifiers

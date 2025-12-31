@@ -2,7 +2,7 @@
 
 This guide covers setting up Cloudflare Pages to serve the Mods Hub React frontend at your custom subdomain.
 
-## [EMOJI] Prerequisites
+## ★ Prerequisites
 
 1. **Cloudflare Account** with `idling.app` domain added
 2. **GitHub Secrets** configured:
@@ -11,7 +11,7 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
    - `VITE_MODS_API_URL` (optional) - Defaults to `https://mods-api.idling.app`
    - `VITE_AUTH_API_URL` (optional) - Defaults to `https://auth.idling.app`
 
-## [EMOJI] Setup Steps
+## ★ Setup Steps
 
 ### Step 1: Create Cloudflare API Token
 
@@ -57,7 +57,7 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
 2. Verify there's a CNAME record for your custom subdomain:
    - **Name:** `mods`
    - **Target:** `mods-hub.pages.dev` (or similar Cloudflare Pages hostname)
-   - **Proxy status:** Proxied (orange cloud) [OK]
+   - **Proxy status:** Proxied (orange cloud) ✓
 
 **Note:** Cloudflare automatically manages this DNS record when you configure the custom domain in Pages.
 
@@ -67,7 +67,7 @@ This guide covers setting up Cloudflare Pages to serve the Mods Hub React fronte
 2. Ensure **SSL/TLS encryption mode** is set to **Full** or **Full (strict)**
 3. Cloudflare Pages automatically provisions SSL certificates - no manual action needed
 
-## [EMOJI] Automatic Deployments
+## ★ Automatic Deployments
 
 After initial setup, the GitHub Actions workflow will automatically:
 
@@ -77,7 +77,7 @@ After initial setup, the GitHub Actions workflow will automatically:
 
 **No manual steps required** after initial configuration.
 
-## [EMOJI] Testing the Setup
+## ★ Testing the Setup
 
 After first deployment:
 
@@ -85,7 +85,7 @@ After first deployment:
 2. Visit your custom domain: `https://mods.idling.app`
 3. You should see the Mods Hub interface
 
-## [EMOJI] Environment Variables
+## ★ Environment Variables
 
 The Mods Hub uses the following environment variables (set at build time):
 
@@ -115,7 +115,7 @@ The `mods.idling.app` domain uses path-based routing:
 
 The Worker routes are configured in `serverless/mods-api/wrangler.toml` to only catch API paths, allowing Pages to serve the React frontend for all other routes.
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### Domain Not Resolving
 
@@ -149,7 +149,7 @@ The Worker routes are configured in `serverless/mods-api/wrangler.toml` to only 
 2. Check browser console for CORS errors
 3. Verify backend APIs are accessible and CORS is configured
 
-## [EMOJI] Manual Deployment (Testing)
+## ★ Manual Deployment (Testing)
 
 If you need to test deployment manually:
 
@@ -160,19 +160,19 @@ VITE_MODS_API_URL=https://mods-api.idling.app VITE_AUTH_API_URL=https://auth.idl
 pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
 ```
 
-## [EMOJI] Summary
+## ★ Summary
 
 **What Cloudflare Does Automatically:**
-- [OK] Creates DNS CNAME record
-- [OK] Provisions SSL certificate
-- [OK] Routes traffic from your custom domain to Pages
-- [OK] Handles CDN caching and optimization
-- [OK] Handles SPA routing for React Router
+- ✓ Creates DNS CNAME record
+- ✓ Provisions SSL certificate
+- ✓ Routes traffic from your custom domain to Pages
+- ✓ Handles CDN caching and optimization
+- ✓ Handles SPA routing for React Router
 
 **What You Need to Do:**
-- [OK] Create Cloudflare API token
-- [OK] Add secrets to GitHub
-- [OK] Configure custom domain in Pages dashboard (first time only)
-- [OK] Push code to trigger deployment
+- ✓ Create Cloudflare API token
+- ✓ Add secrets to GitHub
+- ✓ Configure custom domain in Pages dashboard (first time only)
+- ✓ Push code to trigger deployment
 
 That's it! 

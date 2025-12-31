@@ -35,8 +35,8 @@ wrangler kv namespace create "MODS_KV"
 
 Example output:
 ```
-[INFO] Creating namespace with title "MODS_KV"
-[SUCCESS] Success!
+ℹ Creating namespace with title "MODS_KV"
+✓ Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "MODS_KV", id = "abc123def456..." }
 ```

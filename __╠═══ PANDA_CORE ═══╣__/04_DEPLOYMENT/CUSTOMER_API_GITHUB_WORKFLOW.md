@@ -8,7 +8,7 @@ The Customer API has an automated GitHub Actions workflow that handles deploymen
 
 ---
 
-## [SUCCESS] What the Workflow Does
+## ✓ What the Workflow Does
 
 ### Automatic Steps
 
@@ -39,11 +39,11 @@ The workflow requires these secrets to be set in your GitHub repository:
 
 ### Required Secrets
 
-1. **`CF_API_TOKEN`** [SUCCESS] (Required)
+1. **`CF_API_TOKEN`** ✓ (Required)
    - Cloudflare API token with Workers edit permissions
    - Get from: Cloudflare Dashboard -> My Profile -> API Tokens
 
-2. **`CF_ACCOUNT_ID`** [SUCCESS] (Required)
+2. **`CF_ACCOUNT_ID`** ✓ (Required)
    - Your Cloudflare account ID
    - Get from: Cloudflare Dashboard -> Right sidebar -> Account ID
 
@@ -162,7 +162,7 @@ After deployment, verify:
 
 1. **Check workflow run:**
    - Go to GitHub -> Actions -> Latest "Deploy Customer API" run
-   - Should show [SUCCESS] green checkmarks for all steps
+   - Should show ✓ green checkmarks for all steps
 
 2. **Test health endpoint:**
    ```bash
@@ -232,13 +232,13 @@ This workflow follows the same pattern as:
 - `deploy-otp-auth.yml`
 
 **Key Differences:**
-- [SUCCESS] Automatically creates KV namespace (like storybook creates Pages project)
-- [SUCCESS] Extracts and displays KV namespace ID in summary
-- [SUCCESS] Handles customer-api specific dependencies
+- ✓ Automatically creates KV namespace (like storybook creates Pages project)
+- ✓ Extracts and displays KV namespace ID in summary
+- ✓ Handles customer-api specific dependencies
 
 ---
 
-**Status:** [SUCCESS] **WORKFLOW CREATED**
-**Auto-Deploys:** [SUCCESS] Yes (on push to main/master)
-**Auto-Creates:** [SUCCESS] KV namespace (if missing)
-**Auto-Sets Secrets:** [SUCCESS] Yes (if configured in GitHub)
+**Status:** ✓ **WORKFLOW CREATED**
+**Auto-Deploys:** ✓ Yes (on push to main/master)
+**Auto-Creates:** ✓ KV namespace (if missing)
+**Auto-Sets Secrets:** ✓ Yes (if configured in GitHub)

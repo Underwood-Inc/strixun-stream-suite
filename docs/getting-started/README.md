@@ -1,6 +1,4 @@
-# Getting Started [EMOJI]
-
-Welcome to Strixun Stream Suite! This section will help you get up and running quickly.
+# Getting Started ★ Welcome to Strixun Stream Suite! This section will help you get up and running quickly.
 
 ---
 

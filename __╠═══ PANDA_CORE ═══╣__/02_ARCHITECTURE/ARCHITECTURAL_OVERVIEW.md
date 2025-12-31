@@ -409,7 +409,7 @@ graph TB
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Created: API Request
+    ★ --> Created: API Request
     Created --> Batched: Add to Batch
     Batched --> Queued: Batch Ready
     Queued --> Cached: Check Cache
@@ -421,10 +421,10 @@ stateDiagram-v2
     Sent --> Received: HTTP Request
     Received --> Processed: Server Response
     Processed --> Cached: Store in Cache
-    Cached --> [*]: Return Response
+    Cached --> ★: Return Response
     
     CircuitChecked --> Failed: Circuit Closed
-    Failed --> [*]: Error Response
+    Failed --> ★: Error Response
 ```
 
 ---

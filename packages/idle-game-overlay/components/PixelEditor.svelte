@@ -190,8 +190,7 @@
         class="pixel-editor__tool pixel-editor__tool--danger"
         on:click={handleClear}
         title="Clear Canvas"
-      >
-        [EMOJI]️
+      > ★ ️
       </button>
       <button
         class="pixel-editor__tool pixel-editor__tool--primary"

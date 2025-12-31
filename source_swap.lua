@@ -614,7 +614,7 @@ function script_properties()
     
     -- Add config
     obs.obs_properties_add_text(props, "h2", "═══════════ ADD SWAP ═══════════", obs.OBS_TEXT_INFO)
-    obs.obs_properties_add_button(props, "refresh", "[EMOJI] Refresh Sources", function() return true end)
+    obs.obs_properties_add_button(props, "refresh", "→ Refresh Sources", function() return true end)
     obs.obs_properties_add_text(props, "new_name", "Config Name", obs.OBS_TEXT_DEFAULT)
     
     local la = obs.obs_properties_add_list(props, "new_a", "Source A", obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
@@ -651,7 +651,7 @@ function script_properties()
         for i, c in ipairs(swap_configs) do
             local label = string.format("%d. %s: %s  %s", i, c.name, c.source_a, c.source_b)
             obs.obs_properties_add_text(props, "cfg_" .. i, label, obs.OBS_TEXT_INFO)
-            obs.obs_properties_add_button(props, "swap_" .. i, "   [EMOJI] Swap Now", function()
+            obs.obs_properties_add_button(props, "swap_" .. i, "   → Swap Now", function()
                 execute_swap(c.source_a, c.source_b, c.name)
                 return false
             end)
@@ -698,7 +698,7 @@ function script_properties()
     for _, c in ipairs(swap_configs) do
         obs.obs_property_list_add_string(rc, c.name, c.name)
     end
-    obs.obs_properties_add_button(props, "rem_btn", "[ERROR] Remove", function()
+    obs.obs_properties_add_button(props, "rem_btn", "✗ Remove", function()
         if not settings_ref then return false end
         local n = obs.obs_data_get_string(settings_ref, "rem_cfg")
         if n ~= "" and remove_config(n) then
@@ -710,7 +710,7 @@ function script_properties()
     
     -- Info
     obs.obs_properties_add_text(props, "h6", "═══════════ INFO ═══════════", obs.OBS_TEXT_INFO)
-    obs.obs_properties_add_text(props, "tip", "[EMOJI] Hotkeys: Settings  Hotkeys  'Swap: [name]'", obs.OBS_TEXT_INFO)
+    obs.obs_properties_add_text(props, "tip", " ★ Hotkeys: Settings  Hotkeys  'Swap: [name]'", obs.OBS_TEXT_INFO)
     
     return props
 end

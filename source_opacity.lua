@@ -271,7 +271,7 @@ function script_properties()
         "═══════════ OPACITY CONTROL ═══════════", obs.OBS_TEXT_INFO)
     
     -- Refresh button
-    obs.obs_properties_add_button(props, "refresh_btn", "[EMOJI] Refresh Source List",
+    obs.obs_properties_add_button(props, "refresh_btn", "→ Refresh Source List",
         function(props, p)
             return true
         end)
@@ -290,7 +290,7 @@ function script_properties()
     obs.obs_properties_add_int_slider(props, "opacity_value", "Opacity (%)", 0, 100, 1)
     
     -- Apply button
-    obs.obs_properties_add_button(props, "apply_btn", "[OK] Apply Opacity",
+    obs.obs_properties_add_button(props, "apply_btn", "✓ Apply Opacity",
         function(props, p)
             if settings_ref == nil then return false end
             
@@ -327,7 +327,7 @@ function script_properties()
     end
     
     -- Reset button (removes filter, restores to 100%)
-    obs.obs_properties_add_button(props, "reset_btn", "[EMOJI]️ Reset to 100% (Remove Filter)",
+    obs.obs_properties_add_button(props, "reset_btn", " ★ ️ Reset to 100% (Remove Filter)",
         function(props, p)
             if settings_ref == nil then return false end
             
@@ -355,7 +355,7 @@ function script_properties()
     obs.obs_properties_add_text(props, "h3", 
         "═══════════ STATUS ═══════════", obs.OBS_TEXT_INFO)
     
-    obs.obs_properties_add_button(props, "list_btn", "[EMOJI] List Managed Sources",
+    obs.obs_properties_add_button(props, "list_btn", " ★ List Managed Sources",
         function(props, p)
             log_info("=== Managed Opacity Sources ===")
             local count = 0

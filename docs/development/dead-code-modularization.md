@@ -3,14 +3,14 @@
 ## Current State
 
 ### File Sizes
-- `serverless/worker.js`: **3277 lines** [ERROR] (should be ~300)
-- `serverless/url-shortener/worker.js`: **1628 lines** [ERROR] (should be ~300)
-- `serverless/chat-signaling/worker.js`: **915 lines** [ERROR] (should be ~300)
-- `serverless/otp-auth-service/worker.js`: **25 lines** [OK] (already modularized)
+- `serverless/worker.js`: **3277 lines** ✗ (should be ~300)
+- `serverless/url-shortener/worker.js`: **1628 lines** ✗ (should be ~300)
+- `serverless/chat-signaling/worker.js`: **915 lines** ✗ (should be ~300)
+- `serverless/otp-auth-service/worker.js`: **25 lines** ✓ (already modularized)
 
 ## Dead Code Identified
 
-### 1. Duplicate OTP Auth in Root Worker [ERROR]
+### 1. Duplicate OTP Auth in Root Worker ✗
 **Location**: `serverless/worker.js` lines ~1774-2534
 
 **Problem**: Root worker has its own OTP auth implementation that duplicates `otp-auth-service/`
@@ -41,18 +41,18 @@
 - `/auth/refresh` - line 3207
 - `/debug/clear-rate-limit` - line 3224
 
-### 2. Duplicate CORS Function [ERROR]
+### 2. Duplicate CORS Function ✗
 **Location**: Multiple files
 
 **Problem**: `getCorsHeaders()` is duplicated in:
 - `serverless/worker.js` - line 18
 - `serverless/url-shortener/worker.js` - line 16
 - `serverless/chat-signaling/worker.js` - line 16
-- `serverless/otp-auth-service/utils/cors.js` - [OK] (already extracted)
+- `serverless/otp-auth-service/utils/cors.js` - ✓ (already extracted)
 
 **Action**: Use shared `serverless/utils/cors.js` (already created)
 
-### 3. Duplicate JWT Functions [ERROR]
+### 3. Duplicate JWT Functions ✗
 **Location**: `serverless/url-shortener/worker.js` and `serverless/chat-signaling/worker.js`
 
 **Problem**: Both have their own `verifyJWT()` implementations
@@ -68,7 +68,7 @@
 
 **Extract to Modules**:
 
-1. **Twitch API**  `serverless/handlers/twitch.js` [OK] (created)
+1. **Twitch API**  `serverless/handlers/twitch.js` ✓ (created)
    - `handleClips()`
    - `handleFollowing()`
    - `handleGame()`
@@ -166,8 +166,8 @@
 
 ## Implementation Order
 
-1. [OK] Create shared CORS utility
-2. [OK] Extract Twitch handlers
+1. ✓ Create shared CORS utility
+2. ✓ Extract Twitch handlers
 3.  Remove duplicate OTP auth from root worker
 4.  Extract Cloud Storage handlers
 5.  Extract Notes handlers

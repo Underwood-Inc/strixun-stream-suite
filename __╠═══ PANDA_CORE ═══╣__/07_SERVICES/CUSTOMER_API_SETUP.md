@@ -29,7 +29,7 @@ wrangler kv namespace create "CUSTOMER_API_KV"
 **Output will look like:**
 ```
 Creating namespace with title "CUSTOMER_API_KV"
-[SUCCESS] Success!
+✓ Success!
 Add the following to your configuration file in your kv_namespaces array:
 { binding = "CUSTOMER_KV", id = "abc123def456..." }
 ```
@@ -94,8 +94,8 @@ wrangler deploy
 
 **Expected output:**
 ```
-[SUCCESS] Compiled Worker successfully
-[SUCCESS] Uploaded customer-api (X.XX sec)
+✓ Compiled Worker successfully
+✓ Uploaded customer-api (X.XX sec)
 Published strixun-customer-api (X.XX sec)
   https://strixun-customer-api.YOUR_SUBDOMAIN.workers.dev
 ```
@@ -217,9 +217,9 @@ After setup is complete:
 
 | Variable | Type | Required | Description |
 |----------|------|----------|-------------|
-| `JWT_SECRET` | Secret | [SUCCESS] Yes | JWT signing secret (must match OTP auth service) |
-| `ALLOWED_ORIGINS` | Secret | [INFO] No | Comma-separated CORS origins |
-| `ENVIRONMENT` | Var | [INFO] No | Environment name (default: "production") |
+| `JWT_SECRET` | Secret | ✓ Yes | JWT signing secret (must match OTP auth service) |
+| `ALLOWED_ORIGINS` | Secret | ℹ No | Comma-separated CORS origins |
+| `ENVIRONMENT` | Var | ℹ No | Environment name (default: "production") |
 
 ---
 
@@ -250,4 +250,4 @@ wrangler dev
 
 ---
 
-**Status:** [SUCCESS] Ready for setup
+**Status:** ✓ Ready for setup

@@ -33,10 +33,10 @@ function getEncryptionKey() {
       // Check if we're in CI/CD (GitHub Actions, etc.)
       const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
       const source = isCI ? 'CI/CD environment (GitHub Actions secret)' : 'environment variable';
-      console.log(`[OK] Found VITE_SERVICE_ENCRYPTION_KEY in ${source}`);
+      console.log(`✓ Found VITE_SERVICE_ENCRYPTION_KEY in ${source}`);
       return key;
     } else {
-      console.warn(`[WARNING]  VITE_SERVICE_ENCRYPTION_KEY found but too short (${key.length} chars, need 32+)`);
+      console.warn(`⚠  VITE_SERVICE_ENCRYPTION_KEY found but too short (${key.length} chars, need 32+)`);
     }
   }
 
@@ -49,18 +49,18 @@ function getEncryptionKey() {
       if (match && match[1]) {
         const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
         if (key.length >= 32) {
-          console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in dashboard/.env');
+          console.log('✓ Found VITE_SERVICE_ENCRYPTION_KEY in dashboard/.env');
           return key;
         }
       }
     } catch (error) {
-      console.warn('[WARNING]  Failed to read dashboard/.env:', error.message);
+      console.warn('⚠  Failed to read dashboard/.env:', error.message);
     }
   }
 
   // Priority 3: Cloudflare Worker secrets (via wrangler)
   try {
-    console.log('[EMOJI] Attempting to get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets...');
+    console.log(' ★ Attempting to get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets...');
     const result = execSync('wrangler secret get VITE_SERVICE_ENCRYPTION_KEY 2>&1', {
       cwd: rootDir,
       encoding: 'utf8',
@@ -68,17 +68,17 @@ function getEncryptionKey() {
     });
     const key = result.trim();
     if (key && key.length >= 32 && !key.includes('error') && !key.includes('not found') && !key.includes('No secret')) {
-      console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets');
+      console.log('✓ Found VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets');
       return key;
     }
   } catch (error) {
     // wrangler secret get might fail if not authenticated or secret doesn't exist
-    console.warn('[WARNING]  Could not get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets');
+    console.warn('⚠  Could not get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets');
   }
 
   // Key not found
   const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-  console.error('[ERROR] VITE_SERVICE_ENCRYPTION_KEY not found!');
+  console.error('✗ VITE_SERVICE_ENCRYPTION_KEY not found!');
   console.error('');
   if (isCI) {
     console.error('   For CI/CD (GitHub Actions):');
@@ -116,22 +116,22 @@ try {
     },
     stdio: 'inherit'
   });
-  console.log('[OK] Dashboard build complete');
+  console.log('✓ Dashboard build complete');
 } catch (error) {
-  console.error('[ERROR] Dashboard build failed');
+  console.error('✗ Dashboard build failed');
   process.exit(1);
 }
 
 // Process built files
-console.log('[EMOJI] Processing built files for embedding...');
+console.log(' ★ Processing built files for embedding...');
 try {
   execSync('node scripts/build-dashboard.js', {
     cwd: rootDir,
     stdio: 'inherit'
   });
-  console.log('[OK] Build complete!');
+  console.log('✓ Build complete!');
 } catch (error) {
-  console.error('[ERROR] Failed to process dashboard files');
+  console.error('✗ Failed to process dashboard files');
   process.exit(1);
 }
 

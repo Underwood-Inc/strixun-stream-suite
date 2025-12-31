@@ -4,14 +4,14 @@ A professional, composable, reusable component system for creating resizable zon
 
 ## Features
 
-- [OK] **Infinite Nesting** - Nest resizable zones within each other without limitation
-- [OK] **Bidirectional** - Supports both vertical and horizontal resizing
-- [OK] **Configurable** - Min/max sizes, default sizes, storage persistence
-- [OK] **Touch Support** - Works on mobile devices
-- [OK] **Smooth Animations** - RequestAnimationFrame for 60fps performance
-- [OK] **Storage Persistence** - Automatically saves/restores sizes via localStorage
-- [OK] **TypeScript** - Fully typed for better DX
-- [OK] **Framework Agnostic** - Core logic is framework-independent
+- ✓ **Infinite Nesting** - Nest resizable zones within each other without limitation
+- ✓ **Bidirectional** - Supports both vertical and horizontal resizing
+- ✓ **Configurable** - Min/max sizes, default sizes, storage persistence
+- ✓ **Touch Support** - Works on mobile devices
+- ✓ **Smooth Animations** - RequestAnimationFrame for 60fps performance
+- ✓ **Storage Persistence** - Automatically saves/restores sizes via localStorage
+- ✓ **TypeScript** - Fully typed for better DX
+- ✓ **Framework Agnostic** - Core logic is framework-independent
 
 ## Architecture
 

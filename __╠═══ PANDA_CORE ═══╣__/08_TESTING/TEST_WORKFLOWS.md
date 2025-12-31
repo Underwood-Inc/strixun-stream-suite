@@ -96,7 +96,7 @@ All deployments include rollback protection:
 - name: Rollback on Failure
   if: failure()
   run: |
-    echo "[ERROR] Deployment failed - manual rollback required"
+    echo "✗ Deployment failed - manual rollback required"
     echo "Please check Cloudflare dashboard and rollback if needed"
     exit 1
 ```

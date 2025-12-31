@@ -22,7 +22,7 @@ const AVAILABLE_SCRIPTS = [
         name: 'Source Swap',
         file: 'source_swap.lua',
         version: '3.1.0',
-        icon: '[EMOJI]',
+        icon: ' ★ ',
         description: 'Smoothly swap position and size of two sources with animation. Supports multiple swap configs with hotkeys.',
         features: ['Animated swaps', 'Multiple configs', 'Hotkey support', 'Aspect ratio control', 'Works with groups']
     },
@@ -31,7 +31,7 @@ const AVAILABLE_SCRIPTS = [
         name: 'Text Cycler',
         file: 'text_cycler.lua',
         version: '1.0.0',
-        icon: '[EMOJI]',
+        icon: ' ★ ',
         description: 'Cycles through text strings with optional transition animations like obfuscate, typewriter, and glitch effects.',
         features: ['Text cycling', 'Obfuscate effect', 'Typewriter effect', 'Glitch effect', 'Hotkey support']
     },
@@ -49,7 +49,7 @@ const AVAILABLE_SCRIPTS = [
         name: 'Script Manager',
         file: 'script_manager.lua',
         version: '1.0.0',
-        icon: '[EMOJI]',
+        icon: ' ★ ',
         description: 'Unified dashboard to manage and configure all animation scripts in OBS.',
         features: ['Script overview', 'Enable/disable scripts', 'Status at a glance']
     }
@@ -227,7 +227,7 @@ function renderInstallScriptsList() {
     // Add "check existing" button
     container.innerHTML += `
         <div style="margin-top:8px">
-            <button onclick="window.Installer.markExistingFiles()">[EMOJI] I have some scripts already installed</button>
+            <button onclick="window.Installer.markExistingFiles()"> ★ I have some scripts already installed</button>
         </div>
     `;
     

@@ -11,18 +11,6 @@
  * DO NOT use this in production code - it will fail safely (returns null)
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import { createHash } from 'crypto';
-
-/**
- * Hash email using same algorithm as OTP Auth Service
- */
-async function hashEmail(email: string): Promise<string> {
-    const normalized = email.toLowerCase().trim();
-    return createHash('sha256').update(normalized).digest('hex');
-}
-
 /**
  * Get intercepted OTP code from local KV storage
  * Only works when running E2E tests against local workers
@@ -30,10 +18,10 @@ async function hashEmail(email: string): Promise<string> {
  * SECURITY: This reads from local filesystem (.wrangler/state/v3/kv)
  * In production, this path doesn't exist and function returns null
  * 
- * @param email - Email address to get OTP for
+ * @param _email - Email address to get OTP for (unused, kept for API compatibility)
  * @returns OTP code or null if not found
  */
-export async function getInterceptedOTP(email: string): Promise<string | null> {
+export async function getInterceptedOTP(_email: string): Promise<string | null> {
     // NOTE: This function is kept for backward compatibility but is not currently used.
     // Tests now use E2E_TEST_OTP_CODE from environment directly.
     // Proper E2E testing with OTP interception will be implemented in the dedicated OTP auth lib.

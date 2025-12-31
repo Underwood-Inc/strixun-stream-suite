@@ -449,7 +449,7 @@ describe('Multi-Stage Encryption System', () => {
 
     it('should handle special characters in data', async () => {
       const specialData = {
-        unicode: '[EMOJI] 测试 日本語',
+        unicode: ' ★ 测试 日本語',
         special: '!@#$%^&*()_+-=[]{}|;:,.<>?',
         newlines: 'line1\nline2\r\nline3',
         quotes: "single ' and double \" quotes",

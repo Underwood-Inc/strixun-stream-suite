@@ -104,9 +104,9 @@ curl -H "Origin: https://auth.idling.app" \
 
 ## Critical Origins (Must Include)
 
-- [OK] `https://mods.idling.app` - Frontend (Mods Hub)
-- [OK] `https://auth.idling.app` - Auth service (dashboard)
-- [OK] `http://localhost:3001` - Local development (Mods Hub)
+- ✓ `https://mods.idling.app` - Frontend (Mods Hub)
+- ✓ `https://auth.idling.app` - Auth service (dashboard)
+- ✓ `http://localhost:3001` - Local development (Mods Hub)
 
 ---
 

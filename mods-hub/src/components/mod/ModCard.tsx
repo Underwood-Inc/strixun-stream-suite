@@ -166,7 +166,7 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                 {mod.thumbnailUrl ? (
                     thumbnailError ? (
                         <ThumbnailError>
-                            <ErrorIcon>[WARNING]</ErrorIcon>
+                            <ErrorIcon>⚠</ErrorIcon>
                             <ErrorMessage>Thumbnail unavailable</ErrorMessage>
                             <ErrorDetail>Image failed to load</ErrorDetail>
                         </ThumbnailError>

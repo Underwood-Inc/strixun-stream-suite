@@ -25,7 +25,7 @@ if (isWindows) {
             { stdio: 'inherit', cwd: rootDir }
         );
     } catch (error) {
-        console.error('[ERROR] Error running PowerShell script:', error.message);
+        console.error('✗ Error running PowerShell script:', error.message);
         process.exit(1);
     }
 } else {
@@ -37,7 +37,7 @@ if (isWindows) {
             { stdio: 'inherit', cwd: rootDir }
         );
     } catch (error) {
-        console.error('[ERROR] Error running Bash script:', error.message);
+        console.error('✗ Error running Bash script:', error.message);
         process.exit(1);
     }
 }

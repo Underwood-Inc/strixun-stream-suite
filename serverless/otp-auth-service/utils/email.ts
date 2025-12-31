@@ -213,7 +213,7 @@ function getInlineEmailTemplate(): string {
             </div>
             <div class="content">
                 <div class="expired-warning" id="expiredWarning">
-                    <div class="expired-warning-icon">[WARNING]</div>
+                    <div class="expired-warning-icon">⚠</div>
                     <div><strong>This code has expired.</strong></div>
                 </div>
                 <p>Your One Time Password (OTP) is:</p>

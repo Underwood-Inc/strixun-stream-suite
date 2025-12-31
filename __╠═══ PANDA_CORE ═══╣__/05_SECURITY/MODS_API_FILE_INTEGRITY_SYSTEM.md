@@ -1,7 +1,7 @@
 # File Integrity System Documentation
 
 **Last Updated:** 2025-12-29
-**Status:** [SUCCESS] Complete - All files are verified for integrity using SHA-256 hashing
+**Status:** ✓ Complete - All files are verified for integrity using SHA-256 hashing
 
 ---
 
@@ -225,8 +225,8 @@ GET /mods/:modId/versions/:versionId/badge
 ```
 
 **Badge States:**
-- [SUCCESS] **Verified** (green) - Hash exists and matches
-- [ERROR] **Unverified** (red) - Hash missing or mismatch
+- ✓ **Verified** (green) - Hash exists and matches
+- ✗ **Unverified** (red) - Hash missing or mismatch
 
 **Badge Styles:**
 - `flat` (default)
@@ -268,10 +268,10 @@ Same file always produces same hash:
 
 ### Unit Tests
 
-- [SUCCESS] `serverless/mods-api/utils/hash.test.ts` - Hash utility tests
-- [SUCCESS] `serverless/mods-api/handlers/versions/verify.test.ts` - Verification handler tests
-- [SUCCESS] `serverless/mods-api/handlers/mods/upload-integrity.test.ts` - Upload integrity tests
-- [SUCCESS] `serverless/mods-api/handlers/versions/download-integrity.test.ts` - Download integrity tests
+- ✓ `serverless/mods-api/utils/hash.test.ts` - Hash utility tests
+- ✓ `serverless/mods-api/handlers/versions/verify.test.ts` - Verification handler tests
+- ✓ `serverless/mods-api/handlers/mods/upload-integrity.test.ts` - Upload integrity tests
+- ✓ `serverless/mods-api/handlers/versions/download-integrity.test.ts` - Download integrity tests
 
 ### Test Scenarios
 
@@ -379,12 +379,12 @@ If hash is missing:
 
 The file integrity system provides:
 
-[SUCCESS] **Cryptographically secure verification** using SHA-256  
-[SUCCESS] **Tamper detection** for any file modification  
-[SUCCESS] **Compression-safe** hashing (hash on original content)  
-[SUCCESS] **End-to-end verification** from upload to download  
-[SUCCESS] **Client-verifiable** integrity checks  
-[SUCCESS] **Comprehensive test coverage**
+✓ **Cryptographically secure verification** using SHA-256  
+✓ **Tamper detection** for any file modification  
+✓ **Compression-safe** hashing (hash on original content)  
+✓ **End-to-end verification** from upload to download  
+✓ **Client-verifiable** integrity checks  
+✓ **Comprehensive test coverage**
 
 All files are protected against corruption and tampering!
 

@@ -38,9 +38,9 @@ function rebuildApp() {
       stdio: 'inherit',
     });
 
-    console.log('[WATCH] [SUCCESS] App rebuilt successfully');
+    console.log('[WATCH] ✓ App rebuilt successfully');
   } catch (error) {
-    console.error('[WATCH] [ERROR] Rebuild failed:', error);
+    console.error('[WATCH] ✗ Rebuild failed:', error);
   } finally {
     isRebuilding = false;
   }
@@ -68,7 +68,7 @@ try {
     }
   });
 } catch (error) {
-  console.error('[WATCH] [ERROR] Could not watch source folder:', error.message);
+  console.error('[WATCH] ✗ Could not watch source folder:', error.message);
   process.exit(1);
 }
 

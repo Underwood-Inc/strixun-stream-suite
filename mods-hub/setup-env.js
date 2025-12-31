@@ -26,8 +26,8 @@ const DEV_VARS_FILE = join(OTP_AUTH_DIR, '.dev.vars');
  */
 function getServiceKeyFromDevVars() {
   if (!existsSync(DEV_VARS_FILE)) {
-    console.error('[ERROR] .dev.vars not found at:', DEV_VARS_FILE);
-    console.error('[INFO] Run: cd serverless/otp-auth-service && pnpm setup:test-secrets');
+    console.error('✗ .dev.vars not found at:', DEV_VARS_FILE);
+    console.error('ℹ Run: cd serverless/otp-auth-service && pnpm setup:test-secrets');
     return null;
   }
   
@@ -45,7 +45,7 @@ function getServiceKeyFromDevVars() {
     return match[1].trim();
   }
   
-  console.error('[ERROR] SERVICE_ENCRYPTION_KEY not found in .dev.vars');
+  console.error('✗ SERVICE_ENCRYPTION_KEY not found in .dev.vars');
   return null;
 }
 
@@ -55,7 +55,7 @@ function getServiceKeyFromDevVars() {
 function setupEnv() {
   const serviceKey = getServiceKeyFromDevVars();
   if (!serviceKey) {
-    console.error('[ERROR] Could not get SERVICE_ENCRYPTION_KEY from .dev.vars');
+    console.error('✗ Could not get SERVICE_ENCRYPTION_KEY from .dev.vars');
     process.exit(1);
   }
   
@@ -72,11 +72,11 @@ function setupEnv() {
         /^VITE_SERVICE_ENCRYPTION_KEY=.*$/m,
         `VITE_SERVICE_ENCRYPTION_KEY=${serviceKey}`
       );
-      console.log('[SUCCESS] Updated VITE_SERVICE_ENCRYPTION_KEY in .env');
+      console.log('✓ Updated VITE_SERVICE_ENCRYPTION_KEY in .env');
     } else {
       // Add key if missing
       envContent += `\nVITE_SERVICE_ENCRYPTION_KEY=${serviceKey}\n`;
-      console.log('[SUCCESS] Added VITE_SERVICE_ENCRYPTION_KEY to .env');
+      console.log('✓ Added VITE_SERVICE_ENCRYPTION_KEY to .env');
     }
   } else {
     // Create new .env file
@@ -86,12 +86,12 @@ function setupEnv() {
 
 VITE_SERVICE_ENCRYPTION_KEY=${serviceKey}
 `;
-    console.log('[SUCCESS] Created .env file with VITE_SERVICE_ENCRYPTION_KEY');
+    console.log('✓ Created .env file with VITE_SERVICE_ENCRYPTION_KEY');
   }
   
   writeFileSync(ENV_FILE, envContent, 'utf-8');
-  console.log('[INFO] VITE_SERVICE_ENCRYPTION_KEY synced from worker .dev.vars');
-  console.log('[INFO] Key length:', serviceKey.length);
+  console.log('ℹ VITE_SERVICE_ENCRYPTION_KEY synced from worker .dev.vars');
+  console.log('ℹ Key length:', serviceKey.length);
 }
 
 // Run setup

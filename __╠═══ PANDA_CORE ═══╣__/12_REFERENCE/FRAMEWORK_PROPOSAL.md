@@ -1,6 +1,6 @@
 # Framework & Modularization Proposal
 
-## [EMOJI] Current State Analysis
+## ★ Current State Analysis
 
 **app.js**: 1,132 lines - Too large, needs breaking down
 
@@ -45,7 +45,7 @@ modules/
     └── bootstrap.js
 ```
 
-## [EMOJI] Framework Features
+## ★ Framework Features
 
 ### 1. **Dependency Injection System**
 - Centralized dependency registry
@@ -75,7 +75,7 @@ modules/
 - `onReady()` - When DOM is ready
 - `onDestroy()` - Cleanup
 
-## [EMOJI] Proposed Module Breakdown
+## ★ Proposed Module Breakdown
 
 ### Module 1: Backup Manager (`modules/backup/backup-manager.js`)
 **Extract from app.js lines 14-352**
@@ -179,7 +179,7 @@ modules/
 
 These are thin wrappers - could stay in app.js or be auto-generated.
 
-## [EMOJI] Framework Implementation
+## ★ Framework Implementation
 
 ### Core Framework (`core/framework.js`)
 
@@ -247,7 +247,7 @@ class Module {
 }
 ```
 
-## [EMOJI] Migration Strategy
+## ★ Migration Strategy
 
 ### Phase 1: Create Framework Core (Week 1)
 1. Create `assets/js/core/` directory
@@ -275,7 +275,7 @@ class Module {
 3. Add TypeScript definitions (optional)
 4. Documentation
 
-## [EMOJI] Expected Results
+## ★ Expected Results
 
 ### Before:
 - `app.js`: 1,132 lines
@@ -296,7 +296,7 @@ class Module {
 
 **Total**: ~1,280 lines (slight increase due to framework overhead, but much better organized)
 
-## [EMOJI] Benefits
+## ★ Benefits
 
 1. **Better Organization**: Each module has a single responsibility
 2. **Easier Testing**: Modules can be tested in isolation
@@ -307,7 +307,7 @@ class Module {
 7. **Scalability**: Easy to add new features
 8. **Type Safety**: Can add JSDoc/TypeScript later
 
-## [EMOJI] Alternative: Simpler Approach
+## ★ Alternative: Simpler Approach
 
 If full framework is too much, we could:
 
@@ -318,7 +318,7 @@ If full framework is too much, we could:
 
 This would be faster but less structured.
 
-## [EMOJI] Recommendation
+## ★ Recommendation
 
 **Start with simpler approach**, then add framework features as needed:
 

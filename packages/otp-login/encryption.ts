@@ -18,7 +18,7 @@ export async function encryptRequestBody(
 ): Promise<string> {
   // If no encryption key provided, throw error (encryption is mandatory)
   if (!otpEncryptionKey) {
-    console.error('[OtpLoginCore] [ERROR] CRITICAL: OTP encryption key is missing!');
+    console.error('[OtpLoginCore] ✗ CRITICAL: OTP encryption key is missing!');
     console.error('[OtpLoginCore] Config:', {
       hasKey: !!otpEncryptionKey,
       keyLength: otpEncryptionKey?.length || 0,
@@ -27,14 +27,14 @@ export async function encryptRequestBody(
   }
 
   if (otpEncryptionKey.length < 32) {
-    console.error('[OtpLoginCore] [ERROR] CRITICAL: OTP encryption key is too short!', {
+    console.error('[OtpLoginCore] ✗ CRITICAL: OTP encryption key is too short!', {
       keyLength: otpEncryptionKey.length,
       requiredLength: 32
     });
     throw new Error('OTP encryption key must be at least 32 characters long.');
   }
   
-  console.log('[OtpLoginCore] [OK] Encrypting request body with key length:', otpEncryptionKey.length);
+  console.log('[OtpLoginCore] ✓ Encrypting request body with key length:', otpEncryptionKey.length);
 
   try {
     // Constants matching server-side implementation
@@ -126,10 +126,10 @@ export function validateEncryptedBody(encryptedBody: string): void {
   try {
     const parsed = JSON.parse(encryptedBody);
     if (!parsed.encrypted || parsed.encrypted !== true) {
-      console.error('[OtpLoginCore] [ERROR] CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
+      console.error('[OtpLoginCore] ✗ CRITICAL: Encrypted body does not have encrypted flag! Aborting.');
       throw new Error('Encryption validation failed. Request aborted for security.');
     }
-    console.log('[OtpLoginCore] [OK] Verified encrypted payload:', {
+    console.log('[OtpLoginCore] ✓ Verified encrypted payload:', {
       version: parsed.version,
       algorithm: parsed.algorithm,
       hasData: !!parsed.data
@@ -138,7 +138,7 @@ export function validateEncryptedBody(encryptedBody: string): void {
     if (parseError instanceof Error && parseError.message.includes('Encryption validation failed')) {
       throw parseError;
     }
-    console.error('[OtpLoginCore] [ERROR] CRITICAL: Encrypted body is not valid JSON! Aborting.');
+    console.error('[OtpLoginCore] ✗ CRITICAL: Encrypted body is not valid JSON! Aborting.');
     throw new Error('Encryption validation failed. Request aborted for security.');
   }
 }

@@ -25,16 +25,16 @@ wrangler deploy
 
 ### Step 2: Add Route in Cloudflare Dashboard
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **Workers & Pages**
+1. Go to **Cloudflare Dashboard** ★ **Workers & Pages**
 2. Click on **otp-auth-service**
-3. Go to **Settings** [EMOJI] **Triggers** [EMOJI] **Routes**
+3. Go to **Settings** ★ **Triggers** ★ **Routes**
 4. Click **Add Route**
 5. Enter: `auth.idling.app/*`
 6. Click **Save**
 
 ### Step 3: Verify DNS Record
 
-1. Go to **Cloudflare Dashboard** [EMOJI] **DNS** [EMOJI] **Records**
+1. Go to **Cloudflare Dashboard** ★ **DNS** ★ **Records**
 2. Look for a CNAME record for `auth` pointing to `otp-auth-service.strixuns-script-suite.workers.dev`
 3. If it doesn't exist, Cloudflare should create it automatically when you add the route
 4. If it still doesn't exist after a few minutes, create it manually:
@@ -98,9 +98,9 @@ wrangler secret put ALLOWED_ORIGINS      # CORS origins (comma-separated)
 
 ### Route Not Working After Adding in Dashboard
 
-1. **Check route is active**: Dashboard [EMOJI] Workers [EMOJI] otp-auth-service [EMOJI] Settings [EMOJI] Triggers [EMOJI] Routes
-2. **Check DNS**: Dashboard [EMOJI] DNS [EMOJI] Records (should see `auth` CNAME)
-3. **Check SSL**: Dashboard [EMOJI] SSL/TLS [EMOJI] Overview (should show "Active Certificate")
+1. **Check route is active**: Dashboard ★ Workers ★ otp-auth-service ★ Settings ★ Triggers ★ Routes
+2. **Check DNS**: Dashboard ★ DNS ★ Records (should see `auth` CNAME)
+3. **Check SSL**: Dashboard ★ SSL/TLS ★ Overview (should show "Active Certificate")
 4. **Test workers.dev URL**: `https://otp-auth-service.strixuns-script-suite.workers.dev/health/ready` (should work)
 
 ### DNS Not Resolving

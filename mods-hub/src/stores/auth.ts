@@ -82,7 +82,7 @@ async function restoreSessionFromBackend(): Promise<User | null> {
             };
             
             // Token is stored in user object, which is persisted to localStorage
-            console.log('[Auth] [SUCCESS] Session restored from backend for user:', user.email);
+            console.log('[Auth] ✓ Session restored from backend for user:', user.email);
             return user;
         }
 

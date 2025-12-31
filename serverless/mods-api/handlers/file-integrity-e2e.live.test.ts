@@ -2,7 +2,7 @@
  * Integration Tests for File Integrity End-to-End
  * Tests: Upload file  Download file  Verify hash matches
  * 
- * [WARNING] IMPORTANT: These tests use REAL R2 storage
+ * ⚠ IMPORTANT: These tests use REAL R2 storage
  * 
  * These tests only run when:
  * - USE_LIVE_API=true environment variable is set

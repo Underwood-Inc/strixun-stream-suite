@@ -1,20 +1,18 @@
 # API Framework Migration Guide
 
-> **Complete guide for migrating all workers and apps to use the shared API framework** [EMOJI]
-
----
+> **Complete guide for migrating all workers and apps to use the shared API framework** ★ ---
 
 ## Overview
 
 This guide covers migrating all Strixun Stream Suite workers and frontend apps to use the shared `@strixun/api-framework` package.
 
-**Status**: [OK] Shared package created,  Migration in progress
+**Status**: ✓ Shared package created,  Migration in progress
 
 ---
 
 ## Workers to Migrate
 
-1. [OK] **mods-api** - TypeScript, needs full migration
+1. ✓ **mods-api** - TypeScript, needs full migration
 2.  **game-api** - JavaScript, needs full migration
 3.  **otp-auth-service** - Uses `enhanced-router` wrapper (partial), needs full migration
 4.  **url-shortener** - Uses `enhanced-router` wrapper (partial), needs full migration
@@ -41,7 +39,7 @@ All packages now have `@strixun/api-framework` as a dependency:
 }
 ```
 
-[OK] **Completed** for all packages
+✓ **Completed** for all packages
 
 ### Step 2: Migrate Worker Handlers
 
@@ -330,8 +328,8 @@ If issues arise:
 
 ## Next Steps
 
-1. [OK] Create shared API framework package
-2. [OK] Update all package.json files
+1. ✓ Create shared API framework package
+2. ✓ Update all package.json files
 3.  Migrate mods-api (in progress)
 4.  Migrate game-api
 5.  Migrate otp-auth-service

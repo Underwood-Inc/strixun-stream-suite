@@ -41,16 +41,16 @@
         <header class="header">
             <h1><span class="status-dot" id="statusDot"></span><span class="title-text">Stream Suite</span></h1>
             <div style="display:flex;gap:4px">
-                <button onclick="location.reload()" title="Reload Panel">[EMOJI]</button>
+                <button onclick="location.reload()" title="Reload Panel"> ★ </button>
                 <button onclick="showPage('setup')" id="connectHeaderBtn">Connect</button>
             </div>
         </header>
         
         <nav class="tabs">
             <button class="tab active" onclick="showPage('dashboard')" title="Dashboard"></button>
-            <button class="tab" onclick="showPage('sources')" title="Sources">[EMOJI]</button>
-            <button class="tab" onclick="showPage('text')" title="Text Cycler">[EMOJI]</button>
-            <button class="tab" onclick="showPage('swaps')" title="Swaps">[EMOJI]</button>
+            <button class="tab" onclick="showPage('sources')" title="Sources"> ★ </button>
+            <button class="tab" onclick="showPage('text')" title="Text Cycler"> ★ </button>
+            <button class="tab" onclick="showPage('swaps')" title="Swaps"> ★ </button>
             <button class="tab" onclick="showPage('layouts')" title="Layouts"></button>
             <button class="tab" onclick="showPage('scripts')" title="Script Manager"></button>
             <button class="tab" onclick="showPage('install')" title="Installer"></button>
@@ -63,7 +63,7 @@
                 <div id="page-dashboard" class="page active">
                 <!-- Script Status Card -->
                 <div class="card" id="dashboardStatusCard">
-                    <h3>[EMOJI] System Status</h3>
+                    <h3> ★ System Status</h3>
                     <div id="dashboardScriptStatus">
                         <div class="script-status-grid">
                             <div class="script-status-item missing">
@@ -81,7 +81,7 @@
                 <div class="card">
                     <h3>Quick Actions</h3>
                     <div class="grid">
-                        <button class="source-btn requires-connection" onclick="cycleAspect()">[EMOJI] Cycle Aspect</button>
+                        <button class="source-btn requires-connection" onclick="cycleAspect()"> ★ Cycle Aspect</button>
                         <button class="source-btn requires-connection" onclick="refreshScenes()"> Refresh</button>
                     </div>
                 </div>
@@ -146,11 +146,10 @@
                         </div>
                     </div>
                     <div class="row" style="margin-top:12px">
-                        <button onclick="applySourceOpacity()" style="flex:1">[OK] Apply</button>
-                        <button onclick="resetSourceOpacity()" class="btn-secondary" style="flex:1">[EMOJI] Reset to 100%</button>
+                        <button onclick="applySourceOpacity()" style="flex:1">✓ Apply</button>
+                        <button onclick="resetSourceOpacity()" class="btn-secondary" style="flex:1">→ Reset to 100%</button>
                     </div>
-                    <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)">
-                        [EMOJI] Setting to 100% removes the filter (no overhead)
+                    <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)"> ★ Setting to 100% removes the filter (no overhead)
                     </p>
                 </div>
                 
@@ -159,7 +158,7 @@
                     <h3> Scenes</h3>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="scenesSearchInput" placeholder="Search scenes...">
-                        <span class="search-box__icon">[EMOJI]</span>
+                        <span class="search-box__icon"> ★ </span>
                         <button class="search-box__clear" title="Clear"></button>
                     </div>
                     <div id="scenesList" class="config-list" style="max-height:200px;overflow-y:auto"></div>
@@ -168,11 +167,11 @@
                 
                 <!-- Source Browser -->
                 <div class="card">
-                    <h3>[EMOJI] Sources</h3>
+                    <h3> ★ Sources</h3>
                     <p class="hint" id="sourcesSceneLabel" style="margin-bottom:8px">Select a scene above to view sources</p>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="sourcesSearchInput" placeholder="Search sources...">
-                        <span class="search-box__icon">[EMOJI]</span>
+                        <span class="search-box__icon"> ★ </span>
                         <button class="search-box__clear" title="Clear"></button>
                     </div>
                     <div id="sourcesList"></div>
@@ -186,7 +185,7 @@
                     <h3> Saved Configs</h3>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="textConfigsSearchInput" placeholder="Search configs...">
-                        <span class="search-box__icon">[EMOJI]</span>
+                        <span class="search-box__icon"> ★ </span>
                         <button class="search-box__clear" title="Clear"></button>
                     </div>
                     <div id="textCyclerConfigs" class="config-list"></div>
@@ -214,7 +213,7 @@
                         <label>Config ID (for browser source URL)</label>
                         <div class="url-box">
                             <input type="text" id="textConfigId" placeholder="config1" style="flex:1" oninput="updateBrowserSourceUrlPreview()">
-                            <button onclick="copyBrowserSourceUrl()">[EMOJI] Copy URL</button>
+                            <button onclick="copyBrowserSourceUrl()">✓ Copy URL</button>
                         </div>
                         <p style="font-size:0.7em;color:var(--muted);margin-top:4px">
                             Add as OBS Browser Source: <code id="browserSourceUrlPreview"></code>
@@ -231,7 +230,7 @@
 
                 <!-- Text Lines -->
                 <div class="card" id="textLinesCard" style="display:none">
-                    <h3>[EMOJI] Text Lines</h3>
+                    <h3> ★ Text Lines</h3>
                     <textarea id="textLines" placeholder="Enter text lines (one per line)&#10;Line 1&#10;Line 2&#10;Line 3" rows="5"></textarea>
                 </div>
                 
@@ -268,7 +267,7 @@
 
                 <!-- Style Settings (Browser Mode Only) -->
                 <div class="card" id="textStyleCard" style="display:none">
-                    <h3>[EMOJI] Style (Browser Mode)</h3>
+                    <h3> ★ Style (Browser Mode)</h3>
                     
                     <label>Font Family</label>
                     <select id="textFontFamily">
@@ -384,7 +383,7 @@
                     </div>
                     <div class="row" style="margin-top:8px">
                         <button onclick="saveCurrentTextConfig()"> Save Config</button>
-                        <button onclick="deleteCurrentTextConfig()" style="background:var(--danger);border-color:var(--danger)">[EMOJI]️ Delete</button>
+                        <button onclick="deleteCurrentTextConfig()" style="background:var(--danger);border-color:var(--danger)"> ★ ️ Delete</button>
                     </div>
                 </div>
             </div>
@@ -399,7 +398,7 @@
                     <label>Source B</label>
                     <select id="swapSourceB"></select>
                     <div class="row" style="margin-top:8px">
-                        <button class="btn-primary btn-lg" onclick="executeSwap()">[EMOJI] Swap Now</button>
+                        <button class="btn-primary btn-lg" onclick="executeSwap()">→ Swap Now</button>
                     </div>
                 </div>
                 
@@ -477,12 +476,12 @@
                     <h3>Saved Configs</h3>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="swapConfigsSearchInput" placeholder="Search configs...">
-                        <span class="search-box__icon">[EMOJI]</span>
+                        <span class="search-box__icon"> ★ </span>
                         <button class="search-box__clear" title="Clear"></button>
                     </div>
                     <div id="savedSwaps"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="refreshSwapSources()">[EMOJI] Refresh Sources</button>
+                        <button onclick="refreshSwapSources()">→ Refresh Sources</button>
                         <button onclick="exportConfigs()"> Export</button>
                         <button onclick="importConfigs()"> Import</button>
                     </div>
@@ -510,12 +509,12 @@
                     </p>
                     <div class="search-box">
                         <input type="text" class="search-box__input" id="layoutSearchInput" placeholder="Search layouts...">
-                        <span class="search-box__icon">[EMOJI]</span>
+                        <span class="search-box__icon"> ★ </span>
                         <button class="search-box__clear" title="Clear"></button>
                     </div>
                     <div id="savedLayouts" class="config-list"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="refreshLayouts()">[EMOJI] Refresh</button>
+                        <button onclick="refreshLayouts()">→ Refresh</button>
                     </div>
                 </div>
                 
@@ -555,15 +554,14 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[INFO] How It Works</h3>
+                    <h3>ℹ How It Works</h3>
                     <ol style="padding-left:20px;color:var(--muted);font-size:0.85em;margin:0">
                         <li>Arrange sources how you want them</li>
                         <li>Enter a name and click "Capture"</li>
                         <li>Rearrange sources or change layouts</li>
                         <li>Click "Apply" to animate back</li>
                     </ol>
-                    <p style="color:var(--muted);font-size:0.8em;margin-top:8px">
-                        [EMOJI] <b>Tip:</b> Assign hotkeys in OBS  Settings  Hotkeys for quick switching!
+                    <p style="color:var(--muted);font-size:0.8em;margin-top:8px"> ★ <b>Tip:</b> Assign hotkeys in OBS  Settings  Hotkeys for quick switching!
                     </p>
                 </div>
             </div>
@@ -578,7 +576,7 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[EMOJI] Browser Sources</h3>
+                    <h3>→ Browser Sources</h3>
                     <p class="hint" style="margin-bottom:12px">HTML files to add as Browser Sources in OBS.</p>
                     
                     <div class="scripts-grid">
@@ -596,7 +594,7 @@
                         
                         <div class="script-card">
                             <div class="script-header">
-                                <span class="script-icon">[EMOJI]️</span>
+                                <span class="script-icon"> ★ ️</span>
                                 <div>
                                     <div class="script-name">Control Panel Dock</div>
                                     <div class="script-version">Custom Dock</div>
@@ -643,15 +641,15 @@
                         <label>Source Files Location</label>
                         <div class="url-box">
                             <input type="text" id="installSourcePath" readonly>
-                            <button onclick="window.Installer.detectSourcePath()">[EMOJI] Detect</button>
+                            <button onclick="window.Installer.detectSourcePath()">→ Detect</button>
                         </div>
                         <p class="hint">Where the script files are located (this folder)</p>
                         
                         <label>OBS Scripts Folder</label>
                         <div class="url-box">
                             <input type="text" id="installTargetPath" placeholder="C:\Users\YourName\AppData\Roaming\obs-studio\scripts">
-                            <button onclick="window.Installer.browseTargetPath()">[EMOJI] Browse</button>
-                            <button onclick="window.Installer.detectOBSPath()">[EMOJI] Auto-Detect</button>
+                            <button onclick="window.Installer.browseTargetPath()">→ Browse</button>
+                            <button onclick="window.Installer.detectOBSPath()">→ Auto-Detect</button>
                         </div>
                         <p class="hint">Where scripts will be installed. Common locations:</p>
                         <div class="path-suggestions" id="pathSuggestions"></div>
@@ -703,7 +701,7 @@
                         
                         <!-- Dock Warning -->
                         <div id="dockDownloadWarning" class="feature-notice" style="display:none;margin-bottom:12px">
-                            <div class="feature-notice__title">[WARNING] OBS Dock Detected</div>
+                            <div class="feature-notice__title">⚠ OBS Dock Detected</div>
                             <div class="feature-notice__text">
                                 File downloads don't work in OBS docks. Use <strong>Copy Script</strong> instead, 
                                 then paste into a text editor and save manually.
@@ -712,7 +710,7 @@
                         
                         <div class="row" style="margin-top:12px">
                             <button onclick="window.Installer.goToInstallStep(3)"> Back</button>
-                            <button onclick="window.Installer.copyInstallScript()" class="btn-success">[EMOJI] Copy Script</button>
+                            <button onclick="window.Installer.copyInstallScript()" class="btn-success">✓ Copy Script</button>
                             <button onclick="window.Installer.downloadInstallScript()" id="downloadScriptBtn" class="btn-primary" title="Download install script"> Download</button>
                         </div>
                         
@@ -729,7 +727,7 @@
                         
                         <!-- Dock Instructions (shown when IN dock) -->
                         <div id="dockInstructions" class="info-box" style="display:none;margin-top:12px">
-                            <strong>[EMOJI] After copying the script:</strong>
+                            <strong> ★ After copying the script:</strong>
                             <ol style="margin:4px 0 0 16px;font-size:0.85em">
                                 <li>Open Notepad, VS Code, or any text editor</li>
                                 <li>Paste the script (Ctrl+V)</li>
@@ -737,8 +735,7 @@
                                 <li>Run the saved file as Administrator</li>
                                 <li>Restart OBS Studio</li>
                             </ol>
-                            <p style="margin-top:8px;font-size:0.85em;color:var(--muted)">
-                                [EMOJI] <strong>Tip:</strong> Open this control panel in your regular browser for easier downloading!
+                            <p style="margin-top:8px;font-size:0.85em;color:var(--muted)"> ★ <strong>Tip:</strong> Open this control panel in your regular browser for easier downloading!
                             </p>
                         </div>
                     </div>
@@ -746,7 +743,7 @@
                 
                 <!-- Existing Installation Detection -->
                 <div class="card" id="existingInstallCard" style="display:none">
-                    <h3>[WARNING] Existing Installation Detected</h3>
+                    <h3>⚠ Existing Installation Detected</h3>
                     <div id="existingInstallInfo"></div>
                     <div class="row" style="margin-top:12px">
                         <button onclick="window.Installer.handleExistingInstall('skip')">Skip Existing</button>
@@ -792,7 +789,7 @@
                     </p>
                     <div class="url-box">
                         <input type="text" id="dockUrl" readonly>
-                        <button onclick="copyUrl()">[EMOJI] Copy</button>
+                        <button onclick="copyUrl()">✓ Copy</button>
                     </div>
                     <p style="color:var(--muted);margin-top:8px;font-size:0.85em" id="copyStatus"></p>
                 </div>
@@ -852,7 +849,7 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[EMOJI] Cross-Client Sync</h3>
+                    <h3> ★ Cross-Client Sync</h3>
                     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
                         Sync configs between OBS dock and remote browser panels via WebSocket.
                     </p>
@@ -889,7 +886,7 @@
                         <div style="display:grid;gap:6px">
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportSwaps" checked style="width:auto;margin:0">
-                                <span>[EMOJI] Swap Configs</span>
+                                <span> ★ Swap Configs</span>
                                 <span id="swapCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
@@ -899,7 +896,7 @@
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportTextCyclers" checked style="width:auto;margin:0">
-                                <span>[EMOJI] Text Cycler Configs</span>
+                                <span> ★ Text Cycler Configs</span>
                                 <span id="textCyclerCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
@@ -909,7 +906,7 @@
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportCredentials" style="width:auto;margin:0">
-                                <span>[EMOJI] Connection Settings</span>
+                                <span> ★ Connection Settings</span>
                                 <span style="margin-left:auto;color:var(--warning);font-size:0.8em">(host/port only)</span>
                             </label>
                         </div>
@@ -921,13 +918,13 @@
                         <button onclick="importDataWithOptions()" style="padding:10px;background:var(--accent);border:none;color:#000;border-radius:6px;cursor:pointer;font-weight:500"> Import Backup</button>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                        <button onclick="forceStorageSync()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[EMOJI] Force Sync</button>
-                        <button onclick="copyBackupToClipboard()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[EMOJI] Copy as JSON</button>
+                        <button onclick="forceStorageSync()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">→ Force Sync</button>
+                        <button onclick="copyBackupToClipboard()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">✓ Copy as JSON</button>
                     </div>
                     
                     <!-- Info -->
                     <div style="margin-top:10px;padding:8px;background:rgba(255,200,0,0.1);border-radius:6px;border-left:3px solid var(--warning)">
-                        <p style="font-size:0.75em;color:var(--warning);margin:0">[WARNING] <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!</p>
+                        <p style="font-size:0.75em;color:var(--warning);margin:0">⚠ <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!</p>
                     </div>
                     
                     <!-- Last backup info -->
@@ -936,7 +933,7 @@
                 
                 <!-- Version Info -->
                 <div class="card">
-                    <h3>[EMOJI] Version</h3>
+                    <h3> ★ Version</h3>
                     <div id="versionInfo" style="font-size:0.9em">
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
                             <span style="color:var(--muted)">Local Version:</span>
@@ -951,7 +948,7 @@
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-                        <button onclick="checkForUpdates()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">[EMOJI] Check Updates</button>
+                        <button onclick="checkForUpdates()" style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">→ Check Updates</button>
                         <button onclick="openGitHubRepo()" style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em"> Open GitHub</button>
                     </div>
                     <div style="margin-top:10px;font-size:0.75em;color:var(--muted);text-align:center">
@@ -971,7 +968,7 @@
                     <span class="split-log__title">Activity Log</span>
                     <div class="search-box split-log__search">
                         <input type="text" class="search-box__input" id="logSearchInput" placeholder="Search log...">
-                        <span class="search-box__icon">[EMOJI]</span>
+                        <span class="search-box__icon"> ★ </span>
                         <button class="search-box__clear" id="logSearchClear" title="Clear search"></button>
                     </div>
                     <button class="split-log__clear btn-link" onclick="clearLog()">Clear</button>

@@ -12,47 +12,47 @@ This document lists **ALL** origins that should be included in the `ALLOWED_ORIG
 
 ### Primary Domains
 
-1. **`https://auth.idling.app`** [SUCCESS]
+1. **`https://auth.idling.app`** ✓
    - OTP Auth Service (main authentication service)
    - Dashboard is served from `/dashboard` path
    - **MUST INCLUDE** - Primary consumer of customer API
 
-2. **`https://api.idling.app`** [SUCCESS]
+2. **`https://api.idling.app`** ✓
    - Main API worker (Twitch API proxy, legacy endpoints)
    - May call customer API for customer data
    - **SHOULD INCLUDE** - For API-to-API calls
 
-3. **`https://customer.idling.app`** [SUCCESS]
+3. **`https://customer.idling.app`** ✓
    - Customer API worker itself (for same-origin requests)
    - **SHOULD INCLUDE** - For consistency
 
-4. **`https://game.idling.app`** [SUCCESS]
+4. **`https://game.idling.app`** ✓
    - Game API worker
    - May need customer data for game features
    - **SHOULD INCLUDE** - If game features use customer data
 
-5. **`https://mods.idling.app`** [SUCCESS]
+5. **`https://mods.idling.app`** ✓
    - Mods API worker
    - May need customer data for mod management
    - **SHOULD INCLUDE** - If mod features use customer data
 
-6. **`https://s.idling.app`** [SUCCESS]
+6. **`https://s.idling.app`** ✓
    - URL Shortener service
    - May need customer data for analytics
    - **SHOULD INCLUDE** - If URL shortener tracks customer data
 
-7. **`https://chat.idling.app`** [SUCCESS]
+7. **`https://chat.idling.app`** ✓
    - Chat Signaling service
    - May need customer data for user profiles
    - **SHOULD INCLUDE** - If chat features use customer data
 
 ### Root Domain
 
-8. **`https://idling.app`** [SUCCESS]
+8. **`https://idling.app`** ✓
    - Main website domain
    - **SHOULD INCLUDE** - If main site calls customer API
 
-9. **`https://www.idling.app`** [SUCCESS]
+9. **`https://www.idling.app`** ✓
    - WWW subdomain
    - **SHOULD INCLUDE** - If www subdomain is used
 
@@ -60,23 +60,23 @@ This document lists **ALL** origins that should be included in the `ALLOWED_ORIG
 
 ## Development/Local Origins
 
-10. **`http://localhost:5173`** [SUCCESS]
+10. **`http://localhost:5173`** ✓
     - Vite default development server
     - **MUST INCLUDE** - For local development
 
-11. **`http://localhost:3000`** [SUCCESS]
+11. **`http://localhost:3000`** ✓
     - Common development server port
     - **SHOULD INCLUDE** - For alternative dev setups
 
-12. **`http://localhost:5174`** [SUCCESS]
+12. **`http://localhost:5174`** ✓
     - Alternative Vite port
     - **SHOULD INCLUDE** - For multiple dev servers
 
-13. **`http://127.0.0.1:5173`** [SUCCESS]
+13. **`http://127.0.0.1:5173`** ✓
     - Localhost IP (alternative to localhost)
     - **SHOULD INCLUDE** - For IP-based local access
 
-14. **`http://localhost:8080`** [SUCCESS]
+14. **`http://localhost:8080`** ✓
     - Alternative development port
     - **SHOULD INCLUDE** - For various dev setups
 
@@ -100,11 +100,11 @@ https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https
 
 ## Priority Levels
 
-### [ERROR] CRITICAL (Must Include)
+### ✗ CRITICAL (Must Include)
 - `https://auth.idling.app` - Primary consumer
 - `http://localhost:5173` - Local development
 
-### [WARNING] HIGH (Should Include)
+### ⚠ HIGH (Should Include)
 - `https://api.idling.app` - Main API worker
 - `https://customer.idling.app` - Same-origin
 - `https://game.idling.app` - Game API integration
@@ -112,14 +112,14 @@ https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https
 - `https://idling.app` - Main website
 - `https://www.idling.app` - WWW subdomain
 
-### [INFO] MEDIUM (Consider Including)
+### ℹ MEDIUM (Consider Including)
 - `https://s.idling.app` - URL shortener
 - `https://chat.idling.app` - Chat signaling
 - `http://localhost:3000` - Alternative dev port
 - `http://localhost:5174` - Alternative Vite port
 - `http://127.0.0.1:5173` - IP-based localhost
 
-### [INFO] LOW (Optional)
+### ℹ LOW (Optional)
 - `http://localhost:8080` - Alternative dev port
 
 ---
@@ -181,7 +181,7 @@ curl -H "Origin: https://auth.idling.app" \
 https://*.idling.app,http://localhost:*
 ```
 
-**[WARNING] WARNING:** Wildcards are less secure. Prefer explicit origins.
+**⚠ WARNING:** Wildcards are less secure. Prefer explicit origins.
 
 ---
 
@@ -189,20 +189,20 @@ https://*.idling.app,http://localhost:*
 
 | Origin | Priority | Production | Development | Notes |
 |--------|----------|-----------|-------------|-------|
-| `https://auth.idling.app` | [ERROR] CRITICAL | [SUCCESS] | [SUCCESS] | Primary consumer |
-| `https://api.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Main API worker |
-| `https://customer.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Same-origin |
-| `https://game.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Game API |
-| `https://mods.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Mods API |
-| `https://s.idling.app` | [INFO] MEDIUM | [SUCCESS] | [SUCCESS] | URL shortener |
-| `https://chat.idling.app` | [INFO] MEDIUM | [SUCCESS] | [SUCCESS] | Chat signaling |
-| `https://idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | Main website |
-| `https://www.idling.app` | [WARNING] HIGH | [SUCCESS] | [SUCCESS] | WWW subdomain |
-| `http://localhost:5173` | [ERROR] CRITICAL | [INFO] | [SUCCESS] | Vite dev server |
-| `http://localhost:3000` | [INFO] MEDIUM | [INFO] | [SUCCESS] | Alternative dev |
-| `http://localhost:5174` | [INFO] MEDIUM | [INFO] | [SUCCESS] | Alternative Vite |
-| `http://127.0.0.1:5173` | [INFO] MEDIUM | [INFO] | [SUCCESS] | IP localhost |
-| `http://localhost:8080` | [INFO] LOW | [INFO] | [SUCCESS] | Alternative dev |
+| `https://auth.idling.app` | ✗ CRITICAL | ✓ | ✓ | Primary consumer |
+| `https://api.idling.app` | ⚠ HIGH | ✓ | ✓ | Main API worker |
+| `https://customer.idling.app` | ⚠ HIGH | ✓ | ✓ | Same-origin |
+| `https://game.idling.app` | ⚠ HIGH | ✓ | ✓ | Game API |
+| `https://mods.idling.app` | ⚠ HIGH | ✓ | ✓ | Mods API |
+| `https://s.idling.app` | ℹ MEDIUM | ✓ | ✓ | URL shortener |
+| `https://chat.idling.app` | ℹ MEDIUM | ✓ | ✓ | Chat signaling |
+| `https://idling.app` | ⚠ HIGH | ✓ | ✓ | Main website |
+| `https://www.idling.app` | ⚠ HIGH | ✓ | ✓ | WWW subdomain |
+| `http://localhost:5173` | ✗ CRITICAL | ℹ | ✓ | Vite dev server |
+| `http://localhost:3000` | ℹ MEDIUM | ℹ | ✓ | Alternative dev |
+| `http://localhost:5174` | ℹ MEDIUM | ℹ | ✓ | Alternative Vite |
+| `http://127.0.0.1:5173` | ℹ MEDIUM | ℹ | ✓ | IP localhost |
+| `http://localhost:8080` | ℹ LOW | ℹ | ✓ | Alternative dev |
 
 ---
 
@@ -228,5 +228,5 @@ https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https
 
 ---
 
-**Status:** [SUCCESS] **COMPLETE AUDIT**
+**Status:** ✓ **COMPLETE AUDIT**
 **Total Origins:** 14 (9 production + 5 development)

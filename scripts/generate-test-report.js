@@ -15,7 +15,7 @@ function generateReport() {
   if (existsSync('test-output.txt')) {
     output = readFileSync('test-output.txt', 'utf8');
   } else {
-    console.error('[ERROR] test-output.txt not found. Tests must be run first.');
+    console.error('✗ test-output.txt not found. Tests must be run first.');
     process.exit(1);
   }
   try {
@@ -118,10 +118,10 @@ Generated: ${new Date().toISOString().replace('T', ' ').substring(0, 19)}
     
     // Write report
     writeFileSync('TEST_REPORT.md', report, 'utf8');
-    console.log('\n[SUCCESS] Test report generated: TEST_REPORT.md');
+    console.log('\n✓ Test report generated: TEST_REPORT.md');
     
   } catch (error) {
-    console.error('\n[ERROR] Failed to generate report:', error.message);
+    console.error('\n✗ Failed to generate report:', error.message);
     process.exit(1);
   }
 }

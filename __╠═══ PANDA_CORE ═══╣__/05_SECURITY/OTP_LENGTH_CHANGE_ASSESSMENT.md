@@ -1,6 +1,6 @@
 # OTP Length Change: 6  9 Digits - Work Assessment
 
-## [EMOJI] Summary
+## ★ Summary
 
 **Estimated Work:** ~2-3 hours  
 **Complexity:** Low-Medium (mostly find-and-replace, but many files)  
@@ -8,7 +8,7 @@
 
 ---
 
-## [EMOJI] Required Changes
+## ★ Required Changes
 
 ### **1. Core Generation Function** (1 file - CRITICAL)
 
@@ -35,7 +35,7 @@ export function generateOTP(): string {
 }
 ```
 
-**Impact:** [WARNING] **CRITICAL** - This is the source of truth. All OTPs will be 9 digits after this change.
+**Impact:** ⚠ **CRITICAL** - This is the source of truth. All OTPs will be 9 digits after this change.
 
 ---
 
@@ -71,7 +71,7 @@ if (!otp || !/^\d{9}$/.test(otp)) {
 }
 ```
 
-**Impact:** [WARNING] **CRITICAL** - Backend will reject 6-digit codes after this change.
+**Impact:** ⚠ **CRITICAL** - Backend will reject 6-digit codes after this change.
 
 ---
 
@@ -140,7 +140,7 @@ if (!otp || !/^\d{9}$/.test(otp)) {
 9. **`serverless/otp-auth-service/landing.html.backup`**
    - Similar changes as landing.html
 
-**Impact:** [WARNING] **HIGH** - Users won't be able to enter 9-digit codes if frontend validation isn't updated.
+**Impact:** ⚠ **HIGH** - Users won't be able to enter 9-digit codes if frontend validation isn't updated.
 
 ---
 
@@ -155,7 +155,7 @@ if (!otp || !/^\d{9}$/.test(otp)) {
 3. **`serverless/otp-auth-service/openapi-json.js`**
    - Line 553: `"pattern": "^[0-9]{6}$"`  `"pattern": "^[0-9]{9}$"`
 
-**Impact:** [WARNING] **MEDIUM** - API documentation will be incorrect if not updated.
+**Impact:** ⚠ **MEDIUM** - API documentation will be incorrect if not updated.
 
 ---
 
@@ -175,11 +175,11 @@ if (!otp || !/^\d{9}$/.test(otp)) {
 
 5. **Any other markdown files with OTP references**
 
-**Impact:** [WARNING] **LOW** - Documentation accuracy, doesn't affect functionality.
+**Impact:** ⚠ **LOW** - Documentation accuracy, doesn't affect functionality.
 
 ---
 
-## [EMOJI] Change Checklist
+## ★ Change Checklist
 
 ### **Phase 1: Core Changes** (CRITICAL - Do First)
 - [ ] Update `generateOTP()` in `utils/crypto.ts`
@@ -210,7 +210,7 @@ if (!otp || !/^\d{9}$/.test(otp)) {
 
 ---
 
-## [EMOJI] Search & Replace Patterns
+## ★ Search & Replace Patterns
 
 ### **Find:**
 ```regex
@@ -243,31 +243,31 @@ padStart(6  padStart(9
 
 ---
 
-## [WARNING] Important Considerations
+## ⚠ Important Considerations
 
 ### **1. Backward Compatibility**
-- [ERROR] **No backward compatibility** - 6-digit codes will stop working immediately
-- [WARNING] **Breaking change** - All existing integrations need to be updated
+- ✗ **No backward compatibility** - 6-digit codes will stop working immediately
+- ⚠ **Breaking change** - All existing integrations need to be updated
 -  **Communication required** - Users need to be notified
 
 ### **2. Testing Required**
-- [OK] Test OTP generation (should produce 9-digit codes)
-- [OK] Test OTP validation (should accept 9-digit, reject 6-digit)
-- [OK] Test frontend input (should accept 9 digits)
-- [OK] Test email templates (if they mention OTP length)
+- ✓ Test OTP generation (should produce 9-digit codes)
+- ✓ Test OTP validation (should accept 9-digit, reject 6-digit)
+- ✓ Test frontend input (should accept 9 digits)
+- ✓ Test email templates (if they mention OTP length)
 
 ### **3. Email Templates**
-- [EMOJI] Check if email templates mention "6-digit" code
-- [EMOJI] Update email content if needed
+- ★ Check if email templates mention "6-digit" code
+- ★ Update email content if needed
 
 ### **4. Security Impact**
-- [OK] **More secure** - 1 billion combinations vs 1 million
-- [OK] **Harder to brute force** - 1000x more combinations
-- [OK] **Same cryptographic security** - Still uses `crypto.getRandomValues()`
+- ✓ **More secure** - 1 billion combinations vs 1 million
+- ✓ **Harder to brute force** - 1000x more combinations
+- ✓ **Same cryptographic security** - Still uses `crypto.getRandomValues()`
 
 ---
 
-## [EMOJI] Quick Implementation Script
+## ★ Quick Implementation Script
 
 ```bash
 # Find all files that need changes
@@ -279,7 +279,7 @@ rg "6-digit|6 digit|\d{6}|1000000|maxlength=\"6\"|pattern=\"\[0-9\]{6}\"" server
 
 ---
 
-## [EMOJI] Estimated Time Breakdown
+## ★ Estimated Time Breakdown
 
 | Task | Files | Time |
 |------|-------|------|
@@ -293,14 +293,14 @@ rg "6-digit|6 digit|\d{6}|1000000|maxlength=\"6\"|pattern=\"\[0-9\]{6}\"" server
 
 ---
 
-## [OK] Recommendation
+## ✓ Recommendation
 
 **This is a straightforward change** - mostly find-and-replace across many files. The work is:
 
-1. [OK] **Low complexity** - Simple number changes
-2. [WARNING] **Many files** - ~20+ files need updates
-3. [WARNING] **Breaking change** - No backward compatibility
-4. [OK] **Low risk** - If done correctly, should work fine
+1. ✓ **Low complexity** - Simple number changes
+2. ⚠ **Many files** - ~20+ files need updates
+3. ⚠ **Breaking change** - No backward compatibility
+4. ✓ **Low risk** - If done correctly, should work fine
 
 **Suggested approach:**
 1. Start with core function (generateOTP)

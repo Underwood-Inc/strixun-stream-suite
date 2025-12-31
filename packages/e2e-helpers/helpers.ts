@@ -59,7 +59,7 @@ export async function waitForOTP(_page: Page): Promise<string> {
 export async function requestOTPCode(
   page: Page,
   email: string,
-  apiUrl: string = WORKER_URLS.OTP_AUTH
+  _apiUrl: string = WORKER_URLS.OTP_AUTH
 ): Promise<{ response: any; body: any }> {
   // Find email input
   const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
@@ -97,7 +97,7 @@ export async function requestOTPCode(
 export async function verifyOTPCode(
   page: Page,
   otpCode: string,
-  apiUrl: string = WORKER_URLS.OTP_AUTH
+  _apiUrl: string = WORKER_URLS.OTP_AUTH
 ): Promise<{ response: any; body: any }> {
   // Find OTP input
   const otpInput = page.locator(

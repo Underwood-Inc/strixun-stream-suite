@@ -422,7 +422,7 @@
     </p>
     <div class="url-box">
       <input type="text" id="dockUrl" bind:value={dockUrl} readonly>
-      <button on:click={handleCopyUrl}>[EMOJI] Copy</button>
+      <button on:click={handleCopyUrl}>✓ Copy</button>
     </div>
     <p style="color:var(--muted);margin-top:8px;font-size:0.85em" id="copyStatus">
       {copyStatus}
@@ -500,7 +500,7 @@
   <Tooltip text="Cross-Client Sync | This feature is currently in testing" level="info" position="top">
     <StatusFlair status="in-testing">
       <div class="card">
-      <h3>[EMOJI] Cross-Client Sync</h3>
+      <h3> ★ Cross-Client Sync</h3>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:8px">
       Sync configs between OBS dock and remote browser panels via WebSocket.
     </p>
@@ -554,7 +554,7 @@
       <div style="display:grid;gap:6px">
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportSwaps" bind:checked={exportSwaps} style="width:auto;margin:0">
-          <span>[EMOJI] Swap Configs</span>
+          <span> ★ Swap Configs</span>
           <span id="swapCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
@@ -564,7 +564,7 @@
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportTextCyclers" bind:checked={exportTextCyclers} style="width:auto;margin:0">
-          <span>[EMOJI] Text Cycler Configs</span>
+          <span> ★ Text Cycler Configs</span>
           <span id="textCyclerCount" style="margin-left:auto;color:var(--muted);font-size:0.9em">(0)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
@@ -574,7 +574,7 @@
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportCredentials" bind:checked={exportCredentials} style="width:auto;margin:0">
-          <span>[EMOJI] Connection Settings</span>
+          <span> ★ Connection Settings</span>
           <span style="margin-left:auto;color:var(--warning);font-size:0.8em">(host/port only)</span>
         </label>
       </div>
@@ -591,17 +591,17 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button on:click={App.forceStorageSync} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        [EMOJI] Force Sync
+        → Force Sync
       </button>
       <button on:click={App.copyBackupToClipboard} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        [EMOJI] Copy as JSON
+        ✓ Copy as JSON
       </button>
     </div>
     
     <!-- Info -->
     <div style="margin-top:10px;padding:8px;background:rgba(255,200,0,0.1);border-radius:6px;border-left:3px solid var(--warning)">
       <p style="font-size:0.75em;color:var(--warning);margin:0">
-        [WARNING] <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!
+        ⚠ <strong>OBS browser docks can lose data</strong> when cache is cleared. Export backups regularly!
       </p>
     </div>
     
@@ -627,7 +627,7 @@
         on:click={() => showLoginModal = true}
         style="padding:10px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-weight:500"
       >
-        [EMOJI] Sign In to Use Cloud Backup
+        ✓ Sign In to Use Cloud Backup
       </button>
     {:else}
       <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
@@ -712,7 +712,7 @@
         disabled={isLoadingCloudSaves}
         style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em;width:100%"
       >
-        [EMOJI] Refresh List
+        → Refresh List
       </button>
     {/if}
       </div>
@@ -739,7 +739,7 @@
   <Tooltip text="Version | This feature is currently in testing" level="info" position="top">
     <StatusFlair status="in-testing">
       <div class="card">
-      <h3>[EMOJI] Version</h3>
+      <h3> ★ Version</h3>
     <div id="versionInfo" style="font-size:0.9em">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
         <span style="color:var(--muted)">Local Version:</span>
@@ -755,7 +755,7 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <button on:click={handleCheckForUpdates} style="padding:8px;background:var(--primary);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
-        [EMOJI] Check Updates
+        → Check Updates
       </button>
       <button on:click={handleOpenGitHubRepo} style="padding:8px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:0.85em">
          Open GitHub

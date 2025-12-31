@@ -12,7 +12,7 @@ This guide documents the integration of the customer-api worker with the OTP aut
 
 ---
 
-## [OK] Completed Integration Steps
+## ✓ Completed Integration Steps
 
 ### 1. Customer API Client Created
 
@@ -76,35 +76,35 @@ Allows looking up customers by email address (required for account recovery).
 
 ---
 
-## [EMOJI] Migration Status
+## ★ Migration Status
 
-### [OK] Migrated to Customer API
+### ✓ Migrated to Customer API
 
 1. **Dashboard Customer Endpoints**
    - `GET /customer/me` - Get current customer
    - `PUT /customer/me` - Update current customer
 
-### [OK] Fully Migrated to Customer API
+### ✓ Fully Migrated to Customer API
 
 All customer operations now go through customer-api:
 
 1. **`ensureCustomerAccount()`** (`handlers/auth/customer-creation.ts`)
-   - [OK] Now uses customer-api via service-to-service authentication
-   - [OK] Uses `SERVICE_API_KEY` for internal calls (no JWT needed)
-   - [OK] All customer data stored in `CUSTOMER_KV` (customer-api)
+   - ✓ Now uses customer-api via service-to-service authentication
+   - ✓ Uses `SERVICE_API_KEY` for internal calls (no JWT needed)
+   - ✓ All customer data stored in `CUSTOMER_KV` (customer-api)
 
 2. **All handlers that call `ensureCustomerAccount()`:**
-   - [OK] `handlers/auth/verify-otp.ts` - Uses customer-api
-   - [OK] `handlers/auth/session.ts` - Uses customer-api
-   - [OK] `handlers/admin/customers.js` - Uses customer-api
-   - [OK] `handlers/user/preferences.ts` - Uses customer-api
-   - [OK] `router/admin-routes.ts` - Uses customer-api
+   - ✓ `handlers/auth/verify-otp.ts` - Uses customer-api
+   - ✓ `handlers/auth/session.ts` - Uses customer-api
+   - ✓ `handlers/admin/customers.js` - Uses customer-api
+   - ✓ `handlers/user/preferences.ts` - Uses customer-api
+   - ✓ `router/admin-routes.ts` - Uses customer-api
 
 ---
 
-## [EMOJI] Next Steps
+## ★ Next Steps
 
-### [OK] Phase 1 & 2: Complete! 
+### ✓ Phase 1 & 2: Complete! 
 
 Service-to-service authentication is implemented and `ensureCustomerAccount()` is fully migrated to customer-api.
 
@@ -117,30 +117,30 @@ Migrate existing customer data from `OTP_AUTH_KV` to `CUSTOMER_KV`:
 
 ---
 
-## [EMOJI] API Endpoints Reference
+## ★ API Endpoints Reference
 
 ### Customer API Endpoints
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| `GET` | `/customer/me` | Get current customer | [OK] JWT |
-| `GET` | `/customer/:id` | Get customer by ID | [OK] JWT |
-| `GET` | `/customer/by-email/:email` | Get customer by email | [OK] JWT |
-| `POST` | `/customer` | Create new customer | [OK] JWT |
-| `PUT` | `/customer/me` | Update current customer | [OK] JWT |
+| `GET` | `/customer/me` | Get current customer | ✓ JWT |
+| `GET` | `/customer/:id` | Get customer by ID | ✓ JWT |
+| `GET` | `/customer/by-email/:email` | Get customer by email | ✓ JWT |
+| `POST` | `/customer` | Create new customer | ✓ JWT |
+| `PUT` | `/customer/me` | Update current customer | ✓ JWT |
 
 ### OTP Auth Service Endpoints (Legacy)
 
 | Method | Endpoint | Description | Status |
 |--------|----------|-------------|--------|
-| `GET` | `/admin/customers/me` | Get current customer | [WARNING] Deprecated (use customer-api) |
-| `PUT` | `/admin/customers/me` | Update current customer | [WARNING] Deprecated (use customer-api) |
+| `GET` | `/admin/customers/me` | Get current customer | ⚠ Deprecated (use customer-api) |
+| `PUT` | `/admin/customers/me` | Update current customer | ⚠ Deprecated (use customer-api) |
 
 **Note:** Legacy endpoints may still work but should be migrated to customer-api.
 
 ---
 
-## [EMOJI] Configuration
+## ★ Configuration
 
 ### Environment Variables
 
@@ -156,7 +156,7 @@ Migrate existing customer data from `OTP_AUTH_KV` to `CUSTOMER_KV`:
 
 ---
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### Dashboard Can't Load Customer Data
 
@@ -190,7 +190,7 @@ Migrate existing customer data from `OTP_AUTH_KV` to `CUSTOMER_KV`:
 
 ---
 
-## [EMOJI] Notes
+## ★ Notes
 
 - **Backward Compatibility:** Legacy endpoints (`/admin/customers/me`) may still work but are deprecated
 - **Data Storage:** Customer data is stored in `CUSTOMER_KV` (customer-api) and `OTP_AUTH_KV` (OTP auth service) during migration period
@@ -199,7 +199,7 @@ Migrate existing customer data from `OTP_AUTH_KV` to `CUSTOMER_KV`:
 
 ---
 
-**Status:** [OK] **FULLY INTEGRATED**  
+**Status:** ✓ **FULLY INTEGRATED**  
 **Last Updated:** 2025-12-29  
 **Next Step:** Test integration and optionally migrate existing customer data
 

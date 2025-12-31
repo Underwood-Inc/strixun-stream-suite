@@ -135,7 +135,7 @@ try {
 ### Before (Direct fetch)
 
 ```typescript
-// [ERROR] Old way - manual fetch with authentication
+// ✗ Old way - manual fetch with authentication
 const response = await fetch(`${authApiUrl}/admin/users`, {
     method: 'GET',
     headers: {
@@ -149,7 +149,7 @@ const response = await fetch(`${authApiUrl}/admin/users`, {
 ### After (Service Client)
 
 ```typescript
-// [OK] New way - using service client
+// ✓ New way - using service client
 import { createServiceClient } from '@strixun/service-client';
 
 const client = createServiceClient(authApiUrl, env);
@@ -183,10 +183,10 @@ NETWORK_INTEGRITY_KEYPHRASE=your-secret-keyphrase-here
 
 ### What Gets Verified
 
-- [OK] Request method, path, and body
-- [OK] Response status code and body
-- [OK] Request timestamp (prevents replay attacks)
-- [ERROR] Headers (not included in signature - can vary)
+- ✓ Request method, path, and body
+- ✓ Response status code and body
+- ✓ Request timestamp (prevents replay attacks)
+- ✗ Headers (not included in signature - can vary)
 
 ### Error Handling
 

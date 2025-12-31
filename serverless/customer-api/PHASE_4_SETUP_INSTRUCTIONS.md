@@ -1,12 +1,10 @@
-# Phase 4: Customer API Worker - Setup Instructions [EMOJI]
-
-## Overview
+# Phase 4: Customer API Worker - Setup Instructions ★ ## Overview
 
 The Customer API worker has been created and is ready for deployment. This document provides step-by-step instructions for setting it up.
 
 ---
 
-## [OK] What's Been Created
+## ✓ What's Been Created
 
 1. **Worker Structure** - Complete customer-api worker following game-api pattern
 2. **Routes & Handlers** - Customer CRUD endpoints with automatic encryption
@@ -17,7 +15,7 @@ The Customer API worker has been created and is ready for deployment. This docum
 
 ---
 
-## [EMOJI] Setup Steps
+## ★ Setup Steps
 
 ### Step 1: Create KV Namespace
 
@@ -38,7 +36,7 @@ Add the following to your configuration file in your kv_namespaces array:
 { binding = "CUSTOMER_KV", id = "abc123def456ghi789..." }
 ```
 
-**[WARNING] IMPORTANT:** Copy the `id` value - you'll need it in the next step!
+**⚠ IMPORTANT:** Copy the `id` value - you'll need it in the next step!
 
 **Option B: Automatic Creation via GitHub Workflow**
 
@@ -84,7 +82,7 @@ wrangler secret put ALLOWED_ORIGINS
 # See CORS_ORIGINS_AUDIT.md for complete list and details
 ```
 
-**[WARNING] CRITICAL:** The JWT_SECRET must be **identical** to the one in the OTP auth service, otherwise authentication will fail!
+**⚠ CRITICAL:** The JWT_SECRET must be **identical** to the one in the OTP auth service, otherwise authentication will fail!
 
 ---
 
@@ -122,10 +120,10 @@ Published strixun-customer-api (X.XX sec)
 **Option B: Automated Deployment via GitHub (Recommended)**
 
 The GitHub workflow will automatically:
-- [OK] Create KV namespace if it doesn't exist
-- [OK] Deploy the worker
-- [OK] Set secrets from GitHub repository secrets
-- [OK] Show deployment summary with KV namespace ID
+- ✓ Create KV namespace if it doesn't exist
+- ✓ Deploy the worker
+- ✓ Set secrets from GitHub repository secrets
+- ✓ Show deployment summary with KV namespace ID
 
 **To use automated deployment:**
 1. Ensure GitHub secrets are set (see `GITHUB_WORKFLOW_SETUP.md`)
@@ -187,7 +185,7 @@ curl https://customer.idling.app/health
 
 ---
 
-## [EMOJI] Verification Checklist
+## ★ Verification Checklist
 
 - [ ] KV namespace created and ID updated in wrangler.toml
 - [ ] JWT_SECRET set (matches OTP auth service)
@@ -199,7 +197,7 @@ curl https://customer.idling.app/health
 
 ---
 
-## [EMOJI] Quick Reference Commands
+## ★ Quick Reference Commands
 
 ```bash
 # Create KV namespace
@@ -261,7 +259,7 @@ wrangler secret put JWT_SECRET
 
 ---
 
-## [EMOJI] API Endpoints
+## ★ API Endpoints
 
 Once deployed, the following endpoints are available:
 
@@ -279,7 +277,7 @@ All endpoints:
 
 ---
 
-## [EMOJI] Next Steps (After Setup)
+## ★ Next Steps (After Setup)
 
 1. **Update OTP Auth Service** to call customer-api instead of local customer service
 2. **Update Dashboard** to use customer-api endpoints
@@ -288,7 +286,7 @@ All endpoints:
 
 ---
 
-## [EMOJI] Documentation
+## ★ Documentation
 
 - **Setup Guide:** `SETUP.md` (detailed setup instructions)
 - **API Documentation:** See handlers for endpoint details
@@ -296,7 +294,7 @@ All endpoints:
 
 ---
 
-**Status:** [OK] Ready for deployment
+**Status:** ✓ Ready for deployment
 **Last Updated:** 2024-12-19
 
 **Need Help?** Check `SETUP.md` for detailed troubleshooting or review the game-api worker for reference implementation.

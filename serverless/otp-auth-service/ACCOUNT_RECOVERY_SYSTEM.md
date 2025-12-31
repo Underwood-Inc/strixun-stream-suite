@@ -1,6 +1,4 @@
-# Account Recovery System [EMOJI]
-
-## Overview
+# Account Recovery System ★ ## Overview
 
 The account recovery system ensures that customer accounts persist indefinitely while allowing automated cleanup of user accounts. When a previously deleted user account is reactivated via new account creation, the system automatically recovers the associated customer account by email, retaining all customer information.
 
@@ -45,9 +43,9 @@ The account recovery system ensures that customer accounts persist indefinitely 
    - Links user to existing customer account
    
 4. Result:
-   - Customer account: [OK] Recovered and reactivated
-   - User account: [OK] Recreated with recovered customerId
-   - Customer information: [OK] Retained indefinitely
+   - Customer account: ✓ Recovered and reactivated
+   - User account: ✓ Recreated with recovered customerId
+   - Customer information: ✓ Retained indefinitely
 ```
 
 ### Scenario: Both Accounts Exist
@@ -80,8 +78,8 @@ The account recovery system ensures that customer accounts persist indefinitely 
    - Links to new customer account
    
 4. Result:
-   - Customer account: [OK] Created (persists indefinitely)
-   - User account: [OK] Created (1-year TTL)
+   - Customer account: ✓ Created (persists indefinitely)
+   - User account: ✓ Created (1-year TTL)
 ```
 
 ---
@@ -394,7 +392,7 @@ cust_{customerId}_preferences_{userId}   # User preferences (1-year TTL)
 
 ---
 
-**Status:** [OK] **IMPLEMENTED**
+**Status:** ✓ **IMPLEMENTED**
 **Last Updated:** 2024-12-19
 **Files Modified:**
 - `serverless/otp-auth-service/services/customer.ts`

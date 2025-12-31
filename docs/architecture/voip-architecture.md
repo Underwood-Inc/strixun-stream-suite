@@ -11,17 +11,17 @@ Composable, agnostic, strongly-typed architecture for peer-to-peer voice communi
 
 ## Architecture Principles
 
-### [OK] Composable
+### ✓ Composable
 - **Independent Service**: `VOIPService` can be used standalone or with chat
 - **No Dependencies**: Doesn't require chat system to function
 - **Modular**: Can be combined with other services (chat, video, etc.)
 
-### [OK] Agnostic
+### ✓ Agnostic
 - **Signaling Agnostic**: Works with any signaling server
 - **Storage Agnostic**: No server-side storage required
 - **Framework Agnostic**: Pure TypeScript, no framework dependencies
 
-### [OK] Strongly Typed
+### ✓ Strongly Typed
 - **Full TypeScript**: Complete type coverage
 - **Interface-Based**: All configs and states are interfaces
 - **Type Safety**: Compile-time error checking
@@ -200,10 +200,10 @@ await voipService.setRemoteAnswer(answer);
 ## Browser Compatibility
 
 ### Supported Browsers
-- [OK] Chrome/Edge (Chromium)
-- [OK] Firefox
-- [OK] Safari 11+
-- [OK] Opera
+- ✓ Chrome/Edge (Chromium)
+- ✓ Firefox
+- ✓ Safari 11+
+- ✓ Opera
 
 ### Requirements
 - **getUserMedia**: Required for microphone access

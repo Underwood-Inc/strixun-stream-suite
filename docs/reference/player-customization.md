@@ -1,10 +1,10 @@
 # Player Customization System Proposals
 
-> **Proposals for player customization leveraging existing avatar systems** [EMOJI][FEATURE]
+> **Proposals for player customization leveraging existing avatar systems** ★ [FEATURE]
 
 ---
 
-## [EMOJI] Found Systems
+## ★ Found Systems
 
 ### 1. **DiceBear Adventurer** (Current Profile System)
 - **Location**: `idling.app__UI/src/app/components/avatar/Avatar.tsx`
@@ -22,7 +22,7 @@
 
 ---
 
-## [EMOJI] Proposal Options
+## ★ Proposal Options
 
 ### **Option 1: Enhanced DiceBear Multi-Style System**  RECOMMENDED
 
@@ -43,16 +43,16 @@ interface CharacterAvatar {
 ```
 
 **Pros**:
-- [OK] Leverages existing DiceBear infrastructure
-- [OK] Multiple art styles (pixel-art, adventurer, etc.)
-- [OK] Deterministic (same seed = same avatar)
-- [OK] Easy to implement
-- [OK] Cached automatically
-- [OK] Works well for overlay (small size)
+- ✓ Leverages existing DiceBear infrastructure
+- ✓ Multiple art styles (pixel-art, adventurer, etc.)
+- ✓ Deterministic (same seed = same avatar)
+- ✓ Easy to implement
+- ✓ Cached automatically
+- ✓ Works well for overlay (small size)
 
 **Cons**:
-- [WARNING] Limited customization depth
-- [WARNING] Style-dependent options
+- ⚠ Limited customization depth
+- ⚠ Style-dependent options
 
 **Best For**: Quick implementation, consistent look, profile-style avatars
 
@@ -97,16 +97,16 @@ interface HybridCharacterAppearance {
 ```
 
 **Pros**:
-- [OK] Best of both worlds
-- [OK] Seed-based uniqueness + customization
-- [OK] Equipment visualization
-- [OK] Deep customization options
-- [OK] Pixel-art aesthetic fits idle game
+- ✓ Best of both worlds
+- ✓ Seed-based uniqueness + customization
+- ✓ Equipment visualization
+- ✓ Deep customization options
+- ✓ Pixel-art aesthetic fits idle game
 
 **Cons**:
-- [WARNING] More complex implementation
-- [WARNING] Requires sprite/asset management
-- [WARNING] Larger data structure
+- ⚠ More complex implementation
+- ⚠ Requires sprite/asset management
+- ⚠ Larger data structure
 
 **Best For**: Rich customization, equipment visualization, pixel-art aesthetic
 
@@ -154,16 +154,16 @@ interface ProceduralCharacter {
 ```
 
 **Pros**:
-- [OK] Fully customizable
-- [OK] Unique to our game
-- [OK] Pixel-art optimized
-- [OK] Equipment integration
-- [OK] No external dependencies
+- ✓ Fully customizable
+- ✓ Unique to our game
+- ✓ Pixel-art optimized
+- ✓ Equipment integration
+- ✓ No external dependencies
 
 **Cons**:
-- [WARNING] Most development time
-- [WARNING] Requires art assets
-- [WARNING] Need to build generator
+- ⚠ Most development time
+- ⚠ Requires art assets
+- ⚠ Need to build generator
 
 **Best For**: Unique identity, full control, pixel-art focus
 
@@ -204,22 +204,22 @@ interface ModularCharacter {
 ```
 
 **Pros**:
-- [OK] High-quality art
-- [OK] Consistent style
-- [OK] Easy to add new parts
-- [OK] Equipment integration
-- [OK] Professional look
+- ✓ High-quality art
+- ✓ Consistent style
+- ✓ Easy to add new parts
+- ✓ Equipment integration
+- ✓ Professional look
 
 **Cons**:
-- [WARNING] Requires art assets
-- [WARNING] Asset management
-- [WARNING] Larger file sizes
+- ⚠ Requires art assets
+- ⚠ Asset management
+- ⚠ Larger file sizes
 
 **Best For**: Professional polish, consistent art style
 
 ---
 
-## [EMOJI] Recommendation Matrix
+## ★ Recommendation Matrix
 
 | Feature | Option 1 | Option 2 | Option 3 | Option 4 |
 |---------|----------|----------|----------|----------|
@@ -232,7 +232,7 @@ interface ModularCharacter {
 
 ---
 
-## [EMOJI] Visual Style Comparison
+## ★ Visual Style Comparison
 
 ### Option 1: DiceBear Multi-Style
 - **Look**: Clean, modern, varied styles
@@ -256,7 +256,7 @@ interface ModularCharacter {
 
 ---
 
-## [OK] Selected: Pixel Editor System
+## ✓ Selected: Pixel Editor System
 
 **Decision**: Use the original pixel-style customizable system with pixel editor (Option 3 Enhanced)
 
@@ -270,13 +270,13 @@ interface ModularCharacter {
 
 ---
 
-## [EMOJI] Implementation Plan
+## ★ Implementation Plan
 
 Now implementing:
-1. [OK] Pixel editor component with canvas drawing
-2. [OK] Character customization system
-3. [OK] End-game crafting integration
-4. [OK] Dungeon system
-5. [OK] Loot generation and idle mechanics
-6. [OK] Full integration
+1. ✓ Pixel editor component with canvas drawing
+2. ✓ Character customization system
+3. ✓ End-game crafting integration
+4. ✓ Dungeon system
+5. ✓ Loot generation and idle mechanics
+6. ✓ Full integration
 

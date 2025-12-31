@@ -2,21 +2,21 @@
 
 Complete guide for integrating the cloud storage system with your Strixun Stream Suite.
 
-## [EMOJI] Overview
+## ★ Overview
 
 The cloud storage system provides **true cross-device configuration backup and sync** using Cloudflare Workers and KV storage. Your configs are stored securely in the cloud and can be accessed from any device.
 
-## [EMOJI] Features
+## ★ Features
 
-- [OK] **Device-Based Authentication** - Automatic device ID generation
-- [OK] **Multiple Save Slots** - default, backup1, backup2, autosave, custom names
-- [OK] **Auto-Sync** - Optional automatic cloud saves every 5 minutes
-- [OK] **Conflict Detection** - Smart timestamp-based conflict resolution
-- [OK] **10MB Per Save** - Plenty of space for all your configs
-- [OK] **1 Year Retention** - Auto-expires after 1 year (renewable on save)
-- [OK] **Complete Backup** - Saves all config types (swaps, layouts, text cyclers, clips, opacity)
+- ✓ **Device-Based Authentication** - Automatic device ID generation
+- ✓ **Multiple Save Slots** - default, backup1, backup2, autosave, custom names
+- ✓ **Auto-Sync** - Optional automatic cloud saves every 5 minutes
+- ✓ **Conflict Detection** - Smart timestamp-based conflict resolution
+- ✓ **10MB Per Save** - Plenty of space for all your configs
+- ✓ **1 Year Retention** - Auto-expires after 1 year (renewable on save)
+- ✓ **Complete Backup** - Saves all config types (swaps, layouts, text cyclers, clips, opacity)
 
-## [EMOJI] Quick Start
+## ★ Quick Start
 
 ### Step 1: Deploy the Cloudflare Worker
 
@@ -138,7 +138,7 @@ if (conflict.hasConflict) {
 7. **Save Management** - Load or delete individual saves
 8. **Status Messages** - Real-time feedback on operations
 
-## [EMOJI] Configuration
+## ★ Configuration
 
 ### Save Slot Naming
 
@@ -160,7 +160,7 @@ When enabled:
 - Runs in background (non-blocking)
 - Fails gracefully (logs warning, doesn't interrupt workflow)
 
-## [EMOJI]️ Security & Privacy
+## ★ ️ Security & Privacy
 
 ### Device Identification
 - Device ID is auto-generated locally
@@ -180,7 +180,7 @@ When enabled:
 - You control your Cloudflare account and data
 - Can delete all data via Cloudflare dashboard
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### "Failed to save: API error 500"
 - Check Worker deployment status
@@ -207,7 +207,7 @@ When enabled:
 - Verify API URL is correct in `cloud-storage.js`
 - Check browser console for specific CORS error
 
-## [EMOJI] Integration with Existing Storage
+## ★ Integration with Existing Storage
 
 The cloud storage system integrates seamlessly with your existing multi-layer storage:
 
@@ -225,7 +225,7 @@ The cloud storage system integrates seamlessly with your existing multi-layer st
 └─────────────────────────────────────┘
 ```
 
-## [EMOJI] Storage Architecture
+## ★ Storage Architecture
 
 ### Worker Side (Cloudflare)
 ```
@@ -305,7 +305,7 @@ const saveData = await CloudStorage.loadFromCloud('shared');
 CloudStorage.applyCloudSave(saveData, false);
 ```
 
-## [EMOJI] API Reference
+## ★ API Reference
 
 See `serverless/README.md` for complete API endpoint documentation.
 

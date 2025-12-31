@@ -151,22 +151,22 @@ Examples of generated names for each pattern category using proper spacing (no n
 **Total across all patterns:** **~24 million+ unique combinations**
 
 **Note:** While this is fewer combinations than with numbers, the names are:
-- [OK] More readable and natural
-- [OK] Easier to remember
-- [OK] More professional
-- [OK] Still sufficient for millions of users (with uniqueness checking)
+- ✓ More readable and natural
+- ✓ Easier to remember
+- ✓ More professional
+- ✓ Still sufficient for millions of users (with uniqueness checking)
 
 ---
 
 ## Validation Rules
 
-[OK] **Maximum 5 words**  
-[OK] **3-30 characters** total length  
-[OK] **Must start with letter**  
-[OK] **Alphanumeric and spaces only**  
-[OK] **Proper spacing** (no multiple consecutive spaces)  
-[OK] **Uniqueness guaranteed** via KV storage check  
-[OK] **No numbers** - Pure word-based names for better readability
+✓ **Maximum 5 words**  
+✓ **3-30 characters** total length  
+✓ **Must start with letter**  
+✓ **Alphanumeric and spaces only**  
+✓ **Proper spacing** (no multiple consecutive spaces)  
+✓ **Uniqueness guaranteed** via KV storage check  
+✓ **No numbers** - Pure word-based names for better readability
 
 ---
 
@@ -193,9 +193,9 @@ Here are some realistic examples that might be generated:
 ---
 
 **Note:** All examples:
-- [OK] Respect the 5-word maximum
-- [OK] Use proper spacing (no camelCase)
-- [OK] Are natural and readable
-- [OK] Would pass validation
-- [OK] Uniqueness guaranteed via KV storage check
+- ✓ Respect the 5-word maximum
+- ✓ Use proper spacing (no camelCase)
+- ✓ Are natural and readable
+- ✓ Would pass validation
+- ✓ Uniqueness guaranteed via KV storage check
 

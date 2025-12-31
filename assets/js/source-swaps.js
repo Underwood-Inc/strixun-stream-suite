@@ -870,7 +870,7 @@
         if (!grid) return;
         
         if (swapConfigs.length === 0) {
-            grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to [EMOJI] tab to create one.</div>';
+            grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to ★ tab to create one.</div>';
             return;
         }
         grid.innerHTML = swapConfigs.map((c, i) => 

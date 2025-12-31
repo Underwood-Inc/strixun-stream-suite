@@ -31,7 +31,7 @@ Create a `.env` file in the `serverless/mods-api` directory:
 FILE_INTEGRITY_KEYPHRASE=your-secret-keyphrase-here
 ```
 
-**[WARNING] Important:** Never commit the `.env` file to git! It should be in `.gitignore`.
+**⚠ Important:** Never commit the `.env` file to git! It should be in `.gitignore`.
 
 #### GitHub Actions / CI/CD
 
@@ -79,4 +79,4 @@ If `FILE_INTEGRITY_KEYPHRASE` is not set:
 - A development fallback will be used (not secure for production)
 - File integrity verification will still work, but signatures can be forged
 
-**[WARNING] Production Warning:** Always set `FILE_INTEGRITY_KEYPHRASE` in production environments!
+**⚠ Production Warning:** Always set `FILE_INTEGRITY_KEYPHRASE` in production environments!

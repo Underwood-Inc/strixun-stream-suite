@@ -285,7 +285,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             // from working with this session
             await env.OTP_AUTH_KV.delete(sessionKey);
             
-            console.log(`[Logout] [OK] Deleted session for user: ${userId}, customerId: ${customerId}`);
+            console.log(`[Logout] ✓ Deleted session for user: ${userId}, customerId: ${customerId}`);
         }
         
         return new Response(JSON.stringify({ 

@@ -133,7 +133,7 @@ export function AdvancedSearchInput({
   return (
     <Container>
       <Wrapper>
-        <Icon>[EMOJI]</Icon>
+        <Icon> ★ </Icon>
         <Input
           ref={inputRef}
           type="text"

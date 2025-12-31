@@ -38,8 +38,8 @@ The URL shortener requires the `JWT_SECRET` environment variable to verify JWT t
 ### Option 2: Using Cloudflare Dashboard
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Navigate to **Workers & Pages** [EMOJI] **strixun-url-shortener**
-3. Go to **Settings** [EMOJI] **Variables and Secrets**
+2. Navigate to **Workers & Pages** ★ **strixun-url-shortener**
+3. Go to **Settings** ★ **Variables and Secrets**
 4. Under **Secrets**, click **Add secret**
 5. Name: `JWT_SECRET`
 6. Value: Enter the same JWT secret as your OTP auth service

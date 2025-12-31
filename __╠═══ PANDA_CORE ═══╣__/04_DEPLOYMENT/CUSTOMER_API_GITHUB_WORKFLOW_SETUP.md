@@ -12,7 +12,7 @@ The Customer API has an automated GitHub Actions workflow that handles deploymen
 
 ---
 
-## [OK] What the Workflow Does
+## ✓ What the Workflow Does
 
 ### Automatic Steps
 
@@ -37,19 +37,19 @@ The Customer API has an automated GitHub Actions workflow that handles deploymen
 
 ---
 
-## [EMOJI] Required GitHub Secrets
+## ★ Required GitHub Secrets
 
 The workflow requires these secrets to be set in your GitHub repository:
 
 ### Required Secrets
 
-1. **`CF_API_TOKEN`** [OK] (Required)
+1. **`CF_API_TOKEN`** ✓ (Required)
    - Cloudflare API token with Workers edit permissions
-   - Get from: Cloudflare Dashboard [EMOJI] My Profile [EMOJI] API Tokens
+   - Get from: Cloudflare Dashboard ★ My Profile ★ API Tokens
 
-2. **`CF_ACCOUNT_ID`** [OK] (Required)
+2. **`CF_ACCOUNT_ID`** ✓ (Required)
    - Your Cloudflare account ID
-   - Get from: Cloudflare Dashboard [EMOJI] Right sidebar [EMOJI] Account ID
+   - Get from: Cloudflare Dashboard ★ Right sidebar ★ Account ID
 
 ### Optional Secrets (Recommended)
 
@@ -64,22 +64,22 @@ The workflow requires these secrets to be set in your GitHub repository:
 
 ---
 
-## [EMOJI] Setup Steps
+## ★ Setup Steps
 
 ### Step 1: Set Required GitHub Secrets
 
-Go to your GitHub repository [EMOJI] Settings [EMOJI] Secrets and variables [EMOJI] Actions [EMOJI] New repository secret
+Go to your GitHub repository ★ Settings ★ Secrets and variables ★ Actions ★ New repository secret
 
 **Set these secrets:**
 
 1. **`CF_API_TOKEN`**
    - Value: Your Cloudflare API token
-   - Get from: Cloudflare Dashboard [EMOJI] My Profile [EMOJI] API Tokens [EMOJI] Create Token
-   - Permissions needed: Account [EMOJI] Workers Scripts [EMOJI] Edit
+   - Get from: Cloudflare Dashboard ★ My Profile ★ API Tokens ★ Create Token
+   - Permissions needed: Account ★ Workers Scripts ★ Edit
 
 2. **`CF_ACCOUNT_ID`**
    - Value: Your Cloudflare account ID
-   - Get from: Cloudflare Dashboard [EMOJI] Right sidebar
+   - Get from: Cloudflare Dashboard ★ Right sidebar
 
 ### Step 2: Set Optional Secrets (Recommended)
 
@@ -106,7 +106,7 @@ Go to your GitHub repository [EMOJI] Settings [EMOJI] Secrets and variables [EMO
 
 ---
 
-## [EMOJI] Workflow Triggers
+## ★ Workflow Triggers
 
 The workflow automatically runs when:
 
@@ -115,13 +115,13 @@ The workflow automatically runs when:
 
 ### Manual Trigger
 
-1. Go to GitHub repository [EMOJI] Actions tab
+1. Go to GitHub repository ★ Actions tab
 2. Select "Deploy Customer API" workflow
-3. Click "Run workflow" [EMOJI] Select branch [EMOJI] Run
+3. Click "Run workflow" ★ Select branch ★ Run
 
 ---
 
-## [EMOJI] Workflow Steps Breakdown
+## ★ Workflow Steps Breakdown
 
 ```yaml
 1. Checkout code
@@ -129,16 +129,16 @@ The workflow automatically runs when:
 3. Setup Node.js (v20)
 4. Install root dependencies
 5. Install customer-api dependencies
-6. Create KV namespace (if needed) [EMOJI] AUTOMATIC
-7. Deploy worker [EMOJI] AUTOMATIC
-8. Set secrets (if configured) [EMOJI] AUTOMATIC
+6. Create KV namespace (if needed) ★ AUTOMATIC
+7. Deploy worker ★ AUTOMATIC
+8. Set secrets (if configured) ★ AUTOMATIC
 9. Get KV namespace ID (for summary)
 10. Deployment summary
 ```
 
 ---
 
-## [WARNING] Important Notes
+## ⚠ Important Notes
 
 ### KV Namespace ID
 
@@ -160,13 +160,13 @@ The workflow automatically runs when:
 
 ---
 
-## [EMOJI] Verification
+## ★ Verification
 
 After deployment, verify:
 
 1. **Check workflow run:**
-   - Go to GitHub [EMOJI] Actions [EMOJI] Latest "Deploy Customer API" run
-   - Should show [OK] green checkmarks for all steps
+   - Go to GitHub ★ Actions ★ Latest "Deploy Customer API" run
+   - Should show ✓ green checkmarks for all steps
 
 2. **Test health endpoint:**
    ```bash
@@ -189,7 +189,7 @@ After deployment, verify:
 
 ---
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### Workflow Fails: "KV namespace not found"
 
@@ -222,13 +222,13 @@ After deployment, verify:
 
 ---
 
-## [EMOJI] Workflow File Location
+## ★ Workflow File Location
 
 `.github/workflows/deploy-customer-api.yml`
 
 ---
 
-## [EMOJI] Comparison with Other Workflows
+## ★ Comparison with Other Workflows
 
 This workflow follows the same pattern as:
 - `deploy-game-api.yml`
@@ -236,16 +236,16 @@ This workflow follows the same pattern as:
 - `deploy-otp-auth.yml`
 
 **Key Differences:**
-- [OK] Automatically creates KV namespace (like storybook creates Pages project)
-- [OK] Extracts and displays KV namespace ID in summary
-- [OK] Handles customer-api specific dependencies
+- ✓ Automatically creates KV namespace (like storybook creates Pages project)
+- ✓ Extracts and displays KV namespace ID in summary
+- ✓ Handles customer-api specific dependencies
 
 ---
 
-**Status:** [OK] **WORKFLOW CREATED**  
-**Auto-Deploys:** [OK] Yes (on push to main/master)  
-**Auto-Creates:** [OK] KV namespace (if missing)  
-**Auto-Sets Secrets:** [OK] Yes (if configured in GitHub)
+**Status:** ✓ **WORKFLOW CREATED**  
+**Auto-Deploys:** ✓ Yes (on push to main/master)  
+**Auto-Creates:** ✓ KV namespace (if missing)  
+**Auto-Sets Secrets:** ✓ Yes (if configured in GitHub)
 
 ---
 

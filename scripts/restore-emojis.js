@@ -1,7 +1,7 @@
 /**
  * Emoji Restoration Script
  * 
- * Inverts the emoji replacement - restores ASCII text like [SUCCESS], [ERROR] back to emojis
+ * Inverts the emoji replacement - restores ASCII text like ✓, ✗ back to emojis
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
@@ -16,11 +16,11 @@ const projectRoot = join(__dirname, '..');
 // ASCII to Emoji restoration mapping (inverted from replace-emojis.js)
 // Note: These are the ASCII replacements that will be restored to emojis
 const asciiToEmoji = {
-  '[SUCCESS]': '✅',
-  '[ERROR]': '❌',
-  '[WARNING]': '⚠️',
+  '✓': '✅',
+  '✗': '❌',
+  '⚠': '⚠️',
   '[SECURITY]': '🔒',
-  '[INFO]': 'ℹ️',
+  'ℹ': 'ℹ️',
   '[NOTE]': '📝',
   '[DEPLOY]': '🚀',
   '[CONFIG]': '🔧',
@@ -74,7 +74,7 @@ const asciiToEmoji = {
   '[BLUE]': '🔵',
   '[BLACK]': '⚫',
   '[WHITE]': '⚪',
-  '[EMOJI]': '❓', // Generic fallback - you may want to handle this differently
+  ' ★ ': '❓', // Generic fallback - you may want to handle this differently
 };
 
 // File extensions to process
@@ -205,7 +205,7 @@ function scanDirectory(dirPath, results = { files: [], replacements: new Map() }
             } catch (error) {
               // Skip binary files or files that can't be read
               if (error.code !== 'EISDIR') {
-                console.warn(`[WARN] Could not read file: ${fullPath}`);
+                console.warn(`⚠ Could not read file: ${fullPath}`);
               }
             }
           }
@@ -213,12 +213,12 @@ function scanDirectory(dirPath, results = { files: [], replacements: new Map() }
       } catch (error) {
         // Skip files we can't access
         if (error.code !== 'ENOENT') {
-          console.warn(`[WARN] Could not access: ${fullPath}`);
+          console.warn(`⚠ Could not access: ${fullPath}`);
         }
       }
     }
   } catch (error) {
-    console.warn(`[WARN] Could not scan directory: ${dirPath}`);
+    console.warn(`⚠ Could not scan directory: ${dirPath}`);
   }
   
   return results;
@@ -234,15 +234,15 @@ async function main() {
   console.log('');
   
   // Step 1: Audit
-  console.log('[INFO] Scanning codebase for ASCII replacements...');
+  console.log('ℹ Scanning codebase for ASCII replacements...');
   const audit = scanDirectory(projectRoot);
   
-  console.log(`[INFO] Found ${audit.files.length} files to check`);
-  console.log(`[INFO] Found ${audit.replacements.size} files with ASCII replacements`);
+  console.log(`ℹ Found ${audit.files.length} files to check`);
+  console.log(`ℹ Found ${audit.replacements.size} files with ASCII replacements`);
   console.log('');
   
   if (audit.replacements.size === 0) {
-    console.log('[SUCCESS] No ASCII replacements found in codebase!');
+    console.log('✓ No ASCII replacements found in codebase!');
     return;
   }
   
@@ -275,7 +275,7 @@ async function main() {
   console.log('');
   
   // Step 4: Replace
-  console.log('[INFO] Restoring emojis...');
+  console.log('ℹ Restoring emojis...');
   let totalReplacements = 0;
   const modifiedFiles = [];
   
@@ -290,10 +290,10 @@ async function main() {
         writeFileSync(fullPath, result, 'utf-8');
         totalReplacements += replaced.length;
         modifiedFiles.push({ file: filePath, replacements: replaced });
-        console.log(`[SUCCESS] ${filePath}: ${replaced.length} restoration(s)`);
+        console.log(`✓ ${filePath}: ${replaced.length} restoration(s)`);
       }
     } catch (error) {
-      console.error(`[ERROR] Failed to process ${filePath}: ${error.message}`);
+      console.error(`✗ Failed to process ${filePath}: ${error.message}`);
     }
   }
   
@@ -304,7 +304,7 @@ async function main() {
   console.log(`  Files modified: ${modifiedFiles.length}`);
   console.log(`  Total restorations: ${totalReplacements}`);
   console.log('');
-  console.log('[SUCCESS] Emoji restoration complete!');
+  console.log('✓ Emoji restoration complete!');
   console.log('');
 }
 

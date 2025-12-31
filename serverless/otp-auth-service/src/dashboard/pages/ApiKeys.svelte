@@ -133,7 +133,7 @@
       <h2 class="api-keys__section-title">Your API Keys</h2>
       {#if apiKeys.length === 0}
         <div class="api-keys__empty">
-          <div class="api-keys__empty-icon">[EMOJI]</div>
+          <div class="icon">★</div>
           <p>No API keys yet</p>
           <p class="api-keys__empty-hint">Create your first API key above to get started</p>
         </div>
@@ -164,9 +164,7 @@
                           alert('API key copied to clipboard!');
                         }}
                         title="Copy API key"
-                      >
-                        [EMOJI]
-                      </button>
+                      > ★ </button>
                     {:else}
                       <span class="api-keys__key-missing">N/A</span>
                     {/if}
@@ -215,7 +213,7 @@
     onkeydown={(e) => e.key === 'Escape' && (showNewKeyModal = false)}
   >
     <div class="api-keys__modal-content">
-      <h2 id="modal-title" class="api-keys__modal-title">[WARNING] API Key Created</h2>
+      <h2 id="modal-title" class="api-keys__modal-title">⚠ API Key Created</h2>
       <p class="api-keys__modal-text">Copy this API key now. You won't be able to see it again!</p>
       <div class="api-keys__modal-key">{newApiKey}</div>
       <button class="api-keys__button api-keys__button--primary" onclick={() => copyToClipboard(newApiKey!)}>

@@ -1,10 +1,8 @@
-# Multi-Stage Encryption Architecture [EMOJI]
-
-> **Comprehensive diagram and explanation of multi-stage encryption system and two-stage implementation for user sensitive information**
+# Multi-Stage Encryption Architecture ★ > **Comprehensive diagram and explanation of multi-stage encryption system and two-stage implementation for user sensitive information**
 
 ---
 
-## [EMOJI] Architecture Diagram
+## ★ Architecture Diagram
 
 ### Multi-Stage Encryption Flow (Order-Independent)
 
@@ -97,7 +95,7 @@ graph TB
 
 ---
 
-## [EMOJI] Core Concepts
+## ★ Core Concepts
 
 ### Multi-Stage Encryption (General)
 
@@ -117,7 +115,7 @@ graph TB
 
 ---
 
-## [EMOJI] Two-Stage Encryption Implementation
+## ★ Two-Stage Encryption Implementation
 
 ### Overview
 
@@ -299,7 +297,7 @@ interface TwoStageEncryptedData {
 
 ---
 
-## [EMOJI] Real-World Usage Flow
+## ★ Real-World Usage Flow
 
 ### API Response Flow
 
@@ -355,23 +353,23 @@ interface TwoStageEncryptedData {
 
 ---
 
-## [EMOJI] Security Properties
+## ★ Security Properties
 
 ### Three Layers of Protection
 
-1. **[EMOJI] Router-Level Encryption**
+1. ** ★ Router-Level Encryption**
    - **Key:** Requester's JWT token
    - **Protection:** Only authenticated requester can decrypt the response
    - **Scope:** Entire API response
    - **Automatic:** Handled by router middleware
 
-2. **[EMOJI] Stage 2 Encryption (Request Key)**
+2. ** ★ Stage 2 Encryption (Request Key)**
    - **Key:** Approved request key
    - **Protection:** Requires owner approval to access
    - **Scope:** Sensitive fields (userId/email)
    - **Control:** Owner must approve request to get request key
 
-3. **[EMOJI] Stage 1 Encryption (Owner's JWT)**
+3. ** ★ Stage 1 Encryption (Owner's JWT)**
    - **Key:** Data owner's JWT token
    - **Protection:** Only the data owner can decrypt
    - **Scope:** Sensitive fields (userId/email)
@@ -387,7 +385,7 @@ interface TwoStageEncryptedData {
 
 ---
 
-## [EMOJI] Code Examples
+## ★ Code Examples
 
 ### Encrypting User Email
 
@@ -473,7 +471,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
 
 ---
 
-## [EMOJI] Related Files
+## ★ Related Files
 
 - **Implementation:** `serverless/shared/encryption/multi-stage-encryption.ts`
 - **JWT Encryption:** `serverless/shared/encryption/jwt-encryption.ts`

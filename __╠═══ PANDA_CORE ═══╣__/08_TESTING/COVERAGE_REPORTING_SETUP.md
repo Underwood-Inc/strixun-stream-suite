@@ -88,10 +88,10 @@ if: always()              # Runs even if previous steps fail
 ```
 
 This ensures:
-- [OK] Tests must pass for deployment
-- [OK] Coverage is reported but doesn't block
-- [OK] Coverage failures are visible but don't stop CI/CD
-- [OK] Coverage data is available for analysis
+- ✓ Tests must pass for deployment
+- ✓ Coverage is reported but doesn't block
+- ✓ Coverage failures are visible but don't stop CI/CD
+- ✓ Coverage data is available for analysis
 
 ## Viewing Coverage
 

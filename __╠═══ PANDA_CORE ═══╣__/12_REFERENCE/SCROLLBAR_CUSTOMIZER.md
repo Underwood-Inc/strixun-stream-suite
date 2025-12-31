@@ -170,11 +170,11 @@ If you want to customize programmatically instead of using the UI:
 ## Browser Support
 
 Works on all modern browsers:
-- [SUCCESS] Chrome
-- [SUCCESS] Firefox
-- [SUCCESS] Safari
-- [SUCCESS] Edge
-- [WARNING] Internet Explorer (limited support)
+- ✓ Chrome
+- ✓ Firefox
+- ✓ Safari
+- ✓ Edge
+- ⚠ Internet Explorer (limited support)
 
 ---
 
@@ -246,7 +246,7 @@ If you run into any issues:
 
 ---
 
-**Made with [SUCCESS] for the web community**
+**Made with ✓ for the web community**
 
 **Last Updated:** 2025-12-29
 

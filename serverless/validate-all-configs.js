@@ -31,13 +31,13 @@ const workers = [
 let totalIssues = 0;
 let totalWarnings = 0;
 
-console.log('[EMOJI] Validating all worker configurations...\n');
+console.log('ℹ all worker configurations...\n');
 
 for (const worker of workers) {
   const workerPath = join(rootDir, 'serverless', worker.path);
   const wranglerPath = join(workerPath, 'wrangler.toml');
   
-  console.log(`[EMOJI] ${worker.name}`);
+  console.log(` ★ ${worker.name}`);
   console.log(`   Path: ${worker.path}`);
   
   const issues = [];
@@ -46,7 +46,7 @@ for (const worker of workers) {
   // Check if wrangler.toml exists
   if (!existsSync(wranglerPath)) {
     issues.push(`Missing wrangler.toml at ${wranglerPath}`);
-    console.log(`   [ERROR] Missing wrangler.toml\n`);
+    console.log(`   ✗ Missing wrangler.toml\n`);
     totalIssues++;
     continue;
   }
@@ -63,7 +63,7 @@ for (const worker of workers) {
     config = parse(tomlContent);
   } catch (error) {
     issues.push(`Failed to parse wrangler.toml: ${error.message}`);
-    console.log(`   [ERROR] Invalid TOML: ${error.message}\n`);
+    console.log(`   ✗ Invalid TOML: ${error.message}\n`);
     totalIssues++;
     continue;
   }
@@ -72,7 +72,7 @@ for (const worker of workers) {
   if (!config.name) {
     issues.push('Missing required field: name');
   } else {
-    console.log(`   [OK] Name: ${config.name}`);
+    console.log(`   ✓ Name: ${config.name}`);
   }
   
   if (!config.main) {
@@ -81,9 +81,9 @@ for (const worker of workers) {
     const mainPath = join(workerPath, config.main);
     if (!existsSync(mainPath)) {
       issues.push(`Main file does not exist: ${config.main}`);
-      console.log(`   [ERROR] Main file missing: ${config.main}`);
+      console.log(`   ✗ Main file missing: ${config.main}`);
     } else {
-      console.log(`   [OK] Main: ${config.main}`);
+      console.log(`   ✓ Main: ${config.main}`);
     }
   }
   
@@ -91,19 +91,19 @@ for (const worker of workers) {
   const rootKVs = config.kv_namespaces || [];
   const rootKVBindings = rootKVs.map(ns => ns.binding).filter(Boolean);
   
-  console.log(`   [EMOJI] Default KV Namespaces: ${rootKVs.length}`);
+  console.log(` ★ Default KV Namespaces: ${rootKVs.length}`);
   
   // Check each expected KV exists at root level
   for (const expectedKV of worker.expectedKVs) {
     const kv = rootKVs.find(ns => ns.binding === expectedKV);
     if (!kv) {
       issues.push(`Missing default KV namespace binding: ${expectedKV}`);
-      console.log(`   [ERROR] Missing default KV: ${expectedKV}`);
+      console.log(`   ✗ Missing default KV: ${expectedKV}`);
     } else if (!kv.id) {
       issues.push(`KV namespace ${expectedKV} missing id`);
-      console.log(`   [ERROR] KV ${expectedKV} missing id`);
+      console.log(`   ✗ KV ${expectedKV} missing id`);
     } else {
-      console.log(`   [OK] Default KV: ${expectedKV} (${kv.id})`);
+      console.log(`   ✓ Default KV: ${expectedKV} (${kv.id})`);
     }
   }
   
@@ -111,22 +111,22 @@ for (const worker of workers) {
   for (const kv of rootKVs) {
     if (kv.binding && !worker.expectedKVs.includes(kv.binding)) {
       warnings.push(`Unexpected default KV namespace: ${kv.binding}`);
-      console.log(`   [WARNING]  Unexpected KV: ${kv.binding}`);
+      console.log(`   ⚠  Unexpected KV: ${kv.binding}`);
     }
   }
   
   // Check for R2 buckets if expected
   if (worker.expectedR2) {
     const rootR2 = config.r2_buckets || [];
-    console.log(`   [EMOJI] Default R2 Buckets: ${rootR2.length}`);
+    console.log(` ★ Default R2 Buckets: ${rootR2.length}`);
     
     for (const expectedR2 of worker.expectedR2) {
       const r2 = rootR2.find(b => b.binding === expectedR2);
       if (!r2) {
         issues.push(`Missing default R2 bucket binding: ${expectedR2}`);
-        console.log(`   [ERROR] Missing default R2: ${expectedR2}`);
+        console.log(`   ✗ Missing default R2: ${expectedR2}`);
       } else {
-        console.log(`   [OK] Default R2: ${expectedR2} (${r2.bucket_name || 'N/A'})`);
+        console.log(`   ✓ Default R2: ${expectedR2} (${r2.bucket_name || 'N/A'})`);
       }
     }
   }
@@ -135,7 +135,7 @@ for (const worker of workers) {
   const hasProduction = !!config['env.production'];
   const hasDevelopment = !!config['env.development'];
   
-  console.log(`   [EMOJI] Environments: ${hasProduction ? '[OK] production' : '[ERROR] production'} ${hasDevelopment ? '[OK] development' : '[WARNING]  development'}`);
+  console.log(` ★ Environments: ${hasProduction ? '✓ production' : '✗ production'} ${hasDevelopment ? '✓ development' : '⚠  development'}`);
   
   if (hasProduction) {
     const prodKVs = config['env.production']?.kv_namespaces || [];
@@ -150,49 +150,49 @@ for (const worker of workers) {
   // Check for routes
   const routes = config.routes || [];
   if (routes.length > 0) {
-    console.log(`   [EMOJI]️  Default routes: ${routes.length}`);
+    console.log(` ★ ️  Default routes: ${routes.length}`);
     routes.forEach((route, idx) => {
       const pattern = typeof route === 'string' ? route : route.pattern;
       console.log(`      ${idx + 1}. ${pattern}`);
     });
   } else {
     warnings.push('No default routes configured (routes may be in dashboard)');
-    console.log(`   [WARNING]  No default routes (may be in dashboard)`);
+    console.log(`   ⚠  No default routes (may be in dashboard)`);
   }
   
   // Summary for this worker
   if (issues.length > 0) {
-    console.log(`   [ERROR] Issues found: ${issues.length}`);
+    console.log(`   ✗ Issues found: ${issues.length}`);
     issues.forEach(issue => console.log(`      - ${issue}`));
     totalIssues += issues.length;
   }
   
   if (warnings.length > 0) {
-    console.log(`   [WARNING]  Warnings: ${warnings.length}`);
+    console.log(`   ⚠  Warnings: ${warnings.length}`);
     warnings.forEach(warning => console.log(`      - ${warning}`));
     totalWarnings += warnings.length;
   }
   
   if (issues.length === 0 && warnings.length === 0) {
-    console.log(`   [OK] All checks passed`);
+    console.log(`   ✓ All checks passed`);
   }
   
   console.log('');
 }
 
 // Final summary
-console.log('[EMOJI] Validation Summary:');
+console.log(' ★ Validation Summary:');
 console.log(`   Total Issues: ${totalIssues}`);
 console.log(`   Total Warnings: ${totalWarnings}`);
 
 if (totalIssues === 0 && totalWarnings === 0) {
-  console.log('\n[OK] All worker configurations are valid!');
+  console.log('\n✓ All worker configurations are valid!');
   process.exit(0);
 } else if (totalIssues === 0) {
-  console.log('\n[WARNING]  All configurations are valid, but some warnings were found.');
+  console.log('\n⚠  All configurations are valid, but some warnings were found.');
   process.exit(0);
 } else {
-  console.log('\n[ERROR] Some configurations have issues that need to be fixed.');
+  console.log('\n✗ Some configurations have issues that need to be fixed.');
   process.exit(1);
 }
 

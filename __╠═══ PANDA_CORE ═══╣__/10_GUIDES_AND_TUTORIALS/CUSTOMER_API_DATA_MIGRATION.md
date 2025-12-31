@@ -8,7 +8,7 @@ This guide provides instructions for migrating customer data from `OTP_AUTH_KV` 
 
 ---
 
-## [WARNING] Important Notes
+## ⚠ Important Notes
 
 - **Backup First:** Always backup your KV data before migration
 - **Test Environment:** Test migration in a development environment first
@@ -206,5 +206,5 @@ If migration fails or data is corrupted:
 
 ---
 
-**Status:** [INFO] **GUIDE CREATED**
+**Status:** ℹ **GUIDE CREATED**
 **Next Step:** Implement migration script based on your specific requirements

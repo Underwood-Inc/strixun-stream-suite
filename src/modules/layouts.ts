@@ -515,7 +515,7 @@ export function renderSavedLayouts(): void {
         <div class="config-item__actions">
           <button onclick="window.Layouts?.applyLayout(${originalIndex})" class="btn-primary btn-sm">▶ Apply</button>
           <button onclick="window.Layouts?.previewLayout(${originalIndex})" class="btn-secondary btn-sm"></button>
-          <button onclick="window.Layouts?.deleteLayout(${originalIndex})" class="btn-danger btn-sm">[EMOJI]️</button>
+          <button onclick="window.Layouts?.deleteLayout(${originalIndex})" class="btn-danger btn-sm"> ★ ️</button>
         </div>
       </div>
     `;

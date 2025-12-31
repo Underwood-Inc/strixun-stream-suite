@@ -6,8 +6,8 @@ Common issues and solutions when running `wrangler dev` for local development.
 
 ### Symptom
 ```
-X [ERROR] Build failed with 1 error:
-X [ERROR] Unexpected end of file in JSON
+X ✗ Build failed with 1 error:
+X ✗ Unexpected end of file in JSON
     package.json:1:0:
       1 │
         ╵ ^
@@ -41,7 +41,7 @@ Get-ChildItem -Path . -Recurse -Directory -Filter ".wrangler" | Remove-Item -Rec
 # Check if package.json files are valid JSON
 cd serverless/mods-api
 Get-Content package.json | ConvertFrom-Json | Out-Null
-Write-Host "[SUCCESS] package.json is valid"
+Write-Host "✓ package.json is valid"
 
 # Repeat for other workers
 ```
@@ -64,7 +64,7 @@ Get-Process | Where-Object {$_.Path -like "*wrangler*" -or $_.Path -like "*node*
 
 ### Symptom
 ```
-X [ERROR] Port 8787 is already in use
+X ✗ Port 8787 is already in use
 ```
 
 ### Solution

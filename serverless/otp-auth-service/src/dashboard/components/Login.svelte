@@ -131,7 +131,7 @@
   <div class="login-content">
     {#if showNoAccountError && noAccountError}
       <div class="login-error-banner">
-        <div class="login-error-icon">[WARNING]</div>
+        <div class="login-error-icon">⚠</div>
         <div class="login-error-content">
           <strong>Account Required</strong>
           <p>{noAccountError}</p>

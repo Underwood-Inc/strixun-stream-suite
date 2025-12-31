@@ -11,17 +11,17 @@
       <p>Built on Cloudflare Workers for global edge deployment. Sub-100ms response times worldwide.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">[EMOJI]</div>
+      <div class="icon">★</div>
       <h3>Enterprise Security</h3>
       <p>Cryptographically secure OTP codes, JWT tokens, rate limiting, and comprehensive audit logging.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">[EMOJI]</div>
+      <div class="icon">★</div>
       <h3>Easy Integration</h3>
       <p>Simple REST API that works with any framework. React, Svelte, Vue, or vanilla JavaScript—we've got you covered.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">[EMOJI]</div>
+      <div class="icon">★</div>
       <h3>Multi-Tenant Ready</h3>
       <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
     </div>
@@ -31,7 +31,7 @@
       <p>Pay only for what you use. No infrastructure to manage, no servers to maintain.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">[EMOJI]</div>
+      <div class="icon">★</div>
       <h3>Global Scale</h3>
       <p>Deployed on Cloudflare's edge network. Your users get the same fast experience anywhere in the world.</p>
     </div>
@@ -41,7 +41,7 @@
       <p>Completely open-source on GitHub. Self-host with unlimited rate limits or wait for subscription tiers. </p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">[EMOJI]️</div>
+      <div class="feature-icon"> ★ ️</div>
       <h3>Developer Dashboard</h3>
       <p>Manage API keys, view audit logs, monitor analytics, and track usage—all from a beautiful, intuitive dashboard.</p>
       <div class="feature-cta">

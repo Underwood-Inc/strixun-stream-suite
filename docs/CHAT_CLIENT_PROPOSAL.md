@@ -1,16 +1,16 @@
-# [EMOJI] Custom P2P Chat Client - Architecture Proposal
+# ★ Custom P2P Chat Client - Architecture Proposal
 
 **Ahoy there, ye brave developer!** ‍ This here be the comprehensive proposal for buildin' a custom peer-to-peer chat client that be decoupled, agnostic, and scalable as the seven seas!
 
-## [EMOJI] Overview
+## ★ Overview
 
 We're buildin' a **standalone chat service** that can be embedded in yer dashboard or any configured domain. It'll support:
-- [OK] **7TV emotes** natively
-- [OK] **Custom emojis** exclusive to yer domain
-- [OK] **End-to-end encryption** (leveragin' existing system)
-- [OK] **Peer-to-peer architecture** (minimal server dependency)
-- [OK] **Room/channel management** for streamers
-- [OK] **Platform-agnostic** (works anywhere)
+- ✓ **7TV emotes** natively
+- ✓ **Custom emojis** exclusive to yer domain
+- ✓ **End-to-end encryption** (leveragin' existing system)
+- ✓ **Peer-to-peer architecture** (minimal server dependency)
+- ✓ **Room/channel management** for streamers
+- ✓ **Platform-agnostic** (works anywhere)
 
 ---
 
@@ -35,7 +35,7 @@ We're buildin' a **standalone chat service** that can be embedded in yer dashboa
 
 ---
 
-## [EMOJI] Technical Architecture
+## ★ Technical Architecture
 
 ### 1. Peer-to-Peer Communication (WebRTC)
 
@@ -228,7 +228,7 @@ interface CustomEmoji {
 
 ---
 
-## [EMOJI] Project Structure
+## ★ Project Structure
 
 ```
 chat-service/
@@ -266,7 +266,7 @@ chat-service/
 
 ---
 
-## [EMOJI] Security Considerations
+## ★ Security Considerations
 
 ### Authentication
 - Use existing Cloudflare OAuth (JWT tokens)
@@ -290,7 +290,7 @@ chat-service/
 
 ---
 
-## [EMOJI] Implementation Phases
+## ★ Implementation Phases
 
 ### Phase 1: Core Infrastructure
 - [ ] WebRTC connection management
@@ -345,14 +345,14 @@ chat-service/
 
 ---
 
-## [EMOJI] Success Criteria
+## ✓ Criteria
 
-1. [OK] **Decoupled**: Chat service works independently
-2. [OK] **Agnostic**: Can be embedded in any domain
-3. [OK] **Scalable**: Handles 100+ concurrent rooms
-4. [OK] **Performant**: <100ms message latency
-5. [OK] **Secure**: E2E encryption verified
-6. [OK] **Feature-Complete**: 7TV emotes + custom emojis working
+1. ✓ **Decoupled**: Chat service works independently
+2. ✓ **Agnostic**: Can be embedded in any domain
+3. ✓ **Scalable**: Handles 100+ concurrent rooms
+4. ✓ **Performant**: <100ms message latency
+5. ✓ **Secure**: E2E encryption verified
+6. ✓ **Feature-Complete**: 7TV emotes + custom emojis working
 
 ---
 

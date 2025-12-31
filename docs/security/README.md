@@ -1,6 +1,4 @@
-# Security [EMOJI]
-
-Security documentation, audits, and best practices.
+# Security ★ Security documentation, audits, and best practices.
 
 ---
 

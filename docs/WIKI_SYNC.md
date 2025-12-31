@@ -1,6 +1,4 @@
-# GitHub Wiki Migration Documentation [EMOJI]
-
-## Overview
+# GitHub Wiki Migration Documentation ★ ## Overview
 
 This document explains how to migrate all documentation from the codebase to the GitHub wiki as a one-time migration. After migration, the wiki becomes the single source of truth for documentation.
 

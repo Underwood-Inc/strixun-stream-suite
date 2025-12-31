@@ -1,6 +1,4 @@
-# Services [EMOJI]
-
-Documentation for individual services in Strixun Stream Suite.
+# Services ★ Documentation for individual services in Strixun Stream Suite.
 
 ---
 

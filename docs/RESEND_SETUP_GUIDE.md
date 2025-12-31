@@ -4,13 +4,13 @@
 
 ---
 
-## [EMOJI] Overview
+## ★ Overview
 
 Resend is an email API service that we'll use to send OTP (One-Time Password) codes to users. It has a generous free tier (3,000 emails/month) and is perfect for Cloudflare Workers.
 
 ---
 
-## [EMOJI] Step 1: Create Resend Account
+## ★ Step 1: Create Resend Account
 
 ### 1.1 Go to Resend Website
 1. Open your browser and navigate to: **https://resend.com**
@@ -32,7 +32,7 @@ You can sign up with:
 
 ---
 
-## [EMOJI] Step 2: Get Your API Key
+## ★ Step 2: Get Your API Key
 
 ### 2.1 Navigate to API Keys
 1. Once logged in, you'll be on the **Dashboard**
@@ -52,7 +52,7 @@ You can sign up with:
 
 ---
 
-## [EMOJI] Step 3: Verify Your Domain (Optional but Recommended)
+## ★ Step 3: Verify Your Domain (Optional but Recommended)
 
 ### 3.1 Why Verify Domain?
 - **Better deliverability**: Emails from verified domains are less likely to be marked as spam
@@ -143,7 +143,7 @@ You should see `RESEND_API_KEY` in the list.
 
 ---
 
-## [EMOJI] Step 5: Test Email Sending
+## ★ Step 5: Test Email Sending
 
 ### 5.1 Update Worker Code
 
@@ -260,7 +260,7 @@ https://your-worker.your-subdomain.workers.dev/test/email?to=your@email.com
 
 ---
 
-## [EMOJI] Step 6: Monitor Usage
+## ★ Step 6: Monitor Usage
 
 ### 6.1 Check Resend Dashboard
 1. Go to **https://resend.com/dashboard**
@@ -281,7 +281,7 @@ https://your-worker.your-subdomain.workers.dev/test/email?to=your@email.com
 
 ---
 
-## [EMOJI] Step 7: Configure Email Templates (Optional)
+## ★ Step 7: Configure Email Templates (Optional)
 
 ### 7.1 Create OTP Email Template
 
@@ -337,7 +337,7 @@ function generateOTPEmailHTML(otp) {
 
 ---
 
-## [OK] Step 8: Verify Everything Works
+## ✓ Step 8: Verify Everything Works
 
 ### 8.1 Checklist
 
@@ -370,7 +370,7 @@ function generateOTPEmailHTML(otp) {
 
 ---
 
-## [EMOJI] Next Steps
+## ★ Next Steps
 
 Once Resend is set up:
 
@@ -384,7 +384,7 @@ See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for the complete implementa
 
 ---
 
-## [EMOJI] Additional Resources
+## ★ Additional Resources
 
 - **Resend Documentation**: https://resend.com/docs
 - **Resend API Reference**: https://resend.com/docs/api-reference
@@ -392,7 +392,7 @@ See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for the complete implementa
 
 ---
 
-## [EMOJI] Pro Tips
+## ★ Pro Tips
 
 1. **Use Environment Variables**: Store your Resend API key as a Cloudflare secret (never commit to git)
 2. **Monitor Usage**: Check Resend dashboard regularly to stay within free tier
@@ -403,5 +403,5 @@ See [`SECURITY_ANALYSIS.md`](./SECURITY_ANALYSIS.md) for the complete implementa
 ---
 
 **Last Updated**: 2025-01-01  
-**Status**: Ready to Use [OK]
+**Status**: Ready to Use ✓
 

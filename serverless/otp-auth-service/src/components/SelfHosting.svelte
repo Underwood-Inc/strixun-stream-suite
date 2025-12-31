@@ -22,7 +22,7 @@
         </ul>
         <div class="card-cta">
           <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn btn-github">
-            <span>[EMOJI]</span> View on GitHub
+            <span> ★ </span> View on GitHub
           </a>
         </div>
       </div>
@@ -48,7 +48,7 @@
       </div>
 
       <div class="self-hosting-card">
-        <h3>[EMOJI] Why Choose Self-Hosting?</h3>
+        <h3> ★ Why Choose Self-Hosting?</h3>
         <p>
           Self-hosting gives you complete freedom and control. Perfect for enterprises, high-traffic applications, 
           or when you need custom configurations.

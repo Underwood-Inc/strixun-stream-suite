@@ -11,22 +11,22 @@
 
 This guide covers migrating all Strixun Stream Suite workers and frontend apps to use the shared `@strixun/api-framework` package.
 
-**Status**: [OK] Shared package created, [OK] Migration complete
+**Status**: ✓ Shared package created, ✓ Migration complete
 
 ---
 
 ## Workers Migrated
 
-1. [OK] **mods-api** - TypeScript, fully migrated
-2. [OK] **game-api** - JavaScript, fully migrated
-3. [OK] **otp-auth-service** - Fully migrated (replaced enhanced-router wrapper)
-4. [OK] **url-shortener** - Fully migrated (replaced enhanced-router wrapper)
-5. [OK] **chat-signaling** - Fully migrated (replaced enhanced-router wrapper)
-6. [OK] **twitch-api** - Fully migrated
+1. ✓ **mods-api** - TypeScript, fully migrated
+2. ✓ **game-api** - JavaScript, fully migrated
+3. ✓ **otp-auth-service** - Fully migrated (replaced enhanced-router wrapper)
+4. ✓ **url-shortener** - Fully migrated (replaced enhanced-router wrapper)
+5. ✓ **chat-signaling** - Fully migrated (replaced enhanced-router wrapper)
+6. ✓ **twitch-api** - Fully migrated
 
 ## Frontend Apps Migrated
 
-1. [OK] **mods-hub** - React app, fully migrated
+1. ✓ **mods-hub** - React app, fully migrated
 
 ---
 
@@ -44,7 +44,7 @@ All packages now have `@strixun/api-framework` as a dependency:
 }
 ```
 
-[OK] **Completed** for all packages
+✓ **Completed** for all packages
 
 ### Step 2: Migrate Worker Handlers
 
@@ -234,5 +234,5 @@ export async function listMods(params: any) {
 ---
 
 **Migration Completed**: 2025-12-29  
-**Status**: [OK] All services migrated and ready for testing
+**Status**: ✓ All services migrated and ready for testing
 

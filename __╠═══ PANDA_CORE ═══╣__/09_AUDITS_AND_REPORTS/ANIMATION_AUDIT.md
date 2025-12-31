@@ -4,7 +4,7 @@
 
 ### High Priority (User-Facing, Frequent Interactions)
 
-1. **Toast Notifications** [OK] (Already done - FLIP animation)
+1. **Toast Notifications** ✓ (Already done - FLIP animation)
    - Mount: `fadeIn` + `slideUp`
    - Dismiss: `fadeOut` + `slideUp`
    - Position updates: FLIP animation
@@ -91,8 +91,8 @@
 
 ## Implementation Order
 
-1. [OK] Core animation system
-2. [OK] Toast animations (FLIP)
+1. ✓ Core animation system
+2. ✓ Toast animations (FLIP)
 3.  Log entries (staggered fadeIn)
 4.  Navigation tabs
 5.  Modals/dropdowns

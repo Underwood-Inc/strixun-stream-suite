@@ -1,6 +1,4 @@
-# Environment Variable Setup Guide [EMOJI]
-
-## Where to Put .env Files
+# Environment Variable Setup Guide ★ ## Where to Put .env Files
 
 You need to create `.env` files in **3 locations**:
 
@@ -76,10 +74,10 @@ ls -la serverless/url-shortener/app/.env
 
 ## Security Notes
 
-- [OK] `.env` files are already in `.gitignore` (won't be committed)
-- [OK] Never commit `.env` files to git
-- [OK] Use the same key in all 3 locations
-- [OK] Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
+- ✓ `.env` files are already in `.gitignore` (won't be committed)
+- ✓ Never commit `.env` files to git
+- ✓ Use the same key in all 3 locations
+- ✓ Key must match server-side `SERVICE_ENCRYPTION_KEY` secret (same key as all other services)
 
 ## Current SERVICE_ENCRYPTION_KEY
 

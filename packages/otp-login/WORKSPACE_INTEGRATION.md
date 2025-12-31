@@ -3,10 +3,10 @@
 ## Overview
 
 The OTP Login library is fully integrated into the pnpm workspace, ensuring:
-- [OK] Proper dependency hoisting
-- [OK] Workspace-aware build commands
-- [OK] Automatic builds via `prebuild` scripts
-- [OK] Efficient dependency management
+- ✓ Proper dependency hoisting
+- ✓ Workspace-aware build commands
+- ✓ Automatic builds via `prebuild` scripts
+- ✓ Efficient dependency management
 
 ## Workspace Configuration
 

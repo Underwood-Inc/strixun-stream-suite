@@ -1,8 +1,6 @@
 # OTP Auth Service - Integration Guide
 
-> **Complete integration guide for developers** [EMOJI]
-
-## Quick Start
+> **Complete integration guide for developers** ★ ## Quick Start
 
 ### 1. Get Your API Key
 

@@ -13,7 +13,7 @@
 
 Check that these secrets are set in GitHub repository settings:
 
-1. Go to: Repository [EMOJI] Settings [EMOJI] Secrets and variables [EMOJI] Actions
+1. Go to: Repository ★ Settings ★ Secrets and variables ★ Actions
 2. Verify these secrets exist:
    - `VITE_SERVICE_ENCRYPTION_KEY` (32+ characters)
    - `SERVICE_API_KEY` (same value for all services)
@@ -122,11 +122,11 @@ After fixing, verify:
 
 The code now provides clear error messages:
 
-- **"SERVICE_API_KEY is not configured"** [EMOJI] Set `SERVICE_API_KEY` in both workers
-- **"NETWORK_INTEGRITY_KEYPHRASE is not configured"** [EMOJI] Set `NETWORK_INTEGRITY_KEYPHRASE` in both workers
-- **"Service authentication failed"** [EMOJI] Keys don't match between services
-- **"Network integrity verification failed"** [EMOJI] Keyphrases don't match between services
-- **"otpEncryptionkey is missing"** [EMOJI] `VITE_SERVICE_ENCRYPTION_KEY` not set in GitHub secrets or build
+- **"SERVICE_API_KEY is not configured"** ★ Set `SERVICE_API_KEY` in both workers
+- **"NETWORK_INTEGRITY_KEYPHRASE is not configured"** ★ Set `NETWORK_INTEGRITY_KEYPHRASE` in both workers
+- **"Service authentication failed"** ★ Keys don't match between services
+- **"Network integrity verification failed"** ★ Keyphrases don't match between services
+- **"otpEncryptionkey is missing"** ★ `VITE_SERVICE_ENCRYPTION_KEY` not set in GitHub secrets or build
 
 ## Quick Fix Script
 
@@ -147,9 +147,9 @@ This will:
 ## Summary
 
 **Required Secrets (must match between services):**
-- `SERVICE_API_KEY` - otp-auth-service [EMOJI] customer-api
-- `NETWORK_INTEGRITY_KEYPHRASE` - otp-auth-service [EMOJI] customer-api
-- `JWT_SECRET` - otp-auth-service [EMOJI] customer-api
+- `SERVICE_API_KEY` - otp-auth-service ★ customer-api
+- `NETWORK_INTEGRITY_KEYPHRASE` - otp-auth-service ★ customer-api
+- `JWT_SECRET` - otp-auth-service ★ customer-api
 
 **Required Secrets (same value, different names):**
 - Frontend: `VITE_SERVICE_ENCRYPTION_KEY` (GitHub secret)

@@ -83,12 +83,12 @@ dashboard/
 
 ## Features
 
-- [SUCCESS] Svelte 5 with runes
-- [SUCCESS] TypeScript
-- [SUCCESS] Vite for fast HMR
-- [SUCCESS] Path aliases (`$lib`, `$components`)
-- [SUCCESS] Composable component architecture
-- [SUCCESS] Follows Strixun design system
+- ✓ Svelte 5 with runes
+- ✓ TypeScript
+- ✓ Vite for fast HMR
+- ✓ Path aliases (`$lib`, `$components`)
+- ✓ Composable component architecture
+- ✓ Follows Strixun design system
 
 ## Troubleshooting
 

@@ -70,13 +70,13 @@ Open **http://localhost:5174** in your browser. The Vite proxy forwards API requ
 
 ## Features
 
-- [SUCCESS] OTP-based authentication
-- [SUCCESS] API key management (create, revoke, rotate)
-- [SUCCESS] Audit log viewer with filtering
-- [SUCCESS] Analytics dashboard
-- [SUCCESS] Strixun design system
-- [SUCCESS] Svelte 5 with runes
-- [SUCCESS] Full TypeScript support
+- ✓ OTP-based authentication
+- ✓ API key management (create, revoke, rotate)
+- ✓ Audit log viewer with filtering
+- ✓ Analytics dashboard
+- ✓ Strixun design system
+- ✓ Svelte 5 with runes
+- ✓ Full TypeScript support
 
 ## Project Structure
 

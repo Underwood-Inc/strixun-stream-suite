@@ -10,11 +10,7 @@ I'm excited to share **Strixun Stream Suite** - a comprehensive, open-source str
 
 Strixun Stream Suite is a complete ecosystem of tools that work seamlessly together to automate and enhance live streaming production. From smooth source animations to cloud-synced configurations, this toolkit handles everything you need for professional streaming workflows.
 
-## [EMOJI] Where to Find It
-
-[EMOJI] **GitHub Repository:** https://github.com/Underwood-Inc/strixun-stream-suite  
-[EMOJI] **Live Demo:** https://streamkit.idling.app  
-[EMOJI] **GitHub Pages:** https://underwood-inc.github.io/strixun-stream-suite
+## ★ Where to Find It ★ **GitHub Repository:** https://github.com/Underwood-Inc/strixun-stream-suite ★ **Live Demo:** https://streamkit.idling.app ★ **GitHub Pages:** https://underwood-inc.github.io/strixun-stream-suite
 
 **License:** MIT (Open Source)  
 **Platform:** Windows, macOS, Linux  
@@ -22,7 +18,7 @@ Strixun Stream Suite is a complete ecosystem of tools that work seamlessly toget
 
 ---
 
-## [EMOJI] Core Features
+## ★ Core Features
 
 ### 1. **Source Animations System**
 Smooth, professional animations for source visibility toggles:
@@ -162,7 +158,7 @@ Standalone React application for mods management and discovery.
 
 ---
 
-## [EMOJI] Technical Highlights
+## ★ Technical Highlights
 
 - **Multi-Layer Storage:** IndexedDB (primary) + localStorage (backup) + Recovery snapshots
 - **Serverless Architecture:** Cloudflare Workers for edge computing
@@ -175,7 +171,7 @@ Standalone React application for mods management and discovery.
 
 ---
 
-## [EMOJI] Architecture Overview
+## ★ Architecture Overview
 
 The suite follows a modular architecture:
 - **Client-Side:** Svelte 5 control panel running in OBS Browser Source
@@ -188,15 +184,15 @@ The suite follows a modular architecture:
 
 ## Perfect For
 
-[OK] Content creators looking to automate streaming workflows  
-[OK] Production teams managing multiple streamers  
-[OK] Streamers who want professional-quality animations  
-[OK] Developers interested in OBS Studio automation  
-[OK] Anyone who wants to reduce setup time from hours to minutes
+✓ Content creators looking to automate streaming workflows  
+✓ Production teams managing multiple streamers  
+✓ Streamers who want professional-quality animations  
+✓ Developers interested in OBS Studio automation  
+✓ Anyone who wants to reduce setup time from hours to minutes
 
 ---
 
-## [EMOJI] Get Started
+## ★ Get Started
 
 1. **Visit:** https://streamkit.idling.app
 2. **Add to OBS:** View → Docks → Custom Browser Docks

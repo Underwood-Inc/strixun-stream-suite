@@ -54,17 +54,17 @@ The authentication flow in mods-hub is **confirmed working in production**. This
 - **Description:** Test email form validation
 - **Steps:**
   1. Navigate to `/login`
-  2. Submit empty email form [EMOJI] should show validation error
-  3. Submit invalid email format [EMOJI] should show validation error
-  4. Submit valid email [EMOJI] should proceed to OTP form
+  2. Submit empty email form ★ should show validation error
+  3. Submit invalid email format ★ should show validation error
+  4. Submit valid email ★ should proceed to OTP form
 
 #### 3. OTP Code Validation
 - **Description:** Test OTP form validation and error handling
 - **Steps:**
   1. Complete email submission
-  2. Enter invalid OTP code [EMOJI] should show error message
-  3. Enter expired OTP code [EMOJI] should show appropriate error
-  4. Enter valid OTP code [EMOJI] should proceed to login
+  2. Enter invalid OTP code ★ should show error message
+  3. Enter expired OTP code ★ should show appropriate error
+  4. Enter valid OTP code ★ should proceed to login
 
 #### 4. Error Handling
 - **Description:** Test error scenarios (network errors, rate limiting, etc.)

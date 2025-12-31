@@ -8,16 +8,16 @@ Dedicated Cloudflare Worker for mod hosting and version control. Provides a comp
 
 ## Features
 
-- [SUCCESS] **Mod Upload** - Upload mods with metadata and files
-- [SUCCESS] **Version Control** - Full semantic versioning system
-- [SUCCESS] **R2 Storage** - Files stored in Cloudflare R2
-- [SUCCESS] **KV Metadata** - Fast metadata storage in Cloudflare KV
-- [SUCCESS] **Authentication** - JWT-based auth integration
-- [SUCCESS] **Direct Downloads** - Direct download links for mods
-- [SUCCESS] **Multi-tenant** - Customer isolation support
-- [SUCCESS] **TypeScript** - Fully typed API
-- [SUCCESS] **Client-Side Encryption** - Files encrypted before upload (zero server CPU)
-- [SUCCESS] **Default Compression** - Automatic gzip compression (maximizes free tier)
+- ✓ **Mod Upload** - Upload mods with metadata and files
+- ✓ **Version Control** - Full semantic versioning system
+- ✓ **R2 Storage** - Files stored in Cloudflare R2
+- ✓ **KV Metadata** - Fast metadata storage in Cloudflare KV
+- ✓ **Authentication** - JWT-based auth integration
+- ✓ **Direct Downloads** - Direct download links for mods
+- ✓ **Multi-tenant** - Customer isolation support
+- ✓ **TypeScript** - Fully typed API
+- ✓ **Client-Side Encryption** - Files encrypted before upload (zero server CPU)
+- ✓ **Default Compression** - Automatic gzip compression (maximizes free tier)
 
 ---
 
