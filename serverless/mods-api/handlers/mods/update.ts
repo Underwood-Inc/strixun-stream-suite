@@ -317,17 +317,54 @@ export async function handleUpdateMod(
         // CRITICAL: Fetch and update author display name dynamically before saving
         // Always fetch fresh display name from auth API - don't rely on baked-in value
         // This ensures display names stay current when users change them
-        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+        // Use token-based lookup first (more reliable), then fall back to userId lookup
         const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
-        const fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env);
+        let fetchedDisplayName: string | null = null;
+        
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            const { fetchDisplayNameByToken } = await import('../../utils/displayName.js');
+            fetchedDisplayName = await fetchDisplayNameByToken(token, env, 10000); // 10 second timeout
+            
+            if (fetchedDisplayName) {
+                console.log('[Update] Fetched authorDisplayName via /auth/me:', { 
+                    authorDisplayName: fetchedDisplayName, 
+                    userId: mod.authorId
+                });
+            } else {
+                // Fallback to userId lookup if /auth/me fails
+                const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+                fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env, 10000);
+                if (fetchedDisplayName) {
+                    console.log('[Update] Fetched authorDisplayName via /auth/user/:userId (fallback):', { 
+                        authorDisplayName: fetchedDisplayName, 
+                        userId: mod.authorId
+                    });
+                }
+            }
+        } else {
+            // No token, use userId lookup with longer timeout
+            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+            fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env, 10000);
+        }
+        
         // Always use fetched value if available - this ensures we have the latest display name
         // Fall back to stored value only if fetch fails (for backward compatibility)
         mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
+        
         if (fetchedDisplayName && fetchedDisplayName !== storedDisplayName) {
             console.log('[Update] Updated authorDisplayName dynamically:', { 
                 userId: mod.authorId, 
                 oldDisplayName: storedDisplayName, 
                 newDisplayName: fetchedDisplayName 
+            });
+        } else if (!fetchedDisplayName) {
+            console.warn('[Update] authorDisplayName is null after all fetch attempts:', {
+                userId: mod.authorId,
+                customerId: auth.customerId,
+                storedDisplayName: storedDisplayName,
+                note: 'Using stored value or null - UI will show "Unknown Author" if null'
             });
         }
 
