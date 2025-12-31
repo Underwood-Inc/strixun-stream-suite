@@ -82,7 +82,7 @@ test.describe('Mod List Page', () => {
       
       if (data.mods && data.mods.length > 0) {
         // Verify all mods have customerId (may be null but field must exist)
-        data.mods.forEach((mod, index) => {
+        data.mods.forEach((mod) => {
           expect(mod).toHaveProperty('customerId');
           expect(mod).toHaveProperty('authorId');
           // authorDisplayName should exist (may be null if user not found)

@@ -417,7 +417,7 @@ test.describe('Slug Uniqueness', () => {
     const title1 = generateUniqueTestTitle('First Mod');
     const title2 = generateUniqueTestTitle('Second Mod');
     // Create first mod (not assigned as we only need its slug to exist)
-    await createTestMod(token, title1, 'public', false);
+    void await createTestMod(token, title1, 'public', false);
     const mod2 = await createTestMod(token, title2, 'public', false);
     
     // Try to update mod2 to have the same slug as the first mod (should fail)
@@ -427,7 +427,7 @@ test.describe('Slug Uniqueness', () => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: title1 }), // Same title as mod1
+      body: JSON.stringify({ title: title1 }), // Same title as first mod
     });
     
     // Should reject with 409
