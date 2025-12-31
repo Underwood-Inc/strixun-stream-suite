@@ -298,12 +298,20 @@ export async function uploadMod(
 /**
  * Update mod (requires authentication and ownership/admin)
  */
-export async function updateMod(slug: string, updates: ModUpdateRequest, thumbnail?: File): Promise<any> {
-    // If thumbnail is provided, use FormData; otherwise use JSON
-    if (thumbnail) {
+export async function updateMod(slug: string, updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>): Promise<any> {
+    // If thumbnail or variant files are provided, use FormData; otherwise use JSON
+    if (thumbnail || (variantFiles && Object.keys(variantFiles).length > 0)) {
         const formData = new FormData();
         formData.append('metadata', JSON.stringify(updates));
-        formData.append('thumbnail', thumbnail);
+        if (thumbnail) {
+            formData.append('thumbnail', thumbnail);
+        }
+        // Add variant files to FormData
+        if (variantFiles) {
+            for (const [variantId, file] of Object.entries(variantFiles)) {
+                formData.append(`variant_${variantId}`, file);
+            }
+        }
         // API framework automatically handles FormData - don't set Content-Type header
         const response = await api.put<any>(`/mods/${slug}`, formData);
         return response.data;
@@ -596,6 +604,31 @@ export async function downloadVersion(modSlug: string, versionId: string, fileNa
 
     if (response.status < 200 || response.status >= 300) {
         throw new Error(`Failed to download version: ${response.statusText || 'Unknown error'}`);
+    }
+
+    // Convert ArrayBuffer to Blob for download
+    const blob = new Blob([response.data as ArrayBuffer]);
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+}
+
+/**
+ * Download mod variant
+ * Uses API framework for authentication and proper error handling
+ * The response handler automatically converts binary responses to ArrayBuffer
+ */
+export async function downloadVariant(modSlug: string, variantId: string, fileName: string): Promise<void> {
+    // Use API framework's get method - response handler converts binary to ArrayBuffer
+    const response = await api.get<ArrayBuffer>(`/mods/${modSlug}/variants/${variantId}/download`);
+
+    if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to download variant: ${response.statusText || 'Unknown error'}`);
     }
 
     // Convert ArrayBuffer to Blob for download

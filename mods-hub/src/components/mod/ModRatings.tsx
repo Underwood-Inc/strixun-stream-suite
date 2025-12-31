@@ -233,6 +233,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
     const [selectedRating, setSelectedRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     
     // Calculate average rating if not provided
     const avgRating = averageRating || (ratings.length > 0 
@@ -241,6 +242,26 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
     
     const breakdown = calculateRatingBreakdown(ratings);
     const totalRatings = ratings.length;
+    
+    // Check if user has already rated
+    const userRating = isAuthenticated && user 
+        ? ratings.find(r => r.userId === user.userId)
+        : null;
+    
+    // Initialize form with user's existing rating when entering edit mode
+    const handleEditClick = () => {
+        if (userRating) {
+            setSelectedRating(userRating.rating);
+            setComment(userRating.comment || '');
+            setIsEditing(true);
+        }
+    };
+    
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setSelectedRating(0);
+        setComment('');
+    };
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -251,17 +272,13 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
             await onRatingSubmit(selectedRating, comment);
             setSelectedRating(0);
             setComment('');
+            setIsEditing(false);
         } catch (error) {
             console.error('Failed to submit rating:', error);
         } finally {
             setIsSubmitting(false);
         }
     };
-    
-    // Check if user has already rated
-    const userRating = isAuthenticated && user 
-        ? ratings.find(r => r.userId === user.userId)
-        : null;
 
     return (
         <Container>
@@ -298,9 +315,9 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                 </div>
             )}
 
-            {isAuthenticated && !userRating && onRatingSubmit && (
+            {isAuthenticated && (!userRating || isEditing) && onRatingSubmit && (
                 <ReviewForm onSubmit={handleSubmit}>
-                    <FormTitle>Rate this mod</FormTitle>
+                    <FormTitle>{isEditing ? 'Edit your review' : 'Rate this mod'}</FormTitle>
                     <RatingInput>
                         <span style={{ fontSize: '0.875rem', color: colors.text }}>Rating:</span>
                         {[1, 2, 3, 4, 5].map((rating) => (
@@ -319,13 +336,25 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                         onChange={(e) => setComment(e.target.value)}
                         placeholder="Write a review (optional)..."
                     />
-                    <Button 
-                        type="submit" 
-                        variant="primary"
-                        disabled={!selectedRating || isSubmitting}
-                    >
-                        {isSubmitting ? 'Submitting...' : 'Submit Rating'}
-                    </Button>
+                    <div style={{ display: 'flex', gap: spacing.sm }}>
+                        <Button 
+                            type="submit" 
+                            variant="primary"
+                            disabled={!selectedRating || isSubmitting}
+                        >
+                            {isSubmitting ? 'Submitting...' : (isEditing ? 'Update Review' : 'Submit Rating')}
+                        </Button>
+                        {isEditing && (
+                            <Button 
+                                type="button" 
+                                variant="secondary"
+                                onClick={handleCancelEdit}
+                                disabled={isSubmitting}
+                            >
+                                Cancel
+                            </Button>
+                        )}
+                    </div>
                 </ReviewForm>
             )}
 
@@ -335,14 +364,31 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                 </AuthPrompt>
             )}
 
-            {userRating && (
+            {userRating && !isEditing && (
                 <div style={{ padding: spacing.md, background: colors.bgTertiary, borderRadius: 8 }}>
-                    <div style={{ fontSize: '0.875rem', color: colors.textSecondary, marginBottom: spacing.xs }}>
-                        Your rating:
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
+                        <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
+                            Your rating:
+                        </div>
+                        {onRatingSubmit && (
+                            <Button 
+                                type="button"
+                                variant="secondary"
+                                onClick={handleEditClick}
+                                style={{ fontSize: '0.875rem', padding: `${spacing.xs} ${spacing.sm}` }}
+                            >
+                                Edit
+                            </Button>
+                        )}
                     </div>
                     <ReviewRating>{renderStars(userRating.rating)}</ReviewRating>
                     {userRating.comment && (
                         <ReviewContent>{userRating.comment}</ReviewContent>
+                    )}
+                    {userRating.updatedAt && userRating.updatedAt !== userRating.createdAt && (
+                        <div style={{ fontSize: '0.75rem', color: colors.textMuted, marginTop: spacing.xs }}>
+                            Updated: {new Date(userRating.updatedAt).toLocaleDateString()}
+                        </div>
                     )}
                 </div>
             )}

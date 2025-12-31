@@ -12,7 +12,6 @@ import { ModRatings } from '../components/mod/ModRatings';
 import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
-import { downloadVersion } from '../services/api';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { getButtonStyles } from '../utils/buttonStyles';
@@ -130,14 +129,6 @@ const Actions = styled.div`
   margin-top: ${spacing.md};
 `;
 
-const DownloadButton = styled.button`
-  ${getButtonStyles('primary')}
-  display: inline-flex;
-  align-items: center;
-  gap: ${spacing.sm};
-  font-size: 1rem;
-`;
-
 const ManageButton = styled.button`
   ${getButtonStyles('secondary')}
   display: inline-flex;
@@ -153,8 +144,6 @@ export function ModDetailPage() {
     const { user } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
     const [thumbnailError, setThumbnailError] = useState(false);
-    const [downloading, setDownloading] = useState(false);
-    const [downloadError, setDownloadError] = useState<string | null>(null);
     
     // Fetch ratings for this mod
     const { data: ratingsData } = useModRatings(data?.mod.modId || '');
@@ -177,23 +166,6 @@ export function ModDetailPage() {
 
     const handleThumbnailError = () => {
         setThumbnailError(true);
-    };
-
-    const handleDownload = async () => {
-        if (!latestVersion) return;
-        
-        setDownloading(true);
-        setDownloadError(null);
-        
-        try {
-            await downloadVersion(mod.slug, latestVersion.versionId, latestVersion.fileName || `mod-${mod.slug}-v${latestVersion.version}.jar`);
-        } catch (error: any) {
-            console.error('[ModDetailPage] Download failed:', error);
-            setDownloadError(error.message || 'Failed to download file');
-            setTimeout(() => setDownloadError(null), 5000);
-        } finally {
-            setDownloading(false);
-        }
     };
 
     return (
@@ -245,23 +217,6 @@ export function ModDetailPage() {
                     </Tags>
                     {latestVersion && (
                         <Actions>
-                            {downloadError && (
-                                <div style={{ 
-                                    padding: spacing.sm, 
-                                    background: `${colors.danger}20`, 
-                                    color: colors.danger, 
-                                    borderRadius: 4,
-                                    fontSize: '0.875rem'
-                                }}>
-                                    {downloadError}
-                                </div>
-                            )}
-                            <DownloadButton
-                                onClick={handleDownload}
-                                disabled={downloading}
-                            >
-                                {downloading ? 'Downloading...' : `Download Latest Version (v${latestVersion.version})`}
-                            </DownloadButton>
                             {isUploader && (
                                 <ManageButton
                                     onClick={() => navigate(`/manage/${mod.slug}`)}
@@ -274,7 +229,12 @@ export function ModDetailPage() {
                 </Info>
             </Header>
 
-            <ModVersionList modSlug={mod.slug} versions={versions} isUploader={isUploader} />
+            <ModVersionList 
+                modSlug={mod.slug} 
+                versions={versions} 
+                variants={mod.variants || []}
+                isUploader={isUploader} 
+            />
             
             {isUploader && (
                 <ModAnalytics mod={mod} versions={versions} />

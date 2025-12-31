@@ -192,9 +192,10 @@ export async function handleUpdateMod(
 
         // Handle thumbnail update - support both binary file upload and legacy base64
         // Reuse contentType declared earlier at line 115
+        let formData: FormData | null = null;
         if (contentType.includes('multipart/form-data')) {
+            formData = await request.formData();
             // Check for binary thumbnail file upload
-            const formData = await request.formData();
             const thumbnailFile = formData.get('thumbnail') as File | null;
             if (thumbnailFile) {
                 try {
@@ -205,6 +206,82 @@ export async function handleUpdateMod(
                     // Continue without thumbnail update
                 }
             }
+        }
+        
+        // Handle variant file uploads
+        if (formData && updateData.variants) {
+            const normalizedModId = normalizeModId(modId);
+            const now = new Date().toISOString();
+            
+            // Process each variant file from FormData
+            for (const variant of updateData.variants) {
+                const variantFile = formData.get(`variant_${variant.variantId}`) as File | null;
+                if (variantFile) {
+                    try {
+                        // Variant files should already be encrypted by the client
+                        // Store them in R2 similar to main mod files
+                        const fileBuffer = await variantFile.arrayBuffer();
+                        const fileBytes = new Uint8Array(fileBuffer);
+                        
+                        // Get file extension
+                        const fileName = variantFile.name;
+                        const fileExtension = fileName.includes('.') 
+                            ? fileName.substring(fileName.lastIndexOf('.')) 
+                            : '.zip';
+                        const extensionForR2 = fileExtension.substring(1); // Remove dot
+                        
+                        // Store variant file in R2
+                        const variantR2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${extensionForR2}`);
+                        
+                        // Determine content type based on encryption format
+                        const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
+                        const contentType = isBinaryEncrypted ? 'application/octet-stream' : 'application/json';
+                        
+                        // Add R2 source metadata
+                        const r2SourceInfo = getR2SourceInfo(env, request);
+                        console.log('[UpdateMod] Variant file R2 storage source:', r2SourceInfo);
+                        
+                        await env.MODS_R2.put(variantR2Key, fileBytes, {
+                            httpMetadata: {
+                                contentType: contentType,
+                                cacheControl: 'private, no-cache',
+                            },
+                            customMetadata: addR2SourceMetadata({
+                                modId,
+                                variantId: variant.variantId,
+                                uploadedBy: auth.userId,
+                                uploadedAt: now,
+                                encrypted: 'true',
+                                originalFileName: fileName,
+                            }, env, request),
+                        });
+                        
+                        // Generate download URL
+                        const downloadUrl = env.MODS_PUBLIC_URL 
+                            ? `${env.MODS_PUBLIC_URL}/${variantR2Key}`
+                            : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${variantR2Key}`;
+                        
+                        // Update variant metadata with file info
+                        variant.fileUrl = downloadUrl;
+                        variant.fileName = fileName;
+                        variant.fileSize = fileBytes.length;
+                        variant.updatedAt = now;
+                        
+                        console.log('[UpdateMod] Variant file uploaded:', {
+                            variantId: variant.variantId,
+                            fileName,
+                            fileSize: fileBytes.length,
+                            r2Key: variantR2Key,
+                        });
+                    } catch (error) {
+                        console.error(`[UpdateMod] Variant file upload error for ${variant.variantId}:`, error);
+                        // Continue without this variant file update
+                    }
+                }
+            }
+            
+            // Update mod.variants with the updated variant metadata
+            mod.variants = updateData.variants;
         }
         
         // Legacy base64 thumbnail support

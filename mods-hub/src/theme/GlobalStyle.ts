@@ -87,5 +87,32 @@ export const GlobalStyle = createGlobalStyle`
       background: ${colors.borderLight};
     }
   }
+
+  /* Global click ripple effect - subtle ring ripple */
+  .click-ripple {
+    position: fixed;
+    width: 4px;
+    height: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    background: transparent;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple-expand 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 9999;
+  }
+
+  @keyframes ripple-expand {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 1;
+      border-width: 1px;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(12);
+      opacity: 0;
+      border-width: 0.5px;
+    }
+  }
 `;
 

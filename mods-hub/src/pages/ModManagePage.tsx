@@ -103,9 +103,9 @@ export function ModManagePage() {
         );
     }
 
-    const handleUpdate = async (updates: any, thumbnail?: File) => {
+    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>) => {
         try {
-            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail });
+            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
         } catch {
             // Error handled by mutation
         }

@@ -10,17 +10,17 @@ import type { ModMetadata } from '../../types/mod';
 
 const StatsContainer = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: ${spacing.md};
-  margin-bottom: ${spacing.xl};
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: ${spacing.sm};
+  margin-bottom: ${spacing.md};
   flex-shrink: 0;
 `;
 
 const StatCard = styled.div`
   background: ${colors.bgSecondary};
   border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.md};
+  border-radius: 6px;
+  padding: ${spacing.sm} ${spacing.md};
   display: flex;
   flex-direction: column;
   gap: ${spacing.xs};
@@ -33,10 +33,11 @@ const StatValue = styled.div`
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: ${colors.textSecondary};
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
 `;
 
 

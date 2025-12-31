@@ -30,19 +30,23 @@ const BadgeImage = styled.img`
   display: block;
 `;
 
-const CopyButton = styled.button`
+const TooltipCopyButton = styled.button`
   ${getCopyButtonStyles()}
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
 `;
 
 const CopySuccess = styled.span`
   color: ${colors.success};
   font-size: 0.75rem;
   font-weight: 500;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
   transition: opacity 0.2s ease;
+  display: inline-block;
+  white-space: nowrap;
+  padding: 4px 8px;
+  text-align: center;
 `;
 
 interface IntegrityBadgeProps {
@@ -100,7 +104,10 @@ export function IntegrityBadge({ modId, slug, versionId, showCopyButton = false,
         try {
             await navigator.clipboard.writeText(markdownUrl);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            // Keep tooltip visible during transition, then hide after delay
+            setTimeout(() => {
+                setCopied(false);
+            }, 2000);
         } catch (error) {
             console.error('Failed to copy badge URL:', error);
         }
@@ -113,25 +120,30 @@ export function IntegrityBadge({ modId, slug, versionId, showCopyButton = false,
     
     return (
         <BadgeContainer>
-            <BadgeImage 
-                src={badgeUrl} 
-                alt="Strixun Verified" 
-                title="Strixun file integrity verified"
-                onError={handleImageError}
-            />
-            {showCopyButton && (
-                <>
-                    {copied ? (
-                        <CopySuccess className="copy-success">Copied!</CopySuccess>
-                    ) : (
-                        <Tooltip text="Strixun file integrity verified" position="auto" delay={0}>
-                            <CopyButton className="copy-button" onClick={handleCopy}>
+            <Tooltip 
+                content={
+                    showCopyButton ? (
+                        copied ? (
+                            <CopySuccess className="copy-success">Copied!</CopySuccess>
+                        ) : (
+                            <TooltipCopyButton onClick={handleCopy}>
                                 Copy Badge
-                            </CopyButton>
-                        </Tooltip>
-                    )}
-                </>
-            )}
+                            </TooltipCopyButton>
+                        )
+                    ) : (
+                        "Strixun file integrity verified"
+                    )
+                }
+                position="auto" 
+                delay={0}
+                noBackground={showCopyButton && !copied}
+            >
+                <BadgeImage 
+                    src={badgeUrl} 
+                    alt="Strixun Verified" 
+                    onError={handleImageError}
+                />
+            </Tooltip>
         </BadgeContainer>
     );
 }

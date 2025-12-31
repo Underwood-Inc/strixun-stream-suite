@@ -10,25 +10,46 @@ import { formatFileSize } from '@strixun/api-framework';
 import React from 'react';
 
 const DragDropZone = styled.div.withConfig({
-  shouldForwardProp: (prop) => !['isDragging', 'hasFile', 'showImagePreview'].includes(prop),
-})<{ isDragging: boolean; hasFile: boolean; showImagePreview?: boolean }>`
+  shouldForwardProp: (prop) => !['isDragging', 'hasFile', 'hasExistingFile', 'showImagePreview'].includes(prop),
+})<{ isDragging: boolean; hasFile: boolean; hasExistingFile?: boolean; showImagePreview?: boolean }>`
   padding: ${({ showImagePreview }) => showImagePreview ? spacing.md : spacing.xl};
-  border: 2px dashed ${({ isDragging, hasFile }) => 
-    isDragging ? colors.accent : hasFile ? colors.success : colors.border};
+  border: ${({ isDragging, hasFile, hasExistingFile }) => {
+    if (hasExistingFile) return `3px solid ${colors.success}`;
+    if (isDragging) return `2px dashed ${colors.accent}`;
+    if (hasFile) return `2px dashed ${colors.success}`;
+    return `2px dashed ${colors.border}`;
+  }};
   border-radius: 12px;
-  background: ${({ isDragging, hasFile, showImagePreview }) => {
+  background: ${({ isDragging, hasFile, hasExistingFile, showImagePreview }) => {
+    if (hasExistingFile) return `linear-gradient(135deg, ${colors.success}15, ${colors.success}08, ${colors.bg})`;
     if (isDragging) return `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}05)`;
-    if (hasFile && showImagePreview) return colors.bg;
+    if ((hasFile || hasExistingFile) && showImagePreview) return colors.bg;
     return `linear-gradient(135deg, ${colors.bg}, ${colors.bgTertiary})`;
   }};
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
   min-height: ${({ showImagePreview }) => showImagePreview ? 'auto' : 'auto'};
-  box-shadow: ${({ hasFile, showImagePreview }) => 
-    hasFile && showImagePreview ? '0 4px 12px rgba(0, 0, 0, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ hasFile, hasExistingFile, showImagePreview }) => {
+    if (hasExistingFile) return `0 0 0 2px ${colors.success}40, 0 4px 16px rgba(76, 175, 80, 0.2)`;
+    if ((hasFile || hasExistingFile) && showImagePreview) return '0 4px 12px rgba(0, 0, 0, 0.1)';
+    return '0 2px 8px rgba(0, 0, 0, 0.05)';
+  }};
   position: relative;
   overflow: hidden;
+  
+  ${({ hasExistingFile }) => hasExistingFile && `
+    animation: pulseGlow 2s ease-in-out infinite;
+    
+    @keyframes pulseGlow {
+      0%, 100% {
+        box-shadow: 0 0 0 2px ${colors.success}40, 0 4px 16px rgba(76, 175, 80, 0.2);
+      }
+      50% {
+        box-shadow: 0 0 0 4px ${colors.success}60, 0 6px 20px rgba(76, 175, 80, 0.3);
+      }
+    }
+  `}
   
   &::before {
     content: '';
@@ -42,13 +63,17 @@ const DragDropZone = styled.div.withConfig({
   }
   
   &:hover {
-    border-color: ${colors.accent};
-    background: ${({ hasFile, showImagePreview }) => {
-      if (hasFile && showImagePreview) return colors.bg;
+    border-color: ${({ hasExistingFile }) => hasExistingFile ? colors.success : colors.accent};
+    background: ${({ hasFile, hasExistingFile, showImagePreview }) => {
+      if (hasExistingFile) return `linear-gradient(135deg, ${colors.success}20, ${colors.success}12, ${colors.bg})`;
+      if ((hasFile || hasExistingFile) && showImagePreview) return colors.bg;
       return `linear-gradient(135deg, ${colors.bgTertiary}, ${colors.bg})`;
     }};
-    box-shadow: ${({ hasFile, showImagePreview }) => 
-      hasFile && showImagePreview ? '0 6px 16px rgba(0, 0, 0, 0.15)' : '0 4px 12px rgba(0, 0, 0, 0.1)'};
+    box-shadow: ${({ hasFile, hasExistingFile, showImagePreview }) => {
+      if (hasExistingFile) return `0 0 0 4px ${colors.success}50, 0 6px 20px rgba(76, 175, 80, 0.35)`;
+      if ((hasFile || hasExistingFile) && showImagePreview) return '0 6px 16px rgba(0, 0, 0, 0.15)';
+      return '0 4px 12px rgba(0, 0, 0, 0.1)';
+    }};
     transform: translateY(-2px);
     
     &::before {
@@ -81,6 +106,64 @@ const FileName = styled.span`
 
 const FileSize = styled.span`
   color: ${colors.textMuted};
+`;
+
+const ExistingFileBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: ${spacing.xs};
+  padding: ${spacing.xs} ${spacing.sm};
+  background: ${colors.success};
+  color: ${colors.bg};
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: ${spacing.md};
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  animation: slideDown 0.3s ease-out;
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const CheckIcon = styled.svg`
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+`;
+
+const ExistingFileInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${spacing.xs};
+  padding: ${spacing.md};
+  background: ${colors.bgSecondary};
+  border-radius: 8px;
+  border: 1px solid ${colors.success}40;
+  margin-top: ${spacing.sm};
+`;
+
+const ExistingFileName = styled.span`
+  color: ${colors.text};
+  font-weight: 600;
+  font-size: 0.9375rem;
+`;
+
+const ExistingFileSize = styled.span`
+  color: ${colors.success};
+  font-weight: 500;
+  font-size: 0.875rem;
 `;
 
 const ErrorText = styled.div`
@@ -130,6 +213,10 @@ interface FileUploaderProps {
   disabled?: boolean;
   showImagePreview?: boolean; // If true, show image preview for image files
   imagePreviewUrl?: string | null; // Optional preview URL (for existing images)
+  // For existing files (when editing)
+  existingFileName?: string;
+  existingFileSize?: number;
+  existingFileUrl?: string;
 }
 
 export function FileUploader({
@@ -142,10 +229,16 @@ export function FileUploader({
   disabled = false,
   showImagePreview = false,
   imagePreviewUrl,
+  existingFileName,
+  existingFileSize,
+  existingFileUrl,
 }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(imagePreviewUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Determine if we have an existing file (metadata but no File object)
+  const hasExistingFile = !file && existingFileName;
 
   // Generate preview URL when file changes (for images)
   useEffect(() => {
@@ -205,6 +298,7 @@ export function FileUploader({
       <DragDropZone
         isDragging={isDragging}
         hasFile={!!file}
+        hasExistingFile={hasExistingFile}
         showImagePreview={showImagePreview}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -227,8 +321,29 @@ export function FileUploader({
                   <FileName>{file.name}</FileName>
                   <FileSize>({formatFileSize(file.size)})</FileSize>
                 </FileInfo>
+                <DragDropText style={{ marginTop: spacing.xs, fontSize: '0.75rem', opacity: 0.8 }}>
+                  Click to replace file
+                </DragDropText>
               </>
             )}
+          </>
+        ) : hasExistingFile ? (
+          <>
+            <ExistingFileBadge>
+              <CheckIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </CheckIcon>
+              Existing File
+            </ExistingFileBadge>
+            <ExistingFileInfo>
+              <ExistingFileName>{existingFileName}</ExistingFileName>
+              {existingFileSize !== undefined && !isNaN(existingFileSize) && (
+                <ExistingFileSize>{formatFileSize(existingFileSize)}</ExistingFileSize>
+              )}
+            </ExistingFileInfo>
+            <DragDropText style={{ marginTop: spacing.md, fontSize: '0.875rem', fontWeight: 500, color: colors.textSecondary }}>
+              Click to replace this file
+            </DragDropText>
           </>
         ) : showImagePreview && previewUrl ? (
           <ImagePreview src={previewUrl} alt="Current thumbnail" />

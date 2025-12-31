@@ -203,7 +203,7 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary'; dis
 
 interface ModManageFormProps {
     mod: ModMetadata;
-    onUpdate: (updates: ModUpdateRequest, thumbnail?: File) => void;
+    onUpdate: (updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>) => void;
     onDelete: () => void;
     onStatusChange?: (status: ModStatus) => void;
     isLoading: boolean;
@@ -282,6 +282,30 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         }
     };
 
+    // Check if a variant is pre-existing (loaded from the mod, not a new draft)
+    const isPreExistingVariant = (variant: ModVariant): boolean => {
+        // Pre-existing variants have persisted data
+        return !!(variant.fileUrl || (variant.fileName && variant.fileSize !== undefined));
+    };
+
+    // Check if a variant is empty (no dirty changes from default state)
+    const isEmptyVariant = (variant: ModVariant): boolean => {
+        const hasName = variant.name && variant.name.trim().length > 0;
+        const hasDescription = variant.description && variant.description.trim().length > 0;
+        const hasFile = !!variant.file;
+        const hasFileUrl = !!variant.fileUrl;
+        
+        // Variant is empty if it has no name, no description, no file, and no fileUrl
+        return !hasName && !hasDescription && !hasFile && !hasFileUrl;
+    };
+
+    // Check if there's an empty draft variant (empty and not pre-existing)
+    const hasEmptyDraftVariant = (): boolean => {
+        return variants.some(variant => 
+            isEmptyVariant(variant) && !isPreExistingVariant(variant)
+        );
+    };
+
     const handleAddVariant = () => {
         const newVariant: ModVariant = {
             variantId: `variant-${Date.now()}`,
@@ -328,6 +352,18 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // Extract variant files before serializing variants
+        const variantFiles: Record<string, File> = {};
+        const variantsWithoutFiles = variants.map(variant => {
+            if (variant.file) {
+                variantFiles[variant.variantId] = variant.file;
+                // Return variant without File object (can't be serialized)
+                const { file, ...variantWithoutFile } = variant;
+                return variantWithoutFile;
+            }
+            return variant;
+        });
+        
         const updates: ModUpdateRequest = {
             title,
             description,
@@ -335,9 +371,9 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
             visibility,
             gameId: gameId || undefined,
-            variants: variants.length > 0 ? variants : undefined,
+            variants: variantsWithoutFiles.length > 0 ? variantsWithoutFiles : undefined,
         };
-        onUpdate(updates, thumbnailFile || undefined);
+        onUpdate(updates, thumbnailFile || undefined, Object.keys(variantFiles).length > 0 ? variantFiles : undefined);
     };
 
     return (
@@ -444,7 +480,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
             <FormGroup>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Label>Variants (optional)</Label>
-                    <Button type="button" variant="secondary" onClick={handleAddVariant}>
+                    <Button 
+                        type="button" 
+                        variant="secondary" 
+                        onClick={handleAddVariant}
+                        disabled={hasEmptyDraftVariant()}
+                    >
                         Add Variant
                     </Button>
                 </div>
@@ -485,6 +526,9 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                         label="Drag and drop variant file here, or click to browse"
                                         error={variantFileErrors[variant.variantId] || null}
                                         disabled={isLoading}
+                                        existingFileName={!variant.file && variant.fileName ? variant.fileName : undefined}
+                                        existingFileSize={!variant.file && variant.fileSize !== undefined && !isNaN(variant.fileSize) ? variant.fileSize : undefined}
+                                        existingFileUrl={!variant.file && variant.fileUrl ? variant.fileUrl : undefined}
                                     />
                                 </FormGroup>
                             </VariantItem>

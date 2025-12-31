@@ -13,21 +13,61 @@
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import styled, { css } from 'styled-components';
-import { colors, spacing } from '../../theme';
+import { colors } from '../../theme';
+
+// Shared portal root - created once and reused by all tooltips
+let portalRoot: HTMLElement | null = null;
+
+function getPortalRoot(): HTMLElement {
+  if (typeof document === 'undefined') {
+    throw new Error('Document is not available');
+  }
+
+  // Return existing root if valid
+  if (portalRoot && document.body.contains(portalRoot)) {
+    return portalRoot;
+  }
+
+  // Create portal root element
+  portalRoot = document.createElement('div');
+  portalRoot.id = 'react-tooltip-portal-root';
+  
+  // CRITICAL: Portal root must not affect layout
+  portalRoot.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 100002;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    border: none;
+  `;
+  
+  // Append to body - this is the portal target
+  document.body.appendChild(portalRoot);
+  
+  return portalRoot;
+}
 
 type TooltipPosition = 'top' | 'bottom' | 'left' | 'right' | 'auto';
 
 interface TooltipProps {
-  text: string;
+  text?: string;
+  content?: ReactNode;
   position?: TooltipPosition;
   delay?: number;
   disabled?: boolean;
   maxWidth?: string | null;
+  interactive?: boolean;
+  noBackground?: boolean; // If true, tooltip has no background/padding - content is the tooltip
   children: ReactNode;
 }
 
 const TooltipWrapper = styled.div`
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -36,25 +76,35 @@ const TooltipWrapper = styled.div`
 const TooltipElement = styled.div<{ 
   $position: 'top' | 'bottom' | 'left' | 'right';
   $maxWidth?: string;
+  $interactive?: boolean;
+  $noBackground?: boolean;
 }>`
   position: fixed;
   z-index: 100002; /* Highest - above modals and toasts */
-  padding: 6px 10px;
-  background: var(--card, ${colors.bgSecondary});
-  border: 1px solid var(--border, ${colors.border});
+  padding: ${props => props.$noBackground ? '0' : '6px 10px'};
+  background: ${props => props.$noBackground ? 'transparent' : 'var(--card, ' + colors.bgSecondary + ')'};
+  border: ${props => props.$noBackground ? 'none' : '1px solid var(--border, ' + colors.border + ')'};
   color: var(--text, ${colors.text});
   font-size: 0.85em;
   line-height: 1.4;
-  pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+  pointer-events: ${props => props.$interactive ? 'auto' : 'none'};
+  box-shadow: ${props => props.$noBackground ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.3)'};
+  border-radius: ${props => props.$noBackground ? '0' : '4px'};
   white-space: normal;
   word-wrap: break-word;
   overflow-wrap: break-word;
   text-align: center;
   display: inline-block;
   max-width: ${props => props.$maxWidth || '300px'};
-  min-width: 200px;
+  min-width: ${props => props.$noBackground ? 'auto' : '200px'};
+  width: ${props => props.$noBackground ? 'auto' : 'auto'};
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  
+  /* When noBackground, ensure content determines width consistently */
+  ${props => props.$noBackground && css`
+    width: fit-content;
+    min-width: fit-content;
+  `}
   
   /* Arrow styles */
   &::after {
@@ -156,11 +206,14 @@ const TooltipElement = styled.div<{
 `;
 
 export function Tooltip({ 
-  text, 
+  text,
+  content,
   position = 'auto', 
   delay = 0, 
   disabled = false,
   maxWidth = null,
+  interactive = false,
+  noBackground = false,
   children 
 }: TooltipProps) {
   const [show, setShow] = useState(false);
@@ -168,9 +221,13 @@ export function Tooltip({
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const wrapperRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const portalContainerRef = useRef<HTMLDivElement | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHoveringTooltipRef = useRef(false);
   const listenersActiveRef = useRef(false);
+  
+  // Auto-enable interactive mode if content is provided (likely has interactive elements)
+  const isInteractive = interactive || !!content;
 
   // Calculate max width based on viewport
   const calculateMaxWidth = useCallback((): string => {
@@ -278,7 +335,7 @@ export function Tooltip({
 
   // Show tooltip
   const handleMouseEnter = useCallback(() => {
-    if (disabled || !text) return;
+    if (disabled || (!text && !content)) return;
 
     if (delay > 0) {
       hoverTimeoutRef.current = setTimeout(() => {
@@ -296,30 +353,68 @@ export function Tooltip({
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
-    setShow(false);
-  }, []);
-
-  // Create portal container on mount
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    const portalContainer = document.createElement('div');
-    portalContainer.id = `tooltip-portal-${Math.random().toString(36).substr(2, 9)}`;
-    portalContainer.style.position = 'fixed';
-    portalContainer.style.top = '0';
-    portalContainer.style.left = '0';
-    portalContainer.style.width = '0';
-    portalContainer.style.height = '0';
-    portalContainer.style.pointerEvents = 'none';
-    portalContainer.style.zIndex = '100002';
-    document.body.appendChild(portalContainer);
-    portalContainerRef.current = portalContainer;
-
-    return () => {
-      if (portalContainerRef.current && portalContainerRef.current.parentNode) {
-        portalContainerRef.current.parentNode.removeChild(portalContainerRef.current);
+    
+    if (!isInteractive) {
+      // Non-interactive: hide immediately
+      setShow(false);
+      return;
+    }
+    
+    // Interactive: delay hiding to allow moving to tooltip
+    // Use much longer delay to prevent flicker during content changes
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    hideTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringTooltipRef.current) {
+        setShow(false);
       }
-    };
+      hideTimeoutRef.current = null;
+    }, 500); // Much longer delay to allow content changes without hiding
+  }, [isInteractive]);
+  
+  // Handle tooltip mouse enter (for interactive tooltips)
+  const handleTooltipMouseEnter = useCallback(() => {
+    if (isInteractive) {
+      // Cancel any pending hide
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+      isHoveringTooltipRef.current = true;
+    }
+  }, [isInteractive]);
+  
+  // Handle tooltip mouse leave (for interactive tooltips)
+  const handleTooltipMouseLeave = useCallback(() => {
+    if (isInteractive) {
+      isHoveringTooltipRef.current = false;
+      // Small delay to allow moving mouse from tooltip back to trigger
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+      hideTimeoutRef.current = setTimeout(() => {
+        if (!isHoveringTooltipRef.current) {
+          setShow(false);
+        }
+        hideTimeoutRef.current = null;
+      }, 100);
+    }
+  }, [isInteractive]);
+
+  // Ensure portal root exists on mount - MUST be ready before any render
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      try {
+        const root = getPortalRoot();
+        // Verify it's actually in the DOM
+        if (!document.body.contains(root)) {
+          console.error('Portal root not in DOM!');
+        }
+      } catch (e) {
+        console.error('Failed to create portal root:', e);
+      }
+    }
   }, []);
 
   // Update position when tooltip becomes visible
@@ -350,6 +445,30 @@ export function Tooltip({
       }
     };
   }, [show, calculatePosition, updateTooltipPosition, handleResize]);
+  
+  // Update position when content changes (but keep tooltip visible)
+  useEffect(() => {
+    if (show && tooltipRef.current && wrapperRef.current) {
+      // Recalculate position when content changes to prevent flicker
+      requestAnimationFrame(() => {
+        if (!tooltipRef.current || !wrapperRef.current) return;
+        updateTooltipPosition();
+      });
+    }
+  }, [content, show, updateTooltipPosition]);
+  
+  // Keep tooltip visible when content changes - cancel any pending hide
+  useEffect(() => {
+    if (show && isInteractive && content) {
+      // When content changes, cancel any pending hide to keep tooltip visible
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+      // Keep tooltip visible during content transitions
+      isHoveringTooltipRef.current = true;
+    }
+  }, [content, show, isInteractive]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -364,10 +483,37 @@ export function Tooltip({
     };
   }, [handleResize]);
 
-  if (!text || disabled) {
+  if ((!text && !content) || disabled) {
     return <>{children}</>;
   }
 
+  // Get portal root element - MUST exist in DOM before using createPortal
+  const portalRootElement = typeof document !== 'undefined' && typeof window !== 'undefined' 
+    ? getPortalRoot() 
+    : null;
+  
+  // Render tooltip ONLY via React createPortal when show is true
+  // This ensures tooltip is NEVER in the component tree
+  const tooltipPortal = show && portalRootElement 
+    ? createPortal(
+        <TooltipElement
+          ref={tooltipRef}
+          $position={actualPosition}
+          $maxWidth={calculateMaxWidth()}
+          $interactive={isInteractive}
+          $noBackground={noBackground}
+          style={tooltipStyle}
+          role="tooltip"
+          aria-live="polite"
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
+        >
+          {content || text}
+        </TooltipElement>,
+        portalRootElement
+      )
+    : null;
+  
   return (
     <>
       <TooltipWrapper
@@ -377,18 +523,8 @@ export function Tooltip({
       >
         {children}
       </TooltipWrapper>
-      {show && portalContainerRef.current && createPortal(
-        <TooltipElement
-          ref={tooltipRef}
-          $position={actualPosition}
-          $maxWidth={calculateMaxWidth()}
-          style={tooltipStyle}
-          role="tooltip"
-        >
-          {text}
-        </TooltipElement>,
-        portalContainerRef.current
-      )}
+      {/* CRITICAL: Tooltip renders ONLY via React createPortal to body - NEVER in this tree */}
+      {tooltipPortal}
     </>
   );
 }

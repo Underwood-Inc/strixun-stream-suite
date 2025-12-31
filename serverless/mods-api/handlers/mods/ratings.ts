@@ -10,30 +10,6 @@ import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../types/rating.js';
 
 /**
- * Fetch user displayName from auth service
- */
-async function fetchUserDisplayName(token: string, env: Env): Promise<string | null> {
-    try {
-        // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-        const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-        const response = await fetch(`${authApiUrl}/auth/me`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        if (response.ok) {
-            const userData = await response.json() as { displayName?: string | null; [key: string]: any };
-            return userData.displayName || null;
-        }
-    } catch (error) {
-        console.warn('[Ratings] Failed to fetch displayName from auth service:', error);
-    }
-    return null;
-}
-
-/**
  * Generate a unique rating ID
  */
 function generateRatingId(): string {
@@ -142,6 +118,40 @@ export async function handleGetModRatings(
             const rating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
             if (rating) {
                 ratings.push(rating);
+            }
+        }
+        
+        // Fetch missing display names for ratings that don't have userDisplayName
+        // Similar to how mod detail handler fetches missing authorDisplayName
+        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+        const ratingsNeedingDisplayName = ratings.filter(r => !r.userDisplayName && r.userId);
+        
+        if (ratingsNeedingDisplayName.length > 0) {
+            // Fetch all missing display names in parallel for better performance
+            const displayNamePromises = ratingsNeedingDisplayName.map(async (rating) => {
+                const fetchedDisplayName = await fetchDisplayNameByUserId(rating.userId, env);
+                return { rating, fetchedDisplayName };
+            });
+            
+            const displayNameResults = await Promise.all(displayNamePromises);
+            
+            // Update ratings with fetched display names and prepare for storage update
+            const ratingsToUpdate: ModRating[] = [];
+            for (const { rating, fetchedDisplayName } of displayNameResults) {
+                if (fetchedDisplayName) {
+                    rating.userDisplayName = fetchedDisplayName;
+                    ratingsToUpdate.push(rating);
+                }
+            }
+            
+            // Update ratings in storage if we fetched any missing display names
+            // This ensures future requests don't need to fetch again
+            if (ratingsToUpdate.length > 0) {
+                const updatePromises = ratingsToUpdate.map(rating => {
+                    const ratingKey = getCustomerKey(null, `rating_${rating.ratingId}`);
+                    return env.MODS_KV.put(ratingKey, JSON.stringify(rating));
+                });
+                await Promise.all(updatePromises);
             }
         }
         
@@ -295,8 +305,24 @@ export async function handleSubmitModRating(
         }
         
         // Get user displayName from auth service (once, reuse for both create and update)
+        // Use the shared utility function for consistency with other handlers
         const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-        const userDisplayName = jwtToken ? await fetchUserDisplayName(jwtToken, env) : null;
+        let userDisplayName: string | null = null;
+        
+        if (jwtToken) {
+            const { fetchDisplayNameByToken } = await import('../../utils/displayName.js');
+            userDisplayName = await fetchDisplayNameByToken(jwtToken, env, 10000);
+            
+            // Fallback to userId lookup if token-based fetch fails
+            if (!userDisplayName) {
+                const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+                userDisplayName = await fetchDisplayNameByUserId(auth.userId, env, 10000);
+            }
+        } else {
+            // No token, use userId lookup
+            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+            userDisplayName = await fetchDisplayNameByUserId(auth.userId, env, 10000);
+        }
         
         // Check if user has already rated this mod (use normalized modId from the found mod)
         const normalizedStoredModId = normalizeModId(mod.modId);
@@ -310,11 +336,16 @@ export async function handleSubmitModRating(
             const existingRating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
             if (existingRating && existingRating.userId === auth.userId) {
                 // User has already rated - update existing rating
+                // Allow comment to be cleared (empty string) or updated
+                const updatedComment = body.comment !== undefined 
+                    ? (body.comment || null) // Allow empty string to clear comment
+                    : existingRating.comment; // Keep existing if not provided
+                
                 const updatedRating: ModRating = {
                     ...existingRating,
                     userDisplayName: userDisplayName || existingRating.userDisplayName || null,
                     rating: body.rating,
-                    comment: body.comment || existingRating.comment,
+                    comment: updatedComment,
                     updatedAt: new Date().toISOString(),
                 };
                 

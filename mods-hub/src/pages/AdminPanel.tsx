@@ -32,10 +32,10 @@ import { filterModsBySearchQuery } from '../utils/searchMods';
 const PageContainer = styled.div`
   max-width: 1800px;
   margin: 0 auto;
-  padding: ${spacing.xl};
+  padding: ${spacing.md} ${spacing.lg};
   display: flex;
   flex-direction: column;
-  gap: ${spacing.xl};
+  gap: ${spacing.md};
   min-height: calc(100vh - 120px);
   height: 100%;
   overflow: hidden;
@@ -53,13 +53,13 @@ const PageHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: ${spacing.md};
+  gap: ${spacing.sm};
   flex-shrink: 0;
 `;
 
 const Filters = styled.div`
   display: flex;
-  gap: ${spacing.md};
+  gap: ${spacing.sm};
   align-items: center;
   flex-wrap: wrap;
   flex: 1;
@@ -84,12 +84,12 @@ const Select = styled.select`
 
 const Toolbar = styled.div`
   display: flex;
-  gap: ${spacing.sm};
+  gap: ${spacing.xs};
   align-items: center;
   flex-wrap: wrap;
-  padding: ${spacing.md};
+  padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bgSecondary};
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid ${colors.border};
   flex-shrink: 0;
 `;
@@ -106,10 +106,11 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
     return colors.bgTertiary;
   }};
   color: ${props => props.variant === 'primary' || props.variant === 'danger' ? '#fff' : colors.text};
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  line-height: 1.4;
   
   &:hover:not(:disabled) {
     opacity: 0.9;
@@ -130,6 +131,7 @@ const ActionGroup = styled.div`
   display: flex;
   gap: ${spacing.xs};
   flex-wrap: wrap;
+  align-items: center;
 `;
 
 const StyledLink = styled(Link)`
@@ -144,7 +146,8 @@ const StyledLink = styled(Link)`
 const SelectionInfo = styled.div`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
-  padding: ${spacing.xs} ${spacing.sm};
+  padding: ${spacing.xs};
+  margin-right: ${spacing.xs};
 `;
 
 const Loading = styled.div`

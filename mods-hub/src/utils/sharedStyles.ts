@@ -218,6 +218,54 @@ export const shouldForwardProp = <T extends Record<string, any>>(
   return !props.includes(prop as keyof T);
 };
 
+// ============ Click Effect (Ripple) ============
+// Cursor-position click ripple effect for interactive elements
+// Usage: ${getClickEffectStyles()}
+// Optional: ${getClickEffectStyles('rgba(255, 255, 255, 0.3)', '100px')} // color, size
+// 
+// Use with the useClickRipple hook to position the ripple at cursor:
+// const { onClick } = useClickRipple();
+// <StyledButton onClick={onClick}>Click me</StyledButton>
+export function getClickEffectStyles(color: string = 'rgba(255, 255, 255, 0.3)', size: string = '100px') {
+  return css`
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      width: ${size};
+      height: ${size};
+      border-radius: 50%;
+      background: ${color};
+      transform: scale(0);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      left: var(--ripple-x, 50%);
+      top: var(--ripple-y, 50%);
+      margin-left: calc(-${size} / 2);
+      margin-top: calc(-${size} / 2);
+    }
+    
+    &:active::after {
+      transform: scale(4);
+      opacity: 1;
+      transition: transform 0s, opacity 0s;
+    }
+    
+    /* Prevent text selection during click */
+    &:active {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  `;
+}
+
 // Common non-DOM props that should be filtered
 export const COMMON_NON_DOM_PROPS = [
   'filled',
