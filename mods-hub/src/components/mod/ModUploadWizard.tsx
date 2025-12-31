@@ -77,7 +77,7 @@ const StepCircle = styled.div.withConfig({
   
   ${({ completed }) => completed && `
     &::after {
-      content: '[?]';
+      content: '✅';
       font-size: 1.2rem;
     }
   `}
@@ -737,7 +737,7 @@ export function ModUploadWizard({
                                     </ThumbnailPreviewContainer>
                                 ) : (
                                     <>
-                                        <div>[?] Drop thumbnail here</div>
+                                        <div>📷 Drop thumbnail here</div>
                                         <DragDropText>.png, .jpg, .webp</DragDropText>
                                     </>
                                 )}

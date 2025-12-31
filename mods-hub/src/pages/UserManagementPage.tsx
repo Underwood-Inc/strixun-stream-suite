@@ -474,7 +474,7 @@ export function UserManagementPage() {
             <TableContainer>
                 {isLoading ? (
                     <EmptyState>
-                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>[?]</div>
+                        <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⏳</div>
                         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>Loading users...</div>
                         <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>Fetching data from API</div>
                     </EmptyState>

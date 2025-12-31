@@ -57,19 +57,17 @@ const PageHeader = styled.div`
   flex-shrink: 0;
 `;
 
-const Filters = styled.div`
-  display: flex;
-  gap: ${spacing.sm};
-  align-items: center;
-  flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-end;
-`;
-
 const SearchContainer = styled.div`
-  min-width: 300px;
+  min-width: 250px;
   flex: 1;
-  max-width: 500px;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  
+  /* Ensure the input wrapper aligns properly */
+  > div {
+    width: 100%;
+  }
 `;
 
 const Select = styled.select`
@@ -84,7 +82,7 @@ const Select = styled.select`
 
 const Toolbar = styled.div`
   display: flex;
-  gap: ${spacing.xs};
+  gap: ${spacing.sm};
   align-items: center;
   flex-wrap: wrap;
   padding: ${spacing.sm} ${spacing.md};
@@ -492,30 +490,29 @@ export function AdminPanel() {
             <AdminNavigation />
             <PageHeader>
                 <Title>Mod Triage</Title>
-                <Filters>
-                    <SearchContainer>
-                        <AdvancedSearchInput
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder='Search mods... (use "quotes" for exact, space for AND, | for OR)'
-                        />
-                    </SearchContainer>
-                    <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="changes_requested">Changes Requested</option>
-                        <option value="denied">Denied</option>
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
-                        <option value="archived">Archived</option>
-                    </Select>
-                </Filters>
             </PageHeader>
 
             <AdminStats mods={data?.mods || []} filteredMods={filteredMods} />
 
             <Toolbar>
+                <SearchContainer>
+                    <AdvancedSearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder='Search mods... (use "quotes" for exact, space for AND, | for OR)'
+                        showHint={false}
+                    />
+                </SearchContainer>
+                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="changes_requested">Changes Requested</option>
+                    <option value="denied">Denied</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                </Select>
                 {hasSelection && (
                     <>
                         <SelectionInfo>{selectedCount} selected</SelectionInfo>
@@ -553,7 +550,7 @@ export function AdminPanel() {
                         </Button>
                     </>
                 )}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: spacing.sm }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: spacing.xs }}>
                     <Button onClick={handleExportCSV} disabled={sortedMods.length === 0}>
                         Export CSV
                     </Button>
