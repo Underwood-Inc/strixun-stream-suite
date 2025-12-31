@@ -9,6 +9,8 @@ import { colors, spacing } from '../../theme';
 import type { ModVersion } from '../../types/mod';
 import { downloadVersion } from '../../services/api';
 import { IntegrityBadge } from './IntegrityBadge';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const Container = styled.div`
   display: flex;
@@ -24,10 +26,7 @@ const Title = styled.h2`
 `;
 
 const VersionCard = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.lg};
+  ${getCardStyles('default')}
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -73,23 +72,7 @@ const Meta = styled.div`
 `;
 
 const DownloadButton = styled.button`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.accent};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background: ${colors.accentHover};
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  ${getButtonStyles('primary')}
 `;
 
 interface ModVersionListProps {

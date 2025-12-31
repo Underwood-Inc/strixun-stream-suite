@@ -9,19 +9,51 @@ import { colors, spacing } from '../../theme';
 import { formatFileSize } from '@strixun/api-framework';
 import React from 'react';
 
-const DragDropZone = styled.div<{ isDragging: boolean; hasFile: boolean }>`
-  padding: ${spacing.xl};
+const DragDropZone = styled.div.withConfig({
+  shouldForwardProp: (prop) => !['isDragging', 'hasFile', 'showImagePreview'].includes(prop),
+})<{ isDragging: boolean; hasFile: boolean; showImagePreview?: boolean }>`
+  padding: ${({ showImagePreview }) => showImagePreview ? spacing.md : spacing.xl};
   border: 2px dashed ${({ isDragging, hasFile }) => 
     isDragging ? colors.accent : hasFile ? colors.success : colors.border};
-  border-radius: 8px;
-  background: ${({ isDragging }) => isDragging ? `${colors.accent}10` : colors.bg};
+  border-radius: 12px;
+  background: ${({ isDragging, hasFile, showImagePreview }) => {
+    if (isDragging) return `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}05)`;
+    if (hasFile && showImagePreview) return colors.bg;
+    return `linear-gradient(135deg, ${colors.bg}, ${colors.bgTertiary})`;
+  }};
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  min-height: ${({ showImagePreview }) => showImagePreview ? 'auto' : 'auto'};
+  box-shadow: ${({ hasFile, showImagePreview }) => 
+    hasFile && showImagePreview ? '0 4px 12px rgba(0, 0, 0, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.05)'};
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
     border-color: ${colors.accent};
-    background: ${colors.bgTertiary};
+    background: ${({ hasFile, showImagePreview }) => {
+      if (hasFile && showImagePreview) return colors.bg;
+      return `linear-gradient(135deg, ${colors.bgTertiary}, ${colors.bg})`;
+    }};
+    box-shadow: ${({ hasFile, showImagePreview }) => 
+      hasFile && showImagePreview ? '0 6px 16px rgba(0, 0, 0, 0.15)' : '0 4px 12px rgba(0, 0, 0, 0.1)'};
+    transform: translateY(-2px);
+    
+    &::before {
+      left: 100%;
+    }
   }
 `;
 
@@ -70,13 +102,22 @@ const UploadIcon = styled.svg`
 `;
 
 const ImagePreview = styled.img`
-  max-width: 200px;
-  max-height: 200px;
-  border-radius: 4px;
-  border: 1px solid ${colors.border};
+  max-width: 100%;
+  width: 100%;
+  max-height: 300px;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 2px solid ${colors.border};
   margin: ${spacing.sm} auto 0;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  }
 `;
 
 interface FileUploaderProps {
@@ -164,32 +205,42 @@ export function FileUploader({
       <DragDropZone
         isDragging={isDragging}
         hasFile={!!file}
+        showImagePreview={showImagePreview}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleClick}
         style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
       >
-        <UploadIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </UploadIcon>
         {file ? (
           <>
             {showImagePreview && previewUrl ? (
               <ImagePreview src={previewUrl} alt="Preview" />
             ) : (
-              <FileInfo>
-                <FileName>{file.name}</FileName>
-                <FileSize>({formatFileSize(file.size)})</FileSize>
-              </FileInfo>
+              <>
+                <UploadIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </UploadIcon>
+                <FileInfo>
+                  <FileName>{file.name}</FileName>
+                  <FileSize>({formatFileSize(file.size)})</FileSize>
+                </FileInfo>
+              </>
             )}
           </>
         ) : showImagePreview && previewUrl ? (
           <ImagePreview src={previewUrl} alt="Current thumbnail" />
         ) : (
-          <DragDropText>{label}</DragDropText>
+          <>
+            <UploadIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </UploadIcon>
+            <DragDropText>{label}</DragDropText>
+          </>
         )}
       </DragDropZone>
       <FileInput

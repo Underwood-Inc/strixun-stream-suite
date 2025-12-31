@@ -1,7 +1,10 @@
 import { createGlobalStyle } from 'styled-components';
 import { colors, typography } from './tokens';
+import { getSeasonalKeyframesCSS } from '../utils/seasonalAnimations';
 
 export const GlobalStyle = createGlobalStyle`
+  /* Seasonal animation keyframes */
+  ${getSeasonalKeyframesCSS()}
   * {
     margin: 0;
     padding: 0;

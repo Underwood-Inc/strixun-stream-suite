@@ -8,8 +8,12 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
 import { FileUploader } from './FileUploader';
+import { GamesPicker } from './GamesPicker';
 import { useAdminSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getBadgeStyles } from '../../utils/sharedStyles';
+import { getStatusBadgeType } from '../../utils/badgeHelpers';
 
 const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
 const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from shared framework)
@@ -17,11 +21,59 @@ const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: ${spacing.lg};
-  background: ${colors.bgSecondary};
+  gap: ${spacing.xl};
+  background: linear-gradient(135deg, ${colors.bgSecondary}, ${colors.bg});
   border: 1px solid ${colors.border};
-  border-radius: 8px;
+  border-radius: 12px;
   padding: ${spacing.xl};
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, ${colors.accent}, ${colors.accentHover || colors.accent});
+    opacity: 0.8;
+  }
+`;
+
+const Header = styled.div`
+  display: flex;
+  gap: ${spacing.xl};
+  align-items: flex-start;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: ${spacing.lg};
+  }
+`;
+
+const ThumbnailSection = styled.div`
+  min-width: 200px;
+  max-width: 300px;
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.sm};
+  
+  @media (max-width: 768px) {
+    max-width: 100%;
+    width: 100%;
+  }
+`;
+
+const InfoSection = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.lg};
+  min-width: 0; /* Allows flex item to shrink below content size */
 `;
 
 const FormGroup = styled.div`
@@ -31,22 +83,34 @@ const FormGroup = styled.div`
 `;
 
 const Label = styled.label`
-  font-weight: 500;
+  font-weight: 600;
   color: ${colors.text};
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: ${spacing.xs};
 `;
 
 const Input = styled.input`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
   border: 1px solid ${colors.border};
-  border-radius: 4px;
+  border-radius: 6px;
   color: ${colors.text};
   font-size: 0.875rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
   &:focus {
     border-color: ${colors.accent};
     outline: none;
+    box-shadow: 0 0 0 3px ${colors.accent}20, 0 2px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  &:hover:not(:focus) {
+    border-color: ${colors.borderLight || colors.border};
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   }
 `;
 
@@ -54,16 +118,25 @@ const TextArea = styled.textarea`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
   border: 1px solid ${colors.border};
-  border-radius: 4px;
+  border-radius: 6px;
   color: ${colors.text};
   font-size: 0.875rem;
   min-height: 100px;
   resize: vertical;
   font-family: inherit;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
   &:focus {
     border-color: ${colors.accent};
     outline: none;
+    box-shadow: 0 0 0 3px ${colors.accent}20, 0 2px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  &:hover:not(:focus) {
+    border-color: ${colors.borderLight || colors.border};
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   }
 `;
 
@@ -71,14 +144,23 @@ const Select = styled.select`
   padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bg};
   border: 1px solid ${colors.border};
-  border-radius: 4px;
+  border-radius: 6px;
   color: ${colors.text};
   font-size: 0.875rem;
   cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
   &:focus {
     border-color: ${colors.accent};
     outline: none;
+    box-shadow: 0 0 0 3px ${colors.accent}20, 0 2px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  &:hover:not(:focus) {
+    border-color: ${colors.borderLight || colors.border};
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   }
 `;
 
@@ -90,35 +172,17 @@ const ButtonGroup = styled.div`
 `;
 
 const StatusBadge = styled.span<{ status: ModStatus }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${({ status }) => {
-    switch (status) {
-      case 'draft': return `${colors.warning}30`;
-      case 'pending': return `${colors.info}30`;
-      case 'published': return `${colors.success}30`;
-      default: return `${colors.textMuted}30`;
-    }
-  }};
-  color: ${({ status }) => {
-    switch (status) {
-      case 'draft': return colors.warning;
-      case 'pending': return colors.info;
-      case 'published': return colors.success;
-      default: return colors.textMuted;
-    }
-  }};
-  text-transform: capitalize;
+  ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
 `;
 
 const StatusInfo = styled.div`
   padding: ${spacing.md};
-  background: ${colors.bg};
+  background: linear-gradient(135deg, ${colors.bg}, ${colors.bgTertiary});
   border: 1px solid ${colors.border};
-  border-radius: 4px;
+  border-left: 4px solid ${colors.accent};
+  border-radius: 8px;
   margin-bottom: ${spacing.md};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 `;
 
 const StatusInfoText = styled.p`
@@ -128,51 +192,13 @@ const StatusInfoText = styled.p`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary'; disabled?: boolean }>`
-  padding: ${spacing.md} ${spacing.lg};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s ease;
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
   
-  ${({ variant = 'primary', disabled }) => {
-    if (disabled) {
-      return `
-        background: ${colors.border};
-        color: ${colors.textMuted};
-      `;
-    }
-    
-    switch (variant) {
-      case 'primary':
-        return `
-          background: ${colors.accent};
-          color: ${colors.bg};
-          
-          &:hover {
-            background: ${colors.accentHover};
-          }
-        `;
-      case 'danger':
-        return `
-          background: ${colors.danger};
-          color: white;
-          
-          &:hover {
-            background: #d32f2f;
-          }
-        `;
-      case 'secondary':
-        return `
-          background: transparent;
-          color: ${colors.text};
-          border: 1px solid ${colors.border};
-          
-          &:hover {
-            border-color: ${colors.borderLight};
-          }
-        `;
-    }
-  }}
+  ${({ disabled }) => disabled && `
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  `}
 `;
 
 interface ModManageFormProps {
@@ -187,19 +213,29 @@ const VariantSection = styled.div`
     display: flex;
     flex-direction: column;
     gap: ${spacing.md};
-    padding: ${spacing.md};
-    background: ${colors.bg};
+    padding: ${spacing.lg};
+    background: linear-gradient(135deg, ${colors.bg}, ${colors.bgTertiary});
     border: 1px solid ${colors.border};
-    border-radius: 4px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 `;
 
 const VariantItem = styled.div`
     display: flex;
     flex-direction: column;
     gap: ${spacing.sm};
-    padding: ${spacing.md};
+    padding: ${spacing.lg};
     background: ${colors.bgSecondary};
-    border-radius: 4px;
+    border: 1px solid ${colors.border};
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    
+    &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+        border-color: ${colors.accent}40;
+    }
 `;
 
 export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
@@ -209,7 +245,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     const [category, setCategory] = useState<ModCategory>(mod.category);
     const [tags, setTags] = useState(mod.tags.join(', '));
     const [visibility, setVisibility] = useState<ModVisibility>(mod.visibility);
-    const [gameId, setGameId] = useState(mod.gameId || '');
+    const [gameId, setGameId] = useState<string | undefined>(mod.gameId);
     const [variants, setVariants] = useState<ModVariant[]>(mod.variants || []);
     const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(mod.thumbnailUrl || null);
@@ -323,77 +359,87 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                 )}
             </StatusInfo>
 
-            <FormGroup>
-                <Label>Title</Label>
-                <Input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                />
-            </FormGroup>
+            <Header>
+                <ThumbnailSection>
+                    <Label>Thumbnail</Label>
+                    <FileUploader
+                        file={thumbnailFile}
+                        onFileChange={handleThumbnailFileChange}
+                        maxSize={MAX_THUMBNAIL_SIZE}
+                        accept="image/*"
+                        label="Drag and drop thumbnail image here, or click to browse"
+                        error={thumbnailError}
+                        disabled={isLoading}
+                        showImagePreview={true}
+                        imagePreviewUrl={thumbnailPreview}
+                    />
+                </ThumbnailSection>
+                <InfoSection>
+                    <FormGroup>
+                        <Label>Title</Label>
+                        <Input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            style={{ 
+                                fontSize: '1.75rem', 
+                                fontWeight: 700, 
+                                padding: spacing.md,
+                                background: `linear-gradient(135deg, ${colors.bg}, ${colors.bgTertiary})`,
+                                border: `2px solid ${colors.border}`,
+                            }}
+                        />
+                    </FormGroup>
 
-            <FormGroup>
-                <Label>Description</Label>
-                <TextArea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                />
-            </FormGroup>
+                    <FormGroup>
+                        <Label>Description</Label>
+                        <TextArea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            style={{ minHeight: '120px' }}
+                        />
+                    </FormGroup>
 
-            <FormGroup>
-                <Label>Category</Label>
-                <Select value={category} onChange={(e) => setCategory(e.target.value as ModCategory)}>
-                    <option value="script">Script</option>
-                    <option value="overlay">Overlay</option>
-                    <option value="theme">Theme</option>
-                    <option value="asset">Asset</option>
-                    <option value="plugin">Plugin</option>
-                    <option value="other">Other</option>
-                </Select>
-            </FormGroup>
+                    <FormGroup>
+                        <Label>Category</Label>
+                        <Select value={category} onChange={(e) => setCategory(e.target.value as ModCategory)}>
+                            <option value="script">Script</option>
+                            <option value="overlay">Overlay</option>
+                            <option value="theme">Theme</option>
+                            <option value="asset">Asset</option>
+                            <option value="plugin">Plugin</option>
+                            <option value="other">Other</option>
+                        </Select>
+                    </FormGroup>
 
-            <FormGroup>
-                <Label>Tags (comma-separated)</Label>
-                <Input
-                    type="text"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                />
-            </FormGroup>
+                    <FormGroup>
+                        <Label>Tags (comma-separated)</Label>
+                        <Input
+                            type="text"
+                            value={tags}
+                            onChange={(e) => setTags(e.target.value)}
+                        />
+                    </FormGroup>
 
-            <FormGroup>
-                <Label>Visibility</Label>
-                <Select value={visibility} onChange={(e) => setVisibility(e.target.value as ModVisibility)}>
-                    <option value="public">Public</option>
-                    <option value="unlisted">Unlisted</option>
-                    <option value="private">Private</option>
-                </Select>
-            </FormGroup>
+                    <FormGroup>
+                        <Label>Visibility</Label>
+                        <Select value={visibility} onChange={(e) => setVisibility(e.target.value as ModVisibility)}>
+                            <option value="public">Public</option>
+                            <option value="unlisted">Unlisted</option>
+                            <option value="private">Private</option>
+                        </Select>
+                    </FormGroup>
 
-            <FormGroup>
-                <Label>Game ID (optional)</Label>
-                <Input
-                    type="text"
-                    value={gameId}
-                    onChange={(e) => setGameId(e.target.value)}
-                    placeholder="e.g., game-123"
-                />
-            </FormGroup>
-
-            <FormGroup>
-                <Label>Thumbnail</Label>
-                <FileUploader
-                    file={thumbnailFile}
-                    onFileChange={handleThumbnailFileChange}
-                    maxSize={MAX_THUMBNAIL_SIZE}
-                    accept="image/*"
-                    label="Drag and drop thumbnail image here, or click to browse"
-                    error={thumbnailError}
-                    disabled={isLoading}
-                    showImagePreview={true}
-                    imagePreviewUrl={thumbnailPreview}
-                />
-            </FormGroup>
+                    <FormGroup>
+                        <Label>Associated Game (optional)</Label>
+                        <GamesPicker
+                            value={gameId}
+                            onChange={setGameId}
+                            placeholder="Select a game this mod is for..."
+                        />
+                    </FormGroup>
+                </InfoSection>
+            </Header>
 
             <FormGroup>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

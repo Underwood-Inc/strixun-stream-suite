@@ -10,6 +10,9 @@ import { useDrafts, useUpdateModStatus } from '../hooks/useMods';
 import { useAuthStore } from '../stores/auth';
 import { ModCard } from '../components/mod/ModCard';
 import type { ModStatus } from '../types/mod';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles } from '../utils/sharedStyles';
+import { getStatusBadgeType } from '../utils/badgeHelpers';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -49,58 +52,12 @@ const EmptyTitle = styled.h2`
 `;
 
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: ${spacing.sm} ${spacing.md};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
   margin: ${spacing.xs};
-  
-  ${({ variant = 'primary' }) => 
-    variant === 'primary' 
-      ? `
-        background: ${colors.accent};
-        color: ${colors.bg};
-        
-        &:hover {
-          background: ${colors.accentHover};
-        }
-      `
-      : `
-        background: transparent;
-        color: ${colors.text};
-        border: 1px solid ${colors.border};
-        
-        &:hover {
-          border-color: ${colors.borderLight};
-        }
-      `
-  }
 `;
 
 const StatusBadge = styled.span<{ status: ModStatus }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${({ status }) => {
-    switch (status) {
-      case 'draft': return `${colors.warning}30`;
-      case 'pending': return `${colors.info}30`;
-      case 'published': return `${colors.success}30`;
-      default: return `${colors.textMuted}30`;
-    }
-  }};
-  color: ${({ status }) => {
-    switch (status) {
-      case 'draft': return colors.warning;
-      case 'pending': return colors.info;
-      case 'published': return colors.success;
-      default: return colors.textMuted;
-    }
-  }};
-  text-transform: capitalize;
+  ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
 `;
 
 const DraftActions = styled.div`

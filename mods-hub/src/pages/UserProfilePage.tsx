@@ -8,6 +8,8 @@ import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { useNavigate } from 'react-router-dom';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles, getCardStyles } from '../utils/sharedStyles';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -30,10 +32,7 @@ const Title = styled.h1`
 `;
 
 const ProfileSection = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.lg};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
@@ -78,10 +77,7 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${colors.bgTertiary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.md};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.xs};
@@ -99,12 +95,7 @@ const StatLabel = styled.div`
 `;
 
 const Badge = styled.span<{ variant?: 'admin' | 'default' }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => props.variant === 'admin' ? `${colors.accent}20` : colors.bgTertiary};
-  color: ${props => props.variant === 'admin' ? colors.accent : colors.textSecondary};
+  ${({ variant }) => getBadgeStyles(variant === 'admin' ? 'accent' : 'default')}
 `;
 
 const Loading = styled.div`
@@ -120,14 +111,7 @@ const Error = styled.div`
 `;
 
 const Button = styled.button`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.accent};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  ${getButtonStyles('primary')}
   
   &:hover {
     background: ${colors.accentHover};

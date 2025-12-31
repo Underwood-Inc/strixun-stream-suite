@@ -35,6 +35,66 @@
   } @else if $variant == 'danger' {
     @include arcade-button(var(--danger), color.scale(color('danger'), $lightness: -20%));
     color: #fff;
+  } @else if $variant == 'link' {
+    background: transparent;
+    color: var(--accent);
+    padding: 4px 8px;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(237, 174, 73, 0.1);
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+    
+    &:active {
+      background: rgba(237, 174, 73, 0.2);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  } @else if $variant == 'icon' {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 0 var(--border);
+    position: relative;
+    overflow: hidden;
+    
+    @include ripple-effect(rgba(255, 255, 255, 0.2));
+    
+    &:hover {
+      background: var(--border);
+      color: var(--text);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 0 var(--border);
+    }
+    
+    &:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 0 2px 0 var(--border);
+    }
   } @else {
     // Default arcade style
     @include arcade-button(var(--accent), var(--accent-dark));
@@ -440,5 +500,161 @@
 // COMING SOON utility class
 .coming-soon {
   @include coming-soon-state;
+}
+
+// ============ Card ============
+// Base card styling - consistent across all apps
+@mixin card($variant: 'default') {
+  background: var(--card, var(--bg-secondary));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  
+  @if $variant == 'hover' {
+    &:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+// ============ Status Badge/Flair ============
+// Status badges for mods, users, etc.
+@mixin status-badge($type: 'default') {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: capitalize;
+  
+  @if $type == 'success' {
+    background: var(--success)20;
+    color: var(--success);
+  } @else if $type == 'warning' {
+    background: var(--warning)20;
+    color: var(--warning);
+  } @else if $type == 'danger' {
+    background: var(--danger)20;
+    color: var(--danger);
+  } @else if $type == 'info' {
+    background: var(--info)20;
+    color: var(--info);
+  } @else if $type == 'accent' {
+    background: var(--accent)20;
+    color: var(--accent);
+  } @else {
+    // Default - muted
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+}
+
+// Verified badge (green with checkmark)
+@mixin verified-badge {
+  @include status-badge('success');
+  
+  &::before {
+    content: '✓';
+    font-weight: 700;
+  }
+}
+
+// Strixun badge (grey/muted)
+@mixin strixun-badge {
+  @include status-badge('default');
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+// ============ Tooltip ============
+// Tooltip base styles (component handles positioning, but styles are here)
+@mixin tooltip {
+  position: absolute;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: var(--bg-dark, rgba(15, 14, 11, 0.95));
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 300px;
+  
+  // Arrow (component should add this element)
+  &::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+}
+
+// Tooltip arrow positions
+@mixin tooltip-arrow($position: 'top') {
+  @if $position == 'top' {
+    &::before {
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 6px 0 6px;
+      border-color: var(--border) transparent transparent transparent;
+    }
+  } @else if $position == 'bottom' {
+    &::before {
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 0 6px 6px 6px;
+      border-color: transparent transparent var(--border) transparent;
+    }
+  } @else if $position == 'left' {
+    &::before {
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-width: 6px 0 6px 6px;
+      border-color: transparent transparent transparent var(--border);
+    }
+  } @else if $position == 'right' {
+    &::before {
+      left: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-width: 6px 6px 6px 0;
+      border-color: transparent var(--border) transparent transparent;
+    }
+  }
+}
+
+// ============ Copy Button ============
+// Small secondary button for copy actions
+@mixin copy-button {
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
 }
 

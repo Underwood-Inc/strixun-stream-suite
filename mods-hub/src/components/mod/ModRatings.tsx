@@ -9,6 +9,7 @@ import { useAuthStore } from '../../stores/auth';
 import type { ModRating } from '../../types/mod';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
+import { getButtonStyles } from '../../utils/buttonStyles';
 
 const Container = styled.div`
   background: ${colors.bgSecondary};
@@ -52,7 +53,9 @@ const RatingStars = styled.div`
   margin-top: ${spacing.xs};
 `;
 
-const Star = styled.span<{ filled: boolean }>`
+const Star = styled.span.withConfig({
+  shouldForwardProp: (prop) => prop !== 'filled',
+})<{ filled: boolean }>`
   color: ${props => props.filled ? colors.accent : colors.textMuted};
   font-size: 1.25rem;
 `;
@@ -180,23 +183,7 @@ const TextArea = styled.textarea`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${props => props.variant === 'primary' ? colors.accent : colors.bgSecondary};
-  color: ${props => props.variant === 'primary' ? colors.bg : colors.text};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    opacity: 0.9;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
 `;
 
 const AuthPrompt = styled.div`

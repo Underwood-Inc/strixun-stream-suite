@@ -10,6 +10,8 @@ import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatu
 import { GamesPicker } from './GamesPicker';
 import { useAdminSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 // File size limits (must match server-side limits in serverless/mods-api/utils/upload-limits.ts)
 const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
@@ -17,10 +19,7 @@ const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from
 
 // Wizard Container
 const WizardContainer = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.xl};
+  ${getCardStyles('default')}
   max-width: 800px;
   margin: 0 auto;
 `;
@@ -45,7 +44,9 @@ const Stepper = styled.div`
   }
 `;
 
-const StepIndicator = styled.div<{ active: boolean; completed: boolean }>`
+const StepIndicator = styled.div.withConfig({
+  shouldForwardProp: (prop) => !['active', 'completed'].includes(prop),
+})<{ active: boolean; completed: boolean }>`
   position: relative;
   z-index: 1;
   display: flex;
@@ -55,7 +56,9 @@ const StepIndicator = styled.div<{ active: boolean; completed: boolean }>`
   flex: 1;
 `;
 
-const StepCircle = styled.div<{ active: boolean; completed: boolean }>`
+const StepCircle = styled.div.withConfig({
+  shouldForwardProp: (prop) => !['active', 'completed'].includes(prop),
+})<{ active: boolean; completed: boolean }>`
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -80,7 +83,9 @@ const StepCircle = styled.div<{ active: boolean; completed: boolean }>`
   `}
 `;
 
-const StepLabel = styled.span<{ active: boolean }>`
+const StepLabel = styled.span.withConfig({
+  shouldForwardProp: (prop) => prop !== 'active',
+})<{ active: boolean }>`
   font-size: 0.75rem;
   color: ${({ active }) => active ? colors.text : colors.textMuted};
   font-weight: ${({ active }) => active ? 600 : 400};
@@ -89,7 +94,9 @@ const StepLabel = styled.span<{ active: boolean }>`
 
 
 // Step Content
-const StepContent = styled.div<{ active: boolean }>`
+const StepContent = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'active',
+})<{ active: boolean }>`
   display: ${({ active }) => active ? 'block' : 'none'};
   animation: ${({ active }) => active ? 'fadeIn 0.3s ease' : 'none'};
   
@@ -183,7 +190,9 @@ const Select = styled.select`
   }
 `;
 
-const DragDropZone = styled.div<{ isDragging: boolean; hasFile: boolean }>`
+const DragDropZone = styled.div.withConfig({
+  shouldForwardProp: (prop) => !['isDragging', 'hasFile'].includes(prop),
+})<{ isDragging: boolean; hasFile: boolean }>`
   padding: ${spacing.xl};
   border: 2px dashed ${({ isDragging, hasFile }) => 
     isDragging ? colors.accent : hasFile ? colors.success : colors.border};
@@ -226,18 +235,9 @@ const FileSize = styled.span`
 `;
 
 const RemoveButton = styled.button`
-  padding: ${spacing.xs} ${spacing.sm};
-  background: ${colors.danger};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
+  ${getButtonStyles('danger')}
   font-size: 0.75rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  
-  &:hover {
-    background: ${colors.danger}dd;
-  }
+  padding: ${spacing.xs} ${spacing.sm};
 `;
 
 const HiddenInput = styled.input`
@@ -255,44 +255,13 @@ const NavigationButtons = styled.div`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'; disabled?: boolean }>`
-  padding: ${spacing.md} ${spacing.lg};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s ease;
-  border: none;
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
   
-  ${({ variant = 'primary', disabled }) => {
-    if (disabled) {
-      return `
-        background: ${colors.border};
-        color: ${colors.textMuted};
-      `;
-    }
-    switch (variant) {
-      case 'primary':
-        return `
-          background: ${colors.accent};
-          color: ${colors.bg};
-          
-          &:hover {
-            background: ${colors.accentHover};
-          }
-        `;
-      case 'secondary':
-        return `
-          background: transparent;
-          color: ${colors.text};
-          border: 1px solid ${colors.border};
-          
-          &:hover {
-            border-color: ${colors.borderLight};
-          }
-        `;
-      default:
-        return '';
-    }
-  }}
+  ${({ disabled }) => disabled && `
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  `}
 `;
 
 // Review Step
@@ -390,19 +359,8 @@ const VariantTitle = styled.h4`
 `;
 
 const AddVariantButton = styled.button`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.bgTertiary};
-  color: ${colors.text};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
+  ${getButtonStyles('secondary')}
   font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: ${colors.bgSecondary};
-    border-color: ${colors.accent};
-  }
 `;
 
 interface ModUploadWizardProps {

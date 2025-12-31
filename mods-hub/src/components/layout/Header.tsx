@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useUploadPermission } from '../../hooks/useUploadPermission';
 import { useDrafts } from '../../hooks/useMods';
 import { colors, spacing } from '../../theme';
+import { getButtonStyles } from '../../utils/buttonStyles';
 
 const HeaderContainer = styled.header`
   background: ${colors.bgSecondary};
@@ -50,32 +51,7 @@ const NavLink = styled(Link)`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: ${spacing.sm} ${spacing.md};
-  border-radius: 4px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  
-  ${({ variant = 'primary' }) => 
-    variant === 'primary' 
-      ? `
-        background: ${colors.accent};
-        color: ${colors.bg};
-        
-        &:hover {
-          background: ${colors.accentHover};
-        }
-      `
-      : `
-        background: transparent;
-        color: ${colors.text};
-        border: 1px solid ${colors.border};
-        
-        &:hover {
-          border-color: ${colors.borderLight};
-        }
-      `
-  }
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
 `;
 
 export function Header() {

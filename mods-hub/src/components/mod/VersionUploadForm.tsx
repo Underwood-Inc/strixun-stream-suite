@@ -8,15 +8,14 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { VersionUploadRequest } from '../../types/mod';
 import { useAdminSettings } from '../../hooks/useMods';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const Form = styled.form`
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.lg};
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.xl};
 `;
 
 const Title = styled.h2`
@@ -85,17 +84,13 @@ const FileInput = styled.input`
 `;
 
 const Button = styled.button<{ disabled?: boolean }>`
-  padding: ${spacing.md} ${spacing.lg};
-  background: ${({ disabled }) => disabled ? colors.border : colors.accent};
-  color: ${colors.bg};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
-  transition: background 0.2s ease;
+  ${getButtonStyles('primary')}
   
-  &:hover:not(:disabled) {
-    background: ${colors.accentHover};
-  }
+  ${({ disabled }) => disabled && `
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  `}
 `;
 
 const FileInfo = styled.div`

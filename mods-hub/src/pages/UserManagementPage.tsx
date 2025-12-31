@@ -21,6 +21,8 @@ import { useUpdateUser, useUsersList } from '../hooks/useUsers';
 import { colors, spacing } from '../theme/index';
 import type { UserListItem } from '../types/user';
 import { filterUsersBySearchQuery } from '../utils/searchUsers';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles } from '../utils/sharedStyles';
 
 const PageContainer = styled.div`
   max-width: 1800px;
@@ -109,47 +111,17 @@ const Toolbar = styled.div`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  background: ${props => {
-    if (props.variant === 'primary') return colors.accent;
-    if (props.variant === 'danger') return colors.danger;
-    return colors.bgTertiary;
-  }};
-  color: ${props => props.variant === 'primary' || props.variant === 'danger' ? '#fff' : colors.text};
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
   font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
   white-space: nowrap;
-  
-  &:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 `;
 
 const PermissionBadge = styled.span<{ hasPermission: boolean }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => props.hasPermission ? `${colors.success}20` : `${colors.bgTertiary}`};
-  color: ${props => props.hasPermission ? colors.success : colors.textSecondary};
+  ${({ hasPermission }) => getBadgeStyles(hasPermission ? 'success' : 'default')}
 `;
 
 const AccountTypeBadge = styled.span<{ type: 'free' | 'subscription' }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => props.type === 'subscription' ? `${colors.accent}20` : `${colors.bgTertiary}`};
-  color: ${props => props.type === 'subscription' ? colors.accent : colors.textSecondary};
+  ${({ type }) => getBadgeStyles(type === 'subscription' ? 'accent' : 'default')}
 `;
 
 const ActionGroup = styled.div`

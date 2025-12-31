@@ -23,6 +23,9 @@ import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useAdminDeleteMod, useAdminModsList, useUpdateModStatus } from '../hooks/useMods';
 import { colors, spacing } from '../theme/index';
 import type { ModMetadata, ModStatus } from '../types/mod';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles } from '../utils/sharedStyles';
+import { getStatusBadgeType } from '../utils/badgeHelpers';
 import { exportModsToCSV, exportModsToJSON } from '../utils/exportMods';
 import { filterModsBySearchQuery } from '../utils/searchMods';
 
@@ -92,6 +95,8 @@ const Toolbar = styled.div`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+  
   padding: ${spacing.xs} ${spacing.sm};
   border: 1px solid ${colors.border};
   border-radius: 4px;
@@ -118,32 +123,7 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
 `;
 
 const StatusBadge = styled.span<{ status: ModStatus }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => {
-    switch (props.status) {
-      case 'published': return `${colors.success}20`;
-      case 'approved': return `${colors.success}20`;
-      case 'pending': return `${colors.warning}20`;
-      case 'changes_requested': return `${colors.warning}20`;
-      case 'denied': return `${colors.danger}20`;
-      case 'draft': return `${colors.bgTertiary}`;
-      case 'archived': return `${colors.bgTertiary}`;
-      default: return colors.bgTertiary;
-    }
-  }};
-  color: ${props => {
-    switch (props.status) {
-      case 'published': return colors.success;
-      case 'approved': return colors.success;
-      case 'pending': return colors.warning;
-      case 'changes_requested': return colors.warning;
-      case 'denied': return colors.danger;
-      default: return colors.textSecondary;
-    }
-  }};
+  ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
 `;
 
 const ActionGroup = styled.div`

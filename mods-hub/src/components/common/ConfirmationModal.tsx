@@ -11,6 +11,8 @@ import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { generateRandomName } from '../../utils/nameGenerator';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const Overlay = styled.div`
     position: fixed;
@@ -27,10 +29,7 @@ const Overlay = styled.div`
 `;
 
 const Modal = styled.div`
-    background: ${colors.bgSecondary};
-    border: 1px solid ${colors.border};
-    border-radius: 8px;
-    padding: ${spacing.xl};
+    ${getCardStyles('default')}
     max-width: 600px;
     width: 100%;
     max-height: 90vh;
@@ -122,46 +121,8 @@ const ButtonGroup = styled.div`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-    padding: ${spacing.sm} ${spacing.md};
-    border: 1px solid ${colors.border};
-    border-radius: 4px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    ${({ variant = 'primary' }) => getButtonStyles(variant)}
     font-size: 0.875rem;
-    
-    ${props => {
-        if (props.variant === 'danger') {
-            return `
-                background: ${colors.danger};
-                color: #fff;
-                &:hover:not(:disabled) {
-                    background: ${colors.danger}dd;
-                }
-            `;
-        }
-        if (props.variant === 'primary') {
-            return `
-                background: ${colors.accent};
-                color: ${colors.bg};
-                &:hover:not(:disabled) {
-                    background: ${colors.accentHover};
-                }
-            `;
-        }
-        return `
-            background: ${colors.bgSecondary};
-            color: ${colors.text};
-            &:hover:not(:disabled) {
-                background: ${colors.bgTertiary};
-            }
-        `;
-    }}
-    
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
 `;
 
 export interface ConfirmationModalProps {

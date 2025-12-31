@@ -15,6 +15,8 @@ import { useAuthStore } from '../stores/auth';
 import { downloadVersion } from '../services/api';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getCardStyles } from '../utils/sharedStyles';
 
 const PageContainer = styled.div`
   display: flex;
@@ -70,6 +72,7 @@ const ErrorDetail = styled.div`
 `;
 
 const Info = styled.div`
+  ${getCardStyles('default')}
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -128,46 +131,19 @@ const Actions = styled.div`
 `;
 
 const DownloadButton = styled.button`
-  padding: ${spacing.md} ${spacing.lg};
-  background: ${colors.accent};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  ${getButtonStyles('primary')}
   display: inline-flex;
   align-items: center;
   gap: ${spacing.sm};
-  
-  &:hover:not(:disabled) {
-    background: ${colors.accentHover};
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  font-size: 1rem;
 `;
 
 const ManageButton = styled.button`
-  padding: ${spacing.md} ${spacing.lg};
-  background: ${colors.bgSecondary};
-  color: ${colors.text};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  ${getButtonStyles('secondary')}
   display: inline-flex;
   align-items: center;
   gap: ${spacing.sm};
-  
-  &:hover {
-    background: ${colors.bgTertiary};
-  }
+  font-size: 1rem;
 `;
 
 export function ModDetailPage() {

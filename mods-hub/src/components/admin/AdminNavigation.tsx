@@ -39,7 +39,9 @@ const NavContainer = styled.nav`
   }
 `;
 
-const Tab = styled.button<{ active: boolean }>`
+const Tab = styled.button.withConfig({
+  shouldForwardProp: (prop) => prop !== 'active',
+})<{ active: boolean }>`
   padding: ${spacing.md} ${spacing.lg};
   background: none;
   border: none;

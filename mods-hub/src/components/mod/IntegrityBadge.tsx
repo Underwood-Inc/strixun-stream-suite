@@ -7,11 +7,21 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { API_BASE_URL } from '../../services/api';
+import { getCopyButtonStyles } from '../../utils/sharedStyles';
+import { Tooltip } from '../common/Tooltip';
 
 const BadgeContainer = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing.sm};
+  
+  &:hover {
+    .copy-button,
+    .copy-success {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
 `;
 
 const BadgeImage = styled.img`
@@ -21,29 +31,18 @@ const BadgeImage = styled.img`
 `;
 
 const CopyButton = styled.button`
-  padding: ${spacing.xs} ${spacing.sm};
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: ${colors.bgTertiary};
-    border-color: ${colors.accent};
-  }
-  
-  &:active {
-    transform: scale(0.98);
-  }
+  ${getCopyButtonStyles()}
+  opacity: 0;
+  pointer-events: none;
 `;
 
 const CopySuccess = styled.span`
   color: ${colors.success};
   font-size: 0.75rem;
   font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 `;
 
 interface IntegrityBadgeProps {
@@ -123,11 +122,13 @@ export function IntegrityBadge({ modId, slug, versionId, showCopyButton = false,
             {showCopyButton && (
                 <>
                     {copied ? (
-                        <CopySuccess>Copied!</CopySuccess>
+                        <CopySuccess className="copy-success">Copied!</CopySuccess>
                     ) : (
-                        <CopyButton onClick={handleCopy}>
-                            Copy Badge
-                        </CopyButton>
+                        <Tooltip text="Strixun file integrity verified" position="auto" delay={0}>
+                            <CopyButton className="copy-button" onClick={handleCopy}>
+                                Copy Badge
+                            </CopyButton>
+                        </Tooltip>
                     )}
                 </>
             )}

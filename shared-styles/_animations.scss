@@ -345,3 +345,226 @@
   @include gpu-accelerated;
 }
 
+// ============ Seasonal Background Animations ============
+// Automatic seasonal/daily variation animations for backgrounds
+// Includes falling leaves (autumn), snowflakes (winter), petals (spring), fireflies (summer)
+
+// Keyframes for falling leaves (autumn)
+@keyframes fall-leaf {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+// Keyframes for snowflakes (winter)
+@keyframes fall-snow {
+  0% {
+    transform: translateY(-100vh) translateX(0) rotate(0deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(100vh) translateX(50px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+// Keyframes for petals (spring)
+@keyframes fall-petal {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+// Keyframes for fireflies (summer)
+@keyframes firefly {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.8;
+  }
+  25% {
+    transform: translate(20px, -30px);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-15px, -50px);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(30px, -20px);
+    opacity: 0.9;
+  }
+}
+
+// Seasonal animation mixin
+// Automatically detects season based on current date
+// Can be applied to any div/container
+@mixin seasonal-background($particle-count: 50, $opacity: 0.6) {
+  position: relative;
+  overflow: hidden;
+  
+  // Create particles using pseudo-elements and data attributes
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  // Base particle styles - will be customized by season
+  &::before {
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(255, 140, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 20% 30%, rgba(255, 165, 0, $opacity) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 30% 10%, rgba(255, 200, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 40% 50%, rgba(255, 140, 0, $opacity) 1px, transparent 1px),
+      radial-gradient(circle at 50% 70%, rgba(255, 165, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 60% 40%, rgba(255, 200, 0, $opacity) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 70% 80%, rgba(255, 140, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 80% 20%, rgba(255, 165, 0, $opacity) 1px, transparent 1px),
+      radial-gradient(circle at 90% 60%, rgba(255, 200, 0, $opacity) 2px, transparent 2px);
+    background-size: 
+      200% 200%,
+      150% 150%,
+      180% 180%,
+      220% 220%,
+      190% 190%,
+      160% 160%,
+      210% 210%,
+      170% 170%,
+      200% 200%;
+    background-position: 
+      0% 0%,
+      10% 20%,
+      20% 40%,
+      30% 60%,
+      40% 80%,
+      50% 10%,
+      60% 30%,
+      70% 50%,
+      80% 70%;
+    animation: fall-leaf 15s linear infinite;
+    @include gpu-accelerated;
+  }
+  
+  &::after {
+    background-image: 
+      radial-gradient(circle at 15% 25%, rgba(255, 140, 0, $opacity) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 25% 45%, rgba(255, 165, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 35% 15%, rgba(255, 200, 0, $opacity) 1px, transparent 1px),
+      radial-gradient(circle at 45% 55%, rgba(255, 140, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 55% 75%, rgba(255, 165, 0, $opacity) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 65% 35%, rgba(255, 200, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 75% 85%, rgba(255, 140, 0, $opacity) 1px, transparent 1px),
+      radial-gradient(circle at 85% 25%, rgba(255, 165, 0, $opacity) 2px, transparent 2px),
+      radial-gradient(circle at 95% 65%, rgba(255, 200, 0, $opacity) 1.5px, transparent 1.5px);
+    background-size: 
+      180% 180%,
+      200% 200%,
+      160% 160%,
+      190% 190%,
+      210% 210%,
+      170% 170%,
+      200% 200%,
+      150% 150%,
+      180% 180%;
+    background-position: 
+      5% 10%,
+      15% 30%,
+      25% 50%,
+      35% 70%,
+      45% 90%,
+      55% 15%,
+      65% 35%,
+      75% 55%,
+      85% 75%;
+    animation: fall-leaf 18s linear infinite reverse;
+    @include gpu-accelerated;
+  }
+  
+  // Season-specific overrides via CSS custom properties
+  // These will be set by JavaScript based on current date
+  &[data-season="winter"] {
+    &::before,
+    &::after {
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(255, 255, 255, $opacity) 3px, transparent 3px),
+        radial-gradient(circle at 20% 30%, rgba(240, 248, 255, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 30% 10%, rgba(255, 255, 255, $opacity) 2.5px, transparent 2.5px),
+        radial-gradient(circle at 40% 50%, rgba(240, 248, 255, $opacity) 3px, transparent 3px),
+        radial-gradient(circle at 50% 70%, rgba(255, 255, 255, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 60% 40%, rgba(240, 248, 255, $opacity) 2.5px, transparent 2.5px),
+        radial-gradient(circle at 70% 80%, rgba(255, 255, 255, $opacity) 3px, transparent 3px),
+        radial-gradient(circle at 80% 20%, rgba(240, 248, 255, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 90% 60%, rgba(255, 255, 255, $opacity) 2.5px, transparent 2.5px);
+      animation: fall-snow 20s linear infinite;
+    }
+    
+    &::after {
+      animation: fall-snow 25s linear infinite reverse;
+    }
+  }
+  
+  &[data-season="spring"] {
+    &::before,
+    &::after {
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(255, 182, 193, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 20% 30%, rgba(255, 192, 203, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 30% 10%, rgba(255, 20, 147, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 40% 50%, rgba(255, 182, 193, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 50% 70%, rgba(255, 192, 203, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 60% 40%, rgba(255, 20, 147, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 70% 80%, rgba(255, 182, 193, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 80% 20%, rgba(255, 192, 203, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 90% 60%, rgba(255, 20, 147, $opacity) 2px, transparent 2px);
+      animation: fall-petal 12s linear infinite;
+    }
+    
+    &::after {
+      animation: fall-petal 16s linear infinite reverse;
+    }
+  }
+  
+  &[data-season="summer"] {
+    &::before,
+    &::after {
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(255, 255, 0, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 224, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 30% 10%, rgba(255, 255, 0, $opacity) 1px, transparent 1px),
+        radial-gradient(circle at 40% 50%, rgba(255, 255, 224, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 50% 70%, rgba(255, 255, 0, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 60% 40%, rgba(255, 255, 224, $opacity) 1px, transparent 1px),
+        radial-gradient(circle at 70% 80%, rgba(255, 255, 0, $opacity) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 224, $opacity) 2px, transparent 2px),
+        radial-gradient(circle at 90% 60%, rgba(255, 255, 0, $opacity) 1px, transparent 1px);
+      animation: firefly 8s ease-in-out infinite;
+    }
+    
+    &::after {
+      animation: firefly 10s ease-in-out infinite reverse;
+    }
+  }
+  
+  // Default to autumn (fall) if no season specified
+  &[data-season="autumn"],
+  &[data-season="fall"] {
+    // Already set as default above
+  }
+}
+

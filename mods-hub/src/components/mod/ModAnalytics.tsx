@@ -6,12 +6,10 @@
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata, ModVersion } from '../../types/mod';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const Container = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.lg};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
@@ -31,10 +29,7 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${colors.bgTertiary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.md};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.xs};

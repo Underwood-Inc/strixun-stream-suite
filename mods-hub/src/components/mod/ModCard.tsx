@@ -8,20 +8,13 @@ import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const CardContainer = styled.div`
+  ${getCardStyles('hover')}
   position: relative;
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
   overflow: hidden;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    border-color: ${colors.accent};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
 `;
 
 const Card = styled(Link)`
@@ -34,27 +27,18 @@ const Card = styled(Link)`
 `;
 
 const DeleteButton = styled.button`
+  ${getButtonStyles('danger')}
   position: absolute;
   top: ${spacing.sm};
   right: ${spacing.sm};
-  padding: ${spacing.xs} ${spacing.sm};
-  background: ${colors.danger};
-  color: #fff;
-  border: none;
-  border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
+  padding: ${spacing.xs} ${spacing.sm};
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 10;
   
   ${CardContainer}:hover & {
     opacity: 1;
-  }
-  
-  &:hover {
-    background: ${colors.danger}dd;
   }
 `;
 

@@ -10,6 +10,8 @@ import { colors, spacing } from '../theme';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { listR2Files, detectDuplicates, deleteR2File, bulkDeleteR2Files } from '../services/api';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles, getCardStyles, type BadgeType } from '../utils/sharedStyles';
 
 const PageContainer = styled.div`
   max-width: 1600px;
@@ -42,7 +44,9 @@ const Tabs = styled.div`
   margin-bottom: ${spacing.lg};
 `;
 
-const Tab = styled.button<{ active: boolean }>`
+const Tab = styled.button.withConfig({
+  shouldForwardProp: (prop) => prop !== 'active',
+})<{ active: boolean }>`
   padding: ${spacing.sm} ${spacing.md};
   background: none;
   border: none;
@@ -60,35 +64,12 @@ const Tab = styled.button<{ active: boolean }>`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-  padding: ${spacing.sm} ${spacing.md};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  background: ${props => {
-    if (props.variant === 'primary') return colors.accent;
-    if (props.variant === 'danger') return colors.danger;
-    return colors.bgSecondary;
-  }};
-  color: ${props => props.variant === 'primary' || props.variant === 'danger' ? '#fff' : colors.text};
+  ${({ variant = 'primary' }) => getButtonStyles(variant)}
   font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 `;
 
 const SummaryCard = styled.div`
-  padding: ${spacing.lg};
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
+  ${getCardStyles('default')}
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: ${spacing.md};
@@ -155,27 +136,14 @@ const FileMeta = styled.div`
 `;
 
 const Badge = styled.span<{ variant?: 'danger' | 'warning' | 'info' }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => {
-    if (props.variant === 'danger') return `${colors.danger}20`;
-    if (props.variant === 'warning') return `${colors.warning}20`;
-    return `${colors.accent}20`;
-  }};
-  color: ${props => {
-    if (props.variant === 'danger') return colors.danger;
-    if (props.variant === 'warning') return colors.warning;
-    return colors.accent;
-  }};
+  ${({ variant = 'default' }) => {
+    const badgeType: BadgeType = variant === 'danger' ? 'danger' : variant === 'warning' ? 'warning' : variant === 'info' ? 'info' : 'accent';
+    return getBadgeStyles(badgeType);
+  }}
 `;
 
 const DuplicateGroupCard = styled.div`
-  padding: ${spacing.md};
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
+  ${getCardStyles('default')}
   margin-bottom: ${spacing.md};
 `;
 
