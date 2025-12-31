@@ -53,10 +53,20 @@ export async function handleUpdateModStatus(
                 console.log('[UpdateModStatus] Listing customer keys:', { keysFound: listResult.keys.length, cursor: !!cursor });
                 
                 for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
+                    // Match both customer_{id}_mods_list and customer_{id}/mods_list patterns
+                    if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
                         modsListsFound++;
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
+                        // CRITICAL: Customer IDs can contain underscores (e.g., cust_2233896f662d)
+                        // Extract everything between "customer_" and the final "_mods_list" or "/mods_list"
+                        let customerId: string | null = null;
+                        if (key.name.endsWith('_mods_list')) {
+                            const match = key.name.match(/^customer_(.+)_mods_list$/);
+                            customerId = match ? match[1] : null;
+                        } else if (key.name.endsWith('/mods_list')) {
+                            const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                            customerId = match ? match[1] : null;
+                        }
+                        
                         if (customerId) {
                             customerScopesSearched++;
                             const customerModKey = getCustomerKey(customerId, modId);
