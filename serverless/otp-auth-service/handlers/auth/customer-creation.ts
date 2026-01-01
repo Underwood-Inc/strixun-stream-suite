@@ -132,8 +132,10 @@ async function upsertCustomerAccount(
             needsUpdate = true;
         }
         
-        // Ensure required fields exist
-        if (!existingCustomer.displayName) {
+        // Ensure required fields exist - displayName is REQUIRED, not optional
+        // Check for undefined, null, empty string, or whitespace-only
+        if (!existingCustomer.displayName || existingCustomer.displayName.trim() === '') {
+            console.log(`[Customer Creation] Missing displayName for customer ${resolvedCustomerId}, generating one...`);
             const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
             const customerDisplayName = await generateUniqueDisplayName({
                 customerId: resolvedCustomerId,
@@ -143,6 +145,7 @@ async function upsertCustomerAccount(
             await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
             updates.displayName = customerDisplayName;
             needsUpdate = true;
+            console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
         }
         
         // Ensure subscriptions exist

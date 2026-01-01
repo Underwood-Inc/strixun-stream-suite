@@ -682,7 +682,7 @@ export class APIClient {
    * Build full URL from path and params
    */
   private buildURL(path: string, params?: Record<string, unknown>): string {
-    // If path is already a full URL, use it
+    // If path is already a full URL, use it directly
     if (path.startsWith('http://') || path.startsWith('https://')) {
       const url = new URL(path);
       if (params) {
@@ -695,15 +695,64 @@ export class APIClient {
       return url.toString();
     }
 
-    // Build URL from base URL and path
-    const base = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
+    // Use baseURL exactly as provided - if it's a full URL, use it directly
+    const base = (this.baseURL || '').trim();
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const fullPath = base + cleanPath;
-    const url = base.startsWith('http://') || base.startsWith('https://')
-      ? new URL(fullPath)
-      : typeof window !== 'undefined'
-        ? new URL(fullPath, window.location.origin)
-        : new URL(fullPath, 'https://localhost');
+    
+    // Debug logging for URL construction
+    if (typeof window !== 'undefined' && (base.includes('customer-api') || !base)) {
+      console.log('[APIClient.buildURL] URL construction:', {
+        path,
+        baseURL: this.baseURL,
+        base,
+        isFullURL: base.startsWith('http://') || base.startsWith('https://'),
+        windowOrigin: window.location.origin,
+        cleanPath
+      });
+    }
+    
+    // CRITICAL: If baseURL is a full URL, use it directly - NEVER use window.location.origin
+    if (base.startsWith('http://') || base.startsWith('https://')) {
+      const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+      const fullUrl = cleanBase + cleanPath;
+      const url = new URL(fullUrl);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.set(key, String(value));
+          }
+        });
+      }
+      return url.toString();
+    }
+    
+    // If baseURL is not a full URL and is empty, error - don't guess
+    if (!base) {
+      throw new Error(`Cannot build URL: baseURL is not set and path '${path}' is not a full URL`);
+    }
+    
+    // baseURL is set but not a full URL - use it with window.location.origin
+    // This should only happen for relative paths, never for full URLs
+    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const fullPath = cleanBase + cleanPath;
+    
+    // CRITICAL: If cleanPath somehow contains a full URL, extract and use it directly
+    // This should never happen, but be defensive against malformed inputs
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+      const url = new URL(cleanPath);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.set(key, String(value));
+          }
+        });
+      }
+      return url.toString();
+    }
+    
+    const url = typeof window !== 'undefined'
+      ? new URL(fullPath, window.location.origin)
+      : new URL(fullPath, 'https://localhost');
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -711,11 +760,6 @@ export class APIClient {
           url.searchParams.set(key, String(value));
         }
       });
-    }
-
-    // Return path + query if no base URL, otherwise full URL
-    if (!this.baseURL) {
-      return url.pathname + url.search;
     }
 
     return url.toString();
@@ -733,6 +777,9 @@ export class APIClient {
    */
   configure(config: Partial<APIClientConfig>): this {
     Object.assign(this.config, config);
+    if (config.baseURL !== undefined) {
+      this.baseURL = config.baseURL;
+    }
     return this;
   }
 
@@ -835,7 +882,8 @@ export function createAPIClient(config: Partial<APIClientConfig> = {}): APIClien
     return '';
   }
 
-  const apiUrl = config.baseURL || getApiUrl();
+  // Use provided baseURL exactly as provided - only fall back if it's undefined
+  const apiUrl = config.baseURL !== undefined ? config.baseURL : getApiUrl();
 
   const defaultConfig: APIClientConfig = {
     baseURL: apiUrl,

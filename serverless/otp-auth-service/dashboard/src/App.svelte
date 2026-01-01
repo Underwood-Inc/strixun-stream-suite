@@ -105,11 +105,18 @@
     apiClient.setToken(null);
   }
 
-  function handleLogin(event: Event) {
+  async function handleLogin(event: Event) {
     const customEvent = event as CustomEvent;
-    const eventUser = customEvent.detail?.user;
-    if (eventUser) {
-      user = eventUser;
+    // Get full user object from /auth/me to get isSuperAdmin status
+    try {
+      user = await apiClient.getMe();
+    } catch (error) {
+      console.error('Failed to get user info:', error);
+      // Fallback to event user data if getMe fails
+      const eventUser = customEvent.detail?.user;
+      if (eventUser) {
+        user = eventUser as typeof user;
+      }
     }
     isAuthenticated = true;
     loadCustomer();
@@ -150,7 +157,7 @@
       <Navigation {currentPage} on:navigate={e => navigateToPage(e.detail)} />
       <div class="page-container">
         {#if currentPage === 'dashboard'}
-          <Dashboard {customer} />
+          <Dashboard {customer} {user} />
         {:else if currentPage === 'api-keys'}
           <ApiKeys {customer} />
         {:else if currentPage === 'audit-logs'}

@@ -170,8 +170,16 @@ export class ApiClient {
     // Customer endpoints (now using customer-api)
     async getCustomer() {
         // Customer API uses different base URL
-        const customerApiUrl = import.meta?.env?.VITE_CUSTOMER_API_URL || 
-            (import.meta?.env?.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        // CRITICAL: Always use localhost if running on localhost (even if env vars aren't set)
+        const isLocalhost = typeof window !== 'undefined' && 
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        
+        // ALWAYS use localhost in local dev - never fall back to production URL
+        // Force localhost if we're running on localhost, regardless of env vars
+        const customerApiUrl = isLocalhost 
+            ? 'http://localhost:8790'
+            : (import.meta?.env?.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app');
+        
         const url = `${customerApiUrl}/customer/me`;
         const response = await fetch(url, {
             method: 'GET',
@@ -186,8 +194,16 @@ export class ApiClient {
 
     async updateCustomer(data) {
         // Customer API uses different base URL
-        const customerApiUrl = import.meta?.env?.VITE_CUSTOMER_API_URL || 
-            (import.meta?.env?.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        // CRITICAL: Always use localhost if running on localhost (even if env vars aren't set)
+        const isLocalhost = typeof window !== 'undefined' && 
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        
+        // ALWAYS use localhost in local dev - never fall back to production URL
+        // Force localhost if we're running on localhost, regardless of env vars
+        const customerApiUrl = isLocalhost 
+            ? 'http://localhost:8790'
+            : (import.meta?.env?.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app');
+        
         const url = `${customerApiUrl}/customer/me`;
         const response = await fetch(url, {
             method: 'PUT',

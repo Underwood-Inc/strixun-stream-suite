@@ -1,10 +1,16 @@
 /**
- * Admin Routes
- * Handles admin endpoints (require super-admin authentication)
+ * Dashboard Routes
+ * Handles customer dashboard endpoints for the OTP auth service
  * 
- * All admin endpoints require super-admin authentication via:
+ * Most routes are customer-scoped and only require regular authentication.
+ * Customers can access their own data (analytics, audit logs, API keys, etc.)
+ * 
+ * Some routes require super-admin authentication (for system-level operations):
  * - API key: SUPER_ADMIN_API_KEY
  * - Email-based: SUPER_ADMIN_EMAILS (comma-separated list)
+ * 
+ * Note: Super-admin is for mods-hub dashboard, not OTP auth dashboard.
+ * These routes are for the OTP auth customer dashboard.
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
@@ -47,7 +53,6 @@ interface RouteResult {
 /**
  * Authenticate request using API key or JWT token
  * Supports both authentication methods for backward compatibility and dashboard access
- * For admin routes, this also checks super-admin status
  */
 async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
     const authHeader = request.headers.get('Authorization');
@@ -124,9 +129,10 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
 }
 
 /**
- * Helper to wrap admin route handlers with super-admin check, customerId tracking and encryption
+ * Helper to wrap super-admin route handlers with super-admin check, customerId tracking and encryption
+ * Used only for routes that require super-admin authentication
  */
-async function handleAdminRoute(
+async function handleSuperAdminRoute(
     handler: (request: Request, env: Env, customerId: string | null) => Promise<Response>,
     request: Request,
     env: Env,
@@ -207,10 +213,11 @@ async function handleAdminRoute(
 }
 
 /**
- * Handle admin routes
- * All admin routes require super-admin authentication
+ * Handle dashboard routes
+ * Most routes are customer-scoped and only require regular authentication.
+ * Some routes require super-admin authentication (marked in comments).
  */
-export async function handleAdminRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
+export async function handleDashboardRoutes(request: Request, path: string, env: Env): Promise<RouteResult | null> {
     // Super-admin endpoint: Create customer (requires super-admin API key)
     if (path === '/admin/customers' && request.method === 'POST') {
         const authError = await requireSuperAdmin(request, env);
@@ -269,28 +276,81 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     if (domainVerifyMatch && request.method === 'POST') {
         const domain = domainVerifyMatch[1];
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute((req, e, cid) => domainHandlers.handleVerifyDomain(req, e, cid, domain), request, env, auth);
+        return handleSuperAdminRoute((req, e, cid) => domainHandlers.handleVerifyDomain(req, e, cid, domain), request, env, auth);
     }
     
-    // Analytics endpoints (all require super-admin)
+    // Analytics endpoints - customer-scoped, regular auth required (not super-admin)
+    // These endpoints filter by customerId, so users only see their own analytics
     if (path === '/admin/analytics' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleGetAnalytics, request, env, auth);
+        if (!auth) {
+            return { 
+                response: new Response(JSON.stringify({ 
+                    error: 'Authentication required',
+                    code: 'AUTHENTICATION_REQUIRED'
+                }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }), 
+                customerId: null 
+            };
+        }
+        const handlerResponse = await adminHandlers.handleGetAnalytics(request, env, auth.customerId);
+        return await wrapWithEncryption(handlerResponse, auth, request, env);
     }
     
     if (path === '/admin/analytics/realtime' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleGetRealtimeAnalytics, request, env, auth);
+        if (!auth) {
+            return { 
+                response: new Response(JSON.stringify({ 
+                    error: 'Authentication required',
+                    code: 'AUTHENTICATION_REQUIRED'
+                }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }), 
+                customerId: null 
+            };
+        }
+        const handlerResponse = await adminHandlers.handleGetRealtimeAnalytics(request, env, auth.customerId);
+        return await wrapWithEncryption(handlerResponse, auth, request, env);
     }
     
     if (path === '/admin/analytics/errors' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleGetErrorAnalytics, request, env, auth);
+        if (!auth) {
+            return { 
+                response: new Response(JSON.stringify({ 
+                    error: 'Authentication required',
+                    code: 'AUTHENTICATION_REQUIRED'
+                }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }), 
+                customerId: null 
+            };
+        }
+        const handlerResponse = await adminHandlers.handleGetErrorAnalytics(request, env, auth.customerId);
+        return await wrapWithEncryption(handlerResponse, auth, request, env);
     }
     
     if (path === '/admin/analytics/email' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleGetEmailAnalytics, request, env, auth);
+        if (!auth) {
+            return { 
+                response: new Response(JSON.stringify({ 
+                    error: 'Authentication required',
+                    code: 'AUTHENTICATION_REQUIRED'
+                }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }), 
+                customerId: null 
+            };
+        }
+        const handlerResponse = await adminHandlers.handleGetEmailAnalytics(request, env, auth.customerId);
+        return await wrapWithEncryption(handlerResponse, auth, request, env);
     }
     
     // Onboarding endpoints
@@ -306,7 +366,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     
     if (path === '/admin/onboarding/test-otp' && request.method === 'POST') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleTestOTP, request, env, auth);
+        return handleSuperAdminRoute(adminHandlers.handleTestOTP, request, env, auth);
     }
     
     // User Management endpoints
@@ -327,13 +387,30 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     if (deleteUserMatch && request.method === 'DELETE') {
         const userId = deleteUserMatch[1];
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute((req, e, cid) => adminHandlers.handleDeleteUserData(req, e, cid, userId), request, env, auth);
+        return handleSuperAdminRoute((req, e, cid) => adminHandlers.handleDeleteUserData(req, e, cid, userId), request, env, auth);
     }
     
-    // Audit logs endpoint
+    // Audit logs endpoint - customer-scoped, regular auth required (not super-admin)
+    // Customers can only access their own audit logs, filtered by customerId
     if (path === '/admin/audit-logs' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleGetAuditLogs, request, env, auth);
+        if (!auth || !auth.customerId) {
+            return { 
+                response: new Response(JSON.stringify({ 
+                    error: 'Authentication required',
+                    code: 'AUTHENTICATION_REQUIRED',
+                    message: auth && !auth.customerId 
+                        ? 'No customer account found. Please sign up to create a customer account first.'
+                        : 'Please log in to access your audit logs.'
+                }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }), 
+                customerId: null 
+            };
+        }
+        const handlerResponse = await adminHandlers.handleGetAuditLogs(request, env, auth.customerId);
+        return await wrapWithEncryption(handlerResponse, auth, request, env);
     }
     
     // Configuration endpoints
@@ -344,12 +421,12 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     
     if (path === '/admin/config' && request.method === 'PUT') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleUpdateConfig, request, env, auth);
+        return handleSuperAdminRoute(adminHandlers.handleUpdateConfig, request, env, auth);
     }
     
     if (path === '/admin/config/email' && request.method === 'PUT') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleUpdateEmailConfig, request, env, auth);
+        return handleSuperAdminRoute(adminHandlers.handleUpdateEmailConfig, request, env, auth);
     }
     
     // API key management endpoints

@@ -695,6 +695,9 @@ importers:
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers
+      '@strixun/otp-auth-service':
+        specifier: workspace:*
+        version: link:../otp-auth-service
       '@strixun/types':
         specifier: workspace:*
         version: link:../../packages/types

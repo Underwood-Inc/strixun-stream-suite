@@ -1,5 +1,5 @@
 /**
- * Integration Tests for OTP Auth Service Admin Routes
+ * Integration Tests for OTP Auth Service Dashboard Routes
  * 
  * Tests verify actual authentication flow and route protection:
  * - Real JWT verification and super-admin checking
@@ -12,7 +12,7 @@
 
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAdminRoutes } from './admin-routes.js';
+import { handleDashboardRoutes } from './dashboard-routes.js';
 import { createJWT } from '../utils/crypto.js';
 
 // Only mock external dependencies (KV, handlers), NOT auth functions
@@ -117,7 +117,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
 
-            const result = await handleAdminRoutes(request, '/admin/customers', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(201);
@@ -132,7 +132,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
 
-            const result = await handleAdminRoutes(request, '/admin/customers', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(401);
@@ -146,7 +146,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
 
-            const result = await handleAdminRoutes(request, '/admin/customers', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(401);
@@ -170,7 +170,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 },
             });
 
-            const result = await handleAdminRoutes(request, '/admin/analytics', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/analytics', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
@@ -191,7 +191,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 },
             });
 
-            const result = await handleAdminRoutes(request, '/admin/analytics', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/analytics', mockEnv);
 
             // Should be rejected because email is not in SUPER_ADMIN_EMAILS
             expect(result).not.toBeNull();

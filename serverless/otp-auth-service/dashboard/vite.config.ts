@@ -39,11 +39,15 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['@observablehq/plot']
+    include: ['@observablehq/plot'],
+    force: true
   },
   server: {
     port: 5174,
     open: false,
+    fs: {
+      allow: ['..']
+    },
     proxy: {
       '/auth': {
         target: 'http://localhost:8787',

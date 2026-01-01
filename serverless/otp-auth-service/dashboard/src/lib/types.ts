@@ -8,6 +8,7 @@ export interface User {
   email_verified: boolean;
   iss?: string;
   aud?: string;
+  isSuperAdmin?: boolean;
 }
 
 export interface Customer {

@@ -79,6 +79,8 @@ export {
 
 export type {
   CORSOptions,
+} from './workers/cors';
+export type {
   CORSWithLocalhostOptions,
 } from './workers/cors-with-localhost';
 

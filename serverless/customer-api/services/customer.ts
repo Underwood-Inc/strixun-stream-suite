@@ -61,7 +61,7 @@ export interface CustomerData {
     // Enhanced fields
     subscriptions?: Subscription[]; // Array of subscription history
     flairs?: Flair[]; // Array of earned flairs/badges
-    displayName?: string; // Randomly generated display name
+    displayName: string; // REQUIRED: Randomly generated display name (always present)
     
     // Configuration
     config?: {

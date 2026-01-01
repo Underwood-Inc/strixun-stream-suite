@@ -9,7 +9,7 @@ import { sendWebhook } from './services/webhooks.js';
 import { getPlanLimits } from './utils/validation.js';
 import { handlePublicRoutes } from './router/public-routes.js';
 import { handleDevRoutes } from './router/dev-routes.js';
-import { handleAdminRoutes } from './router/admin-routes.js';
+import { handleDashboardRoutes } from './router/dashboard-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
@@ -105,12 +105,12 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             }
         }
         
-        // Try admin routes
+        // Try dashboard routes
         if (!response) {
-            const adminResult = await handleAdminRoutes(request, path, env);
-            if (adminResult) {
-                customerId = adminResult.customerId || null;
-                response = adminResult.response;
+            const dashboardResult = await handleDashboardRoutes(request, path, env);
+            if (dashboardResult) {
+                customerId = dashboardResult.customerId || null;
+                response = dashboardResult.response;
             }
         }
         
