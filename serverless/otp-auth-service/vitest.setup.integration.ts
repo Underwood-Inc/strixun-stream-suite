@@ -9,12 +9,12 @@
 
 import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const rootDir = join(__dirname, '../../..');
+const rootDir = resolve(__dirname, '../../..');
 
 let otpWorkerProcess: ReturnType<typeof spawn> | null = null;
 let customerApiProcess: ReturnType<typeof spawn> | null = null;
@@ -53,7 +53,16 @@ async function waitForService(name: string, url: string, maxAttempts = 60): Prom
 function startWorker(name: string, workerDir: string, port: number): ReturnType<typeof spawn> {
   console.log(`[Integration Setup] Starting ${name} on port ${port}...`);
   
-  const wrapperScript = join(rootDir, 'scripts', 'start-worker-with-health-check.js');
+  const wrapperScript = resolve(rootDir, 'scripts', 'start-worker-with-health-check.js');
+  
+  // Verify the script exists before trying to use it
+  if (!existsSync(wrapperScript)) {
+    throw new Error(
+      `[Integration Setup] Cannot find wrapper script at ${wrapperScript}\n` +
+      `Root directory resolved to: ${rootDir}\n` +
+      `Current working directory: ${process.cwd()}`
+    );
+  }
   
   const workerEnv = {
     ...process.env,
@@ -67,6 +76,7 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     stdio: 'pipe',
     shell: false,
     env: workerEnv,
+    cwd: rootDir, // Ensure we're in the root directory context
   });
   
   proc.stdout.on('data', (data) => {

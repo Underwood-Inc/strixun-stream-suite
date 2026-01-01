@@ -23,6 +23,32 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { loadTestConfig } from '../../utils/test-config-loader.js';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load E2E_TEST_OTP_CODE from .dev.vars for local testing
+function loadE2ETestOTPCode(): string | null {
+  // Try environment variable first
+  if (process.env.E2E_TEST_OTP_CODE) {
+    return process.env.E2E_TEST_OTP_CODE;
+  }
+  
+  // Try loading from .dev.vars
+  const devVarsPath = join(__dirname, '../../.dev.vars');
+  if (existsSync(devVarsPath)) {
+    const content = readFileSync(devVarsPath, 'utf-8');
+    const match = content.match(/^E2E_TEST_OTP_CODE=(.+)$/m);
+    if (match) {
+      return match[1].trim();
+    }
+  }
+  
+  return null;
+}
 
 // Determine environment from NODE_ENV or TEST_ENV
 const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev' | 'prod';
@@ -117,38 +143,15 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       // Response should indicate success
       expect(data).toBeDefined();
       
-      // For local testing, retrieve OTP from dev endpoint
-      // Wait a moment for OTP to be stored after request
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      try {
-        const devOtpResponse = await fetch(
-          `${OTP_AUTH_SERVICE_URL}/dev/otp?email=${encodeURIComponent(testEmail)}`
-        );
-        if (devOtpResponse.ok) {
-          const devData = await devOtpResponse.json();
-          otpCode = devData.otp;
-          console.log(`[Integration Tests] OTP retrieved from dev endpoint: ${otpCode}`);
-        } else {
-          const errorText = await devOtpResponse.text();
-          console.warn(`[Integration Tests] /dev/otp returned ${devOtpResponse.status}:`, errorText);
-        }
-      } catch (error) {
-        console.warn('[Integration Tests] Could not retrieve OTP from dev endpoint:', error);
-      }
-      
-      // Fallback: use test OTP code if available
-      if (!otpCode && process.env.E2E_TEST_OTP_CODE) {
-        otpCode = process.env.E2E_TEST_OTP_CODE;
+      // For local testing, use E2E_TEST_OTP_CODE from .dev.vars
+      // This is set in .dev.vars for local integration tests
+      const testOTPCode = loadE2ETestOTPCode();
+      if (testOTPCode) {
+        otpCode = testOTPCode;
         console.log(`[Integration Tests] Using E2E_TEST_OTP_CODE: ${otpCode}`);
-      }
-      
-      if (!otpCode) {
+      } else {
         throw new Error(
-          'OTP code not available. For local testing, ensure:\n' +
-          '  1. OTP auth service is running in dev mode (pnpm dev)\n' +
-          '  2. /dev/otp endpoint is accessible\n' +
-          '  3. Or set E2E_TEST_OTP_CODE environment variable'
+          'OTP code not available. For local testing, ensure E2E_TEST_OTP_CODE is set in .dev.vars'
         );
       }
     }, 30000);

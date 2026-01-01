@@ -266,7 +266,8 @@ export async function handleRequestOTP(
             }
         } else {
             // Test/dev mode: Skip email sending, just log and record stats
-            console.log(`[TEST/DEV] Skipping email send for ${email}. OTP available via /dev/otp endpoint.`);
+            // For local testing, use E2E_TEST_OTP_CODE from .dev.vars
+            console.log(`[TEST/DEV] Skipping email send for ${email}. Using E2E_TEST_OTP_CODE for local tests.`);
             await recordOTPRequestService(emailHash, clientIP, customerId, env);
         }
         

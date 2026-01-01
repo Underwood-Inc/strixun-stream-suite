@@ -237,18 +237,33 @@ export async function verifyOTPCode(
  * Wait for OTP form to appear after requesting OTP
  */
 export async function waitForOTPForm(page: Page, timeout: number = 10000): Promise<void> {
-  // Wait for fancy screen if present and click through (in case it appears again)
-  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 1000 }).catch(() => false);
-  if (fancyScreenVisible) {
-    await fancyScreenButton.click();
-    await page.waitForTimeout(500);
-  }
-  
+  // First check if OTP form is already visible (fancy screen might have been skipped)
   const otpInput = page.locator(
     'input[type="tel"], input[type="text"][inputmode="numeric"], input#otp-login-otp'
   ).first();
+  const otpFormVisible = await otpInput.isVisible({ timeout: 1000 }).catch(() => false);
   
+  if (!otpFormVisible) {
+    // OTP form not visible, try to handle fancy screen
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 1000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      try {
+        await fancyScreenButton.click({ timeout: 3000 });
+      } catch {
+        // If click fails due to interception, try force click or JavaScript click
+        try {
+          await fancyScreenButton.click({ force: true, timeout: 3000 });
+        } catch {
+          // Last resort: click via JavaScript
+          await fancyScreenButton.evaluate((el: HTMLElement) => (el as HTMLButtonElement).click());
+        }
+      }
+      await page.waitForTimeout(500);
+    }
+  }
+  
+  // Wait for OTP input to be visible
   await otpInput.waitFor({ state: 'visible', timeout });
 }
 
