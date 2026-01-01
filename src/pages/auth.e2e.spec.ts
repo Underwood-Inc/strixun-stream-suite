@@ -230,9 +230,14 @@ test.describe('Main App Authentication Flow', () => {
     await handleFancyScreenInModal(page);
     
     // Ensure API URL is configured (set it if needed for test environment)
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -314,9 +319,14 @@ test.describe('Main App Authentication Flow', () => {
     await handleFancyScreenInModal(page);
     
     // Ensure API URL is configured (set it if needed for test environment)
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -371,9 +381,14 @@ test.describe('Main App Authentication Flow', () => {
     await emailInput.waitFor({ state: 'visible', timeout: 10000 });
     
     // Ensure API URL is configured (set it if needed for test environment)
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -459,9 +474,14 @@ test.describe('Main App Authentication Flow', () => {
     
     await handleFancyScreenInModal(page);
     
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -617,9 +637,14 @@ test.describe('Main App Authentication Flow', () => {
       await page.waitForTimeout(1000);
     }
     
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -741,9 +766,14 @@ test.describe('Main App Authentication Flow', () => {
       await page.waitForTimeout(1000);
     }
     
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -879,9 +909,14 @@ test.describe('Main App Authentication Flow', () => {
     await emailInput.waitFor({ state: 'visible', timeout: 10000 });
     
     // Ensure API URL is configured (set it if needed for test environment)
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     
@@ -963,9 +998,14 @@ test.describe('Main App Authentication Flow', () => {
     await handleFancyScreenInModal(page);
     
     // Ensure API URL is configured (set it if needed for test environment)
+    // Set auth API URL to localhost for E2E tests
     await page.evaluate(() => {
+      const authApiUrl = 'http://localhost:8787';
       if (!(window as any).getOtpAuthApiUrl) {
-        (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
+      } else {
+        // Override existing function to return localhost
+        (window as any).getOtpAuthApiUrl = () => authApiUrl;
       }
     });
     

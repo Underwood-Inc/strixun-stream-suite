@@ -106,9 +106,22 @@ function saveAuthState(userData: User | null): void {
 function getOtpAuthApiUrl(): string {
   // Try to get from window config (injected during build)
   if (typeof window !== 'undefined') {
-    if ((window as any).getOtpAuthApiUrl) {
-      return (window as any).getOtpAuthApiUrl() || '';
+    // Priority 1: VITE_AUTH_API_URL (for E2E tests, set by playwright config)
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
+      const viteUrl = import.meta.env.VITE_AUTH_API_URL;
+      if (viteUrl) {
+        return viteUrl;
+      }
     }
+    
+    // Priority 2: window.getOtpAuthApiUrl() (from config.js)
+    if ((window as any).getOtpAuthApiUrl) {
+      const url = (window as any).getOtpAuthApiUrl();
+      if (url) {
+        return url;
+      }
+    }
+    
     // Fallback to hardcoded URL
     return 'https://auth.idling.app';
   }

@@ -184,6 +184,11 @@ jobs:
       - name: Run OTP Auth Service Tests
         id: run_tests
         working-directory: serverless/otp-auth-service
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: pnpm test
         continue-on-error: true
       
