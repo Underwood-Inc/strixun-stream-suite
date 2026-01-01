@@ -112,9 +112,38 @@ export class ApiClient {
     this.setToken(null);
   }
 
-  // Admin endpoints
+  // Customer endpoints (using customer-api - consolidated from /admin/customers/me)
   async getCustomer(): Promise<Customer> {
-    const response = await this.api.get<Customer>('/admin/customers/me');
+    // Use customer-api endpoint - customer-api handles all customer data
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
+      (import.meta.env.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+    const customerApi = createAPIClient({
+      baseURL: customerApiUrl,
+      defaultHeaders: {
+        'Content-Type': 'application/json',
+      },
+      auth: {
+        tokenGetter: () => {
+          if (typeof window !== 'undefined') {
+            return localStorage.getItem('auth_token');
+          }
+          return null;
+        },
+        onTokenExpired: () => {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
+          }
+        },
+      },
+      timeout: 30000,
+      retry: {
+        maxAttempts: 3,
+        backoff: 'exponential',
+        retryableErrors: [408, 429, 500, 502, 503, 504],
+      },
+    });
+    const response = await customerApi.get<Customer>('/customer/me');
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to get customer');
@@ -123,7 +152,36 @@ export class ApiClient {
   }
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
-    const response = await this.api.put<Customer>('/admin/customers/me', data);
+    // Use customer-api endpoint - customer-api handles all customer data
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
+      (import.meta.env.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+    const customerApi = createAPIClient({
+      baseURL: customerApiUrl,
+      defaultHeaders: {
+        'Content-Type': 'application/json',
+      },
+      auth: {
+        tokenGetter: () => {
+          if (typeof window !== 'undefined') {
+            return localStorage.getItem('auth_token');
+          }
+          return null;
+        },
+        onTokenExpired: () => {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
+          }
+        },
+      },
+      timeout: 30000,
+      retry: {
+        maxAttempts: 3,
+        backoff: 'exponential',
+        retryableErrors: [408, 429, 500, 502, 503, 504],
+      },
+    });
+    const response = await customerApi.put<Customer>('/customer/me', data);
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to update customer');

@@ -150,12 +150,33 @@ export class ApiClient {
         }
         this.setToken(null);
     }
-    // Admin endpoints
+    // Customer endpoints (using customer-api - consolidated from /admin/customers/me)
     async getCustomer() {
-        return await this.get('/admin/customers/me');
+        // Use customer-api endpoint - customer-api handles all customer data
+        const customerApiUrl = import.meta?.env?.VITE_CUSTOMER_API_URL || 
+            (import.meta?.env?.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        const url = `${customerApiUrl}/customer/me`;
+        const response = await this.request(url, { method: 'GET' });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.detail || error.error || 'Failed to get customer');
+        }
+        return await this.decryptResponse(response);
     }
     async updateCustomer(data) {
-        return await this.put('/admin/customers/me', data);
+        // Use customer-api endpoint - customer-api handles all customer data
+        const customerApiUrl = import.meta?.env?.VITE_CUSTOMER_API_URL || 
+            (import.meta?.env?.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        const url = `${customerApiUrl}/customer/me`;
+        const response = await this.request(url, {
+            method: 'PUT',
+            body: data,
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.detail || error.error || 'Failed to update customer');
+        }
+        return await this.decryptResponse(response);
     }
     async getApiKeys(customerId) {
         return await this.get(`/admin/customers/${customerId}/api-keys`);

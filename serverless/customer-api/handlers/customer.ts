@@ -73,10 +73,12 @@ export async function handleUpdateCustomerById(
         await storeCustomer(customerId, customer, env);
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
@@ -118,25 +120,23 @@ export async function handleGetCustomer(
     });
 
     try {
-        // Determine which customer to get
-        let targetCustomerId = customerId || auth.customerId;
-        let customer = null;
+        // Determine which customer to get - ONLY use customerId (no email fallback)
+        const targetCustomerId = customerId || auth.customerId;
 
-        // If we have customerId, try to get customer
-        if (targetCustomerId) {
-            customer = await getCustomer(targetCustomerId, env);
+        if (!targetCustomerId) {
+            const rfcError = createError(request, 404, 'Not Found', 'Customer not found. Customer ID is required.');
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
 
-        // If no customer found and we have email from auth, try email lookup
-        if (!customer && auth.email) {
-            const { getCustomerByEmail } = await import('../services/customer.js');
-            customer = await getCustomerByEmail(auth.email, env);
-            if (customer) {
-                targetCustomerId = customer.customerId;
-            }
-        }
+        // Get customer by customerId only
+        const customer = await getCustomer(targetCustomerId, env);
 
-        // If still no customer found, return 404
         if (!customer) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
             return new Response(JSON.stringify(rfcError), {
@@ -161,10 +161,13 @@ export async function handleGetCustomer(
         }
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        // (Exception: mods-hub profile page will have special handling for own profile)
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
@@ -259,10 +262,12 @@ export async function handleCreateCustomer(
         await storeCustomer(customerId, customerData, env);
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        const { email, ...customerDataWithoutEmail } = customerData;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             customerId: customerData.customerId,
-            ...customerData,
+            ...customerDataWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
@@ -320,10 +325,13 @@ export async function handleGetCustomerByEmail(
         }
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth and service-to-service lookups
+        // This endpoint is service-to-service only, but we still don't return email for consistency
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
@@ -406,10 +414,12 @@ export async function handleUpdateCustomer(
         await storeCustomer(auth.customerId, customer, env);
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {

@@ -222,15 +222,28 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     }
     
     // All other admin endpoints require super-admin + regular auth
-    // Customer admin endpoints
-    if (path === '/admin/customers/me' && request.method === 'GET') {
+    // DEPRECATED: Customer admin endpoints - use /customer/me from customer-api instead
+    // These endpoints were consolidated into customer-api for proper separation of concerns
+    if (path === '/admin/customers/me') {
+        const corsHeaders = getCorsHeaders(request, env);
+        const errorResponse = new Response(JSON.stringify({
+            type: 'https://tools.ietf.org/html/rfc7231#section-6.5.9',
+            title: 'Gone',
+            status: 410,
+            detail: 'This endpoint has been deprecated. Please use /customer/me from customer-api instead. OTP auth service handles authentication, customer-api handles customer data.',
+            instance: request.url,
+        }), {
+            status: 410,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleAdminGetMe, request, env, auth);
-    }
-    
-    if (path === '/admin/customers/me' && request.method === 'PUT') {
-        const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleUpdateMe, request, env, auth);
+        return {
+            response: await wrapWithEncryption(errorResponse, auth, request, env, { allowServiceCallsWithoutJWT: true }),
+            customerId: auth && 'customerId' in auth ? auth.customerId : null,
+        };
     }
     
     // Domain verification endpoints

@@ -169,7 +169,7 @@ export class ApiClient {
     this.setToken(null);
   }
 
-  // Customer endpoints (now using customer-api)
+  // Customer endpoints (using customer-api - consolidated from /admin/customers/me)
   async getCustomer(): Promise<Customer> {
     const response = await this.customerApi.get<Customer>('/customer/me');
     if (response.status !== 200 || !response.data) {
