@@ -111,16 +111,14 @@ export async function addResponseIntegrityHeader(
 /**
  * Get network integrity keyphrase from environment
  * @param env - Worker environment
- * @returns Keyphrase or dev fallback
+ * @returns Keyphrase
+ * @throws Error if NETWORK_INTEGRITY_KEYPHRASE is not set
  */
 export function getNetworkIntegrityKeyphrase(env: { NETWORK_INTEGRITY_KEYPHRASE?: string }): string {
-    if (env.NETWORK_INTEGRITY_KEYPHRASE) {
-        return env.NETWORK_INTEGRITY_KEYPHRASE;
+    if (!env.NETWORK_INTEGRITY_KEYPHRASE) {
+        throw new Error('NETWORK_INTEGRITY_KEYPHRASE environment variable is required. Set it via: wrangler secret put NETWORK_INTEGRITY_KEYPHRASE');
     }
-    
-    // Fallback for development (should not be used in production)
-    console.warn('[NetworkIntegrity] Using dev fallback for NETWORK_INTEGRITY_KEYPHRASE - set NETWORK_INTEGRITY_KEYPHRASE in production!');
-    return 'strixun:network-integrity:dev-fallback';
+    return env.NETWORK_INTEGRITY_KEYPHRASE;
 }
 
 /**
@@ -164,12 +162,8 @@ export async function wrapResponseWithIntegrity(
         // Image responses need integrity headers too
     }
     
-    // Get keyphrase
+    // Get keyphrase - throws if not set (no fallbacks!)
     const keyphrase = getNetworkIntegrityKeyphrase(env);
-    if (!keyphrase) {
-        console.error('[wrapResponseWithIntegrity] NETWORK_INTEGRITY_KEYPHRASE is missing');
-        throw new Error('[NetworkIntegrity] NETWORK_INTEGRITY_KEYPHRASE is required but not set');
-    }
     
     // Add integrity header (CRITICAL: must always succeed for service calls)
     try {

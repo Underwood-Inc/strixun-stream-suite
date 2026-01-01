@@ -245,20 +245,30 @@ export async function waitForOTPForm(page: Page, timeout: number = 10000): Promi
   
   if (!otpFormVisible) {
     // OTP form not visible, try to handle fancy screen
-    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 1000 }).catch(() => false);
-    if (fancyScreenVisible) {
-      try {
-        await fancyScreenButton.click({ timeout: 3000 });
-      } catch {
-        // If click fails due to interception, try force click or JavaScript click
+    // But only if we're not in a modal (modal has different handling)
+    const modalVisible = await page.locator('.otp-login-modal, .otp-login-modal-overlay').first().isVisible({ timeout: 500 }).catch(() => false);
+    
+    if (!modalVisible) {
+      // Not in modal, try to handle fancy screen on auth screen
+      const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+      const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 1000 }).catch(() => false);
+      if (fancyScreenVisible) {
         try {
-          await fancyScreenButton.click({ force: true, timeout: 3000 });
+          await fancyScreenButton.click({ timeout: 3000 });
         } catch {
-          // Last resort: click via JavaScript
-          await fancyScreenButton.evaluate((el: HTMLElement) => (el as HTMLButtonElement).click());
+          // If click fails due to interception, try force click or JavaScript click
+          try {
+            await fancyScreenButton.click({ force: true, timeout: 3000 });
+          } catch {
+            // Last resort: click via JavaScript
+            await fancyScreenButton.evaluate((el: HTMLElement) => (el as HTMLButtonElement).click());
+          }
         }
+        await page.waitForTimeout(500);
       }
+    } else {
+      // In modal - fancy screen handling should be done by the test, not here
+      // Just wait a bit for any transitions
       await page.waitForTimeout(500);
     }
   }

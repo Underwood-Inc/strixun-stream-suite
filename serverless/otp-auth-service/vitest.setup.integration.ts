@@ -10,7 +10,7 @@
 import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -48,6 +48,36 @@ async function waitForService(name: string, url: string, maxAttempts = 60): Prom
 }
 
 /**
+ * Create .dev.vars file for a worker with required secrets
+ * FAILS if required environment variables are not set (no fallbacks!)
+ */
+function createDevVarsFile(workerDir: string, requiredSecrets: string[]): void {
+  const devVarsPath = join(rootDir, workerDir, '.dev.vars');
+  const secrets: Record<string, string> = {};
+  
+  // Validate all required secrets are set - FAIL if any are missing
+  for (const secretName of requiredSecrets) {
+    const value = process.env[secretName];
+    if (!value) {
+      throw new Error(
+        `[Integration Setup] CRITICAL: Required environment variable ${secretName} is not set!\n` +
+        `Tests must fail when required environment variables are missing - no fallbacks allowed.\n` +
+        `Set ${secretName} in your environment or CI workflow secrets.`
+      );
+    }
+    secrets[secretName] = value;
+  }
+  
+  // Write .dev.vars file
+  const content = Object.entries(secrets)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n') + '\n';
+  
+  writeFileSync(devVarsPath, content, 'utf-8');
+  console.log(`[Integration Setup] ✓ Created .dev.vars for ${workerDir}`);
+}
+
+/**
  * Start a worker process using CI-compatible wrapper script
  */
 function startWorker(name: string, workerDir: string, port: number): ReturnType<typeof spawn> {
@@ -64,13 +94,46 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     );
   }
   
+  // Create .dev.vars file with required secrets - FAILS if secrets are missing
+  if (workerDir === 'serverless/otp-auth-service') {
+    createDevVarsFile(workerDir, [
+      'JWT_SECRET',
+      'NETWORK_INTEGRITY_KEYPHRASE',
+      'RESEND_API_KEY',
+      'RESEND_FROM_EMAIL'
+    ]);
+    // Optional but recommended for tests
+    if (process.env.E2E_TEST_OTP_CODE) {
+      const devVarsPath = join(rootDir, workerDir, '.dev.vars');
+      const content = `E2E_TEST_OTP_CODE=${process.env.E2E_TEST_OTP_CODE}\nENVIRONMENT=test\n`;
+      writeFileSync(devVarsPath, content, { flag: 'a' });
+    } else {
+      // Still set ENVIRONMENT=test even if E2E_TEST_OTP_CODE is not set
+      const devVarsPath = join(rootDir, workerDir, '.dev.vars');
+      writeFileSync(devVarsPath, 'ENVIRONMENT=test\n', { flag: 'a' });
+    }
+  } else if (workerDir === 'serverless/customer-api') {
+    createDevVarsFile(workerDir, [
+      'JWT_SECRET',
+      'NETWORK_INTEGRITY_KEYPHRASE'
+    ]);
+  }
+  
   const workerEnv = {
     ...process.env,
     CI: 'true',
     NO_INPUT: '1',
     E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN || 'dummy-token-for-integration-tests',
-    NETWORK_INTEGRITY_KEYPHRASE: process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests',
   };
+  
+  // Validate NETWORK_INTEGRITY_KEYPHRASE is set (no fallback)
+  if (!process.env.NETWORK_INTEGRITY_KEYPHRASE) {
+    throw new Error(
+      '[Integration Setup] CRITICAL: NETWORK_INTEGRITY_KEYPHRASE environment variable is required!\n' +
+      'Tests must fail when required environment variables are missing - no fallbacks allowed.\n' +
+      'Set NETWORK_INTEGRITY_KEYPHRASE in your environment or CI workflow secrets.'
+    );
+  }
   
   const proc = spawn('node', [wrapperScript, workerDir, String(port)], {
     stdio: 'pipe',
@@ -104,28 +167,34 @@ function cleanup() {
   console.log('\n[Integration Setup] Cleaning up workers...');
   
   if (otpWorkerProcess) {
-    try {
-      if (process.platform === 'win32') {
-        execSync(`taskkill /F /T /PID ${otpWorkerProcess.pid}`, { stdio: 'ignore' });
-      } else {
-        process.kill(-otpWorkerProcess.pid, 'SIGTERM');
+    const pid = otpWorkerProcess.pid;
+    if (pid) {
+      try {
+        if (process.platform === 'win32') {
+          execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+        } else {
+          process.kill(-pid, 'SIGTERM');
+        }
+        console.log('[Integration Setup] ✓ OTP Auth Service stopped');
+      } catch (error) {
+        // Process might already be dead, ignore
       }
-      console.log('[Integration Setup] ✓ OTP Auth Service stopped');
-    } catch (error) {
-      // Process might already be dead, ignore
     }
   }
   
   if (customerApiProcess) {
-    try {
-      if (process.platform === 'win32') {
-        execSync(`taskkill /F /T /PID ${customerApiProcess.pid}`, { stdio: 'ignore' });
-      } else {
-        process.kill(-customerApiProcess.pid, 'SIGTERM');
+    const pid = customerApiProcess.pid;
+    if (pid) {
+      try {
+        if (process.platform === 'win32') {
+          execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+        } else {
+          process.kill(-pid, 'SIGTERM');
+        }
+        console.log('[Integration Setup] ✓ Customer API stopped');
+      } catch (error) {
+        // Process might already be dead, ignore
       }
-      console.log('[Integration Setup] ✓ Customer API stopped');
-    } catch (error) {
-      // Process might already be dead, ignore
     }
   }
 }
