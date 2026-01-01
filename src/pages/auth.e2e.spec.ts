@@ -507,6 +507,9 @@ test.describe('Main App Authentication Flow', () => {
     // Step 3: Reload page - session restore should be called automatically
     // Monitor network requests to verify restore-session is called
     const restoreSessionRequests: any[] = [];
+    const restoreSessionResponses: any[] = [];
+    
+    // Set up listeners before reload
     page.on('request', (request) => {
       const url = request.url();
       if (url.includes('/auth/restore-session')) {
@@ -517,7 +520,29 @@ test.describe('Main App Authentication Flow', () => {
       }
     });
     
+    page.on('response', async (response) => {
+      const url = response.url();
+      if (url.includes('/auth/restore-session')) {
+        const request = response.request();
+        restoreSessionResponses.push({
+          url,
+          method: request.method(),
+          status: response.status(),
+        });
+      }
+    });
+    
+    // Wait for restore-session call before reloading
+    const restoreSessionPromise = page.waitForResponse(
+      (response) => response.url().includes('/auth/restore-session') && response.request().method() === 'POST',
+      { timeout: 10000 }
+    ).catch(() => null);
+    
     await page.reload({ waitUntil: 'networkidle' });
+    
+    // Wait for restore-session call to complete
+    await restoreSessionPromise;
+    await page.waitForTimeout(1000); // Give time for any pending calls
     
     // Wait for session restore to complete (should restore session from backend)
     await page.waitForFunction(() => {
@@ -533,9 +558,16 @@ test.describe('Main App Authentication Flow', () => {
       }
     }, { timeout: 15000 });
     
-    // Verify restore-session endpoint was called
-    expect(restoreSessionRequests.length).toBeGreaterThan(0);
-    expect(restoreSessionRequests.some(req => req.method === 'POST')).toBeTruthy();
+    // Verify restore-session endpoint was called (check both requests and responses)
+    const totalCalls = restoreSessionRequests.length + restoreSessionResponses.length;
+    if (totalCalls === 0) {
+      // Wait a bit more and check again (race condition)
+      await page.waitForTimeout(2000);
+    }
+    expect(restoreSessionRequests.length + restoreSessionResponses.length).toBeGreaterThan(0);
+    const hasPostRequest = restoreSessionRequests.some(req => req.method === 'POST') || 
+                          restoreSessionResponses.some(res => res.method === 'POST');
+    expect(hasPostRequest).toBeTruthy();
     
     // Verify token was restored
     const restoredToken = await page.evaluate(() => {

@@ -14,7 +14,7 @@ import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const rootDir = resolve(__dirname, '../../..');
+const rootDir = resolve(__dirname, '../..');
 
 let otpWorkerProcess: ReturnType<typeof spawn> | null = null;
 let customerApiProcess: ReturnType<typeof spawn> | null = null;
