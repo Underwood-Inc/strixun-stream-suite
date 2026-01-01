@@ -7,6 +7,8 @@
  */
 
 import { getCorsHeaders } from '../utils/cors.js';
+import { encryptBinaryWithJWT } from '@strixun/api-framework';
+import { createError } from '../utils/errors.js';
 
 const SCROLLBAR_CODE = `(function(global) {
   'use strict';
@@ -769,22 +771,50 @@ const SCROLLBAR_COMPENSATION_CODE = `/**
  * Handle scrollbar compensation CDN endpoint
  * GET /cdn/scrollbar-compensation.js
  * Serves the scrollbar compensation utility
+ * CRITICAL: JWT binary encryption is MANDATORY for all binary responses
  */
 export async function handleScrollbarCompensation(request, env) {
     try {
-        return new Response(SCROLLBAR_COMPENSATION_CODE, {
+        // CRITICAL SECURITY: JWT binary encryption is MANDATORY for all binary responses
+        // Get JWT token from request
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        
+        if (!jwtToken) {
+            const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
+            const corsHeaders = getCorsHeaders(env, request);
+            return new Response(JSON.stringify(rfcError), {
+                status: 401,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...corsHeaders,
+                },
+            });
+        }
+
+        // Convert JavaScript code to binary and encrypt with JWT
+        const encoder = new TextEncoder();
+        const codeBytes = encoder.encode(SCROLLBAR_COMPENSATION_CODE);
+        const encryptedCode = await encryptBinaryWithJWT(codeBytes, jwtToken);
+
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(encryptedCode, {
             headers: { 
-                ...getCorsHeaders(env, request), 
-                'Content-Type': 'application/javascript; charset=utf-8',
+                ...corsHeaders, 
+                'Content-Type': 'application/octet-stream', // Binary encrypted data
+                'X-Encrypted': 'true', // Flag to indicate encrypted response
+                'X-Original-Content-Type': 'application/javascript; charset=utf-8', // Preserve original content type
                 'Cache-Control': 'public, max-age=31536000, immutable'
             },
         });
     } catch (error) {
-        return new Response(`// Error loading scrollbar compensation: ${error.message}`, {
+        const rfcError = createError(request, 500, 'Internal Server Error', error.message);
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(JSON.stringify(rfcError), {
             status: 500,
             headers: { 
-                ...getCorsHeaders(env, request), 
-                'Content-Type': 'application/javascript'
+                ...corsHeaders, 
+                'Content-Type': 'application/problem+json'
             },
         });
     }
@@ -819,9 +849,27 @@ export async function handleScrollbar(request, env) {
  * Handle scrollbar customizer UI CDN endpoint
  * GET /cdn/scrollbar-customizer.js
  * Serves the scrollbar customizer with UI controls that auto-update styles
+ * CRITICAL: JWT binary encryption is MANDATORY for all binary responses
  */
 export async function handleScrollbarCustomizer(request, env) {
     try {
+        // CRITICAL SECURITY: JWT binary encryption is MANDATORY for all binary responses
+        // Get JWT token from request
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        
+        if (!jwtToken) {
+            const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
+            const corsHeaders = getCorsHeaders(env, request);
+            return new Response(JSON.stringify(rfcError), {
+                status: 401,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...corsHeaders,
+                },
+            });
+        }
+
         const url = new URL(request.url);
         const workerUrl = url.origin;
         
@@ -1076,19 +1124,29 @@ export async function handleScrollbarCustomizer(request, env) {
 })();
 `;
         
-        return new Response(customizerCode, {
+        // Convert JavaScript code to binary and encrypt with JWT
+        const encoder = new TextEncoder();
+        const codeBytes = encoder.encode(customizerCode);
+        const encryptedCode = await encryptBinaryWithJWT(codeBytes, jwtToken);
+
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(encryptedCode, {
             headers: { 
-                ...getCorsHeaders(env, request), 
-                'Content-Type': 'application/javascript; charset=utf-8',
+                ...corsHeaders, 
+                'Content-Type': 'application/octet-stream', // Binary encrypted data
+                'X-Encrypted': 'true', // Flag to indicate encrypted response
+                'X-Original-Content-Type': 'application/javascript; charset=utf-8', // Preserve original content type
                 'Cache-Control': 'public, max-age=3600'
             },
         });
     } catch (error) {
-        return new Response(`// Error loading scrollbar customizer: ${error.message}`, {
+        const rfcError = createError(request, 500, 'Internal Server Error', error.message);
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(JSON.stringify(rfcError), {
             status: 500,
             headers: { 
-                ...getCorsHeaders(env, request), 
-                'Content-Type': 'application/javascript'
+                ...corsHeaders, 
+                'Content-Type': 'application/problem+json'
             },
         });
     }

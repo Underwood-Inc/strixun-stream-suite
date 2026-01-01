@@ -181,20 +181,19 @@ export async function handleListMods(
             }
         });
 
-        // CRITICAL: Fetch display names dynamically for all unique authors
-        // Always fetch fresh display names from auth API - don't rely on baked-in values
-        // This ensures display names stay current when users change them
-        // Stored authorDisplayName is fallback only if fetch fails
-        const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId))];
-        const { fetchDisplayNamesByUserIds } = await import('../../utils/displayName.js');
-        const displayNames = await fetchDisplayNamesByUserIds(uniqueAuthorIds, env);
+        // CRITICAL: Fetch display names dynamically from customer data
+        // Customer is the primary data source for all customizable user info
+        // Fetch by customerIds (not userIds) - customer is the source of truth
+        const uniqueCustomerIds = [...new Set(mods.map(mod => mod.customerId).filter((id): id is string => !!id))];
+        const { fetchDisplayNamesByCustomerIds } = await import('@strixun/customer-lookup');
+        const displayNames = await fetchDisplayNamesByCustomerIds(uniqueCustomerIds, env);
         
-        // Map display names to mods - always use fetched value if available
-        // This ensures we have the latest display names, not stale baked-in values
+        // Map display names to mods - always use fetched value from customer data if available
+        // This ensures we have the latest display names from the source of truth
         mods.forEach(mod => {
             const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
-            const fetchedDisplayName = displayNames.get(mod.authorId);
-            // Always prefer fetched value - it's the current display name
+            const fetchedDisplayName = mod.customerId ? displayNames.get(mod.customerId) : null;
+            // Always prefer fetched value from customer data - it's the source of truth
             // Fall back to stored value only if fetch failed (for backward compatibility)
             mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
         });

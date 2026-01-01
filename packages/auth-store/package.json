@@ -1,0 +1,45 @@
+{
+  "name": "@strixun/auth-store",
+  "version": "1.0.0",
+  "description": "Shared, framework-agnostic authentication store for all Strixun projects",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./zustand": "./adapters/zustand.ts",
+    "./svelte": "./adapters/svelte.ts",
+    "./core": "./core/index.ts"
+  },
+  "files": [
+    "*.ts",
+    "adapters/**/*.ts",
+    "core/**/*.ts",
+    "*.md"
+  ],
+  "dependencies": {
+    "@strixun/api-framework": "workspace:*"
+  },
+  "peerDependencies": {
+    "zustand": "^4.0.0",
+    "svelte": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zustand": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16"
+  }
+}

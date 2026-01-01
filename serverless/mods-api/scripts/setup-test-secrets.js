@@ -165,7 +165,7 @@ function generateTestKeys() {
     email: 'test@example.com',
     email_verified: true,
     userId: 'user_test12345678',
-    customerId: null,
+    customerId: 'test_customer_e2e', // Test customer ID for E2E testing (required for mod uploads)
     csrf: `csrf_${Math.random().toString(36).substring(7)}`,
     isSuperAdmin: true,
   };

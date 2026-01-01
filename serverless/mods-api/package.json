@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@strixun/api-framework": "workspace:*",
+    "@strixun/customer-lookup": "workspace:*",
     "@strixun/otp-auth-service": "workspace:*",
     "@strixun/service-client": "workspace:*",
     "@strixun/types": "workspace:*",

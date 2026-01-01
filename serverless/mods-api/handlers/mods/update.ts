@@ -113,6 +113,26 @@ export async function handleUpdateMod(
             });
         }
 
+        // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
+        if (!auth.customerId) {
+            console.error('[Update] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'Rejecting mod update - customerId is required for data scoping and display name lookups'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod updates. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Parse update request - support both JSON and multipart/form-data
         let updateData: ModUpdateRequest;
         const contentType = request.headers.get('content-type') || '';
@@ -314,55 +334,49 @@ export async function handleUpdateMod(
             });
         }
 
-        // CRITICAL: Fetch and update author display name dynamically before saving
-        // Always fetch fresh display name from auth API - don't rely on baked-in value
-        // This ensures display names stay current when users change them
-        // Use token-based lookup first (more reliable), then fall back to userId lookup
+        // CRITICAL: Fetch and update author display name from customer data
+        // Customer is the primary data source for all customizable user info
+        // Look up customer by mod.customerId to get displayName
         const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
         let fetchedDisplayName: string | null = null;
         
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
-            const { fetchDisplayNameByToken } = await import('../../utils/displayName.js');
-            fetchedDisplayName = await fetchDisplayNameByToken(token, env, 10000); // 10 second timeout
+        if (mod.customerId) {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+            fetchedDisplayName = await fetchDisplayNameByCustomerId(mod.customerId, env);
             
             if (fetchedDisplayName) {
-                console.log('[Update] Fetched authorDisplayName via /auth/me:', { 
+                console.log('[Update] Fetched authorDisplayName from customer data:', { 
                     authorDisplayName: fetchedDisplayName, 
-                    userId: mod.authorId
+                    customerId: mod.customerId,
+                    modId: mod.modId
                 });
             } else {
-                // Fallback to userId lookup if /auth/me fails
-                const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-                fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env, 10000);
-                if (fetchedDisplayName) {
-                    console.log('[Update] Fetched authorDisplayName via /auth/user/:userId (fallback):', { 
-                        authorDisplayName: fetchedDisplayName, 
-                        userId: mod.authorId
-                    });
-                }
+                console.warn('[Update] Could not fetch displayName from customer data:', {
+                    customerId: mod.customerId,
+                    modId: mod.modId
+                });
             }
         } else {
-            // No token, use userId lookup with longer timeout
-            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-            fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env, 10000);
+            console.warn('[Update] Mod missing customerId, cannot fetch displayName from customer data:', {
+                modId: mod.modId,
+                authorId: mod.authorId
+            });
         }
         
-        // Always use fetched value if available - this ensures we have the latest display name
+        // Always use fetched value from customer data - it's the source of truth
         // Fall back to stored value only if fetch fails (for backward compatibility)
         mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
         
         if (fetchedDisplayName && fetchedDisplayName !== storedDisplayName) {
-            console.log('[Update] Updated authorDisplayName dynamically:', { 
-                userId: mod.authorId, 
+            console.log('[Update] Updated authorDisplayName from customer data:', { 
+                customerId: mod.customerId, 
                 oldDisplayName: storedDisplayName, 
                 newDisplayName: fetchedDisplayName 
             });
         } else if (!fetchedDisplayName) {
-            console.warn('[Update] authorDisplayName is null after all fetch attempts:', {
-                userId: mod.authorId,
-                customerId: auth.customerId,
+            console.warn('[Update] authorDisplayName is null after customer lookup:', {
+                customerId: mod.customerId,
+                modId: mod.modId,
                 storedDisplayName: storedDisplayName,
                 note: 'Using stored value or null - UI will show "Unknown Author" if null'
             });

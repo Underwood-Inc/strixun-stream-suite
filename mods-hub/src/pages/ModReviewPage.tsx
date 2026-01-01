@@ -205,6 +205,19 @@ export function ModReviewPage() {
         return null;
     }
 
+    // CRITICAL: For non-admin users (uploaders), customerId is required for review operations
+    if (!isAdmin && !user?.customerId) {
+        return (
+            <Error>
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <h2>Customer Account Required</h2>
+                    <p>Your account is missing a customer association. This is required for review operations.</p>
+                    <p>Please contact support or try logging out and back in to refresh your account information.</p>
+                </div>
+            </Error>
+        );
+    }
+
     return (
         <PageContainer>
             <Header>

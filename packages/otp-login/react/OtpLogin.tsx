@@ -7,7 +7,7 @@
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
+// Service key encryption removed - it was obfuscation only (key is in bundle)
 import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig, type OtpLoginState } from '../core';
 import { OTP_LENGTH, OTP_HTML_PATTERN, OTP_PLACEHOLDER, OTP_LENGTH_DESCRIPTION } from '../../../shared-config/otp-config';
 import './OtpLogin.scss';
@@ -55,47 +55,14 @@ export function OtpLogin({
   });
 
   useEffect(() => {
-    // CRITICAL: Get encryption key - use prop if provided, otherwise use centralized config
-    // This ensures we always use VITE_SERVICE_ENCRYPTION_KEY consistently across the codebase
-    const encryptionKey = otpEncryptionKey || getOtpEncryptionKey();
-    
-    // CRITICAL: Verify encryption key is provided
-    if (!encryptionKey) {
-      console.error('[OtpLogin] ✗ CRITICAL ERROR: otpEncryptionKey is missing!');
-      console.error('[OtpLogin] This will cause encryption to fail. Key status:', {
-        hasKey: !!encryptionKey,
-        keyType: typeof encryptionKey,
-        keyLength: encryptionKey?.length || 0,
-        apiUrl: apiUrl,
-        usingCentralizedConfig: !otpEncryptionKey
-      });
-      if (onError) {
-        onError('OTP encryption key is required. Please configure VITE_SERVICE_ENCRYPTION_KEY in your build environment.');
-      }
-      return;
-    }
-    
-    if (encryptionKey.length < 32) {
-      console.error('[OtpLogin] ✗ CRITICAL ERROR: otpEncryptionKey is too short!', {
-        keyLength: encryptionKey.length,
-        requiredLength: 32
-      });
-      if (onError) {
-        onError('OTP encryption key must be at least 32 characters long.');
-      }
-      return;
-    }
-    
-    console.log('[OtpLogin] ✓ Encryption key provided, length:', encryptionKey.length, otpEncryptionKey ? '(from prop)' : '(from VITE_SERVICE_ENCRYPTION_KEY)');
-    
-    // Initialize core
+    // Initialize core - no encryption key needed (service key encryption removed)
     const core = new OtpLoginCore({
       apiUrl,
       onSuccess,
       onError,
       endpoints,
       customHeaders,
-      otpEncryptionKey: encryptionKey, // CRITICAL: Pass encryption key for encrypting OTP requests
+      // otpEncryptionKey removed - service key encryption was obfuscation only
     });
 
     coreRef.current = core;

@@ -2,12 +2,11 @@
  * OTP Verification Handler
  * 
  * Handles verifying OTP codes with the server
- * CRITICAL: Email and OTP are encrypted in transit using service key encryption
+ * SECURITY: HTTPS provides transport security. Service key encryption removed (was obfuscation only).
  */
 
 import { OTP_PATTERN, OTP_LENGTH_DESCRIPTION } from '../../shared-config/otp-config.js';
 import type { OtpLoginConfig, OtpLoginState, LoginSuccessData } from './types.js';
-import { encryptRequestBody, validateEncryptedBody } from './encryption.js';
 import { parseErrorResponse, handleNetworkError } from './utils.js';
 import { stopCountdown } from './countdown.js';
 import type { CountdownManager } from './countdown.js';

@@ -1,79 +1,23 @@
 /**
- * Centralized Service Encryption Key Configuration
+ * DEPRECATED: Service Key Encryption Removed
  * 
- * This is the SINGLE SOURCE OF TRUTH for retrieving the SERVICE_ENCRYPTION_KEY.
- * All apps should import from this file to ensure consistent key retrieval.
+ * Service key encryption has been removed from the codebase.
+ * It was obfuscation only (key is in frontend bundle), not real security.
  * 
- * SECURITY: The key is NEVER stored in source code or browser storage.
- * It must be provided via environment variables at build time.
+ * HTTPS provides transport security for OTP requests.
+ * Real security comes from:
+ * - API key requirements (for third-party apps)
+ * - Origin whitelisting (for internal apps)
+ * - Rate limiting
+ * - OTP expiration and single-use properties
  * 
- * To configure the key:
- * 1. Set VITE_SERVICE_ENCRYPTION_KEY in your .env file (or build environment)
- * 2. The key must match server-side SERVICE_ENCRYPTION_KEY
- * 3. Never commit .env files with real keys to version control
+ * This file is kept for backward compatibility but the function returns undefined.
+ * All callers should be updated to not use service key encryption.
  * 
- * To get the server-side key:
- *   cd serverless/otp-auth-service
- *   wrangler secret list
- * 
- * To set the server-side key:
- *   cd serverless/otp-auth-service
- *   wrangler secret put SERVICE_ENCRYPTION_KEY
+ * @deprecated Service key encryption removed - returns undefined
  */
-
-/**
- * Get SERVICE_ENCRYPTION_KEY
- * 
- * SECURITY: This function retrieves the key from secure sources only:
- * 1. Environment variables (VITE_SERVICE_ENCRYPTION_KEY) - PRIMARY
- * 2. Window function (for runtime injection in development only) - FALLBACK
- * 
- * The key is NEVER:
- * - Stored in source code
- * - Stored in localStorage/sessionStorage
- * - Hardcoded as a constant
- * 
- * @returns The SERVICE_ENCRYPTION_KEY, or undefined if not found
- */
-export function getOtpEncryptionKey(): string | undefined {
-  // Priority 1: Environment variable (build-time injection - SECURE)
-  // This is the PRIMARY and RECOMMENDED method
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const envKey = import.meta.env.VITE_SERVICE_ENCRYPTION_KEY;
-    if (envKey && typeof envKey === 'string' && envKey.length >= 32) {
-      return envKey;
-    }
-    // Debug logging for production troubleshooting
-    if (typeof window !== 'undefined' && import.meta.env.DEV === false) {
-      console.warn('[getOtpEncryptionKey] VITE_SERVICE_ENCRYPTION_KEY not found in import.meta.env', {
-        hasImportMeta: typeof import.meta !== 'undefined',
-        hasEnv: !!import.meta.env,
-        envKeyType: typeof envKey,
-        envKeyLength: envKey?.length || 0,
-        envKeys: Object.keys(import.meta.env || {}).filter(k => k.startsWith('VITE_'))
-      });
-    }
-  }
-
-  // Priority 2: Window function (runtime injection - DEVELOPMENT ONLY)
-  // ⚠ SECURITY WARNING: This fallback is for development/testing ONLY.
-  // NEVER use runtime injection in production - it exposes the key in plain text.
-  // The URL shortener previously used runtime injection and it was a CRITICAL security vulnerability.
-  // Always use VITE_SERVICE_ENCRYPTION_KEY at build time instead.
-  if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
-    const key = (window as any).getOtpEncryptionKey();
-    if (key && typeof key === 'string' && key.length >= 32) {
-      if (process.env.NODE_ENV === 'production') {
-        console.error('[SECURITY CRITICAL] Using window.getOtpEncryptionKey() in production is a security vulnerability. The key is exposed in plain text. Use VITE_SERVICE_ENCRYPTION_KEY at build time instead.');
-      } else {
-        console.warn(' ★ Using window.getOtpEncryptionKey() - this should only be used in development. In production, use VITE_SERVICE_ENCRYPTION_KEY at build time.');
-      }
-      return key;
-    }
-  }
-
-  // If no key found, return undefined (OTP core will throw clear error)
-  // This ensures we fail securely rather than using an invalid key
+export function getOtpEncryptionKey(): undefined {
+  console.warn('[DEPRECATED] getOtpEncryptionKey() - Service key encryption removed. HTTPS provides transport security.');
   return undefined;
 }
 

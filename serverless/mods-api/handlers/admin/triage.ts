@@ -213,13 +213,17 @@ export async function handleUpdateModStatus(
 
         // Add to status history
         // CRITICAL: Never store email - email is ONLY for OTP authentication
-        // Fetch displayName from auth API if available
+        // Fetch displayName from customer data - customer is the source of truth
         let changedByDisplayName: string | null = null;
         try {
-            // Use the same fetchDisplayNameByUserId utility as other handlers
-            // This avoids the cache field issue (not supported in Cloudflare Workers)
-            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-            changedByDisplayName = await fetchDisplayNameByUserId(auth.userId, env);
+            if (auth.customerId) {
+                const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+                changedByDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+            } else {
+                console.warn('[Triage] Missing customerId, cannot fetch displayName for status history:', {
+                    userId: auth.userId
+                });
+            }
         } catch (error) {
             console.warn('[Triage] Failed to fetch displayName for status history:', error);
         }
@@ -430,6 +434,27 @@ export async function handleAddReviewComment(
             });
         }
 
+        // CRITICAL: For non-admin users (uploaders), customerId is required for display name lookup
+        if (!isAdmin && !auth.customerId) {
+            console.error('[Triage] CRITICAL: customerId is null for non-admin user:', {
+                userId: auth.userId,
+                email: auth.email,
+                isUploader,
+                note: 'Rejecting comment - customerId is required for display name lookups'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for adding review comments. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Parse comment request
         const commentData = await request.json() as { content: string };
         if (!commentData.content || commentData.content.trim().length === 0) {
@@ -454,10 +479,15 @@ export async function handleAddReviewComment(
         // Fetch displayName from auth API if available
         let authorDisplayName: string | null = null;
         try {
-            // Use the same fetchDisplayNameByUserId utility as other handlers
-            // This avoids the cache field issue (not supported in Cloudflare Workers)
-            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-            authorDisplayName = await fetchDisplayNameByUserId(auth.userId, env);
+            // CRITICAL: Fetch displayName from customer data - customer is the source of truth
+            if (auth.customerId) {
+                const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+                authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+            } else {
+                console.warn('[Triage] Missing customerId, cannot fetch displayName for comment:', {
+                    userId: auth.userId
+                });
+            }
         } catch (error) {
             console.warn('[Triage] Failed to fetch displayName for comment:', error);
         }

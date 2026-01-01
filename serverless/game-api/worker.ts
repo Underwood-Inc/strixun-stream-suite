@@ -11,26 +11,59 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleGameRoutes } from './router/game-routes.js';
+import { wrapWithEncryption } from '@strixun/api-framework';
 
 /**
  * Health check endpoint
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: any, request: Request): Promise<Response> {
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-    });
-    return new Response(JSON.stringify({ 
+    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
+    // Get JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+
+    // Create auth object for encryption
+    const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+
+    // Create health check response
+    const healthData = { 
         status: 'ok', 
         message: 'Game API is running',
         service: 'strixun-game-api',
         endpoints: 23,
         timestamp: new Date().toISOString()
-    }), {
+    };
+    
+    const response = new Response(JSON.stringify(healthData), {
         headers: {
             'Content-Type': 'application/json',
-            ...Object.fromEntries(corsHeaders.entries()),
         },
     });
+
+    // Wrap with encryption to ensure JWT encryption is applied
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    return encryptedResult.response;
 }
 
 /**

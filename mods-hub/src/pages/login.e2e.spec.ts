@@ -35,11 +35,23 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should display login page with email form', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    // Wait for page to load - check for either the fancy screen or the email form
+    // The OTP login component may show a fancy authentication screen first
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    
+    if (fancyScreenVisible) {
+      // Click through fancy screen if present
+      await fancyScreenButton.click();
+      await page.waitForTimeout(500); // Wait for transition
+    }
     
     // Should show login form or OTP login component
-    const emailInput = page.locator('input[type="email"]').first();
-    await expect(emailInput).toBeVisible({ timeout: 10000 });
+    // Use more specific selector that matches the OTP login component
+    const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+    await expect(emailInput).toBeVisible({ timeout: 15000 });
     
     // Should have submit button
     const submitButton = page.locator(
@@ -49,11 +61,19 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should allow email input and validation', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
-    // Find email input
-    const emailInput = page.locator('input[type="email"]').first();
-    await emailInput.waitFor({ state: 'visible' });
+    // Wait for fancy screen if present and click through
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(500);
+    }
+    
+    // Find email input - use specific selector
+    const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+    await emailInput.waitFor({ state: 'visible', timeout: 15000 });
     
     // Enter test email
     await emailInput.fill(TEST_EMAIL);
@@ -102,7 +122,15 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should complete full login flow with OTP', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    // Wait for fancy screen if present and click through
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(500);
+    }
     
     // Step 1: Request OTP
     await requestOTPCode(page, TEST_EMAIL);
@@ -121,10 +149,45 @@ test.describe('Mods Hub Login', () => {
     }
     
     // Step 3: Verify OTP
-    const { response } = await verifyOTPCode(page, otpCode);
+    const { response, body } = await verifyOTPCode(page, otpCode);
+    
+    // Log response details for debugging
+    const status = response.status();
+    const headers = response.headers();
+    const isEncrypted = headers['x-encrypted'] === 'true';
+    
+    // Log to console (visible in test output)
+    console.log('[E2E Test] OTP verification response:', {
+      status,
+      ok: response.ok(),
+      isEncrypted,
+      contentType: headers['content-type'],
+      bodyPreview: typeof body === 'object' ? JSON.stringify(body).substring(0, 200) : String(body).substring(0, 200),
+      otpCodeProvided: otpCode ? `${otpCode.substring(0, 3)}...${otpCode.substring(otpCode.length - 3)}` : 'missing'
+    });
     
     // Verify API call succeeded
-    expect(response.ok()).toBeTruthy();
+    if (!response.ok()) {
+      // Log full error details
+      const errorDetails = {
+        status,
+        statusText: response.statusText(),
+        body,
+        headers: Object.fromEntries(Object.entries(headers)),
+        otpCode: otpCode ? `${otpCode.substring(0, 3)}...${otpCode.substring(otpCode.length - 3)}` : 'missing',
+        hasOTPCode: !!otpCode,
+        url: response.url()
+      };
+      console.error('[E2E Test] OTP verification failed:', JSON.stringify(errorDetails, null, 2));
+      
+      // Provide helpful error message
+      throw new Error(
+        `OTP verification failed with status ${status}. ` +
+        `Response: ${typeof body === 'object' ? JSON.stringify(body) : String(body)}. ` +
+        `OTP code provided: ${otpCode ? 'yes' : 'no'}. ` +
+        `Check that ENVIRONMENT=test and E2E_TEST_OTP_CODE is set correctly.`
+      );
+    }
     
     // Step 3: Wait for redirect after successful login
     // Should redirect to home, dashboard, or mods list
@@ -226,7 +289,15 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should persist authentication across page reloads', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    // Wait for fancy screen if present and click through
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(500);
+    }
     
     // Complete login flow
     await requestOTPCode(page, TEST_EMAIL);
@@ -238,15 +309,41 @@ test.describe('Mods Hub Login', () => {
       throw new Error('E2E_TEST_OTP_CODE not set in environment');
     }
     
-    await verifyOTPCode(page, otpCode);
+    const { response, body } = await verifyOTPCode(page, otpCode);
     
-    // Wait for redirect
+    // Verify API call succeeded
+    if (!response.ok()) {
+      const status = response.status();
+      const errorMessage = typeof body === 'object' && body !== null && 'detail' in body 
+        ? body.detail 
+        : typeof body === 'object' 
+          ? JSON.stringify(body) 
+          : String(body);
+      throw new Error(`OTP verification failed with status ${status}: ${errorMessage}`);
+    }
+    
+    // Wait for authentication state to be set (Zustand store persistence)
+    // This ensures the encrypted response has been decrypted and processed
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Wait for redirect (increased timeout for slower browsers like WebKit)
     await page.waitForURL(
       (url) => {
         const path = new URL(url).pathname;
         return path !== '/login';
       },
-      { timeout: 10000 }
+      { timeout: 15000 } // Increased timeout for WebKit/Mobile Safari
     );
     
     // Get auth token (mods-hub uses Zustand store which persists to 'auth-storage' key)
@@ -324,15 +421,41 @@ test.describe('Mods Hub Login', () => {
       throw new Error('E2E_TEST_OTP_CODE not set in environment');
     }
     
-    await verifyOTPCode(page, otpCode);
+    const { response, body } = await verifyOTPCode(page, otpCode);
     
-    // Wait for redirect
+    // Verify API call succeeded
+    if (!response.ok()) {
+      const status = response.status();
+      const errorMessage = typeof body === 'object' && body !== null && 'detail' in body 
+        ? body.detail 
+        : typeof body === 'object' 
+          ? JSON.stringify(body) 
+          : String(body);
+      throw new Error(`OTP verification failed with status ${status}: ${errorMessage}`);
+    }
+    
+    // Wait for authentication state to be set (Zustand store persistence)
+    // This ensures the encrypted response has been decrypted and processed
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Wait for redirect (increased timeout for slower browsers like WebKit)
     await page.waitForURL(
       (url) => {
         const path = new URL(url).pathname;
         return path !== '/login';
       },
-      { timeout: 10000 }
+      { timeout: 15000 } // Increased timeout for WebKit/Mobile Safari
     );
     
     // Find and click logout button
@@ -386,7 +509,15 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should navigate back from OTP form to email form', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    // Wait for fancy screen if present and click through
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(500);
+    }
     
     // Request OTP
     await requestOTPCode(page, TEST_EMAIL);

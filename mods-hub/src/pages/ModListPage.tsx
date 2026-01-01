@@ -5,10 +5,12 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
 import { ModListItem } from '../components/mod/ModListItem';
 import { ModFilters } from '../components/mod/ModFilters';
+import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 
@@ -152,6 +154,7 @@ function getErrorMessage(error: unknown): { title: string; message: string; deta
 
 export function ModListPage() {
     const [page] = useState(1);
+    const navigate = useNavigate();
     const [category, setCategory] = useState<string>('');
     const [search, setSearch] = useState('');
     const [listHeight, setListHeight] = useState(600);
@@ -182,6 +185,15 @@ export function ModListPage() {
 
     const errorInfo = error ? getErrorMessage(error) : null;
 
+    
+    // Redirect to login if auth error
+    useEffect(() => {
+        if (error && shouldRedirectToLogin(error)) {
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000); // Give user time to see the message
+        }
+    }, [error, navigate]);
     return (
         <PageContainer ref={containerRef}>
             <Header>

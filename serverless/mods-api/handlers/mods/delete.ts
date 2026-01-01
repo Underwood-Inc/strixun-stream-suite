@@ -35,6 +35,26 @@ export async function handleDeleteMod(
             });
         }
 
+        // CRITICAL: Validate customerId is present - required for data scoping
+        if (!auth.customerId) {
+            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'Rejecting mod deletion - customerId is required for data scoping'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod deletion. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
         const normalizedModId = normalizeModId(modId);

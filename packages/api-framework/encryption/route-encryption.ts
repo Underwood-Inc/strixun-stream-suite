@@ -8,14 +8,13 @@
  * - Route-level encryption policies define encryption requirements
  * - Centralized middleware enforces encryption for all routes
  * - JWT-based encryption for authenticated routes
- * - Service key encryption for public routes (when no JWT available)
  * - Configurable per-route encryption strategies
  * 
  * Security Benefits:
  * - Defense in depth: Even if authentication is bypassed, data is encrypted
  * - Industry standard: All responses encrypted, no plaintext data in transit
  * - Per-route control: Different encryption strategies for different route types
- * - Key isolation: Public routes use service keys, authenticated routes use JWT
+ * - JWT-based encryption: All authenticated routes use JWT encryption
  */
 
 import type { EncryptedData } from './types.js';
@@ -52,8 +51,6 @@ export interface RouteEncryptionPolicy {
 export interface EncryptionContext {
   /** JWT token if available */
   jwtToken: string | null;
-  /** Service key for public routes */
-  serviceKey: string | null;
   /** Route path */
   path: string;
   /** Request method */
@@ -150,9 +147,7 @@ export async function encryptWithServiceKey(
   data: unknown,
   serviceKey: string
 ): Promise<EncryptedData> {
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for encryption (minimum 32 characters)');
-  }
+  throw new Error('Service key encryption removed - it was obfuscation only (key is in frontend bundle). Use JWT encryption instead.');
 
   // Generate random salt and IV
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
@@ -563,35 +558,18 @@ export async function encryptResponse(
         strategy = 'jwt';
         break;
 
-      case 'service-key':
-        if (!context.serviceKey) {
-          if (policy.mandatory) {
-            throw new Error(`Service key required for route ${context.path} but not configured`);
-          }
-          return {
-            encrypted: false,
-            error: new Error('Service key required but not configured'),
-          };
-        }
-        encryptedData = await encryptWithServiceKey(data, context.serviceKey);
-        strategy = 'service-key';
-        break;
-
       case 'conditional-jwt':
-        // Try JWT first, fallback to service key
+        // Try JWT only - service key fallback removed
         if (context.jwtToken) {
           encryptedData = await encryptWithJWT(data, context.jwtToken);
           strategy = 'jwt';
-        } else if (context.serviceKey) {
-          encryptedData = await encryptWithServiceKey(data, context.serviceKey);
-          strategy = 'service-key';
         } else {
           if (policy.mandatory) {
-            throw new Error(`Encryption required for route ${context.path} but no key available`);
+            throw new Error(`Encryption required for route ${context.path} but no JWT token available`);
           }
           return {
             encrypted: false,
-            error: new Error('No encryption key available (JWT or service key)'),
+            error: new Error('No JWT token available - service key fallback removed'),
           };
         }
         break;
@@ -730,23 +708,6 @@ export function extractJWTToken(request: Request): string | null {
 }
 
 /**
- * Get service key from environment
- * Service key should be stored as a Cloudflare Worker secret
- * 
- * CRITICAL: This function is for BACKEND WORKERS ONLY
- * - Backend workers use: SERVICE_ENCRYPTION_KEY
- * - Frontend uses: VITE_SERVICE_ENCRYPTION_KEY (via shared-config/otp-encryption.ts)
- * 
- * These are DIFFERENT variable names for the SAME key value, but each environment
- * uses its own naming convention (Vite requires VITE_ prefix for client-side vars)
- */
-export function getServiceKey(env: any): string | null {
-  // Backend workers ONLY use SERVICE_ENCRYPTION_KEY
-  // Frontend has its own getOtpEncryptionKey() function that uses VITE_SERVICE_ENCRYPTION_KEY
-  return env.SERVICE_ENCRYPTION_KEY || null;
-}
-
-/**
  * Create encryption context from request
  */
 export function createEncryptionContext(
@@ -755,7 +716,6 @@ export function createEncryptionContext(
 ): EncryptionContext {
   return {
     jwtToken: extractJWTToken(request),
-    serviceKey: getServiceKey(env),
     path: new URL(request.url).pathname,
     method: request.method,
   };

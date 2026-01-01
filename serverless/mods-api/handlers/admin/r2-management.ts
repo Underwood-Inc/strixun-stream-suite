@@ -10,7 +10,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import { getCustomerR2Key, getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { fetchDisplayNameByUserId, fetchDisplayNamesByUserIds } from '../../utils/displayName.js';
+import { fetchDisplayNameByCustomerId, fetchDisplayNamesByCustomerIds } from '@strixun/customer-lookup';
 import { getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -291,8 +291,20 @@ async function fetchAssociatedData(
     }
     
     // Fetch user display name if uploadedBy is available
+    // CRITICAL: Try to use customerId from mod metadata if available (customer is source of truth)
+    // TODO: Store customerId in R2 metadata to avoid needing mod lookup
     if (uploadedBy) {
-        const displayName = await fetchDisplayNameByUserId(uploadedBy, env);
+        let displayName: string | null = null;
+        
+        // If we have mod metadata with customerId, use customer lookup
+        if (associatedData.mod?.customerId) {
+            displayName = await fetchDisplayNameByCustomerId(associatedData.mod.customerId, env);
+        }
+        
+        // Fallback: If no customerId or lookup failed, we'd need userId->customerId mapping
+        // For now, we'll leave this as null if customer lookup fails
+        // In the future, R2 metadata should store customerId directly
+        
         associatedData.uploadedBy = {
             userId: uploadedBy,
             displayName: displayName || null,
@@ -312,16 +324,26 @@ async function fetchAssociatedDataBatch(
 ): Promise<Map<string, R2FileAssociatedData>> {
     const results = new Map<string, R2FileAssociatedData>();
     
-    // Collect all unique user IDs for batch fetching
-    const userIds = new Set<string>();
-    for (const file of files) {
-        if (file.customMetadata?.uploadedBy) {
-            userIds.add(file.customMetadata.uploadedBy);
-        }
-    }
+    // CRITICAL: Use customer-based lookup - customer is the source of truth
+    // First, fetch mod metadata to get customerIds for batch lookup
+    const customerIds = new Set<string>();
+    const fileModMap = new Map<string, string | null>(); // file key -> customerId
     
-    // Fetch all display names in parallel
-    const displayNames = await fetchDisplayNamesByUserIds(Array.from(userIds), env);
+    // Collect modIds and fetch mods to get customerIds
+    const modPromises = files.map(async (file) => {
+        if (!file.customMetadata?.modId) return;
+        const modId = file.customMetadata.modId;
+        const customerId = extractCustomerIdFromR2Key(file.key);
+        const mod = await fetchModMetadata(modId, customerId, env);
+        if (mod?.customerId) {
+            customerIds.add(mod.customerId);
+            fileModMap.set(file.key, mod.customerId);
+        }
+    });
+    await Promise.all(modPromises);
+    
+    // Fetch all display names by customerIds in parallel
+    const displayNames = await fetchDisplayNamesByCustomerIds(Array.from(customerIds), env);
     
     // Process each file
     const promises = files.map(async (file) => {
@@ -386,9 +408,13 @@ async function fetchAssociatedDataBatch(
             }
         }
         
-        // Use batch-fetched display name
+        // Use customer-based display name lookup (customer is source of truth)
+        // TODO: Store customerId in R2 metadata to avoid needing mod lookup
         if (uploadedBy) {
-            const displayName = displayNames.get(uploadedBy) || null;
+            // Get customerId from mod metadata (we fetched it above)
+            const customerIdForLookup = fileModMap.get(file.key) || associatedData.mod?.customerId;
+            const displayName = customerIdForLookup ? displayNames.get(customerIdForLookup) || null : null;
+            
             associatedData.uploadedBy = {
                 userId: uploadedBy,
                 displayName: displayName || null,

@@ -8,17 +8,13 @@ const __dirname = dirname(__filename);
 
 /**
  * Load .dev.vars files into process.env for E2E tests
- * Returns the encryption key from OTP Auth Service for use in mods-hub
- * Priority: SERVICE_ENCRYPTION_KEY (worker key) > VITE_SERVICE_ENCRYPTION_KEY (frontend key)
+ * Service key encryption removed - it was obfuscation only
  */
-function loadDevVars(): string | undefined {
+function loadDevVars(): void {
   const devVarsPaths = [
     join(__dirname, 'serverless', 'mods-api', '.dev.vars'),
     join(__dirname, 'serverless', 'otp-auth-service', '.dev.vars'),
   ];
-  
-  let serviceEncryptionKey: string | undefined;
-  let viteServiceEncryptionKey: string | undefined;
   
   for (const devVarsPath of devVarsPaths) {
     if (existsSync(devVarsPath)) {
@@ -38,23 +34,10 @@ function loadDevVars(): string | undefined {
           if (!process.env[key]) {
             process.env[key] = value;
           }
-          
-          // Extract encryption keys from OTP Auth Service .dev.vars
-          if (devVarsPath.includes('otp-auth-service')) {
-            if (key === 'SERVICE_ENCRYPTION_KEY') {
-              serviceEncryptionKey = value;
-            } else if (key === 'VITE_SERVICE_ENCRYPTION_KEY') {
-              viteServiceEncryptionKey = value;
-            }
-          }
         }
       }
     }
   }
-  
-  // Priority: SERVICE_ENCRYPTION_KEY (worker uses this) > VITE_SERVICE_ENCRYPTION_KEY
-  // Both should match, but SERVICE_ENCRYPTION_KEY is what the worker actually uses
-  return serviceEncryptionKey || viteServiceEncryptionKey;
 }
 
 // Load .dev.vars before tests run
@@ -93,12 +76,7 @@ const WORKER_URLS = {
   MODS_HUB: process.env.E2E_MODS_HUB_URL || 'http://localhost:3001',
 };
 
-// Load .dev.vars before config is evaluated (so we can pass to workers)
-// Get encryption key for mods-hub (must match OTP Auth Service)
-const E2E_ENCRYPTION_KEY = loadDevVars() || 
-  process.env.SERVICE_ENCRYPTION_KEY || 
-  process.env.VITE_SERVICE_ENCRYPTION_KEY || 
-  'test-service-encryption-key-for-local-development-12345678901234567890123456789012';
+// Service key encryption removed - it was obfuscation only
 
 export default defineConfig({
   // Global setup to load .dev.vars before tests run
@@ -132,23 +110,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    // Mobile viewports
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
   ],
 
   // Run your local dev servers before starting the tests
@@ -160,9 +121,9 @@ export default defineConfig({
       timeout: 60 * 1000, // 60 seconds to start frontend
       env: {
         // Override API URL and encryption key for E2E tests (same as mods-hub)
-        // This ensures the main app uses local worker URLs and matching encryption keys
+        // This ensures the main app uses local worker URLs
         VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
-        VITE_SERVICE_ENCRYPTION_KEY: E2E_ENCRYPTION_KEY,
+        // Service key encryption removed - it was obfuscation only
       },
     },
     {
@@ -174,9 +135,7 @@ export default defineConfig({
         // Override Vite proxy URLs with direct local worker URLs for E2E tests
         VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
         VITE_MODS_API_URL: WORKER_URLS.MODS_API,
-        // Use the same encryption key as OTP Auth Service (must match SERVICE_ENCRYPTION_KEY)
-        // This ensures mods-hub encrypts requests with the same key the worker expects
-        VITE_SERVICE_ENCRYPTION_KEY: E2E_ENCRYPTION_KEY,
+        // Service key encryption removed - it was obfuscation only
       },
     },
     // Start all local workers (E2E tests replicate production with all services running)

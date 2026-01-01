@@ -176,6 +176,24 @@ export function ModUploadPage() {
         );
     }
 
+    // CRITICAL: Check for customerId - required for mod operations
+    const { user } = useAuthStore();
+    if (!user?.customerId) {
+        return (
+            <PageContainer>
+                <ErrorMessage>
+                    <ErrorTitle>Customer Account Required</ErrorTitle>
+                    <ErrorText>
+                        Your account is missing a customer association. This is required for mod uploads.
+                        <br />
+                        <br />
+                        Please contact support or try logging out and back in to refresh your account information.
+                    </ErrorText>
+                </ErrorMessage>
+            </PageContainer>
+        );
+    }
+
     const uploadError = uploadMod.error ? getErrorMessage(uploadMod.error) : null;
 
     return (

@@ -26,6 +26,7 @@
   "type": "module",
   "version": "1.0.0",
   "dependencies": {
+    "@strixun/auth-store": "workspace:*",
     "@strixun/api-framework": "workspace:*",
     "@strixun/dice-board-game": "workspace:*",
     "@strixun/e2e-helpers": "workspace:*",

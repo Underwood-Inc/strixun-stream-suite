@@ -48,6 +48,26 @@ export async function handleUploadVersion(
             });
         }
 
+        // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
+        if (!auth.customerId) {
+            console.error('[UploadVersion] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'Rejecting version upload - customerId is required for data scoping and display name lookups'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod version uploads. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Get mod metadata
         // Normalize modId to ensure consistent key generation (strip mod_ prefix if present)
         const normalizedModId = normalizeModId(modId);

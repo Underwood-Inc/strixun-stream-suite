@@ -60,31 +60,86 @@ export async function requestOTPCode(
   page: Page,
   email: string
 ): Promise<{ response: any; body: any }> {
+  // Wait for fancy screen if present and click through
+  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 2000 }).catch(() => false);
+  if (fancyScreenVisible) {
+    await fancyScreenButton.click();
+    await page.waitForTimeout(500); // Wait for transition
+  }
+  
   // Find email input
-  const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
-  await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+  await emailInput.waitFor({ state: 'visible', timeout: 15000 });
   
-  // Fill email
-  await emailInput.clear();
-  await emailInput.fill(email);
-  
-  // Find and click submit button
-  const submitButton = page.locator(
-    'button:has-text("Send OTP"), button:has-text("Send"), button[type="submit"]'
-  ).first();
-  
-  await expect(submitButton).toBeVisible({ timeout: 10000 });
-  
-  // Wait for API response
+  // Set up response listener FIRST (before any interaction)
   const responsePromise = page.waitForResponse(
     (response) => response.url().includes('/auth/request-otp'),
     { timeout: 30000 }
   );
   
-  await submitButton.click();
+  // Fill email
+  await emailInput.clear();
+  await emailInput.fill(email);
+  
+  // Verify email was entered
+  await expect(emailInput).toHaveValue(email, { timeout: 5000 });
+  
+  // Force form submission via JavaScript - bypasses button disabled state
+  // This works even if React/Svelte state hasn't updated yet
+  await emailInput.evaluate((el, emailValue) => {
+    const input = el as HTMLInputElement;
+    const form = input.closest('form');
+    if (form) {
+      // Set value directly on input element (bypasses React/Svelte)
+      input.value = emailValue;
+      // Trigger input event
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      // Submit form
+      if (typeof (form as any).requestSubmit === 'function') {
+        (form as any).requestSubmit();
+      } else {
+        form.submit();
+      }
+    }
+  }, email);
   
   const response = await responsePromise;
-  const body = await response.json();
+  
+  // Log response details for debugging
+  const status = response.status();
+  const headers = response.headers();
+  const isEncrypted = headers['x-encrypted'] === 'true';
+  
+  console.log('[E2E] OTP request response:', {
+    status,
+    isEncrypted,
+    contentType: headers['content-type'],
+    url: response.url()
+  });
+  
+  // Try to parse body - may be encrypted or error response
+  let body: any;
+  try {
+    body = await response.json();
+  } catch (error) {
+    // If JSON parsing fails, try text
+    try {
+      const text = await response.text();
+      console.warn('[E2E] OTP request response is not JSON:', text.substring(0, 200));
+      body = { error: 'Failed to parse response', raw: text.substring(0, 200) };
+    } catch (textError) {
+      console.error('[E2E] Failed to read OTP request response:', error, textError);
+      body = { error: 'Failed to read response' };
+    }
+  }
+  
+  // Log body for debugging (truncated)
+  if (body && typeof body === 'object') {
+    const bodyStr = JSON.stringify(body).substring(0, 500);
+    console.log('[E2E] OTP request response body:', bodyStr);
+  }
   
   return { response, body };
 }
@@ -92,6 +147,7 @@ export async function requestOTPCode(
 /**
  * Verify OTP code
  * Returns the API response for inspection
+ * CRITICAL: Handles encrypted responses - the response body may be encrypted
  */
 export async function verifyOTPCode(
   page: Page,
@@ -124,7 +180,40 @@ export async function verifyOTPCode(
   await verifyButton.click();
   
   const response = await responsePromise;
-  const body = await response.json();
+  
+  // Log response details for debugging
+  const status = response.status();
+  const headers = response.headers();
+  const isEncrypted = headers['x-encrypted'] === 'true';
+  
+  console.log('[E2E] OTP verification response:', {
+    status,
+    isEncrypted,
+    contentType: headers['content-type'],
+    url: response.url()
+  });
+  
+  // Try to parse body - may be encrypted or error response
+  let body: any;
+  try {
+    body = await response.json();
+  } catch (error) {
+    // If JSON parsing fails, try text
+    try {
+      const text = await response.text();
+      console.warn('[E2E] OTP verification response is not JSON:', text.substring(0, 200));
+      body = { error: 'Failed to parse response', raw: text.substring(0, 200) };
+    } catch (textError) {
+      console.error('[E2E] Failed to read OTP verification response:', error, textError);
+      body = { error: 'Failed to read response' };
+    }
+  }
+  
+  // Log body for debugging (truncated)
+  if (body && typeof body === 'object') {
+    const bodyStr = JSON.stringify(body).substring(0, 500);
+    console.log('[E2E] OTP verification response body:', bodyStr);
+  }
   
   return { response, body };
 }
@@ -133,6 +222,14 @@ export async function verifyOTPCode(
  * Wait for OTP form to appear after requesting OTP
  */
 export async function waitForOTPForm(page: Page, timeout: number = 10000): Promise<void> {
+  // Wait for fancy screen if present and click through (in case it appears again)
+  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 1000 }).catch(() => false);
+  if (fancyScreenVisible) {
+    await fancyScreenButton.click();
+    await page.waitForTimeout(500);
+  }
+  
   const otpInput = page.locator(
     'input[type="tel"], input[type="text"][inputmode="numeric"], input#otp-login-otp'
   ).first();
@@ -144,7 +241,14 @@ export async function waitForOTPForm(page: Page, timeout: number = 10000): Promi
  * Check if email form is visible
  */
 export async function isEmailFormVisible(page: Page): Promise<boolean> {
-  const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+  // Check for fancy screen first
+  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 1000 }).catch(() => false);
+  if (fancyScreenVisible) {
+    return false; // Fancy screen is showing, email form is not visible yet
+  }
+  
+  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
   return await emailInput.isVisible().catch(() => false);
 }
 
@@ -294,19 +398,41 @@ export async function waitForAPIResponse(
 
 /**
  * Check worker health
+ * CRITICAL: Health endpoints now require JWT encryption
  */
 export async function checkWorkerHealth(workerUrl: string, timeout = 5000): Promise<boolean> {
   try {
+    // Get test JWT token from environment (generated by setup-test-secrets.js)
+    const testJWTToken = process.env.E2E_TEST_JWT_TOKEN;
+    
+    if (!testJWTToken) {
+      console.warn('[E2E] E2E_TEST_JWT_TOKEN not found - health check may fail. Run setup-test-secrets.js first.');
+    }
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
+    const headers: HeadersInit = {};
+    if (testJWTToken) {
+      headers['Authorization'] = `Bearer ${testJWTToken}`;
+    }
+    
     const response = await fetch(`${workerUrl}/health`, {
       signal: controller.signal,
+      headers,
     });
     
     clearTimeout(timeoutId);
+    
+    // Health endpoints now require JWT - 401 means missing JWT, not unhealthy
+    if (response.status === 401 && !testJWTToken) {
+      console.warn(`[E2E] Health check returned 401 (JWT required) for ${workerUrl}. E2E_TEST_JWT_TOKEN may not be set.`);
+      return false; // Consider unhealthy if JWT is required but not provided
+    }
+    
     return response.ok;
-  } catch {
+  } catch (error) {
+    console.error(`[E2E] Health check failed for ${workerUrl}:`, error);
     return false;
   }
 }

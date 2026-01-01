@@ -93,14 +93,12 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
         
         // Route: GET /mods or GET / - List mods
-        // CRITICAL: Don't encrypt public mod list - it's public data and thumbnailUrls need to remain accessible
-        // The list endpoint already filters by status/visibility, so encryption isn't needed for security
-        // BUT: Still use wrapWithEncryption to add integrity headers for service-to-service calls
+        // EXCEPTION: Allow public browsing (no JWT required) for mod list
+        // All other endpoints require JWT encryption
         if (pathSegments.length === 0 && request.method === 'GET') {
             const response = await handleListMods(request, env, auth);
-            // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-            // wrapWithEncryption will detect it's a public endpoint and won't encrypt, but will add integrity headers
-            return await wrapWithEncryption(response, auth, request, env);
+            // Allow public browsing - requireJWT: false for mod list only
+            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
         }
 
         // Route: POST /mods or POST / - Upload new mod
@@ -146,6 +144,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // Route: GET /mods/:slug or GET /:slug - Get mod detail (by slug)
+        // EXCEPTION: Allow public browsing (no JWT required) for mod detail
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 1 && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
@@ -154,7 +153,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleGetModDetail(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            // Allow public browsing - requireJWT: false for mod detail only
+            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
         }
 
         // Route: PUT /mods/:slug or PUT /:slug - Update mod (by slug)
@@ -211,6 +211,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // Route: GET /mods/:slug/ratings or GET /:slug/ratings - Get ratings for a mod
+        // EXCEPTION: Allow public browsing (no JWT required) for ratings
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'ratings' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
@@ -220,7 +221,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetModRatings } = await import('../handlers/mods/ratings.js');
             const response = await handleGetModRatings(request, env, modId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            // Allow public browsing - requireJWT: false for ratings only
+            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
         }
 
         // Route: POST /mods/:slug/ratings or POST /:slug/ratings - Submit a rating for a mod
@@ -310,6 +312,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // Route: GET /mods/:slug/thumbnail or GET /:slug/thumbnail - Get thumbnail
+        // EXCEPTION: Allow public browsing (no JWT required) for thumbnails
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'thumbnail' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
@@ -331,11 +334,13 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const response = await handleThumbnail(request, env, modId, auth);
             console.log('[Router] Thumbnail response:', { status: response.status, contentType: response.headers.get('content-type') });
-            // Use wrapWithEncryption to add integrity headers (won't encrypt image data)
-            return await wrapWithEncryption(response, auth, request, env);
+            // Thumbnails are binary images - handler returns unencrypted for public access
+            // No JWT encryption required for public browsing
+            return { response, customerId: auth?.customerId || null };
         }
 
         // Route: GET /mods/:slug/og-image or GET /:slug/og-image - Get Open Graph preview image
+        // EXCEPTION: Allow public access (no JWT required) for social media crawlers
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'og-image' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
@@ -344,14 +349,20 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
             }
             const response = await handleOGImage(request, env, modId, auth);
-            // Use wrapWithEncryption to add integrity headers (won't encrypt image data)
-            return await wrapWithEncryption(response, auth, request, env);
+            // OG images are binary images - handler returns unencrypted for public access (social media crawlers)
+            // No JWT encryption required for public browsing
+            return { response, customerId: auth?.customerId || null };
         }
 
         // Route: GET /mods/:slug/versions/:versionId/download or GET /:slug/versions/:versionId/download - Download version
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // CRITICAL SECURITY: JWT binary encryption is MANDATORY for downloads
         // Normalized pathSegments = [slug, 'versions', versionId, 'download']
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'download' && request.method === 'GET') {
+            // CRITICAL: JWT is required for binary encryption/decryption
+            if (!auth?.jwtToken) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.', null);
+            }
             const slugOrModId = pathSegments[0];
             const versionId = pathSegments[2];
             console.log('[Router] Download request:', { path, pathSegments, slugOrModId, versionId, hasAuth: !!auth });
@@ -375,14 +386,21 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const response = await handleDownloadVersion(request, env, modId, versionId, auth);
             console.log('[Router] Download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
-            // Downloads are binary files - DO NOT encrypt, return as-is
+            // Response is already decrypted by handler (file was encrypted at rest, decrypted on-the-fly)
+            // But we need to re-encrypt it with JWT for transport
+            // Actually, the handler should handle encryption - let's check if it does
             return { response, customerId: auth?.customerId || null };
         }
 
         // Route: GET /mods/:slug/variants/:variantId/download or GET /:slug/variants/:variantId/download - Download variant
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
+        // CRITICAL SECURITY: JWT binary encryption is MANDATORY for downloads
         // Normalized pathSegments = [slug, 'variants', variantId, 'download']
         if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'download' && request.method === 'GET') {
+            // CRITICAL: JWT is required for binary encryption/decryption
+            if (!auth?.jwtToken) {
+                return await createErrorResponse(request, env, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.', null);
+            }
             const slugOrModId = pathSegments[0];
             const variantId = pathSegments[2];
             console.log('[Router] Variant download request:', { path, pathSegments, slugOrModId, variantId, hasAuth: !!auth });
@@ -406,7 +424,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const { handleDownloadVariant } = await import('../handlers/variants/download.js');
             const response = await handleDownloadVariant(request, env, modId, variantId, auth);
             console.log('[Router] Variant download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
-            // Downloads are binary files - DO NOT encrypt, return as-is
+            // Response is already decrypted by handler (file was encrypted at rest, decrypted on-the-fly)
             return { response, customerId: auth?.customerId || null };
         }
 
@@ -459,6 +477,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge
+        // EXCEPTION: Allow public access (no JWT required) for badge images (loaded in <img> tags)
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'badge' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
@@ -479,8 +498,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleBadge } = await import('../handlers/versions/badge.js');
             const response = await handleBadge(request, env, modId, versionId, auth);
-            // Use wrapWithEncryption to add integrity headers (won't encrypt SVG image data)
-            return await wrapWithEncryption(response, auth, request, env);
+            // Badge returns SVG (text) - no encryption needed for public access
+            // No JWT encryption required for public browsing
+            return { response, customerId: auth?.customerId || null };
         }
 
         // 404 for unknown mod routes

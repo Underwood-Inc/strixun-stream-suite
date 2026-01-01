@@ -445,8 +445,32 @@ export async function handleRegisterCustomer(request, env) {
 /**
  * Health check endpoint
  * GET /health
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 export async function handleHealth(request, env) {
+    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
+    // Get JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...corsHeaders,
+            },
+        });
+    }
+
     try {
         // Check KV access
         await env.OTP_AUTH_KV.get('health_check', { type: 'text' });
@@ -473,28 +497,64 @@ export async function handleHealth(request, env) {
             healthStatus.warnings.recommended = secretValidation.warnings;
         }
         
-        return new Response(JSON.stringify(healthStatus), {
+        const response = new Response(JSON.stringify(healthStatus), {
             status: secretValidation.valid ? 200 : 503,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
         });
+        
+        // Wrap with encryption
+        const { wrapWithEncryption } = await import('@strixun/api-framework');
+        const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+        const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+        return encryptedResult.response;
     } catch (error) {
-        return new Response(JSON.stringify({ 
+        const errorResponse = new Response(JSON.stringify({ 
             status: 'unhealthy',
             service: 'otp-auth-service',
             error: 'KV check failed',
             details: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 503,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
         });
+        
+        // Wrap error response with encryption
+        const { wrapWithEncryption } = await import('@strixun/api-framework');
+        const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+        const encryptedError = await wrapWithEncryption(errorResponse, authForEncryption, request, env, { requireJWT: false });
+        return encryptedError.response;
     }
 }
 
 /**
  * Readiness check endpoint
  * GET /health/ready
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health/ready
  */
 export async function handleHealthReady(request, env) {
+    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
+    // Get JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...corsHeaders,
+            },
+        });
+    }
+
     try {
         // Check KV access
         await env.OTP_AUTH_KV.get('health_check', { type: 'text' });
@@ -502,8 +562,9 @@ export async function handleHealthReady(request, env) {
         // Validate required secrets
         const secretValidation = validateSecrets(env);
         
+        let response;
         if (!secretValidation.valid) {
-            return new Response(JSON.stringify({ 
+            response = new Response(JSON.stringify({ 
                 status: 'not_ready',
                 reason: 'missing_secrets',
                 missing: secretValidation.missing,
@@ -511,35 +572,77 @@ export async function handleHealthReady(request, env) {
                 message: `Required secrets not configured: ${secretValidation.missing.join(', ')}. Set them via: wrangler secret put <SECRET_NAME>`
             }), {
                 status: 503,
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json' },
+            });
+        } else {
+            response = new Response(JSON.stringify({ 
+                status: 'ready',
+                warnings: secretValidation.warnings.length > 0 ? secretValidation.warnings : undefined
+            }), {
+                headers: { 'Content-Type': 'application/json' },
             });
         }
         
-        return new Response(JSON.stringify({ 
-            status: 'ready',
-            warnings: secretValidation.warnings.length > 0 ? secretValidation.warnings : undefined
-        }), {
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-        });
+        // Wrap with encryption
+        const { wrapWithEncryption } = await import('@strixun/api-framework');
+        const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+        const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+        return encryptedResult.response;
     } catch (error) {
-        return new Response(JSON.stringify({ 
+        const errorResponse = new Response(JSON.stringify({ 
             status: 'not_ready',
             reason: 'kv_check_failed',
             error: env.ENVIRONMENT === 'development' ? error.message : undefined
         }), {
             status: 503,
-            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
         });
+        
+        // Wrap error response with encryption
+        const { wrapWithEncryption } = await import('@strixun/api-framework');
+        const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+        const encryptedError = await wrapWithEncryption(errorResponse, authForEncryption, request, env, { requireJWT: false });
+        return encryptedError.response;
     }
 }
 
 /**
  * Liveness check endpoint
  * GET /health/live
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health/live
  */
 export async function handleHealthLive(request, env) {
-    return new Response(JSON.stringify({ status: 'alive' }), {
-        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
+    // Get JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...corsHeaders,
+            },
+        });
+    }
+
+    const response = new Response(JSON.stringify({ status: 'alive' }), {
+        headers: { 'Content-Type': 'application/json' },
     });
+    
+    // Wrap with encryption
+    const { wrapWithEncryption } = await import('@strixun/api-framework');
+    const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    return encryptedResult.response;
 }
 

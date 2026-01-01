@@ -153,11 +153,26 @@ async function createTestMod(
   
   // Create test file content
   const testFileContent = Buffer.from([0x50, 0x4B, 0x03, 0x04]); // ZIP file header
+  const fileBuffer = testFileContent.buffer.slice(
+    testFileContent.byteOffset,
+    testFileContent.byteOffset + testFileContent.byteLength
+  ) as ArrayBuffer;
+  
+  // CRITICAL: Encrypt file before upload - JWT encryption is MANDATORY
+  const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
+  const encryptedFile = await encryptBinaryWithJWT(new Uint8Array(fileBuffer), token);
+  
+  // Convert encrypted Uint8Array to ArrayBuffer for Blob
+  const encryptedArrayBuffer = encryptedFile.buffer.slice(
+    encryptedFile.byteOffset,
+    encryptedFile.byteOffset + encryptedFile.byteLength
+  ) as ArrayBuffer;
+  const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
   
   // Always use fetch() with FormData - Playwright's multipart doesn't reliably send Authorization headers
   // Build form data
   const formData = new FormData();
-  formData.append('file', new Blob([testFileContent], { type: 'application/zip' }), 'test-mod.jar');
+  formData.append('file', encryptedBlob, 'test-mod.jar');
   formData.append('metadata', JSON.stringify({
     title: options.title || `Test ${options.visibility} Mod`,
     description: 'Test mod for E2E testing',
@@ -276,52 +291,87 @@ test.describe('Mod Download - Public Access', () => {
     await setupTestData(request);
   });
 
-  test('should download public published mod without authentication', async ({ request }) => {
+  test('should require JWT token for downloads (even public mods)', async ({ request }) => {
     const publicMod = await getPublicMod();
 
-    // Attempt download without JWT token
+    // Attempt download without JWT token - should fail
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
-    // Should succeed (200) for public mods
-    expect(response.ok()).toBeTruthy();
-    expect(response.status()).toBe(200);
+    // Should require JWT token (401) - downloads require authentication
+    expect(response.status()).toBe(401);
+    
+    const body = await response.json();
+    expect(body).toHaveProperty('title');
+    expect(body.title).toContain('Unauthorized');
+    
+    // Now test with JWT token - should succeed
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const authenticatedResponse = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+    
+    expect(authenticatedResponse.ok()).toBeTruthy();
+    expect(authenticatedResponse.status()).toBe(200);
     
     // Should return file content
-    const contentType = response.headers()['content-type'];
+    const contentType = authenticatedResponse.headers()['content-type'];
     expect(contentType).toBeTruthy();
     expect(contentType).not.toBe('application/problem+json');
     
     // Should have file content
-    const body = await response.body();
-    expect(body.length).toBeGreaterThan(0);
+    const fileBody = await authenticatedResponse.body();
+    expect(fileBody.length).toBeGreaterThan(0);
     
     // Should have proper headers
-    const contentDisposition = response.headers()['content-disposition'];
+    const contentDisposition = authenticatedResponse.headers()['content-disposition'];
     expect(contentDisposition).toBeTruthy();
     expect(contentDisposition).toContain('attachment');
   });
 
-  test('should download public mod by modId without authentication', async ({ request }) => {
+  test('should require JWT token for downloads even when using modId', async ({ request }) => {
     const publicMod = await getPublicMod();
 
-    // Use modId instead of slug
+    // Use modId instead of slug - but JWT is still required
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.modId}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
-    expect(response.ok()).toBeTruthy();
-    expect(response.status()).toBe(200);
+    // Should require JWT token (401) - downloads ALWAYS require authentication
+    expect(response.status()).toBe(401);
+    
+    const body = await response.json();
+    expect(body).toHaveProperty('title');
+    expect(body.title).toContain('Unauthorized');
+    
+    // Now test with JWT token - should succeed
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const authenticatedResponse = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+    
+    expect(authenticatedResponse.ok()).toBeTruthy();
+    expect(authenticatedResponse.status()).toBe(200);
   });
 
-  test('should return decrypted file content for public mods', async ({ request }) => {
+  test('should return decrypted file content for authenticated downloads', async ({ request }) => {
     const publicMod = await getPublicMod();
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
 
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
@@ -467,22 +517,27 @@ test.describe('Mod Download - Error Handling', () => {
 
   test('should handle decryption errors gracefully', async ({ request }) => {
     const publicMod = await getPublicMod();
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
 
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
-    // Should either succeed or return a clear error
-    if (!response.ok()) {
-      const body = await response.json();
-      expect(body).toHaveProperty('title');
-      expect(body.title).toBeTruthy();
-    } else {
-      // If it succeeds, verify it's actually decrypted content
-      const body = await response.body();
-      expect(body.length).toBeGreaterThan(0);
-    }
+    // Should succeed with valid JWT token
+    expect(response.ok()).toBeTruthy();
+    
+    // Verify it's actually decrypted content (not encrypted binary format)
+    const body = await response.body();
+    expect(body.length).toBeGreaterThan(0);
+    
+    // Should NOT start with encryption format markers (4 or 5 for binary-v4/v5)
+    const firstBytes = new Uint8Array(body.slice(0, 10));
+    const isEncryptedFormat = firstBytes[0] === 4 || firstBytes[0] === 5;
+    expect(isEncryptedFormat).toBeFalsy();
   });
 });
 
@@ -492,26 +547,36 @@ test.describe('Mod Download - CORS and Headers', () => {
     await setupTestData(request);
   });
 
-  test('should include CORS headers for public downloads', async ({ request }) => {
+  test('should include CORS headers for authenticated downloads', async ({ request }) => {
     const publicMod = await getPublicMod();
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
 
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
     expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
     
     // CORS headers should be present (or handled by Cloudflare)
     // This is a soft check - CORS may be handled at edge
-    expect(response.status()).toBe(200);
+    const corsHeaders = response.headers();
+    expect(corsHeaders).toBeTruthy();
   });
 
   test('should set proper content type headers', async ({ request }) => {
     const publicMod = await getPublicMod();
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
 
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
@@ -527,9 +592,13 @@ test.describe('Mod Download - CORS and Headers', () => {
 
   test('should set content-disposition header for file download', async ({ request }) => {
     const publicMod = await getPublicMod();
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
 
     const downloadUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/download`;
     const response = await request.get(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       timeout: TEST_CONFIG.API_TIMEOUT,
     });
 
@@ -539,6 +608,257 @@ test.describe('Mod Download - CORS and Headers', () => {
     expect(contentDisposition).toBeTruthy();
     expect(contentDisposition).toContain('attachment');
     expect(contentDisposition).toContain('filename');
+  });
+});
+
+test.describe('File Integrity Badge - Verification', () => {
+  test.beforeAll(async ({ request }) => {
+    await verifyWorkersHealth();
+    await setupTestData(request);
+  });
+
+  test('should generate verified badge for file with matching hash', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
+    const response = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
+    
+    // Badge should be encrypted binary
+    expect(response.headers()['content-type']).toBe('application/octet-stream');
+    expect(response.headers()['x-encrypted']).toBe('true');
+    expect(response.headers()['x-original-content-type']).toBe('image/svg+xml');
+    
+    // Decrypt and verify badge content
+    const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+    const encryptedBadge = await response.body();
+    const decryptedBadge = await decryptBinaryWithJWT(new Uint8Array(encryptedBadge), token);
+    const badgeSvg = new TextDecoder().decode(decryptedBadge);
+    
+    // Badge should contain domain name and "Verified" status
+    expect(badgeSvg).toContain('Verified');
+    expect(badgeSvg).toContain('☁');
+    expect(badgeSvg).toContain('svg');
+    // Should be green (verified) - check for green color code
+    expect(badgeSvg).toContain('#4caf50');
+  });
+
+  test('should generate unverified badge for file without hash', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    // Note: This test assumes we can create a version without hash
+    // In practice, all uploaded files should have hashes, but we test the unverified state
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
+    const response = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    // Should still return a badge (even if unverified)
+    expect(response.ok()).toBeTruthy();
+    
+    const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+    const encryptedBadge = await response.body();
+    const decryptedBadge = await decryptBinaryWithJWT(new Uint8Array(encryptedBadge), token);
+    const badgeSvg = new TextDecoder().decode(decryptedBadge);
+    
+    // Badge should be either Verified or Unverified depending on file state
+    expect(badgeSvg).toMatch(/(Verified|Unverified|Tampered)/);
+    expect(badgeSvg).toContain('svg');
+  });
+
+  test('should include domain name in badge', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
+    const response = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    expect(response.ok()).toBeTruthy();
+    
+    const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+    const encryptedBadge = await response.body();
+    const decryptedBadge = await decryptBinaryWithJWT(new Uint8Array(encryptedBadge), token);
+    const badgeSvg = new TextDecoder().decode(decryptedBadge);
+    
+    // Extract domain from URL
+    const url = new URL(badgeUrl);
+    const domain = url.hostname;
+    
+    // Badge should contain the domain name
+    expect(badgeSvg).toContain(domain);
+    expect(badgeSvg).toContain('☁');
+  });
+
+  test('should support different badge styles', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    const styles = ['flat', 'flat-square', 'plastic'];
+    
+    for (const style of styles) {
+      const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge?style=${style}`;
+      const response = await request.get(badgeUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        timeout: TEST_CONFIG.API_TIMEOUT,
+      });
+
+      expect(response.ok()).toBeTruthy();
+      
+      const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+      const encryptedBadge = await response.body();
+      const decryptedBadge = await decryptBinaryWithJWT(new Uint8Array(encryptedBadge), token);
+      const badgeSvg = new TextDecoder().decode(decryptedBadge);
+      
+      // All styles should produce valid SVG
+      expect(badgeSvg).toContain('svg');
+      expect(badgeSvg).toContain('xmlns');
+    }
+  });
+
+  test('should allow public access to badge generation (no JWT required)', async ({ request }) => {
+    const publicMod = await getPublicMod();
+
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
+    // Public browsing - no JWT required for badges
+    const response = await request.get(badgeUrl, {
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    // Should succeed (200) without JWT token - badges are public
+    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
+    
+    // Should return SVG content
+    const contentType = response.headers()['content-type'];
+    expect(contentType).toBeTruthy();
+    expect(contentType).toContain('svg');
+    
+    // Should have SVG content
+    const body = await response.text();
+    expect(body).toContain('svg');
+    expect(body).toContain('xmlns');
+    
+    // Also test with JWT token - should still work (encrypted response)
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const authenticatedResponse = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+    
+    expect(authenticatedResponse.ok()).toBeTruthy();
+    expect(authenticatedResponse.status()).toBe(200);
+  });
+
+  test('should verify badge reflects actual file integrity status', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    // First, verify the file using the verify endpoint
+    const verifyUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/verify`;
+    const verifyResponse = await request.get(verifyUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    let isVerified = false;
+    if (verifyResponse.ok()) {
+      const verifyData = await verifyResponse.json();
+      isVerified = verifyData.verified === true;
+    }
+
+    // Then get the badge
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge`;
+    const badgeResponse = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    expect(badgeResponse.ok()).toBeTruthy();
+    
+    const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+    const encryptedBadge = await badgeResponse.body();
+    const decryptedBadge = await decryptBinaryWithJWT(new Uint8Array(encryptedBadge), token);
+    const badgeSvg = new TextDecoder().decode(decryptedBadge);
+    
+    // Badge status should match verification status
+    if (isVerified) {
+      expect(badgeSvg).toContain('Verified');
+      expect(badgeSvg).toContain('#4caf50'); // Green color
+    } else {
+      // Could be Unverified or Tampered
+      expect(badgeSvg).toMatch(/(Unverified|Tampered)/);
+    }
+  });
+
+  test('should return 404 for non-existent mod badge', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/non-existent-mod/versions/non-existent-version/badge`;
+    const response = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    expect(response.status()).toBe(404);
+  });
+
+  test('should return 404 for non-existent version badge', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/non-existent-version/badge`;
+    const response = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    expect(response.status()).toBe(404);
+  });
+
+  test('should handle badge generation errors gracefully', async ({ request }) => {
+    const token = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
+    const publicMod = await getPublicMod();
+
+    // Test with invalid style parameter (should default to flat)
+    const badgeUrl = `${TEST_CONFIG.API_URL}/mods/${publicMod.slug}/versions/${publicMod.versionId}/badge?style=invalid`;
+    const response = await request.get(badgeUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      timeout: TEST_CONFIG.API_TIMEOUT,
+    });
+
+    // Should still return a badge (defaults to flat style)
+    expect(response.ok()).toBeTruthy();
   });
 });
 

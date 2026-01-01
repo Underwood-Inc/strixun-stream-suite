@@ -267,6 +267,12 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
         e.preventDefault();
         if (!selectedRating || !onRatingSubmit) return;
         
+        // CRITICAL: Check for customerId - required for rating submission
+        if (!user?.customerId) {
+            alert('Your account is missing a customer association. This is required for rating submissions. Please contact support or try logging out and back in.');
+            return;
+        }
+        
         setIsSubmitting(true);
         try {
             await onRatingSubmit(selectedRating, comment);

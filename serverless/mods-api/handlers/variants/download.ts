@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT, decryptBinaryWithJWT, decryptBinaryWithServiceKey, getServiceKey } from '@strixun/api-framework';
+import { decryptWithJWT, decryptBinaryWithJWT } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId, getCustomerR2Key } from '../../utils/customer.js';
 import type { ModMetadata, ModVariant } from '../../types/mod.js';
@@ -163,64 +163,51 @@ export async function handleDownloadVariant(
             const encryptedArray = new Uint8Array(encryptedBytes);
 
             if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                // Binary encrypted format
-                if (auth) {
-                    // Try JWT decryption first (for authenticated users)
-                    const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-                    if (jwtToken) {
-                        try {
-                            decryptedData = await decryptBinaryWithJWT(encryptedArray, jwtToken, env);
-                            console.log('[VariantDownload] Decrypted using JWT');
-                        } catch (jwtError) {
-                            console.warn('[VariantDownload] JWT decryption failed, trying service key:', jwtError);
-                            // Fallback to service key
-                            const serviceKey = await getServiceKey(env);
-                            decryptedData = await decryptBinaryWithServiceKey(encryptedArray, serviceKey, env);
-                            console.log('[VariantDownload] Decrypted using service key (fallback)');
-                        }
-                    } else {
-                        // No JWT, use service key
-                        const serviceKey = await getServiceKey(env);
-                        decryptedData = await decryptBinaryWithServiceKey(encryptedArray, serviceKey, env);
-                        console.log('[VariantDownload] Decrypted using service key (no JWT)');
-                    }
-                } else {
-                    // No auth, use service key
-                    const serviceKey = await getServiceKey(env);
-                    decryptedData = await decryptBinaryWithServiceKey(encryptedArray, serviceKey, env);
-                    console.log('[VariantDownload] Decrypted using service key (no auth)');
+                // Binary encrypted format - decrypt with JWT ONLY
+                // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
+                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                if (!jwtToken) {
+                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
                 }
+                
+                // Decrypt with JWT (mandatory)
+                decryptedData = await decryptBinaryWithJWT(encryptedArray, jwtToken);
+                console.log('[VariantDownload] Decrypted using JWT');
             } else {
-                // Legacy JSON encrypted format
+                // Legacy JSON encrypted format - decrypt with JWT ONLY
+                // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
+                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                if (!jwtToken) {
+                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
+                    const corsHeaders = createCORSHeaders(request, {
+                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                    });
+                    return new Response(JSON.stringify(rfcError), {
+                        status: 401,
+                        headers: {
+                            'Content-Type': 'application/problem+json',
+                            ...Object.fromEntries(corsHeaders.entries()),
+                        },
+                    });
+                }
+                
                 const encryptedText = new TextDecoder().decode(encryptedArray);
                 const encryptedJson = JSON.parse(encryptedText);
                 
-                if (auth) {
-                    const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-                    if (jwtToken) {
-                        try {
-                            const decryptedJson = await decryptWithJWT(encryptedJson, jwtToken, env);
-                            decryptedData = new TextEncoder().encode(JSON.stringify(decryptedJson));
-                            console.log('[VariantDownload] Decrypted JSON using JWT');
-                        } catch (jwtError) {
-                            console.warn('[VariantDownload] JWT decryption failed for JSON, trying service key:', jwtError);
-                            const serviceKey = await getServiceKey(env);
-                            const decryptedJson = await decryptWithJWT(encryptedJson, serviceKey, env);
-                            decryptedData = new TextEncoder().encode(JSON.stringify(decryptedJson));
-                            console.log('[VariantDownload] Decrypted JSON using service key (fallback)');
-                        }
-                    } else {
-                        const serviceKey = await getServiceKey(env);
-                        const decryptedJson = await decryptWithJWT(encryptedJson, serviceKey, env);
-                        decryptedData = new TextEncoder().encode(JSON.stringify(decryptedJson));
-                        console.log('[VariantDownload] Decrypted JSON using service key (no JWT)');
-                    }
-                } else {
-                    const serviceKey = await getServiceKey(env);
-                    const decryptedJson = await decryptWithJWT(encryptedJson, serviceKey, env);
-                    decryptedData = new TextEncoder().encode(JSON.stringify(decryptedJson));
-                    console.log('[VariantDownload] Decrypted JSON using service key (no auth)');
-                }
+                // Decrypt with JWT (mandatory)
+                const decryptedJson = await decryptWithJWT(encryptedJson, jwtToken);
+                decryptedData = new TextEncoder().encode(JSON.stringify(decryptedJson));
+                console.log('[VariantDownload] Decrypted JSON using JWT');
             }
         } else {
             // File is not encrypted, return as-is

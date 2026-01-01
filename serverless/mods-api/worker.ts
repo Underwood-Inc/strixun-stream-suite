@@ -120,23 +120,62 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
 
 /**
  * Health check endpoint
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: Env, request: Request): Promise<Response> {
-    const routes = parseRoutes(env);
+    // Extract JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
     
-    return new Response(JSON.stringify({ 
+    // CRITICAL SECURITY: JWT is required for encryption/decryption
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...getCorsHeaders(env, request),
+            },
+        });
+    }
+    
+    // Authenticate request to get auth object for encryption
+    const { authenticateRequest } = await import('./utils/auth.js');
+    const auth = await authenticateRequest(request, env);
+    
+    // If authentication fails, still require JWT for encryption (even if invalid)
+    // We'll use the raw token for encryption
+    const authForEncryption = auth || { jwtToken, customerId: null };
+    
+    const routes = parseRoutes(env);
+    const healthData = { 
         status: 'ok', 
         message: 'Mods API is running',
         service: 'strixun-mods-api',
         timestamp: new Date().toISOString(),
         environment: env.ENVIRONMENT || 'development',
         routes: routes.length > 0 ? routes : undefined
-    }), {
+    };
+    
+    // Encrypt response with JWT
+    const { wrapWithEncryption } = await import('@strixun/api-framework');
+    const response = new Response(JSON.stringify(healthData), {
         headers: { 
             'Content-Type': 'application/json',
             ...getCorsHeaders(env, request),
         },
     });
+    
+    // Wrap with encryption (will encrypt with JWT token)
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    return encryptedResult.response;
 }
 
 /**

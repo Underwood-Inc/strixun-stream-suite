@@ -309,7 +309,6 @@ export function ModVersionList({ modSlug, versions, variants = [], isUploader = 
                                     <IntegrityBadge 
                                         slug={modSlug}
                                         versionId={version.versionId}
-                                        showCopyButton={isUploader}
                                     />
                                 )}
                             </VersionInfo>

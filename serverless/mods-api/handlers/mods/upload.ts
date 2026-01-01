@@ -254,12 +254,22 @@ export async function handleUploadMod(
             });
         }
 
-        // Get JWT token for decryption (required for private mods)
+        // Get JWT token for decryption (MANDATORY - all files must be encrypted with JWT)
         const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
         
-        // Determine expected encryption method from metadata visibility
-        const isPublic = metadata.visibility === 'public';
-        const expectedServiceKeyEncryption = isPublic;
+        if (!jwtToken) {
+            const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for file decryption. All files must be encrypted with JWT.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 401,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
         
         // Check file format: binary encrypted (v4/v5) or legacy JSON encrypted (v3)
         const fileBuffer = await file.arrayBuffer();
@@ -292,74 +302,20 @@ export async function handleUploadMod(
         
         try {
             if (isBinaryEncrypted) {
-                // Binary encrypted format - try expected method first based on visibility
-                const { decryptBinaryWithServiceKey, decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                // Binary encrypted format - JWT encryption is MANDATORY
+                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                
+                if (!jwtToken) {
+                    throw new Error('JWT token is required for file decryption. All files must be encrypted with JWT.');
+                }
+                
                 let decryptedBytes: Uint8Array;
-                let decryptionAttempted = false;
-                let lastError: Error | null = null;
-                
-                // Try expected encryption method first (based on metadata visibility)
-                if (expectedServiceKeyEncryption) {
-                    // Public mod: try service key first
-                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                    if (serviceKey && serviceKey.length >= 32) {
-                        try {
-                            decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
-                            decryptionAttempted = true;
-                            console.log('[Upload] Binary decryption successful with service key (public mod)');
-                        } catch (serviceKeyError) {
-                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
-                        }
-                    }
-                } else {
-                    // Private mod: try JWT first
-                    if (!jwtToken) {
-                        throw new Error('JWT token required for private mod decryption');
-                    }
-                    try {
-                        decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
-                        decryptionAttempted = true;
-                        console.log('[Upload] Binary decryption successful with JWT (private mod)');
-                    } catch (jwtError) {
-                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
-                    }
-                }
-                
-                // Try fallback method if expected method didn't work
-                if (!decryptionAttempted) {
-                    if (expectedServiceKeyEncryption) {
-                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
-                        if (jwtToken) {
-                            try {
-                                decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
-                                decryptionAttempted = true;
-                                console.log('[Upload] Binary decryption successful with JWT fallback (public mod)');
-                            } catch (jwtError) {
-                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                            }
-                        }
-                    } else {
-                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
-                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                        if (serviceKey && serviceKey.length >= 32) {
-                            try {
-                                decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
-                                decryptionAttempted = true;
-                                console.log('[Upload] Binary decryption successful with service key fallback (private mod)');
-                            } catch (serviceKeyError) {
-                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            }
-                        }
-                    }
-                }
-                
-                if (!decryptionAttempted) {
-                    const errorMsg = lastError 
-                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
-                        : 'Failed to decrypt file - neither service key nor JWT worked';
-                    throw new Error(errorMsg);
+                try {
+                    decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                    console.log('[Upload] Binary decryption successful with JWT');
+                } catch (jwtError) {
+                    const errorMsg = jwtError instanceof Error ? jwtError.message : String(jwtError);
+                    throw new Error(`Failed to decrypt file with JWT. All files must be encrypted with JWT. If this is a legacy file encrypted with service key, please re-upload it. Error: ${errorMsg}`);
                 }
                 
                 fileSize = decryptedBytes.length;
@@ -367,7 +323,7 @@ export async function handleUploadMod(
                 // Determine version from first byte (4 or 5)
                 encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
-                // Legacy JSON encrypted format - try expected method first based on visibility
+                // Legacy JSON encrypted format - JWT encryption is MANDATORY
                 const encryptedData = await file.text();
                 const encryptedJson = JSON.parse(encryptedData);
                 
@@ -376,73 +332,20 @@ export async function handleUploadMod(
                     throw new Error('Invalid encrypted file format');
                 }
                 
-                const { decryptWithServiceKey, decryptWithJWT } = await import('@strixun/api-framework');
+                // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
+                if (!jwtToken) {
+                    throw new Error('JWT token is required for file decryption. All files must be encrypted with JWT.');
+                }
+                
+                const { decryptWithJWT } = await import('@strixun/api-framework');
                 let decryptedBase64: string;
-                let decryptionAttempted = false;
-                let lastError: Error | null = null;
                 
-                // Try expected encryption method first (based on metadata visibility)
-                if (expectedServiceKeyEncryption) {
-                    // Public mod: try service key first
-                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                    if (serviceKey && serviceKey.length >= 32) {
-                        try {
-                            decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
-                            decryptionAttempted = true;
-                            console.log('[Upload] JSON decryption successful with service key (public mod)');
-                        } catch (serviceKeyError) {
-                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
-                        }
-                    }
-                } else {
-                    // Private mod: try JWT first
-                    if (!jwtToken) {
-                        throw new Error('JWT token required for private mod decryption');
-                    }
-                    try {
-                        decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                        decryptionAttempted = true;
-                        console.log('[Upload] JSON decryption successful with JWT (private mod)');
-                    } catch (jwtError) {
-                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
-                    }
-                }
-                
-                // Try fallback method if expected method didn't work
-                if (!decryptionAttempted) {
-                    if (expectedServiceKeyEncryption) {
-                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
-                        if (jwtToken) {
-                            try {
-                                decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                                decryptionAttempted = true;
-                                console.log('[Upload] JSON decryption successful with JWT fallback (public mod)');
-                            } catch (jwtError) {
-                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                            }
-                        }
-                    } else {
-                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
-                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                        if (serviceKey && serviceKey.length >= 32) {
-                            try {
-                                decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
-                                decryptionAttempted = true;
-                                console.log('[Upload] JSON decryption successful with service key fallback (private mod)');
-                            } catch (serviceKeyError) {
-                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            }
-                        }
-                    }
-                }
-                
-                if (!decryptionAttempted) {
-                    const errorMsg = lastError 
-                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
-                        : 'Failed to decrypt file - neither service key nor JWT worked';
-                    throw new Error(errorMsg);
+                try {
+                    decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                    console.log('[Upload] JSON decryption successful with JWT');
+                } catch (jwtError) {
+                    const errorMsg = jwtError instanceof Error ? jwtError.message : String(jwtError);
+                    throw new Error(`Failed to decrypt file with JWT. All files must be encrypted with JWT. If this is a legacy file encrypted with service key, please re-upload it. Error: ${errorMsg}`);
                 }
                 
                 // Convert base64 back to binary for hash calculation
@@ -457,7 +360,8 @@ export async function handleUploadMod(
             }
         } catch (error) {
             console.error('File decryption error during upload:', error);
-            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure the file was encrypted with either the service key (for public mods) or your JWT token (for private mods).');
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with JWT. ${errorMsg}`);
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -600,43 +504,44 @@ export async function handleUploadMod(
             }
         }
 
-        // Fetch author display name from auth API during upload
-        // CRITICAL: Use /auth/me endpoint when we have a JWT token (more reliable than /auth/user/:userId)
-        // This ensures we get the display name from the authenticated user's session
+        // CRITICAL: Fetch author display name from customer data
+        // Customer is the primary data source for all customizable user info
+        // Look up customer by auth.customerId to get displayName
         let authorDisplayName: string | null = null;
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
-            const { fetchDisplayNameByToken } = await import('../../utils/displayName.js');
-            authorDisplayName = await fetchDisplayNameByToken(token, env, 10000); // 10 second timeout
+        
+        if (auth.customerId) {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+            console.log('[Upload] Fetching authorDisplayName from customer data:', { 
+                customerId: auth.customerId,
+                userId: auth.userId
+            });
+            authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             
             if (authorDisplayName) {
-                console.log('[Upload] Fetched authorDisplayName via /auth/me:', { 
+                console.log('[Upload] Successfully fetched authorDisplayName from customer data:', { 
                     authorDisplayName, 
+                    customerId: auth.customerId,
                     userId: auth.userId
                 });
             } else {
-                // Fallback to userId lookup if /auth/me fails
-                const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-                authorDisplayName = await fetchDisplayNameByUserId(auth.userId, env, 10000);
-                if (authorDisplayName) {
-                    console.log('[Upload] Fetched authorDisplayName via /auth/user/:userId (fallback):', { 
-                        authorDisplayName, 
-                        userId: auth.userId
-                    });
-                }
+                console.warn('[Upload] Could not fetch displayName from customer data:', {
+                    customerId: auth.customerId,
+                    userId: auth.userId
+                });
             }
         } else {
-            // No token, use userId lookup
-            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-            authorDisplayName = await fetchDisplayNameByUserId(auth.userId, env, 10000);
+            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', {
+                userId: auth.userId,
+                customerId: auth.customerId,
+                note: 'UI will show "Unknown User" - customerId should be set during authentication'
+            });
         }
         
         if (!authorDisplayName) {
-            console.warn('[Upload] authorDisplayName is null after all fetch attempts:', {
+            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', {
                 userId: auth.userId,
                 customerId: auth.customerId,
-                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again'
+                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again on next load'
             });
         }
         
@@ -646,15 +551,24 @@ export async function handleUploadMod(
 
         // CRITICAL: Validate customerId is present before storing mod
         // This ensures proper data scoping and display name lookups
-        // customerId is required for proper data isolation and user lookups
+        // customerId is REQUIRED - reject uploads without it
         if (!auth.customerId) {
             console.error('[Upload] CRITICAL: customerId is null for authenticated user:', {
                 userId: auth.userId,
                 email: auth.email,
-                note: 'This will cause data scoping and display name lookup issues'
+                note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
             });
-            // Still allow upload but log the critical issue
-            // In production, you may want to reject uploads without customerId
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod uploads. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
         
         // Create mod metadata with initial status

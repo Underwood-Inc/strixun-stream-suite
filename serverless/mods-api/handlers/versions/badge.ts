@@ -7,21 +7,34 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { formatStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
+
+type VerificationStatus = 'verified' | 'unverified' | 'tampered';
 
 /**
  * Generate SVG badge for file integrity
  */
-function generateBadge(verified: boolean, hash: string, style: 'flat' | 'flat-square' | 'plastic' = 'flat'): string {
-    const status = verified ? 'verified' : 'unverified';
-    const color = verified ? '#4caf50' : '#f44336';
+function generateBadge(status: VerificationStatus, _hash: string, domain: string, style: 'flat' | 'flat-square' | 'plastic' = 'flat'): string {
+    let color: string;
+    let message: string;
+    
+    if (status === 'verified') {
+        color = '#4caf50'; // Green
+        message = 'Verified';
+    } else if (status === 'tampered') {
+        color = '#ff9800'; // Orange
+        message = 'Tampered';
+    } else {
+        color = '#f44336'; // Red
+        message = 'Unverified';
+    }
+    
     const textColor = '#fff';
-    const label = 'Strixun';
-    const message = verified ? 'Verified' : 'Unverified';
+    const label = `${domain} ☁`;
     
     // Calculate text widths (approximate)
-    const labelWidth = label.length * 6 + 10;
+    // Domain + cloud emoji takes more space (use 7px per char for domain, emoji is wider)
+    const labelWidth = Math.max(label.length * 7 + 12, 80); // Minimum width for readability
     const messageWidth = message.length * 6 + 10;
     const totalWidth = labelWidth + messageWidth;
     const height = 20;
@@ -234,24 +247,128 @@ export async function handleBadge(
         // Get style from query params
         const url = new URL(request.url);
         const style = (url.searchParams.get('style') || 'flat') as 'flat' | 'flat-square' | 'plastic';
+        
+        // Extract domain from request URL (hostname)
+        const domain = url.hostname;
 
-        // Generate badge (always verified if hash exists - actual verification happens on /verify endpoint)
-        const verified = !!version.sha256;
+        // EXCEPTION: Allow public browsing (no JWT required) for badge images
+        // Get JWT token from request (optional for public access)
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null;
+
+        // Perform actual file integrity verification
+        // EXCEPTION: For public browsing (no JWT), skip verification and show as "unverified"
+        // Verification requires JWT to decrypt files, so we can't verify without it
+        let verificationStatus: VerificationStatus = 'unverified';
+        
+        if (version.sha256 && jwtToken) {
+            // Hash exists and JWT is present - verify it matches the actual file
+            try {
+                // Get file from R2
+                const encryptedFile = await env.MODS_R2.get(version.r2Key);
+                
+                if (encryptedFile) {
+                    // Decrypt file to calculate hash (same as upload process)
+                    const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
+                    const encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
+                    let decryptedFileData: ArrayBuffer;
+                    
+                    if (isEncrypted) {
+                        // File is encrypted - decrypt it first
+                        if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
+                            const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                            const encryptedBinary = await encryptedFile.arrayBuffer();
+                            const decryptedBytes = await decryptBinaryWithJWT(new Uint8Array(encryptedBinary), jwtToken);
+                            // Convert Uint8Array to ArrayBuffer
+                            decryptedFileData = new ArrayBuffer(decryptedBytes.length);
+                            new Uint8Array(decryptedFileData).set(decryptedBytes);
+                        } else {
+                            // Legacy JSON encrypted format
+                            const { decryptWithJWT } = await import('@strixun/api-framework');
+                            const encryptedData = await encryptedFile.text();
+                            const encryptedJson = JSON.parse(encryptedData);
+                            const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                            
+                            // Convert base64 back to binary
+                            const binaryString = atob(decryptedBase64);
+                            const fileBytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                fileBytes[i] = binaryString.charCodeAt(i);
+                            }
+                            decryptedFileData = fileBytes.buffer;
+                        }
+                    } else {
+                        // Legacy file (not encrypted) - use as-is
+                        decryptedFileData = await encryptedFile.arrayBuffer();
+                    }
+                    
+                    // Verify hash matches (verifyStrixunHash accepts ArrayBuffer)
+                    const isValid = await verifyStrixunHash(decryptedFileData as ArrayBuffer, version.sha256, env);
+                    verificationStatus = isValid ? 'verified' : 'tampered';
+                    
+                    if (!isValid) {
+                        console.warn('[Badge] File integrity check failed - hash mismatch:', {
+                            versionId: version.versionId,
+                            modId: version.modId,
+                            expectedHash: version.sha256.substring(0, 16) + '...',
+                        });
+                    }
+                } else {
+                    // File not found in R2 - treat as unverified
+                    console.warn('[Badge] File not found in R2 for verification:', {
+                        versionId: version.versionId,
+                        r2Key: version.r2Key,
+                    });
+                    verificationStatus = 'unverified';
+                }
+            } catch (error) {
+                // Verification failed (decryption error, etc.) - treat as unverified
+                console.error('[Badge] Verification error:', error);
+                verificationStatus = 'unverified';
+            }
+        } else if (version.sha256 && !jwtToken) {
+            // Hash exists but no JWT - can't verify (public browsing)
+            // Show as "unverified" since we can't decrypt files to verify
+            console.log('[Badge] Skipping verification for public browsing (no JWT token)');
+            verificationStatus = 'unverified';
+        }
+        
         const hash = version.sha256 || 'unknown';
-        const badge = generateBadge(verified, hash, style);
+        const badge = generateBadge(verificationStatus, hash, domain, style);
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         
-        return new Response(badge, {
-            status: 200,
-            headers: {
-                'Content-Type': 'image/svg+xml',
-                'Cache-Control': 'public, max-age=3600',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
+        // Encrypt with JWT if token is present, otherwise return unencrypted SVG for public browsing
+        if (jwtToken) {
+            // Convert SVG string to binary and encrypt with JWT
+            const encoder = new TextEncoder();
+            const badgeBytes = encoder.encode(badge);
+            const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
+            const encryptedBadge = await encryptBinaryWithJWT(badgeBytes, jwtToken);
+            
+            return new Response(encryptedBadge, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/octet-stream', // Binary encrypted data
+                    'X-Encrypted': 'true', // Flag to indicate encrypted response
+                    'X-Original-Content-Type': 'image/svg+xml', // Preserve original content type
+                    'Cache-Control': 'public, max-age=300', // 5 minutes - verification can change if file is modified
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        } else {
+            // Return unencrypted SVG for public browsing (badge images loaded in <img> tags)
+            return new Response(badge, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'image/svg+xml',
+                    'X-Encrypted': 'false', // Flag to indicate unencrypted response
+                    'Cache-Control': 'public, max-age=300', // 5 minutes - verification can change if file is modified
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
     } catch (error: any) {
         console.error('Badge generation error:', error);
         return new Response('Badge generation failed', { status: 500 });

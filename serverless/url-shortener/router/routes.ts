@@ -42,24 +42,43 @@ export function createRouter() {
     try {
       // Health check (moved before root to ensure it works)
       if (path === '/health') {
-        return handleHealth();
+        return handleHealth(request, env);
       }
 
       // Serve decryption script
       if (path === '/decrypt.js' && request.method === 'GET') {
-        return handleDecryptScript();
+        return handleDecryptScript(request, env);
       }
 
       // Serve OTP core script
       if (path === '/otp-core.js' && request.method === 'GET') {
-        return handleOtpCoreScript();
+        return handleOtpCoreScript(request, env);
       }
 
-      // Public stats endpoint (service-to-service only, no JWT required)
+      // Public stats endpoint - now requires JWT encryption
       if (path === '/api/stats' && request.method === 'GET') {
         const response = await handleGetStats(request, env);
-        // Pass null auth for public endpoint - API framework will detect service-to-service calls
-        return await wrapWithEncryption(response, request, env, null);
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        if (!jwtToken) {
+          const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+          };
+          const corsHeaders = getCorsHeaders(env, request);
+          return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/problem+json',
+              ...corsHeaders,
+            },
+          });
+        }
+        const auth = { userId: 'anonymous', customerId: null, jwtToken };
+        return await wrapWithEncryption(response, request, env, auth);
       }
 
       // API endpoints (require authentication)
@@ -96,20 +115,83 @@ export function createRouter() {
         return await wrapWithEncryption(response, request, env, auth);
       }
 
-      // Redirect endpoint (public, no auth required)
+      // Redirect endpoint - now requires JWT encryption
       // Check for short code redirects before serving app
       // Short codes are 3-20 alphanumeric characters
       if (request.method === 'GET' && path !== '/' && !path.startsWith('/api/') && /^\/[a-zA-Z0-9_-]{3,20}$/.test(path)) {
         const redirectResponse = await handleRedirect(request, env);
-        // If redirect found, return it; otherwise fall through to app
+        // If redirect found, encrypt and return it; otherwise fall through to app
         if (redirectResponse.status !== 404) {
-          return redirectResponse;
+          const authHeader = request.headers.get('Authorization');
+          const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+          if (!jwtToken) {
+            const errorResponse = {
+              type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+              title: 'Unauthorized',
+              status: 401,
+              detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+              instance: request.url
+            };
+            const corsHeaders = getCorsHeaders(env, request);
+            return new Response(JSON.stringify(errorResponse), {
+              status: 401,
+              headers: {
+                'Content-Type': 'application/problem+json',
+                ...corsHeaders,
+              },
+            });
+          }
+          const auth = { userId: 'anonymous', customerId: null, jwtToken };
+          return await wrapWithEncryption(redirectResponse, request, env, auth);
         }
       }
 
       // Serve React app (SPA routing - all non-API paths serve the app)
+      // CRITICAL: JWT binary encryption is MANDATORY for all binary responses
       if (request.method === 'GET' && !path.startsWith('/api/')) {
-        return handleAppAssets(request, env);
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        if (!jwtToken) {
+          const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+          };
+          const corsHeaders = getCorsHeaders(env, request);
+          return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/problem+json',
+              ...corsHeaders,
+            },
+          });
+        }
+        const appResponse = await handleAppAssets(request, env);
+        // App assets are binary (HTML, JS, CSS) - need binary encryption
+        // Note: handleAppAssets should be updated to handle encryption internally
+        // For now, we'll wrap it - but this may need adjustment based on handleAppAssets implementation
+        const auth = { userId: 'anonymous', customerId: null, jwtToken };
+        // Check if response is binary (HTML, JS, CSS)
+        const contentType = appResponse.headers.get('Content-Type') || '';
+        if (contentType.includes('text/html') || contentType.includes('application/javascript') || contentType.includes('text/css')) {
+          // Binary encryption needed
+          const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
+          const bodyBytes = await appResponse.arrayBuffer();
+          const encryptedBody = await encryptBinaryWithJWT(new Uint8Array(bodyBytes), jwtToken);
+          const corsHeaders = getCorsHeaders(env, request);
+          return new Response(encryptedBody, {
+            status: appResponse.status,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/octet-stream',
+              'X-Encrypted': 'true',
+              'X-Original-Content-Type': contentType,
+            },
+          });
+        }
+        return await wrapWithEncryption(appResponse, request, env, auth);
       }
 
       // Not found

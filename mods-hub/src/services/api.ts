@@ -4,8 +4,7 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import { encryptBinaryWithJWT, encryptBinaryWithServiceKey } from '@strixun/api-framework';
-import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
+import { encryptBinaryWithJWT } from '@strixun/api-framework';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
 
@@ -233,45 +232,15 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
-    // Determine encryption method based on mod visibility
-    // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
-    // This allows anonymous downloads once mod is published, even if uploaded as pending
-    // Private/draft mods use JWT (requires authentication to download)
-    const isPublic = metadata.visibility === 'public';
-    let encryptedFile: Uint8Array;
-    
-    if (isPublic) {
-        // Public mods: encrypt with service key for anonymous downloads
-        // This works even if status is 'pending' - allows downloads once published
-        const serviceKey = getOtpEncryptionKey();
-        if (!serviceKey) {
-            // Enhanced error message for production debugging
-            const isProduction = typeof window !== 'undefined' && import.meta.env?.MODE === 'production';
-            const errorMsg = isProduction
-                ? 'Service encryption key not configured in production build. The GitHub secret VITE_SERVICE_ENCRYPTION_KEY must match the Cloudflare Worker secret SERVICE_ENCRYPTION_KEY. Check the deployment workflow and ensure both secrets are set to the same value.'
-                : 'Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.';
-            console.error('[uploadMod] Service key missing:', {
-                isProduction,
-                hasImportMeta: typeof import.meta !== 'undefined',
-                hasEnv: !!import.meta?.env,
-                envKeys: typeof import.meta?.env === 'object' ? Object.keys(import.meta.env || {}).filter(k => k.startsWith('VITE_')) : [],
-            });
-            throw new Error(errorMsg);
-        }
-        if (serviceKey.length < 32) {
-            throw new Error(`Service encryption key is too short (${serviceKey.length} chars, minimum 32). Check VITE_SERVICE_ENCRYPTION_KEY configuration.`);
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
-    } else {
-        // Private/draft mods: encrypt with JWT (requires authentication to download)
-        const token = await getAuthToken();
-        if (!token) {
-            throw new Error('Authentication token required for file encryption');
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    // SECURITY: JWT encryption is MANDATORY for all file uploads
+    // All files must be encrypted with JWT, regardless of visibility
+    const token = await getAuthToken();
+    if (!token) {
+        throw new Error('Authentication token is required for file encryption. All files must be encrypted with JWT.');
     }
+    
+    const fileBuffer = await file.arrayBuffer();
+    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
@@ -338,48 +307,15 @@ export async function uploadVersion(
 ): Promise<any> {
     // Fetch mod to check visibility - versions inherit mod's visibility
     // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
-    let isPublic = false;
-    try {
-        const mod = await getModDetail(modId);
-        isPublic = mod.visibility === 'public';
-    } catch (error) {
-        console.warn('[uploadVersion] Could not fetch mod to check visibility, defaulting to private encryption:', error);
-        // Default to private if we can't fetch mod (backward compatible)
+    // SECURITY: JWT encryption is MANDATORY for all file uploads
+    // All files must be encrypted with JWT, regardless of visibility
+    const token = await getAuthToken();
+    if (!token) {
+        throw new Error('Authentication token is required for file encryption. All files must be encrypted with JWT.');
     }
     
-    let encryptedFile: Uint8Array;
-    
-    if (isPublic) {
-        // Public mods: encrypt with service key for anonymous downloads
-        const serviceKey = getOtpEncryptionKey();
-        if (!serviceKey) {
-            // Enhanced error message for production debugging
-            const isProduction = typeof window !== 'undefined' && import.meta.env?.MODE === 'production';
-            const errorMsg = isProduction
-                ? 'Service encryption key not configured in production build. The GitHub secret VITE_SERVICE_ENCRYPTION_KEY must match the Cloudflare Worker secret SERVICE_ENCRYPTION_KEY. Check the deployment workflow and ensure both secrets are set to the same value.'
-                : 'Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.';
-            console.error('[uploadVersion] Service key missing:', {
-                isProduction,
-                hasImportMeta: typeof import.meta !== 'undefined',
-                hasEnv: !!import.meta?.env,
-                envKeys: typeof import.meta?.env === 'object' ? Object.keys(import.meta.env || {}).filter(k => k.startsWith('VITE_')) : [],
-            });
-            throw new Error(errorMsg);
-        }
-        if (serviceKey.length < 32) {
-            throw new Error(`Service encryption key is too short (${serviceKey.length} chars, minimum 32). Check VITE_SERVICE_ENCRYPTION_KEY configuration.`);
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
-    } else {
-        // Private/draft mods: encrypt with JWT (requires authentication to download)
-        const token = await getAuthToken();
-        if (!token) {
-            throw new Error('Authentication token required for file encryption');
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
-    }
+    const fileBuffer = await file.arrayBuffer();
+    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility

@@ -50,12 +50,7 @@ export {
   encryptResponse,
   createEncryptionContext,
   extractJWTToken,
-  getServiceKey,
   findMatchingPolicy,
-  encryptWithServiceKey,
-  decryptWithServiceKey,
-  encryptBinaryWithServiceKey,
-  decryptBinaryWithServiceKey,
   DEFAULT_ENCRYPTION_POLICIES,
 } from './route-encryption.js';
 

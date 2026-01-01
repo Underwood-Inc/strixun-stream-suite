@@ -219,21 +219,45 @@ export async function handleOGImage(
             });
         }
 
+        // EXCEPTION: Allow public access (no JWT required) for OG images (social media crawlers)
+        // Get JWT token from request (optional for public access)
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null;
+
         // Generate OG image SVG
         const ogImageSvg = generateOGImage(mod, mod.thumbnailUrl);
         
-        // Return SVG with proper headers
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
-        const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
-        headers.set('Content-Type', 'image/svg+xml');
-        headers.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
         
-        return new Response(ogImageSvg, {
-            status: 200,
-            headers,
-        });
+        // Encrypt with JWT if token is present, otherwise return unencrypted SVG for public access
+        if (jwtToken) {
+            const encoder = new TextEncoder();
+            const svgBytes = encoder.encode(ogImageSvg);
+            const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
+            const encryptedSvg = await encryptBinaryWithJWT(svgBytes, jwtToken);
+            const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
+            headers.set('Content-Type', 'application/octet-stream'); // Binary encrypted data
+            headers.set('X-Encrypted', 'true'); // Flag to indicate encrypted response
+            headers.set('X-Original-Content-Type', 'image/svg+xml'); // Preserve original content type
+            headers.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+            
+            return new Response(encryptedSvg, {
+                status: 200,
+                headers,
+            });
+        } else {
+            // Return unencrypted SVG for public access (social media crawlers)
+            const headers = new Headers(Object.fromEntries(corsHeaders.entries()));
+            headers.set('Content-Type', 'image/svg+xml');
+            headers.set('X-Encrypted', 'false'); // Flag to indicate unencrypted response
+            headers.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+            
+            return new Response(ogImageSvg, {
+                status: 200,
+                headers,
+            });
+        }
     } catch (error: any) {
         console.error('OG image error:', error);
         const rfcError = createError(

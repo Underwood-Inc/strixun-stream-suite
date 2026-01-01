@@ -19,7 +19,7 @@ import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
 import { storeUserPreferences, getDefaultPreferences, getUserPreferences } from '../../services/user-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
-import { decryptWithServiceKey } from '@strixun/api-framework';
+// decryptWithServiceKey removed - service key encryption was obfuscation only
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -143,46 +143,13 @@ async function getOrCreateUser(
  * POST /auth/verify-otp
  */
 /**
- * Decrypt request body if encrypted, otherwise return as-is (backward compatibility)
+ * Parse request body (no encryption - HTTPS provides transport security)
+ * SECURITY: Service key encryption removed - it was obfuscation only (key is in frontend bundle)
+ * Real security: API key requirement, rate limiting, OTP expiration, HTTPS
  */
-async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string }> {
+async function parseRequestBody(request: Request): Promise<{ email: string; otp: string }> {
     const body = await request.json();
-    
-    // Check if body is encrypted (has encrypted field)
-    if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
-        // Body is encrypted - decrypt using SERVICE_ENCRYPTION_KEY
-        // In Cloudflare Workers, secrets are accessed via env.SECRET_NAME
-        // NOTE: Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
-        const serviceKey = env.SERVICE_ENCRYPTION_KEY as string | undefined;
-        if (!serviceKey || typeof serviceKey !== 'string') {
-            throw new Error('SERVICE_ENCRYPTION_KEY is required for decrypting OTP requests. Set it via: wrangler secret put SERVICE_ENCRYPTION_KEY');
-        }
-        
-        try {
-            const decrypted = await decryptWithServiceKey(body, serviceKey);
-            return decrypted as { email: string; otp: string };
-        } catch (error: any) {
-            const errorMessage = error?.message || String(error);
-            console.error('[VerifyOTP] Decryption failed:', {
-                error: errorMessage,
-                hasKey: !!serviceKey,
-                keyLength: serviceKey?.length || 0,
-                encryptedFields: Object.keys(body || {}),
-                errorType: error?.constructor?.name || typeof error
-            });
-            
-            // Provide more specific error message
-            if (errorMessage.includes('service key does not match')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY mismatch: The encryption key on the server does not match the client key. Please verify SERVICE_ENCRYPTION_KEY (worker) matches VITE_SERVICE_ENCRYPTION_KEY (frontend).');
-            } else if (errorMessage.includes('Valid service key is required')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY not configured: Please set SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets via: wrangler secret put SERVICE_ENCRYPTION_KEY');
-            } else {
-                throw new Error(`Failed to decrypt OTP request: ${errorMessage}`);
-            }
-        }
-    }
-    
-    // Body is not encrypted (backward compatibility)
+    // No decryption - HTTPS provides transport security
     return body as { email: string; otp: string };
 }
 

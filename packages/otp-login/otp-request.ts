@@ -2,11 +2,10 @@
  * OTP Request Handler
  * 
  * Handles requesting OTP codes from the server
- * CRITICAL: Email is encrypted in transit using service key encryption
+ * SECURITY: HTTPS provides transport security. Service key encryption removed (was obfuscation only).
  */
 
 import type { OtpLoginConfig, OtpLoginState } from './types.js';
-import { encryptRequestBody, validateEncryptedBody } from './encryption.js';
 import { parseErrorResponse, handleNetworkError } from './utils.js';
 import { autoFetchDevOtp } from './dev-otp-fetch.js';
 import type { CountdownManager } from './countdown.js';

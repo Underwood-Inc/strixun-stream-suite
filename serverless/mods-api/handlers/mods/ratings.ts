@@ -228,6 +228,26 @@ export async function handleSubmitModRating(
                 },
             });
         }
+
+        // CRITICAL: Validate customerId is present - required for display name lookups
+        if (!auth.customerId) {
+            console.error('[Ratings] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'Rejecting rating submission - customerId is required for display name lookups'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for rating submissions. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
         
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
@@ -304,24 +324,22 @@ export async function handleSubmitModRating(
             }
         }
         
-        // Get user displayName from auth service (once, reuse for both create and update)
-        // Use the shared utility function for consistency with other handlers
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        // CRITICAL: Get user displayName from customer data - customer is the source of truth
         let userDisplayName: string | null = null;
         
-        if (jwtToken) {
-            const { fetchDisplayNameByToken } = await import('../../utils/displayName.js');
-            userDisplayName = await fetchDisplayNameByToken(jwtToken, env, 10000);
-            
-            // Fallback to userId lookup if token-based fetch fails
+        if (auth.customerId) {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+            userDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             if (!userDisplayName) {
-                const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-                userDisplayName = await fetchDisplayNameByUserId(auth.userId, env, 10000);
+                console.warn('[Ratings] Could not fetch displayName from customer data:', {
+                    customerId: auth.customerId,
+                    userId: auth.userId
+                });
             }
         } else {
-            // No token, use userId lookup
-            const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-            userDisplayName = await fetchDisplayNameByUserId(auth.userId, env, 10000);
+            console.warn('[Ratings] Missing customerId, cannot fetch displayName from customer data:', {
+                userId: auth.userId
+            });
         }
         
         // Check if user has already rated this mod (use normalized modId from the found mod)

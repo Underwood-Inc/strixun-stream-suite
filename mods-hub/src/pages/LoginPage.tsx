@@ -10,7 +10,7 @@ import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 // Import CSS explicitly to ensure styles are included in build
 import '@strixun/otp-login/dist/react/otp-login.css';
 
-import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
+// Service key encryption removed - it was obfuscation only (key is in bundle)
 
 // Use proxy in development (via Vite), direct URL in production
 // E2E tests can override with VITE_AUTH_API_URL to use direct local worker URLs
@@ -93,7 +93,7 @@ export function LoginPage() {
             apiUrl={AUTH_API_URL}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            otpEncryptionKey={getOtpEncryptionKey()}
+            // Service key encryption removed - HTTPS provides transport security
             title="Login"
             subtitle="Enter your email to receive a verification code"
         />

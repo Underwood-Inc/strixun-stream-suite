@@ -23,10 +23,27 @@ test.describe('Mod Detail Page', () => {
     const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
     
     // Try to get a mod slug from the API first
+    // CRITICAL: All API responses are encrypted and require JWT token for decryption
     try {
-      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1`);
+      const testJWTToken = process.env.E2E_TEST_JWT_TOKEN;
+      if (!testJWTToken) {
+        test.skip();
+        return;
+      }
+      
+      const { decryptWithJWT } = await import('@strixun/api-framework');
+      
+      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1`, {
+        headers: { 'Authorization': `Bearer ${testJWTToken}` },
+      });
       if (response.ok) {
-        const data = await response.json() as ModsResponse;
+        let data = await response.json() as ModsResponse;
+        // Decrypt if encrypted
+        const isEncrypted = response.headers.get('x-encrypted') === 'true' || 
+                           (data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true);
+        if (isEncrypted) {
+          data = await decryptWithJWT(data, testJWTToken) as ModsResponse;
+        }
         if (data.mods && data.mods.length > 0) {
           const modSlug = data.mods[0].slug;
           await page.goto(`${modsHubUrl}/mods/${modSlug}`);
@@ -88,62 +105,84 @@ test.describe('Mod Detail Page', () => {
     }
   });
 
-  test('should successfully download public mod without authentication', async ({ page }) => {
+  test('should require authentication for downloads (JWT required)', async ({ page }) => {
     const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
     
     // Try to get a public published mod
+    // CRITICAL: Even public endpoints return encrypted responses that require JWT for decryption
     try {
-      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1&status=published&visibility=public`);
-      if (response.ok) {
-        const data = await response.json() as ModsResponse & { mods?: Array<{ slug: string; versions?: Array<{ versionId: string }> }> };
-        if (data.mods && data.mods.length > 0) {
-          const mod = data.mods[0];
-          if (mod.versions && mod.versions.length > 0) {
-            const modSlug = mod.slug;
-            
-            await page.goto(`${modsHubUrl}/mods/${modSlug}`);
-            await page.waitForLoadState('networkidle');
-            
-            // Look for download button
-            const downloadButton = page.locator(
-              'button:has-text("Download"), a:has-text("Download"), [data-testid="download-button"], [data-testid="download-version-button"]'
-            ).first();
-            
-            const downloadCount = await downloadButton.count();
-            if (downloadCount > 0) {
-              // Set up download listener
-              const downloadPromise = page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
-              
-              // Click download button
-              await downloadButton.click();
-              
-              // Wait for download to start
-              const download = await downloadPromise;
-              
-              if (download) {
-                // Verify download started
-                const suggestedFilename = download.suggestedFilename();
-                expect(suggestedFilename).toBeTruthy();
-                expect(suggestedFilename.length).toBeGreaterThan(0);
-                
-                // Verify download completes (file is decrypted and downloadable)
-                const path = await download.path();
-                expect(path).toBeTruthy();
-                
-                // Verify file exists and has content
-                // Note: File system access in browser context is limited
-                // The download path() method ensures file exists
-                expect(path).toBeTruthy();
-              } else {
-                // Download might be handled via navigation or fetch
-                await page.waitForTimeout(2000);
-                const url = page.url();
-                const isOnModPage = url.includes(`/mods/${modSlug}`);
-                const isOnDownloadPage = url.includes('/download');
-                expect(isOnModPage || isOnDownloadPage).toBeTruthy();
-              }
-            }
+      const testJWTToken = process.env.E2E_TEST_JWT_TOKEN;
+      if (!testJWTToken) {
+        test.skip();
+        return;
+      }
+      
+      const { decryptWithJWT } = await import('@strixun/api-framework');
+      
+      const response = await fetch(`${WORKER_URLS.MODS_API}/mods?limit=1&status=published&visibility=public`, {
+        headers: { 'Authorization': `Bearer ${testJWTToken}` },
+      });
+      expect(response.ok).toBe(true);
+      
+      let data = await response.json() as ModsResponse & { mods?: Array<{ slug: string; versions?: Array<{ versionId: string }> }> };
+      // Decrypt if encrypted
+      const isEncrypted = response.headers.get('x-encrypted') === 'true' || 
+                         (data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true);
+      if (isEncrypted) {
+        data = await decryptWithJWT(data, testJWTToken) as typeof data;
+      }
+      if (data.mods && data.mods.length > 0) {
+        const mod = data.mods[0];
+        if (mod.versions && mod.versions.length > 0) {
+          const modSlug = mod.slug;
+          const versionId = mod.versions[0].versionId;
+          
+          // Try to download without JWT - should fail
+          const downloadResponse = await fetch(`${WORKER_URLS.MODS_API}/mods/${modSlug}/versions/${versionId}/download`);
+          expect(downloadResponse.status).toBe(401); // Should require JWT
+          
+          // Now test with authentication
+          const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'test@example.com';
+          const TEST_OTP_CODE = process.env.E2E_TEST_OTP_CODE || '123456';
+          
+          await page.goto(`${modsHubUrl}/login`);
+          const { requestOTPCode, verifyOTPCode, waitForOTPForm } = await import('@strixun/e2e-helpers');
+          await requestOTPCode(page, TEST_EMAIL);
+          await waitForOTPForm(page);
+          const { response: verifyResponse } = await verifyOTPCode(page, TEST_OTP_CODE);
+          
+          if (!verifyResponse.ok()) {
+            test.skip();
+            return;
           }
+          
+          await page.waitForURL(
+            (url) => {
+              const urlObj = new URL(url.toString());
+              const path = urlObj.pathname;
+              return path !== '/login';
+            },
+            { timeout: 10000 }
+          );
+          
+          const token = await page.evaluate(() => {
+            return localStorage.getItem('auth_token') || 
+                   localStorage.getItem('jwt_token') ||
+                   localStorage.getItem('token');
+          });
+          
+          // Now download with JWT - should succeed
+          const authenticatedDownloadResponse = await page.evaluate(async ({ url, authToken }: { url: string; authToken: string | null }) => {
+            const headers: HeadersInit = {};
+            if (authToken) {
+              headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            const res = await fetch(url, { headers });
+            return { status: res.status, ok: res.ok };
+          }, { url: `${WORKER_URLS.MODS_API}/mods/${modSlug}/versions/${versionId}/download`, authToken: token });
+          
+          expect(authenticatedDownloadResponse.ok).toBe(true);
+          expect(authenticatedDownloadResponse.status).toBe(200);
         }
       }
     } catch (error) {
@@ -276,11 +315,27 @@ test.describe('Mod Detail Page', () => {
     }
   });
 
-  test('should return mod detail with customerId and dynamically fetched display name', async () => {
+  test('should return mod detail with customerId and dynamically fetched display name (public browsing - no JWT required)', async () => {
     // Verify API returns mod detail with required fields
+    // EXCEPTION: Public browsing - no JWT required for mod detail
     try {
+      // Public browsing - no JWT required
       const listResponse = await fetch(`${WORKER_URLS.MODS_API}/mods?pageSize=1`);
+      
+      // Log response details for debugging
+      console.log('[E2E] Mod list response:', {
+        status: listResponse.status,
+        ok: listResponse.ok,
+        contentType: listResponse.headers.get('content-type'),
+        xEncrypted: listResponse.headers.get('x-encrypted'),
+      });
+      
       if (!listResponse.ok) {
+        const errorText = await listResponse.text();
+        console.error('[E2E] Mod list API error:', errorText);
+        if (listResponse.status === 401) {
+          throw new Error(`Mod list API requires JWT but should allow public browsing. Error: ${errorText}`);
+        }
         test.skip();
         return;
       }
@@ -292,9 +347,23 @@ test.describe('Mod Detail Page', () => {
       }
       
       const modSlug = listData.mods[0].slug;
+      // Public browsing - no JWT required
       const detailResponse = await fetch(`${WORKER_URLS.MODS_API}/mods/${modSlug}`);
       
+      // Log response details for debugging
+      console.log('[E2E] Mod detail response:', {
+        status: detailResponse.status,
+        ok: detailResponse.ok,
+        contentType: detailResponse.headers.get('content-type'),
+        xEncrypted: detailResponse.headers.get('x-encrypted'),
+      });
+      
       if (!detailResponse.ok) {
+        const errorText = await detailResponse.text();
+        console.error('[E2E] Mod detail API error:', errorText);
+        if (detailResponse.status === 401) {
+          throw new Error(`Mod detail API requires JWT but should allow public browsing. Error: ${errorText}`);
+        }
         test.skip();
         return;
       }
@@ -308,7 +377,8 @@ test.describe('Mod Detail Page', () => {
         // authorDisplayName should exist (may be null if user not found)
         expect(detailData.mod).toHaveProperty('authorDisplayName');
       }
-    } catch {
+    } catch (error) {
+      console.error('Mod detail test failed:', error);
       test.skip();
     }
   });

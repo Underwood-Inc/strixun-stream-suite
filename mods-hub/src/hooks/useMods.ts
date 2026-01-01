@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../services/api';
 import { useUIStore } from '../stores/ui';
 import { useAuthStore } from '../stores/auth';
+import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
+import { useNavigate } from 'react-router-dom';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 
 /**
@@ -171,9 +173,15 @@ export function useUpdateMod() {
 }
 
 /**
- * Delete mod mutation
- */
-export function useDeleteMod() {
+                message: getUserFriendlyErrorMessage(error),
+                type: 'error',
+            });
+            
+            if (shouldRedirectToLogin(error)) {
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1000);
+            }
     const queryClient = useQueryClient();
     const addNotification = useUIStore((state) => state.addNotification);
     
