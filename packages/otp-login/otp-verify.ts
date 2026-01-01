@@ -40,43 +40,13 @@ export async function verifyOtp(context: OtpVerifyContext): Promise<void> {
       Object.assign(headers, config.customHeaders);
     }
 
-    // CRITICAL: Encrypt request body (email and OTP) - NEVER send unencrypted
-    let encryptedBody: string;
-    try {
-      if (!config.otpEncryptionKey) {
-        throw new Error('OTP encryption key is required');
-      }
-      encryptedBody = await encryptRequestBody({
-        email: state.email,
-        otp,
-      }, config.otpEncryptionKey);
-    } catch (encryptError) {
-      console.error('[OtpLoginCore] ✗ ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
-      console.error('[OtpLoginCore] Encryption error:', encryptError);
-      setState({ 
-        loading: false, 
-        error: 'Encryption failed. Cannot send request without encryption. Please check your configuration.' 
-      });
-      config.onError?.('Encryption failed. Cannot send request without encryption.');
-      return; // CRITICAL: Do NOT send request if encryption fails
-    }
-    
-    // Verify encrypted body is actually encrypted (not plain JSON)
-    try {
-      validateEncryptedBody(encryptedBody);
-    } catch (validationError) {
-      setState({ 
-        loading: false, 
-        error: validationError instanceof Error ? validationError.message : 'Encryption validation failed. Request aborted for security.' 
-      });
-      config.onError?.('Encryption validation failed.');
-      return;
-    }
+    // Send plain JSON - HTTPS provides transport security
+    const requestBody = JSON.stringify({ email: state.email, otp });
 
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: encryptedBody,
+      body: requestBody,
     });
 
     const responseText = await response.text().catch(() => null);

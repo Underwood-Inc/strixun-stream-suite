@@ -447,6 +447,9 @@ importers:
 
   packages/customer-lookup:
     dependencies:
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../api-framework
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../service-client
@@ -495,6 +498,9 @@ importers:
 
   packages/otp-login:
     dependencies:
+      '@strixun/api-framework':
+        specifier: workspace:*
+        version: link:../api-framework
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -755,6 +761,9 @@ importers:
       '@strixun/api-framework':
         specifier: workspace:*
         version: link:../../packages/api-framework
+      '@strixun/customer-lookup':
+        specifier: workspace:*
+        version: link:../../packages/customer-lookup
       '@strixun/e2e-helpers':
         specifier: workspace:*
         version: link:../../packages/e2e-helpers

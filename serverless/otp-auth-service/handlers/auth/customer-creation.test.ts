@@ -5,7 +5,7 @@
  * ⚠ NOTE: These are MOCKED unit tests - they will NOT catch:
  * - Incorrect CUSTOMER_API_URL configuration
  * - Network/connectivity issues
- * - Authentication problems (SERVICE_API_KEY)
+ * - Authentication problems
  * 
  * For integration tests against live API, see: customer-creation.integration.test.ts
  * Integration tests run automatically in GitHub Actions CI
@@ -28,7 +28,6 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
   const mockEnv = {
     OTP_AUTH_KV: {} as any,
     CUSTOMER_API_URL: 'https://customer.idling.app',
-    SERVICE_API_KEY: 'test-service-key',
     NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-tests',
   };
 

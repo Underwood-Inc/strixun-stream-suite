@@ -1,6 +1,27 @@
 import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: [
+      {
+        find: '@strixun/customer-lookup',
+        replacement: resolve(__dirname, '../../packages/customer-lookup/index.ts'),
+      },
+      {
+        find: '@strixun/api-framework/enhanced',
+        replacement: resolve(__dirname, '../../packages/api-framework/enhanced.ts'),
+      },
+      {
+        find: '@strixun/api-framework/client',
+        replacement: resolve(__dirname, '../../packages/api-framework/src/client.ts'),
+      },
+      {
+        find: '@strixun/api-framework',
+        replacement: resolve(__dirname, '../../packages/api-framework/index.ts'),
+      },
+    ],
+  },
   test: {
     globals: true,
     environment: 'node',

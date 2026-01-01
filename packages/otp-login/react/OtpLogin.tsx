@@ -18,7 +18,6 @@ export interface OtpLoginProps {
   onError?: (error: string) => void;
   endpoints?: OtpLoginConfig['endpoints'];
   customHeaders?: OtpLoginConfig['customHeaders'];
-  otpEncryptionKey?: string; // CRITICAL: OTP encryption key for encrypting requests
   title?: string;
   subtitle?: string;
   showAsModal?: boolean;
@@ -33,7 +32,6 @@ export function OtpLogin({
   onError,
   endpoints,
   customHeaders,
-  otpEncryptionKey,
   title = 'Sign In',
   subtitle = 'Enter your email to receive a verification code',
   showAsModal = false,
@@ -55,14 +53,13 @@ export function OtpLogin({
   });
 
   useEffect(() => {
-    // Initialize core - no encryption key needed (service key encryption removed)
+    // Initialize core - HTTPS provides transport security
     const core = new OtpLoginCore({
       apiUrl,
       onSuccess,
       onError,
       endpoints,
       customHeaders,
-      // otpEncryptionKey removed - service key encryption was obfuscation only
     });
 
     coreRef.current = core;
@@ -77,7 +74,7 @@ export function OtpLogin({
       unsubscribe();
       core.destroy();
     };
-  }, [apiUrl, onSuccess, onError, endpoints, customHeaders, otpEncryptionKey]); // Note: getOtpEncryptionKey() is stable, so we don't need it in deps
+  }, [apiUrl, onSuccess, onError, endpoints, customHeaders]);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
     coreRef.current?.setEmail(e.target.value);

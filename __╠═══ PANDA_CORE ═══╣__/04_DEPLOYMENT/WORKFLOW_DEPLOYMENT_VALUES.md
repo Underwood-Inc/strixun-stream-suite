@@ -31,7 +31,7 @@ Which executes: `pnpm build && wrangler deploy` (NO `--env` flag)
 **Secrets:**
 - Set to **base worker** (`otp-auth-service`, no environment suffix)
 - Uses `--env=""` to explicitly target root environment
-- Secrets available: `JWT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALLOWED_ORIGINS`, `SERVICE_API_KEY`, `SERVICE_ENCRYPTION_KEY`, `NETWORK_INTEGRITY_KEYPHRASE`
+- Secrets available: `JWT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALLOWED_ORIGINS`, `SUPER_ADMIN_API_KEY`, `SERVICE_ENCRYPTION_KEY`, `NETWORK_INTEGRITY_KEYPHRASE`
 
 ### What is NOT Used
 

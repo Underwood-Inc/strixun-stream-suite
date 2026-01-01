@@ -59,7 +59,6 @@ export async function handleUpdateCustomerById(
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
-        if (body.name !== undefined) customer.name = body.name;
         if (body.companyName !== undefined) customer.companyName = body.companyName;
         if (body.tier !== undefined) customer.tier = body.tier;
         if (body.status !== undefined) customer.status = body.status;
@@ -120,22 +119,24 @@ export async function handleGetCustomer(
 
     try {
         // Determine which customer to get
-        const targetCustomerId = customerId || auth.customerId;
+        let targetCustomerId = customerId || auth.customerId;
+        let customer = null;
 
-        if (!targetCustomerId) {
-            const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
-            return new Response(JSON.stringify(rfcError), {
-                status: 404,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
+        // If we have customerId, try to get customer
+        if (targetCustomerId) {
+            customer = await getCustomer(targetCustomerId, env);
         }
 
-        // Get customer
-        const customer = await getCustomer(targetCustomerId, env);
+        // If no customer found and we have email from auth, try email lookup
+        if (!customer && auth.email) {
+            const { getCustomerByEmail } = await import('../services/customer.js');
+            customer = await getCustomerByEmail(auth.email, env);
+            if (customer) {
+                targetCustomerId = customer.customerId;
+            }
+        }
 
+        // If still no customer found, return 404
         if (!customer) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
             return new Response(JSON.stringify(rfcError), {
@@ -205,7 +206,7 @@ export async function handleCreateCustomer(
 
     try {
         const body = await request.json() as Partial<CustomerData>;
-        const { email, name, companyName } = body;
+        const { email, companyName } = body;
 
         if (!email) {
             const rfcError = createError(request, 400, 'Bad Request', 'Email is required');
@@ -238,7 +239,6 @@ export async function handleCreateCustomer(
         const customerData: CustomerData = {
             customerId,
             email: email.toLowerCase().trim(),
-            name: name || email.split('@')[0],
             companyName: companyName || email.split('@')[1]?.split('.')[0] || 'My App',
             tier: 'free',
             plan: 'free', // Legacy
@@ -392,7 +392,6 @@ export async function handleUpdateCustomer(
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
-        if (body.name !== undefined) customer.name = body.name;
         if (body.companyName !== undefined) customer.companyName = body.companyName;
         if (body.tier !== undefined) customer.tier = body.tier;
         if (body.status !== undefined) customer.status = body.status;

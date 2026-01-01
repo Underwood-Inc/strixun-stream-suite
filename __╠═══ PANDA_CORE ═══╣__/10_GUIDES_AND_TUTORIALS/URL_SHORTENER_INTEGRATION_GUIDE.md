@@ -67,14 +67,14 @@ const { shortUrl, shortCode } = await response.json();
 
 ### Service-to-Service Authentication
 
-If calling from another worker, you can use service API keys (if implemented):
+If calling from another worker, use JWT authentication:
 
 ```typescript
 const response = await fetch('https://s.idling.app/api/create', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'X-Service-Key': env.SERVICE_API_KEY, // If service-to-service auth is implemented
+    'Authorization': `Bearer ${jwtToken}`, // JWT authentication
   },
   body: JSON.stringify({
     url: 'https://example.com',

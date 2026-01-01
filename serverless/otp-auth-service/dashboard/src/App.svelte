@@ -145,7 +145,7 @@
       <Signup />
     {/if}
   {:else}
-    <Header {user} on:logout={handleLogoutClick} />
+    <Header {user} {customer} on:logout={handleLogoutClick} />
     <main class="app-main">
       <Navigation {currentPage} on:navigate={e => navigateToPage(e.detail)} />
       <div class="page-container">

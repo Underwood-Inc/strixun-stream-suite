@@ -51,15 +51,15 @@ async function listAllUsers(env: Env): Promise<User[]> {
     
     // Always use service-to-service call to OTP auth service
     // This ensures we get ALL users across the entire system, not just mods-hub users
-    // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
+    // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY
     console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
     try {
         const { createServiceClient } = await import('@strixun/service-client');
         // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
         const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
         
-        // For admin endpoints, we need SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
-        // createServiceClient will automatically use SUPER_ADMIN_API_KEY if available
+        // For admin endpoints, we need SUPER_ADMIN_API_KEY
+        // createServiceClient requires SUPER_ADMIN_API_KEY
         // This is correct for admin operations
         const client = createServiceClient(authApiUrl, env);
         
@@ -662,9 +662,8 @@ export async function handleGetUserMods(
 interface Env {
     MODS_KV: KVNamespace;
     OTP_AUTH_KV?: KVNamespace; // Optional - for direct access if available
-    AUTH_API_URL?: string; // For service-to-service calls
-    SUPER_ADMIN_API_KEY?: string; // For service-to-service calls to OTP auth service
-    SERVICE_API_KEY?: string; // Fallback for service-to-service calls
+    AUTH_API_URL?: string;
+    SUPER_ADMIN_API_KEY?: string;
     SUPER_ADMIN_EMAILS?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;

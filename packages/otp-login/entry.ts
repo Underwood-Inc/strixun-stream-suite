@@ -18,7 +18,6 @@ export interface OtpLoginMountOptions {
     verifyOtp?: string;
   };
   customHeaders?: Record<string, string>;
-  otpEncryptionKey?: string;
   title?: string;
   subtitle?: string;
   showAsModal?: boolean;
@@ -38,7 +37,6 @@ export function mountOtpLogin(options: OtpLoginMountOptions) {
       onError: options.onError,
       endpoints: options.endpoints,
       customHeaders: options.customHeaders,
-      otpEncryptionKey: options.otpEncryptionKey,
       title: options.title,
       subtitle: options.subtitle,
       showAsModal: options.showAsModal,

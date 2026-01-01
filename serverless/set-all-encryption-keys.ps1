@@ -19,22 +19,6 @@ if ($serviceEncryptionKeyPlain.Length -lt 32) {
 }
 
 Write-Host ""
-
-# Prompt for SERVICE_API_KEY (used for service-to-service auth)
-Write-Host "Enter SERVICE_API_KEY for service-to-service authentication (customer-api calls)" -ForegroundColor Yellow
-$serviceApiKey = Read-Host "Enter SERVICE_API_KEY (input will be hidden)" -AsSecureString
-$serviceApiKeyPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($serviceApiKey))
-
-if ([string]::IsNullOrWhiteSpace($serviceApiKeyPlain)) {
-    Write-Host "⚠ SERVICE_API_KEY is empty. Customer API calls will fail with 401." -ForegroundColor Yellow
-    Write-Host "Do you want to continue without SERVICE_API_KEY? (y/n)" -ForegroundColor Yellow
-    $continue = Read-Host
-    if ($continue -ne "y" -and $continue -ne "Y") {
-        exit 1
-    }
-}
-
-Write-Host ""
 Write-Host "Setting keys..." -ForegroundColor Cyan
 Write-Host ""
 
@@ -140,45 +124,6 @@ foreach ($worker in $workers) {
 }
 
 Write-Host ""
-
-# Set SERVICE_API_KEY in workers that need it
-if (-not [string]::IsNullOrWhiteSpace($serviceApiKeyPlain)) {
-    Write-Host "Setting SERVICE_API_KEY in workers..." -ForegroundColor Cyan
-    $serviceWorkers = @(
-        "otp-auth-service",
-        "customer-api"
-    )
-    
-    foreach ($worker in $serviceWorkers) {
-        $workerPath = Join-Path "serverless" $worker
-        
-        if (-not (Test-Path $workerPath)) {
-            Write-Host "  ⚠ Skipping $worker (directory not found)" -ForegroundColor Yellow
-            continue
-        }
-        
-        Write-Host "  Setting SERVICE_API_KEY in $worker..." -ForegroundColor Gray
-        
-        Push-Location $workerPath
-        try {
-            $serviceApiKeyPlain | wrangler secret put SERVICE_API_KEY
-            
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "    ✓ $worker" -ForegroundColor Green
-                $successCount++
-            } else {
-                Write-Host "    ✗ Failed to set SERVICE_API_KEY in $worker" -ForegroundColor Red
-                $failCount++
-            }
-        } catch {
-            Write-Host "    ✗ Failed: $_" -ForegroundColor Red
-            $failCount++
-        } finally {
-            Pop-Location
-        }
-    }
-    Write-Host ""
-}
 
 Write-Host "Summary:" -ForegroundColor Cyan
 Write-Host "  ✓ Success: $successCount" -ForegroundColor Green

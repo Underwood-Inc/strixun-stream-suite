@@ -71,9 +71,16 @@ export {
   handleCORSPreflight,
 } from './workers/cors';
 
+export {
+  getCorsHeaders,
+  createCORSHeaders as createCORSHeadersWithLocalhost,
+  handleCORSPreflight as handleCORSPreflightWithLocalhost,
+} from './workers/cors-with-localhost';
+
 export type {
   CORSOptions,
-} from './workers/cors';
+  CORSWithLocalhostOptions,
+} from './workers/cors-with-localhost';
 
 // Workers - Handler utilities
 export {

@@ -6,8 +6,8 @@
 
 ### 1. Route Encryption System (`route-encryption.ts`)
 - **Route-level encryption policies** with pattern matching
-- **Multiple encryption strategies**: JWT, service key, conditional, none
-- **Service key encryption** for public routes
+- **Multiple encryption strategies**: JWT, conditional, none
+- **JWT encryption** for authenticated routes
 - **Policy matching** with wildcard support (`/api/*`, `/user/**`)
 - **Default policies** for common route patterns
 
@@ -27,69 +27,7 @@
 
 ## ★ Quick Implementation Steps
 
-### Step 1: Set Service Key
-
-**Which Workers Need This?**
-
-The service key must be set in **each Cloudflare Worker** that uses the `applyEncryptionMiddleware()` function. Based on your codebase:
-
-**Primary Service (Recommended):**
-- `otp-auth-service` - Main authentication service with most routes
-
-**Other Services (If Using Per-Route Encryption):**
-- `customer-api` - If you integrate the middleware
-- `game-api` - If you integrate the middleware  
-- `chat-signaling` - If you integrate the middleware
-- `mods-api` - If you integrate the middleware
-- `url-shortener` - If you integrate the middleware
-- `twitch-api` - If you integrate the middleware
-
-**How to Set (Recommended: Same Key for All Services):**
-
-```bash
-# Generate a strong random key once
-# Run this once to generate the key:
-openssl rand -hex 32
-
-# Then set the SAME key in ALL services:
-cd serverless/otp-auth-service
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key for all services
-
-cd ../customer-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../game-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../chat-signaling
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../mods-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../url-shortener
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../twitch-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-```
-
-**Why Same Key?**
-- ✓ **Simplifies key management** - One key to rotate, not seven
-- ✓ **Service interoperability** - Services can decrypt each other's public route responses if needed
-- ✓ **Consistency** - All services use the same encryption standard
-- ✓ **Easier client implementation** - Clients only need one service key
-
-**Security Note:** Using the same key means if one service is compromised, the key is exposed. However, since service-key encryption is for **public routes** (not sensitive authenticated data), this is an acceptable trade-off for operational simplicity. Sensitive data should use JWT encryption (user-specific keys).
-
-### Step 2: Update Router
+### Step 1: Update Router
 
 **Option A: Apply to all responses (recommended)**
 
@@ -164,10 +102,7 @@ The system includes sensible defaults:
 
 | Route Pattern | Strategy | Mandatory |
 |--------------|----------|-----------|
-| `/signup/**` | `service-key` | ✓ Yes |
 | `/health/**` | `none` | ✗ No |
-| `/auth/request-otp` | `service-key` | ✓ Yes |
-| `/auth/verify-otp` | `service-key` | ✓ Yes |
 | `/auth/**` | `conditional-jwt` | ✓ Yes |
 | `/user/**` | `jwt` | ✓ Yes |
 | `/game/**` | `jwt` | ✓ Yes |
@@ -210,9 +145,8 @@ await applyEncryptionMiddleware(response, request, env, {
    - Follows security best practices
 
 3. **Key Isolation**
-   - Public routes use service key
    - Authenticated routes use JWT
-   - No key leakage between route types
+   - User-specific encryption keys
 
 4. **Mandatory Enforcement**
    - Policy-based enforcement
@@ -256,12 +190,11 @@ await applyEncryptionMiddleware(response, request, env, {
 
 ## ★ Next Steps
 
-1. ✓ **Set service key** as Cloudflare Worker secret
-2. ✓ **Update router** to use encryption middleware
-3. ✓ **Update route handlers** (optional, if not using global middleware)
-4. ✓ **Update clients** to decrypt responses
-5. ✓ **Test thoroughly** with different route types
-6. ✓ **Monitor** encryption failures and performance
+1. ✓ **Update router** to use encryption middleware
+2. ✓ **Update route handlers** (optional, if not using global middleware)
+3. ✓ **Update clients** to decrypt responses with JWT
+4. ✓ **Test thoroughly** with different route types
+5. ✓ **Monitor** encryption failures and performance
 
 ---
 

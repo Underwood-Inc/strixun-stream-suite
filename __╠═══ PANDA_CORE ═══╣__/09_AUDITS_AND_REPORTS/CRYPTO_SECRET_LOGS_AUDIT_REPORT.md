@@ -14,6 +14,7 @@ During a comprehensive security audit, **4 instances** of logs that could potent
 
 **All compromised logs have been removed from the codebase.**
 
+
 ---
 
 ## AUDIT FINDINGS
@@ -49,7 +50,7 @@ echo "✓ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
 #### 2. Service Client - Auth Header Preview (3 instances)
 **File:** `packages/service-client/index.ts`  
 **Lines:** 268, 286, 336  
-**Issue:** Logged first 8 characters of authentication headers (service keys) in multiple locations
+**Issue:** Logged first 8 characters of authentication headers in multiple locations
 
 **Before (COMPROMISED):**
 ```typescript
@@ -111,44 +112,12 @@ console.log('[ServiceClient] Making request', {
 
 ---
 
-#### 3. Customer API Auth - Service Key Preview (2 instances)
+#### 3. Customer API Auth - Removed Authentication Logging
 **File:** `serverless/customer-api/utils/auth.ts`  
 **Lines:** 101, 104  
-**Issue:** Logged first 8 characters of service keys from both request headers and environment variables
+**Issue:** Previously logged authentication attempts with key previews
 
-**Before (COMPROMISED):**
-```typescript
-console.log('[Customer API Auth] Service authentication attempt', {
-    hasServiceKeyHeader: !!serviceKey,
-    serviceKeyLength: serviceKey?.length || 0,
-    serviceKeyPreview: serviceKey ? `${serviceKey.substring(0, 8)}...` : 'missing',  // EXPOSED
-    hasEnvServiceApiKey: !!env.SERVICE_API_KEY,
-    envServiceApiKeyLength: env.SERVICE_API_KEY?.length || 0,
-    envServiceApiKeyPreview: env.SERVICE_API_KEY ? `${env.SERVICE_API_KEY.substring(0, 8)}...` : 'missing',  // EXPOSED
-    // ...
-});
-```
-
-**After (SECURE):**
-```typescript
-console.log('[Customer API Auth] Service authentication attempt', {
-    hasServiceKeyHeader: !!serviceKey,
-    serviceKeyLength: serviceKey?.length || 0,
-    // Preview removed
-    hasEnvServiceApiKey: !!env.SERVICE_API_KEY,
-    envServiceApiKeyLength: env.SERVICE_API_KEY?.length || 0,
-    // Preview removed
-    // ...
-});
-```
-
-**Risk Level:** HIGH  
-**Impact:** Service API keys are critical secrets. Logging previews in Cloudflare Worker logs could expose partial key material to:
-- Cloudflare Dashboard users with log access
-- Anyone with access to log aggregation systems
-- Attackers who gain access to log storage
-
-**Status:** [FIXED] - Preview logs removed, only presence and length are logged.
+**Status:** [FIXED] - Internal service-to-service calls no longer require authentication. All related logging has been removed.
 
 ---
 
@@ -166,9 +135,9 @@ console.log('Encryption key configured', {
 
 ### Safe: Logging Key Presence
 ```typescript
-console.log('Service key status', {
-    hasServiceKey: !!env.SERVICE_API_KEY,  // SAFE
-    serviceKeyLength: env.SERVICE_API_KEY?.length || 0  // SAFE
+console.log('Key status', {
+    hasKey: !!key,  // SAFE - only presence
+    keyLength: key?.length || 0  // SAFE - only length
 });
 ```
 
@@ -187,7 +156,7 @@ console.log('JWT token check', {
 ### Files Modified
 1. `.github/workflows/deploy-pages.yml` - Removed key preview logs (2 lines)
 2. `packages/service-client/index.ts` - Removed auth header preview logs (3 instances)
-3. `serverless/customer-api/utils/auth.ts` - Removed service key preview logs (2 instances)
+3. `serverless/customer-api/utils/auth.ts` - Removed authentication preview logs (2 instances)
 
 ### Total Issues Fixed
 - **4 security issues** identified and remediated

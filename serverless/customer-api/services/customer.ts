@@ -50,7 +50,6 @@ export type CustomerTier = 'free' | 'basic' | 'premium' | 'enterprise';
  */
 export interface CustomerData {
     customerId: string;
-    name?: string;
     email?: string;
     companyName?: string;
     plan?: string; // Legacy field - use tier instead

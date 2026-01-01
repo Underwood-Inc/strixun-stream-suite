@@ -46,14 +46,24 @@ async function checkQuota(customerId: string | null, env: Env, email?: string) {
  * POST /auth/request-otp
  */
 /**
- * Parse request body (no encryption - HTTPS provides transport security)
- * SECURITY: Service key encryption removed - it was obfuscation only (key is in frontend bundle)
- * Real security: API key requirement, rate limiting, OTP expiration, HTTPS
+ * Parse request body as plain JSON
+ * HTTPS provides transport security
  */
 async function parseRequestBody(request: Request): Promise<{ email: string }> {
-    const body = await request.json();
-    // No decryption - HTTPS provides transport security
-    return body as { email: string };
+    const bodyText = await request.text();
+    let body: any;
+    
+    try {
+        body = JSON.parse(bodyText);
+    } catch {
+        throw new Error('Invalid JSON in request body');
+    }
+    
+    if (body.email) {
+        return { email: body.email };
+    }
+    
+    throw new Error('Request body must contain email field');
 }
 
 export async function handleRequestOTP(
@@ -62,8 +72,8 @@ export async function handleRequestOTP(
     customerId: string | null = null
 ): Promise<Response> {
     try {
-        // Decrypt request body if encrypted
-        const { email } = await decryptRequestBody(request, env);
+        // Parse request body as plain JSON - HTTPS provides transport security
+        const { email } = await parseRequestBody(request);
         
         // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

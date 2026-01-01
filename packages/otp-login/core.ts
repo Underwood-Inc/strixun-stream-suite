@@ -100,7 +100,7 @@ export class OtpLoginCore implements CountdownManager {
 
   /**
    * Request OTP code
-   * CRITICAL: Email is encrypted in transit using service key encryption
+   * HTTPS provides transport security
    */
   async requestOtp(): Promise<void> {
     await requestOtp({

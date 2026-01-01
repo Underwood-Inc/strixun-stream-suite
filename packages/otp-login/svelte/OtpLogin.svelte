@@ -10,7 +10,6 @@
   import { onDestroy, onMount } from 'svelte';
   import type { OtpLoginState } from '../core';
   import { OtpLoginCore, type LoginSuccessData, type OtpLoginConfig } from '../core';
-  import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
   import EmailForm from './components/EmailForm.svelte';
   import ErrorDisplay from './components/ErrorDisplay.svelte';
   import OtpForm from './components/OtpForm.svelte';
@@ -20,7 +19,6 @@
   export let onError: ((error: string) => void) | undefined = undefined;
   export let endpoints: OtpLoginConfig['endpoints'] | undefined = undefined;
   export let customHeaders: OtpLoginConfig['customHeaders'] | undefined = undefined;
-  export let otpEncryptionKey: string | undefined = undefined; // CRITICAL: OTP encryption key for encrypting requests
   export let title: string = 'Sign In';
   export let subtitle: string = 'Enter your email to receive a verification code';
   export let showAsModal: boolean = false;
@@ -44,39 +42,6 @@
   onMount(async () => {
     console.log('[OtpLogin] onMount - showAsModal:', showAsModal);
     
-    // CRITICAL: Get encryption key - use prop if provided, otherwise use centralized config
-    // This ensures we always use VITE_SERVICE_ENCRYPTION_KEY consistently across the codebase
-    const encryptionKey = otpEncryptionKey || getOtpEncryptionKey();
-    
-    // CRITICAL: Verify encryption key is provided
-    if (!encryptionKey) {
-      console.error('[OtpLogin] ✗ CRITICAL ERROR: otpEncryptionKey is missing!');
-      console.error('[OtpLogin] This will cause encryption to fail. Key status:', {
-        hasKey: !!encryptionKey,
-        keyType: typeof encryptionKey,
-        keyLength: encryptionKey?.length || 0,
-        apiUrl: apiUrl,
-        usingCentralizedConfig: !otpEncryptionKey
-      });
-      if (onError) {
-        onError('OTP encryption key is required. Please configure VITE_SERVICE_ENCRYPTION_KEY in your build environment.');
-      }
-      return;
-    }
-    
-    if (encryptionKey.length < 32) {
-      console.error('[OtpLogin] ✗ CRITICAL ERROR: otpEncryptionKey is too short!', {
-        keyLength: encryptionKey.length,
-        requiredLength: 32
-      });
-      if (onError) {
-        onError('OTP encryption key must be at least 32 characters long.');
-      }
-      return;
-    }
-    
-    console.log('[OtpLogin] ✓ Encryption key provided, length:', encryptionKey.length, otpEncryptionKey ? '(from prop)' : '(from VITE_SERVICE_ENCRYPTION_KEY)');
-    
     try {
       core = new OtpLoginCore({
         apiUrl,
@@ -84,7 +49,6 @@
         onError,
         endpoints,
         customHeaders,
-        otpEncryptionKey: encryptionKey, // CRITICAL: Pass encryption key for encrypting OTP requests
       });
 
       // Subscribe to state changes

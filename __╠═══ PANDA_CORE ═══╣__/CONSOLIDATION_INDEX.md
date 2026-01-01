@@ -171,7 +171,7 @@ All documentation is being consolidated into 12 main categories:
 | `serverless/TYPESCRIPT_AUDIT.md` | `09_AUDITS_AND_REPORTS/TYPESCRIPT_AUDIT.md` | ✓ Consolidated |
 | `serverless/README.md` | `07_SERVICES/SERVERLESS_README.md` | ✓ Consolidated |
 | `serverless/customer-api/SETUP.md` | `07_SERVICES/CUSTOMER_API_SETUP.md` | ✓ Consolidated |
-| `serverless/customer-api/SERVICE_API_KEY_SETUP.md` | `04_DEPLOYMENT/CUSTOMER_API_SERVICE_KEY_SETUP.md` | ✓ Consolidated |
+| `serverless/customer-api/SERVICE_API_KEY_SETUP.md` | ~~DELETED~~ | ✓ Removed |
 | `serverless/customer-api/PHASE_4_SETUP_INSTRUCTIONS.md` | `04_DEPLOYMENT/CUSTOMER_API_PHASE_4_SETUP.md` | ✓ Consolidated |
 | `serverless/customer-api/INTEGRATION_GUIDE.md` | `10_GUIDES_AND_TUTORIALS/CUSTOMER_API_INTEGRATION.md` | ✓ Consolidated |
 | `serverless/customer-api/FINAL_STATUS.md` | `09_AUDITS_AND_REPORTS/CUSTOMER_API_FINAL_STATUS.md` | ✓ Consolidated |

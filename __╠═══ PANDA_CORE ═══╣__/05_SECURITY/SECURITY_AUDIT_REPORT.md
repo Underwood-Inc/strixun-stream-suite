@@ -176,7 +176,7 @@ All secrets are properly managed through `wrangler secret put`:
 3. **TWITCH_CLIENT_SECRET** - Twitch API client secret
 4. **RESEND_API_KEY** - Email service API key
 5. **RESEND_FROM_EMAIL** - Verified sender email
-6. **SERVICE_API_KEY** - Service-to-service authentication
+6. **SUPER_ADMIN_API_KEY** - Service-to-service authentication for admin operations
 7. **SERVICE_ENCRYPTION_KEY** - Data encryption key
 8. **ALLOWED_ORIGINS** - CORS origins (optional)
 9. **ALLOWED_EMAILS** - Email allowlist (optional)

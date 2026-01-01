@@ -1,22 +1,15 @@
 /**
  * Integration Tests for Customer Account Creation
- * Tests ensureCustomerAccount function against LIVE customer-api
+ * Tests ensureCustomerAccount function against LOCAL customer-api
  * 
- * ⚠ IMPORTANT: These tests use the REAL customer-api service
+ * ⚠ CRITICAL: These tests ONLY work with LOCAL workers!
+ * - Customer API must be running on http://localhost:8790
  * 
- * These tests only run when:
- * - USE_LIVE_API=true environment variable is set
- * - SERVICE_API_KEY is provided
- * - CUSTOMER_API_URL points to a deployed customer-api worker
- * 
- * In GitHub Actions CI:
- * - Automatically runs on push/PR to main/develop
- * - Uses secrets: CUSTOMER_API_URL, SERVICE_API_KEY
- * - Verifies actual integration between services
- * - Will FAIL if CUSTOMER_API_URL is wrong (catches configuration bugs!)
+ * NO SUPPORT FOR DEPLOYED/LIVE WORKERS - LOCAL ONLY!
  * 
  * To run locally:
- *   USE_LIVE_API=true CUSTOMER_API_URL=https://... SERVICE_API_KEY=... pnpm test customer-creation.integration.test.ts
+ *   1. Start customer API: cd serverless/customer-api && pnpm dev
+ *   2. Run tests: pnpm test:integration
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -27,32 +20,44 @@ import { loadTestConfig } from '../../utils/test-config-loader.js';
 const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev' | 'prod';
 const config = loadTestConfig(testEnv);
 
-// Only run integration tests when USE_LIVE_API is set
-const USE_LIVE_API = config.useLiveApi;
+// ALWAYS use localhost - no deployed worker support
 const CUSTOMER_API_URL = config.customerApiUrl;
-const SERVICE_API_KEY = config.serviceApiKey;
+const SUPER_ADMIN_API_KEY = config.superAdminApiKey;
 // NETWORK_INTEGRITY_KEYPHRASE must match the value in customer-api worker for integration tests
 const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests';
 
-describe.skipIf(!USE_LIVE_API)(`ensureCustomerAccount - Integration Tests (Live API) [${testEnv}]`, () => {
+describe(`ensureCustomerAccount - Integration Tests (Local Workers Only) [${testEnv}]`, () => {
   const mockEnv = {
     OTP_AUTH_KV: {} as any, // Not used in these tests
     CUSTOMER_API_URL,
-    SERVICE_API_KEY,
+    ENVIRONMENT: 'dev', // Always dev for local testing
     NETWORK_INTEGRITY_KEYPHRASE,
+    SUPER_ADMIN_API_KEY, // Required for service-client authentication
   };
 
   // Generate unique test email to avoid conflicts
   const testEmail = `test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 
-  beforeAll(() => {
-    if (!SERVICE_API_KEY) {
-      throw new Error('SERVICE_API_KEY environment variable is required for integration tests');
-    }
+  beforeAll(async () => {
     if (!CUSTOMER_API_URL) {
-      throw new Error('CUSTOMER_API_URL environment variable is required for integration tests');
+      throw new Error('CUSTOMER_API_URL is required for integration tests');
     }
-    console.log(`[Integration Tests] Using live API: ${CUSTOMER_API_URL}`);
+    
+    // Verify customer API is running
+    try {
+      const healthCheck = await fetch(`${CUSTOMER_API_URL}/customer/by-email/test@example.com`);
+      // Any response (even 404/401) means the service is running
+      console.log(`[Integration Tests] ✓ Customer API is running at ${CUSTOMER_API_URL}`);
+    } catch (error: any) {
+      throw new Error(
+        `✗ Customer API is not running!\n` +
+        `   URL: ${CUSTOMER_API_URL}\n` +
+        `   Error: ${error.message}\n` +
+        `   \n` +
+        `   Fix: Start customer API:\n` +
+        `   cd serverless/customer-api && pnpm dev`
+      );
+    }
   });
 
   describe('Legacy user migration with live customer-api', () => {
@@ -131,20 +136,21 @@ describe.skipIf(!USE_LIVE_API)(`ensureCustomerAccount - Integration Tests (Live 
       }
     }, 15000);
 
-    it('should verify SERVICE_API_KEY authentication works', async () => {
+    it('should verify internal call authentication works', async () => {
       // This test verifies service-to-service authentication
+      // Internal calls don't require authentication - customer-api accepts unauthenticated internal calls
       const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
       
       try {
         // Should not throw authentication errors
         await getCustomerByEmailService('test-auth@example.com', mockEnv);
-        // If we get here, auth worked (even if customer doesn't exist)
+        // If we get here, the call worked (even if customer doesn't exist)
       } catch (error: any) {
-        // Check if it's an auth error
+        // Check if it's an auth error (shouldn't happen for internal calls)
         if (error.message?.includes('401') || 
             error.message?.includes('Unauthorized') ||
             error.message?.includes('Authentication required')) {
-          throw new Error(`SERVICE_API_KEY authentication failed. Check that SERVICE_API_KEY is set correctly in both workers. Error: ${error.message}`);
+          throw new Error(`Internal call authentication failed. This should not happen for internal calls. Error: ${error.message}`);
         }
         // Other errors are OK (like customer not found)
         if (!error.message?.includes('Failed to get customer by email')) {

@@ -23,7 +23,7 @@ Edit `.dev.toml` (or `.prod.toml`) and fill in:
 ```toml
 [integration]
 customer_api_url = "https://strixun-customer-api.strixuns-script-suite.workers.dev"
-service_api_key = "your-actual-service-api-key-here"
+super_admin_api_key = "your-actual-super-admin-api-key-here"
 use_live_api = true
 ```
 
@@ -51,7 +51,7 @@ The test config loader uses this priority (highest to lowest):
 
 1. **Environment Variables** (highest priority)
    - `CUSTOMER_API_URL`
-   - `SERVICE_API_KEY`
+   - `SUPER_ADMIN_API_KEY`
    - `USE_LIVE_API`
 
 2. **TOML Files**
@@ -69,7 +69,7 @@ You can override TOML config with environment variables:
 ```bash
 # Using environment variables (no TOML needed)
 CUSTOMER_API_URL=https://strixun-customer-api.strixuns-script-suite.workers.dev \
-SERVICE_API_KEY=your-key \
+SUPER_ADMIN_API_KEY=your-key \
 USE_LIVE_API=true \
 pnpm test:integration
 ```
@@ -81,7 +81,7 @@ Integration tests verify:
 ✓ **Customer API URL is correct and reachable**
 - Catches wrong URLs, DNS issues, unreachable services
 
-✓ **SERVICE_API_KEY authentication works**
+✓ **SUPER_ADMIN_API_KEY authentication works**
 - Verifies service-to-service auth is configured correctly
 
 ✓ **Customer account creation works end-to-end**
@@ -94,15 +94,15 @@ Integration tests verify:
 
 Integration tests run automatically in CI using GitHub secrets:
 - `CUSTOMER_API_URL` (optional, has fallback)
-- `SERVICE_API_KEY` (required)
+- `SUPER_ADMIN_API_KEY` (required)
 
 See `.github/workflows/test-otp-auth-integration.yml`
 
 ## Troubleshooting
 
-### "SERVICE_API_KEY is required"
+### "SUPER_ADMIN_API_KEY is required"
 - Set it in `.dev.toml` or `.prod.toml`
-- Or use environment variable: `SERVICE_API_KEY=...`
+- Or use environment variable: `SUPER_ADMIN_API_KEY=...`
 
 ### "Customer API URL is incorrect or unreachable"
 - Check `customer_api_url` in your TOML file

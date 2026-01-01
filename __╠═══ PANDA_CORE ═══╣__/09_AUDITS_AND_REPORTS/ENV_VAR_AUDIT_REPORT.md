@@ -57,7 +57,7 @@ This audit identified and fixed critical environment variable naming conflicts b
 - **Pattern**: No `VITE_` prefix (standard environment variable names)
 - **Examples**:
   - `SERVICE_ENCRYPTION_KEY` - Encryption key (must match frontend `VITE_SERVICE_ENCRYPTION_KEY` value)
-  - `SERVICE_API_KEY` - Service-to-service authentication key
+  - `SUPER_ADMIN_API_KEY` - Service-to-service authentication for admin operations
   - `JWT_SECRET` - JWT signing secret
   - `NETWORK_INTEGRITY_KEYPHRASE` - Network integrity verification keyphrase
   - `RESEND_API_KEY` - Resend email API key
@@ -76,11 +76,10 @@ The following secrets must be set in GitHub repository settings:
 ### Required for OTP Auth Service
 - `RESEND_API_KEY` - Resend email API key
 - `RESEND_FROM_EMAIL` - Verified email address
-- `SERVICE_API_KEY` - Service-to-service authentication key
+- `SUPER_ADMIN_API_KEY` - Service-to-service authentication for admin operations
 - `NETWORK_INTEGRITY_KEYPHRASE` - Network integrity verification keyphrase
 
 ### Required for Customer API
-- `SERVICE_API_KEY` - Service-to-service authentication key
 - `NETWORK_INTEGRITY_KEYPHRASE` - Network integrity verification keyphrase
 
 ### Optional
@@ -113,7 +112,7 @@ wrangler secret list
 # Should show:
 # - SERVICE_ENCRYPTION_KEY
 # - JWT_SECRET
-# - SERVICE_API_KEY
+# - SUPER_ADMIN_API_KEY
 # - NETWORK_INTEGRITY_KEYPHRASE
 # - RESEND_API_KEY
 # - RESEND_FROM_EMAIL
@@ -143,7 +142,6 @@ cat .env | grep VITE_SERVICE_ENCRYPTION_KEY
 The `serverless/set-all-encryption-keys.ps1` script is **CORRECT**:
 - Sets `VITE_SERVICE_ENCRYPTION_KEY` in frontend `.env` files
 - Sets `SERVICE_ENCRYPTION_KEY` in Cloudflare Workers
-- Sets `SERVICE_API_KEY` in required workers
 
 **No changes needed** - script already uses correct naming.
 

@@ -19,21 +19,6 @@ if [ ${#service_encryption_key} -lt 32 ]; then
     exit 1
 fi
 
-# Prompt for SERVICE_API_KEY (used for service-to-service auth)
-echo ""
-echo "Enter SERVICE_API_KEY for service-to-service authentication (customer-api calls)"
-read -sp "Enter SERVICE_API_KEY (input will be hidden): " service_api_key
-echo ""
-
-if [ -z "$service_api_key" ]; then
-    echo "⚠ SERVICE_API_KEY is empty. Customer API calls will fail with 401."
-    echo "Do you want to continue without SERVICE_API_KEY? (y/n)"
-    read -r continue_choice
-    if [ "$continue_choice" != "y" ] && [ "$continue_choice" != "Y" ]; then
-        exit 1
-    fi
-fi
-
 echo ""
 echo "Setting keys..."
 echo ""
@@ -132,41 +117,6 @@ for worker in "${workers@}"; do
 done
 
 echo ""
-
-# Set SERVICE_API_KEY in workers that need it
-if [ -n "$service_api_key" ]; then
-    echo "Setting SERVICE_API_KEY in workers..."
-    service_workers=(
-        "otp-auth-service"
-        "customer-api"
-    )
-    
-    for worker in "${service_workers@}"; do
-        worker_path="serverless/$worker"
-        
-        if [ ! -d "$worker_path" ]; then
-            echo "  ⚠ Skipping $worker (directory not found)"
-            continue
-        fi
-        
-        echo "  Setting SERVICE_API_KEY in $worker..."
-        
-        # Change to worker directory and set secret
-        (
-            cd "$worker_path" || exit 1
-            echo "$service_api_key" | wrangler secret put SERVICE_API_KEY
-            
-            if [ $? -eq 0 ]; then
-                echo "    ✓ $worker"
-                ((success_count++))
-            else
-                echo "    ✗ Failed to set SERVICE_API_KEY in $worker"
-                ((fail_count++))
-            fi
-        )
-    done
-    echo ""
-fi
 
 echo "Summary:"
 echo "  ✓ Success: $success_count"

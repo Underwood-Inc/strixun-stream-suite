@@ -120,10 +120,16 @@ export default {
             });
             
             // Wrap with encryption to add integrity headers for service-to-service calls
-            const wrappedResult = await wrapWithEncryption(errorResponse, auth, request, env);
+            // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
+            const wrappedResult = await wrapWithEncryption(errorResponse, auth, request, env, {
+                allowServiceCallsWithoutJWT: true
+            });
             return wrappedResult.response;
         } catch (error: any) {
-            console.error('Request handler error:', error);
+            console.error('[Customer API Worker] Request handler error:', error);
+            console.error('[Customer API Worker] Error stack:', error?.stack);
+            console.error('[Customer API Worker] Request path:', path);
+            console.error('[Customer API Worker] Request method:', request.method);
             
             // Check if it's a JWT secret error (configuration issue)
             if (error.message && error.message.includes('JWT_SECRET')) {
@@ -136,13 +142,18 @@ export default {
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
                 });
-                return new Response(JSON.stringify(rfcError), {
+                const errorResponse = new Response(JSON.stringify(rfcError), {
                     status: 500,
                     headers: {
                         'Content-Type': 'application/problem+json',
                         ...Object.fromEntries(corsHeaders.entries()),
                     },
                 });
+                // CRITICAL: Allow service-to-service calls without JWT
+                const wrappedResult = await wrapWithEncryption(errorResponse, null, request, env, {
+                    allowServiceCallsWithoutJWT: true
+                });
+                return wrappedResult.response;
             }
             
             const rfcError = createError(
@@ -154,13 +165,18 @@ export default {
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
             });
-            return new Response(JSON.stringify(rfcError), {
+            const errorResponse = new Response(JSON.stringify(rfcError), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders.entries()),
                 },
             });
+            // CRITICAL: Allow service-to-service calls without JWT
+            const wrappedResult = await wrapWithEncryption(errorResponse, null, request, env, {
+                allowServiceCallsWithoutJWT: true
+            });
+            return wrappedResult.response;
         }
     },
 };

@@ -141,7 +141,7 @@ async function handleAdminRoute(
         };
     }
     
-    // If requireSuperAdmin passed but auth is null, check if it's a service-to-service call with SUPER_ADMIN_API_KEY
+    // If requireSuperAdmin passed but auth is null, check if it's an internal call with SUPER_ADMIN_API_KEY
     if (!auth) {
         // Verify this is actually a SUPER_ADMIN_API_KEY call (not a JWT that failed other checks)
         const { verifySuperAdmin } = await import('../utils/super-admin.js');
@@ -159,13 +159,13 @@ async function handleAdminRoute(
         }
         
         if (isSuperAdminKey) {
-            // Service-to-service call with SUPER_ADMIN_API_KEY - allow with null customerId
+            // Internal call with SUPER_ADMIN_API_KEY - allow with null customerId
             // The handler accepts null customerId and will perform system-wide operations
             const handlerResponse = await handler(request, env, null);
             return { response: handlerResponse, customerId: null };
         }
         
-        // Not a service-to-service call - require normal authentication
+        // Not an internal call - require normal authentication
         // Try to get more context from JWT token for better error message
         let errorMessage = 'Authentication required. Please log in to access the dashboard.';
         
@@ -202,7 +202,7 @@ async function handleAdminRoute(
     // Use shared middleware for encryption and integrity headers
     // This automatically:
     // - Encrypts responses if JWT token is present
-    // - Adds integrity headers for service-to-service calls (SUPER_ADMIN_API_KEY)
+    // - Adds integrity headers for internal calls
     return await wrapWithEncryption(handlerResponse, auth, request, env);
 }
 

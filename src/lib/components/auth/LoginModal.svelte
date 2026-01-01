@@ -11,7 +11,6 @@
   import { showToast } from '../../../stores/toast-queue';
   import OtpLogin from '@strixun/otp-login/svelte/OtpLogin.svelte';
   import type { LoginSuccessData } from '@strixun/otp-login';
-  import { getOtpEncryptionKey as getKey } from '../../../../shared-config/otp-encryption';
   
   export let onClose: () => void;
   
@@ -57,22 +56,6 @@
     
     // Fallback to custom domain if function doesn't exist
     return 'https://auth.idling.app';
-  }
-  
-  /**
-   * Get OTP encryption key from centralized config
-   * Priority: window.getOtpEncryptionKey() (for E2E tests) > centralized config
-   */
-  function getOtpEncryptionKey(): string | undefined {
-    // For E2E tests: use window function if available (matches backend .dev.vars)
-    if (typeof window !== 'undefined' && (window as any).getOtpEncryptionKey) {
-      const windowKey = (window as any).getOtpEncryptionKey();
-      if (windowKey && typeof windowKey === 'string' && windowKey.length >= 32) {
-        return windowKey;
-      }
-    }
-    // Fallback to centralized config
-    return getKey();
   }
   
   function handleLoginSuccess(data: LoginSuccessData) {
@@ -147,7 +130,6 @@
       apiUrl={getOtpAuthApiUrl()}
       onSuccess={handleLoginSuccess}
       onError={handleLoginError}
-      otpEncryptionKey={getOtpEncryptionKey()}
       showAsModal={true}
       onClose={onClose}
       title="Sign In"

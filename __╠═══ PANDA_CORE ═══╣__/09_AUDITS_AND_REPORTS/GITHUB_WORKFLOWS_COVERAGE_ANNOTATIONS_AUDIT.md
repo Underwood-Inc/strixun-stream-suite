@@ -236,7 +236,7 @@ node scripts/annotate-coverage.js <coverage-file> <workspace-root> <service-name
 **Example:**
 ```
 ::error::Integration tests failed - check Customer API connectivity and secrets
-::notice::Remediation: Verify CUSTOMER_API_URL and SERVICE_API_KEY secrets are correctly configured
+::notice::Remediation: Verify CUSTOMER_API_URL and SUPER_ADMIN_API_KEY secrets are correctly configured
 ```
 
 **Purpose:** Provides diagnostic information and remediation steps for test failures.
@@ -371,7 +371,7 @@ node scripts/annotate-coverage.js <coverage-file> <workspace-root> <service-name
    - Network connectivity issues
 3. Verify secrets are correctly configured:
    - `CUSTOMER_API_URL`
-   - `SERVICE_API_KEY`
+   - `SUPER_ADMIN_API_KEY`
    - Other service-specific secrets
 4. Verify services are deployed and accessible
 5. Re-run tests after fixing configuration

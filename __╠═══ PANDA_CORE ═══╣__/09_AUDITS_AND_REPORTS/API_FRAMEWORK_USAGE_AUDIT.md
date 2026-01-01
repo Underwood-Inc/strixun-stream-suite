@@ -89,10 +89,8 @@ import { createAPIClient } from '@strixun/api-framework/client';
 
 const serviceApi = createAPIClient({
     baseURL: getCustomerApiUrl(env),
-    defaultHeaders: {
-        'X-Service-Key': env.SERVICE_API_KEY,
-    },
     // Framework handles HTTPS, retry automatically
+    // Internal calls don't require authentication
 });
 ```
 

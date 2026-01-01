@@ -411,7 +411,7 @@
     min-height: 0;
     height: 100%;
     cursor: default;
-    padding: 6px 8px 12px 8px;
+    padding: 6px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;

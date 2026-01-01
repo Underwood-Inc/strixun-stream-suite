@@ -62,7 +62,7 @@
 ### Frontend Tests (mods-hub)
 - `mods-hub/src/pages/mod-list.e2e.spec.ts` - Updated to test public browsing
 - `mods-hub/src/pages/mod-detail.e2e.spec.ts` - Updated to test JWT requirement for downloads
-- `mods-hub/src/pages/mod-slug-uniqueness.e2e.spec.ts` - Fixed service key encryption removal
+- `mods-hub/src/pages/mod-slug-uniqueness.e2e.spec.ts` - Fixed encryption removal
 
 ### Backend Tests (serverless)
 - `serverless/mods-api/handlers/versions/download.e2e.spec.ts` - Updated download tests to require JWT, badge tests to allow public access
@@ -98,8 +98,8 @@
 
 ### Issue 1: Syntax Errors in mod-slug-uniqueness.e2e.spec.ts
 - **Status:** FIXED
-- **Problem:** Duplicate code and leftover service key encryption references
-- **Fix:** Removed duplicate code blocks and service key references
+- **Problem:** Duplicate code and leftover references
+- **Fix:** Removed duplicate code blocks
 
 ### Issue 2: await import in non-async context (ModDetailPage.tsx)
 - **Status:** FIXED
@@ -184,7 +184,7 @@ expect(authResponse.ok).toBe(true);
 2. ✅ Added binary decryption support to API framework
 3. ✅ Fixed download tests to require JWT authentication
 4. ✅ Aligned documentation with current security requirements
-5. ✅ Removed all service key encryption code from upload handler
+5. ✅ Removed all encryption code from upload handler
 6. ✅ Fixed test JWT tokens to include customerId
 7. ✅ Fixed login e2e tests to handle fancy screen and use correct selectors
 8. **TODO:** Run e2e tests (Chromium only) to verify all fixes
@@ -217,12 +217,12 @@ pnpm test:e2e --project=chromium
 
 ## Important Notes
 
-- ✅ **Service key encryption has been COMPLETELY REMOVED from codebase**
+- ✅ **Encryption uses JWT only**
 - ✅ **All file uploads use JWT encryption only**
 - ✅ **Public browsing endpoints use `requireJWT: false`** - responses are encrypted if JWT is provided, but JWT is not required
 - ✅ **Binary responses (downloads, images, badges) are encrypted with JWT** and automatically decrypted by API client
 - ✅ **API framework now handles binary decryption** - no manual decryption needed in client code
-- ✅ **Downloads ALWAYS require JWT authentication** - no service key fallback
+- ✅ **Downloads ALWAYS require JWT authentication**
 - ✅ **OTP auth endpoints use `requireJWT: false`** - chicken-and-egg problem (can't require JWT to get JWT)
 - ✅ **Playwright config updated to Chromium only** - faster test execution
 
@@ -244,5 +244,5 @@ pnpm test:e2e --project=chromium
 2. ✅ Public browsing endpoints allow access without JWT (`requireJWT: false`)
 3. ✅ Protected endpoints (downloads, uploads, admin) require JWT (`requireJWT: true` default)
 4. ✅ Binary files (images, downloads, scripts) use JWT binary encryption
-5. ✅ No service key fallback - JWT is the only encryption method
+5. ✅ JWT is the only encryption method
 6. ✅ Client automatically decrypts all encrypted responses (JSON and binary)

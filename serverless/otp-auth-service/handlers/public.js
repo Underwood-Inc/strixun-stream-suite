@@ -248,7 +248,6 @@ export async function handleVerifySignup(request, env) {
         // Update customer with company name from signup
         if (customer && signupData.companyName) {
             customer.companyName = signupData.companyName;
-            customer.name = signupData.companyName; // Use company name as the name
             // Update email config with company name
             if (customer.config && customer.config.emailConfig) {
                 customer.config.emailConfig.fromName = signupData.companyName;
@@ -286,7 +285,6 @@ export async function handleVerifySignup(request, env) {
             message: 'Account verified and created successfully. You are now logged in! Your API key is also available in the API Keys tab of your dashboard.',
             customer: {
                 customerId: customer?.customerId || customerId,
-                name: customer?.name || signupData.companyName,
                 email: customer?.email || emailLower,
                 companyName: customer?.companyName || signupData.companyName,
                 plan: customer?.plan || 'free',

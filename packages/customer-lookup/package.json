@@ -17,7 +17,8 @@
     "*.md"
   ],
   "dependencies": {
-    "@strixun/service-client": "workspace:*"
+    "@strixun/service-client": "workspace:*",
+    "@strixun/api-framework": "workspace:*"
   },
   "scripts": {
     "test": "vitest run --passWithNoTests",

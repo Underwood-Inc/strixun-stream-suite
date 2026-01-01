@@ -9,16 +9,11 @@ import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import '@strixun/otp-login/dist/react/otp-login.css';
-import { getOtpEncryptionKey as getKey } from '../../../../shared-config/otp-encryption';
 import './app.scss';
 
 function getApiUrl(): string {
   if (typeof window === 'undefined') return '';
   return 'https://auth.idling.app';
-}
-
-function getOtpEncryptionKey(): string | undefined {
-  return getKey();
 }
 
 async function fetchUserDisplayName(token: string): Promise<string | null> {
@@ -107,7 +102,6 @@ export default function App() {
             apiUrl={getApiUrl()}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            otpEncryptionKey={getOtpEncryptionKey()}
             title="Sign In"
             subtitle="Enter your email to receive a verification code"
             showAsModal={true}

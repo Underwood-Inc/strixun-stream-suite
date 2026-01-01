@@ -6,21 +6,35 @@ This guide documents the integration of the customer-api worker with the OTP aut
 
 ## ✓ Completed Integration Steps
 
-### 1. Customer API Client Created
+### 1. Customer API Client Consolidated
 
-**File:** `serverless/otp-auth-service/utils/customer-api-client.ts`
+**Package:** `@strixun/customer-lookup`
 
-A client utility for making authenticated requests to the customer-api worker:
-- `getCustomer(customerId, jwtToken, env)` - Get customer by ID
-- `getCustomerByEmail(email, jwtToken, env)` - Get customer by email
-- `getCurrentCustomer(jwtToken, env)` - Get current customer (me)
-- `createCustomer(customerData, jwtToken, env)` - Create new customer
-- `updateCustomer(customerId, updates, jwtToken, env)` - Update customer
+**Location:** `packages/customer-lookup/index.ts`
+
+A consolidated customer API client using the API framework as source of truth. Supports both JWT authentication (for user requests) and service-client (for service-to-service calls).
+
+**Service-to-Service Functions:**
+- `fetchCustomerByCustomerId(customerId, env)` - Get customer by ID
+- `getCustomerService(customerId, env)` - Alias for fetchCustomerByCustomerId
+- `getCustomerByEmailService(email, env)` - Get customer by email
+- `createCustomer(customerData, env)` - Create new customer
+- `updateCustomer(customerId, updates, env)` - Update customer
+
+**JWT-Authenticated Functions:**
+- `getCustomer(customerId, jwtToken, env?)` - Get customer by ID
+- `getCustomerByEmail(email, jwtToken, env?)` - Get customer by email
+- `getCurrentCustomer(jwtToken, env?)` - Get current customer (me)
 
 **Features:**
-- Automatic JWT-based authentication
-- Automatic response decryption (handles `X-Encrypted` header)
-- Error handling and logging
+- Unified API for all customer operations
+- Automatic JWT-based authentication for user requests
+- Service-client with integrity verification for service-to-service calls
+- Automatic localhost support in development (`http://localhost:8790`)
+- Uses API framework as source of truth
+- Full TypeScript support
+
+**Migration:** The old `customer-api-client.ts` and `customer-api-service-client.ts` files have been consolidated into this package. The old files are now backward-compatibility wrappers.
 
 ---
 
@@ -82,7 +96,7 @@ All customer operations now go through customer-api:
 
 1. **`ensureCustomerAccount()`** (`handlers/auth/customer-creation.ts`)
    - ✓ Now uses customer-api via service-to-service authentication
-   - ✓ Uses `SERVICE_API_KEY` for internal calls (no JWT needed)
+   - ✓ Uses unauthenticated internal calls (no JWT needed)
    - ✓ All customer data stored in `CUSTOMER_KV` (customer-api)
 
 2. **All handlers that call `ensureCustomerAccount()`:**

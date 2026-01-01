@@ -2,7 +2,6 @@
   import OtpLogin from '@strixun/otp-login/svelte/OtpLogin.svelte';
   import type { LoginSuccessData } from '@strixun/otp-login';
   import { apiClient } from '../lib/api-client';
-  import { getOtpEncryptionKey } from '@shared-config/otp-encryption';
 
   // Get API URL - dashboard uses relative URLs via Vite proxy
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -91,7 +90,6 @@
     {apiUrl}
     onSuccess={handleLoginSuccess}
     onError={handleLoginError}
-    otpEncryptionKey={getOtpEncryptionKey()}
     customHeaders={{ 'X-Dashboard-Request': 'true' }}
     title="Developer Dashboard"
     subtitle="Sign in with your email to access your dashboard"

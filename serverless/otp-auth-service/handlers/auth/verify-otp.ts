@@ -139,30 +139,59 @@ async function getOrCreateUser(
 }
 
 /**
+ * Decrypt request body if encrypted, otherwise parse as plain JSON
+ * Supports both encrypted (using API framework) and plain JSON requests
+ * Backend accepts both for backward compatibility
+ */
+async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string }> {
+    const bodyText = await request.text();
+    let body: any;
+    
+    try {
+        body = JSON.parse(bodyText);
+    } catch {
+        throw new Error('Invalid JSON in request body');
+    }
+    
+    // Check if body is encrypted (has encrypted: true and data field)
+    if (body.encrypted === true && body.data && typeof body.data === 'string') {
+        // Try to decrypt using API framework if service key is available
+        // For now, encrypted requests without a configured key will fall back to plain JSON
+        // This allows backward compatibility while supporting encryption when configured
+        if (env.SERVICE_ENCRYPTION_KEY && env.SERVICE_ENCRYPTION_KEY.length >= 32) {
+            try {
+                const { decryptWithJWT } = await import('@strixun/api-framework');
+                const decrypted = await decryptWithJWT(body, env.SERVICE_ENCRYPTION_KEY);
+                if (decrypted && typeof decrypted === 'object' && 'email' in decrypted && 'otp' in decrypted) {
+                    return { email: (decrypted as any).email, otp: (decrypted as any).otp };
+                }
+            } catch (decryptError) {
+                console.warn('[OTP Verify] Failed to decrypt encrypted body, falling back to plain JSON:', decryptError);
+                // Fall through to plain JSON parsing
+            }
+        } else {
+            console.warn('[OTP Verify] Encrypted body received but no SERVICE_ENCRYPTION_KEY configured, treating as plain JSON');
+        }
+    }
+    
+    // Parse as plain JSON
+    if (body.email && body.otp) {
+        return { email: body.email, otp: body.otp };
+    }
+    
+    throw new Error('Missing email or otp in request body');
+}
+
+/**
  * Verify OTP endpoint
  * POST /auth/verify-otp
  */
-/**
- * Parse request body (no encryption - HTTPS provides transport security)
- * SECURITY: Service key encryption removed - it was obfuscation only (key is in frontend bundle)
- * Real security: API key requirement, rate limiting, OTP expiration, HTTPS
- */
-async function parseRequestBody(request: Request): Promise<{ email: string; otp: string }> {
-    const body = await request.json();
-    // No decryption - HTTPS provides transport security
-    return body as { email: string; otp: string };
-}
-
-export async function handleVerifyOTP(
-    request: Request,
-    env: Env,
-    customerId: string | null = null
-): Promise<Response> {
+export async function handleVerifyOTP(request: Request, env: Env, customerId: string | null = null): Promise<Response> {
     try {
-        // Decrypt request body if encrypted
+        // Decrypt/parse request body
         const { email, otp } = await decryptRequestBody(request, env);
         
-        // Validate input
+        // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',

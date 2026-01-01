@@ -86,7 +86,7 @@ All customer operations now go through customer-api:
 
 1. **`ensureCustomerAccount()`** (`handlers/auth/customer-creation.ts`)
    - ✓ Now uses customer-api via service-to-service authentication
-   - ✓ Uses `SERVICE_API_KEY` for internal calls (no JWT needed)
+   - ✓ Uses unauthenticated internal calls (no JWT needed)
    - ✓ All customer data stored in `CUSTOMER_KV` (customer-api)
 
 2. **All handlers that call `ensureCustomerAccount()`:**

@@ -20,7 +20,7 @@
   "scripts": {
     "dev": "wrangler dev --port 8787 --local",
     "dev:app": "vite",
-    "dev:all": "concurrently -n worker,app -c yellow,cyan \"pnpm dev\" \"pnpm dev:app\"",
+    "dev:all": "concurrently -n worker,customer-api,app -c yellow,green,cyan --kill-others-on-fail --success first \"pnpm dev\" \"pnpm --filter strixun-customer-api dev\" \"pnpm dev:app\"",
     "setup:test-secrets": "node scripts/setup-test-secrets.js",
     "dev:with-secrets": "pnpm setup:test-secrets && pnpm dev",
     "build": "node scripts/build-with-key.js",
@@ -38,6 +38,7 @@
     "test:integration": "node scripts/run-integration-tests.js dev",
     "test:integration:dev": "node scripts/run-integration-tests.js dev",
     "test:integration:prod": "node scripts/run-integration-tests.js prod",
+    "test:integration:otp": "vitest run otp-login-flow.integration.test.ts",
     "tail": "wrangler tail",
     "tail:prod": "wrangler tail --env production",
     "tail:helper": "node scripts/tail-logs-helper.js"
@@ -50,6 +51,7 @@
     "@strixun/otp-login": "workspace:*",
     "@strixun/status-flair": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
+    "@strixun/customer-lookup": "workspace:*",
     "mermaid": "^11.12.2",
     "prismjs": "^1.30.0",
     "svelte": "^5.46.0",

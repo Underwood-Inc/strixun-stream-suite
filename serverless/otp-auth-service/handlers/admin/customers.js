@@ -8,6 +8,7 @@ import { getCustomer, storeCustomer, getCustomerByEmail, getCustomerKey } from '
 import { ensureCustomerAccount } from '../auth/customer-creation.js';
 import { hashEmail, verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import { buildResponseWithEncryption } from '../../utils/response-builder.js';
+import { getCustomerService, getCustomerByEmailService } from '../../utils/customer-api-service-client.js';
 
 /**
  * Get current customer info
@@ -15,35 +16,54 @@ import { buildResponseWithEncryption } from '../../utils/response-builder.js';
  */
 export async function handleAdminGetMe(request, env, customerId) {
     try {
-        // If customerId is provided but customer doesn't exist, try to ensure it exists
-        let customer = customerId ? await getCustomer(customerId, env) : null;
+        // Get JWT token from Authorization header
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
         
-        // If customer not found, try to get email from JWT token and ensure customer account exists
-        if (!customer && customerId) {
-            // Try to get email from JWT token in Authorization header
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                try {
-                    const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
-                    const jwtSecret = getJWTSecret(env);
-                    const payload = await verifyJWT(token, jwtSecret);
-                    
-                    if (payload && payload.email) {
-                        const emailLower = payload.email.toLowerCase().trim();
-                        // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
-                        try {
-                            const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-                            customer = await getCustomer(resolvedCustomerId, env);
-                        } catch (error) {
-                            console.error(`[Admin GetMe] Failed to ensure customer account for ${emailLower}:`, error);
-                            // Continue without customer - will return error below
-                        }
+        // Try to get email from JWT token to ensure customer account exists
+        let email = null;
+        let resolvedCustomerId = customerId;
+        
+        if (token) {
+            try {
+                const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
+                const jwtSecret = getJWTSecret(env);
+                const payload = await verifyJWT(token, jwtSecret);
+                
+                if (payload && payload.email) {
+                    email = payload.email.toLowerCase().trim();
+                    // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
+                    try {
+                        resolvedCustomerId = await ensureCustomerAccount(email, customerId, env);
+                    } catch (error) {
+                        console.error(`[Admin GetMe] Failed to ensure customer account for ${email}:`, error);
+                        // Continue - will try to get customer anyway
                     }
-                } catch (jwtError) {
-                    // JWT verification failed, continue with error handling below
-                    console.warn('[Admin GetMe] Failed to verify JWT for customer lookup:', jwtError);
                 }
+            } catch (jwtError) {
+                console.warn('[Admin GetMe] Failed to verify JWT for customer lookup:', jwtError);
+            }
+        }
+        
+        // Get customer from Customer API (not local KV store)
+        let customer = null;
+        if (resolvedCustomerId) {
+            try {
+                customer = await getCustomerService(resolvedCustomerId, env);
+            } catch (error) {
+                console.warn(`[Admin GetMe] Failed to get customer by ID ${resolvedCustomerId}:`, error);
+            }
+        }
+        
+        // If still not found and we have email, try by email
+        if (!customer && email) {
+            try {
+                customer = await getCustomerByEmailService(email, env);
+                if (customer) {
+                    resolvedCustomerId = customer.customerId;
+                }
+            } catch (error) {
+                console.warn(`[Admin GetMe] Failed to get customer by email ${email}:`, error);
             }
         }
         
@@ -56,10 +76,9 @@ export async function handleAdminGetMe(request, env, customerId) {
         }
         
         // Extract userId from JWT token for root config (always include id and customerId per API architecture)
+        // Reuse token from earlier extraction (line 21)
         let userId = null;
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
+        if (token) {
             try {
                 const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
                 const jwtSecret = getJWTSecret(env);
@@ -100,18 +119,18 @@ export async function handleAdminGetMe(request, env, customerId) {
             {
                 id: requestId,
                 customerId: customer.customerId,
-                name: customer.name,
                 email: customer.email,
                 userId: customer.email, // Use email as userId
                 companyName: customer.companyName,
-                plan: customer.plan,
+                plan: customer.plan || customer.tier,
                 status: customer.status,
                 createdAt: customer.createdAt,
+                displayName: customer.displayName,
                 features: customer.features
             },
             ownerUserId || customer.email, // Owner user ID
             ownerToken, // Owner's JWT token
-            customerId,
+            resolvedCustomerId || customerId,
             env
         );
         
@@ -145,12 +164,9 @@ export async function handleUpdateMe(request, env, customerId) {
         }
         
         const body = await request.json();
-        const { name, companyName } = body;
+        const { companyName } = body;
         
         // Update allowed fields only
-        if (name !== undefined) {
-            customer.name = name;
-        }
         if (companyName !== undefined) {
             customer.companyName = companyName;
         }
@@ -162,7 +178,6 @@ export async function handleUpdateMe(request, env, customerId) {
             success: true,
             customer: {
                 customerId: customer.customerId,
-                name: customer.name,
                 email: customer.email,
                 companyName: customer.companyName,
                 plan: customer.plan,

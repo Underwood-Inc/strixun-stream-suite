@@ -25,6 +25,7 @@ export default defineConfig({
       '**/svelte/**/*.test.ts', // Skip Svelte component tests for now
       '**/react/**/*.test.tsx', // Skip React component tests for now
       'node_modules/**', // Exclude all node_modules tests
+      '**/*.e2e.{test,spec}.{js,ts,tsx}', // Exclude e2e tests (run with Playwright)
     ],
   },
   resolve: {

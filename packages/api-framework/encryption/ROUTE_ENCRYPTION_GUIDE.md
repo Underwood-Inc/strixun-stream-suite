@@ -63,46 +63,7 @@ The system comes with sensible defaults:
 
 ## ★ Quick Start
 
-### 1. Set Service Key
-
-First, set the service encryption key as a Cloudflare Worker secret **for each worker that uses the encryption middleware**.
-
-**Which Workers Need This?**
-
-Set the service key in any Cloudflare Worker that uses `applyEncryptionMiddleware()`. For example:
-
-```bash
-# Step 1: Generate a strong random key (do this once)
-openssl rand -hex 32
-# Copy the output - you'll use this same key for all services
-
-# Step 2: Set the SAME key in ALL services
-cd serverless/otp-auth-service
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../customer-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../game-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-# ... repeat for chat-signaling, mods-api, url-shortener, twitch-api
-```
-
-**Recommended: Same Key for All Services**
-
-Using the **same service key** across all services is recommended because:
-- ✓ **Simpler key management** - One key to rotate instead of seven
-- ✓ **Service interoperability** - Services can decrypt each other's responses
-- ✓ **Consistent encryption** - All services use the same standard
-- ✓ **Easier client implementation** - Clients only need one service key
-
-**Security Consideration:** Since service-key encryption is for **public routes** (not sensitive authenticated data), sharing the key is an acceptable trade-off for operational simplicity. Sensitive data should use JWT encryption (user-specific keys).
-
-### 2. Use Middleware in Router
+### 1. Use Middleware in Router
 
 ```typescript
 import { applyEncryptionMiddleware } from '@strixun/api-framework';

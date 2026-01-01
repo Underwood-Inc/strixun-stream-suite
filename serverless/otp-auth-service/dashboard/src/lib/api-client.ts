@@ -55,7 +55,9 @@ export class ApiClient {
 
   constructor() {
     // Customer API uses different base URL
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
+    // In local dev, use localhost:8790; in production use the deployed URL
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
+      (import.meta.env.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
     this.customerApi = createAPIClient({
       baseURL: customerApiUrl,
       defaultHeaders: {
@@ -94,7 +96,12 @@ export class ApiClient {
     }
     // Recreate clients to pick up new token
     this.api = createClient();
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
+    // Check for dev mode: import.meta.env.DEV, import.meta.env.MODE === 'development', or window.location.hostname === 'localhost'
+    const isDev = import.meta.env.DEV || 
+      import.meta.env.MODE === 'development' || 
+      (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
+      (isDev ? 'http://localhost:8790' : 'https://customer-api.idling.app');
     this.customerApi = createAPIClient({
       baseURL: customerApiUrl,
       defaultHeaders: {

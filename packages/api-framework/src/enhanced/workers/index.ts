@@ -5,8 +5,10 @@
 export * from './platform';
 export * from './kv-cache';
 export * from './cors';
+export * from './cors-with-localhost';
 export * from './adapter';
 export type { CORSOptions } from './cors';
+export type { CORSWithLocalhostOptions } from './cors-with-localhost';
 export type { KVCacheOptions } from './kv-cache';
 export type { WorkerAdapterConfig } from '../types';
 

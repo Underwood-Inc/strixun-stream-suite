@@ -18,12 +18,6 @@ export function isServiceToServiceCall(
     request: Request,
     auth: { userId?: string; jwtToken?: string; customerId?: string | null } | null
 ): boolean {
-    // Check for service key header (X-Service-Key)
-    const serviceKey = request.headers.get('X-Service-Key');
-    if (serviceKey) {
-        return true;
-    }
-    
     // Check for SUPER_ADMIN_API_KEY in Authorization header (Bearer token that's not a JWT)
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {

@@ -32,21 +32,8 @@ async function handleCustomerRoute(
     env: Env,
     auth: any
 ): Promise<RouteResult> {
-    if (!auth) {
-        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token.');
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
-        });
-        const errorResponse = new Response(JSON.stringify(rfcError), {
-            status: 401,
-            headers: {
-                'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
-            },
-        });
-        // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-        return await wrapWithEncryption(errorResponse, null, request, env);
-    }
+    // Auth is always provided (either JWT or service-to-service minimal auth)
+    // No need to check for null
 
     // Get handler response
     const handlerResponse = await handler(request, env, auth);
@@ -54,8 +41,11 @@ async function handleCustomerRoute(
     // Use shared middleware for encryption and integrity headers
     // This automatically:
     // - Encrypts responses if JWT token is present
-    // - Adds integrity headers for service-to-service calls
-    return await wrapWithEncryption(handlerResponse, auth, request, env);
+    // - Adds integrity headers for internal calls
+    // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
+    return await wrapWithEncryption(handlerResponse, auth, request, env, {
+        allowServiceCallsWithoutJWT: true
+    });
 }
 
 /**
@@ -73,8 +63,20 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
     // Also normalize /customer to /customer/ for consistency
     const normalizedPath = path === '/' ? '/customer/' : (path === '/customer' ? '/customer/' : path);
 
-    // Authenticate request (JWT only)
-    const auth = await authenticateRequest(request, env);
+    // Authenticate request - JWT for user requests, optional for internal calls
+    // Internal calls (no Authorization header) are allowed for internal operations
+    let auth = await authenticateRequest(request, env);
+    
+    // If no JWT auth, allow unauthenticated internal calls
+    // This is needed during OTP verification when no JWT exists yet
+    if (!auth) {
+        // Create a minimal auth object for internal calls
+        auth = {
+            userId: 'service',
+            customerId: null,
+            jwtToken: '', // No JWT for service calls
+        };
+    }
 
     // Route to appropriate handler with automatic encryption wrapper
     try {
@@ -148,8 +150,11 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
                 ...Object.fromEntries(corsHeaders.entries()),
             },
         });
-        // Use wrapWithEncryption to ensure integrity headers are added for service-to-service calls
-        return await wrapWithEncryption(errorResponse, auth, request, env);
+        // Use wrapWithEncryption to ensure integrity headers are added for internal calls
+        // CRITICAL: Allow service-to-service calls without JWT (needed for OTP auth service)
+        return await wrapWithEncryption(errorResponse, auth, request, env, {
+            allowServiceCallsWithoutJWT: true
+        });
     }
 }
 

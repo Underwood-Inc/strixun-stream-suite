@@ -167,13 +167,38 @@ export class ApiClient {
         this.setToken(null);
     }
 
-    // Admin endpoints (require API key auth - but we'll use JWT for dashboard)
+    // Customer endpoints (now using customer-api)
     async getCustomer() {
-        return await this.get('/admin/customers/me');
+        // Customer API uses different base URL
+        const customerApiUrl = import.meta?.env?.VITE_CUSTOMER_API_URL || 
+            (import.meta?.env?.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        const url = `${customerApiUrl}/customer/me`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: this.getHeaders(),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.detail || error.error || 'Failed to get customer');
+        }
+        return await response.json();
     }
 
     async updateCustomer(data) {
-        return await this.put('/admin/customers/me', data);
+        // Customer API uses different base URL
+        const customerApiUrl = import.meta?.env?.VITE_CUSTOMER_API_URL || 
+            (import.meta?.env?.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+        const url = `${customerApiUrl}/customer/me`;
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: this.getHeaders(),
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.detail || error.error || 'Failed to update customer');
+        }
+        return await response.json();
     }
 
     async getApiKeys(customerId) {
