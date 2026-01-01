@@ -60,16 +60,31 @@ export async function requestOTPCode(
   page: Page,
   email: string
 ): Promise<{ response: any; body: any }> {
-  // Wait for fancy screen if present and click through
-  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
-  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
-  if (fancyScreenVisible) {
-    await fancyScreenButton.click();
-    await page.waitForTimeout(1000); // Wait for transition animation to complete
+  // Check if email form is already visible (fancy screen might have been skipped or already handled)
+  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+  const emailFormVisible = await emailInput.isVisible({ timeout: 2000 }).catch(() => false);
+  
+  if (!emailFormVisible) {
+    // Email form not visible, try to handle fancy screen
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      try {
+        await fancyScreenButton.click({ timeout: 3000 });
+      } catch {
+        // If click fails due to interception, try force click or JavaScript click
+        try {
+          await fancyScreenButton.click({ force: true, timeout: 3000 });
+        } catch {
+          // Last resort: click via JavaScript
+          await fancyScreenButton.evaluate((el: HTMLElement) => (el as HTMLButtonElement).click());
+        }
+      }
+      await page.waitForTimeout(1000); // Wait for transition animation to complete
+    }
   }
   
-  // Find email input
-  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+  // Find email input (wait for it if not already visible)
   await emailInput.waitFor({ state: 'visible', timeout: 15000 });
   
   // Set up response listener FIRST (before any interaction)

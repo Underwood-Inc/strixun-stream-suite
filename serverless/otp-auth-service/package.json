@@ -37,6 +37,7 @@
     "deploy:prod": "pnpm build && wrangler deploy --env production",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run --passWithNoTests",
+    "test:all": "VITEST_INTEGRATION=true vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "test:integration": "node scripts/run-integration-tests.js dev",

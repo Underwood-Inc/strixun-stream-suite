@@ -26,6 +26,15 @@ const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'test@example.com';
  * CRITICAL: The modal may show the fancy screen first before the email input
  */
 async function handleFancyScreenInModal(page: Page): Promise<void> {
+  // First check if email form is already visible (fancy screen might have been skipped)
+  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+  const emailFormVisible = await emailInput.isVisible({ timeout: 1000 }).catch(() => false);
+  
+  if (emailFormVisible) {
+    // Email form is already visible, no need to handle fancy screen
+    return;
+  }
+  
   // Check for fancy screen button inside modal
   const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
   const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 2000 }).catch(() => false);

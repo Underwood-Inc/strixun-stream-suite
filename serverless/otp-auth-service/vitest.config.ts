@@ -44,6 +44,9 @@ export default defineConfig({
     pool: 'forks', // Use forks to avoid memory issues
     isolate: true, // Isolate each test file
     passWithNoTests: true, // Don't fail if no tests are found
+    // Auto-start workers for integration tests (setup file checks if needed)
+    // The setup file exports both setup() and teardown() functions
+    globalSetup: './vitest.setup.integration.ts',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],

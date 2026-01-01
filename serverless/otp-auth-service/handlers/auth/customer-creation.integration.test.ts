@@ -25,6 +25,8 @@ const CUSTOMER_API_URL = config.customerApiUrl;
 const SUPER_ADMIN_API_KEY = config.superAdminApiKey;
 // NETWORK_INTEGRITY_KEYPHRASE must match the value in customer-api worker for integration tests
 const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests';
+// JWT_SECRET is required for API key creation
+const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-local-development-12345678901234567890123456789012';
 
 describe(`ensureCustomerAccount - Integration Tests (Local Workers Only) [${testEnv}]`, () => {
   const mockEnv = {
@@ -38,6 +40,7 @@ describe(`ensureCustomerAccount - Integration Tests (Local Workers Only) [${test
     ENVIRONMENT: 'dev', // Always dev for local testing
     NETWORK_INTEGRITY_KEYPHRASE,
     SUPER_ADMIN_API_KEY, // Required for service-client authentication
+    JWT_SECRET, // Required for API key creation
   };
 
   // Generate unique test email to avoid conflicts
