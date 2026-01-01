@@ -146,8 +146,9 @@ jobs:
         working-directory: serverless/url-shortener
         run: |
           # Verify that the build completed successfully
-          if [ ! -d "app/dist" ]; then
-            echo "[ERROR] Build output directory not found"
+          # Vite outputs to dist/url-shortener-app at project root (see app/vite.config.ts)
+          if [ ! -d "../../dist/url-shortener-app" ]; then
+            echo "[ERROR] Build output directory not found at ../../dist/url-shortener-app"
             exit 1
           fi
           if [ ! -f "dist/app-assets.ts" ]; then
@@ -156,7 +157,7 @@ jobs:
           fi
           # Verify that the encryption key was embedded in the bundle
           # The key should be present in the built JavaScript files
-          if grep -r "VITE_SERVICE_ENCRYPTION_KEY" app/dist/assets/*.js 2>/dev/null | grep -q "VITE_SERVICE_ENCRYPTION_KEY"; then
+          if grep -r "VITE_SERVICE_ENCRYPTION_KEY" ../../dist/url-shortener-app/assets/*.js 2>/dev/null | grep -q "VITE_SERVICE_ENCRYPTION_KEY"; then
             echo "[SUCCESS] Encryption key reference found in built bundle"
           else
             echo "[WARNING] Encryption key reference not found in built bundle - this may indicate the key wasn't embedded"

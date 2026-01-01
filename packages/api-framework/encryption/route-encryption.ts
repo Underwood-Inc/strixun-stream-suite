@@ -86,7 +86,7 @@ async function _deriveKeyFromServiceKey(_serviceKey: string, salt: Uint8Array): 
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(serviceKey),
+    encoder.encode(_serviceKey),
     'PBKDF2',
     false,
     ['deriveBits', 'deriveKey']
@@ -132,7 +132,7 @@ async function hashServiceKey(key: string): Promise<string> {
  * @deprecated Service key encryption removed - kept for type compatibility only
  */
 function _arrayBufferToBase64(_buffer: ArrayBuffer | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const bytes = _buffer instanceof Uint8Array ? _buffer : new Uint8Array(_buffer);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
@@ -157,7 +157,7 @@ export async function encryptWithServiceKey(
  * @deprecated Service key encryption removed - kept for type compatibility only
  */
 function _base64ToArrayBuffer(_base64: string): ArrayBuffer {
-  const binary = atob(base64);
+  const binary = atob(_base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
@@ -189,7 +189,7 @@ async function _compressDataForServiceKey(_data: Uint8Array & { buffer: ArrayBuf
   const writer = stream.writable.getWriter();
   const reader = stream.readable.getReader();
   
-  writer.write(data);
+  writer.write(_data);
   writer.close();
   
   const chunks: Uint8Array[] = [];
@@ -266,8 +266,8 @@ export async function encryptBinaryWithServiceKey(
  * Use JWT binary decryption instead.
  */
 export async function decryptBinaryWithServiceKey(
-  encryptedBinary: ArrayBuffer | Uint8Array,
-  serviceKey: string
+  _encryptedBinary: ArrayBuffer | Uint8Array,
+  _serviceKey: string
 ): Promise<Uint8Array> {
   throw new Error('Service key binary decryption has been completely removed. Use JWT binary decryption (decryptBinaryWithJWT) instead.');
 }

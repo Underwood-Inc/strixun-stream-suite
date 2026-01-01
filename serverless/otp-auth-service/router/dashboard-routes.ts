@@ -130,6 +130,40 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
 }
 
 /**
+ * Helper to wrap admin route handlers with authentication check, customerId tracking and encryption
+ * Used for routes that require regular authentication (not super-admin)
+ */
+async function handleAdminRoute(
+    handler: (request: Request, env: Env, customerId: string | null) => Promise<Response>,
+    request: Request,
+    env: Env,
+    auth: AuthResult
+): Promise<RouteResult> {
+    // Check if authenticated
+    if (!auth) {
+        return { 
+            response: new Response(JSON.stringify({ 
+                error: 'Authentication required',
+                code: 'AUTHENTICATION_REQUIRED'
+            }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            }), 
+            customerId: null 
+        };
+    }
+    
+    // Get handler response
+    const handlerResponse = await handler(request, env, auth.customerId);
+    
+    // Use shared middleware for encryption and integrity headers
+    // This automatically:
+    // - Encrypts responses if JWT token is present
+    // - Adds integrity headers for internal calls
+    return await wrapWithEncryption(handlerResponse, auth, request, env);
+}
+
+/**
  * Helper to wrap super-admin route handlers with super-admin check, customerId tracking and encryption
  * Used only for routes that require super-admin authentication
  */

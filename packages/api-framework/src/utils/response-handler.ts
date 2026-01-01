@@ -107,9 +107,12 @@ export async function handleResponse<T = unknown>(
             requestPath: request.path,
             hasMetadataToken: !!request.metadata?.token,
             metadataTokenPrefix: request.metadata?.token ? request.metadata.token.substring(0, 20) + '...' : 'none',
-            authHeaderPrefix: (request.headers?.['Authorization'] || request.headers?.['authorization']) 
-              ? (request.headers['Authorization'] || request.headers['authorization'])?.substring(0, 27) + '...' 
-              : 'none'
+            authHeaderPrefix: (() => {
+              const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
+              return (typeof authHeader === 'string' && authHeader) 
+                ? authHeader.substring(0, 27) + '...' 
+                : 'none';
+            })()
           });
           
           // For token mismatch errors, provide more helpful error message

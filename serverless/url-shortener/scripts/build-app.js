@@ -14,7 +14,8 @@ const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '..');
 const appDir = join(projectRoot, 'app');
-const distDir = join(appDir, 'dist');
+// Vite outputs to dist/url-shortener-app at project root (see app/vite.config.ts)
+const distDir = join(projectRoot, '..', '..', 'dist', 'url-shortener-app');
 const workerDistDir = join(projectRoot, 'dist');
 const outputFile = join(workerDistDir, 'app-assets.ts');
 

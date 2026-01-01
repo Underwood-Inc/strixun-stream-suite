@@ -11,7 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '..');
-const appDistDir = join(projectRoot, 'app', 'dist');
+// Vite outputs to dist/url-shortener-app at project root (see app/vite.config.ts)
+const appDistDir = join(projectRoot, '..', '..', 'dist', 'url-shortener-app');
 
 browserSync.init({
   proxy: 'http://localhost:8787',

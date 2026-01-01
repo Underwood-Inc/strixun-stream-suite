@@ -35,7 +35,7 @@ function randomElement<T>(array: readonly T[]): T {
  */
 function generateNamePattern(
     pattern: 'adjective-noun' | 'adjective-noun-number' | 'noun-adjective' | 'random',
-    includeNumber: boolean = false
+    _includeNumber: boolean = false
 ): string {
     // Determine word count (3-5 words, weighted towards 3-4)
     const wordCountRoll = Math.random();

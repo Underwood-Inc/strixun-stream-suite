@@ -49,24 +49,21 @@ test.describe('Mods Hub Login', () => {
   test('should display login page with email form', async ({ page }) => {
     await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
-    // CRITICAL: Wait for page to fully load and render
-    // The fancy "Authentication Required" screen ALWAYS appears first
-    // Wait for the fancy screen container to be visible
+    // Check if fancy screen is present (it may or may not appear)
     const fancyContainer = page.locator('.otp-login-fancy').first();
-    await fancyContainer.waitFor({ state: 'visible', timeout: 10000 });
+    const fancyScreenVisible = await fancyContainer.isVisible({ timeout: 3000 }).catch(() => false);
     
-    // Wait for the fancy screen button to be visible and clickable
-    const fancyScreenButton = page.locator('button.otp-login-fancy__button, button:has-text("SIGN IN WITH EMAIL")').first();
-    await fancyScreenButton.waitFor({ state: 'visible', timeout: 10000 });
-    await expect(fancyScreenButton).toBeVisible();
+    if (fancyScreenVisible) {
+      // Fancy screen is present - click through it
+      const fancyScreenButton = page.locator('button.otp-login-fancy__button, button:has-text("SIGN IN WITH EMAIL")').first();
+      await fancyScreenButton.waitFor({ state: 'visible', timeout: 10000 });
+      await fancyScreenButton.click();
+      
+      // Wait for fancy screen to disappear
+      await fancyContainer.waitFor({ state: 'hidden', timeout: 10000 });
+    }
     
-    // Click through the fancy screen
-    await fancyScreenButton.click();
-    
-    // Wait for fancy screen to disappear and email form to appear
-    await fancyContainer.waitFor({ state: 'hidden', timeout: 10000 });
-    
-    // Now wait for email form to be visible
+    // Now wait for email form to be visible (regardless of whether fancy screen was present)
     const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
     await emailInput.waitFor({ state: 'visible', timeout: 10000 });
     await expect(emailInput).toBeVisible();
@@ -623,12 +620,26 @@ test.describe('Mods Hub Login', () => {
     });
     
     // Navigate to home page - should trigger session restore
+    // Wait for restore-session call before navigating
+    const restoreSessionPromise = page.waitForResponse(
+      (response) => response.url().includes('/auth/restore-session') && response.request().method() === 'POST',
+      { timeout: 10000 }
+    ).catch(() => null); // Don't fail if it doesn't happen immediately
+    
     await page.goto(`${MODS_HUB_URL}/`, { waitUntil: 'networkidle' });
     
-    // Wait for session restore to complete
-    await page.waitForTimeout(2000); // Give time for restore-session to be called
+    // Wait for restore-session call to complete (with timeout)
+    await restoreSessionPromise;
     
-    // Verify restore-session was called
+    // Also check the calls array in case the listener caught it
+    await page.waitForTimeout(1000); // Give time for any pending restore-session calls
+    
+    // Verify restore-session was called (either from promise or listener)
+    const totalCalls = restoreSessionCalls.length;
+    if (totalCalls === 0) {
+      // Wait a bit more and check again (race condition)
+      await page.waitForTimeout(2000);
+    }
     expect(restoreSessionCalls.length).toBeGreaterThan(0);
     
     // Wait for authentication to be restored

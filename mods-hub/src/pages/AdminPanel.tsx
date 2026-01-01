@@ -106,11 +106,11 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
   border: 1px solid ${colors.border};
   border-radius: 4px;
   background: ${props => {
-    if (props.variant === 'primary') return colors.accent;
-    if (props.variant === 'danger') return colors.danger;
+    if (props.$variant === 'primary') return colors.accent;
+    if (props.$variant === 'danger') return colors.danger;
     return colors.bgTertiary;
   }};
-  color: ${props => props.variant === 'primary' || props.variant === 'danger' ? '#fff' : colors.text};
+  color: ${props => props.$variant === 'primary' || props.$variant === 'danger' ? '#fff' : colors.text};
   font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.2s ease;

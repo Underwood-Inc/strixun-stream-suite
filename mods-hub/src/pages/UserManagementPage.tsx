@@ -359,7 +359,7 @@ export function UserManagementPage() {
                     : 'Approved';
                 
                 return (
-                    <PermissionBadge hasPermission={true} source={user.permissionSource}>
+                    <PermissionBadge hasPermission={true} source={user.permissionSource === 'none' ? undefined : user.permissionSource}>
                         {sourceLabel}
                     </PermissionBadge>
                 );
@@ -403,7 +403,7 @@ export function UserManagementPage() {
                     <ActionGroup>
                         {canManagePermission ? (
                             <Button
-                                variant={user.hasUploadPermission ? 'danger' : 'primary'}
+                                $variant={user.hasUploadPermission ? 'danger' : 'primary'}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleTogglePermission(user.userId, user.hasUploadPermission);

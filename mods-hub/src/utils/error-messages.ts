@@ -84,7 +84,7 @@ export function getUserFriendlyErrorMessage(error: unknown): string {
     }
     
     // 5xx errors
-    if (status >= 500) {
+    if (status !== undefined && status >= 500) {
       return 'Server error. Please try again later';
     }
   }

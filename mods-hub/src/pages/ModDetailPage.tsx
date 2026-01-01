@@ -282,7 +282,6 @@ export function ModDetailPage() {
                 modSlug={mod.slug} 
                 versions={versions} 
                 variants={mod.variants || []}
-                isUploader={isUploader} 
             />
             
             {isUploader && (

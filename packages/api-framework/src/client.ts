@@ -33,6 +33,7 @@ import { createE2EEncryptionMiddleware } from './enhanced/encryption/jwt-encrypt
 import { createResponseFilterMiddleware } from './enhanced/filtering/response-filter';
 import { createErrorLegendMiddleware } from './enhanced/errors/legend-integration';
 import type { RequestContext, TypeDefinition } from './enhanced/types';
+import type { WorkerAdapter } from './enhanced/workers/adapter';
 
 /**
  * API Client - Default implementation with optional features

@@ -411,11 +411,17 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                             if (isTokenMismatch) {
                                                 // Token mismatch - don't spam restore, just extract customerId from JWT if needed
                                                 console.warn('[Auth] Token mismatch detected during background fetch - token may be stale');
-                                                const jwtPayload = decodeJWTPayload(state.user.token);
-                                                const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
-                                                if (jwtCustomerId && !state.user.customerId) {
-                                                    state.user = { ...state.user, customerId: jwtCustomerId };
-                                                    console.log('[Auth] Extracted customerId from JWT after token mismatch:', jwtCustomerId);
+                                                if (state.user) {
+                                                    const jwtPayload = decodeJWTPayload(state.user.token);
+                                                    const jwtCustomerId = jwtPayload?.customerId as string | null | undefined;
+                                                    if (jwtCustomerId && !state.user.customerId) {
+                                                        state.user = { 
+                                                            ...state.user, 
+                                                            customerId: jwtCustomerId,
+                                                            userId: state.user.userId, // Ensure userId is explicitly set
+                                                        };
+                                                        console.log('[Auth] Extracted customerId from JWT after token mismatch:', jwtCustomerId);
+                                                    }
                                                 }
                                                 // DON'T clear or restore - that causes infinite loops
                                             } else {

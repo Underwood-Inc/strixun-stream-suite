@@ -9,6 +9,10 @@ export default defineConfig({
         replacement: resolve(__dirname, '../../packages/customer-lookup/index.ts'),
       },
       {
+        find: '@strixun/api-framework/jwt',
+        replacement: resolve(__dirname, '../../packages/api-framework/jwt.ts'),
+      },
+      {
         find: '@strixun/api-framework/enhanced',
         replacement: resolve(__dirname, '../../packages/api-framework/enhanced.ts'),
       },

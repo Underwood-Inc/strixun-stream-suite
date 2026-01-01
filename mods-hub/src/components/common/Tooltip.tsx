@@ -689,7 +689,7 @@ export function Tooltip({
           onMouseEnter={handleTooltipMouseEnter}
           onMouseLeave={handleTooltipMouseLeave}
         >
-          {content || tooltipText}
+          {content || (detectTruncation && isTruncated ? truncatedText : text)}
         </TooltipElement>,
         portalRootElement
       )

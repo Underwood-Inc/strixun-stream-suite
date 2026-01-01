@@ -10,7 +10,7 @@ import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
 import { ModListItem } from '../components/mod/ModListItem';
 import { ModFilters } from '../components/mod/ModFilters';
-import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
+import { shouldRedirectToLogin } from '../utils/error-messages';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 
