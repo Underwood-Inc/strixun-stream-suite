@@ -145,7 +145,7 @@ test.describe('Mod Detail Page', () => {
           const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'test@example.com';
           const TEST_OTP_CODE = process.env.E2E_TEST_OTP_CODE || '123456';
           
-          await page.goto(`${modsHubUrl}/login`);
+          await page.goto(`${modsHubUrl}/login`, { waitUntil: 'networkidle' });
           const { requestOTPCode, verifyOTPCode, waitForOTPForm } = await import('@strixun/e2e-helpers');
           await requestOTPCode(page, TEST_EMAIL);
           await waitForOTPForm(page);
@@ -218,7 +218,7 @@ test.describe('Mod Detail Page', () => {
       }
       
       // Authenticate to get token
-      await page.goto(`${modsHubUrl}/login`);
+      await page.goto(`${modsHubUrl}/login`, { waitUntil: 'networkidle' });
       const { requestOTPCode, verifyOTPCode, waitForOTPForm } = await import('@strixun/e2e-helpers');
       await requestOTPCode(page, TEST_EMAIL);
       await waitForOTPForm(page);

@@ -7,7 +7,7 @@
  * Uses the same comprehensive test coverage as mods-hub for consistency
  */
 
-import { test, expect } from '@strixun/e2e-helpers/fixtures';
+import { test, expect, Page } from '@playwright/test';
 import { 
   verifyWorkersHealth, 
   requestOTPCode, 
@@ -20,6 +20,22 @@ import {
 const FRONTEND_URL = process.env.E2E_FRONTEND_URL || 'http://localhost:5173';
 // Use test@example.com to match SUPER_ADMIN_EMAILS in test secrets (bypasses rate limiting)
 const TEST_EMAIL = process.env.E2E_TEST_EMAIL || 'test@example.com';
+
+/**
+ * Helper: Handle fancy "Authentication Required" screen inside modal if present
+ * CRITICAL: The modal may show the fancy screen first before the email input
+ */
+async function handleFancyScreenInModal(page: Page): Promise<void> {
+  // Check for fancy screen button inside modal
+  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 2000 }).catch(() => false);
+  
+  if (fancyScreenVisible) {
+    // Click through the fancy screen to get to the email form
+    await fancyScreenButton.click();
+    await page.waitForTimeout(500); // Wait for transition animation
+  }
+}
 
 test.describe('Main App Authentication Flow', () => {
   test.beforeAll(async () => {
@@ -65,8 +81,11 @@ test.describe('Main App Authentication Flow', () => {
     const modalContent = page.locator('.otp-login-modal').first();
     await modalContent.waitFor({ state: 'visible', timeout: 10000 });
     
-    // Wait for email input in modal
-    const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+    // CRITICAL: Handle fancy "Authentication Required" screen inside modal if present
+    await handleFancyScreenInModal(page);
+    
+    // Wait for email input in modal (after fancy screen if present)
+    const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
     await emailInput.waitFor({ state: 'visible', timeout: 10000 });
     
     // Enter test email
@@ -114,11 +133,10 @@ test.describe('Main App Authentication Flow', () => {
     const modalContent = page.locator('.otp-login-modal').first();
     await modalContent.waitFor({ state: 'visible', timeout: 10000 });
     
-    // Wait for email input to be visible inside modal
-    const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
-    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    // CRITICAL: Handle fancy "Authentication Required" screen inside modal if present
+    await handleFancyScreenInModal(page);
     
-    // Request OTP using helper (modal should be open now)
+    // Request OTP using helper (modal should be open now, fancy screen handled)
     const { response, body } = await requestOTPCode(page, TEST_EMAIL);
     
     // Debug: Log response details if it failed
@@ -162,9 +180,8 @@ test.describe('Main App Authentication Flow', () => {
     const modalContent = page.locator('.otp-login-modal').first();
     await modalContent.waitFor({ state: 'visible', timeout: 10000 });
     
-    // Wait for email input to be visible inside modal
-    const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
-    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    // CRITICAL: Handle fancy "Authentication Required" screen inside modal if present
+    await handleFancyScreenInModal(page);
     
     // Ensure API URL is configured (set it if needed for test environment)
     await page.evaluate(() => {
@@ -247,9 +264,8 @@ test.describe('Main App Authentication Flow', () => {
     const modalContent = page.locator('.otp-login-modal').first();
     await modalContent.waitFor({ state: 'visible', timeout: 10000 });
     
-    // Wait for email input to be visible inside modal
-    const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
-    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    // CRITICAL: Handle fancy "Authentication Required" screen inside modal if present
+    await handleFancyScreenInModal(page);
     
     // Ensure API URL is configured (set it if needed for test environment)
     await page.evaluate(() => {
@@ -258,7 +274,7 @@ test.describe('Main App Authentication Flow', () => {
       }
     });
     
-    // Request OTP
+    // Request OTP (helper will also handle fancy screen, but we do it here too for safety)
     await requestOTPCode(page, TEST_EMAIL);
     await waitForOTPForm(page);
     
@@ -482,9 +498,8 @@ test.describe('Main App Authentication Flow', () => {
     const modalContent = page.locator('.otp-login-modal').first();
     await modalContent.waitFor({ state: 'visible', timeout: 10000 });
     
-    // Wait for email input to be visible inside modal
-    const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
-    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    // CRITICAL: Handle fancy "Authentication Required" screen inside modal if present
+    await handleFancyScreenInModal(page);
     
     // Ensure API URL is configured (set it if needed for test environment)
     await page.evaluate(() => {
@@ -493,7 +508,7 @@ test.describe('Main App Authentication Flow', () => {
       }
     });
     
-    // Request OTP
+    // Request OTP (helper will also handle fancy screen, but we do it here too for safety)
     await requestOTPCode(page, TEST_EMAIL);
     await waitForOTPForm(page);
     

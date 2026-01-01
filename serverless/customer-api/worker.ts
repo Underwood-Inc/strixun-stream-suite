@@ -104,10 +104,8 @@ export default {
                 return customerResult.response;
             }
 
-            // 404 for unknown routes - wrap with encryption to add integrity headers for service-to-service calls
-            // Check if this is a service call by looking for X-Service-Key header
-            const isServiceCall = request.headers.has('X-Service-Key');
-            const auth = isServiceCall ? { userId: 'service', jwtToken: '' } : null;
+            // 404 for unknown routes
+            const auth = null;
             
             const rfcError = createError(request, 404, 'Not Found', 'The requested endpoint was not found');
             const corsHeaders404 = createCORSHeaders(request, {

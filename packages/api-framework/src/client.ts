@@ -1,7 +1,8 @@
 /**
- * API Framework - Core API Client
+ * API Framework - API Client (Default)
  * 
- * Main API client with middleware pipeline and request management
+ * Single API client with optional advanced features
+ * All enhancements are opt-in via config.features flags
  */
 
 import type {
@@ -9,6 +10,7 @@ import type {
   APIResponse,
   APIClientConfig,
   Middleware,
+  OptimisticConfig,
 } from './types';
 import { MiddlewarePipeline } from './middleware/index';
 import { createAuthMiddleware } from './middleware/auth';
@@ -17,14 +19,76 @@ import { createTransformMiddleware, defaultRequestTransformer } from './middlewa
 import { RequestBuilder } from './utils/request-builder';
 import { handleResponse, handleErrorResponse, isSuccessResponse } from './utils/response-handler';
 import { secureFetch } from './utils/secure-fetch';
+import { RequestDeduplicator } from './request/deduplicator';
+import { RequestQueue } from './request/queue';
+import { CancellationManager } from './request/cancellation';
+import { RetryManager } from './resilience/retry';
+import { CircuitBreaker } from './resilience/circuit-breaker';
+import { OfflineQueue } from './resilience/offline';
+import { CacheManager } from './cache/strategies';
+import { OptimisticUpdateManager } from './optimistic/updates';
+import { createLoggingPlugin, createMetricsPlugin } from './plugins';
+// Enhanced features (optional imports)
+import { createE2EEncryptionMiddleware } from './enhanced/encryption/jwt-encryption';
+import { createResponseFilterMiddleware } from './enhanced/filtering/response-filter';
+import { createErrorLegendMiddleware } from './enhanced/errors/legend-integration';
+import { createWorkerAdapter, type WorkerAdapter } from './enhanced/workers/adapter';
+import type { RequestContext, TypeDefinition } from './enhanced/types';
+import type { APIResponse as EnhancedAPIResponse } from './enhanced/types';
 
+/**
+ * API Client - Default implementation with optional features
+ * 
+ * All advanced features are opt-in via config.features:
+ * - deduplication: Deduplicate identical requests
+ * - queue: Request queuing with priority
+ * - cancellation: Request cancellation support
+ * - circuitBreaker: Circuit breaker pattern
+ * - offlineQueue: Offline request queuing
+ * - optimisticUpdates: Optimistic UI updates
+ * - logging: Request/response logging
+ * - metrics: Performance metrics collection
+ */
 export class APIClient {
   private config: Required<APIClientConfig>;
   private middlewarePipeline: MiddlewarePipeline;
   private baseURL: string;
 
+  // Optional feature managers - only initialized if enabled
+  private deduplicator?: RequestDeduplicator;
+  private queue?: RequestQueue;
+  private cancellationManager?: CancellationManager;
+  private retryManager?: RetryManager;
+  private circuitBreaker?: CircuitBreaker;
+  private offlineQueue?: OfflineQueue;
+  private cacheManager?: CacheManager;
+  private optimisticManager?: OptimisticUpdateManager;
+
+  // Enhanced feature managers (optional, enabled via feature flags)
+  private workerAdapter?: WorkerAdapter | null;
+  private requestContext!: RequestContext;
+
+  // Feature flags
+  private features: Required<NonNullable<APIClientConfig['features']>>;
+
   constructor(config: APIClientConfig = {}) {
     this.baseURL = config.baseURL || '';
+    
+    // Initialize feature flags with defaults (all disabled by default)
+    this.features = {
+      deduplication: config.features?.deduplication ?? false,
+      queue: config.features?.queue ?? false,
+      cancellation: config.features?.cancellation ?? false,
+      circuitBreaker: config.features?.circuitBreaker ?? false,
+      offlineQueue: config.features?.offlineQueue ?? false,
+      optimisticUpdates: config.features?.optimisticUpdates ?? false,
+      logging: config.features?.logging ?? false,
+      metrics: config.features?.metrics ?? false,
+      e2eEncryption: config.features?.e2eEncryption ?? false,
+      responseFiltering: config.features?.responseFiltering ?? false,
+      errorLegend: config.features?.errorLegend ?? false,
+      workerAdapter: config.features?.workerAdapter ?? false,
+    };
     
     this.config = {
       baseURL: this.baseURL,
@@ -38,9 +102,9 @@ export class APIClient {
         retryableErrors: [408, 429, 500, 502, 503, 504],
       },
       cache: {
-        enabled: config.cache?.enabled ?? false, // Disabled by default - opt-in only
-        defaultStrategy: config.cache?.defaultStrategy || 'network-only', // Never cache by default
-        defaultTTL: config.cache?.defaultTTL || 0, // No TTL by default
+        enabled: config.cache?.enabled ?? false,
+        defaultStrategy: config.cache?.defaultStrategy || 'network-only',
+        defaultTTL: config.cache?.defaultTTL || 0,
       },
       offline: {
         enabled: config.offline?.enabled ?? false,
@@ -51,15 +115,115 @@ export class APIClient {
       auth: config.auth || {},
       errorHandler: config.errorHandler || (async () => {}),
       plugins: config.plugins || [],
-    };
+      features: this.features,
+      encryption: config.encryption,
+      filtering: config.filtering,
+      errorHandling: config.errorHandling,
+      worker: config.worker,
+    } as Required<APIClientConfig>;
 
     this.middlewarePipeline = new MiddlewarePipeline();
+
+    // Initialize request context first
+    this.requestContext = {
+      request: {} as APIRequest,
+      env: config.worker?.env,
+    };
+
+    // Initialize retry manager if retry config is provided
+    if (config.retry) {
+      this.retryManager = new RetryManager(config.retry);
+    }
+
+    // Initialize only enabled features
+    if (this.features.deduplication) {
+      this.deduplicator = new RequestDeduplicator();
+    }
+
+    if (this.features.queue) {
+      this.queue = new RequestQueue({
+        maxConcurrent: 6,
+        defaultPriority: 'normal',
+      });
+    }
+
+    if (this.features.cancellation) {
+      this.cancellationManager = new CancellationManager();
+    }
+
+    if (this.features.circuitBreaker) {
+      this.circuitBreaker = new CircuitBreaker({
+        failureThreshold: 5,
+        resetTimeout: 60000,
+      });
+    }
+
+    if (this.features.offlineQueue) {
+      this.offlineQueue = new OfflineQueue(config.offline);
+    }
+
+    // Cache manager is initialized if cache is enabled in config
+    if (config.cache?.enabled) {
+      this.cacheManager = new CacheManager(true);
+    }
+
+    if (this.features.optimisticUpdates) {
+      this.optimisticManager = new OptimisticUpdateManager();
+    }
 
     // Setup default middlewares
     this.setupDefaultMiddlewares();
 
+    // Setup enhanced middlewares if enabled
+    this.setupEnhancedMiddlewares();
+
+    // Setup plugins if enabled
+    if (this.features.logging) {
+      this.use(createLoggingPlugin({ enabled: true }).middleware!);
+    }
+
+    if (this.features.metrics) {
+      this.use(createMetricsPlugin({ enabled: true }).middleware!);
+    }
+
     // Setup plugins
     this.setupPlugins();
+  }
+
+  /**
+   * Setup enhanced middlewares (from EnhancedAPIClientV2)
+   */
+  private setupEnhancedMiddlewares(): void {
+    // Error handling with legend (must be first to catch all errors)
+    if (this.features.errorLegend && this.config.errorHandling?.useErrorLegend) {
+      this.use(
+        createErrorLegendMiddleware(
+          this.config.errorHandling.useErrorLegend
+        )
+      );
+    }
+
+    // E2E encryption (before response filtering)
+    if (this.features.e2eEncryption && this.config.encryption?.enabled) {
+      this.use(
+        createE2EEncryptionMiddleware(this.config.encryption)
+      );
+    }
+
+    // Response filtering
+    if (this.features.responseFiltering && this.config.filtering) {
+      // Cast to match ResponseFilterConfig type requirements
+      const filterConfig = {
+        ...this.config.filtering,
+        rootConfig: {
+          ...this.config.filtering.rootConfig,
+          alwaysInclude: this.config.filtering.rootConfig.alwaysInclude as ('id' | 'customerId')[],
+        },
+      };
+      this.use(
+        createResponseFilterMiddleware(filterConfig as any)
+      );
+    }
   }
 
   /**
@@ -131,16 +295,112 @@ export class APIClient {
   }
 
   /**
-   * Make API request
+   * Make API request with optional features applied
    */
   async requestRaw<T = unknown>(request: APIRequest): Promise<APIResponse<T>> {
+    // Update request context (for enhanced features)
+    this.requestContext.request = request;
+    
+    // Enhance context with Worker adapter if available
+    if (this.features.workerAdapter && this.workerAdapter) {
+      this.requestContext = this.workerAdapter.enhanceContext(this.requestContext);
+    }
+
+    // Get or create abort controller if cancellation is enabled
+    if (this.features.cancellation && this.cancellationManager) {
+      const controller = this.cancellationManager.getController(request.id);
+      request.signal = request.signal || controller.signal;
+    }
+
+    // Check cache if enabled
+    if (request.cache && this.cacheManager?.enabled) {
+      const cached = await this.cacheManager.get<T>(request, request.cache);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    // Execute request with optional features
+    try {
+      let executor = async (): Promise<APIResponse<T>> => {
+        // Check offline queue if enabled
+        if (this.features.offlineQueue && this.offlineQueue) {
+          if (!this.offlineQueue.isCurrentlyOnline()) {
+            return this.offlineQueue.enqueue(request, async () => {
+              return this.executeBaseRequest<T>(request);
+            });
+          }
+        }
+
+        // Execute base request
+        const response = await this.executeBaseRequest<T>(request);
+
+        // Cache response if enabled
+        if (request.cache && this.cacheManager) {
+          await this.cacheManager.set(request, response, request.cache);
+        }
+
+        // Cleanup cancellation if enabled
+        if (this.features.cancellation && this.cancellationManager) {
+          this.cancellationManager.cleanup(request.id);
+        }
+
+        return response;
+      };
+
+      // Apply retry manager if available
+      if (this.retryManager) {
+        const retryMgr = this.retryManager;
+        const baseExecutor = executor;
+        executor = async () => {
+          return retryMgr.execute(request, baseExecutor);
+        };
+      }
+
+      // Apply circuit breaker if enabled
+      if (this.features.circuitBreaker && this.circuitBreaker) {
+        const cb = this.circuitBreaker;
+        const baseExecutor = executor;
+        executor = async () => {
+          return cb.execute(baseExecutor);
+        };
+      }
+
+      // Apply queue if enabled
+      if (this.features.queue && this.queue) {
+        const queue = this.queue;
+        const baseExecutor = executor;
+        executor = async () => {
+          return queue.enqueue(request, baseExecutor);
+        };
+      }
+
+      // Apply deduplication if enabled
+      if (this.features.deduplication && this.deduplicator) {
+        const dedup = this.deduplicator;
+        return dedup.deduplicate<T>(request, executor);
+      }
+
+      return executor();
+    } catch (error) {
+      // Cleanup cancellation on error
+      if (this.features.cancellation && this.cancellationManager) {
+        this.cancellationManager.cleanup(request.id);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Execute base request (without optional features)
+   */
+  private async executeBaseRequest<T = unknown>(request: APIRequest): Promise<APIResponse<T>> {
     // Build full URL
     const url = this.buildURL(request.url || request.path);
-    console.log('[APIClient] requestRaw called:', { method: request.method, path: request.path, url, baseURL: this.baseURL });
 
-    // Execute through middleware pipeline FIRST (so auth headers are added before we create fetch options)
+    // Execute through middleware pipeline
     return this.middlewarePipeline.execute<T>(request, async (req: APIRequest) => {
-      // Merge headers AFTER middleware has run (so auth headers are included)
+      // Merge headers AFTER middleware has run
       const headers = new Headers({
         ...this.config.defaultHeaders,
         ...req.headers,
@@ -150,10 +410,7 @@ export class APIClient {
       let body: string | FormData | undefined;
       if (req.body) {
         if (req.body instanceof FormData) {
-          // FormData should be passed directly to fetch
-          // Don't set Content-Type - browser will set it with boundary
           body = req.body;
-          // Remove Content-Type header if it was set (browser will set it correctly)
           headers.delete('Content-Type');
         } else if (typeof req.body === 'string') {
           body = req.body;
@@ -169,6 +426,7 @@ export class APIClient {
         body,
         signal: req.signal,
       };
+
       // Create timeout controller if needed
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       let abortController: AbortController | undefined;
@@ -188,13 +446,11 @@ export class APIClient {
       }
 
       try {
-        console.log('[APIClient] Making fetch request to:', url, 'with options:', { method: fetchOptions.method, headers: Object.fromEntries(new Headers(fetchOptions.headers).entries()) });
         // Make fetch request
         const response = await secureFetch(url, {
           ...fetchOptions,
           signal: abortController?.signal || req.signal,
         });
-        console.log('[APIClient] Fetch response received:', { status: response.status, statusText: response.statusText, ok: response.ok });
 
         // Clear timeout
         if (timeoutId) {
@@ -314,6 +570,115 @@ export class APIClient {
   }
 
   /**
+   * Make GET request with caching
+   */
+  async getCached<T = unknown>(
+    path: string,
+    params?: Record<string, unknown>,
+    cacheConfig?: { enabled?: boolean; defaultStrategy?: string; defaultTTL?: number },
+    options?: Partial<APIRequest>
+  ): Promise<APIResponse<T>> {
+    const cache: any = cacheConfig ? {
+      strategy: (cacheConfig as any).defaultStrategy || 'stale-while-revalidate',
+      ttl: (cacheConfig as any).defaultTTL || 5 * 60 * 1000,
+      maxAge: ((cacheConfig as any).defaultTTL || 5 * 60 * 1000) * 2,
+    } : {
+      strategy: 'stale-while-revalidate',
+      ttl: 5 * 60 * 1000,
+      maxAge: 10 * 60 * 1000,
+    };
+    return this.get<T>(path, params, {
+      ...options,
+      cache,
+    });
+  }
+
+  /**
+   * Make request with optimistic update
+   */
+  async requestOptimistic<T = unknown>(
+    request: APIRequest,
+    config: OptimisticConfig
+  ): Promise<APIResponse<T>> {
+    if (!this.features.optimisticUpdates || !this.optimisticManager) {
+      throw new Error('Optimistic updates are not enabled. Set config.features.optimisticUpdates = true');
+    }
+    return this.optimisticManager.execute(request, async () => {
+      return this.requestRaw<T>(request);
+    }, config);
+  }
+
+  /**
+   * Cancel request
+   */
+  cancel(requestId: string): boolean {
+    if (!this.features.cancellation || !this.cancellationManager) {
+      return false;
+    }
+    return this.cancellationManager.cancel(requestId);
+  }
+
+  /**
+   * Cancel all requests
+   */
+  cancelAll(): void {
+    if (this.features.cancellation && this.cancellationManager) {
+      this.cancellationManager.cancelAll();
+    }
+  }
+
+  /**
+   * Invalidate cache
+   */
+  async invalidateCache(path: string, params?: Record<string, unknown>): Promise<void> {
+    if (!this.cacheManager) {
+      return;
+    }
+    const request: APIRequest = {
+      id: this.generateRequestId(),
+      method: 'GET',
+      url: path,
+      path,
+      params,
+    };
+    await this.cacheManager.invalidate(request);
+  }
+
+  /**
+   * Invalidate cache by tags
+   */
+  async invalidateCacheByTags(tags: string[]): Promise<number> {
+    if (!this.cacheManager) {
+      return 0;
+    }
+    return this.cacheManager.invalidateByTags(tags);
+  }
+
+  /**
+   * Clear all cache
+   */
+  async clearCache(): Promise<void> {
+    if (this.cacheManager) {
+      await this.cacheManager.clear();
+    }
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): {
+    memorySize: number;
+    queueSize: number;
+    runningCount: number;
+  } {
+    return {
+      memorySize: this.cacheManager ? (this.cacheManager as any).memoryCache.size() : 0,
+      queueSize: this.queue?.getQueueSize() ?? 0,
+      runningCount: this.queue?.getRunningCount() ?? 0,
+    };
+  }
+
+  /**
    * Build full URL from path and params
    */
   private buildURL(path: string, params?: Record<string, unknown>): string {
@@ -334,13 +699,11 @@ export class APIClient {
     const base = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     const fullPath = base + cleanPath;
-    // If baseURL is absolute (starts with http:// or https://), use it directly
-    // Otherwise, use window.location.origin as base (browser only, for relative URLs)
     const url = base.startsWith('http://') || base.startsWith('https://')
       ? new URL(fullPath)
       : typeof window !== 'undefined'
         ? new URL(fullPath, window.location.origin)
-        : new URL(fullPath, 'https://localhost'); // Fallback for Workers (shouldn't happen if baseURL is set)
+        : new URL(fullPath, 'https://localhost');
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -379,6 +742,153 @@ export class APIClient {
   getConfig(): Readonly<Required<APIClientConfig>> {
     return { ...this.config };
   }
+
+  /**
+   * Make request with type definition (enhanced feature)
+   */
+  async requestTyped<T extends Record<string, any>>(
+    request: APIRequest,
+    _typeDef?: TypeDefinition
+  ): Promise<APIResponse<T & { id: string; customerId: string }>> {
+    // Update request context
+    this.requestContext.request = request;
+    
+    // Enhance context with Worker adapter if available
+    if (this.features.workerAdapter && this.workerAdapter) {
+      this.requestContext = this.workerAdapter.enhanceContext(this.requestContext);
+    }
+
+    // Execute request
+    const response = await this.requestRaw<T>(request);
+
+    // If successful, ensure root config is present
+    if (response.status < 400 && response.data) {
+      const data = response.data as Partial<T>;
+      const rootConfig = {
+        id: data.id || this.requestContext.user?.id || this.generateId(),
+        customerId: data.customerId || this.requestContext.user?.customerId || '',
+      };
+
+      // Ensure root fields are present
+      const enhancedData = {
+        ...rootConfig,
+        ...data,
+      };
+
+      return {
+        ...response,
+        data: enhancedData as T & { id: string; customerId: string },
+      };
+    }
+
+    return response as APIResponse<T & { id: string; customerId: string }>;
+  }
+
+  /**
+   * Set user context (for root config and encryption)
+   */
+  setUser(user: { id: string; customerId: string; email: string }): this {
+    this.requestContext.user = user;
+    return this;
+  }
+
+  /**
+   * Get user context
+   */
+  getUser(): RequestContext['user'] {
+    return this.requestContext.user;
+  }
+
+  /**
+   * Get Worker adapter
+   */
+  getWorkerAdapter(): WorkerAdapter | null | undefined {
+    return this.workerAdapter;
+  }
+
+  /**
+   * Get request context
+   */
+  getRequestContext(): RequestContext {
+    return { ...this.requestContext };
+  }
+
+  /**
+   * Generate a unique ID
+   */
+  private generateId(): string {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
 }
 
+/**
+ * Factory function to create APIClient instance
+ */
+export function createAPIClient(config: Partial<APIClientConfig> = {}): APIClient {
+  function getApiUrl(): string {
+    if (typeof window !== 'undefined' && (window as any).getWorkerApiUrl) {
+      return (window as any).getWorkerApiUrl() || '';
+    }
+    return '';
+  }
 
+  const apiUrl = config.baseURL || getApiUrl();
+
+  const defaultConfig: APIClientConfig = {
+    baseURL: apiUrl,
+    timeout: 30000,
+    retry: {
+      maxAttempts: 3,
+      backoff: 'exponential',
+      initialDelay: 1000,
+      maxDelay: 10000,
+      retryableErrors: [408, 429, 500, 502, 503, 504],
+    },
+    cache: {
+      enabled: false,
+      defaultStrategy: 'network-only',
+      defaultTTL: 0,
+    },
+    offline: {
+      enabled: false,
+      queueSize: 100,
+      syncOnReconnect: true,
+      retryOnReconnect: true,
+    },
+    ...config,
+  };
+
+  return new APIClient(defaultConfig);
+}
+
+/**
+ * Default API client instance (singleton)
+ */
+let defaultClient: APIClient | null = null;
+
+/**
+ * Get or create default API client
+ */
+export function getAPIClient(): APIClient {
+  if (!defaultClient) {
+    defaultClient = createAPIClient();
+  }
+  return defaultClient;
+}
+
+/**
+ * Set default API client
+ */
+export function setAPIClient(client: APIClient): void {
+  defaultClient = client;
+}
+
+/**
+ * Reset default API client
+ */
+export function resetAPIClient(): void {
+  defaultClient = null;
+}

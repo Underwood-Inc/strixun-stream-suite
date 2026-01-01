@@ -113,7 +113,25 @@ const createClient = () => {
         retry: {
             maxAttempts: 3,
             backoff: 'exponential',
+            initialDelay: 1000,
+            maxDelay: 10000,
             retryableErrors: [408, 429, 500, 502, 503, 504],
+        },
+        // Opt-in to specific features as needed
+        features: {
+            // Enable cancellation for request cancellation support
+            cancellation: true,
+            // Enable logging for debugging (can be disabled in production)
+            logging: import.meta.env.DEV,
+            // Other features disabled by default - enable as needed
+            deduplication: false,
+            queue: false,
+            circuitBreaker: false,
+            offlineQueue: false,
+            optimisticUpdates: false,
+            metrics: false,
+            // E2E encryption is handled automatically by response handler
+            // No need to enable e2eEncryption feature flag - response handler decrypts based on X-Encrypted header
         },
     });
 };
@@ -182,6 +200,10 @@ async function getAuthToken(): Promise<string | null> {
 
 /**
  * List mods (public endpoint - returns approved mods only)
+ * Uses API framework client which automatically handles:
+ * - Authentication token injection
+ * - Encrypted response decryption
+ * - Error handling and retries
  */
 export async function listMods(filters: {
     page?: number;
@@ -207,6 +229,8 @@ export async function listMods(filters: {
     if (filters.visibility) params.append('visibility', filters.visibility);
     
     const queryString = params.toString() ? `?${params.toString()}` : '';
+    // API framework automatically handles encrypted responses via X-Encrypted header
+    // Response handler decrypts using token from request.metadata.token (set by auth middleware)
     const response = await api.get<{
         mods: any[];
         total: number;

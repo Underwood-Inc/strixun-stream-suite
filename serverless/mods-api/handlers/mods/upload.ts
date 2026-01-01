@@ -315,7 +315,7 @@ export async function handleUploadMod(
                     console.log('[Upload] Binary decryption successful with JWT');
                 } catch (jwtError) {
                     const errorMsg = jwtError instanceof Error ? jwtError.message : String(jwtError);
-                    throw new Error(`Failed to decrypt file with JWT. All files must be encrypted with JWT. If this is a legacy file encrypted with service key, please re-upload it. Error: ${errorMsg}`);
+                    throw new Error(`Failed to decrypt file with JWT. All files must be encrypted with JWT. Error: ${errorMsg}`);
                 }
                 
                 fileSize = decryptedBytes.length;
@@ -345,7 +345,7 @@ export async function handleUploadMod(
                     console.log('[Upload] JSON decryption successful with JWT');
                 } catch (jwtError) {
                     const errorMsg = jwtError instanceof Error ? jwtError.message : String(jwtError);
-                    throw new Error(`Failed to decrypt file with JWT. All files must be encrypted with JWT. If this is a legacy file encrypted with service key, please re-upload it. Error: ${errorMsg}`);
+                    throw new Error(`Failed to decrypt file with JWT. All files must be encrypted with JWT. Error: ${errorMsg}`);
                 }
                 
                 // Convert base64 back to binary for hash calculation

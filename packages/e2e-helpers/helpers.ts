@@ -61,11 +61,11 @@ export async function requestOTPCode(
   email: string
 ): Promise<{ response: any; body: any }> {
   // Wait for fancy screen if present and click through
-  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 2000 }).catch(() => false);
+  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
   if (fancyScreenVisible) {
     await fancyScreenButton.click();
-    await page.waitForTimeout(500); // Wait for transition
+    await page.waitForTimeout(1000); // Wait for transition animation to complete
   }
   
   // Find email input

@@ -11,55 +11,8 @@ console.log(' Processing built files for embedding...');
 
 const rootDir = path.join(__dirname, '..');
 
-// Get VITE_SERVICE_ENCRYPTION_KEY from environment or Cloudflare Worker secrets
-function getEncryptionKey() {
-  // First, check if it's already in the environment
-  if (process.env.VITE_SERVICE_ENCRYPTION_KEY) {
-    console.log('✓ Found VITE_SERVICE_ENCRYPTION_KEY in environment');
-    return process.env.VITE_SERVICE_ENCRYPTION_KEY;
-  }
-
-  // Try to read from .env file in dashboard directory
-  const envPath = path.join(rootDir, 'dashboard', '.env');
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const match = envContent.match(/VITE_SERVICE_ENCRYPTION_KEY=(.+)/);
-    if (match && match[1]) {
-      const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
-      if (key.length >= 32) {
-        console.log('✓ Found VITE_SERVICE_ENCRYPTION_KEY in dashboard/.env');
-        return key;
-      }
-    }
-  }
-
-  // Try to get from Cloudflare Worker secrets using wrangler
-  try {
-    console.log(' ★ Attempting to get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets...');
-    const result = execSync('wrangler secret get VITE_SERVICE_ENCRYPTION_KEY 2>&1', {
-      cwd: rootDir,
-      encoding: 'utf8',
-      stdio: 'pipe'
-    });
-    const key = result.trim();
-    if (key && key.length >= 32 && !key.includes('error') && !key.includes('not found')) {
-      console.log('✓ Found VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets');
-      return key;
-    }
-  } catch (error) {
-    // wrangler secret get might fail if not authenticated or secret doesn't exist
-    console.warn('⚠  Could not get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets');
-  }
-
-  console.error('✗ VITE_SERVICE_ENCRYPTION_KEY not found!');
-  console.error('   Please set it in one of the following ways:');
-  console.error('   1. Environment variable: export VITE_SERVICE_ENCRYPTION_KEY=your-key');
-  console.error('   2. Dashboard .env file: echo "VITE_SERVICE_ENCRYPTION_KEY=your-key" > dashboard/.env');
-  console.error('   3. Cloudflare Worker secret: wrangler secret put VITE_SERVICE_ENCRYPTION_KEY');
-  process.exit(1);
-}
-
-// Note: Build should already be done by the parent script (cd dashboard && pnpm build)
+// Note: Service key encryption has been completely removed - we do not use it
+// Build should already be done by the parent script (cd dashboard && pnpm build)
 // This script just processes the built files and generates the assets module
 process.chdir(rootDir);
 

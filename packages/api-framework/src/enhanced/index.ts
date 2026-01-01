@@ -23,14 +23,8 @@ export type {
   BuiltResponse,
 } from './types';
 
-// Client
-export {
-  EnhancedAPIClientV2,
-  createEnhancedAPIClient,
-  getEnhancedAPIClient,
-  setEnhancedAPIClient,
-  resetEnhancedAPIClient,
-} from './client';
+// Enhanced features are now part of APIClient - no separate client class needed
+// All enhanced functionality is available via APIClient with feature flags
 
 // Encryption
 export {

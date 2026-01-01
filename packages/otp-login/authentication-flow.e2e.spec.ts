@@ -65,10 +65,14 @@ async function waitForOTPFromResponse(page: Page): Promise<string> {
 
 /**
  * Helper: Fill email and request OTP
+ * CRITICAL: Handles fancy screen if it appears again
  */
 async function requestOTP(page: Page, email: string): Promise<void> {
+  // Handle fancy screen if present (may appear again in some flows)
+  await handleFancyScreen(page);
+  
   // Find email input
-  const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
   await emailInput.waitFor({ state: 'visible', timeout: TEST_CONFIG.UI_TIMEOUT });
   
   // Clear and fill email
@@ -139,14 +143,33 @@ async function verifyOTP(page: Page, otpCode: string): Promise<void> {
 }
 
 /**
+ * Helper: Click through fancy authentication screen if present
+ */
+async function handleFancyScreen(page: Page): Promise<void> {
+  // Check for fancy "Authentication Required" screen with "SIGN IN WITH EMAIL" button
+  const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+  const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 2000 }).catch(() => false);
+  
+  if (fancyScreenVisible) {
+    // Click through the fancy screen to get to the email form
+    await fancyScreenButton.click();
+    await page.waitForTimeout(500); // Wait for transition animation
+  }
+}
+
+/**
  * Helper: Create a test page with OTP Login component
  * This assumes the component is available on a test page
+ * CRITICAL: Handles the fancy "Authentication Required" screen that appears first
  */
 async function navigateToOTPLogin(page: Page, baseUrl: string = WORKER_URLS.FRONTEND): Promise<void> {
-  await page.goto(`${baseUrl}/auth`);
+  await page.goto(`${baseUrl}/auth`, { waitUntil: 'networkidle' });
   
-  // Wait for OTP login component to be visible
-  const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+  // CRITICAL: Handle fancy authentication screen first
+  await handleFancyScreen(page);
+  
+  // Wait for OTP login component to be visible (email input)
+  const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
   await emailInput.waitFor({ state: 'visible', timeout: TEST_CONFIG.UI_TIMEOUT });
 }
 
@@ -178,7 +201,7 @@ test.describe('OTP Authentication Flow', () => {
     test('should accept email input', async ({ page }) => {
       await navigateToOTPLogin(page);
       
-      const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+      const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
       const testEmail = 'test@example.com';
       
       await emailInput.fill(testEmail);
@@ -208,7 +231,7 @@ test.describe('OTP Authentication Flow', () => {
     test('should show loading state when requesting OTP', async ({ page }) => {
       await navigateToOTPLogin(page);
       
-      const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+      const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
       const submitButton = page.locator(
         'button:has-text("Send OTP"), button:has-text("Send"), button[type="submit"]'
       ).first();
@@ -430,7 +453,7 @@ test.describe('OTP Authentication Flow', () => {
       await backButton.click();
       
       // Should return to email form
-      const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+      const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
       await expect(emailInput).toBeVisible({ timeout: TEST_CONFIG.UI_TIMEOUT });
     });
   });
@@ -460,7 +483,7 @@ test.describe('OTP Authentication Flow', () => {
       
       await navigateToOTPLogin(page);
       
-      const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+      const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
       const submitButton = page.locator(
         'button:has-text("Send OTP"), button:has-text("Send"), button[type="submit"]'
       ).first();
@@ -533,7 +556,7 @@ test.describe('OTP Authentication Flow', () => {
       
       await navigateToOTPLogin(page);
       
-      const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+      const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
       const submitButton = page.locator(
         'button:has-text("Send OTP"), button:has-text("Send"), button[type="submit"]'
       ).first();
@@ -571,7 +594,7 @@ test.describe('OTP Authentication Flow', () => {
     test('should support keyboard navigation', async ({ page }) => {
       await navigateToOTPLogin(page);
       
-      const emailInput = page.locator('input[type="email"], input#otp-login-email').first();
+      const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
       
       // Tab to input
       await page.keyboard.press('Tab');

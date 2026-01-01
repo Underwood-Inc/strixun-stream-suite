@@ -32,12 +32,8 @@ async function handleCustomerRoute(
     env: Env,
     auth: any
 ): Promise<RouteResult> {
-    // Service calls (service-to-service) are allowed for customer creation
-    const isServiceCall = auth?.userId === 'service';
-    const isCustomerCreation = request.method === 'POST' && request.url.includes('/customer');
-    
-    if (!auth && !isServiceCall) {
-        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token or service key.');
+    if (!auth) {
+        const rfcError = createError(request, 401, 'Unauthorized', 'Authentication required. Please provide a valid JWT token.');
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map((o: string) => o.trim()) || ['*'],
         });
@@ -77,7 +73,7 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
     // Also normalize /customer to /customer/ for consistency
     const normalizedPath = path === '/' ? '/customer/' : (path === '/customer' ? '/customer/' : path);
 
-    // Authenticate request (supports both JWT and service key)
+    // Authenticate request (JWT only)
     const auth = await authenticateRequest(request, env);
 
     // Route to appropriate handler with automatic encryption wrapper

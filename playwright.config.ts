@@ -8,7 +8,6 @@ const __dirname = dirname(__filename);
 
 /**
  * Load .dev.vars files into process.env for E2E tests
- * Service key encryption removed - it was obfuscation only
  */
 function loadDevVars(): void {
   const devVarsPaths = [
@@ -76,8 +75,6 @@ const WORKER_URLS = {
   MODS_HUB: process.env.E2E_MODS_HUB_URL || 'http://localhost:3001',
 };
 
-// Service key encryption removed - it was obfuscation only
-
 export default defineConfig({
   // Global setup to load .dev.vars before tests run
   globalSetup: './playwright.global-setup.ts',
@@ -120,10 +117,9 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60 * 1000, // 60 seconds to start frontend
       env: {
-        // Override API URL and encryption key for E2E tests (same as mods-hub)
+        // Override API URL for E2E tests
         // This ensures the main app uses local worker URLs
         VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
-        // Service key encryption removed - it was obfuscation only
       },
     },
     {
@@ -135,20 +131,18 @@ export default defineConfig({
         // Override Vite proxy URLs with direct local worker URLs for E2E tests
         VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
         VITE_MODS_API_URL: WORKER_URLS.MODS_API,
-        // Service key encryption removed - it was obfuscation only
       },
     },
     // Start all local workers (E2E tests replicate production with all services running)
     // Each service runs on its own port to replicate production deployment
     ...(process.env.E2E_START_LOCAL_WORKER !== 'false' ? [
       // OTP Auth Service (port 8787)
-      // --local flag ensures .dev.vars is used (not Cloudflare secrets)
-      // This matches the deployment pattern where .dev.vars is the source for local testing
+      // Uses wrapper script to start server and check health with JWT
       {
-        command: process.platform === 'win32' 
-          ? `cd serverless/otp-auth-service && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && wrangler dev --port ${BASE_PORT} --local`
-          : `cd serverless/otp-auth-service && CI=true NO_INPUT=1 pnpm setup:test-secrets && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT} --local`,
-        url: `${WORKER_URLS.OTP_AUTH}/health`,
+        command: process.platform === 'win32'
+          ? `cd serverless/otp-auth-service && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/otp-auth-service ${BASE_PORT}`
+          : `cd serverless/otp-auth-service && CI=true NO_INPUT=1 pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/otp-auth-service ${BASE_PORT}`,
+        port: BASE_PORT,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -157,9 +151,9 @@ export default defineConfig({
       // Mods API (port 8788)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/mods-api && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && wrangler dev --port ${BASE_PORT + 1} --local`
-          : `cd serverless/mods-api && CI=true NO_INPUT=1 pnpm setup:test-secrets && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 1} --local`,
-        url: `${WORKER_URLS.MODS_API}/health`,
+          ? `cd serverless/mods-api && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/mods-api ${BASE_PORT + 1}`
+          : `cd serverless/mods-api && CI=true NO_INPUT=1 pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/mods-api ${BASE_PORT + 1}`,
+        port: BASE_PORT + 1,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -168,20 +162,21 @@ export default defineConfig({
       // Twitch API (port 8789)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/twitch-api && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 2} --local`
-          : `cd serverless/twitch-api && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 2} --local`,
-        url: `${WORKER_URLS.TWITCH_API}/health`,
+          ? `cd serverless/twitch-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/twitch-api ${BASE_PORT + 2}`
+          : `cd serverless/twitch-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/twitch-api ${BASE_PORT + 2}`,
+        port: BASE_PORT + 2,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
         stderr: 'pipe' as const,
       },
       // Customer API (port 8790)
+      // Uses wrapper script to start server and check health with JWT
       {
         command: process.platform === 'win32'
-          ? `cd serverless/customer-api && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 3} --local`
-          : `cd serverless/customer-api && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 3} --local`,
-        url: `${WORKER_URLS.CUSTOMER_API}/health`,
+          ? `cd serverless/customer-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/customer-api ${BASE_PORT + 3}`
+          : `cd serverless/customer-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/customer-api ${BASE_PORT + 3}`,
+        port: BASE_PORT + 3,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -190,9 +185,9 @@ export default defineConfig({
       // Game API (port 8791)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/game-api && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 4} --local`
-          : `cd serverless/game-api && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 4} --local`,
-        url: `${WORKER_URLS.GAME_API}/health`,
+          ? `cd serverless/game-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/game-api ${BASE_PORT + 4}`
+          : `cd serverless/game-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/game-api ${BASE_PORT + 4}`,
+        port: BASE_PORT + 4,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -201,9 +196,9 @@ export default defineConfig({
       // Chat Signaling (port 8792)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/chat-signaling && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 5} --local`
-          : `cd serverless/chat-signaling && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 5} --local`,
-        url: `${WORKER_URLS.CHAT_SIGNALING}/health`,
+          ? `cd serverless/chat-signaling && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/chat-signaling ${BASE_PORT + 5}`
+          : `cd serverless/chat-signaling && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/chat-signaling ${BASE_PORT + 5}`,
+        port: BASE_PORT + 5,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -212,9 +207,9 @@ export default defineConfig({
       // URL Shortener (port 8793)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/url-shortener && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 6} --local`
-          : `cd serverless/url-shortener && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 6} --local`,
-        url: `${WORKER_URLS.URL_SHORTENER}/health`,
+          ? `cd serverless/url-shortener && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`
+          : `cd serverless/url-shortener && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`,
+        port: BASE_PORT + 6,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,

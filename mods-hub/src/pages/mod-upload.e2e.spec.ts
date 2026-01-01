@@ -16,14 +16,24 @@ test.describe('Mod Upload', () => {
 
   test('should redirect to login when accessing upload page unauthenticated', async ({ page }) => {
     const modsHubUrl = process.env.E2E_MODS_HUB_URL || 'http://localhost:3001';
-    await page.goto(`${modsHubUrl}/upload`);
+    await page.goto(`${modsHubUrl}/upload`, { waitUntil: 'networkidle' });
     
     // Should redirect to login or show login requirement
     await page.waitForTimeout(2000); // Wait for redirect
     
     const currentUrl = page.url();
-    const emailInput = page.locator('input[type="email"]');
-    const isEmailInputVisible = await emailInput.isVisible();
+    
+    // CRITICAL: Handle fancy "Authentication Required" screen if present
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 2000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(500);
+    }
+    
+    // Check for email input (after handling fancy screen)
+    const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+    const isEmailInputVisible = await emailInput.isVisible({ timeout: 5000 }).catch(() => false);
     const isLoginPage = currentUrl.includes('/login') || isEmailInputVisible;
     
     expect(isLoginPage).toBeTruthy();
@@ -87,7 +97,7 @@ test.describe('Mod Upload', () => {
     // Note: Full upload flow requires authentication and file handling
     try {
       // Authenticate first
-      await page.goto(`${modsHubUrl}/login`);
+      await page.goto(`${modsHubUrl}/login`, { waitUntil: 'networkidle' });
       const { requestOTPCode, verifyOTPCode, waitForOTPForm } = await import('@strixun/e2e-helpers');
       await requestOTPCode(page, TEST_EMAIL);
       await waitForOTPForm(page);

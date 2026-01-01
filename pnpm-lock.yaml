@@ -391,10 +391,19 @@ importers:
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../service-client
+      '@strixun/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241106.0
+        version: 4.20251225.0
       '@vitest/coverage-v8':
         specifier: ^4.0.16
         version: 4.0.16(@vitest/browser@4.0.16(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))(vitest@4.0.16))(vitest@4.0.16)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)

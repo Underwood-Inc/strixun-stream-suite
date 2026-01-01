@@ -17,15 +17,12 @@ const OTP_AUTH_DIR = join(__dirname, '..');
 
 // Test secrets - safe defaults for local development
 // IMPORTANT: JWT_SECRET must match mods-api JWT_SECRET for auth to work
-// IMPORTANT: SERVICE_ENCRYPTION_KEY must match frontend VITE_SERVICE_ENCRYPTION_KEY
-// NOTE: Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
+// NOTE: SERVICE_ENCRYPTION_KEY and VITE_SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 const TEST_SECRETS = {
   ENVIRONMENT: 'test', // Set to 'test' for E2E mode to skip Vite proxy
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
   RESEND_API_KEY: 're_test_key_for_local_development',
   RESEND_FROM_EMAIL: 'test@example.com',
-  SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
-  VITE_SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
   ALLOWED_ORIGINS: '*',
   SUPER_ADMIN_EMAILS: 'test@example.com',
 };
@@ -83,13 +80,12 @@ function setupDevVars() {
       content = `# OTP Auth Service - Development Environment Variables (Auto-generated for testing)
 # This file is gitignored and used by wrangler dev
 # For local development, these test values are safe to use
+# NOTE: SERVICE_ENCRYPTION_KEY and VITE_SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 
 ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
 RESEND_API_KEY=${TEST_SECRETS.RESEND_API_KEY}
 RESEND_FROM_EMAIL=${TEST_SECRETS.RESEND_FROM_EMAIL}
-SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}
-VITE_SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.VITE_SERVICE_ENCRYPTION_KEY}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
 SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
 `;

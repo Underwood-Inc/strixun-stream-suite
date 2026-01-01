@@ -141,44 +141,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 }
 
 /**
- * Encrypt data using service key (for public routes)
+ * Encrypt data using service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT encryption instead.
  */
 export async function encryptWithServiceKey(
   data: unknown,
   serviceKey: string
 ): Promise<EncryptedData> {
-  throw new Error('Service key encryption removed - it was obfuscation only (key is in frontend bundle). Use JWT encryption instead.');
-
-  // Generate random salt and IV
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-
-  // Derive key from service key
-  const key = await deriveKeyFromServiceKey(serviceKey, salt);
-
-  // Hash service key for verification
-  const keyHash = await hashServiceKey(serviceKey);
-
-  // Encrypt data
-  const encoder = new TextEncoder();
-  const dataStr = JSON.stringify(data);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv },
-    key,
-    encoder.encode(dataStr)
-  );
-
-  // Return encrypted blob
-  return {
-    version: 3,
-    encrypted: true,
-    algorithm: 'AES-GCM-256',
-    iv: arrayBufferToBase64(iv.buffer),
-    salt: arrayBufferToBase64(salt.buffer),
-    tokenHash: keyHash, // Reuse tokenHash field for service key hash
-    data: arrayBufferToBase64(encrypted),
-    timestamp: new Date().toISOString(),
-  };
+  throw new Error('Service key encryption has been completely removed. Use JWT encryption (encryptWithJWT) instead.');
 }
 
 /**
@@ -194,70 +165,15 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 }
 
 /**
- * Decrypt data using service key
- * 
- * @param encryptedData - Encrypted data blob
- * @param serviceKey - Service encryption key
- * @returns Decrypted data
- * 
- * @throws Error if service key doesn't match or decryption fails
+ * Decrypt data using service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT decryption instead.
  */
 export async function decryptWithServiceKey(
   encryptedData: EncryptedData | unknown,
   serviceKey: string
 ): Promise<unknown> {
-  // Check if encrypted
-  if (!encryptedData || typeof encryptedData !== 'object' || !('encrypted' in encryptedData)) {
-    // Not encrypted, return as-is (backward compatibility)
-    return encryptedData;
-  }
-
-  const encrypted = encryptedData as EncryptedData;
-
-  if (!encrypted.encrypted) {
-    return encryptedData;
-  }
-
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for decryption (minimum 32 characters)');
-  }
-
-  // Extract metadata
-  const salt = base64ToArrayBuffer(encrypted.salt);
-  const iv = base64ToArrayBuffer(encrypted.iv);
-  const encryptedDataBuffer = base64ToArrayBuffer(encrypted.data);
-
-  // Verify service key hash matches (if present)
-  if (encrypted.tokenHash) {
-    const keyHash = await hashServiceKey(serviceKey);
-    if (encrypted.tokenHash !== keyHash) {
-      throw new Error(
-        'Decryption failed - service key does not match. ' +
-        'The service key used for encryption does not match the provided key.'
-      );
-    }
-  }
-
-  // Derive key from service key
-  const key = await deriveKeyFromServiceKey(serviceKey, new Uint8Array(salt));
-
-  // Decrypt
-  try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: new Uint8Array(iv) },
-      key,
-      encryptedDataBuffer
-    );
-
-    const decoder = new TextDecoder();
-    const dataStr = decoder.decode(decrypted);
-    return JSON.parse(dataStr);
-  } catch (error) {
-    throw new Error(
-      'Decryption failed - incorrect service key or corrupted data. ' +
-      'Please verify the service key matches the one used for encryption.'
-    );
-  }
+  throw new Error('Service key decryption has been completely removed. Use JWT decryption (decryptWithJWT) instead.');
 }
 
 // ============ Binary Service Key Encryption ============
@@ -331,158 +247,27 @@ async function decompressDataForServiceKey(compressedData: Uint8Array): Promise<
 }
 
 /**
- * Encrypt binary data using service key (for public mods)
- * Uses same binary format as JWT encryption (version 5) but with service key
+ * Encrypt binary data using service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT binary encryption instead.
  */
 export async function encryptBinaryWithServiceKey(
   data: ArrayBuffer | Uint8Array,
   serviceKey: string
 ): Promise<Uint8Array> {
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for encryption (minimum 32 characters)');
-  }
-
-  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
-  if (data instanceof ArrayBuffer) {
-    dataBuffer = new Uint8Array(data) as Uint8Array & { buffer: ArrayBuffer };
-  } else {
-    if (data.buffer instanceof SharedArrayBuffer || 
-        data.byteOffset !== 0 || 
-        data.byteLength !== data.buffer.byteLength) {
-      const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
-      dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
-    } else {
-      dataBuffer = new Uint8Array(data.buffer as ArrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
-    }
-  }
-
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-
-  const key = await deriveKeyFromServiceKey(serviceKey, salt);
-  const keyHashHex = await hashServiceKey(serviceKey);
-  const keyHash = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) {
-    keyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
-  }
-
-  const compressedData = await compressDataForServiceKey(dataBuffer);
-  const useCompression = compressedData.length < dataBuffer.length - 18;
-  const dataToEncrypt = useCompression ? (compressedData as Uint8Array & { buffer: ArrayBuffer }) : dataBuffer;
-
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv },
-    key,
-    dataToEncrypt
-  );
-
-  const encryptedArray = new Uint8Array(encrypted);
-  const headerSize = 5;
-  const totalSize = headerSize + salt.length + iv.length + keyHash.length + encryptedArray.length;
-  const result = new Uint8Array(totalSize);
-  let offset = 0;
-
-  result[offset++] = 5; // Version 5
-  result[offset++] = useCompression ? 1 : 0;
-  result[offset++] = salt.length;
-  result[offset++] = iv.length;
-  result[offset++] = keyHash.length;
-
-  result.set(salt, offset);
-  offset += salt.length;
-  result.set(iv, offset);
-  offset += iv.length;
-  result.set(keyHash, offset);
-  offset += keyHash.length;
-  result.set(encryptedArray, offset);
-
-  return result;
+  throw new Error('Service key binary encryption has been completely removed. Use JWT binary encryption (encryptBinaryWithJWT) instead.');
 }
 
 /**
- * Decrypt binary data encrypted with service key
- * Detects format and handles compression automatically
+ * Decrypt binary data encrypted with service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT binary decryption instead.
  */
 export async function decryptBinaryWithServiceKey(
   encryptedBinary: ArrayBuffer | Uint8Array,
   serviceKey: string
 ): Promise<Uint8Array> {
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for decryption (minimum 32 characters)');
-  }
-
-  const data = encryptedBinary instanceof ArrayBuffer 
-    ? new Uint8Array(encryptedBinary) 
-    : encryptedBinary;
-
-  if (data.length < 4) {
-    throw new Error('Invalid encrypted binary format: too short');
-  }
-
-  let offset = 0;
-  const version = data[offset++];
-  
-  if (version !== 4 && version !== 5) {
-    throw new Error(`Unsupported binary encryption version: ${version}`);
-  }
-
-  let isCompressed = false;
-  if (version === 5) {
-    isCompressed = data[offset++] === 1;
-  }
-
-  const saltLength = data[offset++];
-  const ivLength = data[offset++];
-  const keyHashLength = data[offset++];
-
-  if (saltLength !== SALT_LENGTH || ivLength !== IV_LENGTH || keyHashLength !== 32) {
-    throw new Error('Invalid encrypted binary format: invalid header lengths');
-  }
-
-  const salt = data.slice(offset, offset + saltLength);
-  offset += saltLength;
-  const iv = data.slice(offset, offset + ivLength);
-  offset += ivLength;
-  const storedKeyHash = data.slice(offset, offset + keyHashLength);
-  offset += keyHashLength;
-  const encryptedData = data.slice(offset);
-
-  const keyHashHex = await hashServiceKey(serviceKey);
-  const expectedKeyHash = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) {
-    expectedKeyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
-  }
-
-  let hashMatch = true;
-  for (let i = 0; i < 32; i++) {
-    if (storedKeyHash[i] !== expectedKeyHash[i]) {
-      hashMatch = false;
-    }
-  }
-
-  if (!hashMatch) {
-    throw new Error('Decryption failed - service key does not match');
-  }
-
-  const key = await deriveKeyFromServiceKey(serviceKey, salt);
-
-  try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      encryptedData
-    );
-
-    const decryptedData = new Uint8Array(decrypted);
-
-    if (isCompressed) {
-      return await decompressDataForServiceKey(decryptedData);
-    }
-
-    return decryptedData;
-  } catch (error) {
-    throw new Error('Decryption failed - incorrect service key or corrupted data');
-  }
+  throw new Error('Service key binary decryption has been completely removed. Use JWT binary decryption (decryptBinaryWithJWT) instead.');
 }
 
 // ============ Route Pattern Matching ============

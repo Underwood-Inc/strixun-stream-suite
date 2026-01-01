@@ -219,6 +219,56 @@ export interface APIClientConfig {
   };
   errorHandler?: (error: APIError, request: APIRequest) => Promise<APIResponse | void>;
   plugins?: Plugin[];
+  // Feature flags - all enhancements are opt-in
+  features?: {
+    deduplication?: boolean;
+    queue?: boolean;
+    cancellation?: boolean;
+    circuitBreaker?: boolean;
+    offlineQueue?: boolean;
+    optimisticUpdates?: boolean;
+    logging?: boolean;
+    metrics?: boolean;
+    // Enhanced features (optional, opt-in via feature flags)
+    e2eEncryption?: boolean;
+    responseFiltering?: boolean;
+    errorLegend?: boolean;
+    workerAdapter?: boolean;
+  };
+  // Enhanced feature configs (only used if features are enabled)
+  encryption?: {
+    enabled: boolean;
+    tokenGetter: () => string | null | Promise<string | null>;
+    algorithm?: 'AES-GCM-256';
+    encryptCondition?: (request: APIRequest, response: APIResponse) => boolean;
+  };
+  filtering?: {
+    rootConfigType: new () => { id: string; customerId: string };
+    rootConfig: {
+      alwaysInclude: ('id' | 'customerId')[];
+      defaultInclude?: string[];
+    };
+    typeDefinitions: Map<string, any>;
+    tags: Record<string, string[]>;
+  };
+  errorHandling?: {
+    useErrorLegend: boolean;
+    errorLegendPath?: string;
+    rfc7807: boolean;
+    errorMappers?: {
+      [errorCode: string]: (error: any) => any;
+    };
+  };
+  worker?: {
+    env?: {
+      CACHE_KV?: any;
+      SESSION_KV?: any;
+      SESSION_DO?: any;
+      [key: string]: any;
+    };
+    cors?: boolean;
+    platform?: 'cloudflare-worker' | 'browser' | 'node';
+  };
 }
 
 // ============ Plugin Types ============

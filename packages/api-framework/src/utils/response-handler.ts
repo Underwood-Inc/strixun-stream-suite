@@ -51,43 +51,31 @@ export async function handleResponse<T = unknown>(
       if (shouldDecrypt) {
         // CRITICAL: Extract thumbnailUrls before decryption (they're at top level of encrypted object)
         const thumbnailUrls = (data as any)?.thumbnailUrls;
-        const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
         const token = getTokenForDecryption(request);
-        let decrypted = false;
         
-        // Try JWT decryption first if token is available and strategy is not explicitly service-key
-        if (token && encryptionStrategy !== 'service-key') {
-          try {
-            console.log('[ResponseHandler] Attempting JWT decryption...');
-            data = await decryptWithJWT(data as any, token) as T;
-            console.log('[ResponseHandler] Successfully decrypted response with JWT');
-            decrypted = true;
-          } catch (jwtError) {
-            console.warn('[ResponseHandler] JWT decryption failed, trying service key decryption:', jwtError);
-            // Fall through to service key decryption
-          }
+        if (!token) {
+          throw createError(
+            request,
+            401,
+            'Unauthorized',
+            'JWT token is required to decrypt response. Please log in to continue.',
+            null
+          );
         }
         
-        // JWT decryption is MANDATORY - no service key fallback
-        if (!decrypted && data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted === true) {
-          if (!token) {
-            throw createError(
-              request,
-              401,
-              'Unauthorized',
-              'Please log in to continue',
-              null
-            );
-          } else {
-            // JWT decryption already failed above, throw error
-            throw createError(
-              request,
-              401,
-              'Unauthorized',
-              'Please log in to continue',
-              jwtError
-            );
-          }
+        try {
+          console.log('[ResponseHandler] Attempting JWT decryption...');
+          data = await decryptWithJWT(data as any, token) as T;
+          console.log('[ResponseHandler] Successfully decrypted response with JWT');
+        } catch (jwtError) {
+          console.error('[ResponseHandler] JWT decryption failed:', jwtError);
+          throw createError(
+            request,
+            401,
+            'Unauthorized',
+            'Failed to decrypt response. Please log in to continue.',
+            jwtError
+          );
         }
         
         // Merge thumbnailUrls back into decrypted data if they were excluded from encryption
@@ -189,27 +177,20 @@ export async function handleErrorResponse(
     if (contentType?.includes('application/json')) {
       errorData = await response.json();
       
-      // Decrypt if error response is encrypted (check both header and data structure)
       const errorIsEncrypted = errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted === true;
-      const shouldDecryptError = isEncrypted || errorIsEncrypted; // Check both header and data structure
+      const shouldDecryptError = isEncrypted || errorIsEncrypted;
       if (shouldDecryptError) {
-        const encryptionStrategy = response.headers.get('X-Encryption-Strategy');
         const token = getTokenForDecryption(request);
         
-        // JWT decryption is MANDATORY for encrypted error responses
-        if (errorData && typeof errorData === 'object' && 'encrypted' in errorData && (errorData as any).encrypted === true) {
-          if (!token) {
-            console.error('[ResponseHandler] Encrypted error response received but no JWT token available for decryption');
-            // Return encrypted error data - cannot decrypt without JWT
-          } else {
-            try {
-              console.log('[ResponseHandler] Decrypting encrypted error response with JWT...');
-              errorData = await decryptWithJWT(errorData as any, token);
-              console.log('[ResponseHandler] Successfully decrypted error response');
-            } catch (jwtError) {
-              console.error('[ResponseHandler] JWT decryption failed for error response:', jwtError);
-              // Return encrypted error data - cannot decrypt
-            }
+        if (!token) {
+          console.error('[ResponseHandler] Encrypted error response received but no JWT token available for decryption');
+        } else {
+          try {
+            console.log('[ResponseHandler] Decrypting encrypted error response with JWT...');
+            errorData = await decryptWithJWT(errorData as any, token);
+            console.log('[ResponseHandler] Successfully decrypted error response');
+          } catch (jwtError) {
+            console.error('[ResponseHandler] JWT decryption failed for error response:', jwtError);
           }
         }
       }

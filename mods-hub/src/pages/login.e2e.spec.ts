@@ -37,38 +37,45 @@ test.describe('Mods Hub Login', () => {
   test('should display login page with email form', async ({ page }) => {
     await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
-    // Wait for page to load - check for either the fancy screen or the email form
-    // The OTP login component may show a fancy authentication screen first
-    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    // CRITICAL: Wait for page to fully load and render
+    // The fancy "Authentication Required" screen ALWAYS appears first
+    // Wait for the fancy screen container to be visible
+    const fancyContainer = page.locator('.otp-login-fancy').first();
+    await fancyContainer.waitFor({ state: 'visible', timeout: 10000 });
     
-    if (fancyScreenVisible) {
-      // Click through fancy screen if present
-      await fancyScreenButton.click();
-      await page.waitForTimeout(500); // Wait for transition
-    }
+    // Wait for the fancy screen button to be visible and clickable
+    const fancyScreenButton = page.locator('button.otp-login-fancy__button, button:has-text("SIGN IN WITH EMAIL")').first();
+    await fancyScreenButton.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(fancyScreenButton).toBeVisible();
     
-    // Should show login form or OTP login component
-    // Use more specific selector that matches the OTP login component
+    // Click through the fancy screen
+    await fancyScreenButton.click();
+    
+    // Wait for fancy screen to disappear and email form to appear
+    await fancyContainer.waitFor({ state: 'hidden', timeout: 10000 });
+    
+    // Now wait for email form to be visible
     const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
-    await expect(emailInput).toBeVisible({ timeout: 15000 });
+    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(emailInput).toBeVisible();
     
-    // Should have submit button
+    // Wait for submit button to be visible
     const submitButton = page.locator(
-      'button:has-text("Send"), button:has-text("Request"), button[type="submit"]'
+      'button:has-text("Send"), button:has-text("Send OTP"), button:has-text("Request"), button[type="submit"]'
     ).first();
-    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(submitButton).toBeVisible();
   });
 
   test('should allow email input and validation', async ({ page }) => {
     await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
     // Wait for fancy screen if present and click through
-    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
     if (fancyScreenVisible) {
       await fancyScreenButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000); // Wait for transition animation
     }
     
     // Find email input - use specific selector
@@ -103,9 +110,9 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should request OTP when email is submitted', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
-    // Request OTP using helper
+    // Request OTP using helper (will handle fancy screen if present)
     const { response } = await requestOTPCode(page, TEST_EMAIL);
     
     // Verify API call succeeded
@@ -125,11 +132,11 @@ test.describe('Mods Hub Login', () => {
     await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
     // Wait for fancy screen if present and click through
-    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
     if (fancyScreenVisible) {
       await fancyScreenButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000); // Wait for transition animation
     }
     
     // Step 1: Request OTP
@@ -260,11 +267,19 @@ test.describe('Mods Hub Login', () => {
   });
 
   test('should handle invalid OTP code gracefully', async ({ page }) => {
-    await page.goto(`${MODS_HUB_URL}/login`);
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
-    // Request OTP
+    // Wait for fancy screen if present and click through
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(1000); // Wait for transition
+    }
+    
+    // Request OTP (helper will also handle fancy screen, but we do it here for safety)
     await requestOTPCode(page, TEST_EMAIL);
-    await waitForOTPForm(page);
+    await waitForOTPForm(page, 15000);
     
     // Enter invalid OTP (must be 9 digits to enable the button)
     const { response } = await verifyOTPCode(page, '000000000');
@@ -292,11 +307,11 @@ test.describe('Mods Hub Login', () => {
     await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
     // Wait for fancy screen if present and click through
-    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
     if (fancyScreenVisible) {
       await fancyScreenButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000); // Wait for transition animation
     }
     
     // Complete login flow
@@ -512,11 +527,11 @@ test.describe('Mods Hub Login', () => {
     await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
     
     // Wait for fancy screen if present and click through
-    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In")');
-    const fancyScreenVisible = await fancyScreenButton.isVisible().catch(() => false);
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
     if (fancyScreenVisible) {
       await fancyScreenButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000); // Wait for transition animation
     }
     
     // Request OTP

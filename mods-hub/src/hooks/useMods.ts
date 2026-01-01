@@ -173,22 +173,18 @@ export function useUpdateMod() {
 }
 
 /**
-                message: getUserFriendlyErrorMessage(error),
-                type: 'error',
-            });
-            
-            if (shouldRedirectToLogin(error)) {
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 1000);
-            }
+ * Delete mod mutation
+ */
+export function useDeleteMod() {
     const queryClient = useQueryClient();
     const addNotification = useUIStore((state) => state.addNotification);
+    const navigate = useNavigate();
     
     return useMutation({
         mutationFn: (slug: string) => api.deleteMod(slug),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: modKeys.details() });
             addNotification({
                 message: 'Mod deleted successfully!',
                 type: 'success',
@@ -196,9 +192,15 @@ export function useUpdateMod() {
         },
         onError: (error: Error) => {
             addNotification({
-                message: error.message || 'Failed to delete mod',
+                message: getUserFriendlyErrorMessage(error),
                 type: 'error',
             });
+            
+            if (shouldRedirectToLogin(error)) {
+                setTimeout(() => {
+                    navigate('/login');
+                }, 1000);
+            }
         },
     });
 }
@@ -449,4 +451,3 @@ export function useUpdateAdminSettings() {
         },
     });
 }
-

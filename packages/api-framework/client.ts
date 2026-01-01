@@ -5,14 +5,14 @@
  * Use this for frontend/browser code
  */
 
+// Export single APIClient with optional features
 export {
-  getAPIClient,
+  APIClient,
   createAPIClient,
+  getAPIClient,
   setAPIClient,
   resetAPIClient,
-  APIClient,
-  EnhancedAPIClient,
-} from './src/index.js';
+} from './src/client.js';
 
 export type {
   APIRequest,
@@ -27,4 +27,12 @@ export type {
   OptimisticConfig,
   OfflineConfig,
 } from './src/types.js';
+
+// Re-export encryption utilities for client-side use
+export {
+  encryptBinaryWithJWT,
+  decryptBinaryWithJWT,
+  encryptWithJWT,
+  decryptWithJWT,
+} from './encryption/index.js';
 

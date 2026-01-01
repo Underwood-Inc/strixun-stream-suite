@@ -16,14 +16,12 @@
  */
 
 import type { APIClient } from './src/client.js';
-import type { EnhancedAPIClient } from './src/enhanced-client.js';
 import type { APIResponse } from './src/types.js';
 
 /**
  * Mock API Client for testing
  * 
  * Creates a mock API client that implements the APIClient interface.
- * Works with both APIClient and EnhancedAPIClient since EnhancedAPIClient extends APIClient.
  * 
  * @param vi - Vitest vi object (required for creating mocks)
  * @returns Mock API client with all methods mocked
@@ -41,7 +39,7 @@ import type { APIResponse } from './src/types.js';
  * }));
  * ```
  */
-export function createMockAPIClient(vi: any): APIClient & EnhancedAPIClient {
+export function createMockAPIClient(vi: any): APIClient {
   const mockClient = {
     get: vi.fn(),
     post: vi.fn(),
@@ -51,7 +49,7 @@ export function createMockAPIClient(vi: any): APIClient & EnhancedAPIClient {
     request: vi.fn(),
     requestRaw: vi.fn(),
     use: vi.fn(),
-  } as unknown as APIClient & EnhancedAPIClient;
+  } as unknown as APIClient;
 
   return mockClient;
 }

@@ -30,10 +30,11 @@ export type {
 export type { APIResponse as EnhancedAPIResponse } from './src/enhanced/types.js';
 
 // Re-export enhanced framework exports (excluding APIResponse)
+// Note: EnhancedAPIClientV2 has been merged into APIClient - use createAPIClient with feature flags instead
 export {
   applyFiltering, buildResponse, clearCachedMetric, COMMON_TAGS, composeServerMiddlewares, computeMetric,
-  computeMetrics, createCORSHeaders, createCORSMiddleware, createE2EEncryptionMiddleware, createEnhancedAPIClient, createEnhancedHandler, createErrorLegendMiddleware, createGetHandler, createKVCache, createPostHandler, createResponseBuilderMiddleware, createResponseFilterMiddleware, createRFC7807Error, createRFC7807Response, createServerMiddleware, createWorkerAdapter,
-  createWorkerHandler, decryptWithJWT as decryptWithJWTEnhanced, detectPlatform, encryptWithJWT as encryptWithJWTEnhanced, EnhancedAPIClientV2, enhanceErrorWithLegend, formatErrorAsRFC7807, generateMetricCacheKey, getEnhancedAPIClient, getStorageAdapter, getTagFields, getType, getTypeRegistry, handleCORSPreflight, initializeCommonTags, isBrowser, isCloudflareWorker, isNode, KVCache, parseFilteringParams, registerTag, registerType, resetEnhancedAPIClient, setEnhancedAPIClient, TypeRegistry, validateResponse, withMiddleware, WorkerAdapter
+  computeMetrics, createCORSHeaders, createCORSMiddleware, createE2EEncryptionMiddleware, createEnhancedHandler, createErrorLegendMiddleware, createGetHandler, createKVCache, createPostHandler, createResponseBuilderMiddleware, createResponseFilterMiddleware, createRFC7807Error, createRFC7807Response, createServerMiddleware, createWorkerAdapter,
+  createWorkerHandler, decryptWithJWT as decryptWithJWTEnhanced, detectPlatform, encryptWithJWT as encryptWithJWTEnhanced, enhanceErrorWithLegend, formatErrorAsRFC7807, generateMetricCacheKey, getStorageAdapter, getTagFields, getType, getTypeRegistry, handleCORSPreflight, initializeCommonTags, isBrowser, isCloudflareWorker, isNode, KVCache, parseFilteringParams, registerTag, registerType, TypeRegistry, validateResponse, withMiddleware, WorkerAdapter
 } from './src/enhanced/index.js';
 
 export type {

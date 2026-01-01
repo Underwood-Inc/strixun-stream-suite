@@ -106,12 +106,7 @@ export function wrapWithEnhanced(originalHandler: (request: Request, env: any, c
       // If response is already data object, return it
       return response;
     },
-    {
-      typeDef: options.typeName ? getTypeRegistry().get(options.typeName) : undefined,
-      filterConfig: getServiceFilterConfig(),
-      requireAuth: options.requireAuth ?? false,
-      cors: options.cors ?? true,
-    }
+    options
   );
 }
 
