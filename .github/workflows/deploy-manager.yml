@@ -627,7 +627,8 @@ jobs:
         run: |
           # Create project if it doesn't exist (suppress error if already exists)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
-          pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+          # Build outputs to ../dist/mods-hub (relative to mods-hub directory)
+          pnpm exec wrangler pages deploy ../dist/mods-hub --project-name=mods-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
