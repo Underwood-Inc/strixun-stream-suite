@@ -279,6 +279,9 @@ jobs:
         id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
         run: pnpm test
         continue-on-error: true
       
@@ -286,6 +289,9 @@ jobs:
         id: run_integration_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
         run: pnpm test handlers/*.integration.test.ts
         continue-on-error: true
       
@@ -378,6 +384,9 @@ jobs:
         id: run_tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/customer-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
         run: pnpm test
         continue-on-error: true
       

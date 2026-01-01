@@ -47,6 +47,9 @@ jobs:
       - name: Run Mods API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
         run: pnpm test
       
       - name: Generate coverage report
