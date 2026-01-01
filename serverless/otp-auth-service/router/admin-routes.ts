@@ -225,7 +225,7 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
     // DEPRECATED: Customer admin endpoints - use /customer/me from customer-api instead
     // These endpoints were consolidated into customer-api for proper separation of concerns
     if (path === '/admin/customers/me') {
-        const corsHeaders = getCorsHeaders(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
         const errorResponse = new Response(JSON.stringify({
             type: 'https://tools.ietf.org/html/rfc7231#section-6.5.9',
             title: 'Gone',

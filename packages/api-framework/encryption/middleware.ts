@@ -268,6 +268,35 @@ export async function wrapWithEncryption(
   // CRITICAL SECURITY: JWT encryption is MANDATORY by default
   // If no JWT token and JWT is required, return 401 Unauthorized
   if (!auth?.jwtToken) {
+    // If requireJWT is explicitly false, allow unencrypted responses (for auth endpoints)
+    if (!requireJWT) {
+      // JWT not required - return unencrypted response
+      const contentType = handlerResponse.headers.get('content-type');
+      const headers = new Headers(handlerResponse.headers);
+      headers.set('X-Encrypted', 'false');
+      
+      if (contentType?.includes('application/json')) {
+        const bodyText = await handlerResponse.text();
+        return {
+          response: new Response(bodyText, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: headers,
+          }),
+          customerId: auth?.customerId || null,
+        };
+      }
+      
+      return {
+        response: new Response(handlerResponse.body, {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        }),
+        customerId: auth?.customerId || null,
+      };
+    }
+    
     // Check if this is a service-to-service call that's allowed without JWT
     if (isServiceCall && allowServiceCallsWithoutJWT) {
       // Service call allowed without JWT - return unencrypted with integrity header

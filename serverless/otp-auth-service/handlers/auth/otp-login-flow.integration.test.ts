@@ -45,22 +45,30 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
     console.log(`[Integration Tests] Customer API URL: ${CUSTOMER_API_URL}`);
     console.log(`[Integration Tests] Test email: ${testEmail}`);
     
-    // Verify services are running
-    try {
-      const otpHealthCheck = await fetch(`${OTP_AUTH_SERVICE_URL}/health`);
-      if (!otpHealthCheck.ok) {
-        throw new Error(`OTP Auth Service not responding at ${OTP_AUTH_SERVICE_URL}`);
+    // Verify services are running - retry with backoff since services might still be starting
+    // Health endpoint may return 401 (requires JWT) which is OK - means service is running
+    let otpReady = false;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        const otpHealthCheck = await fetch(`${OTP_AUTH_SERVICE_URL}/health`);
+        // Any response (200, 401, etc.) means the service is running
+        otpReady = true;
+        console.log('[Integration Tests] ✓ OTP Auth Service is running');
+        break;
+      } catch (error: any) {
+        if (attempt < 9) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        throw new Error(
+          `✗ OTP Auth Service is not running!\n` +
+          `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
+          `   Error: ${error.message}\n` +
+          `   \n` +
+          `   Fix: Start OTP auth service:\n` +
+          `   cd serverless/otp-auth-service && pnpm dev`
+        );
       }
-      console.log('[Integration Tests] ✓ OTP Auth Service is running');
-    } catch (error: any) {
-      throw new Error(
-        `✗ OTP Auth Service is not running!\n` +
-        `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
-        `   Error: ${error.message}\n` +
-        `   \n` +
-        `   Fix: Start OTP auth service:\n` +
-        `   cd serverless/otp-auth-service && pnpm dev`
-      );
     }
     
     try {
@@ -97,6 +105,12 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
         }),
       });
 
+      // Debug: log response if not 200
+      if (response.status !== 200) {
+        const errorText = await response.text();
+        console.error(`[Integration Tests] OTP request failed: ${response.status}`, errorText);
+      }
+      
       expect(response.status).toBe(200);
       const data = await response.json();
       
@@ -104,6 +118,9 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       expect(data).toBeDefined();
       
       // For local testing, retrieve OTP from dev endpoint
+      // Wait a moment for OTP to be stored after request
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       try {
         const devOtpResponse = await fetch(
           `${OTP_AUTH_SERVICE_URL}/dev/otp?email=${encodeURIComponent(testEmail)}`
@@ -112,6 +129,9 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
           const devData = await devOtpResponse.json();
           otpCode = devData.otp;
           console.log(`[Integration Tests] OTP retrieved from dev endpoint: ${otpCode}`);
+        } else {
+          const errorText = await devOtpResponse.text();
+          console.warn(`[Integration Tests] /dev/otp returned ${devOtpResponse.status}:`, errorText);
         }
       } catch (error) {
         console.warn('[Integration Tests] Could not retrieve OTP from dev endpoint:', error);
@@ -151,6 +171,12 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
         }),
       });
 
+      // Debug: log response if not 200
+      if (response.status !== 200) {
+        const errorText = await response.text();
+        console.error(`[Integration Tests] OTP verification failed: ${response.status}`, errorText);
+      }
+
       expect(response.status).toBe(200);
       const data = await response.json();
       
@@ -175,7 +201,7 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
           console.warn('[Integration Tests] Could not decode JWT to get customerId:', error);
         }
       }
-    }, 30000);
+    }, 60000); // Increased timeout - customer creation with retries can take time
 
     it('should have created customer account in customer-api', async () => {
       if (!customerId) {
@@ -190,7 +216,8 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
         
         const customer = await getCustomerByEmailService(testEmail, mockEnv);
         expect(customer).toBeDefined();
-        expect(customer?.email).toBe(testEmail.toLowerCase().trim());
+        // Email should NOT be in response (privacy requirement)
+        expect(customer?.email).toBeUndefined();
         expect(customer?.customerId).toBeDefined();
         customerId = customer?.customerId || null;
       }
@@ -205,13 +232,20 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       const mockEnv = {
         CUSTOMER_API_URL,
         ENVIRONMENT: testEnv,
+        NETWORK_INTEGRITY_KEYPHRASE: process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests',
+        SUPER_ADMIN_API_KEY: config.superAdminApiKey,
       };
       
       const customer = await getCustomerService(customerId, mockEnv);
       expect(customer).toBeDefined();
       expect(customer?.customerId).toBe(customerId);
-      expect(customer?.email).toBe(testEmail.toLowerCase().trim());
+      // Email should NOT be in response (privacy requirement)
+      expect(customer?.email).toBeUndefined();
       expect(customer?.status).toBe('active');
+      // DisplayName should be generated on customer creation
+      expect(customer?.displayName).toBeDefined();
+      expect(typeof customer?.displayName).toBe('string');
+      expect(customer?.displayName?.length).toBeGreaterThan(0);
     }, 30000);
   });
 

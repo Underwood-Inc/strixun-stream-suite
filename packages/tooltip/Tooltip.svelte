@@ -3,6 +3,7 @@
   import type { ComponentType } from 'svelte';
   
   export let content: string = '';
+  export let text: string = ''; // Alias for content - simpler API
   export let component: ComponentType<any> | null = null;
   export let componentProps: Record<string, any> = {};
   export let position: 'top' | 'bottom' | 'left' | 'right' = 'top';
@@ -12,6 +13,7 @@
   export let width: string | null = null; // Optional fixed width
   export let height: string | null = null; // Optional fixed height
   export let interactive: boolean = false; // If true, tooltip can be hovered and interacted with
+  export let level: 'log' | 'info' | 'warning' | 'error' = 'log'; // Flair level for visual styling
   
   let showTooltip = false;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -240,6 +242,9 @@
     }
   });
   
+  // Use text if provided, otherwise fall back to content
+  $: displayContent = text || content;
+  
   // Update position when tooltip is shown
   $: if (showTooltip && tooltipElement && wrapperElement) {
     tick().then(() => {
@@ -253,6 +258,7 @@
   bind:this={wrapperElement}
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
+  role="presentation"
 >
   <slot />
 </div>
@@ -263,6 +269,10 @@
     class:tooltip--interactive={interactive}
     class:tooltip--scrollable={maxHeight !== null || height !== null}
     class:tooltip--has-component={component !== null}
+    class:tooltip--log={level === 'log'}
+    class:tooltip--info={level === 'info'}
+    class:tooltip--warning={level === 'warning'}
+    class:tooltip--error={level === 'error'}
     role="tooltip" 
     style="{dimensionStyles}; {fixedStyle}"
     bind:this={tooltipElement}
@@ -273,15 +283,15 @@
     <div class="tooltip-content">
       {#if component}
         <svelte:component this={component} {...componentProps} />
-      {:else if content}
-        {@html content}
+      {:else if displayContent}
+        {@html displayContent}
       {/if}
     </div>
     <div class="tooltip-arrow"></div>
   </div>
 {/if}
 
-<style>
+<style lang="scss">
   .tooltip-wrapper {
     position: relative;
     display: inline-flex;
@@ -292,15 +302,15 @@
   .tooltip {
     position: fixed;
     z-index: 1000001; /* Above modal (1000000) */
-    background: var(--tooltip-bg, #2a2a2a);
-    color: var(--tooltip-text, #ffffff);
+    background: var(--tooltip-bg, var(--card, #2a2a2a));
+    color: var(--tooltip-text, var(--text, #ffffff));
     padding: 16px 20px;
     border-radius: 8px;
     font-size: 0.875rem;
     line-height: 1.6;
     min-width: 280px;
     max-width: 500px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
     pointer-events: none;
     white-space: normal;
@@ -310,6 +320,47 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    
+    // Info level - blue border and angled line pattern
+    &.tooltip--info {
+      border-color: var(--info, #6495ed);
+      border-width: 2px;
+      background-image: repeating-linear-gradient(
+        45deg,
+        var(--card, var(--tooltip-bg, #2a2a2a)),
+        var(--card, var(--tooltip-bg, #2a2a2a)) 8px,
+        rgba(100, 149, 237, 0.08) 8px,
+        rgba(100, 149, 237, 0.08) 16px
+      );
+    }
+    
+    // Warning level - distinct orange/amber color to stand out from yellow/brown theme
+    &.tooltip--warning {
+      border-color: #ff8c00; // Dark orange - distinct from yellow/brown
+      border-width: 2px;
+      background: var(--card, var(--tooltip-bg, #2a2a2a));
+      background-image: repeating-linear-gradient(
+        135deg,
+        rgba(255, 140, 0, 0.1),
+        rgba(255, 140, 0, 0.1) 4px,
+        rgba(255, 140, 0, 0.15) 4px,
+        rgba(255, 140, 0, 0.15) 8px
+      );
+    }
+    
+    // Error level - red border with diagonal stripe pattern
+    &.tooltip--error {
+      border-color: var(--danger, #ea2b1f);
+      border-width: 2px;
+      background: var(--card, var(--tooltip-bg, #2a2a2a));
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(234, 43, 31, 0.1),
+        rgba(234, 43, 31, 0.1) 6px,
+        rgba(234, 43, 31, 0.15) 6px,
+        rgba(234, 43, 31, 0.15) 12px
+      );
+    }
   }
   
   .tooltip--interactive {
@@ -371,36 +422,188 @@
     border-style: solid;
   }
   
-  .tooltip--top .tooltip-arrow {
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 6px 6px 0 6px;
-    border-color: var(--tooltip-bg, #2a2a2a) transparent transparent transparent;
+  // Top position - arrow points down
+  .tooltip--top {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--card, var(--tooltip-bg, #2a2a2a));
+      z-index: 2;
+    }
+    
+    // Border arrow - adjust color based on level
+    &::before {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      margin-top: -1px;
+      z-index: 1;
+    }
+    
+    &.tooltip--log::before {
+      border-top-color: var(--border, rgba(255, 255, 255, 0.2));
+    }
+    
+    &.tooltip--info::before {
+      border-top-color: var(--info, #6495ed);
+    }
+    
+    &.tooltip--warning::before {
+      border-top-color: #ff8c00;
+    }
+    
+    &.tooltip--error::before {
+      border-top-color: var(--danger, #ea2b1f);
+    }
+    
+    .tooltip-arrow {
+      display: none; // Use ::after and ::before instead
+    }
   }
   
-  .tooltip--bottom .tooltip-arrow {
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 0 6px 6px 6px;
-    border-color: transparent transparent var(--tooltip-bg, #2a2a2a) transparent;
+  // Bottom position - arrow points up
+  .tooltip--bottom {
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-bottom-color: var(--card, var(--tooltip-bg, #2a2a2a));
+      z-index: 2;
+    }
+    
+    // Border arrow - adjust color based on level
+    &::before {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      margin-bottom: -1px;
+      z-index: 1;
+    }
+    
+    &.tooltip--log::before {
+      border-bottom-color: var(--border, rgba(255, 255, 255, 0.2));
+    }
+    
+    &.tooltip--info::before {
+      border-bottom-color: var(--info, #6495ed);
+    }
+    
+    &.tooltip--warning::before {
+      border-bottom-color: #ff8c00;
+    }
+    
+    &.tooltip--error::before {
+      border-bottom-color: var(--danger, #ea2b1f);
+    }
+    
+    .tooltip-arrow {
+      display: none; // Use ::after and ::before instead
+    }
   }
   
-  .tooltip--left .tooltip-arrow {
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 6px 0 6px 6px;
-    border-color: transparent transparent transparent var(--tooltip-bg, #2a2a2a);
+  // Left position - arrow points right
+  .tooltip--left {
+    &::after {
+      content: '';
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-left-color: var(--card, var(--tooltip-bg, #2a2a2a));
+      z-index: 2;
+    }
+    
+    // Border arrow - adjust color based on level
+    &::before {
+      content: '';
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 6px solid transparent;
+      margin-left: -1px;
+      z-index: 1;
+    }
+    
+    &.tooltip--log::before {
+      border-left-color: var(--border, rgba(255, 255, 255, 0.2));
+    }
+    
+    &.tooltip--info::before {
+      border-left-color: var(--info, #6495ed);
+    }
+    
+    &.tooltip--warning::before {
+      border-left-color: #ff8c00;
+    }
+    
+    &.tooltip--error::before {
+      border-left-color: var(--danger, #ea2b1f);
+    }
+    
+    .tooltip-arrow {
+      display: none; // Use ::after and ::before instead
+    }
   }
   
-  .tooltip--right .tooltip-arrow {
-    right: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 6px 6px 6px 0;
-    border-color: transparent var(--tooltip-bg, #2a2a2a) transparent transparent;
+  // Right position - arrow points left
+  .tooltip--right {
+    &::after {
+      content: '';
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-right-color: var(--card, var(--tooltip-bg, #2a2a2a));
+      z-index: 2;
+    }
+    
+    // Border arrow - adjust color based on level
+    &::before {
+      content: '';
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 6px solid transparent;
+      margin-right: -1px;
+      z-index: 1;
+    }
+    
+    &.tooltip--log::before {
+      border-right-color: var(--border, rgba(255, 255, 255, 0.2));
+    }
+    
+    &.tooltip--info::before {
+      border-right-color: var(--info, #6495ed);
+    }
+    
+    &.tooltip--warning::before {
+      border-right-color: #ff8c00;
+    }
+    
+    &.tooltip--error::before {
+      border-right-color: var(--danger, #ea2b1f);
+    }
+    
+    .tooltip-arrow {
+      display: none; // Use ::after and ::before instead
+    }
   }
 </style>
 

@@ -1,15 +1,36 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import Tooltip from '@strixun/tooltip/Tooltip.svelte';
 
   export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
 
   const dispatch = createEventDispatcher();
 
   const pages = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'api-keys', label: 'API Keys' },
-    { id: 'audit-logs', label: 'Audit Logs' },
-    { id: 'analytics', label: 'Analytics' }
+    { 
+      id: 'dashboard', 
+      label: 'Dashboard',
+      tooltip: 'Overview of your API usage and account information',
+      level: 'log' as const
+    },
+    { 
+      id: 'api-keys', 
+      label: 'API Keys',
+      tooltip: 'Manage your API keys for authenticating requests',
+      level: 'log' as const
+    },
+    { 
+      id: 'audit-logs', 
+      label: 'Audit Logs',
+      tooltip: 'View detailed logs of all API requests and authentication events',
+      level: 'info' as const
+    },
+    { 
+      id: 'analytics', 
+      label: 'Analytics',
+      tooltip: 'Track usage statistics, performance metrics, and trends',
+      level: 'info' as const
+    }
   ] as const;
 
   function handleClick(page: typeof currentPage) {
@@ -21,13 +42,20 @@
   <ul class="app-nav__list">
     {#each pages as page}
       <li class="app-nav__item">
-        <button
-          class="app-nav__link"
-          class:active={currentPage === page.id}
-          onclick={() => handleClick(page.id)}
+        <Tooltip 
+          text={page.tooltip} 
+          position="bottom" 
+          delay={0}
+          level={page.level}
         >
-          {page.label}
-        </button>
+          <button
+            class="app-nav__link"
+            class:active={currentPage === page.id}
+            onclick={() => handleClick(page.id)}
+          >
+            {page.label}
+          </button>
+        </Tooltip>
       </li>
     {/each}
   </ul>

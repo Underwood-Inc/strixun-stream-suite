@@ -10,7 +10,8 @@
     ".": {
       "types": "./Tooltip.svelte",
       "default": "./Tooltip.svelte"
-    }
+    },
+    "./Tooltip.svelte": "./Tooltip.svelte"
   },
   "files": [
     "*.svelte",

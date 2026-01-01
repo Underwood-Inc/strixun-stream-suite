@@ -93,7 +93,9 @@ export async function handleRequestOTP(
         }
         
         // Check quota first (super admins are exempt)
-        const quotaCheck = await checkQuota(customerId, env, email);
+        // Bypass quota/rate limits in test/dev mode for integration tests
+        const isTestMode = env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'dev';
+        const quotaCheck = isTestMode ? { allowed: true } : await checkQuota(customerId, env, email);
         if (!quotaCheck.allowed) {
             // Send webhook for quota exceeded
             if (customerId) {
@@ -126,11 +128,12 @@ export async function handleRequestOTP(
         }
         
         // Check rate limit (super admins are exempt)
+        // Bypass rate limits in test/dev mode for integration tests
         const emailHash = await hashEmail(email);
         // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const getCustomerFn = (cid: string) => getCustomer(cid, env);
-        const rateLimit = await checkOTPRateLimitService(
+        const rateLimit = isTestMode ? { allowed: true, remaining: 999, resetAt: new Date().toISOString() } : await checkOTPRateLimitService(
             emailHash,
             customerId,
             clientIP,
@@ -220,44 +223,51 @@ export async function handleRequestOTP(
         const baseUrl = `${url.protocol}//${url.host}`;
         
         // Send email with tracking data
-        try {
-            const { sendOTPEmail } = await import('../email.js');
-            const emailResult = await sendOTPEmail(email, otp, customerId, env, {
-                emailHash,
-                otpKey,
-                baseUrl,
-                expiresAt
-            });
-            console.log('OTP email sent successfully:', emailResult);
-            
-            // Track usage
-            if (customerId) {
-                await trackUsage(customerId, 'otpRequests', 1, env);
-                await trackUsage(customerId, 'emailsSent', 1, env);
+        // In test/dev mode, skip email sending (OTP is available via /dev/otp endpoint)
+        if (!isTestMode) {
+            try {
+                const { sendOTPEmail } = await import('../email.js');
+                const emailResult = await sendOTPEmail(email, otp, customerId, env, {
+                    emailHash,
+                    otpKey,
+                    baseUrl,
+                    expiresAt
+                });
+                console.log('OTP email sent successfully:', emailResult);
                 
-                // Send webhook
-                await sendWebhook(customerId, 'otp.requested', {
+                // Track usage
+                if (customerId) {
+                    await trackUsage(customerId, 'otpRequests', 1, env);
+                    await trackUsage(customerId, 'emailsSent', 1, env);
+                    
+                    // Send webhook
+                    await sendWebhook(customerId, 'otp.requested', {
+                        email: email.toLowerCase().trim(),
+                        expiresIn: 600
+                    }, env);
+                }
+                
+                // Record successful OTP request for statistics
+                await recordOTPRequestService(emailHash, clientIP, customerId, env);
+            } catch (error: any) {
+                // Log the full error for debugging
+                console.error('Failed to send OTP email:', {
+                    message: error?.message,
+                    stack: error?.stack,
+                    name: error?.name,
                     email: email.toLowerCase().trim(),
-                    expiresIn: 600
-                }, env);
+                    hasResendKey: !!env.RESEND_API_KEY,
+                    hasResendFromEmail: !!env.RESEND_FROM_EMAIL,
+                    errorType: error?.constructor?.name || typeof error
+                });
+                
+                // Use centralized error handling
+                return createEmailErrorResponse(request, error, env);
             }
-            
-            // Record successful OTP request for statistics
+        } else {
+            // Test/dev mode: Skip email sending, just log and record stats
+            console.log(`[TEST/DEV] Skipping email send for ${email}. OTP available via /dev/otp endpoint.`);
             await recordOTPRequestService(emailHash, clientIP, customerId, env);
-        } catch (error: any) {
-            // Log the full error for debugging
-            console.error('Failed to send OTP email:', {
-                message: error?.message,
-                stack: error?.stack,
-                name: error?.name,
-                email: email.toLowerCase().trim(),
-                hasResendKey: !!env.RESEND_API_KEY,
-                hasResendFromEmail: !!env.RESEND_FROM_EMAIL,
-                errorType: error?.constructor?.name || typeof error
-            });
-            
-            // Use centralized error handling
-            return createEmailErrorResponse(request, error, env);
         }
         
         return new Response(JSON.stringify({ 

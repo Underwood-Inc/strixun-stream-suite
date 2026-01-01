@@ -10,13 +10,15 @@
  * - Cleans up workers after tests complete
  */
 
-import { spawn, execSync } from 'child_process';
+import { spawn, execSync, exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync, writeFileSync, unlinkSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const rootDir = join(__dirname, '../..');
+// From serverless/otp-auth-service/scripts, go up 3 levels to reach root
+const rootDir = join(__dirname, '../../..');
 
 const environment = process.argv[2] || 'dev';
 
@@ -29,6 +31,8 @@ if (environment !== 'dev' && environment !== 'prod') {
 process.env.TEST_ENV = environment;
 process.env.CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
 process.env.OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
+// Ensure integrity keyphrase is set for service-to-service calls
+process.env.NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests';
 
 console.log(`[Integration Tests] Running with ${environment} configuration...`);
 console.log(`[Integration Tests] TEST_ENV=${environment}`);
@@ -38,6 +42,38 @@ console.log('');
 
 let otpWorkerProcess = null;
 let customerApiProcess = null;
+// Temporary .dev.vars files for integration tests
+let otpDevVarsPath = null;
+let customerApiDevVarsPath = null;
+
+/**
+ * Create temporary .dev.vars files for workers to ensure required secrets are set
+ */
+function createDevVarsFiles() {
+  const integrityKeyphrase = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests';
+  const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+  // CRITICAL: Must start with 're_test_' for /dev/otp endpoint to work
+  const resendApiKey = process.env.RESEND_API_KEY || 're_test_key_for_integration_tests';
+  const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'test@example.com';
+  // Generate a test OTP code for integration tests (9 digits)
+  const testOtpCode = process.env.E2E_TEST_OTP_CODE || Math.floor(100000000 + Math.random() * 900000000).toString();
+  
+  // Create .dev.vars for OTP Auth Service (needs RESEND_API_KEY for OTP emails)
+  // Set ENVIRONMENT=test to bypass rate limits AND enable /dev/otp endpoint for integration tests
+  // Set CUSTOMER_API_URL for service-to-service calls
+  const customerApiUrl = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
+  const otpDevVarsDir = join(__dirname, '..');
+  otpDevVarsPath = join(otpDevVarsDir, '.dev.vars');
+  writeFileSync(otpDevVarsPath, `NETWORK_INTEGRITY_KEYPHRASE=${integrityKeyphrase}\nJWT_SECRET=${jwtSecret}\nRESEND_API_KEY=${resendApiKey}\nRESEND_FROM_EMAIL=${resendFromEmail}\nENVIRONMENT=test\nE2E_TEST_OTP_CODE=${testOtpCode}\nCUSTOMER_API_URL=${customerApiUrl}\n`);
+  
+  // Also set in process.env so tests can access it
+  process.env.E2E_TEST_OTP_CODE = testOtpCode;
+  
+  // Create .dev.vars for Customer API
+  const customerApiDevVarsDir = join(rootDir, 'serverless/customer-api');
+  customerApiDevVarsPath = join(customerApiDevVarsDir, '.dev.vars');
+  writeFileSync(customerApiDevVarsPath, `NETWORK_INTEGRITY_KEYPHRASE=${integrityKeyphrase}\nJWT_SECRET=${jwtSecret}\n`);
+}
 
 /**
  * Wait for a service to be ready by polling its health endpoint
@@ -63,23 +99,39 @@ async function waitForService(name, url, maxAttempts = 30, delay = 1000) {
 }
 
 /**
- * Start a worker process
+ * Start a worker process using CI-compatible wrapper script
  */
-function startWorker(name, cwd, command, port) {
+function startWorker(name, workerDir, port) {
   console.log(`[Integration Tests] Starting ${name}...`);
-  const isWindows = process.platform === 'win32';
-  const processOptions = {
-    cwd,
-    stdio: 'pipe',
-    shell: isWindows,
+  
+  // Use the CI-compatible wrapper script (same as playwright.config.ts)
+  // This is the established working pattern that works in CI
+  // The wrapper script requires E2E_TEST_JWT_TOKEN for health checks, but integration tests
+  // don't need JWT for health - they just need the service running
+  // So we'll use the wrapper but it will do a basic health check
+  const wrapperScript = join(rootDir, 'scripts', 'start-worker-with-health-check.js');
+  
+  // Set up env - ensure NETWORK_INTEGRITY_KEYPHRASE matches between services
+  const workerEnv = {
+    ...process.env,
+    CI: 'true',
+    NO_INPUT: '1',
+    // Wrapper script needs E2E_TEST_JWT_TOKEN for health check
+    E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN || 'dummy-token-for-integration-tests',
+    // Ensure integrity keyphrase matches (required for service-to-service calls)
+    NETWORK_INTEGRITY_KEYPHRASE: process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests',
   };
   
-  const proc = spawn(command, [], processOptions);
+  const proc = spawn('node', [wrapperScript, workerDir, String(port)], {
+    stdio: 'pipe',
+    shell: false, // Spawn node directly - CI compatible
+    env: workerEnv,
+  });
   
   proc.stdout.on('data', (data) => {
     const output = data.toString();
     // Only show important messages to reduce noise
-    if (output.includes('Ready') || output.includes('wrangler') || output.includes('error') || output.includes('Error')) {
+    if (output.includes('Ready') || output.includes('wrangler') || output.includes('error') || output.includes('Error') || output.includes('healthy')) {
       process.stdout.write(`[${name}] ${output}`);
     }
   });
@@ -144,21 +196,20 @@ process.on('exit', cleanup);
 // Main execution
 (async () => {
   try {
-    // Start OTP Auth Service worker
-    const otpAuthServiceDir = join(__dirname, '..');
+    // Create temporary .dev.vars files to ensure NETWORK_INTEGRITY_KEYPHRASE is set
+    createDevVarsFiles();
+    
+    // Start OTP Auth Service worker using CI-compatible wrapper
     otpWorkerProcess = startWorker(
       'OTP Auth Service',
-      otpAuthServiceDir,
-      'pnpm dev',
+      'serverless/otp-auth-service',
       8787
     );
     
-    // Start Customer API worker
-    const customerApiDir = join(rootDir, 'serverless/customer-api');
+    // Start Customer API worker using CI-compatible wrapper
     customerApiProcess = startWorker(
       'Customer API',
-      customerApiDir,
-      'pnpm dev',
+      'serverless/customer-api',
       8790
     );
     
@@ -170,8 +221,12 @@ process.on('exit', cleanup);
     
     console.log('\n[Integration Tests] Both services are ready! Running tests...\n');
     
+    // Give services a moment to fully initialize after health checks
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     // Run vitest - run both customer creation and OTP login flow tests
-    execSync('vitest run customer-creation.integration.test.ts otp-login-flow.integration.test.ts', {
+    // Use pnpm exec to ensure vitest is found (CI compatible)
+    execSync('pnpm exec vitest run customer-creation.integration.test.ts otp-login-flow.integration.test.ts', {
       stdio: 'inherit',
       cwd: join(__dirname, '..'),
       env: process.env,
