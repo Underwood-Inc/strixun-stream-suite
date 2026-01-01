@@ -55,7 +55,7 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
   
   const wrapperScript = resolve(rootDir, 'scripts', 'start-worker-with-health-check.js');
   
-  // Verify the script exists before trying to use it
+  // Verify the script exists before trying to use it (should have been checked in setup, but double-check)
   if (!existsSync(wrapperScript)) {
     throw new Error(
       `[Integration Setup] Cannot find wrapper script at ${wrapperScript}\n` +
@@ -147,23 +147,38 @@ async function isServiceRunning(url: string): Promise<boolean> {
 
 // Vitest globalSetup export
 export async function setup() {
-  // Check if integration test files exist - if they do, we might need workers
-  const hasIntegrationTestFiles = 
-    existsSync(join(__dirname, 'handlers/auth/customer-creation.integration.test.ts')) ||
-    existsSync(join(__dirname, 'handlers/auth/otp-login-flow.integration.test.ts'));
-  
-  // Check if we're explicitly running integration tests or if integration test files exist
-  // (if files exist, workers might be needed even if not explicitly running integration tests)
+  // Early exit: Check if we're explicitly running integration tests
   const isIntegrationTest = 
     process.env.VITEST_INTEGRATION === 'true' ||
     process.argv.some(arg => arg.includes('integration')) ||
     process.argv.some(arg => arg.includes('customer-creation.integration') || arg.includes('otp-login-flow.integration'));
   
-  // If integration test files exist and we're running tests, check if workers are needed
-  // This ensures workers are available when running `pnpm test` which includes all tests
+  // Check if integration test files exist
+  const hasIntegrationTestFiles = 
+    existsSync(join(__dirname, 'handlers/auth/customer-creation.integration.test.ts')) ||
+    existsSync(join(__dirname, 'handlers/auth/otp-login-flow.integration.test.ts'));
+  
+  // If not running integration tests and no integration test files exist, skip entirely
   if (!isIntegrationTest && !hasIntegrationTestFiles) {
     // Not running integration tests and no integration test files exist, skip worker startup
     return;
+  }
+  
+  // Verify wrapper script exists before proceeding (only if we need workers)
+  const wrapperScript = resolve(rootDir, 'scripts', 'start-worker-with-health-check.js');
+  if (!existsSync(wrapperScript)) {
+    // If we don't have the script but also don't have integration tests, just skip
+    if (!hasIntegrationTestFiles && !isIntegrationTest) {
+      return;
+    }
+    // Otherwise, this is an error
+    throw new Error(
+      `[Integration Setup] Cannot find wrapper script at ${wrapperScript}\n` +
+      `Root directory resolved to: ${rootDir}\n` +
+      `Current working directory: ${process.cwd()}\n` +
+      `Integration test files exist: ${hasIntegrationTestFiles}\n` +
+      `Is integration test: ${isIntegrationTest}`
+    );
   }
   
   const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';

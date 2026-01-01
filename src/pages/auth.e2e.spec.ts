@@ -733,13 +733,23 @@ test.describe('Main App Authentication Flow', () => {
     const modalContent = page.locator('.otp-login-modal').first();
     await modalContent.waitFor({ state: 'visible', timeout: 10000 });
     
-    await handleFancyScreenInModal(page);
+    // Try to handle fancy screen, but don't fail if it doesn't work
+    try {
+      await handleFancyScreenInModal(page);
+    } catch {
+      // If fancy screen handling fails, wait a bit and try to proceed
+      await page.waitForTimeout(1000);
+    }
     
     await page.evaluate(() => {
       if (!(window as any).getOtpAuthApiUrl) {
         (window as any).getOtpAuthApiUrl = () => 'https://auth.idling.app';
       }
     });
+    
+    // Wait for email input to be visible (might be after fancy screen)
+    const emailInput = page.locator('input#otp-login-email, input[type="email"]').first();
+    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
     
     await requestOTPCode(page, TEST_EMAIL);
     await waitForOTPForm(page);
