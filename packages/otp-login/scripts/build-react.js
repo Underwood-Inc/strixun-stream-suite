@@ -16,7 +16,7 @@ const __dirname = dirname(__filename);
 
 const projectRoot = resolve(__dirname, '../..');
 const entryPath = resolve(__dirname, '../react/OtpLogin.tsx');
-const outputDir = resolve(__dirname, '../dist/react');
+const outputDir = resolve(__dirname, '../../../dist/otp-login/react');
 
 // Ensure dist directory exists
 mkdirSync(outputDir, { recursive: true });

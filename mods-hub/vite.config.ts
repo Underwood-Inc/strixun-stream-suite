@@ -92,7 +92,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: '../dist/mods-hub',
     emptyOutDir: true,
     sourcemap: false,
     // Optimize for production

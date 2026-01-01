@@ -5,7 +5,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getApprovedUploaders } from '../../utils/admin.js';
+import { getApprovedUploaders, getUserUploadPermissionInfo, isSuperAdminEmail } from '../../utils/admin.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 
@@ -31,7 +31,7 @@ interface UserListItem {
 
 interface UserDetail extends UserListItem {
     emailHash?: string; // For admin reference only, not the actual email
-    approvedAt?: string | null;
+    approvedAt?: string | null; // Only set if permissionSource is 'kv'
 }
 
 interface UserListResponse {
@@ -269,10 +269,6 @@ export async function handleListUsers(
         // Get all users from OTP auth service
         const allUsers = await listAllUsers(env);
         
-        // Get approved uploaders list
-        const approvedUploaders = await getApprovedUploaders(env);
-        const approvedSet = new Set(approvedUploaders);
-        
         // Aggregate user data
         const userItems: UserListItem[] = [];
         
@@ -293,13 +289,19 @@ export async function handleListUsers(
                 }
             }
             
+            // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
+            // Note: user.email may be empty string from listAllUsers (privacy), but we can get it from KV metadata
+            const permissionInfo = await getUserUploadPermissionInfo(user.userId, user.email || undefined, env);
+            
             userItems.push({
                 userId: user.userId,
                 displayName: user.displayName || null,
                 customerId: user.customerId || null,
                 createdAt: user.createdAt || null,
                 lastLogin: user.lastLogin || null,
-                hasUploadPermission: approvedSet.has(user.userId),
+                hasUploadPermission: permissionInfo.hasPermission,
+                permissionSource: permissionInfo.permissionSource,
+                isSuperAdmin: permissionInfo.isSuperAdmin,
                 modCount,
             });
         }
@@ -385,13 +387,13 @@ export async function handleGetUserDetails(
             });
         }
         
-        // Get upload permission status
-        const approvedUploaders = await getApprovedUploaders(env);
-        const hasUploadPermission = approvedUploaders.includes(userId);
+        // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
+        const permissionInfo = await getUserUploadPermissionInfo(user.userId, user.email || undefined, env);
+        const hasUploadPermission = permissionInfo.hasPermission;
         
-        // Get approval metadata if approved
+        // Get approval metadata if approved via KV
         let approvedAt: string | null = null;
-        if (hasUploadPermission && env.MODS_KV) {
+        if (permissionInfo.permissionSource === 'kv' && env.MODS_KV) {
             const approvalKey = `upload_approval_${userId}`;
             const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { metadata?: { approvedAt?: string } } | null;
             approvedAt = approvalData?.metadata?.approvedAt || null;
@@ -484,15 +486,27 @@ export async function handleUpdateUser(
         
         // Update upload permission if provided
         if (typeof requestData.hasUploadPermission === 'boolean') {
-            const { approveUserUpload, revokeUserUpload } = await import('../../utils/admin.js');
+            const { approveUserUpload, revokeUserUpload, getUserUploadPermissionInfo } = await import('../../utils/admin.js');
             
-            if (requestData.hasUploadPermission) {
-                // Find user to get email for metadata
-                const allUsers = await listAllUsers(env);
-                const user = allUsers.find(u => u.userId === userId);
+            // Check current permission source
+            const allUsers = await listAllUsers(env);
+            const user = allUsers.find(u => u.userId === userId);
+            const currentPermissionInfo = await getUserUploadPermissionInfo(userId, user?.email || undefined, env);
+            
+            // If user has env-var or super-admin permission, warn that revoking KV won't remove their permission
+            // (They'll still have permission from env var)
+            if (!requestData.hasUploadPermission && 
+                (currentPermissionInfo.permissionSource === 'env-var' || currentPermissionInfo.permissionSource === 'super-admin')) {
+                // User has env-based permission - revoking KV won't actually remove their upload permission
+                // But we'll still remove the KV entry for consistency
+                await revokeUserUpload(userId, env);
+                // Note: User will still have permission from APPROVED_UPLOADER_EMAILS or SUPER_ADMIN_EMAILS
+            } else if (requestData.hasUploadPermission) {
+                // Approve user (adds to KV)
                 const email = user?.email || '';
                 await approveUserUpload(userId, email, env);
             } else {
+                // Revoke KV approval
                 await revokeUserUpload(userId, env);
             }
         }

@@ -7,6 +7,14 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, './src'),
         },
+        // Ensure proper module resolution to avoid circular dependencies
+        dedupe: ['@strixun/api-framework'],
+    },
+    optimizeDeps: {
+        // Force pre-bundling of api-framework to resolve circular dependencies
+        include: ['@strixun/api-framework', '@strixun/api-framework/client'],
+        // Exclude from optimization to ensure proper module resolution
+        exclude: [],
     },
     // Base path for production deployment (root for Cloudflare Pages)
     base: '/',
@@ -83,7 +91,7 @@ export default defineConfig({
         },
     },
     build: {
-        outDir: 'dist',
+        outDir: '../dist/mods-hub',
         emptyOutDir: true,
         sourcemap: false,
         // Optimize for production

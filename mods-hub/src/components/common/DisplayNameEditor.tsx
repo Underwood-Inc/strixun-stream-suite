@@ -3,7 +3,7 @@
  * 
  * A reusable, agnostic component for editing display names with:
  * - Integration with random name generator
- * - Client-side validation (no numbers, no special chars, max 5 words, max 30 chars)
+ * - Client-side validation (no numbers, dashes allowed, max words and chars from constants)
  * - Proper error handling and user feedback
  * - API integration for updating display names
  * 
@@ -25,6 +25,7 @@ import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { generateRandomName } from '../../utils/nameGenerator';
+import { DISPLAY_NAME_MIN_LENGTH, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_MAX_WORDS } from '../../../../shared-config/display-name-constants';
 
 const EditorContainer = styled.div`
   display: flex;
@@ -38,10 +39,10 @@ const EditorRow = styled.div`
   align-items: flex-start;
 `;
 
-const Input = styled.input<{ hasError?: boolean }>`
+const Input = styled.input<{ $hasError?: boolean; $isReadOnly?: boolean }>`
   flex: 1;
   padding: ${spacing.sm} ${spacing.md};
-  border: 1px solid ${({ hasError }) => hasError ? colors.danger : colors.border};
+  border: 1px solid ${({ $hasError }) => $hasError ? colors.danger : colors.border};
   border-radius: 4px;
   background: ${colors.bgSecondary};
   color: ${colors.text};
@@ -50,13 +51,22 @@ const Input = styled.input<{ hasError?: boolean }>`
   
   &:focus {
     outline: none;
-    border-color: ${({ hasError }) => hasError ? colors.danger : colors.accent};
-    box-shadow: 0 0 0 2px ${({ hasError }) => hasError ? `${colors.danger}40` : `${colors.accent}40`};
+    border-color: ${({ $hasError }) => $hasError ? colors.danger : colors.accent};
+    box-shadow: 0 0 0 2px ${({ $hasError }) => $hasError ? `${colors.danger}40` : `${colors.accent}40`};
   }
   
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+  
+  /* Make read-only inputs clickable to enter edit mode */
+  &[readonly] {
+    cursor: ${({ $isReadOnly }) => $isReadOnly ? 'pointer' : 'text'};
+    
+    &:hover:not(:disabled) {
+      border-color: ${colors.accent};
+    }
   }
 `;
 
@@ -102,10 +112,11 @@ const HelpText = styled.div`
 /**
  * Client-side validation for display names
  * Matches server-side validation rules:
- * - 3-30 characters
- * - Letters and spaces only (no numbers, no special characters)
+ * - Min-max characters (configurable via constants)
+ * - Letters, spaces, and dashes only (no numbers, no other special characters)
+ * - Dashes allowed within words (e.g., "Swift-Bold")
  * - Must start with a letter
- * - Maximum 5 words
+ * - Maximum words (to support dash-separated names, configurable via constants)
  * - No consecutive spaces
  */
 function validateDisplayName(name: string): { valid: boolean; error?: string } {
@@ -115,12 +126,12 @@ function validateDisplayName(name: string): { valid: boolean; error?: string } {
   
   const trimmed = name.trim();
   
-  if (trimmed.length < 3) {
-    return { valid: false, error: 'Display name must be at least 3 characters' };
+  if (trimmed.length < DISPLAY_NAME_MIN_LENGTH) {
+    return { valid: false, error: `Display name must be at least ${DISPLAY_NAME_MIN_LENGTH} characters` };
   }
   
-  if (trimmed.length > 30) {
-    return { valid: false, error: 'Display name must be 30 characters or less' };
+  if (trimmed.length > DISPLAY_NAME_MAX_LENGTH) {
+    return { valid: false, error: `Display name must be ${DISPLAY_NAME_MAX_LENGTH} characters or less` };
   }
   
   // Check for numbers
@@ -128,9 +139,9 @@ function validateDisplayName(name: string): { valid: boolean; error?: string } {
     return { valid: false, error: 'Display name cannot contain numbers' };
   }
   
-  // Check for special characters (only letters and spaces allowed)
-  if (!/^[a-zA-Z\s]+$/.test(trimmed)) {
-    return { valid: false, error: 'Display name can only contain letters and spaces' };
+  // Check for special characters (only letters, spaces, and dashes allowed)
+  if (!/^[a-zA-Z\s-]+$/.test(trimmed)) {
+    return { valid: false, error: 'Display name can only contain letters, spaces, and dashes' };
   }
   
   // Must start with a letter
@@ -138,10 +149,15 @@ function validateDisplayName(name: string): { valid: boolean; error?: string } {
     return { valid: false, error: 'Display name must start with a letter' };
   }
   
-  // Check word count (max 5 words)
+  // Ensure dashes are only within words (not at start/end or between spaces)
+  if (trimmed.startsWith('-') || trimmed.endsWith('-') || /\s-\s/.test(trimmed) || /-\s-/.test(trimmed)) {
+    return { valid: false, error: 'Dashes can only be used within words (e.g., "Swift-Bold")' };
+  }
+  
+  // Check word count (max 8 words) - dash-separated words like "Swift-Bold" count as one word
   const words = trimmed.split(/\s+/).filter(w => w.length > 0);
-  if (words.length > 5) {
-    return { valid: false, error: 'Display name can have a maximum of 5 words' };
+  if (words.length > 8) {
+    return { valid: false, error: 'Display name can have a maximum of 8 words' };
   }
   
   if (words.length === 0) {
@@ -158,13 +174,16 @@ function validateDisplayName(name: string): { valid: boolean; error?: string } {
 
 /**
  * Sanitize display name input (remove invalid characters)
+ * Keeps letters, spaces, and dashes (for dash-separated names)
  */
 function sanitizeInput(value: string): string {
-  // Remove numbers and special characters, keep only letters and spaces
+  // Remove numbers and special characters, keep only letters, spaces, and dashes
   return value
-    .replace(/[^a-zA-Z\s]/g, '')
+    .replace(/[^a-zA-Z\s-]/g, '')
     .replace(/\s+/g, ' ')
-    .substring(0, 30);
+    .replace(/^-+|-+$/g, '') // Remove dashes at start/end
+    .replace(/\s-+\s/g, ' ') // Remove dashes between spaces
+    .substring(0, DISPLAY_NAME_MAX_LENGTH);
 }
 
 interface DisplayNameEditorProps {
@@ -344,7 +363,9 @@ export function DisplayNameEditor({
             value={currentDisplayName || 'Not set'}
             readOnly
             disabled={disabled}
-            style={{ cursor: 'default' }}
+            $isReadOnly={true}
+            onClick={disabled ? undefined : handleEdit}
+            title={disabled ? 'Display name editing is disabled' : 'Click to edit display name'}
           />
           <Button onClick={handleEdit} disabled={disabled}>
             Edit
@@ -352,7 +373,7 @@ export function DisplayNameEditor({
         </EditorRow>
         {showHelpText && (
           <HelpText>
-            Display names can be up to 30 characters, contain only letters and spaces, and have a maximum of 5 words.
+            Display names can be up to {DISPLAY_NAME_MAX_LENGTH} characters, contain letters, spaces, and dashes (e.g., &quot;Swift-Bold&quot;), and have a maximum of {DISPLAY_NAME_MAX_WORDS} words.
           </HelpText>
         )}
       </EditorContainer>
@@ -366,9 +387,9 @@ export function DisplayNameEditor({
           value={displayName}
           onChange={handleInputChange}
           placeholder="Enter display name"
-          hasError={!!validationError || !!error}
+          $hasError={!!validationError || !!error}
           disabled={isSaving || disabled}
-          maxLength={30}
+          maxLength={DISPLAY_NAME_MAX_LENGTH}
         />
         <Button
           onClick={handleGenerateRandom}
@@ -397,7 +418,7 @@ export function DisplayNameEditor({
       
       {showHelpText && !validationError && !error && (
         <HelpText>
-          Display names can be up to 30 characters, contain only letters and spaces (no numbers or special characters), and have a maximum of 5 words.
+          Display names can be up to {DISPLAY_NAME_MAX_LENGTH} characters, contain letters, spaces, and dashes (e.g., &quot;Swift-Bold&quot;), and have a maximum of {DISPLAY_NAME_MAX_WORDS} words.
         </HelpText>
       )}
     </EditorContainer>

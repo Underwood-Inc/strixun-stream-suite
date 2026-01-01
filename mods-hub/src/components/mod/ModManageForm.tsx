@@ -191,8 +191,8 @@ const StatusInfoText = styled.p`
   color: ${colors.textSecondary};
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary'; disabled?: boolean }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary'; disabled?: boolean }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   
   ${({ disabled }) => disabled && `
     opacity: 0.5;
@@ -482,7 +482,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     <Label>Variants (optional)</Label>
                     <Button 
                         type="button" 
-                        variant="secondary" 
+                        $variant="secondary" 
                         onClick={handleAddVariant}
                         disabled={hasEmptyDraftVariant()}
                     >
@@ -497,7 +497,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                                     <Label style={{ margin: 0 }}>Variant: {variant.name || 'Unnamed'}</Label>
                                     <Button 
                                         type="button" 
-                                        variant="danger" 
+                                        $variant="danger" 
                                         onClick={() => handleRemoveVariant(variant.variantId)}
                                         style={{ padding: spacing.xs, fontSize: '0.75rem' }}
                                     >
@@ -544,14 +544,14 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                 {mod.status === 'draft' && onStatusChange && (
                     <Button 
                         type="button" 
-                        variant="primary"
+                        $variant="primary"
                         onClick={() => onStatusChange('pending')}
                         disabled={isLoading}
                     >
                         Submit for Review
                     </Button>
                 )}
-                <Button type="button" variant="danger" onClick={onDelete} disabled={isLoading}>
+                <Button type="button" $variant="danger" onClick={onDelete} disabled={isLoading}>
                     Delete Mod
                 </Button>
             </ButtonGroup>

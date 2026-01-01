@@ -30,15 +30,59 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
         if (!request.headers) {
           request.headers = {};
         }
-        request.headers['Authorization'] = `Bearer ${token}`;
+        const authHeaderValue = `Bearer ${token}`;
+        request.headers['Authorization'] = authHeaderValue;
+        
         // Store token in metadata for response decryption
+        // CRITICAL: If token is explicitly passed in metadata, use that instead (for session restore scenarios)
         if (!request.metadata) {
           request.metadata = {};
         }
-        request.metadata.token = token;
-        console.log('[AuthMiddleware] Token added to request:', { method: request.method, path: request.path, hasToken: true });
+        
+        // If token is already in metadata (explicitly passed), verify it matches tokenGetter
+        if (request.metadata.token && request.metadata.token !== token) {
+          console.warn('[AuthMiddleware] Token mismatch detected:', {
+            method: request.method,
+            path: request.path,
+            metadataTokenLength: request.metadata.token.length,
+            tokenGetterTokenLength: token.length,
+            metadataTokenPrefix: request.metadata.token.substring(0, 20) + '...',
+            tokenGetterTokenPrefix: token.substring(0, 20) + '...',
+            note: 'Explicitly passed token in metadata takes precedence - this may be intentional (e.g., session restore)'
+          });
+          // Use the explicitly passed token (from metadata) to ensure decryption works
+          // Update Authorization header to match
+          request.headers['Authorization'] = `Bearer ${request.metadata.token}`;
+        } else {
+          // No explicit token in metadata, use tokenGetter token
+          request.metadata.token = token;
+        }
+        
+        console.log('[AuthMiddleware] Token added to request:', { 
+          method: request.method, 
+          path: request.path, 
+          hasToken: true,
+          tokenLength: request.metadata.token.length,
+          tokenPrefix: request.metadata.token.substring(0, 20) + '...',
+          tokenSource: request.metadata.token === token ? 'tokenGetter' : 'metadata (explicit)'
+        });
       } else {
-        console.warn('[AuthMiddleware] No token available for request:', { method: request.method, path: request.path });
+        // No token from tokenGetter, but check if one was explicitly passed in metadata
+        if (request.metadata?.token) {
+          // Use the explicitly passed token
+          if (!request.headers) {
+            request.headers = {};
+          }
+          request.headers['Authorization'] = `Bearer ${request.metadata.token}`;
+          console.log('[AuthMiddleware] Using explicitly passed token from metadata:', {
+            method: request.method,
+            path: request.path,
+            tokenLength: request.metadata.token.length,
+            tokenPrefix: request.metadata.token.substring(0, 20) + '...'
+          });
+        } else {
+          console.warn('[AuthMiddleware] No token available for request:', { method: request.method, path: request.path });
+        }
       }
     }
 

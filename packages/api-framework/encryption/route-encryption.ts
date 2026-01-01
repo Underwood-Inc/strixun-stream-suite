@@ -74,16 +74,15 @@ export interface EncryptionResult {
 // ============ Constants ============
 
 const PBKDF2_ITERATIONS = 100000;
-const SALT_LENGTH = 16;
-const IV_LENGTH = 12;
 const KEY_LENGTH = 256;
 
 // ============ Service Key Encryption ============
 
 /**
  * Derive encryption key from service key using PBKDF2
+ * @deprecated Service key encryption removed - kept for type compatibility only
  */
-async function deriveKeyFromServiceKey(serviceKey: string, salt: Uint8Array): Promise<CryptoKey> {
+async function _deriveKeyFromServiceKey(_serviceKey: string, salt: Uint8Array): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -130,8 +129,9 @@ async function hashServiceKey(key: string): Promise<string> {
 
 /**
  * Convert ArrayBuffer to base64
+ * @deprecated Service key encryption removed - kept for type compatibility only
  */
-function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+function _arrayBufferToBase64(_buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
@@ -154,8 +154,9 @@ export async function encryptWithServiceKey(
 
 /**
  * Convert base64 to ArrayBuffer
+ * @deprecated Service key encryption removed - kept for type compatibility only
  */
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
+function _base64ToArrayBuffer(_base64: string): ArrayBuffer {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -181,8 +182,9 @@ export async function decryptWithServiceKey(
 
 /**
  * Compress data with gzip (reused from JWT encryption pattern)
+ * @deprecated Service key encryption removed - kept for type compatibility only
  */
-async function compressDataForServiceKey(data: Uint8Array & { buffer: ArrayBuffer }): Promise<Uint8Array> {
+async function _compressDataForServiceKey(_data: Uint8Array & { buffer: ArrayBuffer }): Promise<Uint8Array> {
   const stream = new CompressionStream('gzip');
   const writer = stream.writable.getWriter();
   const reader = stream.readable.getReader();
@@ -252,8 +254,8 @@ async function decompressDataForServiceKey(compressedData: Uint8Array): Promise<
  * Use JWT binary encryption instead.
  */
 export async function encryptBinaryWithServiceKey(
-  data: ArrayBuffer | Uint8Array,
-  serviceKey: string
+  _data: ArrayBuffer | Uint8Array,
+  _serviceKey: string
 ): Promise<Uint8Array> {
   throw new Error('Service key binary encryption has been completely removed. Use JWT binary encryption (encryptBinaryWithJWT) instead.');
 }
@@ -497,7 +499,7 @@ export function extractJWTToken(request: Request): string | null {
  */
 export function createEncryptionContext(
   request: Request,
-  env: any
+  _env: any
 ): EncryptionContext {
   return {
     jwtToken: extractJWTToken(request),

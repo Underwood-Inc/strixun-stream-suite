@@ -21,7 +21,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: '../../../dist/otp-auth-service-dashboard',
     emptyOutDir: true,
     base: '/dashboard/',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles

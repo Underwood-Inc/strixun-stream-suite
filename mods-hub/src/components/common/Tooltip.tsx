@@ -64,6 +64,7 @@ interface TooltipProps {
   maxWidth?: string | null;
   interactive?: boolean;
   noBackground?: boolean; // If true, tooltip has no background/padding - content is the tooltip
+  detectTruncation?: boolean; // If true, only show tooltip when text is actually truncated
   children: ReactNode;
 }
 
@@ -205,6 +206,88 @@ const TooltipElement = styled.div<{
   `}
 `;
 
+/**
+ * Find the first text-containing element in the container
+ */
+function findTextElement(container: HTMLElement): HTMLElement | null {
+  if (container.textContent && container.textContent.trim()) {
+    return container;
+  }
+  
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+    null
+  );
+  
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as HTMLElement;
+      if (element.textContent && element.textContent.trim()) {
+        return element;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Detect if text is truncated by comparing scrollWidth to clientWidth
+ */
+function detectTextTruncation(element: HTMLElement): boolean {
+  const computedStyle = window.getComputedStyle(element);
+  const overflow = computedStyle.overflow;
+  const overflowX = computedStyle.overflowX;
+  const textOverflow = computedStyle.textOverflow;
+  const maxWidth = computedStyle.maxWidth;
+  const width = computedStyle.width;
+  
+  const hasTruncationStyles = 
+    (overflow === 'hidden' || overflowX === 'hidden') &&
+    (textOverflow === 'ellipsis' || textOverflow === 'clip');
+  
+  if (!hasTruncationStyles && maxWidth === 'none' && !width.includes('px')) {
+    return false;
+  }
+  
+  const scrollWidth = element.scrollWidth;
+  const clientWidth = element.clientWidth;
+  const threshold = 1;
+  const isHorizontallyTruncated = scrollWidth > clientWidth + threshold;
+  
+  const scrollHeight = element.scrollHeight;
+  const clientHeight = element.clientHeight;
+  const isVerticallyTruncated = scrollHeight > clientHeight + threshold;
+  
+  let isTruncatedByMeasurement = false;
+  
+  try {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      white-space: ${computedStyle.whiteSpace};
+      font: ${computedStyle.font};
+      width: auto;
+      max-width: none;
+      overflow: visible;
+    `;
+    
+    document.body.appendChild(clone);
+    const cloneWidth = clone.offsetWidth;
+    const originalWidth = element.offsetWidth;
+    document.body.removeChild(clone);
+    
+    isTruncatedByMeasurement = cloneWidth > originalWidth + threshold;
+  } catch (e) {
+    // Fall back to scrollWidth method
+  }
+  
+  return isHorizontallyTruncated || isVerticallyTruncated || isTruncatedByMeasurement;
+}
+
 export function Tooltip({ 
   text,
   content,
@@ -214,20 +297,118 @@ export function Tooltip({
   maxWidth = null,
   interactive = false,
   noBackground = false,
+  detectTruncation = false,
   children 
 }: TooltipProps) {
   const [show, setShow] = useState(false);
   const [actualPosition, setActualPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [isTruncated, setIsTruncated] = useState(false);
+  const [truncatedText, setTruncatedText] = useState<string>('');
   const wrapperRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHoveringTooltipRef = useRef(false);
   const listenersActiveRef = useRef(false);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Auto-enable interactive mode if content is provided (likely has interactive elements)
   const isInteractive = interactive || !!content;
+  
+  // Check truncation when detectTruncation is enabled
+  const checkTruncation = useCallback(() => {
+    if (!detectTruncation || !wrapperRef.current) {
+      setIsTruncated(false);
+      setTruncatedText('');
+      return;
+    }
+    
+    const textElement = findTextElement(wrapperRef.current);
+    if (!textElement) {
+      setIsTruncated(false);
+      setTruncatedText('');
+      return;
+    }
+    
+    const fullText = textElement.textContent || textElement.innerText || '';
+    
+    if (!fullText.trim()) {
+      setIsTruncated(false);
+      setTruncatedText('');
+      return;
+    }
+    
+    const isTruncatedResult = detectTextTruncation(textElement);
+    setIsTruncated(isTruncatedResult);
+    
+    if (isTruncatedResult) {
+      setTruncatedText(fullText);
+    } else {
+      setTruncatedText('');
+    }
+  }, [detectTruncation]);
+  
+  // Set up truncation detection observer
+  useEffect(() => {
+    if (!detectTruncation) return;
+    
+    requestAnimationFrame(() => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+      checkTimeoutRef.current = setTimeout(() => {
+        checkTruncation();
+      }, 50);
+      
+      resizeObserverRef.current = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          checkTruncation();
+        });
+      });
+      
+      if (wrapperRef.current) {
+        resizeObserverRef.current.observe(wrapperRef.current);
+        const textElement = findTextElement(wrapperRef.current);
+        if (textElement && textElement !== wrapperRef.current) {
+          resizeObserverRef.current.observe(textElement);
+        }
+      }
+    });
+    
+    const handleResize = () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+      checkTimeoutRef.current = setTimeout(() => {
+        checkTruncation();
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
+      window.removeEventListener('resize', handleResize);
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+        checkTimeoutRef.current = null;
+      }
+    };
+  }, [detectTruncation, checkTruncation]);
+  
+  // Re-check when children change
+  useEffect(() => {
+    if (detectTruncation) {
+      requestAnimationFrame(() => {
+        checkTruncation();
+      });
+    }
+  }, [children, detectTruncation, checkTruncation]);
 
   // Calculate max width based on viewport
   const calculateMaxWidth = useCallback((): string => {
@@ -508,7 +689,7 @@ export function Tooltip({
           onMouseEnter={handleTooltipMouseEnter}
           onMouseLeave={handleTooltipMouseLeave}
         >
-          {content || text}
+          {content || tooltipText}
         </TooltipElement>,
         portalRootElement
       )

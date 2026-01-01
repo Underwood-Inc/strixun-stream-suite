@@ -120,8 +120,8 @@ const ButtonGroup = styled.div`
     justify-content: flex-end;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-    ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
+    ${({ $variant = 'primary' }) => getButtonStyles($variant)}
     font-size: 0.875rem;
 `;
 
@@ -214,14 +214,14 @@ export function ConfirmationModal({
 
                 <ButtonGroup>
                     <Button
-                        variant="secondary"
+                        $variant="secondary"
                         onClick={onClose}
                         disabled={isLoading}
                     >
                         {cancelText}
                     </Button>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={handleConfirm}
                         disabled={isLoading || confirmationName.trim() !== requiredName}
                     >

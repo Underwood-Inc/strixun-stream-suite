@@ -386,10 +386,6 @@ export async function handleThumbnail(
         // Get JWT token from request (optional for public access)
         const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null;
 
-        // Read image binary data
-        const imageBytes = await thumbnail.arrayBuffer();
-        const imageArray = new Uint8Array(imageBytes);
-
         // Encrypt with JWT if token is present, otherwise return unencrypted for public browsing
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -398,6 +394,9 @@ export async function handleThumbnail(
         
         if (jwtToken) {
             // Encrypt image binary with JWT if token is present
+            // CRITICAL: Only read the stream when we need to encrypt it
+            const imageBytes = await thumbnail.arrayBuffer();
+            const imageArray = new Uint8Array(imageBytes);
             const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
             const encryptedImage = await encryptBinaryWithJWT(imageArray, jwtToken);
             console.log('[Thumbnail] Encrypted image binary:', { originalSize: imageArray.length, encryptedSize: encryptedImage.length });
@@ -413,6 +412,7 @@ export async function handleThumbnail(
             });
         } else {
             // Return unencrypted for public browsing
+            // CRITICAL: Use thumbnail.body directly without reading it first (stream can only be read once)
             console.log('[Thumbnail] Serving unencrypted thumbnail for public browsing:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
             headers.set('Content-Type', thumbnail.httpMetadata?.contentType || 'image/png');
             headers.set('X-Encrypted', 'false'); // Flag to indicate unencrypted response

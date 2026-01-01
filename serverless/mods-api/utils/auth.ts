@@ -4,76 +4,31 @@
  * Uses the same JWT_SECRET as the OTP auth service
  */
 
+// Use shared JWT utilities from api-framework (canonical implementation)
+import { verifyJWT as verifyJWTShared, getJWTSecret as getJWTSecretShared, type JWTPayload as JWTPayloadShared } from '@strixun/api-framework/jwt';
+
 /**
  * Get JWT secret from environment
  * @param env - Worker environment
  * @returns JWT secret
  */
 export function getJWTSecret(env: Env): string {
-    if (!env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is required. Please set it via: wrangler secret put JWT_SECRET');
-    }
-    return env.JWT_SECRET;
+    return getJWTSecretShared(env);
 }
 
 /**
  * Verify JWT token
+ * Uses shared implementation from api-framework
  * @param token - JWT token
  * @param secret - Secret key for verification
  * @returns Decoded payload or null if invalid
  */
 export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        
-        const [headerB64, payloadB64, signatureB64] = parts;
-        
-        // Verify signature
-        const encoder = new TextEncoder();
-        const signatureInput = `${headerB64}.${payloadB64}`;
-        const keyData = encoder.encode(secret);
-        const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['verify']
-        );
-        
-        // Decode signature (handle base64url encoding - add padding if needed)
-        let signatureBase64 = signatureB64.replace(/-/g, '+').replace(/_/g, '/');
-        while (signatureBase64.length % 4) {
-            signatureBase64 += '=';
-        }
-        const signature = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0));
-        
-        // Verify signature
-        const isValid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(signatureInput));
-        console.log(`[Auth] JWT signature verification: isValid=${isValid}, signatureLength=${signature.length}, signatureInputLength=${signatureInput.length}, signatureBase64Length=${signatureBase64.length}`);
-        if (!isValid) {
-            console.log('[Auth] JWT signature verification failed - signature does not match');
-            return null;
-        }
-        
-        // Decode payload (handle base64url encoding - add padding if needed)
-        let payloadBase64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
-        while (payloadBase64.length % 4) {
-            payloadBase64 += '=';
-        }
-        const payloadJson = atob(payloadBase64);
-        const payload = JSON.parse(payloadJson) as JWTPayload;
-        
-        // Check expiration
-        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-            return null;
-        }
-        
-        return payload;
-    } catch (error) {
-        console.error('JWT verification error:', error);
-        return null;
+    const payload = await verifyJWTShared(token, secret);
+    if (!payload) {
+        console.log('[Auth] JWT signature verification failed - signature does not match');
     }
+    return payload;
 }
 
 /**
@@ -193,15 +148,9 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
 
 /**
  * JWT Payload interface
+ * Re-export from shared JWT utilities
  */
-interface JWTPayload {
-    sub: string; // User ID
-    email?: string;
-    customerId?: string | null;
-    exp?: number;
-    iat?: number;
-    [key: string]: any;
-}
+export type { JWTPayload } from '@strixun/api-framework/jwt';
 
 /**
  * Auth result interface

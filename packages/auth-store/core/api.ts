@@ -133,6 +133,9 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
  * Returns true if token is valid, false if invalid/blacklisted
  * 
  * CRITICAL: This ensures we detect tokens that were blacklisted on other domains
+ * 
+ * If token mismatch occurs (token was refreshed/changed), this function will return false
+ * and the caller should restore the session to get a fresh token.
  */
 export async function validateTokenWithBackend(
     token: string, 
@@ -178,8 +181,23 @@ export async function validateTokenWithBackend(
         // 200 = valid, 401 = invalid/blacklisted
         return response.status === 200;
     } catch (error) {
+        // Check if this is a token mismatch error
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isTokenMismatch = errorMessage.includes('token does not match') || 
+                                errorMessage.includes('Token mismatch') ||
+                                errorMessage.includes('decryption failed');
+        
+        if (isTokenMismatch) {
+            // Token mismatch means the stored token is stale - return false so caller can restore session
+            console.warn('[Auth] Token mismatch detected during validation - stored token is stale:', {
+                error: errorMessage,
+                note: 'The stored token does not match the token used for encryption. This usually means the token was refreshed or changed. Returning false so caller can restore the session.'
+            });
+            return false; // Token is invalid (stale)
+        }
+        
         // Network errors or other issues - assume valid to avoid blocking initialization
-        console.warn('[Auth] Token validation failed (assuming valid):', error instanceof Error ? error.message : String(error));
+        console.warn('[Auth] Token validation failed (assuming valid):', errorMessage);
         return true; // Assume valid to avoid blocking initialization
     }
 }
@@ -190,6 +208,9 @@ export async function validateTokenWithBackend(
  * Also handles undefined cached values gracefully
  * 
  * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
+ * 
+ * If token mismatch occurs (token was refreshed/changed), this function will return null
+ * and the caller should restore the session to get a fresh token.
  */
 export async function fetchUserInfo(
     token: string,
@@ -255,7 +276,13 @@ export async function fetchUserInfo(
             
             // Check if response is still encrypted (decryption failed)
             if (typeof response.data === 'object' && 'encrypted' in response.data && (response.data as any).encrypted === true) {
-                console.error('[Auth] /auth/me response is still encrypted - decryption failed. Token may be invalid or missing from metadata.');
+                console.error('[Auth] /auth/me response is still encrypted - decryption failed (token mismatch):', {
+                    tokenLength: token.length,
+                    tokenPrefix: token.substring(0, 20) + '...',
+                    hasEncryptedFlag: true,
+                    responseStatus: response.status,
+                    note: 'Token mismatch detected - the stored token does not match the token used for encryption. This usually means the token was refreshed or changed. The caller should restore the session to get a fresh token.'
+                });
                 return null;
             }
             
@@ -269,9 +296,22 @@ export async function fetchUserInfo(
         console.warn('[Auth] /auth/me returned non-200 status:', response.status);
         return null;
     } catch (error) {
-        console.error('[Auth] Failed to fetch user info:', error instanceof Error ? error.message : String(error));
-        if (error instanceof Error && error.stack) {
-            console.debug('[Auth] fetchUserInfo error stack:', error.stack);
+        // Check if this is a token mismatch error
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isTokenMismatch = errorMessage.includes('token does not match') || 
+                                errorMessage.includes('Token mismatch') ||
+                                errorMessage.includes('decryption failed');
+        
+        if (isTokenMismatch) {
+            console.warn('[Auth] Token mismatch detected in fetchUserInfo - stored token is stale:', {
+                error: errorMessage,
+                note: 'The stored token does not match the token used for encryption. This usually means the token was refreshed or changed. The caller should restore the session to get a fresh token.'
+            });
+        } else {
+            console.error('[Auth] Failed to fetch user info:', errorMessage);
+            if (error instanceof Error && error.stack) {
+                console.debug('[Auth] fetchUserInfo error stack:', error.stack);
+            }
         }
         return null;
     }

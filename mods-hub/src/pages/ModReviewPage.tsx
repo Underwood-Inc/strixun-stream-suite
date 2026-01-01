@@ -118,8 +118,8 @@ const TextArea = styled.textarea`
   resize: vertical;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'danger' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   cursor: pointer;
   transition: all 0.2s ease;
   
@@ -235,7 +235,7 @@ export function ModReviewPage() {
                         {isAdmin && (
                             <>
                                 <Button
-                                    variant="primary"
+                                    $variant="primary"
                                     onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'approved' })}
                                     disabled={updateStatus.isPending || mod.status === 'approved'}
                                 >
@@ -248,7 +248,7 @@ export function ModReviewPage() {
                                     Request Changes
                                 </Button>
                                 <Button
-                                    variant="danger"
+                                    $variant="danger"
                                     onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'denied' })}
                                     disabled={updateStatus.isPending || mod.status === 'denied'}
                                 >

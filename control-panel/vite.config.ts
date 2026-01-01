@@ -22,8 +22,8 @@ export default defineConfig({
     },
   },
   build: {
-    // Output to parent directory as control_panel.html
-    outDir: '../dist',
+    // Output to root dist directory
+    outDir: '../dist/control-panel',
     emptyOutDir: true,
     // Inline all assets
     assetsInlineLimit: Infinity,

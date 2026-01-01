@@ -12,9 +12,9 @@
       "default": "./core.ts"
     },
     "./svelte/OtpLogin.svelte": "./svelte/OtpLogin.svelte",
-    "./dist/react": "./dist/react/index.js",
-    "./dist/react/otp-login.css": "./dist/react/otp-login.css",
-    "./dist/js": "./dist/js/index.js"
+    "./dist/react": "../../dist/otp-login/react/index.js",
+    "./dist/react/otp-login.css": "../../dist/otp-login/react/otp-login.css",
+    "./dist/js": "../../dist/otp-login/js/index.js"
   },
   "scripts": {
     "build": "node scripts/build-vanilla.js && node scripts/build-react.js",
@@ -54,7 +54,7 @@
     "react/",
     "entry.ts",
     "otp-login.d.ts",
-    "dist/",
+    "../../dist/otp-login/",
     "README.md",
     "CDN_USAGE.md",
     "BUILD_VERIFICATION.md"

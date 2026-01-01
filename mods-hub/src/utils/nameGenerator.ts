@@ -31,34 +31,99 @@ function randomElement<T>(array: readonly T[]): T {
 
 /**
  * Generate a random name pattern
+ * Generates 3-5 words with rare chances for dash-separated ones (max 8 words total)
  */
 function generateNamePattern(
     pattern: 'adjective-noun' | 'adjective-noun-number' | 'noun-adjective' | 'random',
     includeNumber: boolean = false
 ): string {
-    const adjective = randomElement(ADJECTIVES);
-    const noun = randomElement(NOUNS);
-    const number = Math.floor(Math.random() * 999) + 1;
+    // Determine word count (3-5 words, weighted towards 3-4)
+    const wordCountRoll = Math.random();
+    let wordCount: number;
+    if (wordCountRoll < 0.4) {
+        wordCount = 3; // 40% chance for 3 words
+    } else if (wordCountRoll < 0.75) {
+        wordCount = 4; // 35% chance for 4 words
+    } else {
+        wordCount = 5; // 25% chance for 5 words
+    }
 
-    switch (pattern) {
-        case 'adjective-noun':
-            return includeNumber ? `${adjective} ${noun} ${number}` : `${adjective} ${noun}`;
-        case 'adjective-noun-number':
-            // Only include number if explicitly requested (for display names, this should be false)
-            return includeNumber ? `${adjective} ${noun} ${number}` : `${adjective} ${noun}`;
-        case 'noun-adjective':
-            return includeNumber ? `${noun} ${adjective} ${number}` : `${noun} ${adjective}`;
-        case 'random':
-        default: {
-            const patterns: Array<'adjective-noun' | 'noun-adjective'> = ['adjective-noun', 'noun-adjective'];
-            const selectedPattern = randomElement(patterns);
-            if (selectedPattern === 'adjective-noun') {
-                return includeNumber ? `${adjective} ${noun} ${number}` : `${adjective} ${noun}`;
+    // Rare chance (12%) for dash-separated words
+    const useDashes = Math.random() < 0.12;
+    
+    const words: string[] = [];
+    
+    // Generate words based on pattern
+    if (pattern === 'noun-adjective') {
+        // Start with noun
+        words.push(randomElement(NOUNS));
+        // Add adjectives
+        for (let i = 1; i < wordCount; i++) {
+            words.push(randomElement(ADJECTIVES));
+        }
+    } else {
+        // Default: start with adjective(s), then noun(s)
+        // For 3 words: adj-noun-adj or adj-adj-noun
+        // For 4 words: adj-adj-noun-adj or adj-noun-adj-noun
+        // For 5 words: adj-adj-noun-adj-noun or similar
+        
+        if (wordCount === 3) {
+            if (Math.random() < 0.5) {
+                words.push(randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES));
             } else {
-                return includeNumber ? `${noun} ${adjective} ${number}` : `${noun} ${adjective}`;
+                words.push(randomElement(ADJECTIVES), randomElement(ADJECTIVES), randomElement(NOUNS));
+            }
+        } else if (wordCount === 4) {
+            if (Math.random() < 0.5) {
+                words.push(randomElement(ADJECTIVES), randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES));
+            } else {
+                words.push(randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES), randomElement(NOUNS));
+            }
+        } else { // 5 words
+            // Mix of adjectives and nouns
+            const pattern5 = Math.floor(Math.random() * 3);
+            if (pattern5 === 0) {
+                words.push(randomElement(ADJECTIVES), randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES), randomElement(NOUNS));
+            } else if (pattern5 === 1) {
+                words.push(randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES));
+            } else {
+                words.push(randomElement(ADJECTIVES), randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(NOUNS), randomElement(ADJECTIVES));
             }
         }
     }
+
+    // Apply dash separation if selected (rare)
+    if (useDashes && words.length >= 3) {
+        // Group some words with dashes (typically 2-3 words per dash group)
+        // Example: "Swift-Bold Eagle" or "Ancient Dragon-Warrior"
+        const result: string[] = [];
+        let i = 0;
+        
+        while (i < words.length) {
+            // Decide if this group should be dash-separated (30% chance per group)
+            const useDashGroup = Math.random() < 0.3 && i < words.length - 1;
+            
+            if (useDashGroup && i < words.length - 1) {
+                // Create a dash-separated group of 2 words
+                result.push(`${words[i]}-${words[i + 1]}`);
+                i += 2;
+            } else {
+                // Single word
+                result.push(words[i]);
+                i += 1;
+            }
+        }
+        
+        // Ensure we don't exceed 8 words total (after dash grouping)
+        if (result.length > 8) {
+            return result.slice(0, 8).join(' ');
+        }
+        
+        return result.join(' ');
+    }
+
+    // No dashes - join with spaces
+    return words.join(' ');
 }
 
 /**

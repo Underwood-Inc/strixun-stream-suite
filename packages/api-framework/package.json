@@ -23,6 +23,10 @@
       "types": "./enhanced-router.ts",
       "default": "./enhanced-router.ts"
     },
+    "./jwt": {
+      "types": "./jwt.ts",
+      "default": "./jwt.ts"
+    },
     "./test-utils": {
       "types": "./test-utils.ts",
       "default": "./test-utils.ts"

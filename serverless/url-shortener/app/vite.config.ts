@@ -18,11 +18,12 @@ export default defineConfig({
     alias: {
       '$lib': path.resolve(__dirname, './src/lib'),
       '@shared-styles': path.resolve(__dirname, '../../../shared-styles'),
-      '@shared-components': path.resolve(__dirname, '../../../shared-components')
+      '@shared-components': path.resolve(__dirname, '../../../shared-components'),
+      '@mods-hub/components': path.resolve(__dirname, '../../../mods-hub/src/components')
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, '../../../dist/url-shortener-app'),
     emptyOutDir: true,
     base: '/',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles

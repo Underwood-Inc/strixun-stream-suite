@@ -1,14 +1,22 @@
 /**
  * User Management Page - Admin Interface for Managing Users
  * 
+ * This page allows super admins to manage upload permissions for regular users.
+ * 
+ * Permission System:
+ * - Super Admins: From SUPER_ADMIN_EMAILS env var (hardcoded backup - always have permission)
+ * - Approved Uploaders: Managed here via UI (stored in KV, can upload and manage own mods)
+ * 
  * Features:
  * - Virtualized table (handles thousands of records)
  * - Sortable columns
  * - Advanced search with human-friendly query parser
  * - Bulk selection and actions
- * - Permission management
+ * - Upload permission management (approve/revoke)
  * - View user details and mods
  * - Optimized for performance
+ * 
+ * Access: Super admin only (via AdminRoute protection)
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -110,14 +118,19 @@ const Toolbar = styled.div`
   border: 1px solid ${colors.border};
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   font-size: 0.75rem;
   white-space: nowrap;
 `;
 
-const PermissionBadge = styled.span<{ hasPermission: boolean }>`
-  ${({ hasPermission }) => getBadgeStyles(hasPermission ? 'success' : 'default')}
+const PermissionBadge = styled.span<{ hasPermission: boolean; source?: 'super-admin' | 'env-var' | 'kv' }>`
+  ${({ hasPermission, source }) => {
+    if (!hasPermission) return getBadgeStyles('default');
+    if (source === 'super-admin') return getBadgeStyles('accent');
+    if (source === 'env-var') return getBadgeStyles('info');
+    return getBadgeStyles('success'); // KV-based
+  }}
 `;
 
 const AccountTypeBadge = styled.span<{ type: 'free' | 'subscription' }>`
@@ -258,7 +271,17 @@ export function UserManagementPage() {
     const handleBulkAction = useCallback(async (action: 'approve' | 'revoke') => {
         if (selectedIds.size === 0) return;
         
-        const usersToUpdate = sortedUsers.filter(user => selectedIds.has(user.userId));
+        // Filter to only users whose permissions can be managed via UI (KV-based or none)
+        // Skip super admins and env-var approved uploaders (they're hardcoded)
+        const usersToUpdate = sortedUsers.filter(user => 
+            selectedIds.has(user.userId) && 
+            (user.permissionSource === 'kv' || user.permissionSource === 'none')
+        );
+        
+        if (usersToUpdate.length === 0) {
+            // All selected users have env-based permissions that can't be managed via UI
+            return;
+        }
         
         try {
             for (const user of usersToUpdate) {
@@ -315,13 +338,32 @@ export function UserManagementPage() {
         {
             key: 'hasUploadPermission',
             label: 'Upload Permission',
-            width: '150px',
+            width: '200px',
             sortable: true,
-            render: (user) => (
-                <PermissionBadge hasPermission={user.hasUploadPermission}>
-                    {user.hasUploadPermission ? 'Approved' : 'Not Approved'}
-                </PermissionBadge>
-            ),
+            render: (user) => {
+                if (!user.hasUploadPermission) {
+                    return (
+                        <PermissionBadge hasPermission={false}>
+                            Not Approved
+                        </PermissionBadge>
+                    );
+                }
+                
+                // Show permission source
+                const sourceLabel = user.permissionSource === 'super-admin' 
+                    ? 'Super Admin' 
+                    : user.permissionSource === 'env-var'
+                    ? 'Env Var'
+                    : user.permissionSource === 'kv'
+                    ? 'KV Approved'
+                    : 'Approved';
+                
+                return (
+                    <PermissionBadge hasPermission={true} source={user.permissionSource}>
+                        {sourceLabel}
+                    </PermissionBadge>
+                );
+            },
         },
         {
             key: 'modCount',
@@ -352,30 +394,46 @@ export function UserManagementPage() {
             key: 'actions',
             label: 'Actions',
             width: '300px',
-            render: (user) => (
-                <ActionGroup>
-                    <Button
-                        variant={user.hasUploadPermission ? 'danger' : 'primary'}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleTogglePermission(user.userId, user.hasUploadPermission);
-                        }}
-                        disabled={updateUser.isPending}
-                    >
-                        {user.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload'}
-                    </Button>
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            // Navigate to user detail view (could be a modal or separate page)
-                            // For now, just log
-                            console.log('View user details:', user.userId);
-                        }}
-                    >
-                        View Details
-                    </Button>
-                </ActionGroup>
-            ),
+            render: (user) => {
+                // Can't revoke permissions from env var or super admin (they're hardcoded)
+                const canManagePermission = user.permissionSource === 'kv' || user.permissionSource === 'none';
+                const isEnvBased = user.permissionSource === 'env-var' || user.permissionSource === 'super-admin';
+                
+                return (
+                    <ActionGroup>
+                        {canManagePermission ? (
+                            <Button
+                                variant={user.hasUploadPermission ? 'danger' : 'primary'}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTogglePermission(user.userId, user.hasUploadPermission);
+                                }}
+                                disabled={updateUser.isPending}
+                            >
+                                {user.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload'}
+                            </Button>
+                        ) : (
+                            <Button
+                                $variant="secondary"
+                                disabled
+                                title={isEnvBased ? 'Permission is set via environment variable and cannot be revoked via UI' : 'Cannot manage this permission'}
+                            >
+                                {user.hasUploadPermission ? 'Env Managed' : 'No Permission'}
+                            </Button>
+                        )}
+                        <Button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Navigate to user detail view (could be a modal or separate page)
+                                // For now, just log
+                                console.log('View user details:', user.userId);
+                            }}
+                        >
+                            View Details
+                        </Button>
+                    </ActionGroup>
+                );
+            },
         },
     ], [handleTogglePermission, updateUser]);
 
@@ -445,7 +503,7 @@ export function UserManagementPage() {
                     <>
                         <SelectionInfo>{selectedCount} selected</SelectionInfo>
                         <Button
-                            variant="primary"
+                            $variant="primary"
                             onClick={() => {
                                 setBulkAction('approve');
                                 setBulkActionModalOpen(true);
@@ -455,7 +513,7 @@ export function UserManagementPage() {
                             Bulk Approve
                         </Button>
                         <Button
-                            variant="danger"
+                            $variant="danger"
                             onClick={() => {
                                 setBulkAction('revoke');
                                 setBulkActionModalOpen(true);
@@ -533,9 +591,23 @@ export function UserManagementPage() {
                 }}
                 title={bulkAction === 'approve' ? 'Bulk Approve Users' : 'Bulk Revoke Users'}
                 message={
-                    bulkAction === 'approve'
-                        ? `Are you sure you want to approve ${selectedCount} user(s) for upload permissions?`
-                        : `Are you sure you want to revoke upload permissions from ${selectedCount} user(s)?`
+                    (() => {
+                        const envManagedCount = sortedUsers.filter(u => 
+                            selectedIds.has(u.userId) && 
+                            (u.permissionSource === 'env-var' || u.permissionSource === 'super-admin')
+                        ).length;
+                        const manageableCount = selectedCount - envManagedCount;
+                        
+                        let baseMessage = bulkAction === 'approve'
+                            ? `Are you sure you want to approve ${manageableCount} user(s) for upload permissions?`
+                            : `Are you sure you want to revoke upload permissions from ${manageableCount} user(s)?`;
+                        
+                        if (envManagedCount > 0) {
+                            baseMessage += `\n\nNote: ${envManagedCount} selected user(s) have permissions set via environment variables and cannot be modified via the UI.`;
+                        }
+                        
+                        return baseMessage;
+                    })()
                 }
                 confirmText={bulkAction === 'approve' ? 'Approve All' : 'Revoke All'}
                 cancelText="Cancel"

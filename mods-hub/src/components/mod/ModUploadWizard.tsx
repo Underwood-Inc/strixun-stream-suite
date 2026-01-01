@@ -254,8 +254,8 @@ const NavigationButtons = styled.div`
   border-top: 1px solid ${colors.border};
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'; disabled?: boolean }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger'; disabled?: boolean }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   
   ${({ disabled }) => disabled && `
     opacity: 0.5;
@@ -830,7 +830,7 @@ export function ModUploadWizard({
                 <NavigationButtons>
                     <div></div>
                     <Button 
-                        variant="primary"
+                        $variant="primary"
                         onClick={handleNext}
                         disabled={!canProceed}
                     >
@@ -906,11 +906,11 @@ export function ModUploadWizard({
                 </FormGroup>
 
                 <NavigationButtons>
-                    <Button variant="secondary" onClick={handleBack}>
+                    <Button $variant="secondary" onClick={handleBack}>
                         Back
                     </Button>
                     <Button 
-                        variant="primary"
+                        $variant="primary"
                         onClick={handleNext}
                         disabled={!canProceed}
                     >
@@ -1055,13 +1055,13 @@ export function ModUploadWizard({
                 </VariantsSection>
 
                 <NavigationButtons>
-                    <Button variant="secondary" onClick={handleBack}>
+                    <Button $variant="secondary" onClick={handleBack}>
                         Back
                     </Button>
                     <div style={{ display: 'flex', gap: spacing.md }}>
                         {onSaveDraft && (
                             <Button 
-                                variant="secondary"
+                                $variant="secondary"
                                 onClick={handleSaveDraft}
                                 disabled={isLoading || !file}
                             >
@@ -1069,7 +1069,7 @@ export function ModUploadWizard({
                             </Button>
                         )}
                         <Button 
-                            variant="primary"
+                            $variant="primary"
                             onClick={handleSubmit}
                             disabled={isLoading || !file}
                         >

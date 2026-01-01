@@ -130,3 +130,14 @@ export type {
   UploadLimitsConfig,
 } from './upload-limits.js';
 
+// Re-export JWT utilities (canonical implementation)
+export {
+  createJWT,
+  verifyJWT,
+  getJWTSecret,
+} from './jwt.js';
+
+export type {
+  JWTPayload,
+} from './jwt.js';
+

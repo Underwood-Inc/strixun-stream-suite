@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '../..');
 const corePath = join(__dirname, '../core.ts');
-const outputDir = join(__dirname, '../dist/js');
+const outputDir = join(__dirname, '../../../dist/otp-login/js');
 const outputFile = join(outputDir, 'otp-login-core.js');
 const outputFileMin = join(outputDir, 'otp-login-core.min.js');
 const outputFileESM = join(outputDir, 'otp-login-core.esm.js');

@@ -178,10 +178,9 @@ interface ModVersionListProps {
     modSlug: string; // Mod slug for constructing download URLs
     versions: ModVersion[];
     variants?: ModVariant[]; // Variants for the mod (filtered by version)
-    isUploader?: boolean;
 }
 
-export function ModVersionList({ modSlug, versions, variants = [], isUploader = false }: ModVersionListProps) {
+export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionListProps) {
     const [downloading, setDownloading] = useState<Set<string>>(new Set());
     const [downloadingVariants, setDownloadingVariants] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);

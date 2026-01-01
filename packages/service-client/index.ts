@@ -284,12 +284,11 @@ export class ServiceClient {
                 }
                 
                 // Build request
+                // NOTE: Cloudflare Workers doesn't support the 'cache' option in RequestInit
+                // Workers fetch API doesn't cache by default, so we don't need to set it
                 const requestInit: RequestInit = {
                     method,
                     headers,
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
                 };
                 
                 // Add body to request

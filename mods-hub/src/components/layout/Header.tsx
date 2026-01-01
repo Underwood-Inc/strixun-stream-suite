@@ -9,6 +9,7 @@ import { useUploadPermission } from '../../hooks/useUploadPermission';
 import { useDrafts } from '../../hooks/useMods';
 import { colors, spacing } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
+import { Tooltip } from '../common/Tooltip';
 
 const HeaderContainer = styled.header`
   background: ${colors.bgSecondary};
@@ -50,8 +51,8 @@ const NavLink = styled(Link)`
   }
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
 `;
 
 export function Header() {
@@ -90,12 +91,24 @@ export function Header() {
                         {isSuperAdmin && (
                             <NavLink to="/admin">Admin</NavLink>
                         )}
-                        <Button variant="secondary" onClick={handleLogout}>
-                            Logout ({user?.displayName || 'User'})
+                        <Button $variant="secondary" onClick={handleLogout}>
+                            Logout (
+                            <Tooltip detectTruncation position="bottom">
+                                <span style={{ 
+                                    display: 'inline-block',
+                                    maxWidth: '150px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    {user?.displayName || 'User'}
+                                </span>
+                            </Tooltip>
+                            )
                         </Button>
                     </>
                 ) : (
-                    <Button variant="primary" onClick={() => navigate('/login')}>
+                    <Button $variant="primary" onClick={() => navigate('/login')}>
                         Login
                     </Button>
                 )}

@@ -13,7 +13,7 @@ import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
 import { downloadVersion } from '../services/api';
-import { getUserFriendlyErrorMessage } from '../utils/error-messages';
+import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { getButtonStyles } from '../utils/buttonStyles';

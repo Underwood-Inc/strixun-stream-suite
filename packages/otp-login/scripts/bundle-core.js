@@ -14,11 +14,12 @@ const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '../..');
 const corePath = join(__dirname, '../core.ts');
-const outputFile = join(__dirname, '../dist/otp-core.js');
-const outputFileMin = join(__dirname, '../dist/otp-core.min.js');
+const outputDir = join(__dirname, '../../../dist/otp-login/js');
+const outputFile = join(outputDir, 'otp-core.js');
+const outputFileMin = join(outputDir, 'otp-core.min.js');
 
 // Ensure dist directory exists
-mkdirSync(join(__dirname, '../dist'), { recursive: true });
+mkdirSync(outputDir, { recursive: true });
 
 try {
   // Build unminified version (for debugging)

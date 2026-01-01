@@ -74,12 +74,12 @@ export function LoginPage() {
 
         setUser(userData);
 
-        // Fetch admin status after login (will update isSuperAdmin if different from JWT)
-        const { useAuthStore } = await import('../stores/auth');
-        const store = useAuthStore.getState();
-        await store.fetchUserInfo();
-
         console.log('[Login] ✓ User authenticated:', userData.email, 'Token expires at:', expiresAt);
+
+        // Don't call fetchUserInfo immediately after login - let the Layout component handle it
+        // This avoids token mismatch issues that can occur when calling it too quickly after login
+        // The Layout component's restoreSession will fetch user info when it mounts, which gives
+        // the store time to fully update and ensures the token is properly set
 
         navigate('/');
     };

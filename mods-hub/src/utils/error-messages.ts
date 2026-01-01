@@ -73,7 +73,7 @@ export function getUserFriendlyErrorMessage(error: unknown): string {
     }
     
     // Other 4xx errors - show message if it's user-friendly, otherwise generic
-    if (status >= 400 && status < 500) {
+    if (status !== undefined && status >= 400 && status < 500) {
       // If message looks technical, provide generic message
       if (message.includes('Failed to decrypt') || 
           message.includes('JWT token is required') ||
@@ -125,7 +125,7 @@ export function shouldRedirectToLogin(error: unknown): boolean {
   
   if (error && typeof error === 'object' && 'status' in error) {
     const apiError = error as APIError;
-    return apiError.status === 401 || isAuthError(error);
+    return apiError.status === 401 || (apiError.status !== undefined && isAuthError(error));
   }
   
   if (error instanceof Error) {

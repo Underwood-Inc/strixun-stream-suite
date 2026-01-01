@@ -129,8 +129,8 @@ const HiddenInput = styled.input`
   display: none;
 `;
 
-const Button = styled.button<{ disabled?: boolean; variant?: 'primary' | 'secondary' | 'danger' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ disabled?: boolean; $variant?: 'primary' | 'secondary' | 'danger' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   
   ${({ disabled }) => disabled && `
     opacity: 0.5;
@@ -546,7 +546,7 @@ export function ModUploadForm({
                 {onSaveDraft && (
                     <Button 
                         type="button" 
-                        variant="secondary" 
+                        $variant="secondary" 
                         onClick={handleSaveDraft}
                         disabled={isLoading}
                     >

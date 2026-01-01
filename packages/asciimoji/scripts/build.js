@@ -5,14 +5,16 @@
 
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+// Get project root: packages/asciimoji/scripts -> packages/asciimoji -> packages -> project root
+const projectRoot = resolve(__dirname, '../../..');
 const rootDir = join(__dirname, '..');
 const corePath = join(rootDir, 'core.ts');
-const outputDir = join(rootDir, 'dist', 'js');
+const outputDir = resolve(projectRoot, 'dist/asciimoji/js');
 const outputFile = join(outputDir, 'index.js');
 const outputFileMin = join(outputDir, 'index.min.js');
 const outputFileESM = join(outputDir, 'index.esm.js');

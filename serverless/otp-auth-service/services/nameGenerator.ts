@@ -10,6 +10,8 @@
  * @module services/nameGenerator
  */
 
+import { DISPLAY_NAME_MIN_LENGTH, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_MAX_WORDS } from '../../../shared-config/display-name-constants.js';
+
 interface CloudflareEnv {
   OTP_AUTH_KV: KVNamespace;
   [key: string]: any;
@@ -219,58 +221,95 @@ function countWords(name: string): number {
 }
 
 /**
- * Generate name using different patterns with proper spacing (max 5 words)
+ * Generate name using different patterns with proper spacing
+ * Generates 3-5 words with rare chances for dash-separated ones (max 8 words total)
  */
 function generateNamePattern(
   pattern: 'adjective-noun' | 'adjective-noun-adjective' | 'noun-adjective' | 
            'adjective-adjective-noun' | 'adjective-noun-noun' | 'random',
-  maxWords: number = 5
+  maxWords: number = 8 // Increased to 8 to support dash-separated names
 ): string {
+  // Determine word count (3-5 words, weighted towards 3-4)
+  const wordCountRoll = Math.random();
+  let wordCount: number;
+  if (wordCountRoll < 0.4) {
+    wordCount = 3; // 40% chance for 3 words
+  } else if (wordCountRoll < 0.75) {
+    wordCount = 4; // 35% chance for 4 words
+  } else {
+    wordCount = 5; // 25% chance for 5 words
+  }
+
+  // Rare chance (12%) for dash-separated words
+  const useDashes = Math.random() < 0.12;
+  
   let words: string[] = [];
   
-  // Determine pattern if random (weighted towards shorter, more readable patterns)
+  // Determine pattern if random
   const actualPattern = pattern === 'random' 
     ? (['adjective-noun', 'adjective-noun-adjective', 'noun-adjective', 
         'adjective-adjective-noun', 'adjective-noun-noun'] as const)[
-        randomInt(0, 4) // Equal probability
+        randomInt(0, 4)
       ]
     : pattern;
   
-  switch (actualPattern) {
-    case 'adjective-noun':
-      words = [randomElement(ADJECTIVES), randomElement(NOUNS)];
-      break;
-      
-    case 'adjective-noun-adjective':
-      words = [
-        randomElement(ADJECTIVES), 
-        randomElement(NOUNS), 
-        randomElement(ADJECTIVES)
-      ];
-      break;
-      
-    case 'noun-adjective':
-      words = [randomElement(NOUNS), randomElement(ADJECTIVES)];
-      break;
-      
-    case 'adjective-adjective-noun':
-      words = [
-        randomElement(ADJECTIVES), 
-        randomElement(ADJECTIVES), 
-        randomElement(NOUNS)
-      ];
-      break;
-      
-    case 'adjective-noun-noun':
-      words = [
-        randomElement(ADJECTIVES), 
-        randomElement(NOUNS), 
-        randomElement(NOUNS)
-      ];
-      break;
-      
-    default:
-      words = [randomElement(ADJECTIVES), randomElement(NOUNS)];
+  // Generate words based on pattern and word count
+  if (actualPattern === 'noun-adjective') {
+    // Start with noun, then adjectives
+    words.push(randomElement(NOUNS));
+    for (let i = 1; i < wordCount; i++) {
+      words.push(randomElement(ADJECTIVES));
+    }
+  } else if (actualPattern === 'adjective-noun') {
+    // Simple adjective-noun pattern - expand to 3-5 words
+    words.push(randomElement(ADJECTIVES), randomElement(NOUNS));
+    // Add more words to reach target count
+    for (let i = 2; i < wordCount; i++) {
+      if (i % 2 === 0) {
+        words.push(randomElement(ADJECTIVES));
+      } else {
+        words.push(randomElement(NOUNS));
+      }
+    }
+  } else if (actualPattern === 'adjective-noun-adjective') {
+    words.push(randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(ADJECTIVES));
+    // Add more words to reach target count
+    for (let i = 3; i < wordCount; i++) {
+      if (i % 2 === 1) {
+        words.push(randomElement(NOUNS));
+      } else {
+        words.push(randomElement(ADJECTIVES));
+      }
+    }
+  } else if (actualPattern === 'adjective-adjective-noun') {
+    words.push(randomElement(ADJECTIVES), randomElement(ADJECTIVES), randomElement(NOUNS));
+    // Add more words to reach target count
+    for (let i = 3; i < wordCount; i++) {
+      if (i % 2 === 1) {
+        words.push(randomElement(ADJECTIVES));
+      } else {
+        words.push(randomElement(NOUNS));
+      }
+    }
+  } else if (actualPattern === 'adjective-noun-noun') {
+    words.push(randomElement(ADJECTIVES), randomElement(NOUNS), randomElement(NOUNS));
+    // Add more words to reach target count
+    for (let i = 3; i < wordCount; i++) {
+      if (i % 2 === 1) {
+        words.push(randomElement(ADJECTIVES));
+      } else {
+        words.push(randomElement(NOUNS));
+      }
+    }
+  } else {
+    // Fallback: generate based on word count
+    for (let i = 0; i < wordCount; i++) {
+      if (i % 2 === 0) {
+        words.push(randomElement(ADJECTIVES));
+      } else {
+        words.push(randomElement(NOUNS));
+      }
+    }
   }
   
   // Ensure we don't exceed maxWords
@@ -278,7 +317,37 @@ function generateNamePattern(
     words = words.slice(0, maxWords);
   }
   
-  // Join with spaces for proper name formatting
+  // Apply dash separation if selected (rare)
+  if (useDashes && words.length >= 3) {
+    // Group some words with dashes (typically 2-3 words per dash group)
+    // Example: "Swift-Bold Eagle" or "Ancient Dragon-Warrior"
+    const result: string[] = [];
+    let i = 0;
+    
+    while (i < words.length) {
+      // Decide if this group should be dash-separated (30% chance per group)
+      const useDashGroup = Math.random() < 0.3 && i < words.length - 1;
+      
+      if (useDashGroup && i < words.length - 1) {
+        // Create a dash-separated group of 2 words
+        result.push(`${words[i]}-${words[i + 1]}`);
+        i += 2;
+      } else {
+        // Single word
+        result.push(words[i]);
+        i += 1;
+      }
+    }
+    
+    // Ensure we don't exceed max words total (after dash grouping)
+    if (result.length > DISPLAY_NAME_MAX_WORDS) {
+      return result.slice(0, DISPLAY_NAME_MAX_WORDS).join(' ');
+    }
+    
+    return result.join(' ');
+  }
+  
+  // No dashes - join with spaces
   return words.join(' ');
 }
 
@@ -351,7 +420,7 @@ export async function generateUniqueDisplayName(
     customerId = null,
     maxAttempts = 20, // Increased for better success rate
     pattern = 'random', // Use random pattern for maximum variety
-    maxWords = 5 // Maximum 5 words
+    maxWords = DISPLAY_NAME_MAX_WORDS // Maximum words (to support dash-separated names)
   } = options;
 
   let attempts = 0;
@@ -443,13 +512,14 @@ export async function generateUniqueDisplayName(
 
 /**
  * Validate display name format
- * Ensures name doesn't exceed 5 words and uses proper spacing
+ * Ensures name doesn't exceed 8 words and uses proper spacing
  * 
  * Rules:
- * - 3-30 characters
- * - Letters and spaces only (no numbers, no special characters)
+ * - 3-50 characters
+ * - Letters, spaces, and dashes only (no numbers, no other special characters)
+ * - Dashes allowed within words (e.g., "Swift-Bold")
  * - Must start with a letter
- * - Maximum 5 words
+ * - Maximum 8 words (to support dash-separated names)
  * - No consecutive spaces
  */
 export function validateDisplayName(name: string): boolean {
@@ -457,14 +527,22 @@ export function validateDisplayName(name: string): boolean {
   
   const trimmed = name.trim();
   
-  // Check basic format: 3-30 characters, letters and spaces only, must start with letter
-  // NO NUMBERS, NO SPECIAL CHARACTERS
-  const pattern = /^[a-zA-Z][a-zA-Z\s]{2,29}$/;
+  // Check basic format: min-max characters (from constants), letters, spaces, and dashes only, must start with letter
+  // NO NUMBERS, NO OTHER SPECIAL CHARACTERS
+  // Dashes are allowed within words (e.g., "Swift-Bold Eagle")
+  // Pattern: first char is letter, then (maxLength - 1) more chars of letters/spaces/dashes
+  const pattern = new RegExp(`^[a-zA-Z][a-zA-Z\\s-]{${DISPLAY_NAME_MIN_LENGTH - 1},${DISPLAY_NAME_MAX_LENGTH - 1}}$`);
   if (!pattern.test(trimmed)) return false;
   
-  // Check word count (max 5 words, min 1 word)
+  // Ensure dashes are only within words (not at start/end or between spaces)
+  if (trimmed.startsWith('-') || trimmed.endsWith('-') || /\s-\s/.test(trimmed) || /-\s-/.test(trimmed)) {
+    return false;
+  }
+  
+  // Check word count (max DISPLAY_NAME_MAX_WORDS, min 1 word)
+  // Dash-separated words like "Swift-Bold" count as one word
   const wordCount = countWords(trimmed);
-  if (wordCount > 5 || wordCount < 1) return false;
+  if (wordCount > DISPLAY_NAME_MAX_WORDS || wordCount < 1) return false;
   
   // Ensure proper spacing (no multiple consecutive spaces)
   if (/\s{2,}/.test(trimmed)) return false;
@@ -474,13 +552,16 @@ export function validateDisplayName(name: string): boolean {
 
 /**
  * Sanitize display name (remove invalid characters, trim)
- * Removes numbers and special characters, keeps only letters and spaces
+ * Removes numbers and special characters, keeps only letters, spaces, and dashes
+ * Dashes are preserved for dash-separated names
  */
 export function sanitizeDisplayName(name: string): string {
   if (!name || typeof name !== 'string') return '';
   return name
     .trim()
-    .replace(/[^a-zA-Z\s]/g, '') // Remove numbers and special characters, keep only letters and spaces
+    .replace(/[^a-zA-Z\s-]/g, '') // Remove numbers and special characters, keep only letters, spaces, and dashes
     .replace(/\s+/g, ' ') // Collapse multiple spaces to single space
-    .substring(0, 30);
+    .replace(/^-+|-+$/g, '') // Remove dashes at start/end
+    .replace(/\s-+\s/g, ' ') // Remove dashes between spaces
+    .substring(0, DISPLAY_NAME_MAX_LENGTH);
 }

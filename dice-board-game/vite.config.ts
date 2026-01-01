@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: '../dist/dice-board-game',
+    emptyOutDir: true,
     lib: {
       entry: {
         index: './index.ts',

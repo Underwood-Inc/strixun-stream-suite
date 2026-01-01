@@ -71,8 +71,8 @@ const Tab = styled.button.withConfig({
   }
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   font-size: 0.875rem;
 `;
 
@@ -292,9 +292,9 @@ const ModFileInfo = styled.div`
   border-left: 3px solid ${colors.accent};
 `;
 
-const Badge = styled.span<{ variant?: 'danger' | 'warning' | 'info' | 'success' }>`
-  ${({ variant = 'default' }) => {
-    const badgeType: BadgeType = variant === 'danger' ? 'danger' : variant === 'warning' ? 'warning' : variant === 'info' ? 'info' : variant === 'success' ? 'accent' : 'accent';
+const Badge = styled.span<{ $variant?: 'danger' | 'warning' | 'info' | 'success' }>`
+  ${({ $variant = 'default' }) => {
+    const badgeType: BadgeType = $variant === 'danger' ? 'danger' : $variant === 'warning' ? 'warning' : $variant === 'info' ? 'info' : $variant === 'success' ? 'accent' : 'accent';
     return getBadgeStyles(badgeType);
   }}
 `;
@@ -477,7 +477,7 @@ export function R2ManagementPage() {
         
         // Check for protected files
         const protectedFiles: Array<{ key: string; reason?: string }> = [];
-        let filesToDelete = Array.from(selectedFiles);
+        const filesToDelete = Array.from(selectedFiles);
         
         for (const key of filesToDelete) {
             const file = allFiles.find(f => f.key === key);
@@ -758,7 +758,7 @@ export function R2ManagementPage() {
                                 )}
                                 <FileDetailItem>
                                     <FileDetailLabel>Status:</FileDetailLabel>
-                                    <Badge variant={associated.mod.status === 'published' ? 'success' : associated.mod.status === 'approved' ? 'info' : 'warning'}>
+                                    <Badge $variant={associated.mod.status === 'published' ? 'success' : associated.mod.status === 'approved' ? 'info' : 'warning'}>
                                         {associated.mod.status}
                                     </Badge>
                                 </FileDetailItem>
@@ -796,14 +796,14 @@ export function R2ManagementPage() {
                     <FileKey>{file.key}</FileKey>
                 </FileInfo>
                 <ActionButtons>
-                    {file.isOrphaned && <Badge variant="danger">Orphaned</Badge>}
-                    {isThumbnail && <Badge variant="info">Thumbnail</Badge>}
-                    {isModFile && <Badge variant="info">Mod File</Badge>}
-                    {isThumbnailProtected && <Badge variant="success">Protected</Badge>}
+                    {file.isOrphaned && <Badge $variant="danger">Orphaned</Badge>}
+                    {isThumbnail && <Badge $variant="info">Thumbnail</Badge>}
+                    {isModFile && <Badge $variant="info">Mod File</Badge>}
+                    {isThumbnailProtected && <Badge $variant="success">Protected</Badge>}
                 </ActionButtons>
                 <ActionButtons>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={() => handleDeleteClick(file.key)}
                         disabled={deleteFileMutation.isPending}
                         title={isThumbnailProtected ? 'This thumbnail is associated with an existing mod. Click to delete with additional confirmation.' : undefined}
@@ -866,7 +866,7 @@ export function R2ManagementPage() {
                     </div>
                     <div style={{ display: 'flex', gap: spacing.sm }}>
                         <Button
-                            variant="danger"
+                            $variant="danger"
                             onClick={handleBulkDelete}
                             disabled={selectedFiles.size === 0 || bulkDeleteMutation.isPending}
                         >
@@ -935,7 +935,7 @@ export function R2ManagementPage() {
                     </div>
                     <div style={{ display: 'flex', gap: spacing.sm }}>
                         <Button
-                            variant="danger"
+                            $variant="danger"
                             onClick={handleBulkDelete}
                             disabled={selectedFiles.size === 0 || bulkDeleteMutation.isPending}
                         >
@@ -966,7 +966,7 @@ export function R2ManagementPage() {
                                             </span>
                                         )}
                                     </DuplicateGroupTitle>
-                                    <Badge variant="warning">
+                                    <Badge $variant="warning">
                                         Wasted: {formatBytes(group.totalSize - (group.files[0]?.size || 0))}
                                     </Badge>
                                 </DuplicateGroupHeader>
@@ -1036,7 +1036,7 @@ export function R2ManagementPage() {
                     </div>
                     <div style={{ display: 'flex', gap: spacing.sm }}>
                         <Button
-                            variant="danger"
+                            $variant="danger"
                             onClick={handleBulkDelete}
                             disabled={selectedFiles.size === 0 || bulkDeleteMutation.isPending}
                         >
@@ -1061,7 +1061,7 @@ export function R2ManagementPage() {
                 <Title>R2 Management</Title>
                 <div style={{ display: 'flex', gap: spacing.sm }}>
                     <Button
-                        variant="primary"
+                        $variant="primary"
                         onClick={() => {
                             if (activeTab === 'files') {
                                 refetchFiles();

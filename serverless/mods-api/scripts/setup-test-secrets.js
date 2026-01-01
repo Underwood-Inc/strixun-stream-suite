@@ -25,7 +25,10 @@ const MODS_API_DIR = join(__dirname, '..');
 // Test secrets - safe defaults for local development
 // NOTE: SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 const TEST_SECRETS = {
+  ENVIRONMENT: 'development', // Set to 'development' for local dev to use localhost URLs
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
+  NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-integration-tests',
+  CUSTOMER_API_URL: 'http://localhost:8790', // Local dev customer-api URL
   ALLOWED_ORIGINS: '*',
 };
 
@@ -58,8 +61,21 @@ function setupDevVars() {
     if (existsSync(devVarsExamplePath)) {
       content = readFileSync(devVarsExamplePath, 'utf-8');
       // Replace placeholder values with test defaults
+      content = content.replace(/ENVIRONMENT=.*/m, `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}`);
       content = content.replace(/JWT_SECRET=.*/m, `JWT_SECRET=${TEST_SECRETS.JWT_SECRET}`);
-      content = content.replace(/SERVICE_ENCRYPTION_KEY=.*/m, `SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}`);
+      content = content.replace(/NETWORK_INTEGRITY_KEYPHRASE=.*/m, `NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}`);
+      content = content.replace(/CUSTOMER_API_URL=.*/m, `CUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}`);
+      content = content.replace(/SERVICE_ENCRYPTION_KEY=.*/m, '');
+      // Add missing secrets if not present
+      if (!content.includes('ENVIRONMENT=')) {
+        content = `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}\n${content}`;
+      }
+      if (!content.includes('NETWORK_INTEGRITY_KEYPHRASE=')) {
+        content += `\nNETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}\n`;
+      }
+      if (!content.includes('CUSTOMER_API_URL=')) {
+        content += `\nCUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}\n`;
+      }
       if (!content.includes('ALLOWED_ORIGINS=')) {
         content += `\nALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}\n`;
       }
@@ -70,7 +86,10 @@ function setupDevVars() {
 # For local development, these test values are safe to use
 # NOTE: SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 
+ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
+NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}
+CUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
 `;
     }

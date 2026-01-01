@@ -14,6 +14,14 @@
     "./react": {
       "types": "./react/index.tsx",
       "default": "./react/index.tsx"
+    },
+    "./dist": {
+      "types": "../../dist/dice-board-game/index.d.ts",
+      "default": "../../dist/dice-board-game/index.js"
+    },
+    "./react/dist": {
+      "types": "../../dist/dice-board-game/react.d.ts",
+      "default": "../../dist/dice-board-game/react.js"
     }
   },
   "files": [

@@ -15,7 +15,7 @@
       "types": "./patterns.d.ts",
       "default": "./patterns.ts"
     },
-    "./dist/js": "./dist/js/index.js"
+    "./dist/js": "../../dist/asciimoji/js/index.js"
   },
   "scripts": {
     "build": "node scripts/build.js",
@@ -29,7 +29,7 @@
     "patterns.ts",
     "asciimoji.d.ts",
     "patterns.d.ts",
-    "dist/",
+    "../../dist/asciimoji/",
     "README.md",
     "CDN_USAGE.md"
   ],

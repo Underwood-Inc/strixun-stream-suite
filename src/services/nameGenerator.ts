@@ -393,8 +393,8 @@ export function validateDisplayName(name: string): boolean {
   
   const trimmed = name.trim();
   
-  // Check basic format: 3-30 characters, alphanumeric and spaces, must start with letter
-  const pattern = /^[a-zA-Z][a-zA-Z0-9\s]{2,29}$/;
+  // Check basic format: 3-50 characters, alphanumeric and spaces, must start with letter
+  const pattern = /^[a-zA-Z][a-zA-Z0-9\s]{2,49}$/;
   if (!pattern.test(trimmed)) return false;
   
   // Check word count (max 5 words)
@@ -419,5 +419,5 @@ export function sanitizeDisplayName(name: string): string {
     .trim()
     .replace(/[^a-zA-Z0-9\s]/g, '') // Remove invalid characters
     .replace(/\s+/g, ' ') // Normalize whitespace
-    .substring(0, 30); // Max length
+    .substring(0, 50); // Max length (using constant value for consistency)
 }

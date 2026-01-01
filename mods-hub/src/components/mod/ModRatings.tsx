@@ -182,8 +182,8 @@ const TextArea = styled.textarea`
   }
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
 `;
 
 const AuthPrompt = styled.div`
@@ -343,9 +343,9 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                         placeholder="Write a review (optional)..."
                     />
                     <div style={{ display: 'flex', gap: spacing.sm }}>
-                        <Button 
-                            type="submit" 
-                            variant="primary"
+                        <Button
+                            type="submit"
+                            $variant="primary"
                             disabled={!selectedRating || isSubmitting}
                         >
                             {isSubmitting ? 'Submitting...' : (isEditing ? 'Update Review' : 'Submit Rating')}
@@ -353,7 +353,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                         {isEditing && (
                             <Button 
                                 type="button" 
-                                variant="secondary"
+                                $variant="secondary"
                                 onClick={handleCancelEdit}
                                 disabled={isSubmitting}
                             >
@@ -379,7 +379,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                         {onRatingSubmit && (
                             <Button 
                                 type="button"
-                                variant="secondary"
+                                $variant="secondary"
                                 onClick={handleEditClick}
                                 style={{ fontSize: '0.875rem', padding: `${spacing.xs} ${spacing.sm}` }}
                             >

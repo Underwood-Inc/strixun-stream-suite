@@ -99,8 +99,8 @@ const Toolbar = styled.div`
   flex-shrink: 0;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   
   padding: ${spacing.xs} ${spacing.sm};
   border: 1px solid ${colors.border};
@@ -444,7 +444,7 @@ export function AdminPanel() {
             render: (mod) => (
                 <ActionGroup>
                     <Button
-                        variant="primary"
+                        $variant="primary"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleStatusChange(mod.modId, 'approved');
@@ -463,7 +463,7 @@ export function AdminPanel() {
                         Request Changes
                     </Button>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleStatusChange(mod.modId, 'denied');
@@ -481,7 +481,7 @@ export function AdminPanel() {
                         Review
                     </Button>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteClick(mod.modId, mod.title);
@@ -592,7 +592,7 @@ export function AdminPanel() {
                     <>
                         <SelectionInfo>{selectedCount} selected</SelectionInfo>
                         <Button
-                            variant="primary"
+                            $variant="primary"
                             onClick={() => {
                                 setBulkAction('approved');
                                 setBulkActionModalOpen(true);
@@ -611,7 +611,7 @@ export function AdminPanel() {
                             Bulk Deny
                         </Button>
                         <Button
-                            variant="danger"
+                            $variant="danger"
                             onClick={() => {
                                 setBulkAction('delete');
                                 setBulkActionModalOpen(true);
@@ -701,7 +701,7 @@ export function AdminPanel() {
             <TestSection>
                 <TestSectionHeader onClick={() => setTestSectionOpen(!testSectionOpen)}>
                     <TestSectionTitle>Test: Dice Board Game (Experimental)</TestSectionTitle>
-                    <Button variant="secondary" onClick={(e) => {
+                    <Button $variant="secondary" onClick={(e) => {
                         e.stopPropagation();
                         setTestSectionOpen(!testSectionOpen);
                     }}>

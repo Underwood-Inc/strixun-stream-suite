@@ -170,7 +170,21 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
         <div className="header-content">
           <div>
             <h1>URL Shortener</h1>
-            <p className="user-info">Signed in as: <strong>{userDisplayName || 'User'}</strong></p>
+            <p className="user-info">
+              Signed in as: <strong>
+                <Tooltip detectTruncation position="bottom">
+                  <span style={{ 
+                    display: 'inline-block',
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {userDisplayName || 'User'}
+                  </span>
+                </Tooltip>
+              </strong>
+            </p>
             {totalUrls !== null && (
               <p className="stats-info">Total URLs shortened: <strong>{totalUrls.toLocaleString()}</strong></p>
             )}

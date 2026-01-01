@@ -94,8 +94,8 @@ const RemoveButton = styled.button`
   padding: 2px 4px;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary'; disabled?: boolean }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const Button = styled.button<{ $variant?: 'primary' | 'secondary'; disabled?: boolean }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   
   ${({ disabled }) => disabled && `
     opacity: 0.5;
@@ -199,7 +199,7 @@ export function AdminSettingsPage() {
                             }}
                             placeholder=".lua, .js, .zip, etc."
                         />
-                        <Button variant="secondary" onClick={handleAddExtension}>
+                        <Button $variant="secondary" onClick={handleAddExtension}>
                             Add
                         </Button>
                     </div>
@@ -229,14 +229,14 @@ export function AdminSettingsPage() {
 
                 <ButtonGroup>
                     <Button
-                        variant="primary"
+                        $variant="primary"
                         onClick={handleSave}
                         disabled={updateSettings.isPending}
                     >
                         {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                     <Button
-                        variant="secondary"
+                        $variant="secondary"
                         onClick={handleReset}
                         disabled={updateSettings.isPending || !settings}
                     >

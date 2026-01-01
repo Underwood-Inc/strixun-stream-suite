@@ -32,9 +32,7 @@ import { createLoggingPlugin, createMetricsPlugin } from './plugins';
 import { createE2EEncryptionMiddleware } from './enhanced/encryption/jwt-encryption';
 import { createResponseFilterMiddleware } from './enhanced/filtering/response-filter';
 import { createErrorLegendMiddleware } from './enhanced/errors/legend-integration';
-import { createWorkerAdapter, type WorkerAdapter } from './enhanced/workers/adapter';
 import type { RequestContext, TypeDefinition } from './enhanced/types';
-import type { APIResponse as EnhancedAPIResponse } from './enhanced/types';
 
 /**
  * API Client - Default implementation with optional features

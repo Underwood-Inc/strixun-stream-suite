@@ -95,8 +95,8 @@ const StatLabel = styled.div`
   color: ${colors.textSecondary};
 `;
 
-const Badge = styled.span<{ variant?: 'admin' | 'default' }>`
-  ${({ variant }) => getBadgeStyles(variant === 'admin' ? 'accent' : 'default')}
+const Badge = styled.span<{ $variant?: 'admin' | 'default' }>`
+  ${({ $variant }) => getBadgeStyles($variant === 'admin' ? 'accent' : 'default')}
 `;
 
 const Loading = styled.div`
@@ -183,7 +183,7 @@ export function UserProfilePage() {
                         <div style={{ display: 'flex', gap: spacing.xs, alignItems: 'center' }}>
                             <InfoValue>Standard User</InfoValue>
                             {isSuperAdmin && (
-                                <Badge variant="admin">Super Admin</Badge>
+                                <Badge $variant="admin">Super Admin</Badge>
                             )}
                         </div>
                     </InfoItem>

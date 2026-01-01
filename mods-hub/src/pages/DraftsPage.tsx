@@ -51,8 +51,8 @@ const EmptyTitle = styled.h2`
   margin-bottom: ${spacing.md};
 `;
 
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  ${({ variant = 'primary' }) => getButtonStyles(variant)}
+const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   margin: ${spacing.xs};
 `;
 
@@ -130,7 +130,7 @@ export function DraftsPage() {
                     <EmptyTitle>No Drafts</EmptyTitle>
                     <p>You don&apos;t have any draft mods yet.</p>
                     <ActionButton 
-                        variant="primary" 
+                        $variant="primary" 
                         onClick={() => navigate('/upload')}
                         style={{ marginTop: spacing.md }}
                     >
@@ -147,13 +147,13 @@ export function DraftsPage() {
                                     {mod.status}
                                 </StatusBadge>
                                 <ActionButton 
-                                    variant="secondary"
+                                    $variant="secondary"
                                     onClick={() => navigate(`/manage/${mod.slug}`)}
                                 >
                                     Edit
                                 </ActionButton>
                                 <ActionButton 
-                                    variant="primary"
+                                    $variant="primary"
                                     onClick={() => handleSubmitForReview(mod.modId)}
                                     disabled={updateStatus.isPending}
                                 >

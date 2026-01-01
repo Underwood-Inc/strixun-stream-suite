@@ -9,14 +9,21 @@ import { decryptBinaryWithJWT } from '@strixun/api-framework';
 import type { APIError, APIRequest, APIResponse } from '../types';
 
 /**
- * Get auth token from request metadata
- * The auth middleware stores the token in request.metadata.token
+ * Get auth token from request metadata or Authorization header
+ * The auth middleware stores the token in request.metadata.token and Authorization header
  */
 function getTokenForDecryption(request: APIRequest): string | null {
-  // Check if token is in request metadata (set by auth middleware)
+  // First check if token is in request metadata (set by auth middleware or passed explicitly)
   if (request.metadata?.token && typeof request.metadata.token === 'string') {
     return request.metadata.token;
   }
+  
+  // Fallback: Extract token from Authorization header if present
+  const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
+  if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7); // Remove 'Bearer ' prefix
+  }
+  
   return null;
 }
 
@@ -39,21 +46,29 @@ export async function handleResponse<T = unknown>(
       // Decrypt if response is encrypted (check both header and data structure)
       const dataIsEncrypted = data && typeof data === 'object' && 'encrypted' in data && (data as any).encrypted === true;
       const shouldDecrypt = isEncrypted || dataIsEncrypted; // Check both header and data structure
+      const token = getTokenForDecryption(request);
       console.log('[ResponseHandler] Checking encryption:', { 
         isEncrypted, 
         dataIsEncrypted,
         shouldDecrypt,
         hasData: !!data, 
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
-        hasToken: !!getTokenForDecryption(request)
+        hasToken: !!token,
+        tokenSource: token ? (request.metadata?.token ? 'metadata' : 'authorization-header') : 'none',
+        tokenLength: token?.length || 0
       });
       
       if (shouldDecrypt) {
         // CRITICAL: Extract thumbnailUrls before decryption (they're at top level of encrypted object)
         const thumbnailUrls = (data as any)?.thumbnailUrls;
-        const token = getTokenForDecryption(request);
         
         if (!token) {
+          console.error('[ResponseHandler] No token available for decryption:', {
+            hasMetadata: !!request.metadata,
+            hasMetadataToken: !!request.metadata?.token,
+            hasAuthHeader: !!request.headers?.['Authorization'] || !!request.headers?.['authorization'],
+            requestPath: request.path
+          });
           throw createError(
             request,
             401,
@@ -64,11 +79,49 @@ export async function handleResponse<T = unknown>(
         }
         
         try {
-          console.log('[ResponseHandler] Attempting JWT decryption...');
+          const tokenSource = request.metadata?.token ? 'metadata' : 'authorization-header';
+          console.log('[ResponseHandler] Attempting JWT decryption:', {
+            tokenSource,
+            tokenLength: token?.length || 0,
+            tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+            requestPath: request.path,
+            hasMetadataToken: !!request.metadata?.token,
+            hasAuthHeader: !!(request.headers?.['Authorization'] || request.headers?.['authorization'])
+          });
           data = await decryptWithJWT(data as any, token) as T;
           console.log('[ResponseHandler] Successfully decrypted response with JWT');
         } catch (jwtError) {
-          console.error('[ResponseHandler] JWT decryption failed:', jwtError);
+          const errorMessage = jwtError instanceof Error ? jwtError.message : String(jwtError);
+          // Check for various token mismatch error patterns
+          const isTokenMismatch = errorMessage.includes('token does not match') || 
+                                  errorMessage.includes('Token mismatch') ||
+                                  errorMessage.includes('Decryption failed - token does not match') ||
+                                  errorMessage.toLowerCase().includes('token mismatch');
+          console.error('[ResponseHandler] JWT decryption failed:', {
+            error: errorMessage,
+            isTokenMismatch,
+            tokenSource: request.metadata?.token ? 'metadata' : 'authorization-header',
+            tokenLength: token?.length || 0,
+            tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+            requestPath: request.path,
+            hasMetadataToken: !!request.metadata?.token,
+            metadataTokenPrefix: request.metadata?.token ? request.metadata.token.substring(0, 20) + '...' : 'none',
+            authHeaderPrefix: (request.headers?.['Authorization'] || request.headers?.['authorization']) 
+              ? (request.headers['Authorization'] || request.headers['authorization'])?.substring(0, 27) + '...' 
+              : 'none'
+          });
+          
+          // For token mismatch errors, provide more helpful error message
+          if (isTokenMismatch) {
+            throw createError(
+              request,
+              401,
+              'Unauthorized',
+              'Token mismatch - the token used for decryption does not match the token used for encryption. This may indicate the token was refreshed or changed. Please try logging in again.',
+              jwtError
+            );
+          }
+          
           throw createError(
             request,
             401,
@@ -140,6 +193,10 @@ export async function handleResponse<T = unknown>(
       }
     }
   } catch (error) {
+    // If error is already an APIError, re-throw it as-is to preserve context
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'APIError') {
+      throw error;
+    }
     throw createError(
       request,
       response.status,

@@ -12,13 +12,13 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   children: React.ReactNode;
 }
 
-const StyledButton = styled.button<{ variant: ButtonVariant }>`
-  ${({ variant }) => getButtonStyles(variant)}
+const StyledButton = styled.button<{ $variant: ButtonVariant }>`
+  ${({ $variant }) => getButtonStyles($variant)}
 `;
 
 export function Button({ variant = 'primary', children, ...props }: ButtonProps) {
   return (
-    <StyledButton variant={variant} {...props}>
+    <StyledButton $variant={variant} {...props}>
       {children}
     </StyledButton>
   );

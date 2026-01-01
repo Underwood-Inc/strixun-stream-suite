@@ -800,7 +800,7 @@ async function handleThumbnailBinaryUpload(
         // Return API proxy URL using slug for consistency
         const requestUrl = new URL(request.url);
         const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
             : `https://mods-api.idling.app`;  // Production
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
@@ -885,7 +885,7 @@ async function handleThumbnailUpload(
         // Use request URL to determine base URL dynamically
         const requestUrl = new URL(request.url);
         const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
             : `https://mods-api.idling.app`;  // Production
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {

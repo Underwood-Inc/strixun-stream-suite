@@ -51,7 +51,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: '../../dist/otp-auth-service',
     emptyOutDir: true,
     base: '/',
     rollupOptions: {

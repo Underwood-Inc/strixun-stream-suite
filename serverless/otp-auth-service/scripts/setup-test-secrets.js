@@ -17,10 +17,12 @@ const OTP_AUTH_DIR = join(__dirname, '..');
 
 // Test secrets - safe defaults for local development
 // IMPORTANT: JWT_SECRET must match mods-api JWT_SECRET for auth to work
+// IMPORTANT: NETWORK_INTEGRITY_KEYPHRASE must match customer-api and mods-api for service-to-service calls
 // NOTE: SERVICE_ENCRYPTION_KEY and VITE_SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 const TEST_SECRETS = {
   ENVIRONMENT: 'test', // Set to 'test' for E2E mode to skip Vite proxy
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
+  NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-integration-tests',
   RESEND_API_KEY: 're_test_key_for_local_development',
   RESEND_FROM_EMAIL: 'test@example.com',
   ALLOWED_ORIGINS: '*',
@@ -58,10 +60,14 @@ function setupDevVars() {
       // Replace placeholder values with test defaults
       content = content.replace(/ENVIRONMENT=.*/m, `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}`);
       content = content.replace(/JWT_SECRET=.*/m, `JWT_SECRET=${TEST_SECRETS.JWT_SECRET}`);
+      content = content.replace(/NETWORK_INTEGRITY_KEYPHRASE=.*/m, `NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}`);
       content = content.replace(/RESEND_API_KEY=.*/m, `RESEND_API_KEY=${TEST_SECRETS.RESEND_API_KEY}`);
       content = content.replace(/RESEND_FROM_EMAIL=.*/m, `RESEND_FROM_EMAIL=${TEST_SECRETS.RESEND_FROM_EMAIL}`);
       if (!content.includes('ENVIRONMENT=')) {
         content = `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}\n${content}`;
+      }
+      if (!content.includes('NETWORK_INTEGRITY_KEYPHRASE=')) {
+        content += `\nNETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}\n`;
       }
       if (!content.includes('SERVICE_ENCRYPTION_KEY=')) {
         content += `\nSERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}\n`;
@@ -84,6 +90,7 @@ function setupDevVars() {
 
 ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
+NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}
 RESEND_API_KEY=${TEST_SECRETS.RESEND_API_KEY}
 RESEND_FROM_EMAIL=${TEST_SECRETS.RESEND_FROM_EMAIL}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}

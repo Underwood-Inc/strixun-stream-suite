@@ -27,7 +27,7 @@ export default defineConfig({
         globals: {},
       },
     },
-    outDir: 'dist',
+    outDir: '../../dist/otp-login',
     commonjsOptions: {
       transformMixedEsModules: true,
     },

@@ -143,7 +143,7 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
         if (!validateDisplayName(sanitized)) {
             return new Response(JSON.stringify({ 
                 error: 'Invalid display name format',
-                detail: 'Display name must be 3-30 characters, start with a letter, contain only letters and spaces (no numbers or special characters), and have a maximum of 5 words'
+                detail: `Display name must be ${DISPLAY_NAME_MIN_LENGTH}-${DISPLAY_NAME_MAX_LENGTH} characters, start with a letter, contain only letters, spaces, and dashes (e.g., "Swift-Bold"), and have a maximum of ${DISPLAY_NAME_MAX_WORDS} words`
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -286,7 +286,8 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
         const newDisplayName = await generateUniqueDisplayName({
             customerId: auth.customerId,
             maxAttempts: 10,
-            includeNumber: true
+            pattern: 'random',
+            maxWords: DISPLAY_NAME_MAX_WORDS // Support dash-separated names
         }, env);
 
         // Release old display name if it exists
