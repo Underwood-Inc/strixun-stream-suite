@@ -138,7 +138,8 @@ export async function handleUpdateModStatus(
                     });
                 }
                 
-                const token = authHeader.substring(7);
+                // CRITICAL: Trim token to ensure it matches the token used for encryption
+                const token = authHeader.substring(7).trim();
                 
                 // Validate token before decryption
                 if (!token || token.length < 10) {

@@ -328,7 +328,8 @@ export async function handleDownloadVersion(
             console.log('[Download] File is encrypted, decrypting...');
             // File is encrypted - decrypt it
             // Get JWT token for decryption (outside try block for error handling)
-            const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
             console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length, modVisibility: modVisibility });
             
             try {

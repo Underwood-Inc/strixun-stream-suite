@@ -63,11 +63,12 @@ export function LoginPage() {
         }
 
         // Set authentication - support both old format and OAuth 2.0 format (matching main app)
+        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
         const userData = {
             userId: data.userId || '',
             email: data.email,
             displayName: data.displayName || undefined,
-            token: data.token,
+            token: data.token.trim(), // Trim token to prevent hash mismatches
             expiresAt: expiresAt,
             isSuperAdmin: isSuperAdmin,
         };

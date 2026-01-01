@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     protectAdminRoute,
     isSuperAdminEmail,
+    isSuperAdminByCustomerId,
     isAdminEmail,
     verifySuperAdminKey,
     createUnauthorizedResponse,
@@ -24,6 +25,12 @@ import {
 
 // Mock JWT verification
 const mockVerifyJWT = vi.fn();
+
+// Mock customer lookup
+const mockFetchCustomerByCustomerId = vi.fn();
+vi.mock('@strixun/customer-lookup', () => ({
+    fetchCustomerByCustomerId: mockFetchCustomerByCustomerId,
+}));
 
 describe('Route Protection System', () => {
     const mockEnv: RouteProtectionEnv = {
@@ -182,7 +189,21 @@ describe('Route Protection System', () => {
     });
 
     describe('protectAdminRoute - Authorized Access', () => {
-        it('should allow super admin with valid JWT token', async () => {
+        it('should allow super admin with valid JWT token (using customerId lookup)', async () => {
+            const mockCustomer = {
+                customerId: 'cust_123',
+                email: 'superadmin@example.com',
+                displayName: 'Super Admin',
+            };
+
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
             const request = new Request('https://api.example.com/admin/settings', {
                 method: 'GET',
                 headers: {
@@ -192,16 +213,16 @@ describe('Route Protection System', () => {
 
             mockVerifyJWT.mockResolvedValue({
                 sub: 'admin_123',
-                email: 'superadmin@example.com',
                 customerId: 'cust_123',
+                // email not in JWT - should be looked up from customer record
             });
 
-            const result = await protectAdminRoute(request, mockEnv, 'super-admin', mockVerifyJWT);
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
 
             expect(result.allowed).toBe(true);
             expect(result.auth).toBeDefined();
-            expect(result.auth?.email).toBe('superadmin@example.com');
             expect(result.level).toBe('super-admin');
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', envWithCustomerApi);
         });
 
         it('should allow super admin with API key', async () => {
@@ -290,6 +311,242 @@ describe('Route Protection System', () => {
             const data = await response.json();
             expect(data.error).toBe('Custom forbidden message');
             expect(data.code).toBe('FORBIDDEN_CODE');
+        });
+    });
+
+    describe('isSuperAdminByCustomerId', () => {
+        let fetchCustomerByCustomerId: any;
+
+        beforeEach(async () => {
+            vi.clearAllMocks();
+            const customerLookup = await import('@strixun/customer-lookup');
+            fetchCustomerByCustomerId = customerLookup.fetchCustomerByCustomerId;
+        });
+
+        it('should return true when customer email is in SUPER_ADMIN_EMAILS', async () => {
+            const mockCustomer = {
+                customerId: 'cust_123',
+                email: 'superadmin@example.com',
+                displayName: 'Super Admin',
+            };
+
+            vi.mocked(fetchCustomerByCustomerId).mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const result = await isSuperAdminByCustomerId('cust_123', envWithCustomerApi);
+
+            expect(result).toBe(true);
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', envWithCustomerApi);
+        });
+
+        it('should return false when customer email is not in SUPER_ADMIN_EMAILS', async () => {
+            const mockCustomer = {
+                customerId: 'cust_456',
+                email: 'regularuser@example.com',
+                displayName: 'Regular User',
+            };
+
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const result = await isSuperAdminByCustomerId('cust_456', envWithCustomerApi);
+
+            expect(result).toBe(false);
+        });
+
+        it('should return false when customer is not found', async () => {
+            vi.mocked(fetchCustomerByCustomerId).mockResolvedValue(null);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const result = await isSuperAdminByCustomerId('cust_nonexistent', envWithCustomerApi);
+
+            expect(result).toBe(false);
+        });
+
+        it('should return false when customer has no email', async () => {
+            const mockCustomer = {
+                customerId: 'cust_789',
+                displayName: 'User Without Email',
+            };
+
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const result = await isSuperAdminByCustomerId('cust_789', envWithCustomerApi);
+
+            expect(result).toBe(false);
+        });
+
+        it('should return false when customerId is null', async () => {
+            const result = await isSuperAdminByCustomerId(null, mockEnv);
+
+            expect(result).toBe(false);
+            expect(fetchCustomerByCustomerId).not.toHaveBeenCalled();
+        });
+
+        it('should handle customer lookup errors gracefully', async () => {
+            vi.mocked(fetchCustomerByCustomerId).mockRejectedValue(new Error('Customer API error'));
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const result = await isSuperAdminByCustomerId('cust_error', envWithCustomerApi);
+
+            expect(result).toBe(false);
+        });
+
+        it('should normalize email case when checking', async () => {
+            const mockCustomer = {
+                customerId: 'cust_123',
+                email: 'SUPERADMIN@EXAMPLE.COM', // Uppercase
+                displayName: 'Super Admin',
+            };
+
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const result = await isSuperAdminByCustomerId('cust_123', envWithCustomerApi);
+
+            expect(result).toBe(true); // Should match despite case difference
+        });
+    });
+
+    describe('protectAdminRoute - CustomerId Lookup Flow', () => {
+        let fetchCustomerByCustomerId: any;
+
+        beforeEach(async () => {
+            vi.clearAllMocks();
+            const customerLookup = await import('@strixun/customer-lookup');
+            fetchCustomerByCustomerId = customerLookup.fetchCustomerByCustomerId;
+        });
+
+        it('should allow super admin access using customerId lookup', async () => {
+            const mockCustomer = {
+                customerId: 'cust_123',
+                email: 'superadmin@example.com',
+                displayName: 'Super Admin',
+            };
+
+            vi.mocked(fetchCustomerByCustomerId).mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const request = new Request('https://api.example.com/admin/settings', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer valid-token',
+                },
+            });
+
+            // JWT has customerId but no email (as per architecture)
+            mockVerifyJWT.mockResolvedValue({
+                sub: 'user_123',
+                customerId: 'cust_123',
+                // email not in JWT - should lookup from customer
+            });
+
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+
+            expect(result.allowed).toBe(true);
+            expect(result.auth).toBeDefined();
+            expect(result.level).toBe('super-admin');
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', envWithCustomerApi);
+        });
+
+        it('should reject access when customer email is not in SUPER_ADMIN_EMAILS', async () => {
+            const mockCustomer = {
+                customerId: 'cust_456',
+                email: 'regularuser@example.com',
+                displayName: 'Regular User',
+            };
+
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const request = new Request('https://api.example.com/admin/settings', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer valid-token',
+                },
+            });
+
+            mockVerifyJWT.mockResolvedValue({
+                sub: 'user_456',
+                customerId: 'cust_456',
+            });
+
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+
+            expect(result.allowed).toBe(false);
+            expect(result.error).toBeDefined();
+            expect(result.error?.status).toBe(403);
+            expect(fetchCustomerByCustomerId).toHaveBeenCalledWith('cust_456', envWithCustomerApi);
+        });
+
+
+        it('should reject when customer lookup fails and no email fallback', async () => {
+            mockFetchCustomerByCustomerId.mockResolvedValue(null);
+
+            const envWithCustomerApi: RouteProtectionEnv = {
+                ...mockEnv,
+                CUSTOMER_API_URL: 'http://localhost:8790',
+                NETWORK_INTEGRITY_KEYPHRASE: 'test-keyphrase',
+            };
+
+            const request = new Request('https://api.example.com/admin/settings', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer valid-token',
+                },
+            });
+
+            mockVerifyJWT.mockResolvedValue({
+                sub: 'user_123',
+                customerId: 'cust_123',
+                // No email in JWT
+            });
+
+            const result = await protectAdminRoute(request, envWithCustomerApi, 'super-admin', mockVerifyJWT);
+
+            expect(result.allowed).toBe(false);
+            expect(result.error?.status).toBe(403);
         });
     });
 

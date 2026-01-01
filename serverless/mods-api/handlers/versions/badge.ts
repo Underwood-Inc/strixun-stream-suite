@@ -253,7 +253,8 @@ export async function handleBadge(
 
         // EXCEPTION: Allow public browsing (no JWT required) for badge images
         // Get JWT token from request (optional for public access)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null;
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
 
         // Perform actual file integrity verification
         // EXCEPTION: For public browsing (no JWT), skip verification and show as "unverified"

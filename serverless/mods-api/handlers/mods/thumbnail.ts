@@ -384,7 +384,8 @@ export async function handleThumbnail(
 
         // EXCEPTION: Allow public browsing (no JWT required) for thumbnails
         // Get JWT token from request (optional for public access)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null;
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
 
         // Encrypt with JWT if token is present, otherwise return unencrypted for public browsing
         const corsHeaders = createCORSHeaders(request, {

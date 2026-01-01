@@ -21,7 +21,8 @@ export function isServiceToServiceCall(
     // Check for SUPER_ADMIN_API_KEY in Authorization header (Bearer token that's not a JWT)
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         // SUPER_ADMIN_API_KEY is typically a long random string, not a JWT
         // JWT tokens have 3 parts separated by dots (header.payload.signature)
         // If it doesn't have dots or has more than 3 parts, it's likely an API key

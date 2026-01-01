@@ -190,7 +190,8 @@ export async function handleCreateApiKey(
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
-        const jwtToken = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = authHeader.substring(7).trim();
         
         // Verify customer exists in customer-api
         const customer = await getCustomer(customerId, jwtToken, env);

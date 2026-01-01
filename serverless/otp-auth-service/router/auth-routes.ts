@@ -39,7 +39,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<ApiKeyAu
     let apiKey: string | null = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        apiKey = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        apiKey = authHeader.substring(7).trim();
     } else {
         apiKey = request.headers.get('X-OTP-API-Key');
     }
@@ -111,8 +112,9 @@ export async function handleAuthRoutes(
     }
     
     // Extract JWT token for encryption (if present)
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
     const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
     const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
     
     // Authentication endpoints that generate JWTs - MUST use requireJWT: false

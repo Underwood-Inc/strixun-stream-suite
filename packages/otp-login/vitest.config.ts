@@ -17,7 +17,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: [resolve(__dirname, './vitest.setup.ts')],
-    include: ['**/*.{test,spec}.{js,ts,tsx}'],
+    include: ['**/*.test.{js,ts,tsx}'],
     exclude: [
       '**/node_modules/**', 
       '**/dist/**', 
@@ -26,6 +26,7 @@ export default defineConfig({
       '**/react/**/*.test.tsx', // Skip React component tests for now
       'node_modules/**', // Exclude all node_modules tests
       '**/*.e2e.{test,spec}.{js,ts,tsx}', // Exclude e2e tests (run with Playwright)
+      '**/*.spec.{js,ts,tsx}', // Exclude .spec files (Playwright e2e only)
     ],
   },
   resolve: {

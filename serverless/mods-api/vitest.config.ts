@@ -6,10 +6,15 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: [
-      '**/*.{test,spec}.{js,ts}',
-      '../shared/**/*.{test,spec}.{js,ts}', // Include shared tests
+      '**/*.test.{js,ts}',
+      '../shared/**/*.test.{js,ts}', // Include shared tests
     ],
-    exclude: ['node_modules', 'dist', '**/*.e2e.{test,spec}.{js,ts}'],
+    exclude: [
+      'node_modules', 
+      'dist', 
+      '**/*.e2e.{test,spec}.{js,ts}',
+      '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
+    ],
     testTimeout: 10000,
     pool: 'forks',
     isolate: true,

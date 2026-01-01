@@ -449,7 +449,8 @@ export async function handleHealth(request, env) {
     // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
     // Get JWT token from request
     const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
     
     if (!jwtToken) {
         const errorResponse = {
@@ -533,7 +534,8 @@ export async function handleHealthReady(request, env) {
     // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
     // Get JWT token from request
     const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
     
     if (!jwtToken) {
         const errorResponse = {
@@ -613,7 +615,8 @@ export async function handleHealthLive(request, env) {
     // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
     // Get JWT token from request
     const authHeader = request.headers.get('Authorization');
-    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
     
     if (!jwtToken) {
         const errorResponse = {

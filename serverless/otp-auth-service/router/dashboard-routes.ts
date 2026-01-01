@@ -59,7 +59,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
     let token: string | null = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        token = authHeader.substring(7).trim();
     } else {
         // Try X-OTP-API-Key header for API key authentication
         const apiKey = request.headers.get('X-OTP-API-Key');
@@ -155,7 +156,8 @@ async function handleSuperAdminRoute(
         let isSuperAdminKey = false;
         
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            const token = authHeader.substring(7).trim();
             isSuperAdminKey = verifySuperAdmin(token, env);
         } else {
             const apiKey = request.headers.get('X-OTP-API-Key');
@@ -176,7 +178,8 @@ async function handleSuperAdminRoute(
         let errorMessage = 'Authentication required. Please log in to access the dashboard.';
         
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            const token = authHeader.substring(7).trim();
             try {
                 const jwtSecret = getJWTSecret(env);
                 const payload = await verifyJWT(token, jwtSecret);

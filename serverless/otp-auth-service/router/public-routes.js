@@ -50,7 +50,8 @@ export async function handlePublicRoutes(request, path, env) {
         // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
         // Get JWT token from request
         const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
         
         if (!jwtToken) {
             const errorResponse = {
@@ -103,7 +104,8 @@ export async function handlePublicRoutes(request, path, env) {
         const handlerResponse = await publicHandlers.handlePublicSignup(request, env);
         // Extract JWT token if present (optional - signup doesn't require JWT)
         const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
         const authForEncryption = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
         
         // Use requireJWT: false for signup endpoints (user doesn't have account yet)
@@ -122,7 +124,8 @@ export async function handlePublicRoutes(request, path, env) {
         const handlerResponse = await publicHandlers.handleVerifySignup(request, env);
         // Extract JWT token if present (optional - signup doesn't require JWT)
         const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
         const authForEncryption = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
         
         // Use requireJWT: false for signup endpoints (may return JWT)

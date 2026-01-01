@@ -19,9 +19,10 @@ function getTokenForDecryption(request: APIRequest): string | null {
   }
   
   // Fallback: Extract token from Authorization header if present
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
   const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
   if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7); // Remove 'Bearer ' prefix
+    return authHeader.substring(7).trim(); // Remove 'Bearer ' prefix and trim
   }
   
   return null;

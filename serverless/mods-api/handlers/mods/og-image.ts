@@ -221,7 +221,8 @@ export async function handleOGImage(
 
         // EXCEPTION: Allow public access (no JWT required) for OG images (social media crawlers)
         // Get JWT token from request (optional for public access)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || null;
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || null;
 
         // Generate OG image SVG
         const ogImageSvg = generateOGImage(mod, mod.thumbnailUrl);

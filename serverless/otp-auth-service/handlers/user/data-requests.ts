@@ -48,7 +48,8 @@ async function authenticateUser(request: Request, env: Env): Promise<{
         return { authenticated: false, status: 401, error: 'Authorization header required' };
     }
 
-    const token = authHeader.substring(7);
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 

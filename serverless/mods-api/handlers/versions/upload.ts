@@ -211,7 +211,8 @@ export async function handleUploadVersion(
         // Support both binary encryption (v4) and legacy JSON encryption (v3)
         
         // Get JWT token for temporary decryption (to calculate hash)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
         if (!jwtToken) {
             const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required for file processing');
             const corsHeaders = createCORSHeaders(request, {

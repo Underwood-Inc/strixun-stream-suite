@@ -5,13 +5,14 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: [
-      '**/*.{test,spec}.{js,ts}',
+      '**/*.test.{js,ts}',
     ],
     exclude: [
       'node_modules',
       'dist',
       'app/**',
       '**/*.e2e.{test,spec}.{js,ts}',
+      '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
     ],
     testTimeout: 10000,
     pool: 'forks',

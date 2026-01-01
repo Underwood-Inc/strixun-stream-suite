@@ -165,7 +165,8 @@ export async function handleDownloadVariant(
             if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
                 // Binary encrypted format - decrypt with JWT ONLY
                 // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                // CRITICAL: Trim token to ensure it matches the token used for encryption
+                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
                 if (!jwtToken) {
                     const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
                     const corsHeaders = createCORSHeaders(request, {
@@ -186,7 +187,8 @@ export async function handleDownloadVariant(
             } else {
                 // Legacy JSON encrypted format - decrypt with JWT ONLY
                 // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                // CRITICAL: Trim token to ensure it matches the token used for encryption
+                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
                 if (!jwtToken) {
                     const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
                     const corsHeaders = createCORSHeaders(request, {

@@ -17,8 +17,8 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     passWithNoTests: true, // Don't fail if no tests are found
     include: [
-      'src/**/*.{test,spec}.{js,ts}',
-      'shared-components/**/*.{test,spec}.{js,ts}', // Include shared-components tests
+      'src/**/*.test.{js,ts}',
+      'shared-components/**/*.test.{js,ts}', // Include shared-components tests
     ],
     exclude: [
       'node_modules', 
@@ -29,6 +29,7 @@ export default defineConfig({
       'shared-components/otp-login/react/**/*.test.tsx', // Skip React component tests for now
       '**/node_modules/**', // Exclude all node_modules tests
       '**/*.e2e.{test,spec}.{js,ts}', // Exclude Playwright e2e tests
+      '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
     ],
     coverage: {
       provider: 'v8',

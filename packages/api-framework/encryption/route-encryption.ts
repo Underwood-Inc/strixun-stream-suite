@@ -490,7 +490,8 @@ export function extractJWTToken(request: Request): string | null {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
-  const token = authHeader.substring(7);
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  const token = authHeader.substring(7).trim();
   return token.length >= 10 ? token : null;
 }
 

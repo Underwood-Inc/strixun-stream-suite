@@ -40,7 +40,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         return { authenticated: false, status: 401, error: 'Authorization header required' };
     }
 
-    const token = authHeader.substring(7);
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 
@@ -83,8 +84,10 @@ async function handleUserRoute(
     const handlerResponse = await handler(request, env);
 
     // If JWT token is present, encrypt the response (automatic E2E encryption)
+    // CRITICAL: Trim token to ensure it matches the token used for decryption
+    // The frontend trims tokens, so we must trim here too to prevent token hash mismatches
     const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
     
     if (token && token.length >= 10 && handlerResponse.ok) {
         try {

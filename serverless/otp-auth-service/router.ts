@@ -157,8 +157,9 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         
         // CRITICAL: Handle JWT encryption requirements per route
         // Extract JWT token from request for encryption
+        // CRITICAL: Trim token to ensure it matches the token used for decryption
         const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
         const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
         
         // Check if this endpoint should NOT require JWT
@@ -253,8 +254,9 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
         }
         
         // Apply encryption to error responses (but don't require JWT for errors)
+        // CRITICAL: Trim token to ensure it matches the token used for decryption
         const authHeader = request.headers.get('Authorization');
-        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
         const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
         const encryptedError = await wrapWithEncryption(
             errorResponse,

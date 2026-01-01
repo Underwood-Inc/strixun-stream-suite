@@ -26,10 +26,16 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: [
-      '**/*.{test,spec}.{js,ts}',
-      '../shared/**/*.{test,spec}.{js,ts}', // Include shared encryption tests
+      '**/*.test.{js,ts}',
+      '../shared/**/*.test.{js,ts}', // Include shared encryption tests
     ],
-    exclude: ['node_modules', 'dist', 'dashboard', '**/*.e2e.{test,spec}.{js,ts}'],
+    exclude: [
+      'node_modules', 
+      'dist', 
+      'dashboard', 
+      '**/*.e2e.{test,spec}.{js,ts}',
+      '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
+    ],
     testTimeout: 10000, // 10 second timeout per test
     pool: 'forks', // Use forks to avoid memory issues
     isolate: true, // Isolate each test file

@@ -255,7 +255,8 @@ export async function handleUploadMod(
         }
 
         // Get JWT token for decryption (MANDATORY - all files must be encrypted with JWT)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
         
         if (!jwtToken) {
             const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for file decryption. All files must be encrypted with JWT.');

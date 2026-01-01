@@ -26,6 +26,18 @@ test.describe('Mods Hub Login', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Intercept auth API requests to add test IP header for session restore
+    // This ensures session restore works in test environment
+    const authApiUrl = process.env.E2E_OTP_AUTH_URL || 'http://localhost:8787';
+    await page.route(`${authApiUrl}/**`, async (route) => {
+      const request = route.request();
+      const headers = {
+        ...request.headers(),
+        'CF-Connecting-IP': '127.0.0.1', // Test IP for local development
+      };
+      await route.continue({ headers });
+    });
+    
     // Clear any existing auth state
     await page.goto(`${MODS_HUB_URL}/login`);
     await page.evaluate(() => {
@@ -419,6 +431,384 @@ test.describe('Mods Hub Login', () => {
     expect(authTokenAfter).toBe(authTokenBefore);
     
     // Verify user is still authenticated (not redirected to login)
+    const currentUrl = page.url();
+    expect(currentUrl).not.toContain('/login');
+  });
+
+  test('should restore session from backend when localStorage is cleared', async ({ page }) => {
+    // Step 1: Login and establish a session on the backend
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    // Wait for fancy screen if present and click through
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    // Complete login flow to create a session on backend
+    await requestOTPCode(page, TEST_EMAIL);
+    await waitForOTPForm(page);
+    
+    const otpCode = process.env.E2E_TEST_OTP_CODE;
+    if (!otpCode) {
+      throw new Error('E2E_TEST_OTP_CODE not set in environment');
+    }
+    
+    const { response, body } = await verifyOTPCode(page, otpCode);
+    
+    if (!response.ok()) {
+      const status = response.status();
+      const errorMessage = typeof body === 'object' && body !== null && 'detail' in body 
+        ? body.detail 
+        : typeof body === 'object' 
+          ? JSON.stringify(body) 
+          : String(body);
+      throw new Error(`OTP verification failed with status ${status}: ${errorMessage}`);
+    }
+    
+    // Wait for authentication state to be set
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Wait for redirect
+    await page.waitForURL(
+      (url) => {
+        const path = new URL(url).pathname;
+        return path !== '/login';
+      },
+      { timeout: 15000 }
+    );
+    
+    // Step 2: Clear localStorage to simulate a fresh session
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    
+    // Step 3: Reload page - session restore should be called automatically
+    // Monitor network requests to verify restore-session is called
+    const restoreSessionRequests: any[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (url.includes('/auth/restore-session')) {
+        restoreSessionRequests.push({
+          url,
+          method: request.method(),
+        });
+      }
+    });
+    
+    await page.reload({ waitUntil: 'networkidle' });
+    
+    // Wait for session restore to complete (should restore session from backend)
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Verify restore-session endpoint was called
+    expect(restoreSessionRequests.length).toBeGreaterThan(0);
+    expect(restoreSessionRequests.some(req => req.method === 'POST')).toBeTruthy();
+    
+    // Verify token was restored
+    const restoredToken = await page.evaluate(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          if (parsed?.user?.token) {
+            return parsed.user.token;
+          }
+          if (parsed?.state?.user?.token) {
+            return parsed.state.user.token;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return null;
+    });
+    
+    expect(restoredToken).toBeTruthy();
+    expect(restoredToken?.length).toBeGreaterThan(10);
+    
+    // Verify user is authenticated (not on login page)
+    const currentUrl = page.url();
+    expect(currentUrl).not.toContain('/login');
+  });
+
+  test('should restore session on app initialization when no token exists', async ({ page }) => {
+    // First, establish a session by logging in
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    await requestOTPCode(page, TEST_EMAIL);
+    await waitForOTPForm(page);
+    
+    const otpCode = process.env.E2E_TEST_OTP_CODE;
+    if (!otpCode) {
+      throw new Error('E2E_TEST_OTP_CODE not set in environment');
+    }
+    
+    const { response, body } = await verifyOTPCode(page, otpCode);
+    
+    if (!response.ok()) {
+      const status = response.status();
+      const errorMessage = typeof body === 'object' && body !== null && 'detail' in body 
+        ? body.detail 
+        : typeof body === 'object' 
+          ? JSON.stringify(body) 
+          : String(body);
+      throw new Error(`OTP verification failed with status ${status}: ${errorMessage}`);
+    }
+    
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Clear localStorage to simulate a fresh app load
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    
+    // Navigate to a new page (simulating app initialization)
+    // Monitor for restore-session call
+    const restoreSessionCalls: any[] = [];
+    page.on('response', async (response) => {
+      const url = response.url();
+      if (url.includes('/auth/restore-session')) {
+        const request = response.request();
+        restoreSessionCalls.push({
+          url,
+          method: request.method(),
+          status: response.status(),
+        });
+      }
+    });
+    
+    // Navigate to home page - should trigger session restore
+    await page.goto(`${MODS_HUB_URL}/`, { waitUntil: 'networkidle' });
+    
+    // Wait for session restore to complete
+    await page.waitForTimeout(2000); // Give time for restore-session to be called
+    
+    // Verify restore-session was called
+    expect(restoreSessionCalls.length).toBeGreaterThan(0);
+    
+    // Wait for authentication to be restored
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Verify token exists after restore
+    const restoredToken = await page.evaluate(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          if (parsed?.user?.token) {
+            return parsed.user.token;
+          }
+          if (parsed?.state?.user?.token) {
+            return parsed.state.user.token;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return null;
+    });
+    
+    expect(restoredToken).toBeTruthy();
+  });
+
+  test('should restore session when token is expired but session exists on backend', async ({ page }) => {
+    // Step 1: Login and establish a session on the backend
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    await requestOTPCode(page, TEST_EMAIL);
+    await waitForOTPForm(page);
+    
+    const otpCode = process.env.E2E_TEST_OTP_CODE;
+    if (!otpCode) {
+      throw new Error('E2E_TEST_OTP_CODE not set in environment');
+    }
+    
+    const { response, body } = await verifyOTPCode(page, otpCode);
+    
+    if (!response.ok()) {
+      const status = response.status();
+      const errorMessage = typeof body === 'object' && body !== null && 'detail' in body 
+        ? body.detail 
+        : typeof body === 'object' 
+          ? JSON.stringify(body) 
+          : String(body);
+      throw new Error(`OTP verification failed with status ${status}: ${errorMessage}`);
+    }
+    
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    await page.waitForURL(
+      (url) => {
+        const path = new URL(url).pathname;
+        return path !== '/login';
+      },
+      { timeout: 15000 }
+    );
+    
+    // Step 2: Manually expire the token in localStorage by setting expiresAt to past date
+    await page.evaluate(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          // Set expiresAt to 1 hour ago to simulate expired token
+          const expiredDate = new Date(Date.now() - 3600000).toISOString();
+          if (parsed?.user) {
+            parsed.user.expiresAt = expiredDate;
+          } else if (parsed?.state?.user) {
+            parsed.state.user.expiresAt = expiredDate;
+          }
+          localStorage.setItem('auth-storage', JSON.stringify(parsed));
+        }
+      } catch {
+        // Ignore errors
+      }
+    });
+    
+    // Step 3: Reload page - should trigger session restore due to expired token
+    const restoreSessionCalls: any[] = [];
+    page.on('response', async (response) => {
+      const url = response.url();
+      if (url.includes('/auth/restore-session')) {
+        const request = response.request();
+        restoreSessionCalls.push({
+          url,
+          method: request.method(),
+          status: response.status(),
+        });
+      }
+    });
+    
+    await page.reload({ waitUntil: 'networkidle' });
+    
+    // Wait for session restore to complete
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          const user = parsed?.user || parsed?.state?.user;
+          if (user?.token) {
+            // Check if expiresAt is in the future (token was refreshed)
+            const expiresAt = user.expiresAt;
+            if (expiresAt) {
+              return new Date(expiresAt) > new Date();
+            }
+            return true; // Token exists, assume it's valid
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Verify restore-session was called
+    expect(restoreSessionCalls.length).toBeGreaterThan(0);
+    
+    // Verify token was restored with new expiration
+    const restoredToken = await page.evaluate(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          const user = parsed?.user || parsed?.state?.user;
+          if (user?.token) {
+            return {
+              token: user.token,
+              expiresAt: user.expiresAt,
+            };
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return null;
+    });
+    
+    expect(restoredToken).toBeTruthy();
+    expect(restoredToken?.token).toBeTruthy();
+    expect(restoredToken?.expiresAt).toBeTruthy();
+    
+    // Verify expiresAt is in the future (token was refreshed)
+    const expiresAtDate = new Date(restoredToken!.expiresAt);
+    expect(expiresAtDate.getTime()).toBeGreaterThan(Date.now());
+    
+    // Verify user is still authenticated
     const currentUrl = page.url();
     expect(currentUrl).not.toContain('/login');
   });

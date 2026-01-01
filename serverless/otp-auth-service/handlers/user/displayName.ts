@@ -47,7 +47,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
         return { authenticated: false, status: 401, error: 'Authorization header required' };
     }
 
-    const token = authHeader.substring(7);
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
     
     // Import JWT utilities from crypto.js
     const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');

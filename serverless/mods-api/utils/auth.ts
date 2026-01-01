@@ -111,7 +111,8 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             return null;
         }
 
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         const jwtSecret = getJWTSecret(env);
         console.debug(`[Auth] Verifying JWT: tokenLength=${token.length}, secretLength=${jwtSecret.length}, secretFirstChars=${jwtSecret.substring(0, 20)}`);
         const payload = await verifyJWT(token, jwtSecret);

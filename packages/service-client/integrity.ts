@@ -248,7 +248,8 @@ export async function addRequestIntegrityHeaders(
     if (!customerId) {
         const authHeader = headers.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            const token = authHeader.substring(7).trim();
             try {
                 // Decode JWT payload (without verification - just for customerID extraction)
                 const parts = token.split('.');

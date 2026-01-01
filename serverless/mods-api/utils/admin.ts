@@ -47,8 +47,10 @@ export async function getSuperAdminEmails(env: Env): Promise<string[]> {
 export async function isSuperAdminEmail(email: string | undefined, env: Env): Promise<boolean> {
     if (!email) return false;
     
+    // Normalize email (trim and lowercase) to match how super admin emails are stored
+    const normalizedEmail = email.trim().toLowerCase();
     const adminEmails = await getSuperAdminEmails(env);
-    return adminEmails.includes(email.toLowerCase());
+    return adminEmails.includes(normalizedEmail);
 }
 
 /**

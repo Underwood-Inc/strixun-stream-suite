@@ -153,16 +153,19 @@ export async function validateTokenWithBackend(
         }
 
         const { createAPIClient } = await import('@strixun/api-framework/client');
+        // CRITICAL: Create client without tokenGetter - we'll pass token explicitly in metadata
+        // This ensures the token in metadata matches the token used for Authorization header
         const authClient = createAPIClient({
             baseURL: apiUrl,
             timeout: config?.tokenValidationTimeout || 5000,
             auth: {
                 tokenGetter: () => {
-                    // CRITICAL: Return token so Authorization header is set
+                    // Return token so Authorization header is set, but metadata.token takes precedence
+                    // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
                     if (!token || typeof token !== 'string' || token.trim().length === 0) {
                         return null;
                     }
-                    return token;
+                    return token.trim();
                 },
             },
             cache: {
@@ -170,10 +173,13 @@ export async function validateTokenWithBackend(
             },
         });
         
+        // CRITICAL: Pass token in metadata FIRST so auth middleware uses it for both Authorization header and metadata.token
+        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
         // Use /auth/me endpoint to validate token (returns 401 if invalid/blacklisted)
+        const trimmedToken = token.trim();
         const response = await authClient.get('/auth/me', undefined, {
             metadata: {
-                token: token, // Pass token in metadata for decryption (if response is encrypted)
+                token: trimmedToken, // CRITICAL: Pass trimmed token in metadata FIRST - auth middleware will use this for both Authorization header and decryption
                 cache: false, // Never cache validation requests
             },
         });
@@ -234,12 +240,13 @@ export async function fetchUserInfo(
             timeout: 10000, // Increased to 10 seconds to handle slower responses
             auth: {
                 tokenGetter: () => {
-                    // Double-check token is still valid
+                    // Double-check token is still valid and trim it
                     if (!token || typeof token !== 'string' || token.trim().length === 0) {
                         console.warn('[Auth] tokenGetter returned invalid token');
                         return null;
                     }
-                    return token;
+                    // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
+                    return token.trim();
                 },
             },
             cache: {
@@ -248,6 +255,8 @@ export async function fetchUserInfo(
         });
         
         // CRITICAL: Pass token in metadata so the response handler can decrypt encrypted responses
+        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
+        const trimmedToken = token.trim();
         const response = await authClient.get<{ 
             isSuperAdmin?: boolean; 
             displayName?: string | null; 
@@ -256,7 +265,7 @@ export async function fetchUserInfo(
         }>('/auth/me', undefined, {
             metadata: {
                 cache: false, // Explicitly disable caching for this request
-                token: token, // Pass token in metadata for decryption
+                token: trimmedToken, // Pass trimmed token in metadata for decryption
             },
         });
         
@@ -276,14 +285,22 @@ export async function fetchUserInfo(
             
             // Check if response is still encrypted (decryption failed)
             if (typeof response.data === 'object' && 'encrypted' in response.data && (response.data as any).encrypted === true) {
+                // This means the token we used doesn't match the token the backend used for encryption
+                // This can happen if:
+                // 1. The token was refreshed/changed on the backend
+                // 2. The stored token is stale and doesn't match the active session
+                // 3. There's a race condition where the token changed between request and response
+                const error = new Error('Token mismatch - the stored token does not match the token used for encryption. This usually means the token was refreshed or changed.');
+                (error as any).isTokenMismatch = true;
+                (error as any).requiresFreshToken = true; // Flag that we need a fresh token
                 console.error('[Auth] /auth/me response is still encrypted - decryption failed (token mismatch):', {
                     tokenLength: token.length,
                     tokenPrefix: token.substring(0, 20) + '...',
                     hasEncryptedFlag: true,
                     responseStatus: response.status,
-                    note: 'Token mismatch detected - the stored token does not match the token used for encryption. This usually means the token was refreshed or changed. The caller should restore the session to get a fresh token.'
+                    note: 'Token mismatch detected - the stored token does not match the token used for encryption. The caller must clear the stale token and get a fresh one.'
                 });
-                return null;
+                throw error;
             }
             
             return {
@@ -298,7 +315,8 @@ export async function fetchUserInfo(
     } catch (error) {
         // Check if this is a token mismatch error
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isTokenMismatch = errorMessage.includes('token does not match') || 
+        const isTokenMismatch = (error as any)?.isTokenMismatch === true ||
+                                errorMessage.includes('token does not match') || 
                                 errorMessage.includes('Token mismatch') ||
                                 errorMessage.includes('decryption failed');
         
@@ -307,6 +325,11 @@ export async function fetchUserInfo(
                 error: errorMessage,
                 note: 'The stored token does not match the token used for encryption. This usually means the token was refreshed or changed. The caller should restore the session to get a fresh token.'
             });
+            // Re-throw token mismatch errors so caller can handle them
+            const mismatchError = new Error('Token mismatch detected');
+            (mismatchError as any).isTokenMismatch = true;
+            (mismatchError as any).originalError = error;
+            throw mismatchError;
         } else {
             console.error('[Auth] Failed to fetch user info:', errorMessage);
             if (error instanceof Error && error.stack) {
