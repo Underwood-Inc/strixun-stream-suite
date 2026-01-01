@@ -10,7 +10,7 @@
 import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -48,24 +48,55 @@ async function waitForService(name: string, url: string, maxAttempts = 60): Prom
 }
 
 /**
+ * Read a value from .dev.vars file
+ */
+function readFromDevVars(devVarsPath: string, key: string): string | null {
+  if (!existsSync(devVarsPath)) {
+    return null;
+  }
+  const content = readFileSync(devVarsPath, 'utf-8');
+  const match = content.match(new RegExp(`^${key}=(.+)$`, 'm'));
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Get a secret value from .dev.vars or process.env
+ * FAILS if not found in either (no fallbacks to live environments!)
+ */
+function getSecretValue(workerDir: string, secretName: string): string {
+  const devVarsPath = join(rootDir, workerDir, '.dev.vars');
+  
+  // Try .dev.vars first
+  const devVarsValue = readFromDevVars(devVarsPath, secretName);
+  if (devVarsValue) {
+    return devVarsValue;
+  }
+  
+  // Try process.env
+  const envValue = process.env[secretName];
+  if (envValue) {
+    return envValue;
+  }
+  
+  // FAIL - no fallback allowed
+  throw new Error(
+    `[Integration Setup] CRITICAL: Required secret ${secretName} is not set!\n` +
+    `Tests must fail when required secrets are missing - no fallbacks allowed.\n` +
+    `Set ${secretName} in ${workerDir}/.dev.vars or as an environment variable.`
+  );
+}
+
+/**
  * Create .dev.vars file for a worker with required secrets
- * FAILS if required environment variables are not set (no fallbacks!)
+ * Reads from existing .dev.vars or process.env, FAILS if missing (no fallbacks!)
  */
 function createDevVarsFile(workerDir: string, requiredSecrets: string[]): void {
   const devVarsPath = join(rootDir, workerDir, '.dev.vars');
   const secrets: Record<string, string> = {};
   
-  // Validate all required secrets are set - FAIL if any are missing
+  // Get all required secrets - FAILS if any are missing
   for (const secretName of requiredSecrets) {
-    const value = process.env[secretName];
-    if (!value) {
-      throw new Error(
-        `[Integration Setup] CRITICAL: Required environment variable ${secretName} is not set!\n` +
-        `Tests must fail when required environment variables are missing - no fallbacks allowed.\n` +
-        `Set ${secretName} in your environment or CI workflow secrets.`
-      );
-    }
-    secrets[secretName] = value;
+    secrets[secretName] = getSecretValue(workerDir, secretName);
   }
   
   // Write .dev.vars file
