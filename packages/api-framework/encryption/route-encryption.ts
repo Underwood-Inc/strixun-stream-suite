@@ -118,10 +118,11 @@ async function _deriveKeyFromServiceKey(_serviceKey: string, salt: Uint8Array): 
 
 /**
  * Hash service key for verification
+ * @deprecated Service key encryption removed - kept for type compatibility only
  */
-async function hashServiceKey(key: string): Promise<string> {
+async function _hashServiceKey(_key: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(key);
+  const data = encoder.encode(_key);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -213,17 +214,18 @@ async function _compressDataForServiceKey(_data: Uint8Array & { buffer: ArrayBuf
 
 /**
  * Decompress gzip data (reused from JWT encryption pattern)
+ * @deprecated Service key encryption removed - kept for type compatibility only
  */
-async function decompressDataForServiceKey(compressedData: Uint8Array): Promise<Uint8Array> {
+async function _decompressDataForServiceKey(_compressedData: Uint8Array): Promise<Uint8Array> {
   const stream = new DecompressionStream('gzip');
   const writer = stream.writable.getWriter();
   const reader = stream.readable.getReader();
   
   let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
-  if (compressedData.buffer instanceof ArrayBuffer) {
-    dataBuffer = compressedData as Uint8Array & { buffer: ArrayBuffer };
+  if (_compressedData.buffer instanceof ArrayBuffer) {
+    dataBuffer = _compressedData as Uint8Array & { buffer: ArrayBuffer };
   } else {
-    const arrayBuffer = compressedData.buffer.slice(compressedData.byteOffset, compressedData.byteOffset + compressedData.byteLength) as unknown as ArrayBuffer;
+    const arrayBuffer = _compressedData.buffer.slice(_compressedData.byteOffset, _compressedData.byteOffset + _compressedData.byteLength) as unknown as ArrayBuffer;
     dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
   }
   writer.write(dataBuffer);

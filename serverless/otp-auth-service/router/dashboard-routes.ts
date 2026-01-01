@@ -316,7 +316,7 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
         return handleSuperAdminRoute((req, e, cid) => domainHandlers.handleVerifyDomain(req, e, cid, domain), request, env, auth);
     }
     
-    // Analytics endpoints - customer-scoped, regular auth required (not super-admin)
+    // Analytics endpoints - customer-scoped, regular auth required
     // These endpoints filter by customerId, so users only see their own analytics
     if (path === '/admin/analytics' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);

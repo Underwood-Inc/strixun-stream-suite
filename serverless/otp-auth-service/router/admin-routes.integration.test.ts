@@ -155,8 +155,8 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
 
 
     describe('Authentication Flow Integration', () => {
-        it('should authenticate with JWT, check super admin, and allow GET /admin/analytics', async () => {
-            // Create a valid JWT token for a super admin email
+        it('should authenticate with JWT and allow GET /admin/analytics for any authenticated user', async () => {
+            // Create a valid JWT token for any user (analytics are customer-scoped)
             const jwtToken = await createJWT({
                 email: 'admin@example.com',
                 customerId: 'cust_123',
@@ -176,8 +176,9 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
             expect(result?.response.status).toBe(200);
         });
 
-        it('should require both super admin AND regular auth for GET /admin/analytics', async () => {
-            // Create a valid JWT token but for non-super-admin email
+        it('should allow regular users to access their own analytics (customer-scoped)', async () => {
+            // Create a valid JWT token for a regular user (not super admin)
+            // Analytics are filtered by customerId, so regular users see only their own data
             const jwtToken = await createJWT({
                 email: 'regularuser@example.com',
                 customerId: 'cust_456',
@@ -193,9 +194,9 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
 
             const result = await handleDashboardRoutes(request, '/admin/analytics', mockEnv);
 
-            // Should be rejected because email is not in SUPER_ADMIN_EMAILS
+            // Should succeed - analytics are customer-scoped, so regular users can access their own
             expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(401);
+            expect(result?.response.status).toBe(200);
         });
     });
 });

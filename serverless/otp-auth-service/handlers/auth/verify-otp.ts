@@ -331,7 +331,10 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         }
         
         // OTP is valid! Delete it (single-use)
-        await deleteOTP(otpKey, latestOtpKey, env);
+        // EXCEPTION: In test mode with E2E_TEST_OTP_CODE, don't delete so tests can reuse it
+        if (!isTestOTP) {
+            await deleteOTP(otpKey, latestOtpKey, env);
+        }
         
         // BUSINESS RULE: Customer account MUST ALWAYS be created for users on login
         // ensureCustomerAccount will throw if it cannot create the account after retries

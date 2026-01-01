@@ -140,12 +140,8 @@ describe('OTP Auth Service Admin Routes', () => {
             expect(body.title).toBe('Gone');
         });
 
-        it('should reject GET /admin/analytics without super admin', async () => {
-            const { requireSuperAdmin } = await import('../utils/super-admin.js');
-            vi.mocked(requireSuperAdmin).mockResolvedValue(
-                new Response(JSON.stringify({ error: 'Super-admin authentication required' }), { status: 401 })
-            );
-
+        it('should reject GET /admin/analytics without authentication', async () => {
+            // Analytics endpoint requires regular authentication (customer-scoped)
             const request = new Request('https://api.example.com/admin/analytics', {
                 method: 'GET',
             });
@@ -182,11 +178,10 @@ describe('OTP Auth Service Admin Routes', () => {
 
 
         it('should match GET /admin/analytics route and invoke handler when authenticated', async () => {
-            const { requireSuperAdmin } = await import('../utils/super-admin.js');
             const { verifyJWT } = await import('../utils/crypto.js');
             const { handleGetAnalytics } = await import('../handlers/admin.js');
             
-            vi.mocked(requireSuperAdmin).mockResolvedValue(null);
+            // Analytics endpoint only requires regular authentication (customer-scoped)
             vi.mocked(verifyJWT).mockResolvedValue({ 
                 customerId: 'cust_123', 
                 email: 'admin@example.com' 
@@ -203,7 +198,7 @@ describe('OTP Auth Service Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
-            // Verify the correct handler was called
+            // Verify the correct handler was called with customerId (customer-scoped)
             expect(handleGetAnalytics).toHaveBeenCalledWith(request, mockEnv, 'cust_123');
         });
 

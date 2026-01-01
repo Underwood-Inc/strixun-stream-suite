@@ -12,8 +12,12 @@
       "default": "./core.ts"
     },
     "./svelte/OtpLogin.svelte": "./svelte/OtpLogin.svelte",
+    "./react": {
+      "types": "./react/OtpLogin.tsx",
+      "default": "./react/OtpLogin.tsx"
+    },
     "./dist/react": {
-      "types": "../../dist/otp-login/react/index.d.ts",
+      "types": "./react/index.d.ts",
       "default": "../../dist/otp-login/react/index.js"
     },
     "./dist/react/otp-login.css": "../../dist/otp-login/react/otp-login.css",

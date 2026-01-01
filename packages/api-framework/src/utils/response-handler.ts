@@ -106,7 +106,7 @@ export async function handleResponse<T = unknown>(
             tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
             requestPath: request.path,
             hasMetadataToken: !!request.metadata?.token,
-            metadataTokenPrefix: request.metadata?.token ? request.metadata.token.substring(0, 20) + '...' : 'none',
+            metadataTokenPrefix: (request.metadata?.token && typeof request.metadata.token === 'string') ? request.metadata.token.substring(0, 20) + '...' : 'none',
             authHeaderPrefix: (() => {
               const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
               return (typeof authHeader === 'string' && authHeader) 
