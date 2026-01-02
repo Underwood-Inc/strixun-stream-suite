@@ -75,21 +75,13 @@ export async function addResponseIntegrityHeader(
     const responseClone = response.clone();
     
     // Get response body text
+    // CRITICAL: Read body as text directly to preserve exact bytes for integrity hash
+    // DO NOT parse and re-stringify JSON as this can change the output (key order, whitespace, etc.)
+    // and cause integrity verification failures
     let bodyText: string;
-    const contentType = response.headers.get('content-type');
     
     try {
-        if (contentType?.includes('application/json')) {
-            try {
-                const data = await responseClone.json();
-                bodyText = JSON.stringify(data);
-            } catch (error) {
-                // If JSON parsing fails, try text
-                bodyText = await responseClone.text();
-            }
-        } else {
-            bodyText = await responseClone.text();
-        }
+        bodyText = await responseClone.text();
     } catch (error) {
         // If body reading fails, use empty string (shouldn't happen but be safe)
         console.error('[NetworkIntegrity] Failed to read response body for integrity header:', error);
