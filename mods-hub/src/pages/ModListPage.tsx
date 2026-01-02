@@ -67,7 +67,7 @@ const GridContainer = styled.div`
   overflow-y: auto;
   padding: ${spacing.md};
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
   gap: ${spacing.lg};
   background: ${colors.bg};
   border: 1px solid ${colors.border};

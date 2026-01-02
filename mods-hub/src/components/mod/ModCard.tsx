@@ -4,6 +4,7 @@
  * Reusable component used in both "My Mods" and "Browse Mods" pages
  */
 
+import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
@@ -18,6 +19,8 @@ const CardContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-width: 320px;
+  width: 100%;
 `;
 
 const Card = styled.div`
@@ -31,12 +34,13 @@ const Card = styled.div`
 const ThumbnailWrapper = styled.div`
   width: 100%;
   aspect-ratio: 1;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 4px;
   flex-shrink: 0;
+  position: relative;
 `;
 
-const CardContent = styled.div`
+const CardContent = styled(Link)`
   display: flex;
   flex-direction: column;
   gap: ${spacing.sm};
@@ -45,6 +49,9 @@ const CardContent = styled.div`
   max-height: calc(1.6em * 4 + 4rem);
   overflow-y: auto;
   overflow-x: hidden;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
   
   &::-webkit-scrollbar {
     width: 4px;
@@ -58,18 +65,17 @@ const CardContent = styled.div`
   &::-webkit-scrollbar-track {
     background: transparent;
   }
-`;
-
-const CardLink = styled(Link)`
-  text-decoration: none;
-  color: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: ${spacing.xs};
   
   &:hover {
     text-decoration: none;
+    color: inherit;
   }
+`;
+
+const CardLink = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.xs};
 `;
 
 const Title = styled.h3`
@@ -156,6 +162,105 @@ const ViewModLink = styled.span`
   }
 `;
 
+const ZoomButton = styled.button`
+  position: absolute;
+  top: ${spacing.sm};
+  right: ${spacing.sm};
+  padding: ${spacing.xs} ${spacing.sm};
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid ${colors.border};
+  border-radius: 4px;
+  color: ${colors.text};
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: ${spacing.xs};
+  opacity: 0;
+  
+  ${CardContainer}:hover & {
+    opacity: 1;
+  }
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
+const ZoomModal = styled.div<{ isOpen: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 10000;
+  display: ${props => props.isOpen ? 'flex' : 'none'};
+  align-items: center;
+  justify-content: center;
+  padding: ${spacing.xl};
+  cursor: pointer;
+`;
+
+const ZoomContent = styled.div`
+  width: min(85vw, calc(85vh - 100px));
+  height: min(85vw, calc(85vh - 100px));
+  max-width: 700px;
+  max-height: 700px;
+  position: relative;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 60px; /* Account for header */
+`;
+
+const ZoomCardContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  perspective: 1200px;
+  position: relative;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: -${spacing.xl};
+  right: 0;
+  padding: ${spacing.sm} ${spacing.md};
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid ${colors.border};
+  border-radius: 4px;
+  color: ${colors.text};
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10001;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
 interface ModCardProps {
     mod: ModMetadata;
     onDelete?: (mod: ModMetadata) => void;
@@ -163,6 +268,8 @@ interface ModCardProps {
 }
 
 export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
+    const [isZoomed, setIsZoomed] = useState(false);
+
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -175,37 +282,101 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
         // Error handler for thumbnail loading failures
     };
 
+    const handleZoom = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsZoomed(true);
+    }, []);
+
+    const handleCloseZoom = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.target === e.currentTarget) {
+            setIsZoomed(false);
+        }
+    }, []);
+
+    // Handle ESC key to close zoom
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isZoomed) {
+                setIsZoomed(false);
+            }
+        };
+        
+        if (isZoomed) {
+            document.addEventListener('keydown', handleEscape);
+            document.body.style.overflow = 'hidden';
+        }
+        
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = '';
+        };
+    }, [isZoomed]);
+
     return (
-        <CardContainer>
-            {showDelete && onDelete && (
-                <DeleteButton onClick={handleDeleteClick} title="Delete mod">
-                    Delete
-                </DeleteButton>
-            )}
-            <Card>
-                <ThumbnailWrapper>
-                    <InteractiveThumbnail 
-                        mod={mod}
-                        onError={handleThumbnailError}
-                        onNavigate={() => {
-                            // Navigation disabled - use View Mod link instead
+        <>
+            <CardContainer>
+                {showDelete && onDelete && (
+                    <DeleteButton onClick={handleDeleteClick} title="Delete mod">
+                        Delete
+                    </DeleteButton>
+                )}
+                <ZoomButton
+                    onClick={handleZoom}
+                    title="View in fullscreen"
+                >
+                    🔍 Zoom
+                </ZoomButton>
+                <Card>
+                    <ThumbnailWrapper
+                        key="thumbnail"
+                        onClick={(e) => {
+                            // Stop click propagation so thumbnail clicks don't trigger card navigation
+                            e.stopPropagation();
                         }}
-                    />
-                </ThumbnailWrapper>
-                <CardContent to={`/${mod.slug}`}>
-                    <CardLink>
-                        <Title>{mod.title}</Title>
-                        <Description>{mod.description || 'No description'}</Description>
-                    </CardLink>
-                    <Meta>
-                        <span>{mod.downloadCount} downloads</span>
-                        <Category>{mod.category}</Category>
-                    </Meta>
-                    <ViewModLink>
-                        View Mod
-                    </ViewModLink>
-                </CardContent>
-            </Card>
-        </CardContainer>
+                    >
+                        <InteractiveThumbnail 
+                            mod={mod}
+                            onError={handleThumbnailError}
+                            onNavigate={() => {
+                                // Navigation disabled - use View Mod link instead
+                            }}
+                        />
+                    </ThumbnailWrapper>
+                    <CardContent key="content" to={`/${mod.slug}`}>
+                        <CardLink>
+                            <Title>{mod.title}</Title>
+                            <Description>{mod.description || 'No description'}</Description>
+                        </CardLink>
+                        <Meta>
+                            <span>{mod.downloadCount} downloads</span>
+                            <Category>{mod.category}</Category>
+                        </Meta>
+                        <ViewModLink>
+                            View Mod
+                        </ViewModLink>
+                    </CardContent>
+                </Card>
+            </CardContainer>
+            
+            {isZoomed && (
+                <ZoomModal isOpen={isZoomed} onClick={handleCloseZoom}>
+                    <ZoomContent onClick={(e) => e.stopPropagation()}>
+                        <CloseButton onClick={handleCloseZoom}>✕ Close</CloseButton>
+                        <ZoomCardContainer>
+                            <InteractiveThumbnail
+                                mod={mod}
+                                onError={handleThumbnailError}
+                                onNavigate={() => {
+                                    // Navigation disabled in zoom view
+                                }}
+                            />
+                        </ZoomCardContainer>
+                    </ZoomContent>
+                </ZoomModal>
+            )}
+        </>
     );
 }

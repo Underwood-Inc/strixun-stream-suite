@@ -33,13 +33,15 @@ const CardInner = styled.div`
   -ms-user-select: none;
 `;
 
-const CardFace = styled.div<{ isBack?: boolean }>`
+const CardFace = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isBack',
+})<{ isBack?: boolean }>`
   position: absolute;
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible;
   transform-style: preserve-3d;
   user-select: none;
   -webkit-user-select: none;
@@ -61,14 +63,16 @@ const ThumbnailImage = styled.img`
   -webkit-user-drag: none;
 `;
 
-const ThumbnailWrapper = styled.div`
+const ShimmerContainer = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  position: relative;
   overflow: hidden;
   border-radius: 4px;
-  /* No CSS transforms or transitions - JavaScript handles all animations */
-  cursor: pointer;
+  pointer-events: none;
+  z-index: 1;
   
   /* Shimmer effect only when not flipped */
   &::after {
@@ -89,14 +93,9 @@ const ThumbnailWrapper = styled.div`
     opacity: 0;
     pointer-events: none;
     border-radius: inherit;
-    z-index: 1;
     animation: shimmer-sweep 2.5s ease-in-out infinite;
     mix-blend-mode: overlay;
     will-change: transform, opacity;
-  }
-  
-  &:hover::after {
-    opacity: 0.9;
   }
   
   @keyframes shimmer-sweep {
@@ -106,6 +105,20 @@ const ThumbnailWrapper = styled.div`
     100% {
       transform: translateX(200%) translateY(200%) rotate(45deg);
     }
+  }
+`;
+
+const ThumbnailWrapper = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: visible;
+  border-radius: 4px;
+  /* No CSS transforms or transitions - JavaScript handles all animations */
+  cursor: pointer;
+  
+  &:hover ${ShimmerContainer}::after {
+    opacity: 0.9;
   }
 `;
 
@@ -259,86 +272,6 @@ const NavigateButton = styled.button`
   display: none;
 `;
 
-const ZoomButton = styled.button`
-  position: absolute;
-  top: ${spacing.xs};
-  right: ${spacing.xs};
-  padding: ${spacing.xs} ${spacing.sm};
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.7rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: ${spacing.xs};
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.05);
-  }
-  
-  &:active {
-    transform: scale(0.95);
-  }
-`;
-
-const ZoomModal = styled.div<{ isOpen: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 10000;
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  align-items: center;
-  justify-content: center;
-  padding: ${spacing.xl};
-  cursor: pointer;
-`;
-
-const ZoomContent = styled.div`
-  max-width: 90vw;
-  max-height: 90vh;
-  width: auto;
-  height: auto;
-  position: relative;
-  cursor: default;
-  
-  img {
-    max-width: 100%;
-    max-height: 90vh;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  }
-`;
-
-const CloseButton = styled.button`
-  position: absolute;
-  top: -${spacing.lg};
-  right: 0;
-  padding: ${spacing.sm};
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-`;
-
 interface InteractiveThumbnailProps {
   mod: ModMetadata;
   onError?: () => void;
@@ -388,11 +321,11 @@ function animateFlip(
   };
 }
 
-export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveThumbnailProps) {
+// Separate component for zoom modal to avoid recursive calls
+function ZoomCard({ mod, onError, onNavigate }: InteractiveThumbnailProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
   const rotateXRef = useRef(0);
   const rotateYRef = useRef(0);
   const hoverRotateXRef = useRef(0);
@@ -403,6 +336,302 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
   const dragStartRef = useRef<{ x: number; y: number; rotateX: number; rotateY: number } | null>(null);
   const animationCancelRef = useRef<(() => void) | null>(null);
   const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickStartRef = useRef<{ x: number; y: number } | null>(null);
+  const hasMovedRef = useRef(false);
+
+  useEffect(() => {
+    isFlippedRef.current = isFlipped;
+  }, [isFlipped]);
+
+  const updateTransform = useCallback((rotateX: number, rotateY: number, flipY: number = 0, hoverX: number = 0, hoverY: number = 0) => {
+    if (!cardRef.current) return;
+    // Don't update transform if animation is in progress - let animation control it
+    if (animationCancelRef.current) return;
+    
+    rotateXRef.current = rotateX;
+    rotateYRef.current = rotateY;
+    hoverRotateXRef.current = hoverX;
+    hoverRotateYRef.current = hoverY;
+    
+    const currentlyFlipped = isFlippedRef.current;
+    const finalRotateX = currentlyFlipped ? rotateX : rotateX + hoverX;
+    const finalRotateY = currentlyFlipped ? rotateY : rotateY + hoverY;
+    
+    cardRef.current.style.transform = `rotateY(${flipY + finalRotateY}deg) rotateX(${finalRotateX}deg)`;
+  }, []);
+
+  const handleMouseDownForClick = useCallback((e: React.MouseEvent) => {
+    // Track initial mouse position to detect if this is a drag or click
+    clickStartRef.current = { x: e.clientX, y: e.clientY };
+    hasMovedRef.current = false;
+  }, []);
+
+  const handleMouseMoveForClick = useCallback((e: React.MouseEvent) => {
+    // If we have a click start position, check if mouse moved significantly
+    if (clickStartRef.current) {
+      const deltaX = Math.abs(e.clientX - clickStartRef.current.x);
+      const deltaY = Math.abs(e.clientY - clickStartRef.current.y);
+      // If moved more than 5px, consider it a drag
+      if (deltaX > 5 || deltaY > 5) {
+        hasMovedRef.current = true;
+      }
+    }
+  }, []);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Don't flip if dragging, animating, or if mouse moved (was a drag)
+    if (isDragging || isAnimating || hasMovedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      clickStartRef.current = null;
+      hasMovedRef.current = false;
+      return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
+    
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    hoverRotateXRef.current = 0;
+    hoverRotateYRef.current = 0;
+    
+    setIsAnimating(true);
+    const newFlipped = !isFlipped;
+    const targetRotateY = newFlipped ? 180 : 0;
+    
+    if (animationCancelRef.current) {
+      animationCancelRef.current();
+    }
+    
+    if (cardRef.current) {
+      const startRotateY = isFlipped ? 180 : 0;
+      const startRotateX = rotateXRef.current;
+      
+      animationCancelRef.current = animateFlip(
+        cardRef.current,
+        startRotateY,
+        targetRotateY,
+        startRotateX,
+        0,
+        600,
+        () => {
+          isFlippedRef.current = newFlipped;
+          setIsFlipped(newFlipped);
+          setIsAnimating(false);
+          rotateXRef.current = 0;
+          rotateYRef.current = 0;
+          hoverRotateXRef.current = 0;
+          hoverRotateYRef.current = 0;
+          animationCancelRef.current = null;
+          updateTransform(0, 0, newFlipped ? 180 : 0, 0, 0);
+        }
+      );
+    }
+    
+    // Reset click tracking
+    clickStartRef.current = null;
+    hasMovedRef.current = false;
+  }, [isDragging, isAnimating, isFlipped, updateTransform]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isFlipped || isAnimating) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      rotateX: rotateXRef.current,
+      rotateY: rotateYRef.current,
+    };
+  }, [isFlipped, isAnimating]);
+
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !dragStartRef.current || !isFlipped || !cardRef.current) return;
+
+    const deltaX = e.clientX - dragStartRef.current.x;
+    const deltaY = e.clientY - dragStartRef.current.y;
+    
+    const newRotateY = dragStartRef.current.rotateY + deltaX * 0.5;
+    const newRotateX = dragStartRef.current.rotateX - deltaY * 0.5;
+    
+    const clampedRotateY = Math.max(-45, Math.min(45, newRotateY));
+    const clampedRotateX = Math.max(-45, Math.min(45, newRotateX));
+    
+    updateTransform(clampedRotateX, clampedRotateY, 180, 0, 0);
+  }, [isDragging, isFlipped, updateTransform]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleDragMove, handleMouseUp]);
+
+  useEffect(() => {
+    if (cardRef.current) {
+      updateTransform(0, 0, 0, 0, 0);
+    }
+  }, [updateTransform]);
+
+  const handleThumbnailMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isFlippedRef.current || isAnimating || isDragging || !wrapperRef.current) return;
+    
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    
+    const maxRot = 28;
+    const hoverX = y * maxRot * -1;
+    const hoverY = x * maxRot;
+    
+    updateTransform(rotateXRef.current, rotateYRef.current, 0, hoverX, hoverY);
+  }, [isAnimating, isDragging, updateTransform]);
+
+  const handleThumbnailMouseLeave = useCallback(() => {
+    if (isFlippedRef.current) return;
+    
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+    }
+    
+    leaveTimeoutRef.current = setTimeout(() => {
+      hoverRotateXRef.current = 0;
+      hoverRotateYRef.current = 0;
+      updateTransform(rotateXRef.current, rotateYRef.current, 0, 0, 0);
+      leaveTimeoutRef.current = null;
+    }, 250);
+  }, [updateTransform]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <CardContainer>
+      <CardInner
+        ref={cardRef}
+        onClick={handleClick}
+        onMouseDown={(e) => {
+          handleMouseDownForClick(e);
+          handleMouseDown(e);
+        }}
+        onMouseMove={handleMouseMoveForClick}
+        style={{
+          cursor: isFlipped ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
+        }}
+      >
+        <CardFace>
+          <ThumbnailWrapper
+            ref={wrapperRef}
+            onMouseMove={handleThumbnailMouseMove}
+            onMouseLeave={handleThumbnailMouseLeave}
+          >
+            {!isFlipped && <ShimmerContainer />}
+            {mod.thumbnailUrl ? (
+              <ThumbnailImage
+                src={mod.thumbnailUrl}
+                alt={mod.title}
+                onError={onError}
+              />
+            ) : (
+              <div style={{
+                width: '100%',
+                height: '100%',
+                background: colors.bgTertiary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: colors.textMuted,
+                fontSize: '0.75rem'
+              }}>
+                No thumbnail
+              </div>
+            )}
+          </ThumbnailWrapper>
+        </CardFace>
+        
+        <CardFace isBack>
+          <CardBack>
+            <BackContent>
+              <BackTitle>{mod.title}</BackTitle>
+              <BackDescription>
+                {mod.description || 'No description available'}
+              </BackDescription>
+              <BackMeta>
+                <MetaRow>
+                  <MetaLabel>Uploader:</MetaLabel>
+                  <span>{mod.authorDisplayName || 'Unknown'}</span>
+                </MetaRow>
+                <MetaRow>
+                  <MetaLabel>Uploaded:</MetaLabel>
+                  <span>{formatDate(mod.createdAt)}</span>
+                </MetaRow>
+                <MetaRow>
+                  <MetaLabel>Updated:</MetaLabel>
+                  <span>{formatDate(mod.updatedAt)}</span>
+                </MetaRow>
+                <MetaRow>
+                  <MetaLabel>Downloads:</MetaLabel>
+                  <span>{mod.downloadCount.toLocaleString()}</span>
+                </MetaRow>
+              </BackMeta>
+            </BackContent>
+            {isFlipped && (
+              <FlipHint>
+                Drag to rotate<br />
+                Click to flip back
+              </FlipHint>
+            )}
+          </CardBack>
+        </CardFace>
+      </CardInner>
+    </CardContainer>
+  );
+}
+
+export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveThumbnailProps) {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const rotateXRef = useRef(0);
+  const rotateYRef = useRef(0);
+  const hoverRotateXRef = useRef(0);
+  const hoverRotateYRef = useRef(0);
+  const isFlippedRef = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ x: number; y: number; rotateX: number; rotateY: number } | null>(null);
+  const animationCancelRef = useRef<(() => void) | null>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickStartRef = useRef<{ x: number; y: number } | null>(null);
+  const hasMovedRef = useRef(false);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -412,6 +641,10 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
   // Update transform directly via JavaScript
   const updateTransform = useCallback((rotateX: number, rotateY: number, flipY: number = 0, hoverX: number = 0, hoverY: number = 0) => {
     if (!cardRef.current) return;
+    
+    // Don't update transform if animation is in progress - let animation control it
+    if (animationCancelRef.current) return;
+    
     rotateXRef.current = rotateX;
     rotateYRef.current = rotateY;
     hoverRotateXRef.current = hoverX;
@@ -426,11 +659,31 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
     cardRef.current.style.transform = `rotateY(${flipY + finalRotateY}deg) rotateX(${finalRotateX}deg)`;
   }, []);
 
+  const handleMouseDownForClick = useCallback((e: React.MouseEvent) => {
+    // Track initial mouse position to detect if this is a drag or click
+    clickStartRef.current = { x: e.clientX, y: e.clientY };
+    hasMovedRef.current = false;
+  }, []);
+
+  const handleMouseMoveForClick = useCallback((e: React.MouseEvent) => {
+    // If we have a click start position, check if mouse moved significantly
+    if (clickStartRef.current) {
+      const deltaX = Math.abs(e.clientX - clickStartRef.current.x);
+      const deltaY = Math.abs(e.clientY - clickStartRef.current.y);
+      // If moved more than 5px, consider it a drag
+      if (deltaX > 5 || deltaY > 5) {
+        hasMovedRef.current = true;
+      }
+    }
+  }, []);
+
   const handleClick = useCallback((e: React.MouseEvent) => {
-    // Don't flip if dragging or animating
-    if (isDragging || isAnimating) {
+    // Don't flip if dragging, animating, or if mouse moved (was a drag)
+    if (isDragging || isAnimating || hasMovedRef.current) {
       e.preventDefault();
       e.stopPropagation();
+      clickStartRef.current = null;
+      hasMovedRef.current = false;
       return;
     }
     
@@ -487,6 +740,10 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
         }
       );
     }
+    
+    // Reset click tracking
+    clickStartRef.current = null;
+    hasMovedRef.current = false;
   }, [isDragging, isAnimating, isFlipped, updateTransform]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -563,30 +820,14 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
     };
   }, []);
 
-  // Handle ESC key to close zoom
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isZoomed) {
-        setIsZoomed(false);
-      }
-    };
-    
-    if (isZoomed) {
-      document.addEventListener('keydown', handleEscape);
-      // Prevent body scroll when zoomed
-      document.body.style.overflow = 'hidden';
-    }
-    
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
-    };
-  }, [isZoomed]);
 
   const handleThumbnailMouseMove = useCallback((e: React.MouseEvent) => {
-    // Only apply hover tilt when NOT flipped, NOT animating, and NOT zoomed
-    // Use ref to check current state
-    if (isFlippedRef.current || isAnimating || isDragging || isZoomed || !wrapperRef.current) return;
+    // Only apply hover tilt when NOT flipped, NOT animating, NOT dragging
+    // Use ref to check current state to avoid stale closures
+    if (isFlippedRef.current || isAnimating || isDragging || !wrapperRef.current) return;
+    
+    // Double-check animation state - if animation is running, don't update
+    if (animationCancelRef.current) return;
     
     // Cancel any pending leave timeout
     if (leaveTimeoutRef.current) {
@@ -603,7 +844,7 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
     const hoverY = x * maxRot;
     
     updateTransform(rotateXRef.current, rotateYRef.current, 0, hoverX, hoverY);
-  }, [isAnimating, isDragging, isZoomed, updateTransform]);
+  }, [isAnimating, isDragging, updateTransform]);
 
   const handleThumbnailMouseLeave = useCallback(() => {
     // Only reset hover tilt when NOT flipped
@@ -632,19 +873,6 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
     });
   };
 
-  const handleZoom = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsZoomed(true);
-  }, []);
-
-  const handleCloseZoom = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.target === e.currentTarget) {
-      setIsZoomed(false);
-    }
-  }, []);
 
   return (
     <>
@@ -652,7 +880,11 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
         <CardInner
           ref={cardRef}
           onClick={handleClick}
-          onMouseDown={handleMouseDown}
+          onMouseDown={(e) => {
+            handleMouseDownForClick(e);
+            handleMouseDown(e);
+          }}
+          onMouseMove={handleMouseMoveForClick}
           style={{
             cursor: isFlipped ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
           }}
@@ -663,6 +895,7 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
               onMouseMove={handleThumbnailMouseMove}
               onMouseLeave={handleThumbnailMouseLeave}
             >
+              {!isFlipped && <ShimmerContainer />}
               {mod.thumbnailUrl ? (
                 <ThumbnailImage
                   src={mod.thumbnailUrl}
@@ -734,15 +967,6 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
           </CardFace>
         </CardInner>
       </CardContainer>
-      
-      {mod.thumbnailUrl && (
-        <ZoomModal isOpen={isZoomed} onClick={handleCloseZoom}>
-          <ZoomContent onClick={(e) => e.stopPropagation()}>
-            <CloseButton onClick={handleCloseZoom}>✕</CloseButton>
-            <img src={mod.thumbnailUrl} alt={mod.title} />
-          </ZoomContent>
-        </ZoomModal>
-      )}
     </>
   );
 }
