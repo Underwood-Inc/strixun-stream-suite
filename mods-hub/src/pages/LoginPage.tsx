@@ -3,6 +3,7 @@
  * Uses shared OTP login component with full encryption support
  */
 
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
@@ -22,7 +23,17 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { setUser } = useAuthStore();
+    const { setUser, restoreSession } = useAuthStore();
+
+    // Restore session from backend on mount (same as main app)
+    // This enables cross-application session sharing for the same device
+    // If user already has a session, they'll be redirected automatically
+    useEffect(() => {
+        // Always try to restore - it will check if restoration is needed
+        restoreSession().catch(error => {
+            console.debug('[LoginPage] Session restoration failed (non-critical):', error);
+        });
+    }, [restoreSession]); // Only run once on mount
 
     const handleLoginSuccess = async (data: LoginSuccessData) => {
         // Decode JWT to extract isSuperAdmin from payload (matching main app)

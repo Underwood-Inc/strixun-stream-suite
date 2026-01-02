@@ -61,7 +61,13 @@ const LogoutButton = styled(Button)`
 `;
 
 export function Header() {
-    const { isAuthenticated, user, logout, isSuperAdmin } = useAuthStore();
+    // Use individual selectors to ensure proper reactivity when auth state changes
+    // This ensures the header updates when restoreSession updates the auth state
+    const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+    const user = useAuthStore(state => state.user);
+    const logout = useAuthStore(state => state.logout);
+    const isSuperAdmin = useAuthStore(state => state.isSuperAdmin);
+    
     const { hasPermission } = useUploadPermission();
     const { data: draftsData } = useDrafts();
     const navigate = useNavigate();
