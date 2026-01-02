@@ -19,7 +19,9 @@ export default defineConfig({
       '@shared-components': path.resolve(__dirname, '../../../shared-components'),
       '@shared-config': path.resolve(__dirname, '../../../shared-config'),
       '@styles': path.resolve(__dirname, '../../../src/styles')
-    }
+    },
+    // Ensure proper module resolution to avoid circular dependencies
+    dedupe: ['@strixun/api-framework', '@strixun/otp-login', '@strixun/tooltip', '@strixun/status-flair', '@strixun/ad-carousel']
   },
   build: {
     outDir: path.resolve(__dirname, 'dist'),
@@ -31,7 +33,25 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html')
       },
       output: {
-        manualChunks: undefined
+        // Use function-based manualChunks to handle circular dependencies properly
+        // Keep all @strixun packages together to avoid initialization order issues
+        manualChunks(id) {
+          // Keep @strixun packages together to avoid circular dependency issues
+          if (id.includes('@strixun/')) {
+            return 'strixun-vendor';
+          }
+          // Vendor chunks for other node_modules
+          if (id.includes('node_modules')) {
+            if (id.includes('svelte')) {
+              return 'svelte-vendor';
+            }
+            if (id.includes('@observablehq')) {
+              return 'observable-vendor';
+            }
+            // Other node_modules go into vendor chunk
+            return 'vendor';
+          }
+        }
       }
     },
     commonjsOptions: {
@@ -40,7 +60,16 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['@observablehq/plot'],
+    // Force pre-bundling of @strixun packages to resolve circular dependencies
+    include: [
+      '@observablehq/plot',
+      '@strixun/api-framework',
+      '@strixun/api-framework/client',
+      '@strixun/otp-login',
+      '@strixun/tooltip',
+      '@strixun/status-flair',
+      '@strixun/ad-carousel'
+    ],
     force: true
   },
   server: {

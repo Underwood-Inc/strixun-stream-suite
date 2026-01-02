@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "pnpm --filter @strixun/api-framework build",
+    "prebuild": "pnpm --filter @strixun/api-framework build",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

@@ -111,10 +111,16 @@ jobs:
       - name: Build workspace dependencies
         working-directory: .
         run: |
-          # Build workspace packages that are needed by the dashboard
-          pnpm --filter "@strixun/otp-login" run build:react || echo "OTP login build skipped if no build script"
-          # Note: @strixun/status-flair and @strixun/ad-carousel are Svelte components, no build needed
-          # but they need export specifiers in package.json (which we've fixed)
+          echo "🔨 Building workspace dependencies required for OTP Auth Service..."
+          # Build API Framework (required by dashboard for encryption/decryption)
+          echo "  → Building @strixun/api-framework..."
+          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ️  API Framework has no build script (skipped)"
+          # Build OTP Login (required by dashboard login component)
+          echo "  → Building @strixun/otp-login (React)..."
+          pnpm --filter "@strixun/otp-login" run build:react || (echo "  ⚠️  OTP Login React build failed" && exit 1)
+          # Note: @strixun/tooltip, @strixun/status-flair, and @strixun/ad-carousel are Svelte components
+          # They don't need builds but must have proper export specifiers in package.json
+          echo "✅ All workspace dependencies built successfully"
       
       - name: Build and Deploy to Cloudflare Workers
         id: deploy
