@@ -32,8 +32,8 @@ const workerPath = join(__dirname, '..', workerDir);
 
 console.log(`[Worker Start] Starting ${workerDir} on port ${port}...`);
 
-// Start wrangler dev
-const wrangler = spawn('wrangler', ['dev', '--port', port, '--local'], {
+// Start wrangler dev with --no-inspector to avoid port 9229 conflicts
+const wrangler = spawn('wrangler', ['dev', '--port', port, '--local', '--no-inspector'], {
   cwd: workerPath,
   stdio: 'inherit',
   shell: true,

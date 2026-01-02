@@ -625,19 +625,6 @@ test.describe('Main App Authentication Flow', () => {
     }
     
     // Verify token was restored
-    const restoredToken = await page.evaluate(() => {
-      try {
-        const authUser = localStorage.getItem('sss_auth_user');
-        if (authUser) {
-          const parsed = JSON.parse(authUser);
-          return parsed?.token || null;
-        }
-        return localStorage.getItem('sss_auth_token');
-      } catch {
-        return null;
-      }
-    });
-    
     expect(restoredToken).toBeTruthy();
     expect(restoredToken?.length).toBeGreaterThan(10);
     
