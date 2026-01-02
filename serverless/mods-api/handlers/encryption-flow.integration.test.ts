@@ -268,7 +268,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             expect(decryptedData.title).toBe(originalData.title);
         });
 
-        it('should fail to decrypt when token whitespace is not trimmed (before fix scenario)', async () => {
+        it('should decrypt successfully when token whitespace is trimmed (fix scenario)', async () => {
             const userId = 'user_123';
             const email = 'user@example.com';
             const customerId = 'cust_abc';
@@ -291,12 +291,13 @@ describe('Encryption/Decryption Flow Integration', () => {
                 title: 'Test Mod',
             };
 
-            // Encrypt with trimmed token (backend behavior)
+            // Encrypt with trimmed token (backend behavior - encryption also trims)
             const encryptedData = await encryptWithJWT(originalData, trimmedToken);
 
-            // Try to decrypt with untrimmed token - should fail
-            // This demonstrates why the fix was needed
-            await expect(decryptWithJWT(encryptedData, tokenWithWhitespace)).rejects.toThrow();
+            // Decrypt with token that has whitespace - should succeed because both encrypt and decrypt trim
+            // This demonstrates the fix is working correctly
+            const decrypted = await decryptWithJWT(encryptedData, tokenWithWhitespace);
+            expect(decrypted).toEqual(originalData);
         });
 
         it('should handle token trimming in response decryption (simulating /auth/me scenario)', async () => {
