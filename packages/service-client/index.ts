@@ -243,9 +243,11 @@ export class ServiceClient {
                     // Verify header was set correctly
                     const verifyHeader = headers.get(authHeaderName);
                     if (!verifyHeader) {
+                        const allHeaders: string[] = [];
+                        headers.forEach((_, key) => allHeaders.push(key));
                         console.error('[ServiceClient] CRITICAL: Auth header was not set!', {
                             authHeaderName,
-                            allHeaders: Array.from(headers.entries()).map(([k]) => k),
+                            allHeaders,
                         });
                     }
                 } else {
@@ -327,6 +329,7 @@ export class ServiceClient {
                                 console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             }
                         }
+                    }
                     
                     // Parse response
                     let data: T;
