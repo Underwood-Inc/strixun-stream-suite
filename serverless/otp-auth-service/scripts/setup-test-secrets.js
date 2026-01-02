@@ -148,9 +148,12 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
  * Main setup function
  */
 function main() {
-  // Skip in CI - CI should use wrangler secret put directly
+  // Skip key generation in CI - CI should use GitHub secrets
   if (process.env.CI === 'true') {
     console.log('ℹ Running in CI - skipping local secret setup');
+    console.log('ℹ CI should use GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE');
+    // Still set up .dev.vars for local workers (but not test keys)
+    setupDevVars();
     return;
   }
   

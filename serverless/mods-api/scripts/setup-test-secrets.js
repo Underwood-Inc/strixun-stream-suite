@@ -121,10 +121,12 @@ ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
  * Main setup function
  */
 function main() {
-  // Skip in CI - CI should use wrangler secret put directly
+  // Skip in CI - CI should use GitHub secrets
   if (process.env.CI === 'true') {
     console.log('ℹ Running in CI - skipping local secret setup');
-    console.log('ℹ CI should use wrangler secret put to set secrets');
+    console.log('ℹ CI should use GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE');
+    // Still set up .dev.vars for local workers (but not test keys)
+    setupDevVars();
     return;
   }
   
@@ -142,7 +144,7 @@ function main() {
     
     console.log('\n✓ Test secrets are ready for local development');
     console.log('ℹ Secrets are stored in .dev.vars (gitignored)');
-    console.log('ℹ For CI, set E2E_TEST_OTP_CODE and E2E_TEST_JWT_TOKEN as environment variables');
+    console.log('ℹ For CI, set E2E_TEST_OTP_CODE and E2E_TEST_JWT_TOKEN as GitHub secrets');
   } catch (error) {
     console.error('✗ Failed to setup test secrets:', error.message);
     process.exit(1);
@@ -232,6 +234,9 @@ function generateTestKeys() {
   
   writeFileSync(devVarsPath, content, 'utf-8');
   console.log(`✓ Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
+  
+  // Return keys so they can be exported to process.env if needed
+  return { otpCode: testOTPCode, jwtToken: testJWTToken };
 }
 
 main();
