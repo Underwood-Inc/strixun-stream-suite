@@ -9,7 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
 import { ModListItem } from '../components/mod/ModListItem';
+import { ModBigCard } from '../components/mod/ModBigCard';
 import { ModFilters } from '../components/mod/ModFilters';
+import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
 import { shouldRedirectToLogin } from '../utils/error-messages';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -41,6 +43,13 @@ const FiltersContainer = styled.div`
   gap: ${spacing.md};
   align-items: center;
   flex-wrap: wrap;
+  justify-content: space-between;
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  gap: ${spacing.md};
+  align-items: center;
 `;
 
 const ListContainer = styled.div`
@@ -50,6 +59,27 @@ const ListContainer = styled.div`
   border: 1px solid ${colors.border};
   border-radius: 8px;
   overflow: hidden;
+`;
+
+const GridContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: ${spacing.md};
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: ${spacing.lg};
+  background: ${colors.bg};
+  border: 1px solid ${colors.border};
+  border-radius: 8px;
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  }
+  
+  @media (min-width: 1200px) {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  }
 `;
 
 const Loading = styled.div`
@@ -175,6 +205,8 @@ function getErrorMessage(error: unknown): { title: string; message: string; deta
     };
 }
 
+const VIEW_STORAGE_KEY = 'mods-browse-view';
+
 export function ModListPage() {
     const [page] = useState(1);
     const navigate = useNavigate();
@@ -182,6 +214,18 @@ export function ModListPage() {
     const [search, setSearch] = useState('');
     const [listHeight, setListHeight] = useState(600);
     const containerRef = useRef<HTMLDivElement>(null);
+    
+    // Load view preference from localStorage, default to 'list'
+    const [view, setView] = useState<ViewType>(() => {
+        const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+        return (stored === 'list' || stored === 'card') ? stored : 'list';
+    });
+    
+    // Persist view preference to localStorage
+    const handleViewChange = (newView: ViewType) => {
+        setView(newView);
+        localStorage.setItem(VIEW_STORAGE_KEY, newView);
+    };
     
     const { data, isLoading, error } = useModsList({
         page,
@@ -228,6 +272,9 @@ export function ModListPage() {
                         onCategoryChange={setCategory}
                         onSearchChange={setSearch}
                     />
+                    <HeaderActions>
+                        <ViewToggle view={view} onViewChange={handleViewChange} />
+                    </HeaderActions>
                 </FiltersContainer>
             </Header>
 
@@ -244,7 +291,7 @@ export function ModListPage() {
                 <>
                     {data.mods.length === 0 ? (
                         <EmptyState>No mods found</EmptyState>
-                    ) : (
+                    ) : view === 'list' ? (
                         <ListContainer>
                             <List
                                 height={listHeight}
@@ -270,6 +317,26 @@ export function ModListPage() {
                                 }}
                             </List>
                         </ListContainer>
+                    ) : (
+                        <GridContainer>
+                            {data.mods.map((mod) => (
+                                <ModBigCard key={mod.id} mod={mod} />
+                            ))}
+                            <div style={{ 
+                                gridColumn: '1 / -1', 
+                                padding: `${spacing.xl} ${spacing.lg}`,
+                                textAlign: 'center',
+                                color: colors.textMuted,
+                                fontSize: '0.875rem',
+                                fontStyle: 'italic',
+                                background: colors.bgSecondary,
+                                borderTop: `1px solid ${colors.border}`,
+                                borderRadius: '8px',
+                                marginTop: spacing.md
+                            }}>
+                                End of mods list — no more mods to display
+                            </div>
+                        </GridContainer>
                     )}
                 </>
             )}

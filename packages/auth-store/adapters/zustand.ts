@@ -74,14 +74,14 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 
                 set({ 
                     user: userToStore, 
-                    isAuthenticated: true,
+                    isAuthenticated: true, // Explicitly set isAuthenticated when user is set
                     isSuperAdmin,
                     _lastLogoutTime: 0, // Clear logout timestamp on successful login
                 });
             } else {
                 set({ 
                     user: userToStore, 
-                    isAuthenticated: true,
+                    isAuthenticated: true, // Explicitly set isAuthenticated when user is set
                     isSuperAdmin: false,
                     _lastLogoutTime: 0, // Clear logout timestamp on successful login
                 });
@@ -109,10 +109,21 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     } else if (!apiUrl) {
                         apiUrl = 'https://auth.idling.app';
                     }
+                    
+                    // CRITICAL: Store token before creating client (we'll clear it after)
+                    const tokenToUse = currentUser.token.trim();
+                    
                     const { createAPIClient } = await import('@strixun/api-framework/client');
                     const authClient = createAPIClient({
                         baseURL: apiUrl,
                         timeout: 5000,
+                        auth: {
+                            tokenGetter: () => {
+                                // Return the token for this logout request
+                                // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
+                                return tokenToUse;
+                            },
+                        },
                     });
                     await authClient.post('/auth/logout', {});
                 }
@@ -140,7 +151,10 @@ export function createAuthStore(config?: AuthStoreConfig) {
             if (trimmedToken !== currentUser.token) {
                 // Token had whitespace - update it
                 const updatedUser = { ...currentUser, token: trimmedToken };
-                set({ user: updatedUser });
+                set({ 
+                    user: updatedUser,
+                    isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
+                });
             }
             
             // CRITICAL: Don't clear user if fetchUserInfo fails - only update if it succeeds
@@ -203,7 +217,10 @@ export function createAuthStore(config?: AuthStoreConfig) {
                             ...currentUser,
                             customerId: jwtCustomerId || currentUser.customerId,
                         };
-                        set({ user: userWithCustomerId });
+                        set({ 
+                            user: userWithCustomerId, 
+                            isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
+                        });
                         console.log('[Auth] Kept user logged in with customerId from JWT:', jwtCustomerId);
                     } else {
                         // No customerId in JWT and restore failed - clear user
@@ -259,6 +276,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                     };
                                     set({ 
                                         user: updatedUser, 
+                                        isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
                                         isSuperAdmin: userInfo.isSuperAdmin,
                                     });
                                 }
@@ -319,6 +337,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                         };
                         set({ 
                             user: updatedUser, 
+                            isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
                             isSuperAdmin: userInfo.isSuperAdmin,
                         });
                         return true; // Successfully restored
@@ -347,7 +366,10 @@ export function createAuthStore(config?: AuthStoreConfig) {
                                 ...restoredUser,
                                 customerId: jwtCustomerId,
                             };
-                            set({ user: userWithCustomerId });
+                            set({ 
+                                user: userWithCustomerId, 
+                                isAuthenticated: true, // Ensure isAuthenticated is set when user is updated
+                            });
                         }
                         // Keep the user - don't clear them or we'll get into infinite restore loops
                         return true; // Consider restore successful even if fetchUserInfo failed

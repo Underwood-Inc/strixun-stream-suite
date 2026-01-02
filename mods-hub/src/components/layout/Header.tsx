@@ -61,12 +61,29 @@ const LogoutButton = styled(Button)`
 `;
 
 export function Header() {
-    // Use individual selectors to ensure proper reactivity when auth state changes
-    // This ensures the header updates when restoreSession updates the auth state
-    const isAuthenticated = useAuthStore(state => state.isAuthenticated);
-    const user = useAuthStore(state => state.user);
-    const logout = useAuthStore(state => state.logout);
-    const isSuperAdmin = useAuthStore(state => state.isSuperAdmin);
+    // Use a single selector to get all auth state at once for better reactivity
+    // This ensures the header updates immediately when any auth state changes
+    const authState = useAuthStore(state => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        isSuperAdmin: state.isSuperAdmin,
+        logout: state.logout,
+    }));
+    
+    // Force re-render when auth state changes by subscribing to store changes
+    const [, forceUpdate] = useState({});
+    useEffect(() => {
+        const unsubscribe = useAuthStore.subscribe((state) => {
+            // Trigger re-render when user or isAuthenticated changes
+            forceUpdate({});
+        });
+        return unsubscribe;
+    }, []);
+    
+    // Derive isAuthenticated from user if store state is out of sync
+    // This is a fallback to ensure header always reflects actual auth state
+    const actualIsAuthenticated = authState.isAuthenticated || !!authState.user;
+    const { user, isSuperAdmin, logout } = authState;
     
     const { hasPermission } = useUploadPermission();
     const { data: draftsData } = useDrafts();
