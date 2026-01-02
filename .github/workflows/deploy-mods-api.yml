@@ -139,6 +139,9 @@ jobs:
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
           fi
+          if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
+            echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY
+          fi
         continue-on-error: true
       
       - name: Deployment Summary

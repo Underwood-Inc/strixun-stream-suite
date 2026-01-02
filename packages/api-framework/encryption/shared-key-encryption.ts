@@ -179,6 +179,9 @@ export async function encryptBinaryWithSharedKey(
     throw new Error('Valid shared encryption key is required (minimum 32 characters)');
   }
 
+  // Trim shared key to ensure consistency (same as decryption)
+  const trimmedKey = sharedKey.trim();
+
   // Ensure dataBuffer is a Uint8Array with ArrayBuffer (not ArrayBufferLike)
   let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
   if (data instanceof ArrayBuffer) {
@@ -201,11 +204,11 @@ export async function encryptBinaryWithSharedKey(
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
-  // Derive key from shared key
-  const key = await deriveKeyFromSharedKey(sharedKey, salt);
+  // Derive key from shared key (use trimmed key)
+  const key = await deriveKeyFromSharedKey(trimmedKey, salt);
 
-  // Hash shared key for verification
-  const keyHashHex = await hashKey(sharedKey);
+  // Hash shared key for verification (use trimmed key)
+  const keyHashHex = await hashKey(trimmedKey);
   const keyHash = new Uint8Array(32); // SHA-256 = 32 bytes
   for (let i = 0; i < 32; i++) {
     keyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
