@@ -96,8 +96,8 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
         authHeaderSet: !!request.headers['Authorization'],
         authHeaderValue: request.headers['Authorization'] ? request.headers['Authorization'].substring(0, 27) + '...' : 'none',
         metadataTokenSet: !!request.metadata.token,
-        metadataTokenLength: request.metadata.token?.length || 0,
-        metadataTokenPrefix: request.metadata.token ? request.metadata.token.substring(0, 20) + '...' : 'none',
+        metadataTokenLength: (request.metadata.token && typeof request.metadata.token === 'string') ? request.metadata.token.length : 0,
+        metadataTokenPrefix: (request.metadata.token && typeof request.metadata.token === 'string') ? request.metadata.token.substring(0, 20) + '...' : 'none',
         tokensMatch: request.headers['Authorization'] === `Bearer ${request.metadata.token}`,
         tokensEqual: tokenToUse === request.metadata.token
       });
