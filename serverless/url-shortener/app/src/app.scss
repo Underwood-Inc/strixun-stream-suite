@@ -4,6 +4,7 @@
  */
 
 @use '@shared-styles/variables' as *;
+@use '../../../../shared-styles/mixins' as *;
 
 // Minimum width for app containers (standard mobile minimum)
 $min-app-width: 320px;
@@ -40,11 +41,10 @@ body {
 }
 
 .error-boundary__container {
+    @include card;
     max-width: 800px;
     width: 100%;
-    background: var(--card);
-    border: 2px solid var(--danger);
-    border-radius: var(--radius-md);
+    border: 2px solid var(--danger); // Override for error state
     padding: var(--spacing-xl);
     box-shadow: var(--shadow-lg);
 }
@@ -250,12 +250,9 @@ body {
 }
 
 .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    @include card;
     padding: var(--spacing-xl);
     margin-bottom: var(--spacing-lg);
-    box-shadow: var(--shadow-md);
 }
 
 .card h2 {
@@ -277,20 +274,9 @@ body {
 }
 
 .form-group input {
+    @include input;
     width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-dark);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text);
     font-size: 1rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(237, 174, 73, 0.1);
 }
 
 .form-group small {
@@ -301,53 +287,25 @@ body {
 }
 
 .btn {
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border: none;
-    border-radius: var(--radius-md);
+    @include button('primary');
     font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
     display: inline-block;
 }
 
 .btn-primary {
-    background: var(--accent);
-    color: var(--bg-dark);
-    font-weight: 600;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: var(--accent-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(237, 174, 73, 0.4);
+    @include button('primary');
 }
 
 .btn-secondary {
-    background: var(--card);
-    border: 1px solid var(--border);
-    color: var(--text);
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background: var(--border);
-    border-color: var(--border-light);
+    @include button('secondary');
+    
+    &:hover {
+        color: #fff; // Light text for better contrast on hover
+    }
 }
 
 .btn-danger {
-    background: var(--danger);
-    color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: #c8231a;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 43, 31, 0.4);
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    @include button('danger');
 }
 
 .urls-header {
@@ -368,9 +326,8 @@ body {
 }
 
 .url-card {
-    background: var(--bg-dark);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    @include card;
+    background: var(--bg-dark); // Override for darker variant
     padding: var(--spacing-lg);
     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
@@ -403,20 +360,8 @@ body {
 }
 
 .btn-copy {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    cursor: pointer;
+    @include copy-button;
     font-size: 0.875rem;
-    transition: all 0.2s;
-}
-
-.btn-copy:hover {
-    background: var(--border);
-    border-color: var(--accent);
-    color: var(--accent);
 }
 
 .url-original {
@@ -485,5 +430,114 @@ body {
         align-items: flex-start;
         gap: var(--spacing-sm);
     }
+}
+
+// Confirmation Modal Styles
+.confirmation-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: var(--spacing-xl);
+}
+
+.confirmation-modal {
+    @include card;
+    padding: var(--spacing-xl);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.confirmation-modal__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.confirmation-modal__message {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-line;
+}
+
+.confirmation-modal__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-dark);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.confirmation-modal__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.confirmation-modal__text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+    background: var(--bg);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    white-space: pre-wrap;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.confirmation-modal__input {
+    @include input;
+    font-size: 0.875rem;
+    font-family: inherit;
+
+    &--error {
+        border-color: var(--danger);
+    }
+
+    &--error:focus {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 2px rgba(234, 43, 31, 0.2);
+    }
+}
+
+.confirmation-modal__error {
+    font-size: 0.75rem;
+    color: var(--danger);
+    margin-top: var(--spacing-xs);
+}
+
+.confirmation-modal__buttons {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
 }
 

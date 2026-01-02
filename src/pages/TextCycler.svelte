@@ -131,7 +131,7 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleNewConfig} disabled={!$connected}>[ADD] New Config</button>
+        <button on:click={handleNewConfig} disabled={!$connected}>⊕ New Config</button>
       </Tooltip>
       <button on:click={handleExportConfigs}> Export</button>
       <button on:click={handleImportConfigs}> Import</button>

@@ -95,7 +95,7 @@
   
   <!-- Animation Settings -->
   <div class="card">
-    <h3>[SETTINGS] Animation Settings</h3>
+    <h3>≡ Animation Settings</h3>
     <div class="row">
       <div style="flex:1">
         <label>Duration (ms)</label>

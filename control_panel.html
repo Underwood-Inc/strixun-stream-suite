@@ -54,7 +54,7 @@
             <button class="tab" onclick="showPage('layouts')" title="Layouts"></button>
             <button class="tab" onclick="showPage('scripts')" title="Script Manager"></button>
             <button class="tab" onclick="showPage('install')" title="Installer"></button>
-            <button class="tab" onclick="showPage('setup')" title="Setup">[SETTINGS]</button>
+            <button class="tab" onclick="showPage('setup')" title="Setup">≡</button>
         </nav>
         
         <div class="split-container">
@@ -73,7 +73,7 @@
                             </div>
                         </div>
                         <p class="hint" style="margin-top:8px">
-                            <button onclick="showPage('setup')" class="btn-link">[SETTINGS] Go to Setup</button> to connect to OBS WebSocket
+                            <button onclick="showPage('setup')" class="btn-link">≡ Go to Setup</button> to connect to OBS WebSocket
                         </p>
                     </div>
                 </div>
@@ -190,7 +190,7 @@
                     </div>
                     <div id="textCyclerConfigs" class="config-list"></div>
                     <div class="row" style="margin-top:8px">
-                        <button onclick="newTextConfig()">[ADD] New Config</button>
+                        <button onclick="newTextConfig()">⊕ New Config</button>
                         <button onclick="exportTextConfigs()"> Export</button>
                         <button onclick="importTextConfigs()"> Import</button>
                     </div>
@@ -438,7 +438,7 @@
                     </div>
                     
                     <div style="margin-top:8px">
-                        <label>[PERF] Temporary Override</label>
+                        <label>★ Temporary Override</label>
                         <select id="swapTempOverride">
                             <option value="off" selected>Off (use config/global)</option>
                             <option value="preserve">Preserve</option>
@@ -469,7 +469,7 @@
                             <select id="swapNewSourceB"></select>
                         </div>
                     </div>
-                    <button class="btn-primary" style="margin-top:12px;width:100%" onclick="addSwapConfig()">[ADD] Add Config</button>
+                    <button class="btn-primary" style="margin-top:12px;width:100%" onclick="addSwapConfig()">⊕ Add Config</button>
                 </div>
                 
                 <div class="card">
@@ -519,7 +519,7 @@
                 </div>
                 
                 <div class="card">
-                    <h3>[SETTINGS] Animation Settings</h3>
+                    <h3>≡ Animation Settings</h3>
                     <div class="row">
                         <div style="flex:1">
                             <label>Duration (ms)</label>
@@ -815,14 +815,14 @@
                     <label>Twitch Client ID <span style="color:var(--muted);font-weight:normal">(Optional - Auto-configured)</span></label>
                     <input type="text" id="twitchClientId" placeholder="Auto-configured from deployment">
                     <p class="hint" style="margin-top:4px;font-size:0.75em">
-                        [FEATURE] Auto-configured during deployment. Only override if using a different Twitch app.
+                        → Auto-configured during deployment. Only override if using a different Twitch app.
                         <span id="autoDetectedClientId" style="display:block;margin-top:4px;color:var(--success)"></span>
                     </p>
                     
                     <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
                     <input type="text" id="twitchApiServer" placeholder="Auto-detected from deployment config">
                     <p class="hint" style="margin-top:4px;font-size:0.75em">
-                        [FEATURE] Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
+                        → Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
                         <span id="autoDetectedApiUrl" style="display:block;margin-top:4px;color:var(--success)"></span>
                     </p>
                     
@@ -901,7 +901,7 @@
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
                                 <input type="checkbox" id="exportUIState" checked style="width:auto;margin:0">
-                                <span>[SETTINGS] UI Preferences</span>
+                                <span>≡ UI Preferences</span>
                                 <span style="margin-left:auto;color:var(--muted);font-size:0.9em">(dropdowns, settings)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">

@@ -891,7 +891,7 @@ function script_properties()
     obs.obs_properties_add_bool(props, "new_animate_show", "Animate on SHOW")
     obs.obs_properties_add_bool(props, "new_animate_hide", "Animate on HIDE")
     
-    obs.obs_properties_add_button(props, "add_btn", "[ADD] Add/Update Source",
+    obs.obs_properties_add_button(props, "add_btn", "⊕ Add/Update Source",
         function(props, p)
             if settings_ref == nil then return false end
             local name = obs.obs_data_get_string(settings_ref, "new_source")

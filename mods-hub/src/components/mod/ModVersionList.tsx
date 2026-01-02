@@ -10,8 +10,10 @@ import { colors, spacing } from '../../theme';
 import type { ModVersion, ModVariant } from '../../types/mod';
 import { downloadVersion, downloadVariant } from '../../services/api';
 import { IntegrityBadge } from './IntegrityBadge';
+import { celebrateClick } from '../../utils/confetti';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
+import { candyShopAnimation } from '../../utils/candyShopAnimation';
 import { useAuthStore } from '../../stores/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { modKeys } from '../../hooks/useMods';
@@ -102,6 +104,7 @@ const ExpandButton = styled.button`
 
 const DownloadButton = styled.button`
   ${getButtonStyles('primary')}
+  ${candyShopAnimation}
 `;
 
 const ExpandedContent = styled.div<{ isExpanded: boolean }>`
@@ -165,6 +168,7 @@ const VariantMeta = styled.div`
 
 const VariantDownloadButton = styled.button`
   ${getButtonStyles('secondary')}
+  ${candyShopAnimation}
   font-size: 0.875rem;
   padding: ${spacing.xs} ${spacing.sm};
 `;
@@ -355,6 +359,7 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                 <DownloadButton
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        celebrateClick(e.currentTarget);
                                         handleDownload(version);
                                     }}
                                     disabled={downloading.has(version.versionId) || !isAuthenticated}
@@ -408,7 +413,10 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                                 </VariantMeta>
                                             </VariantInfo>
                                             <VariantDownloadButton
-                                                onClick={() => handleVariantDownload(variant)}
+                                                onClick={(e) => {
+                                                    celebrateClick(e.currentTarget);
+                                                    handleVariantDownload(variant);
+                                                }}
                                                 disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
                                                 title={!isAuthenticated ? 'Please log in to download' : undefined}
                                             >

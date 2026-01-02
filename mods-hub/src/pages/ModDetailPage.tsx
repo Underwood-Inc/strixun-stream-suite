@@ -14,10 +14,12 @@ import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
 import { downloadVersion } from '../services/api';
 import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
+import { celebrateClick } from '../utils/confetti';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getCardStyles } from '../utils/sharedStyles';
+import { candyShopAnimation } from '../utils/candyShopAnimation';
 
 const PageContainer = styled.div`
   display: flex;
@@ -141,6 +143,7 @@ const ManageButton = styled.button`
 
 const DownloadButton = styled.button`
   ${getButtonStyles('primary')}
+  ${candyShopAnimation}
   display: inline-flex;
   align-items: center;
   gap: ${spacing.sm};
@@ -279,7 +282,10 @@ export function ModDetailPage() {
                                 </ManageButton>
                             )}
                             <DownloadButton
-                                onClick={handleDownloadLatest}
+                                onClick={(e) => {
+                                    celebrateClick(e.currentTarget);
+                                    handleDownloadLatest();
+                                }}
                                 disabled={downloading || !latestVersion || !isAuthenticated}
                                 title={!isAuthenticated ? 'Please log in to download' : undefined}
                             >

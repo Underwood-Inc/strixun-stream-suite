@@ -701,3 +701,53 @@
   }
 }
 
+// ============ Candy Shop Slanted Bar Animation ============
+// Classic retro candy shop moving slanted bar effect
+// Creates diagonal stripes that move continuously across the element
+// Usage: @include candy-shop-bars;
+// Optional: @include candy-shop-bars(45deg, 20px, rgba(255, 255, 255, 0.3), 2s);
+// Parameters:
+//   $angle: Angle of the stripes (default: 45deg for diagonal)
+//   $stripe-width: Width of each stripe (default: 20px)
+//   $stripe-color: Color of the stripes (default: rgba(255, 255, 255, 0.3))
+//   $duration: Animation duration (default: 6s - 3x slower for smooth effect)
+@mixin candy-shop-bars(
+  $angle: 45deg,
+  $stripe-width: 20px,
+  $stripe-color: rgba(255, 255, 255, 0.3),
+  $duration: 6s
+) {
+  position: relative;
+  overflow: hidden;
+  
+  // Create the moving slanted bars using a pseudo-element
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: repeating-linear-gradient(
+      $angle,
+      transparent,
+      transparent $stripe-width,
+      $stripe-color $stripe-width,
+      $stripe-color calc(#{$stripe-width} * 2)
+    );
+    // Fixed background-size for consistent speed regardless of element width
+    // 56.568px = sqrt(40px^2) for 45deg diagonal movement matching stripe pattern
+    background-size: 56.568px 56.568px;
+    animation: candy-shop-bars $duration linear infinite;
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: overlay;
+  }
+  
+  // Ensure text/content stays above the animation
+  > * {
+    position: relative;
+    z-index: 2;
+  }
+}
+

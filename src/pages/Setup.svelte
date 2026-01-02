@@ -452,14 +452,14 @@
     <label>Twitch Client ID <span style="color:var(--muted);font-weight:normal">(Optional - Auto-configured)</span></label>
     <input type="text" id="twitchClientId" bind:value={twitchClientId} placeholder="Auto-configured from deployment">
     <p class="hint" style="margin-top:4px;font-size:0.75em">
-      [FEATURE] Auto-configured during deployment. Only override if using a different Twitch app.
+      → Auto-configured during deployment. Only override if using a different Twitch app.
       <span id="autoDetectedClientId" style="display:block;margin-top:4px;color:var(--success)"></span>
     </p>
     
     <label style="margin-top:12px">API Server URL <span style="color:var(--muted);font-weight:normal">(Optional - Auto-detected)</span></label>
     <input type="text" id="twitchApiServer" bind:value={twitchApiServer} placeholder="Auto-detected from deployment config">
     <p class="hint" style="margin-top:4px;font-size:0.75em">
-      [FEATURE] Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
+      → Auto-configured during GitHub Pages deployment. Only override if using a custom Worker URL.
       <span id="autoDetectedApiUrl" style="display:block;margin-top:4px;color:var(--success)"></span>
     </p>
     
@@ -569,7 +569,7 @@
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">
           <input type="checkbox" id="exportUIState" bind:checked={exportUIState} style="width:auto;margin:0">
-          <span>[SETTINGS] UI Preferences</span>
+          <span>≡ UI Preferences</span>
           <span style="margin-left:auto;color:var(--muted);font-size:0.9em">(dropdowns, settings)</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px;cursor:pointer;font-size:0.85em">

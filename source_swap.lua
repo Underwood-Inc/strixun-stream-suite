@@ -573,7 +573,7 @@ function script_description()
 
 <h3>Features:</h3>
 <ul>
-<li>[PERF] Temporary Aspect Override in settings!</li>
+<li>★ Temporary Aspect Override in settings!</li>
 <li>Works for root sources and sources in groups</li>
 <li>Unlimited configurations with hotkeys</li>
 <li>No progressive shrinking</li>
@@ -626,7 +626,7 @@ function script_properties()
         obs.obs_property_list_add_string(lb, s.display, s.name)
     end
     
-    obs.obs_properties_add_button(props, "add_btn", "[ADD] Add Config", function()
+    obs.obs_properties_add_button(props, "add_btn", "⊕ Add Config", function()
         if not settings_ref then return false end
         local n = obs.obs_data_get_string(settings_ref, "new_name")
         local a = obs.obs_data_get_string(settings_ref, "new_a")

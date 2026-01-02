@@ -132,6 +132,19 @@
   }
 }
 
+// ============ Candy Shop Slanted Bar Animation ============
+// Classic retro candy shop moving slanted bar effect
+// Creates diagonal stripes that move continuously across the element
+// Uses transform for consistent speed regardless of element width
+@keyframes candy-shop-bars {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0);
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(56.568px, 56.568px);
+  }
+}
+
 // ============ Arcade Button Styles ============
 
 @mixin arcade-button($bg-color: var(--accent), $border-color: var(--accent-dark)) {

@@ -152,7 +152,7 @@
               }} 
               class="btn-link"
             >
-              [SETTINGS] Go to Setup
+              ≡ Go to Setup
             </button>
             <span class="action-hint">to connect to OBS WebSocket</span>
           </div>

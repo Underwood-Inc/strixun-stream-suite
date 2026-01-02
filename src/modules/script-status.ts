@@ -255,7 +255,7 @@ export function updateDashboardStatus(): void {
           <span class="script-status-item__badge">Online</span>
         </div>
         <div class="script-status-item installed">
-          <span class="script-status-item__icon">[FEATURE]</span>
+          <span class="script-status-item__icon">→</span>
           <span class="script-status-item__name">Animations</span>
           <span class="script-status-item__badge">Ready</span>
         </div>
@@ -285,7 +285,7 @@ export function updateDashboardStatus(): void {
         </div>
       </div>
       <p class="hint" style="margin-top:8px">
-        <button onclick="window.showPage?.('setup')" class="btn-link">[SETTINGS] Go to Setup</button> to connect to OBS WebSocket
+        <button onclick="window.showPage?.('setup')" class="btn-link">≡ Go to Setup</button> to connect to OBS WebSocket
       </p>
       <p class="hint" style="margin-top:4px">
         <button onclick="window.showPage?.('install')" class="btn-link"> Install Scripts</button> if you haven't already
