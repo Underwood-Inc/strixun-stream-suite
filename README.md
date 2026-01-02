@@ -18,20 +18,353 @@
 
 ---
 
-## ✨ What Is This?
+## 📋 Overview
 
-**Strixun's Stream Suite** is a professional streaming toolkit that helps content creators automate and enhance their live streams. It provides:
-
-- **Source Animations** - Smooth fade, slide, zoom, and pop effects
-- **Source Swaps** - Animated position swapping between sources
-- **Layout Presets** - Save and apply entire scene layouts instantly
-- **Text Cycler** - Cycle text with animated transitions
-- **Twitch Clips Player** - Auto-play clips during BRB screens
-- **Unified Control Panel** - One dock to control everything
+**Strixun's Stream Suite** is a comprehensive monorepo containing a professional streaming toolkit and a full ecosystem of applications, services, and reusable packages. This repository includes everything from OBS Studio control panels to mod hosting platforms, authentication services, game components, and shared libraries.
 
 ---
 
-## 🚀 Quick Start
+## 🎯 Applications
+
+### Main OBS Control Panel (Root Project)
+**Location:** `./` (root)  
+**Tech:** Svelte 5, TypeScript, Vite, PWA  
+**Purpose:** Primary OBS Studio control panel for streamers
+
+**Features:**
+- Source Animations (fade, slide, zoom, pop effects)
+- Source Swaps (animated position swapping)
+- Layout Presets (save and apply entire scene layouts)
+- Text Cycler (cycle text with animated transitions)
+- Twitch Clips Player (auto-play clips during BRB screens)
+- Unified Control Panel (one dock to control everything)
+- PWA Support (Progressive Web App with offline capabilities)
+- Multi-layer Storage (IndexedDB + localStorage + Recovery system)
+
+**See:** [README.md](./README.md) (this file) for main app documentation
+
+---
+
+### Control Panel
+**Location:** [`control-panel/`](./control-panel/)  
+**Tech:** React 19, TypeScript, Vite, vite-plugin-singlefile  
+**Purpose:** React-based single-file bundle control panel for OBS Studio docks
+
+**See:** [control-panel/README.md](./control-panel/README.md)
+
+---
+
+### Mods Hub
+**Location:** [`mods-hub/`](./mods-hub/)  
+**Tech:** React 19, TypeScript, Vite, TanStack Query, Zustand  
+**Purpose:** Modern mod hosting platform (similar to Modrinth)
+
+**Features:**
+- Mod upload & management
+- Version control with semantic versioning
+- Search & filtering
+- Direct download links
+- Beautiful gold-themed UI
+- Integrated OTP authentication
+
+**See:** [mods-hub/README.md](./mods-hub/README.md)
+
+---
+
+### Dice Board Game
+**Location:** [`dice-board-game/`](./dice-board-game/)  
+**Tech:** React 19, Three.js, React Three Fiber, Zustand  
+**Purpose:** 3D dice rolling board game component
+
+**Features:**
+- Hexagonal board system with procedural generation
+- 3D dice rolling with realistic physics
+- 3000+ procedural event scenarios
+- React Three Fiber integration
+- Standalone or overlay mode
+
+**See:** [dice-board-game/README.md](./dice-board-game/README.md)
+
+---
+
+## 📦 Packages
+
+### Core Infrastructure
+
+#### `@strixun/api-framework`
+**Location:** [`packages/api-framework/`](./packages/api-framework/)  
+**Purpose:** Shared API framework for Cloudflare Workers and browsers
+
+**Features:**
+- Type-safe API clients
+- Request deduplication
+- Automatic retry with exponential backoff
+- Multi-level caching
+- Request queue with priorities
+- Circuit breaker
+- Offline queue
+- Optimistic updates
+- E2E encryption
+- RFC 7807 error handling
+
+**See:** [packages/api-framework/README.md](./packages/api-framework/README.md)
+
+#### `@strixun/service-client`
+**Location:** [`packages/service-client/`](./packages/service-client/)  
+**Purpose:** Service client utilities with integrity checking
+
+**See:** [packages/service-client/README.md](./packages/service-client/README.md)
+
+#### `@strixun/types`
+**Location:** [`packages/types/`](./packages/types/)  
+**Purpose:** Shared TypeScript type definitions
+
+**See:** [packages/types/README.md](./packages/types/README.md)
+
+#### `@strixun/auth-store`
+**Location:** [`packages/auth-store/`](./packages/auth-store/)  
+**Purpose:** Authentication state management with Svelte and Zustand adapters
+
+**See:** [packages/auth-store/README.md](./packages/auth-store/README.md)
+
+---
+
+### UI Components & Libraries
+
+#### `@strixun/otp-login`
+**Location:** [`packages/otp-login/`](./packages/otp-login/)  
+**Purpose:** Standalone OTP Login UI library (CDN-ready)
+
+**Features:**
+- Vanilla JS, React, and Svelte variants
+- CDN deployment support
+- Email OTP flow
+- JWT token management
+
+**See:** [packages/otp-login/README.md](./packages/otp-login/README.md)
+
+#### `@strixun/virtualized-table`
+**Location:** [`packages/virtualized-table/`](./packages/virtualized-table/)  
+**Purpose:** High-performance virtualized table component for React
+
+**Features:**
+- Handles thousands of rows efficiently
+- Sortable columns
+- Row selection
+- Customizable styling
+
+**See:** [packages/virtualized-table/README.md](./packages/virtualized-table/README.md)
+
+#### `@strixun/search-query-parser`
+**Location:** [`packages/search-query-parser/`](./packages/search-query-parser/)  
+**Purpose:** Advanced search query parser with human-friendly syntax
+
+**Features:**
+- Quoted exact phrases
+- AND/OR logic
+- Wildcard prefix matching
+- React and Svelte components
+
+**See:** [packages/search-query-parser/README.md](./packages/search-query-parser/README.md)
+
+#### `@strixun/asciimoji`
+**Location:** [`packages/asciimoji/`](./packages/asciimoji/)  
+**Purpose:** ASCII emoji library with pattern matching
+
+**See:** [packages/asciimoji/README.md](./packages/asciimoji/README.md)
+
+#### `@strixun/ad-carousel`
+**Location:** [`packages/ad-carousel/`](./packages/ad-carousel/)  
+**Purpose:** Ad carousel component for Svelte with Twitch integration
+
+**See:** [packages/ad-carousel/README.md](./packages/ad-carousel/README.md)
+
+#### `@strixun/status-flair`
+**Location:** [`packages/status-flair/`](./packages/status-flair/)  
+**Purpose:** Status badge/flair component
+
+**See:** [packages/status-flair/README.md](./packages/status-flair/README.md)
+
+#### `@strixun/tooltip`
+**Location:** [`packages/tooltip/`](./packages/tooltip/)  
+**Purpose:** Tooltip component library with Storybook
+
+**See:** [packages/tooltip/README.md](./packages/tooltip/README.md)
+
+#### `@strixun/rate-limit-info`
+**Location:** [`packages/rate-limit-info/`](./packages/rate-limit-info/)  
+**Purpose:** Rate limit information display component
+
+**See:** [packages/rate-limit-info/README.md](./packages/rate-limit-info/README.md)
+
+#### `@strixun/idle-game-overlay`
+**Location:** [`packages/idle-game-overlay/`](./packages/idle-game-overlay/)  
+**Purpose:** Idle game overlay components
+
+**Features:**
+- Character customization
+- Crafting system
+- Dungeons
+- Loot systems
+- Inventory management
+
+**See:** [packages/idle-game-overlay/README.md](./packages/idle-game-overlay/README.md)
+
+---
+
+### Testing & Utilities
+
+#### `@strixun/e2e-helpers`
+**Location:** [`packages/e2e-helpers/`](./packages/e2e-helpers/)  
+**Purpose:** E2E testing helpers with email interception and fixtures
+
+**See:** [packages/e2e-helpers/README.md](./packages/e2e-helpers/README.md)
+
+#### `@strixun/error-mapping`
+**Location:** [`packages/error-mapping/`](./packages/error-mapping/)  
+**Purpose:** Error mapping utilities with error legend
+
+**See:** [packages/error-mapping/README.md](./packages/error-mapping/README.md)
+
+---
+
+## ☁️ Serverless Services (Cloudflare Workers)
+
+### Authentication & User Management
+
+#### `otp-auth-service`
+**Location:** [`serverless/otp-auth-service/`](./serverless/otp-auth-service/)  
+**Purpose:** Multi-tenant OTP authentication service
+
+**Features:**
+- Email OTP authentication
+- JWT token management
+- API key management (multi-tenant)
+- Analytics dashboard
+- OpenAPI 3.1.0 spec
+- Swagger UI integration
+- Developer dashboard (Svelte 5)
+
+**See:** [serverless/otp-auth-service/README.md](./serverless/otp-auth-service/README.md)
+
+#### `customer-api`
+**Location:** [`serverless/customer-api/`](./serverless/customer-api/)  
+**Purpose:** Customer data management API with full CRUD operations
+
+**See:** [serverless/customer-api/README.md](./serverless/customer-api/README.md)
+
+---
+
+### Content & Mod Management
+
+#### `mods-api`
+**Location:** [`serverless/mods-api/`](./serverless/mods-api/)  
+**Purpose:** Dedicated mod hosting and version control API
+
+**Features:**
+- Mod upload & management
+- Version control with semantic versioning
+- R2 storage integration
+- Client-side encryption
+- Default compression
+- Direct download links
+
+**See:** [serverless/mods-api/README.md](./serverless/mods-api/README.md)
+
+#### `url-shortener`
+**Location:** [`serverless/url-shortener/`](./serverless/url-shortener/)  
+**Purpose:** URL shortening service with OTP authentication
+
+**Features:**
+- Create and manage short URLs
+- Click analytics tracking
+- Standalone web interface
+- Custom URL codes
+- Automatic expiration
+
+**See:** [serverless/url-shortener/README.md](./serverless/url-shortener/README.md)
+
+---
+
+### Integration Services
+
+#### `twitch-api`
+**Location:** [`serverless/twitch-api/`](./serverless/twitch-api/)  
+**Purpose:** Twitch API proxy with cloud storage and CDN endpoints
+
+**See:** [serverless/twitch-api/README.md](./serverless/twitch-api/README.md)
+
+#### `chat-signaling`
+**Location:** [`serverless/chat-signaling/`](./serverless/chat-signaling/)  
+**Purpose:** WebRTC signaling server for P2P chat
+
+**Features:**
+- Room management
+- WebRTC offer/answer exchange
+- Room discovery
+- Automatic cleanup (TTL-based)
+- Heartbeat system
+
+**See:** [serverless/chat-signaling/README.md](./serverless/chat-signaling/README.md)
+
+#### `game-api`
+**Location:** [`serverless/game-api/`](./serverless/game-api/)  
+**Purpose:** Idle game API endpoints for game state management
+
+**Features:**
+- Save/load game state
+- Player progress tracking
+- Achievement system
+
+**See:** [serverless/game-api/README.md](./serverless/game-api/README.md)
+
+---
+
+## 🎨 Shared Resources
+
+### `shared-components`
+**Location:** [`shared-components/`](./shared-components/)  
+**Purpose:** Shared component library with Storybook documentation
+
+**See:** [shared-components/README.md](./shared-components/README.md)
+
+### `shared-config`
+**Location:** [`shared-config/`](./shared-config/)  
+**Purpose:** Shared configuration files and utilities
+
+**See:** [shared-config/README.md](./shared-config/README.md)
+
+### `shared-styles`
+**Location:** [`shared-styles/`](./shared-styles/)  
+**Purpose:** Shared SCSS styles and design tokens
+
+**Features:**
+- Design tokens (colors, spacing, typography)
+- Animation system
+- Mixins (buttons, inputs, cards)
+- Framework-agnostic SCSS
+
+**See:** [shared-styles/README.md](./shared-styles/README.md)
+
+---
+
+## 📚 Documentation
+
+### Technical Documentation
+- **`docs/`** - Technical documentation, API references, and architecture guides
+- **`product-docs/`** - Product documentation for end users
+- **`╠═══════ PANDA_CORE ═══════╣/`** - Core documentation hub with 350+ markdown files
+
+### Project-Specific Documentation
+Each project has its own README with detailed setup and development instructions. See individual project directories listed above.
+
+---
+
+---
+
+## 🚀 Quick Start (Main OBS Control Panel)
+
+> **Note:** This quick start is for the **Main OBS Control Panel** (root project). For other projects, see their individual README files listed in the [Overview](#-overview) section above.
 
 ### For GitHub Pages Users (Recommended)
 
@@ -220,7 +553,48 @@ If you prefer to install scripts manually:
 
 ---
 
-## Documentation
+## 📁 Project Structure
+
+This monorepo is organized into several categories:
+
+### Applications
+- **[Main OBS Control Panel](./)** - Svelte-based OBS Studio toolkit (root project)
+- **[Control Panel](./control-panel/)** - React single-file bundle for OBS docks
+- **[Mods Hub](./mods-hub/)** - Mod hosting platform (React + TypeScript)
+- **[Dice Board Game](./dice-board-game/)** - 3D dice board game component
+
+### Packages (`packages/`)
+- **[API Framework](./packages/api-framework/)** - Shared API framework
+- **[OTP Login](./packages/otp-login/)** - OTP authentication UI library
+- **[Virtualized Table](./packages/virtualized-table/)** - High-performance table component
+- **[Search Query Parser](./packages/search-query-parser/)** - Advanced search parser
+- **[Auth Store](./packages/auth-store/)** - Authentication state management
+- **[Service Client](./packages/service-client/)** - Service client utilities
+- **[Types](./packages/types/)** - Shared TypeScript types
+- **[E2E Helpers](./packages/e2e-helpers/)** - E2E testing utilities
+- **[Error Mapping](./packages/error-mapping/)** - Error mapping utilities
+- **[Ad Carousel](./packages/ad-carousel/)** - Ad carousel component
+- **[ASCIIMoji](./packages/asciimoji/)** - ASCII emoji library
+- **[Idle Game Overlay](./packages/idle-game-overlay/)** - Idle game components
+- **[Rate Limit Info](./packages/rate-limit-info/)** - Rate limit display component
+- **[Status Flair](./packages/status-flair/)** - Status badge component
+- **[Tooltip](./packages/tooltip/)** - Tooltip component
+
+### Serverless Services (`serverless/`)
+- **[OTP Auth Service](./serverless/otp-auth-service/)** - Multi-tenant OTP authentication
+- **[Mods API](./serverless/mods-api/)** - Mod hosting API
+- **[URL Shortener](./serverless/url-shortener/)** - URL shortening service
+- **[Customer API](./serverless/customer-api/)** - Customer data management
+- **[Twitch API](./serverless/twitch-api/)** - Twitch API proxy
+- **[Chat Signaling](./serverless/chat-signaling/)** - WebRTC signaling server
+- **[Game API](./serverless/game-api/)** - Idle game API
+
+### Shared Resources
+- **[Shared Components](./shared-components/)** - Shared component library
+- **[Shared Config](./shared-config/)** - Shared configuration
+- **[Shared Styles](./shared-styles/)** - Shared SCSS styles
+
+## 📚 Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
@@ -254,6 +628,12 @@ This script runs:
 - URL Shortener App: Vite build
 
 See [docs/README.md](./docs/README.md) for a complete documentation index.
+
+### 📖 Project-Specific Documentation
+
+Each project has its own README with detailed setup and development instructions:
+- See individual project directories for their specific README files
+- For comprehensive technical docs, see the [`╠═══════ PANDA_CORE ═══════╣/`](./╠═══════%20PANDA_CORE%20═══════╣/) documentation hub
 
 ---
 
