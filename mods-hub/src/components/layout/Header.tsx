@@ -2,6 +2,7 @@
  * Header component
  */
 
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
@@ -73,17 +74,14 @@ export function Header() {
     // Force re-render when auth state changes by subscribing to store changes
     const [, forceUpdate] = useState({});
     useEffect(() => {
-        const unsubscribe = useAuthStore.subscribe((state) => {
+        const unsubscribe = useAuthStore.subscribe(() => {
             // Trigger re-render when user or isAuthenticated changes
             forceUpdate({});
         });
         return unsubscribe;
     }, []);
     
-    // Derive isAuthenticated from user if store state is out of sync
-    // This is a fallback to ensure header always reflects actual auth state
-    const actualIsAuthenticated = authState.isAuthenticated || !!authState.user;
-    const { user, isSuperAdmin, logout } = authState;
+    const { user, isAuthenticated, isSuperAdmin, logout } = authState;
     
     const { hasPermission } = useUploadPermission();
     const { data: draftsData } = useDrafts();
@@ -95,7 +93,7 @@ export function Header() {
     };
 
     // Check if user has any drafts
-    const hasDrafts = isAuthenticated && draftsData?.mods?.some(mod => mod.status === 'draft') || false;
+    const hasDrafts = isAuthenticated && (draftsData?.mods?.some(mod => mod.status === 'draft') || false);
 
     return (
         <HeaderContainer>
