@@ -387,6 +387,7 @@ export async function handleBadge(
         
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            credentials: true, // Allow credentials for authenticated badge requests
         });
         
         // PUBLIC API: Always return unencrypted SVG for badges

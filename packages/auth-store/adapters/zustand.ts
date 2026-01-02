@@ -28,6 +28,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
         isSuperAdmin: false,
         _isRestoring: false, // Guard to prevent concurrent restore calls
         _lastRestoreAttempt: 0, // Timestamp of last restore attempt to debounce
+        _lastLogoutTime: 0, // Timestamp of last logout to prevent immediate restoration
         setUser: (user: User | null) => {
             // CRITICAL: Trim token when storing to ensure consistency with backend
             if (!user) {
@@ -40,6 +41,12 @@ export function createAuthStore(config?: AuthStoreConfig) {
             }
             
             let userToStore: User = user;
+            // Clear logout timestamp when setting a new user (login)
+            const state = get() as any;
+            if (state._lastLogoutTime) {
+                state._lastLogoutTime = 0;
+            }
+            
             if (user.token) {
                 const trimmedToken = user.token.trim();
                 if (trimmedToken !== user.token) {
@@ -65,12 +72,14 @@ export function createAuthStore(config?: AuthStoreConfig) {
                     user: userToStore, 
                     isAuthenticated: true,
                     isSuperAdmin,
+                    _lastLogoutTime: 0, // Clear logout timestamp on successful login
                 });
             } else {
                 set({ 
                     user: userToStore, 
                     isAuthenticated: true,
                     isSuperAdmin: false,
+                    _lastLogoutTime: 0, // Clear logout timestamp on successful login
                 });
             }
         },
@@ -107,8 +116,13 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 // Continue with logout even if API call fails
                 console.warn('[Auth] Logout API call failed, continuing with local logout:', error);
             } finally {
-                // Always clear local auth state
-                set({ user: null, isAuthenticated: false, isSuperAdmin: false });
+                // Always clear local auth state and record logout time
+                set({ 
+                    user: null, 
+                    isAuthenticated: false, 
+                    isSuperAdmin: false,
+                    _lastLogoutTime: Date.now(), // Record logout time to prevent immediate restoration
+                });
             }
         },
         fetchUserInfo: async () => {
@@ -363,7 +377,10 @@ export function createAuthStore(config?: AuthStoreConfig) {
             {
                 name: storageKey,
                 storage: storage ? createJSONStorage(() => storage) : undefined,
-                partialize: (state: ZustandAuthState) => ({ user: state.user }),
+                partialize: (state: ZustandAuthState) => ({ 
+                    user: state.user,
+                    _lastLogoutTime: state._lastLogoutTime, // Persist logout time to prevent restoration after page reload
+                }),
                 // After hydration, restore session if needed
                 onRehydrateStorage: () => {
                     return async (state) => {

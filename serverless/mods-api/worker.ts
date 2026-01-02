@@ -95,6 +95,7 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
     // Do NOT manually set Access-Control-Allow-Origin as it causes duplicate headers
     const corsHeaders = createCORSHeaders(request, {
         allowedOrigins: effectiveOrigins,
+        credentials: true, // Allow credentials for authenticated requests
     });
     
     // Convert Headers to Record<string, string>
