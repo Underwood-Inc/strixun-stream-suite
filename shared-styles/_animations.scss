@@ -345,6 +345,46 @@
   animation: spin 1s linear infinite;
 }
 
+// ============ Quirky Wobble-Pop Animation ============
+// Smooth wobble-pop click interaction - less jerky, more fluid
+@keyframes quirky-wobble-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  20% {
+    transform: scale(1.12) rotate(-6.4deg);
+  }
+  40% {
+    transform: scale(1.03) rotate(5.6deg);
+  }
+  55% {
+    transform: scale(1.08) rotate(-3.2deg);
+  }
+  70% {
+    transform: scale(1.05) rotate(2.4deg);
+  }
+  82% {
+    transform: scale(1.06) rotate(-1.2deg);
+  }
+  92% {
+    transform: scale(1.03) rotate(0.64deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+// ============ Shimmer Sweep Animation ============
+// Animated shimmer that sweeps across elements
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(200%) translateY(200%) rotate(45deg);
+  }
+}
+
 // ============ GPU Acceleration ============
 // Force GPU acceleration for smooth animations
 

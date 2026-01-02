@@ -392,7 +392,8 @@ describe('URL Counter Logic', () => {
       expect(mockEnv.URL_KV.get).toHaveBeenCalledWith('url_abc123'); // Should check for availability
       expect(mockEnv.URL_KV.put).toHaveBeenCalledWith(
         'url_abc123',
-        expect.stringContaining('"shortCode":"abc123"')
+        expect.stringContaining('"shortCode":"abc123"'),
+        expect.objectContaining({ expirationTtl: expect.any(Number) })
       );
     });
   });

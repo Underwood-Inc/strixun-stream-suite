@@ -20,6 +20,7 @@ import { colors, spacing } from '../theme';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getCardStyles } from '../utils/sharedStyles';
 import { candyShopAnimation } from '../utils/candyShopAnimation';
+import { InteractiveThumbnail } from '../components/mod/InteractiveThumbnail';
 
 const PageContainer = styled.div`
   display: flex;
@@ -32,46 +33,10 @@ const Header = styled.div`
   gap: ${spacing.lg};
 `;
 
-const Thumbnail = styled.img`
+const ThumbnailContainer = styled.div`
   width: 200px;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid ${colors.border};
-`;
-
-const ThumbnailError = styled.div`
-  width: 200px;
-  height: 200px;
-  border-radius: 8px;
-  border: 2px dashed ${colors.warning || colors.accent}40;
-  background: ${colors.bgTertiary};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${spacing.md};
-  text-align: center;
-  color: ${colors.textSecondary};
-`;
-
-const ErrorIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: ${spacing.xs};
-  opacity: 0.7;
-`;
-
-const ErrorMessage = styled.div`
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${colors.warning || colors.accent};
-  margin-bottom: ${spacing.xs};
-`;
-
-const ErrorDetail = styled.div`
-  font-size: 0.75rem;
-  color: ${colors.textMuted};
-  line-height: 1.4;
+  flex-shrink: 0;
+  /* InteractiveThumbnail has aspect-ratio: 16/9, so height will be calculated */
 `;
 
 const Info = styled.div`
@@ -156,7 +121,6 @@ export function ModDetailPage() {
     const { data, isLoading, error, refetch } = useModDetail(slug || '');
     const { user, isAuthenticated } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
-    const [thumbnailError, setThumbnailError] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState<string | null>(null);
     
@@ -182,9 +146,6 @@ export function ModDetailPage() {
         });
     };
 
-    const handleThumbnailError = () => {
-        setThumbnailError(true);
-    };
 
     const handleDownloadLatest = async () => {
         if (!latestVersion || !slug) return;
@@ -231,21 +192,16 @@ export function ModDetailPage() {
             <ModMetaTags mod={mod} />
             <PageContainer>
                 <Header>
-                {mod.thumbnailUrl ? (
-                    thumbnailError ? (
-                        <ThumbnailError>
-                            <ErrorIcon>⚠</ErrorIcon>
-                            <ErrorMessage>Thumbnail unavailable</ErrorMessage>
-                            <ErrorDetail>Image failed to load</ErrorDetail>
-                        </ThumbnailError>
-                    ) : (
-                        <Thumbnail 
-                            src={mod.thumbnailUrl} 
-                            alt={mod.title}
-                            onError={handleThumbnailError}
+                {mod.thumbnailUrl && (
+                    <ThumbnailContainer>
+                        <InteractiveThumbnail 
+                            mod={mod}
+                            onNavigate={() => {
+                                // Already on detail page, no navigation needed
+                            }}
                         />
-                    )
-                ) : null}
+                    </ThumbnailContainer>
+                )}
                 <Info>
                     <Title>{mod.title}</Title>
                     <Description>{mod.description}</Description>

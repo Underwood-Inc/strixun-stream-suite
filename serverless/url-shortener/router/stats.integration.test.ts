@@ -35,6 +35,10 @@ vi.mock('../handlers/app-assets.js', () => ({
   handleAppAssets: vi.fn(),
 }));
 
+vi.mock('../handlers/display-name.js', () => ({
+  handleGetDisplayName: vi.fn(),
+}));
+
 describe('Stats Endpoint Integration', () => {
   const mockEnv = {
     URL_KV: {
