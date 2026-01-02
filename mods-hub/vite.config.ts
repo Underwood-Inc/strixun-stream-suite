@@ -134,31 +134,10 @@ export default defineConfig({
       // Preserve entry signatures to ensure proper initialization order
       preserveEntrySignatures: 'strict',
       output: {
-        // Consistent chunk naming for better caching
-        // Use function-based manualChunks to handle circular dependencies properly
-        manualChunks(id) {
-          // CRITICAL: Put ALL @strixun packages in the main bundle (return undefined)
-          // This prevents chunk loading order issues that cause circular dependency errors
-          // The packages will be bundled with the app code to ensure proper initialization order
-          if (id.includes('@strixun/') || id.includes('node_modules/@strixun/')) {
-            // Return undefined to include in main bundle instead of separate chunk
-            return undefined;
-          }
-          // Vendor chunks for other dependencies
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@tanstack/react-query')) {
-              return 'query-vendor';
-            }
-            if (id.includes('zustand')) {
-              return 'state-vendor';
-            }
-            // Other node_modules go into vendor chunk
-            return 'vendor';
-          }
-        },
+        // CRITICAL: Disable ALL code splitting to prevent circular dependency initialization errors
+        // This ensures all @strixun packages are in the same bundle with proper initialization order
+        // Note: This will create a larger bundle but prevents "Cannot access X before initialization" errors
+        inlineDynamicImports: true, // Inline all dynamic imports to prevent chunk loading order issues
       },
     },
   },
