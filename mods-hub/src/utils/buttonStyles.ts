@@ -4,7 +4,7 @@
  * Ensures consistent button styling across all apps
  */
 
-import { css, keyframes } from 'styled-components';
+import { css } from 'styled-components';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'link' | 'icon';
 

@@ -322,7 +322,7 @@ export function getQuirkyClickStyles(
 // Optional: ${getGameCard3DStyles('24px', '28deg', 1.08)} // lift, maxRotation, scale
 export function getGameCard3DStyles(
   liftDistance: string = '24px',
-  maxRotation: string = '28deg',
+  _maxRotation: string = '28deg',
   scale: number = 1.08
 ) {
   // Animated shimmer sweep keyframes
