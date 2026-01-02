@@ -507,25 +507,44 @@ export async function handleUpdateMod(
         // Save updated mod (customer scope)
         await env.MODS_KV.put(modKey, JSON.stringify(mod));
 
-        // CRITICAL: Update slug index if slug changed
+        // CRITICAL: Update slug indexes - OLD SLUGS MUST BE RELEASED IMMEDIATELY BEFORE NEW ONES ARE CREATED
+        // This ensures old slugs are immediately available for reuse by anyone
         if (slugChanged) {
-            // Delete old slug index
+            // STEP 1: DELETE old slug indexes FIRST (releases old slug immediately)
+            // Delete old customer slug index
             const oldCustomerSlugKey = getCustomerKey(auth.customerId, `slug_${oldSlug}`);
             await env.MODS_KV.delete(oldCustomerSlugKey);
+            console.log('[Update] Released old customer slug index:', { oldSlug, oldCustomerSlugKey });
             
-            // Delete old global slug index if it exists
+            // Delete old global slug index (if it exists - mod might have been public)
             const oldGlobalSlugKey = `slug_${oldSlug}`;
             await env.MODS_KV.delete(oldGlobalSlugKey);
+            console.log('[Update] Released old global slug index:', { oldSlug, oldGlobalSlugKey });
             
-            // Create new slug index in customer scope
+            // STEP 2: CREATE new slug indexes (only after old ones are deleted)
+            // Create new customer slug index
             const newCustomerSlugKey = getCustomerKey(auth.customerId, `slug_${mod.slug}`);
             await env.MODS_KV.put(newCustomerSlugKey, storedModId);
-            console.log('[Update] Updated slug index:', { oldSlug, newSlug: mod.slug, modId: storedModId });
+            console.log('[Update] Created new customer slug index:', { newSlug: mod.slug, newCustomerSlugKey, modId: storedModId });
             
-            // Create global slug index if mod is public
+            // Create new global slug index ONLY if mod is public
+            // (If mod is not public, global index will be created when visibility changes to public)
             if (mod.visibility === 'public') {
                 const newGlobalSlugKey = `slug_${mod.slug}`;
                 await env.MODS_KV.put(newGlobalSlugKey, storedModId);
+                console.log('[Update] Created new global slug index:', { newSlug: mod.slug, newGlobalSlugKey, modId: storedModId });
+            }
+        } else {
+            // Slug didn't change, but visibility might have - update global slug index accordingly
+            if (mod.visibility === 'public') {
+                // Ensure global slug index exists for public mods
+                const globalSlugKey = `slug_${mod.slug}`;
+                await env.MODS_KV.put(globalSlugKey, storedModId);
+            } else {
+                // Remove global slug index if mod is no longer public
+                const globalSlugKey = `slug_${mod.slug}`;
+                await env.MODS_KV.delete(globalSlugKey);
+                console.log('[Update] Removed global slug index (mod no longer public):', { slug: mod.slug, globalSlugKey });
             }
         }
 
@@ -551,13 +570,8 @@ export async function handleUpdateMod(
             const globalModKey = storedModId;
             await env.MODS_KV.put(globalModKey, JSON.stringify(mod));
             
-            // CRITICAL: Create/update global slug index for public mods
-            const globalSlugKey = `slug_${mod.slug}`;
-            await env.MODS_KV.put(globalSlugKey, storedModId);
-        } else {
-            // Remove global slug index if mod is no longer public
-            const globalSlugKey = `slug_${mod.slug}`;
-            await env.MODS_KV.delete(globalSlugKey);
+            // Note: Global slug index is already handled above in the slug change logic
+            // This ensures consistency whether slug changed or not
         }
 
         // Update global public list if visibility changed

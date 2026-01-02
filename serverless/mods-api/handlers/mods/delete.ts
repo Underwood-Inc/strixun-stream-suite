@@ -216,6 +216,20 @@ export async function handleDeleteMod(
             }
         }
 
+        // CRITICAL: Release slug indexes immediately when mod is deleted
+        // This ensures the slug is immediately available for reuse by anyone
+        if (mod.slug) {
+            // Delete customer slug index
+            const customerSlugKey = getCustomerKey(auth.customerId, `slug_${mod.slug}`);
+            await env.MODS_KV.delete(customerSlugKey);
+            console.log('[DeleteMod] Released customer slug index:', { slug: mod.slug, customerSlugKey });
+            
+            // Delete global slug index (if it exists - mod might have been public)
+            const globalSlugKey = `slug_${mod.slug}`;
+            await env.MODS_KV.delete(globalSlugKey);
+            console.log('[DeleteMod] Released global slug index:', { slug: mod.slug, globalSlugKey });
+        }
+
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
