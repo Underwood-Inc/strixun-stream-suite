@@ -34,12 +34,20 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
     
     // Priority 1: Explicitly passed token in metadata (for session restore, fetchUserInfo, etc.)
     if (request.metadata.token && typeof request.metadata.token === 'string' && request.metadata.token.trim().length > 0) {
-      tokenToUse = request.metadata.token.trim();
+      const rawMetadataToken = request.metadata.token;
+      tokenToUse = rawMetadataToken.trim();
+      const wasTrimmed = rawMetadataToken !== tokenToUse;
+      
       console.log('[AuthMiddleware] Using explicitly passed token from metadata:', {
         method: request.method,
         path: request.path,
-        tokenLength: tokenToUse.length,
-        tokenPrefix: tokenToUse.substring(0, 20) + '...',
+        rawTokenLength: rawMetadataToken.length,
+        trimmedTokenLength: tokenToUse.length,
+        wasTrimmed,
+        rawTokenPrefix: rawMetadataToken.substring(0, 20) + '...',
+        trimmedTokenPrefix: tokenToUse.substring(0, 20) + '...',
+        rawTokenSuffix: '...' + rawMetadataToken.substring(rawMetadataToken.length - 10),
+        trimmedTokenSuffix: '...' + tokenToUse.substring(tokenToUse.length - 10),
         source: 'metadata (explicit)'
       });
     } 
@@ -47,14 +55,22 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
     else if (config.tokenGetter) {
       const tokenFromGetter = await config.tokenGetter();
       if (tokenFromGetter && typeof tokenFromGetter === 'string' && tokenFromGetter.trim().length > 0) {
-        tokenToUse = tokenFromGetter.trim();
+        const rawGetterToken = tokenFromGetter;
+        tokenToUse = rawGetterToken.trim();
+        const wasTrimmed = rawGetterToken !== tokenToUse;
+        
         // Store in metadata for response decryption
         request.metadata.token = tokenToUse;
         console.log('[AuthMiddleware] Using token from tokenGetter:', {
           method: request.method,
           path: request.path,
-          tokenLength: tokenToUse.length,
-          tokenPrefix: tokenToUse.substring(0, 20) + '...',
+          rawTokenLength: rawGetterToken.length,
+          trimmedTokenLength: tokenToUse.length,
+          wasTrimmed,
+          rawTokenPrefix: rawGetterToken.substring(0, 20) + '...',
+          trimmedTokenPrefix: tokenToUse.substring(0, 20) + '...',
+          rawTokenSuffix: '...' + rawGetterToken.substring(rawGetterToken.length - 10),
+          trimmedTokenSuffix: '...' + tokenToUse.substring(tokenToUse.length - 10),
           source: 'tokenGetter'
         });
       }
@@ -76,9 +92,14 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig): Middleware {
         hasToken: true,
         tokenLength: tokenToUse.length,
         tokenPrefix: tokenToUse.substring(0, 20) + '...',
+        tokenSuffix: '...' + tokenToUse.substring(tokenToUse.length - 10),
         authHeaderSet: !!request.headers['Authorization'],
+        authHeaderValue: request.headers['Authorization'] ? request.headers['Authorization'].substring(0, 27) + '...' : 'none',
         metadataTokenSet: !!request.metadata.token,
-        tokensMatch: request.headers['Authorization'] === `Bearer ${request.metadata.token}`
+        metadataTokenLength: request.metadata.token?.length || 0,
+        metadataTokenPrefix: request.metadata.token ? request.metadata.token.substring(0, 20) + '...' : 'none',
+        tokensMatch: request.headers['Authorization'] === `Bearer ${request.metadata.token}`,
+        tokensEqual: tokenToUse === request.metadata.token
       });
     } else {
       console.warn('[AuthMiddleware] No token available for request:', { method: request.method, path: request.path });

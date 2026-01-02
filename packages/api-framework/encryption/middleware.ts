@@ -407,6 +407,18 @@ export async function wrapWithEncryption(
     // Parse and encrypt (we know auth.jwtToken exists from check above)
     responseData = await handlerResponse.json();
     
+    // DEBUG: Log token used for encryption (especially for /auth/me)
+    const isAuthMe = request?.url?.includes('/auth/me');
+    if (isAuthMe) {
+        console.log('[wrapWithEncryption] Preparing to encrypt /auth/me response:', {
+            jwtTokenLength: auth.jwtToken?.length || 0,
+            jwtTokenPrefix: auth.jwtToken ? auth.jwtToken.substring(0, 20) + '...' : 'none',
+            jwtTokenSuffix: auth.jwtToken ? '...' + auth.jwtToken.substring(auth.jwtToken.length - 10) : 'none',
+            responseDataType: typeof responseData,
+            responseDataKeys: responseData && typeof responseData === 'object' ? Object.keys(responseData) : null,
+        });
+    }
+    
     // CRITICAL: Exclude thumbnailUrl from encryption - it's a public URL that browsers need to fetch directly
     // Extract thumbnailUrls before encryption and store them separately
     thumbnailUrlsMap = null;
@@ -435,6 +447,15 @@ export async function wrapWithEncryption(
     }
     
     const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
+    
+    if (isAuthMe) {
+        console.log('[wrapWithEncryption] /auth/me response encrypted:', {
+            encryptedKeys: encrypted && typeof encrypted === 'object' ? Object.keys(encrypted) : null,
+            hasTokenHash: encrypted && typeof encrypted === 'object' && 'tokenHash' in encrypted ? !!encrypted.tokenHash : false,
+            tokenHash: encrypted && typeof encrypted === 'object' && 'tokenHash' in encrypted ? (encrypted as any).tokenHash : null,
+            tokenHashLength: encrypted && typeof encrypted === 'object' && 'tokenHash' in encrypted ? String((encrypted as any).tokenHash).length : 0,
+        });
+    }
     
     // Add thumbnailUrls at top level (outside encrypted data) so they remain accessible
     // The frontend will need to merge them back after decryption

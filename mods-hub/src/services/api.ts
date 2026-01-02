@@ -41,9 +41,20 @@ const createClient = () => {
                     const { useAuthStore } = await import('../stores/auth');
                     const store = useAuthStore.getState();
                     if (store.user?.token) {
-                        const token = store.user.token.trim();
+                        const rawToken = store.user.token;
+                        const token = rawToken.trim();
+                        const wasTrimmed = rawToken !== token;
+                        
                         if (token && token.length > 0) {
-                            console.debug('[API] Token retrieved from Zustand store');
+                            console.log('[API] Token retrieved from Zustand store:', {
+                                rawTokenLength: rawToken.length,
+                                trimmedTokenLength: token.length,
+                                wasTrimmed,
+                                rawTokenPrefix: rawToken.substring(0, 20) + '...',
+                                trimmedTokenPrefix: token.substring(0, 20) + '...',
+                                rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+                                trimmedTokenSuffix: '...' + token.substring(token.length - 10),
+                            });
                             return token;
                         }
                     }
@@ -66,9 +77,20 @@ const createClient = () => {
                         }
                         
                         if (token) {
+                            const rawToken = token;
                             const trimmedToken = token.trim();
+                            const wasTrimmed = rawToken !== trimmedToken;
+                            
                             if (trimmedToken && trimmedToken.length > 0) {
-                                console.debug('[API] Token retrieved from localStorage');
+                                console.log('[API] Token retrieved from localStorage:', {
+                                    rawTokenLength: rawToken.length,
+                                    trimmedTokenLength: trimmedToken.length,
+                                    wasTrimmed,
+                                    rawTokenPrefix: rawToken.substring(0, 20) + '...',
+                                    trimmedTokenPrefix: trimmedToken.substring(0, 20) + '...',
+                                    rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+                                    trimmedTokenSuffix: '...' + trimmedToken.substring(trimmedToken.length - 10),
+                                });
                                 return trimmedToken;
                             }
                         }
@@ -80,9 +102,20 @@ const createClient = () => {
                 // Priority 3: Legacy keys for backwards compatibility
                 const legacyToken = localStorage.getItem('auth_token') || localStorage.getItem('access_token');
                 if (legacyToken) {
+                    const rawToken = legacyToken;
                     const trimmedToken = legacyToken.trim();
+                    const wasTrimmed = rawToken !== trimmedToken;
+                    
                     if (trimmedToken && trimmedToken.length > 0) {
-                        console.debug('[API] Token retrieved from legacy storage');
+                        console.log('[API] Token retrieved from legacy storage:', {
+                            rawTokenLength: rawToken.length,
+                            trimmedTokenLength: trimmedToken.length,
+                            wasTrimmed,
+                            rawTokenPrefix: rawToken.substring(0, 20) + '...',
+                            trimmedTokenPrefix: trimmedToken.substring(0, 20) + '...',
+                            rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+                            trimmedTokenSuffix: '...' + trimmedToken.substring(trimmedToken.length - 10),
+                        });
                         return trimmedToken;
                     }
                 }
@@ -143,8 +176,11 @@ const api = createClient();
  * Get authentication token using the same logic as the API client
  * This is a helper function to access the token for encryption without
  * accessing the private config property
+ * 
+ * Exported for use in components that need to make authenticated requests
+ * outside of the API client (e.g., badge images that need auth headers)
  */
-async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(): Promise<string | null> {
     if (typeof window === 'undefined') {
         return null;
     }

@@ -42,25 +42,60 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
     });
 
     if (response.ok) {
-      // Check if response is encrypted
-      const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+      // Check if response is encrypted (headers are case-insensitive, but be defensive)
+      const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
+      const isEncrypted = encryptedHeader === 'true';
+      
       let data: any = await response.json();
       
-      // Decrypt if encrypted
-      if (isEncrypted && data && typeof data === 'object' && 'encrypted' in data && data.encrypted) {
-        try {
-          if (typeof (window as any).decryptWithJWT !== 'function') {
-            console.warn('[URL Shortener] Decryption library not loaded, trying to parse unencrypted response');
-          } else {
-            data = await (window as any).decryptWithJWT(data, token);
+      // Check if data looks encrypted (even if header check failed)
+      const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
+      
+      if (isEncrypted || looksEncrypted) {
+        // Wait for decryptWithJWT to be available (it's loaded via script tag)
+        let decryptFn = (window as any).decryptWithJWT;
+        
+        // Poll for decryptWithJWT if not immediately available (script might still be loading)
+        if (typeof decryptFn !== 'function') {
+          console.warn('[URL Shortener] Decryption library not loaded yet, waiting...');
+          for (let i = 0; i < 10; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            decryptFn = (window as any).decryptWithJWT;
+            if (typeof decryptFn === 'function') {
+              console.log('[URL Shortener] Decryption library loaded after wait');
+              break;
+            }
           }
+        }
+        
+        if (typeof decryptFn !== 'function') {
+          console.error('[URL Shortener] Decryption library not available after waiting. Response is encrypted but cannot decrypt.');
+          return null;
+        }
+        
+        try {
+          // Trim token to ensure it matches what backend used for encryption
+          const trimmedToken = token.trim();
+          data = await decryptFn(data, trimmedToken);
+          console.log('[URL Shortener] Successfully decrypted /auth/me response');
         } catch (error) {
           console.error('[URL Shortener] Failed to decrypt response:', error);
-          // Try to parse as unencrypted fallback
+          // If decryption fails, we can't extract displayName from encrypted data
+          return null;
         }
       }
       
-      return data?.displayName || null;
+      // Extract displayName from decrypted data
+      const displayName = data?.displayName;
+      if (displayName) {
+        console.log('[URL Shortener] Found displayName:', displayName);
+        return displayName;
+      } else {
+        console.warn('[URL Shortener] No displayName in response. Response keys:', data ? Object.keys(data) : 'null');
+        return null;
+      }
+    } else {
+      console.error('[URL Shortener] /auth/me returned non-OK status:', response.status, response.statusText);
     }
   } catch (error) {
     console.error('[URL Shortener] Failed to fetch display name:', error);

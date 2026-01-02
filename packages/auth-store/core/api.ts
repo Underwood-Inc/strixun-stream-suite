@@ -269,7 +269,20 @@ export async function fetchUserInfo(
         
         // CRITICAL: Pass token in metadata so the response handler can decrypt encrypted responses
         // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
+        const rawToken = token;
         const trimmedToken = token.trim();
+        const wasTrimmed = rawToken !== trimmedToken;
+        
+        console.log('[Auth] fetchUserInfo - Token preparation:', {
+            rawTokenLength: rawToken.length,
+            trimmedTokenLength: trimmedToken.length,
+            wasTrimmed,
+            rawTokenPrefix: rawToken.substring(0, 20) + '...',
+            trimmedTokenPrefix: trimmedToken.substring(0, 20) + '...',
+            rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+            trimmedTokenSuffix: '...' + trimmedToken.substring(trimmedToken.length - 10),
+        });
+        
         const response = await authClient.get<{ 
             isSuperAdmin?: boolean; 
             displayName?: string | null; 
@@ -287,6 +300,7 @@ export async function fetchUserInfo(
             hasData: !!response.data,
             dataType: typeof response.data,
             dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : null,
+            isEncrypted: response.data && typeof response.data === 'object' && 'encrypted' in response.data ? (response.data as any).encrypted : false,
         });
         
         if (response.status === 200 && response.data) {
@@ -306,12 +320,13 @@ export async function fetchUserInfo(
                 const error = new Error('Token mismatch - the stored token does not match the token used for encryption. This usually means the token was refreshed or changed.');
                 (error as any).isTokenMismatch = true;
                 (error as any).requiresFreshToken = true; // Flag that we need a fresh token
-                console.error('[Auth] /auth/me response is still encrypted - decryption failed (token mismatch):', {
+                // Use console.warn instead of console.error since this is a recoverable error that's handled gracefully
+                console.warn('[Auth] /auth/me response is still encrypted - decryption failed (token mismatch):', {
                     tokenLength: token.length,
                     tokenPrefix: token.substring(0, 20) + '...',
                     hasEncryptedFlag: true,
                     responseStatus: response.status,
-                    note: 'Token mismatch detected - the stored token does not match the token used for encryption. The caller must clear the stale token and get a fresh one.'
+                    note: 'Token mismatch detected - the stored token does not match the token used for encryption. This will be handled automatically by restoring the session or extracting customerId from JWT.'
                 });
                 throw error;
             }

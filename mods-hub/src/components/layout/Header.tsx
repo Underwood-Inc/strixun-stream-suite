@@ -55,6 +55,11 @@ const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
   ${({ $variant = 'primary' }) => getButtonStyles($variant)}
 `;
 
+const LogoutButton = styled(Button)`
+  max-width: 250px;
+  overflow: hidden;
+`;
+
 export function Header() {
     const { isAuthenticated, user, logout, isSuperAdmin } = useAuthStore();
     const { hasPermission } = useUploadPermission();
@@ -91,21 +96,23 @@ export function Header() {
                         {isSuperAdmin && (
                             <NavLink to="/admin">Admin</NavLink>
                         )}
-                        <Button $variant="secondary" onClick={handleLogout}>
-                            Logout (
-                            <Tooltip detectTruncation position="bottom">
+                        <Tooltip 
+                            text={`Logout (${user?.displayName || 'User'})`} 
+                            detectTruncation 
+                            position="bottom"
+                        >
+                            <LogoutButton $variant="secondary" onClick={handleLogout}>
                                 <span style={{ 
                                     display: 'inline-block',
-                                    maxWidth: '150px',
+                                    maxWidth: '100%',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                 }}>
-                                    {user?.displayName || 'User'}
+                                    Logout ({user?.displayName || 'User'})
                                 </span>
-                            </Tooltip>
-                            )
-                        </Button>
+                            </LogoutButton>
+                        </Tooltip>
                     </>
                 ) : (
                     <Button $variant="primary" onClick={() => navigate('/login')}>

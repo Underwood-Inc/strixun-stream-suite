@@ -477,11 +477,21 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         }
 
         // Route: GET /mods/:slug/versions/:versionId/badge or GET /:slug/versions/:versionId/badge - Get integrity badge
-        // EXCEPTION: Allow public access (no JWT required) for badge images (loaded in <img> tags)
+        // PUBLIC API: Badge endpoint is always public (no JWT required)
+        // Works for unauthenticated users, social media embeds (LinkedIn, Facebook, Discord, X, etc.)
+        // Badge responses are always unencrypted SVG for public access
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'badge' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
             const versionId = pathSegments[2];
+            
+            console.log('[Router] Badge request received:', {
+                slugOrModId,
+                versionId,
+                hasAuth: !!auth,
+                authHeader: request.headers.get('Authorization') ? 'present' : 'missing',
+                path: request.url,
+            });
             
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
@@ -497,9 +507,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             
             const { handleBadge } = await import('../handlers/versions/badge.js');
+            // PUBLIC API: Badge handler works with or without auth
+            // Always returns unencrypted SVG for public access
             const response = await handleBadge(request, env, modId, versionId, auth);
-            // Badge returns SVG (text) - no encryption needed for public access
-            // No JWT encryption required for public browsing
             return { response, customerId: auth?.customerId || null };
         }
 

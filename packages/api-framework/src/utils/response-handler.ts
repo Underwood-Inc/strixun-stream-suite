@@ -14,16 +14,54 @@ import type { APIError, APIRequest, APIResponse } from '../types';
  */
 function getTokenForDecryption(request: APIRequest): string | null {
   // First check if token is in request metadata (set by auth middleware or passed explicitly)
+  // CRITICAL: Always trim token to ensure it matches the token used for encryption on backend
   if (request.metadata?.token && typeof request.metadata.token === 'string') {
-    return request.metadata.token;
+    const metadataToken = request.metadata.token;
+    const trimmedMetadataToken = metadataToken.trim();
+    const wasTrimmed = metadataToken !== trimmedMetadataToken;
+    
+    console.log('[ResponseHandler] getTokenForDecryption - Using token from metadata:', {
+      requestPath: request.path,
+      originalLength: metadataToken.length,
+      trimmedLength: trimmedMetadataToken.length,
+      wasTrimmed,
+      originalPrefix: metadataToken.substring(0, 20) + '...',
+      trimmedPrefix: trimmedMetadataToken.substring(0, 20) + '...',
+      originalEnd: metadataToken.substring(metadataToken.length - 10),
+      trimmedEnd: trimmedMetadataToken.substring(trimmedMetadataToken.length - 10),
+    });
+    
+    return trimmedMetadataToken;
   }
   
   // Fallback: Extract token from Authorization header if present
   // CRITICAL: Trim token to ensure it matches the token used for encryption
   const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
   if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7).trim(); // Remove 'Bearer ' prefix and trim
+    const headerToken = authHeader.substring(7);
+    const trimmedHeaderToken = headerToken.trim();
+    const wasTrimmed = headerToken !== trimmedHeaderToken;
+    
+    console.log('[ResponseHandler] getTokenForDecryption - Using token from Authorization header:', {
+      requestPath: request.path,
+      originalLength: headerToken.length,
+      trimmedLength: trimmedHeaderToken.length,
+      wasTrimmed,
+      originalPrefix: headerToken.substring(0, 20) + '...',
+      trimmedPrefix: trimmedHeaderToken.substring(0, 20) + '...',
+      originalEnd: headerToken.substring(headerToken.length - 10),
+      trimmedEnd: trimmedHeaderToken.substring(trimmedHeaderToken.length - 10),
+    });
+    
+    return trimmedHeaderToken;
   }
+  
+  console.warn('[ResponseHandler] getTokenForDecryption - No token found:', {
+    requestPath: request.path,
+    hasMetadata: !!request.metadata,
+    hasMetadataToken: !!request.metadata?.token,
+    hasAuthHeader: !!authHeader,
+  });
   
   return null;
 }
@@ -98,21 +136,44 @@ export async function handleResponse<T = unknown>(
                                   errorMessage.includes('Token mismatch') ||
                                   errorMessage.includes('Decryption failed - token does not match') ||
                                   errorMessage.toLowerCase().includes('token mismatch');
-          console.error('[ResponseHandler] JWT decryption failed:', {
+          const metadataTokenRaw = request.metadata?.token && typeof request.metadata.token === 'string' ? request.metadata.token : null;
+          const authHeaderRaw = request.headers?.['Authorization'] || request.headers?.['authorization'];
+          
+          console.error('[ResponseHandler] JWT decryption failed - DETAILED DEBUG:', {
             error: errorMessage,
             isTokenMismatch,
-            tokenSource: request.metadata?.token ? 'metadata' : 'authorization-header',
-            tokenLength: token?.length || 0,
-            tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
             requestPath: request.path,
+            // Token used for decryption (after trimming)
+            decryptionTokenLength: token?.length || 0,
+            decryptionTokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+            decryptionTokenSuffix: token ? '...' + token.substring(token.length - 10) : 'none',
+            // Raw metadata token (before trimming)
             hasMetadataToken: !!request.metadata?.token,
-            metadataTokenPrefix: (request.metadata?.token && typeof request.metadata.token === 'string') ? request.metadata.token.substring(0, 20) + '...' : 'none',
-            authHeaderPrefix: (() => {
-              const authHeader = request.headers?.['Authorization'] || request.headers?.['authorization'];
-              return (typeof authHeader === 'string' && authHeader) 
-                ? authHeader.substring(0, 27) + '...' 
-                : 'none';
-            })()
+            metadataTokenRawLength: metadataTokenRaw?.length || 0,
+            metadataTokenRawPrefix: metadataTokenRaw ? metadataTokenRaw.substring(0, 20) + '...' : 'none',
+            metadataTokenRawSuffix: metadataTokenRaw ? '...' + metadataTokenRaw.substring(metadataTokenRaw.length - 10) : 'none',
+            metadataTokenTrimmed: metadataTokenRaw ? metadataTokenRaw.trim() : null,
+            metadataTokenWasTrimmed: metadataTokenRaw ? metadataTokenRaw !== metadataTokenRaw.trim() : false,
+            // Raw auth header (before trimming)
+            hasAuthHeader: !!authHeaderRaw,
+            authHeaderRawPrefix: authHeaderRaw && typeof authHeaderRaw === 'string' ? authHeaderRaw.substring(0, 27) + '...' : 'none',
+            authHeaderTokenRaw: authHeaderRaw && typeof authHeaderRaw === 'string' && authHeaderRaw.startsWith('Bearer ') 
+              ? authHeaderRaw.substring(7) : null,
+            authHeaderTokenRawLength: authHeaderRaw && typeof authHeaderRaw === 'string' && authHeaderRaw.startsWith('Bearer ') 
+              ? authHeaderRaw.substring(7).length : 0,
+            authHeaderTokenTrimmed: authHeaderRaw && typeof authHeaderRaw === 'string' && authHeaderRaw.startsWith('Bearer ') 
+              ? authHeaderRaw.substring(7).trim() : null,
+            authHeaderTokenWasTrimmed: authHeaderRaw && typeof authHeaderRaw === 'string' && authHeaderRaw.startsWith('Bearer ') 
+              ? authHeaderRaw.substring(7) !== authHeaderRaw.substring(7).trim() : false,
+            // Token comparison
+            tokensMatch: token && metadataTokenRaw ? token === metadataTokenRaw.trim() : 'N/A',
+            tokenFromMetadataMatches: token && metadataTokenRaw ? token === metadataTokenRaw.trim() : 'N/A',
+            tokenFromHeaderMatches: token && authHeaderRaw && typeof authHeaderRaw === 'string' && authHeaderRaw.startsWith('Bearer ') 
+              ? token === authHeaderRaw.substring(7).trim() : 'N/A',
+            // Encrypted data info
+            encryptedDataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+            encryptedDataHasTokenHash: data && typeof data === 'object' && 'tokenHash' in data ? !!data.tokenHash : false,
+            encryptedDataTokenHash: data && typeof data === 'object' && 'tokenHash' in data ? (data as any).tokenHash : null,
           });
           
           // For token mismatch errors, provide more helpful error message
