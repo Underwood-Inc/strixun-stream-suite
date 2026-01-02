@@ -60,29 +60,29 @@ function readFromDevVars(devVarsPath: string, key: string): string | null {
 }
 
 /**
- * Get a secret value from .dev.vars or process.env
+ * Get a secret value from process.env or .dev.vars
+ * Prioritizes process.env for CI environments (GitHub Actions, etc.)
  * FAILS if not found in either (no fallbacks to live environments!)
  */
 function getSecretValue(workerDir: string, secretName: string): string {
-  const devVarsPath = join(rootDir, workerDir, '.dev.vars');
-  
-  // Try .dev.vars first
-  const devVarsValue = readFromDevVars(devVarsPath, secretName);
-  if (devVarsValue) {
-    return devVarsValue;
-  }
-  
-  // Try process.env
+  // PRIORITIZE process.env first (for CI environments like GitHub Actions)
   const envValue = process.env[secretName];
   if (envValue) {
     return envValue;
+  }
+  
+  // Fallback to .dev.vars for local development
+  const devVarsPath = join(rootDir, workerDir, '.dev.vars');
+  const devVarsValue = readFromDevVars(devVarsPath, secretName);
+  if (devVarsValue) {
+    return devVarsValue;
   }
   
   // FAIL - no fallback allowed
   throw new Error(
     `[Integration Setup] CRITICAL: Required secret ${secretName} is not set!\n` +
     `Tests must fail when required secrets are missing - no fallbacks allowed.\n` +
-    `Set ${secretName} in ${workerDir}/.dev.vars or as an environment variable.`
+    `Set ${secretName} as an environment variable (for CI) or in ${workerDir}/.dev.vars (for local dev).`
   );
 }
 
@@ -127,23 +127,37 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
   
   // Create .dev.vars file with required secrets - FAILS if secrets are missing
   if (workerDir === 'serverless/otp-auth-service') {
-    createDevVarsFile(workerDir, [
-      'JWT_SECRET',
-      'NETWORK_INTEGRITY_KEYPHRASE',
-      'RESEND_API_KEY',
-      'RESEND_FROM_EMAIL'
-    ]);
-    // Always generate E2E_TEST_OTP_CODE for integration tests (9-digit code)
-    // Use existing value if set, otherwise generate a random one
+    // E2E_TEST_OTP_CODE: Prioritize process.env (for CI/GitHub Actions), otherwise generate
+    // This allows GitHub Actions to set E2E_TEST_OTP_CODE as a secret
     const testOtpCode = process.env.E2E_TEST_OTP_CODE || 
       Math.floor(100000000 + Math.random() * 900000000).toString();
+    
+    const otpSource = process.env.E2E_TEST_OTP_CODE ? 'process.env (CI)' : 'generated';
     
     // Also set in process.env so tests can access it
     process.env.E2E_TEST_OTP_CODE = testOtpCode;
     
+    // Create .dev.vars with all required secrets including E2E_TEST_OTP_CODE
+    // All secrets prioritize process.env first (for CI), then fallback to .dev.vars (for local)
     const devVarsPath = join(rootDir, workerDir, '.dev.vars');
-    const content = `E2E_TEST_OTP_CODE=${testOtpCode}\nENVIRONMENT=test\n`;
-    writeFileSync(devVarsPath, content, { flag: 'a' });
+    const secrets: Record<string, string> = {};
+    
+    // Get required secrets (prioritizes process.env, then .dev.vars)
+    for (const secretName of ['JWT_SECRET', 'NETWORK_INTEGRITY_KEYPHRASE', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL']) {
+      secrets[secretName] = getSecretValue(workerDir, secretName);
+    }
+    
+    // Add E2E_TEST_OTP_CODE and ENVIRONMENT
+    secrets['E2E_TEST_OTP_CODE'] = testOtpCode;
+    secrets['ENVIRONMENT'] = 'test';
+    
+    // Write .dev.vars file with all values (for workers to read)
+    const content = Object.entries(secrets)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n') + '\n';
+    
+    writeFileSync(devVarsPath, content, 'utf-8');
+    console.log(`[Integration Setup] ✓ Created .dev.vars for ${workerDir} with E2E_TEST_OTP_CODE=${testOtpCode} (${otpSource})`);
   } else if (workerDir === 'serverless/customer-api') {
     createDevVarsFile(workerDir, [
       'JWT_SECRET',
@@ -158,12 +172,18 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN || 'dummy-token-for-integration-tests',
   };
   
-  // Validate NETWORK_INTEGRITY_KEYPHRASE is set (no fallback)
-  if (!process.env.NETWORK_INTEGRITY_KEYPHRASE) {
+  // Validate NETWORK_INTEGRITY_KEYPHRASE is set (check both process.env and .dev.vars)
+  // This validation happens before getSecretValue is called, so we check both sources
+  const networkIntegrityKeyphrase = process.env.NETWORK_INTEGRITY_KEYPHRASE || 
+    (workerDir === 'serverless/otp-auth-service' || workerDir === 'serverless/customer-api' 
+      ? readFromDevVars(join(rootDir, workerDir, '.dev.vars'), 'NETWORK_INTEGRITY_KEYPHRASE')
+      : null);
+  
+  if (!networkIntegrityKeyphrase) {
     throw new Error(
-      '[Integration Setup] CRITICAL: NETWORK_INTEGRITY_KEYPHRASE environment variable is required!\n' +
-      'Tests must fail when required environment variables are missing - no fallbacks allowed.\n' +
-      'Set NETWORK_INTEGRITY_KEYPHRASE in your environment or CI workflow secrets.'
+      '[Integration Setup] CRITICAL: NETWORK_INTEGRITY_KEYPHRASE is required!\n' +
+      'Tests must fail when required secrets are missing - no fallbacks allowed.\n' +
+      'Set NETWORK_INTEGRITY_KEYPHRASE as an environment variable (for CI) or in .dev.vars (for local dev).'
     );
   }
   

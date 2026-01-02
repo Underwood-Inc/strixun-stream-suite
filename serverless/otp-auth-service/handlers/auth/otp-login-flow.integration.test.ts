@@ -30,9 +30,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load E2E_TEST_OTP_CODE from .dev.vars for local testing
+// Load E2E_TEST_OTP_CODE - prioritizes process.env (for CI/GitHub Actions), then .dev.vars (for local)
 function loadE2ETestOTPCode(): string | null {
-  // Try environment variable first (set by vitest setup)
+  // PRIORITIZE process.env first (for CI environments like GitHub Actions)
+  // GitHub Actions can set E2E_TEST_OTP_CODE as a secret
   if (process.env.E2E_TEST_OTP_CODE) {
     return process.env.E2E_TEST_OTP_CODE;
   }
@@ -49,17 +50,32 @@ function loadE2ETestOTPCode(): string | null {
       try {
         const content = readFileSync(devVarsPath, 'utf-8');
         // Match E2E_TEST_OTP_CODE=value (handle potential whitespace and comments)
-        const match = content.match(/^E2E_TEST_OTP_CODE\s*=\s*(.+?)(?:\s*$|\s*#)/m);
-        if (match) {
-          const value = match[1].trim();
-          if (value) {
-            return value;
+        // Try multiple patterns to be more robust
+        const patterns = [
+          /^E2E_TEST_OTP_CODE\s*=\s*(.+?)(?:\s*$|\s*#|\s*\n)/m,  // With newline or comment
+          /^E2E_TEST_OTP_CODE\s*=\s*(.+)$/m,  // Simple pattern
+          /E2E_TEST_OTP_CODE\s*=\s*([^\s#\n]+)/,  // Most permissive
+        ];
+        
+        for (const pattern of patterns) {
+          const match = content.match(pattern);
+          if (match) {
+            const value = match[1].trim();
+            if (value) {
+              console.log(`[Integration Tests] Found E2E_TEST_OTP_CODE in ${devVarsPath}: ${value.substring(0, 3)}...`);
+              return value;
+            }
           }
         }
+        
+        // Debug: log file content if no match found
+        console.warn(`[Integration Tests] E2E_TEST_OTP_CODE not found in ${devVarsPath}. File content preview:`, content.substring(0, 200));
       } catch (error) {
         // Continue to next path if this one fails
         console.warn(`[Integration Tests] Failed to read ${devVarsPath}:`, error);
       }
+    } else {
+      console.log(`[Integration Tests] .dev.vars file not found at ${devVarsPath}`);
     }
   }
   
@@ -161,19 +177,45 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       
       // For local testing, use E2E_TEST_OTP_CODE from .dev.vars
       // This is set in .dev.vars for local integration tests
-      const testOTPCode = loadE2ETestOTPCode();
+      // Retry loading in case file wasn't written yet (shouldn't happen, but be safe)
+      let testOTPCode: string | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        testOTPCode = loadE2ETestOTPCode();
+        if (testOTPCode) {
+          break;
+        }
+        if (attempt < 2) {
+          // Small delay before retry
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
       if (testOTPCode) {
         otpCode = testOTPCode;
         console.log(`[Integration Tests] Using E2E_TEST_OTP_CODE: ${otpCode}`);
       } else {
         // Provide helpful error message with debugging info
         const devVarsPath = join(__dirname, '../../.dev.vars');
-        const envVar = process.env.E2E_TEST_OTP_CODE ? 'set' : 'not set';
-        const fileExists = existsSync(devVarsPath) ? 'exists' : 'does not exist';
+        const envVar = process.env.E2E_TEST_OTP_CODE ? `set (${process.env.E2E_TEST_OTP_CODE.substring(0, 3)}...)` : 'not set';
+        const fileExists = existsSync(devVarsPath);
+        let fileInfo = '';
+        if (fileExists) {
+          try {
+            const content = readFileSync(devVarsPath, 'utf-8');
+            fileInfo = `exists (${content.length} bytes, contains E2E_TEST_OTP_CODE: ${content.includes('E2E_TEST_OTP_CODE')})`;
+          } catch (error) {
+            fileInfo = `exists but cannot read: ${error}`;
+          }
+        } else {
+          fileInfo = 'does not exist';
+        }
+        
         throw new Error(
           `OTP code not available. For local testing, ensure E2E_TEST_OTP_CODE is set.\n` +
           `  - Environment variable E2E_TEST_OTP_CODE: ${envVar}\n` +
-          `  - .dev.vars file at ${devVarsPath}: ${fileExists}\n` +
+          `  - .dev.vars file at ${devVarsPath}: ${fileInfo}\n` +
+          `  - Current working directory: ${process.cwd()}\n` +
+          `  - Test file directory: ${__dirname}\n` +
           `  - The vitest setup should automatically generate this, but if it's missing,\n` +
           `    you can set it manually in .dev.vars or as an environment variable.`
         );
