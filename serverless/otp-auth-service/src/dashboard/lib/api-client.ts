@@ -115,8 +115,16 @@ export class ApiClient {
   // Customer endpoints (using customer-api - consolidated from /admin/customers/me)
   async getCustomer(): Promise<Customer> {
     // Use customer-api endpoint - customer-api handles all customer data
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
+    
     const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
-      (import.meta.env.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+      (isLocalhost ? 'http://localhost:8790' : 'https://customer-api.idling.app');
     const customerApi = createAPIClient({
       baseURL: customerApiUrl,
       defaultHeaders: {
@@ -153,8 +161,16 @@ export class ApiClient {
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
     // Use customer-api endpoint - customer-api handles all customer data
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
+    
     const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
-      (import.meta.env.DEV ? 'http://localhost:8790' : 'https://customer-api.idling.app');
+      (isLocalhost ? 'http://localhost:8790' : 'https://customer-api.idling.app');
     const customerApi = createAPIClient({
       baseURL: customerApiUrl,
       defaultHeaders: {

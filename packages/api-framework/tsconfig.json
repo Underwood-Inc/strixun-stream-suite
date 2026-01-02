@@ -18,6 +18,7 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["@cloudflare/workers-types"],
     "outDir": "../../dist/api-framework",
+    // Note: TypeScript outDir uses relative paths, which is fine for tsconfig
     "rootDir": ".",
     "declaration": true,
     "declarationMap": true,

@@ -55,12 +55,16 @@ export class ApiClient {
 
   constructor() {
     // Customer API uses different base URL
-    // In local dev, ALWAYS use localhost:8790; in production use the deployed URL
-    // CRITICAL: Always use localhost if running on localhost (even if env vars aren't set)
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    // Check if we're running on localhost (development mode)
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
     
-    // ALWAYS use localhost in local dev - never fall back to production URL
+    // ALWAYS use localhost in local dev - NEVER fall back to production URL
     // Force localhost if we're running on localhost, regardless of env vars
     const customerApiUrl = isLocalhost 
       ? 'http://localhost:8790'
@@ -116,12 +120,16 @@ export class ApiClient {
     }
     // Recreate clients to pick up new token
     this.api = createClient();
-    // Check for dev mode: import.meta.env.DEV, import.meta.env.MODE === 'development', or window.location.hostname === 'localhost'
-    // CRITICAL: Always use localhost if running on localhost (even if env vars aren't set)
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    // Check if we're running on localhost (development mode)
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
     
-    // ALWAYS use localhost in local dev - never fall back to production URL
+    // ALWAYS use localhost in local dev - NEVER fall back to production URL
     // Force localhost if we're running on localhost, regardless of env vars
     const customerApiUrl = isLocalhost 
       ? 'http://localhost:8790'

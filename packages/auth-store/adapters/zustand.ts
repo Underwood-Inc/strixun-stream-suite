@@ -61,7 +61,23 @@ export function createAuthStore(config?: AuthStoreConfig) {
             try {
                 const currentUser = get().user;
                 if (currentUser?.token) {
-                    const apiUrl = config?.authApiUrl || 'https://auth.idling.app';
+                    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+                    let apiUrl = config?.authApiUrl;
+                    if (!apiUrl && typeof window !== 'undefined') {
+                        const isLocalhost = window.location.hostname === 'localhost' || 
+                                            window.location.hostname === '127.0.0.1' ||
+                                            import.meta.env?.DEV ||
+                                            import.meta.env?.MODE === 'development';
+                        
+                        if (isLocalhost) {
+                            // NEVER fall back to production when on localhost
+                            apiUrl = 'http://localhost:8787';
+                        } else {
+                            apiUrl = 'https://auth.idling.app';
+                        }
+                    } else if (!apiUrl) {
+                        apiUrl = 'https://auth.idling.app';
+                    }
                     const { createAPIClient } = await import('@strixun/api-framework/client');
                     const authClient = createAPIClient({
                         baseURL: apiUrl,

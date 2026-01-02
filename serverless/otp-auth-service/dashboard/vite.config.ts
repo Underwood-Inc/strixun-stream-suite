@@ -17,11 +17,12 @@ export default defineConfig({
       '$components': path.resolve(__dirname, './src/components'),
       '@shared-styles': path.resolve(__dirname, '../../../shared-styles'),
       '@shared-components': path.resolve(__dirname, '../../../shared-components'),
-      '@shared-config': path.resolve(__dirname, '../../../shared-config')
+      '@shared-config': path.resolve(__dirname, '../../../shared-config'),
+      '@styles': path.resolve(__dirname, '../../../src/styles')
     }
   },
   build: {
-    outDir: '../../../dist/otp-auth-service-dashboard',
+    outDir: path.resolve(__dirname, '../../../dist/otp-auth-service-dashboard'),
     emptyOutDir: true,
     base: '/dashboard/',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles

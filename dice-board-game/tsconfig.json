@@ -12,6 +12,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "../../dist/dice-board-game",
+    // Note: TypeScript outDir uses relative paths, which is fine for tsconfig
     "rootDir": "./",
     "strict": true,
     "noUnusedLocals": false,

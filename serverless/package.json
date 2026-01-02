@@ -1,5 +1,5 @@
-﻿{
-  "name": "strixun-twitch-api",
+{
+  "name": "strixun-serverless",
   "version": "1.0.0",
   "description": "Cloudflare Workers serverless infrastructure - Twitch API proxy, OTP auth, URL shortener, chat signaling, and cloud storage - Strixun's Stream Suite",
   "private": true,

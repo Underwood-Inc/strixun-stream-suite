@@ -23,7 +23,7 @@ export default defineConfig({
   },
   build: {
     // Output to root dist directory
-    outDir: '../dist/control-panel',
+    outDir: resolve(__dirname, '../dist/control-panel'),
     emptyOutDir: true,
     // Inline all assets
     assetsInlineLimit: Infinity,
@@ -34,6 +34,10 @@ export default defineConfig({
         manualChunks: undefined,
       },
     },
+  },
+  server: {
+    port: 5175,
+    open: false,
   },
 });
 

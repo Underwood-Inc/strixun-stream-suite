@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient, type ShortUrl } from '../lib/api-client';
+import { Tooltip } from '@mods-hub/components/common/Tooltip';
 
 interface UrlManagerProps {
   userDisplayName: string | null;
@@ -21,6 +22,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
 
   useEffect(() => {
     loadUrls();
+    loadStats();
   }, []);
 
   async function loadUrls(): Promise<void> {
@@ -36,6 +38,17 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
       console.error('Error loading URLs:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStats(): Promise<void> {
+    try {
+      const response = await apiClient.getStats();
+      if (response.success && response.totalUrls !== undefined) {
+        setTotalUrls(response.totalUrls);
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
     }
   }
 
@@ -170,9 +183,9 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
         <div className="header-content">
           <div>
             <h1>URL Shortener</h1>
-            <p className="user-info">
+            <div className="user-info">
               Signed in as: <strong>
-                <Tooltip detectTruncation position="bottom">
+                <Tooltip text={userDisplayName || 'User'} detectTruncation position="bottom">
                   <span style={{ 
                     display: 'inline-block',
                     maxWidth: '200px',
@@ -184,7 +197,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
                   </span>
                 </Tooltip>
               </strong>
-            </p>
+            </div>
             {totalUrls !== null && (
               <p className="stats-info">Total URLs shortened: <strong>{totalUrls.toLocaleString()}</strong></p>
             )}

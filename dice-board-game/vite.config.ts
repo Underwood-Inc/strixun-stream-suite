@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../dist/dice-board-game',
+    outDir: path.resolve(__dirname, '../dist/dice-board-game'),
     emptyOutDir: true,
     lib: {
       entry: {
@@ -31,5 +31,10 @@ export default defineConfig({
         },
       },
     },
+  },
+  server: {
+    port: 5178,
+    open: false,
+    cors: true
   },
 });

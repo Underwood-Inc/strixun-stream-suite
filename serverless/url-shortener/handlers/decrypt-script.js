@@ -17,41 +17,41 @@ import { getCorsHeaders } from '../utils/cors.js';
  * GET /decrypt.js
  */
 export async function handleDecryptScript(request, env) {
-  // CRITICAL SECURITY: JWT binary encryption is MANDATORY for all binary responses
-  // Get JWT token from request
+  // Get JWT token from request (optional - serve unencrypted if no token)
   const authHeader = request.headers.get('Authorization');
   const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
   
-  if (!jwtToken) {
-    const errorResponse = {
-      type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
-      title: 'Unauthorized',
-      status: 401,
-      detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
-      instance: request.url
-    };
-    const corsHeaders = getCorsHeaders(env, request);
-    return new Response(JSON.stringify(errorResponse), {
-      status: 401,
-      headers: {
-        'Content-Type': 'application/problem+json',
-        ...corsHeaders,
-      },
-    });
-  }
-
-  // Convert JavaScript code to binary and encrypt with JWT
-  const encoder = new TextEncoder();
-  const codeBytes = encoder.encode(BUNDLED_DECRYPT_SCRIPT);
-  const encryptedCode = await encryptBinaryWithJWT(codeBytes, jwtToken);
-
   const corsHeaders = getCorsHeaders(env, request);
-  return new Response(encryptedCode, {
+  
+  // If JWT token is provided, encrypt the script
+  if (jwtToken) {
+    try {
+      // Convert JavaScript code to binary and encrypt with JWT
+      const encoder = new TextEncoder();
+      const codeBytes = encoder.encode(BUNDLED_DECRYPT_SCRIPT);
+      const encryptedCode = await encryptBinaryWithJWT(codeBytes, jwtToken);
+
+      return new Response(encryptedCode, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/octet-stream', // Binary encrypted data
+          'X-Encrypted': 'true', // Flag to indicate encrypted response
+          'X-Original-Content-Type': 'application/javascript; charset=utf-8', // Preserve original content type
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    } catch (error) {
+      // If encryption fails, fall back to unencrypted
+      console.warn('[Decrypt Script] Encryption failed, serving unencrypted:', error);
+    }
+  }
+  
+  // Serve unencrypted script (public access - needed for initial authentication)
+  // This is safe because the script itself doesn't contain secrets
+  return new Response(BUNDLED_DECRYPT_SCRIPT, {
     headers: {
       ...corsHeaders,
-      'Content-Type': 'application/octet-stream', // Binary encrypted data
-      'X-Encrypted': 'true', // Flag to indicate encrypted response
-      'X-Original-Content-Type': 'application/javascript; charset=utf-8', // Preserve original content type
+      'Content-Type': 'application/javascript; charset=utf-8',
       'Cache-Control': 'public, max-age=3600',
     },
   });

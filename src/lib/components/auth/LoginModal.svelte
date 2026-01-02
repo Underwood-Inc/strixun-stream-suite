@@ -38,9 +38,24 @@
   
   /**
    * Get OTP Auth API URL
-   * Priority: VITE_AUTH_API_URL (for E2E tests) > window.getOtpAuthApiUrl() > fallback
+   * Priority: localhost check > VITE_AUTH_API_URL (for E2E tests) > window.getOtpAuthApiUrl() > fallback
    */
   function getOtpAuthApiUrl(): string {
+    // CRITICAL: Check localhost FIRST - NEVER call window.getOtpAuthApiUrl() on localhost
+    // This prevents any cached production URLs from being used
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
+    
+    if (isLocalhost) {
+      // NEVER fall back to production when on localhost
+      // NEVER call window.getOtpAuthApiUrl() - it might have cached production URL
+      return 'http://localhost:8787';
+    }
+    
     // Priority 1: VITE_AUTH_API_URL (set by playwright config for E2E tests, same as mods-hub)
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
       const viteUrl = import.meta.env.VITE_AUTH_API_URL;
@@ -49,12 +64,15 @@
       }
     }
     
-    // Priority 2: window.getOtpAuthApiUrl() (from config.js)
+    // Priority 2: window.getOtpAuthApiUrl() (from config.js) - only if NOT on localhost
     if (typeof window !== 'undefined' && (window as any).getOtpAuthApiUrl) {
-      return (window as any).getOtpAuthApiUrl() || '';
+      const url = (window as any).getOtpAuthApiUrl();
+      if (url) {
+        return url;
+      }
     }
     
-    // Fallback to custom domain if function doesn't exist
+    // Only use production URL if NOT on localhost
     return 'https://auth.idling.app';
   }
   

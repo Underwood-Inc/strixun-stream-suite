@@ -1,4 +1,12 @@
 /**
+ * ⚠️ DEPRECATED - This script is OBSOLETE and no longer used
+ * 
+ * Service key encryption has been completely removed. This script is kept for
+ * reference only but is NOT used by the build system. The dashboard build
+ * script in package.json does NOT use this script.
+ * 
+ * All encryption now uses JWT tokens via the API framework.
+ * 
  * Build script that ensures VITE_SERVICE_ENCRYPTION_KEY is available
  * 
  * Supports multiple sources (in priority order):

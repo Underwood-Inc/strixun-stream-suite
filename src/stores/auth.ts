@@ -106,6 +106,17 @@ function saveAuthState(userData: User | null): void {
 function getOtpAuthApiUrl(): string {
   // Try to get from window config (injected during build)
   if (typeof window !== 'undefined') {
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        import.meta.env?.DEV ||
+                        import.meta.env?.MODE === 'development';
+    
+    if (isLocalhost) {
+      // NEVER fall back to production when on localhost
+      return 'http://localhost:8787';
+    }
+    
     // Priority 1: VITE_AUTH_API_URL (for E2E tests, set by playwright config)
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
       const viteUrl = import.meta.env.VITE_AUTH_API_URL;
@@ -122,7 +133,7 @@ function getOtpAuthApiUrl(): string {
       }
     }
     
-    // Fallback to hardcoded URL
+    // Only use production URL if NOT on localhost
     return 'https://auth.idling.app';
   }
   return '';

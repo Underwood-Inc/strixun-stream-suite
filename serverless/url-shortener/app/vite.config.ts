@@ -47,12 +47,16 @@ export default defineConfig({
         target: 'http://localhost:8787',
         changeOrigin: true
       },
-      '/decrypt.js': {
+      '/auth': {
         target: 'http://localhost:8787',
         changeOrigin: true
       },
+      '/decrypt.js': {
+        target: 'http://localhost:8793',
+        changeOrigin: true
+      },
       '/otp-core.js': {
-        target: 'http://localhost:8787',
+        target: 'http://localhost:8793',
         changeOrigin: true
       }
     }

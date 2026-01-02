@@ -3,9 +3,28 @@
  * TypeScript client for URL shortener API
  */
 
-const API_URL = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : 'https://s.idling.app';
+// CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+function getApiUrl(): string {
+    if (typeof window === 'undefined') {
+        return 'https://s.idling.app';
+    }
+    
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        import.meta.env?.DEV ||
+                        import.meta.env?.MODE === 'development';
+    
+    if (isLocalhost) {
+        // NEVER fall back to production when on localhost
+        // URL shortener worker runs on port 8793
+        return 'http://localhost:8793';
+    }
+    
+    // Only use production URL if NOT on localhost
+    return window.location.origin;
+}
+
+const API_URL = getApiUrl();
 
 export interface ShortUrl {
     shortCode: string;

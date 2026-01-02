@@ -12,10 +12,25 @@ import { secureFetch } from '../core/services/encryption';
 function getOtpAuthApiUrl(): string {
     // Try to get from window config (injected during build)
     if (typeof window !== 'undefined') {
-        if ((window as any).getOtpAuthApiUrl) {
-            return (window as any).getOtpAuthApiUrl() || '';
+        // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1' ||
+                            import.meta.env?.DEV ||
+                            import.meta.env?.MODE === 'development';
+        
+        if (isLocalhost) {
+            // NEVER fall back to production when on localhost
+            return 'http://localhost:8787';
         }
-        // Fallback to hardcoded URL
+        
+        if ((window as any).getOtpAuthApiUrl) {
+            const url = (window as any).getOtpAuthApiUrl();
+            if (url) {
+                return url;
+            }
+        }
+        
+        // Only use production URL if NOT on localhost
         return 'https://auth.idling.app';
     }
     return '';

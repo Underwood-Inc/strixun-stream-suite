@@ -13,7 +13,22 @@ import './app.scss';
 
 function getApiUrl(): string {
   if (typeof window === 'undefined') return '';
-  return 'https://auth.idling.app';
+  
+  // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+  // Check if we're running on localhost (development mode)
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      import.meta.env.DEV ||
+                      import.meta.env.MODE === 'development';
+  
+  if (isLocalhost) {
+    // NEVER fall back to production when on localhost
+    return 'http://localhost:8787';
+  }
+  
+  // Only use production URL if NOT on localhost
+  // Environment variable override for production builds
+  return import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
 }
 
 async function fetchUserDisplayName(token: string): Promise<string | null> {
@@ -27,8 +42,25 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
     });
 
     if (response.ok) {
-      const data: any = await response.json();
-      return data.displayName || null;
+      // Check if response is encrypted
+      const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+      let data: any = await response.json();
+      
+      // Decrypt if encrypted
+      if (isEncrypted && data && typeof data === 'object' && 'encrypted' in data && data.encrypted) {
+        try {
+          if (typeof (window as any).decryptWithJWT !== 'function') {
+            console.warn('[URL Shortener] Decryption library not loaded, trying to parse unencrypted response');
+          } else {
+            data = await (window as any).decryptWithJWT(data, token);
+          }
+        } catch (error) {
+          console.error('[URL Shortener] Failed to decrypt response:', error);
+          // Try to parse as unencrypted fallback
+        }
+      }
+      
+      return data?.displayName || null;
     }
   } catch (error) {
     console.error('[URL Shortener] Failed to fetch display name:', error);

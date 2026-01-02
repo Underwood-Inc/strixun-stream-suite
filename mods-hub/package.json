@@ -13,7 +13,6 @@
     "dev:auth": "pnpm --filter @strixun/otp-auth-service dev",
     "dev:customer": "pnpm --filter strixun-customer-api dev",
     "lint": "eslint .",
-    "prebuild": "pnpm --filter @strixun/otp-login build:react && pnpm --filter @strixun/dice-board-game build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:api": "vitest run --passWithNoTests src/services/api",

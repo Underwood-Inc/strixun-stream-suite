@@ -6,14 +6,18 @@
   function getApiUrl(): string {
     if (typeof window === 'undefined') return '';
     
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isDev) {
-      if ((window as any).OTP_AUTH_API_URL) {
-        return (window as any).OTP_AUTH_API_URL;
-      }
-      return 'https://auth.idling.app';
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        import.meta.env?.DEV ||
+                        import.meta.env?.MODE === 'development';
+    
+    if (isLocalhost) {
+      // NEVER fall back to production when on localhost
+      return 'http://localhost:8787';
     }
     
+    // Only use production URL if NOT on localhost
     return window.location.origin;
   }
 

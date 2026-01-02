@@ -10,6 +10,9 @@ build/
 *.local
 dev-dist/
 
+# Turborepo
+.turbo/
+
 # Auto-generated assets (may contain secrets)
 **/app-assets.ts
 **/app-assets.js
@@ -96,5 +99,5 @@ playwright/.cache/
 **/.playwright/
 
 # Explicitly include PANDA_CORE directory (do not ignore)
-!__╠═══ PANDA_CORE ═══╣__/
-!__╠═══ PANDA_CORE ═══╣__/**
+!╠═══ PANDA_CORE ═══╣/
+!╠═══ PANDA_CORE ═══╣/**

@@ -30,12 +30,25 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
         if (url) return url;
     }
     
-    // Priority 5: Development proxy (Vite)
+    // Priority 5: Check if running on localhost (CRITICAL: NO FALLBACKS ON LOCAL)
+    if (typeof window !== 'undefined') {
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1' ||
+                            import.meta.env?.DEV ||
+                            import.meta.env?.MODE === 'development';
+        
+        if (isLocalhost) {
+            // NEVER fall back to production when on localhost
+            return 'http://localhost:8787';
+        }
+    }
+    
+    // Priority 6: Development proxy (Vite)
     if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
         return '/auth-api';
     }
     
-    // Priority 6: Production default
+    // Priority 7: Production default (only if NOT on localhost)
     return 'https://auth.idling.app';
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { User, Customer } from '$lib/types';
   import { createEventDispatcher } from 'svelte';
-  import TruncatedText from '../../../../src/lib/components/TruncatedText.svelte';
+  import TruncatedText from '../../../../../src/lib/components/TruncatedText.svelte';
 
   export let user: User | null = null;
   export let customer: Customer | null = null;
