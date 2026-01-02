@@ -114,10 +114,26 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Consistent chunk naming for better caching
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'query-vendor': ['@tanstack/react-query'],
-          'state-vendor': ['zustand'],
+        // Use function-based manualChunks to handle circular dependencies properly
+        manualChunks(id) {
+          // Keep @strixun packages together to avoid circular dependency issues
+          if (id.includes('@strixun/')) {
+            return 'strixun-vendor';
+          }
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@tanstack/react-query')) {
+              return 'query-vendor';
+            }
+            if (id.includes('zustand')) {
+              return 'state-vendor';
+            }
+            // Other node_modules go into vendor chunk
+            return 'vendor';
+          }
         },
       },
     },

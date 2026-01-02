@@ -27,6 +27,8 @@ const NO_JWT_REQUIRED_PATHS = [
     '/signup',
     '/signup/verify',
     '/track/email-open',     // Email clients can't send headers
+    '/assets/',              // Static assets (CSS, JS, images) - must be public
+    '/dashboard',            // Dashboard SPA - assets served via /assets/ but dashboard itself is public
     '/',                     // Landing page for first-time visitors
     ''
 ];
@@ -171,6 +173,11 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             if (noJwtPath === '/' || noJwtPath === '') {
                 return path === '/' || path === '';
             }
+            // Handle paths that end with / (like /assets/) - match both exact and sub-paths
+            if (noJwtPath.endsWith('/')) {
+                return path === noJwtPath || path.startsWith(noJwtPath);
+            }
+            // Handle exact match or sub-path match
             return path === noJwtPath || path.startsWith(noJwtPath + '/');
         });
         
