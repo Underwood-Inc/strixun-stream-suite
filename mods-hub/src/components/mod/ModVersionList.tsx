@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModVersion, ModVariant } from '../../types/mod';
@@ -11,6 +12,7 @@ import { downloadVersion, downloadVariant } from '../../services/api';
 import { IntegrityBadge } from './IntegrityBadge';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
+import { useAuthStore } from '../../stores/auth';
 
 const Container = styled.div`
   display: flex;
@@ -181,6 +183,8 @@ interface ModVersionListProps {
 }
 
 export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionListProps) {
+    const navigate = useNavigate();
+    const { isAuthenticated } = useAuthStore();
     const [downloading, setDownloading] = useState<Set<string>>(new Set());
     const [downloadingVariants, setDownloadingVariants] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -209,6 +213,16 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
     };
 
     const handleDownload = async (version: ModVersion) => {
+        // SECURITY: Prevent unauthenticated download attempts
+        if (!isAuthenticated) {
+            setDownloadError('Please log in to download files');
+            setTimeout(() => {
+                setDownloadError(null);
+                navigate('/login');
+            }, 2000);
+            return;
+        }
+
         setDownloading(prev => new Set(prev).add(version.versionId));
         setDownloadError(null);
         
@@ -229,6 +243,16 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
     };
 
     const handleVariantDownload = async (variant: ModVariant) => {
+        // SECURITY: Prevent unauthenticated download attempts
+        if (!isAuthenticated) {
+            setDownloadError('Please log in to download files');
+            setTimeout(() => {
+                setDownloadError(null);
+                navigate('/login');
+            }, 2000);
+            return;
+        }
+
         if (!variant.variantId) {
             setDownloadError('Variant ID not available');
             setTimeout(() => setDownloadError(null), 5000);
@@ -317,7 +341,8 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                         e.stopPropagation();
                                         handleDownload(version);
                                     }}
-                                    disabled={downloading.has(version.versionId)}
+                                    disabled={downloading.has(version.versionId) || !isAuthenticated}
+                                    title={!isAuthenticated ? 'Please log in to download' : undefined}
                                 >
                                     {downloading.has(version.versionId) ? 'Downloading...' : 'Download'}
                                 </DownloadButton>
@@ -362,7 +387,8 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                             </VariantInfo>
                                             <VariantDownloadButton
                                                 onClick={() => handleVariantDownload(variant)}
-                                                disabled={downloadingVariants.has(variant.variantId) || !variant.variantId}
+                                                disabled={downloadingVariants.has(variant.variantId) || !variant.variantId || !isAuthenticated}
+                                                title={!isAuthenticated ? 'Please log in to download' : undefined}
                                             >
                                                 {downloadingVariants.has(variant.variantId) ? 'Downloading...' : 'Download'}
                                             </VariantDownloadButton>

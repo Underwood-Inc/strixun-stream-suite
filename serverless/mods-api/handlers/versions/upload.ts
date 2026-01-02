@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT } from '@strixun/api-framework';
+import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key, normalizeModId } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
@@ -210,16 +210,16 @@ export async function handleUploadVersion(
         // Files are decrypted on-the-fly during download
         // Support both binary encryption (v4) and legacy JSON encryption (v3)
         
-        // Get JWT token for temporary decryption (to calculate hash)
-        // CRITICAL: Trim token to ensure it matches the token used for encryption
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
-        if (!jwtToken) {
-            const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required for file processing');
+        // Get shared encryption key for decryption (MANDATORY - all files must be encrypted with shared key)
+        const sharedKey = env.MODS_ENCRYPTION_KEY;
+        
+        if (!sharedKey || sharedKey.length < 32) {
+            const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
             return new Response(JSON.stringify(rfcError), {
-                status: 401,
+                status: 500,
                 headers: {
                     'Content-Type': 'application/problem+json',
                     ...Object.fromEntries(corsHeaders.entries()),
@@ -257,38 +257,29 @@ export async function handleUploadVersion(
         
         try {
             if (isBinaryEncrypted) {
-                // Binary encrypted format - decrypt directly
-                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
-                const decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
+                // Binary encrypted format - Shared key encryption is MANDATORY
+                let decryptedBytes: Uint8Array;
+                try {
+                    decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
+                    console.log('[VersionUpload] Binary decryption successful with shared key');
+                } catch (decryptError) {
+                    const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
+                    throw new Error(`Failed to decrypt file with shared key. All files must be encrypted with the shared encryption key. Error: ${errorMsg}`);
+                }
+                
                 fileSize = decryptedBytes.length;
                 fileHash = await calculateStrixunHash(decryptedBytes, env);
                 // Determine version from first byte (4 or 5)
                 encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
-                // Legacy JSON encrypted format
-                const encryptedData = await file.text();
-                const encryptedJson = JSON.parse(encryptedData);
-                
-                // Verify it's a valid encrypted structure
-                if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
-                    throw new Error('Invalid encrypted file format');
-                }
-                
-                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                
-                // Convert base64 back to binary for hash calculation
-                const binaryString = atob(decryptedBase64);
-                const fileBytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    fileBytes[i] = binaryString.charCodeAt(i);
-                }
-                fileSize = fileBytes.length;
-                fileHash = await calculateStrixunHash(fileBytes, env);
-                encryptionFormat = 'json-v3';
+                // Legacy JSON encrypted format - not supported with shared key encryption
+                // All new uploads must use binary format
+                throw new Error('Legacy JSON encryption format is not supported. Please re-upload the file using the latest client version.');
             }
         } catch (error) {
             console.error('File decryption error during upload:', error);
-            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure you are authenticated and the file was encrypted with your token.');
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with the shared encryption key. ${errorMsg}`);
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -475,6 +466,7 @@ interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     MODS_PUBLIC_URL?: string;
+    MODS_ENCRYPTION_KEY?: string;
     ALLOWED_EMAILS?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;

@@ -58,7 +58,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             expect(encryptedData.encrypted).toBe(true);
 
             // Step 2: Decrypt request body (simulating API receiving encrypted request)
-            const decryptedData = await decryptWithJWT(encryptedData, token);
+            const decryptedData = await decryptWithJWT(encryptedData, token) as typeof originalData;
 
             // Step 3: Verify decrypted data matches original
             expect(decryptedData).toEqual(originalData);
@@ -128,7 +128,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             const encryptedResponse = await encryptWithJWT(responseData, token);
 
             // Step 2: Decrypt response (simulating client receiving encrypted response)
-            const decryptedResponse = await decryptWithJWT(encryptedResponse, token);
+            const decryptedResponse = await decryptWithJWT(encryptedResponse, token) as typeof responseData;
 
             // Step 3: Verify response matches original
             expect(decryptedResponse).toEqual(responseData);
@@ -173,7 +173,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             };
 
             const encrypted = await encryptWithJWT(complexData, token);
-            const decrypted = await decryptWithJWT(encrypted, token);
+            const decrypted = await decryptWithJWT(encrypted, token) as typeof complexData;
 
             expect(decrypted).toEqual(complexData);
             expect(decrypted.mod.metadata.versions.length).toBe(2);
@@ -203,7 +203,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             const encryptedRequest = await encryptWithJWT(requestData, token);
 
             // Step 2: API receives encrypted request and decrypts it
-            const decryptedRequest = await decryptWithJWT(encryptedRequest, token);
+            const decryptedRequest = await decryptWithJWT(encryptedRequest, token) as typeof requestData;
             expect(decryptedRequest).toEqual(requestData);
 
             // Step 3: API processes request and encrypts response
@@ -217,7 +217,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             const encryptedResponse = await encryptWithJWT(responseData, token);
 
             // Step 4: Client receives encrypted response and decrypts it
-            const decryptedResponse = await decryptWithJWT(encryptedResponse, token);
+            const decryptedResponse = await decryptWithJWT(encryptedResponse, token) as typeof responseData;
 
             // Step 5: Verify complete flow worked
             expect(decryptedResponse.success).toBe(true);
@@ -260,7 +260,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             // Step 2: Decrypt with token that has whitespace (simulating frontend before fix)
             // This should work now because getTokenForDecryption trims the token
             // We'll test this by manually trimming (simulating the fix)
-            const decryptedData = await decryptWithJWT(encryptedData, tokenWithWhitespace.trim());
+            const decryptedData = await decryptWithJWT(encryptedData, tokenWithWhitespace.trim()) as typeof originalData;
 
             // Step 3: Verify decrypted data matches original
             expect(decryptedData).toEqual(originalData);
@@ -330,7 +330,7 @@ describe('Encryption/Decryption Flow Integration', () => {
             const encryptedResponse = await encryptWithJWT(responseData, trimmedToken);
 
             // Frontend decrypts with trimmed token (after fix - getTokenForDecryption trims)
-            const decryptedResponse = await decryptWithJWT(encryptedResponse, tokenWithWhitespace.trim());
+            const decryptedResponse = await decryptWithJWT(encryptedResponse, tokenWithWhitespace.trim()) as typeof responseData;
 
             // Verify response matches
             expect(decryptedResponse).toEqual(responseData);

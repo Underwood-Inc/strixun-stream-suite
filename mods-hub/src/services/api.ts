@@ -4,7 +4,7 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import { encryptBinaryWithJWT } from '@strixun/api-framework';
+import { encryptBinaryWithSharedKey } from '@strixun/api-framework';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
 
@@ -292,15 +292,15 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
-    // SECURITY: JWT encryption is MANDATORY for all file uploads
-    // All files must be encrypted with JWT, regardless of visibility
-    const token = await getAuthToken();
-    if (!token) {
-        throw new Error('Authentication token is required for file encryption. All files must be encrypted with JWT.');
+    // SECURITY: Shared key encryption is MANDATORY for all file uploads
+    // All files must be encrypted with shared key so any authenticated user can decrypt
+    const sharedKey = import.meta.env.VITE_MODS_ENCRYPTION_KEY;
+    if (!sharedKey || sharedKey.length < 32) {
+        throw new Error('MODS_ENCRYPTION_KEY is required for file encryption. Please ensure the encryption key is configured in your environment.');
     }
     
     const fileBuffer = await file.arrayBuffer();
-    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    const encryptedFile = await encryptBinaryWithSharedKey(fileBuffer, sharedKey);
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
@@ -365,17 +365,15 @@ export async function uploadVersion(
     file: File,
     metadata: VersionUploadRequest
 ): Promise<any> {
-    // Fetch mod to check visibility - versions inherit mod's visibility
-    // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
-    // SECURITY: JWT encryption is MANDATORY for all file uploads
-    // All files must be encrypted with JWT, regardless of visibility
-    const token = await getAuthToken();
-    if (!token) {
-        throw new Error('Authentication token is required for file encryption. All files must be encrypted with JWT.');
+    // SECURITY: Shared key encryption is MANDATORY for all file uploads
+    // All files must be encrypted with shared key so any authenticated user can decrypt
+    const sharedKey = import.meta.env.VITE_MODS_ENCRYPTION_KEY;
+    if (!sharedKey || sharedKey.length < 32) {
+        throw new Error('MODS_ENCRYPTION_KEY is required for file encryption. Please ensure the encryption key is configured in your environment.');
     }
     
     const fileBuffer = await file.arrayBuffer();
-    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
+    const encryptedFile = await encryptBinaryWithSharedKey(fileBuffer, sharedKey);
     
     // Create encrypted File object with .encrypted extension
     // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility

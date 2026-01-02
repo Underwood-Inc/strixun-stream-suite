@@ -151,7 +151,7 @@ export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
     const { data, isLoading, error } = useModDetail(slug || '');
-    const { user } = useAuthStore();
+    const { user, isAuthenticated } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
     const [thumbnailError, setThumbnailError] = useState(false);
     const [downloading, setDownloading] = useState(false);
@@ -185,6 +185,16 @@ export function ModDetailPage() {
 
     const handleDownloadLatest = async () => {
         if (!latestVersion || !slug) return;
+        
+        // SECURITY: Prevent unauthenticated download attempts
+        if (!isAuthenticated) {
+            setDownloadError('Please log in to download files');
+            setTimeout(() => {
+                setDownloadError(null);
+                navigate('/login');
+            }, 2000);
+            return;
+        }
         
         setDownloading(true);
         setDownloadError(null);
@@ -264,7 +274,8 @@ export function ModDetailPage() {
                             )}
                             <DownloadButton
                                 onClick={handleDownloadLatest}
-                                disabled={downloading || !latestVersion}
+                                disabled={downloading || !latestVersion || !isAuthenticated}
+                                title={!isAuthenticated ? 'Please log in to download' : undefined}
                             >
                                 {downloading ? 'Downloading...' : `Download Latest ${latestVersion.version}`}
                             </DownloadButton>

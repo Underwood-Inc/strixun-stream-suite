@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT, decryptBinaryWithJWT } from '@strixun/api-framework';
+import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId, getCustomerR2Key } from '../../utils/customer.js';
 import type { ModMetadata, ModVariant } from '../../types/mod.js';
@@ -158,58 +158,58 @@ export async function handleDownloadVariant(
         let decryptedData: Uint8Array;
         
         if (isEncrypted) {
-            // Decrypt the file
+            // Decrypt the file with shared key
+            const sharedKey = env.MODS_ENCRYPTION_KEY;
+            
+            if (!sharedKey || sharedKey.length < 32) {
+                const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 500,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+            
             const encryptedBytes = await encryptedFile.arrayBuffer();
             const encryptedArray = new Uint8Array(encryptedBytes);
 
             if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                // Binary encrypted format - decrypt with JWT ONLY
-                // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
-                // CRITICAL: Trim token to ensure it matches the token used for encryption
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
-                if (!jwtToken) {
-                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
+                // Binary encrypted format - decrypt with shared key
+                try {
+                    decryptedData = await decryptBinaryWithSharedKey(encryptedArray, sharedKey);
+                    console.log('[VariantDownload] Decrypted using shared key');
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    const rfcError = createError(request, 500, 'Decryption Failed', `Failed to decrypt variant file: ${errorMsg}`);
                     const corsHeaders = createCORSHeaders(request, {
                         allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                     });
                     return new Response(JSON.stringify(rfcError), {
-                        status: 401,
+                        status: 500,
                         headers: {
                             'Content-Type': 'application/problem+json',
                             ...Object.fromEntries(corsHeaders.entries()),
                         },
                     });
                 }
-                
-                // Decrypt with JWT (mandatory)
-                decryptedData = await decryptBinaryWithJWT(encryptedArray, jwtToken);
-                console.log('[VariantDownload] Decrypted using JWT');
             } else {
-                // Legacy JSON encrypted format - decrypt with JWT ONLY
-                // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
-                // CRITICAL: Trim token to ensure it matches the token used for encryption
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
-                if (!jwtToken) {
-                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
-                
-                const encryptedText = new TextDecoder().decode(encryptedArray);
-                const encryptedJson = JSON.parse(encryptedText);
-                
-                // Decrypt with JWT (mandatory)
-                const decryptedJson = await decryptWithJWT(encryptedJson, jwtToken);
-                decryptedData = new TextEncoder().encode(JSON.stringify(decryptedJson));
-                console.log('[VariantDownload] Decrypted JSON using JWT');
+                // Legacy JSON encrypted format - not supported with shared key encryption
+                const rfcError = createError(request, 400, 'Unsupported Format', 'Legacy JSON encryption format is not supported. Variant file must be re-uploaded with shared key encryption.');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 400,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
             }
         } else {
             // File is not encrypted, return as-is
@@ -272,6 +272,7 @@ export async function handleDownloadVariant(
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
+    MODS_ENCRYPTION_KEY?: string;
     ENVIRONMENT?: string;
     MODS_PUBLIC_URL?: string;
     ALLOWED_ORIGINS?: string;

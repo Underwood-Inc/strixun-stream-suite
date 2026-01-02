@@ -514,18 +514,25 @@ export async function encryptBinaryWithJWT(
  * for backward compatibility.
  * 
  * @param encryptedBinary - Binary encrypted data with header (ArrayBuffer or Uint8Array)
- * @param token - JWT token for decryption
+ * @param token - JWT token for decryption (or deterministic token for public files)
+ * @param options - Optional decryption options
+ * @param options.publicModToken - If provided, use this token for key derivation instead of verifying token hash (for public mods)
  * @returns Decrypted binary data (Uint8Array)
  * 
  * @throws Error if token doesn't match or decryption fails
  */
 export async function decryptBinaryWithJWT(
   encryptedBinary: ArrayBuffer | Uint8Array,
-  token: string
+  token: string,
+  options?: { publicModToken?: string }
 ): Promise<Uint8Array> {
   if (!token || token.length < 10) {
     throw new Error('Valid JWT token is required for decryption');
   }
+
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  // This prevents mismatches due to whitespace differences
+  const trimmedToken = token.trim();
 
   const data = encryptedBinary instanceof ArrayBuffer 
     ? new Uint8Array(encryptedBinary) 
@@ -571,8 +578,8 @@ export async function decryptBinaryWithJWT(
 
   const encryptedData = data.slice(offset);
 
-  // Verify token hash
-  const tokenHashHex = await hashToken(token);
+  // Verify token hash (use trimmed token)
+  const tokenHashHex = await hashToken(trimmedToken);
   const expectedTokenHash = new Uint8Array(32);
   for (let i = 0; i < 32; i++) {
     expectedTokenHash[i] = parseInt(tokenHashHex.substr(i * 2, 2), 16);
@@ -589,12 +596,13 @@ export async function decryptBinaryWithJWT(
   if (!hashMatch) {
     throw new Error(
       'Decryption failed - token does not match. ' +
-      'Only authenticated users (with email OTP access) can decrypt this data.'
+      'Only authenticated users (with email OTP access) can decrypt this data. ' +
+      'This usually means the token was refreshed or changed since the file was encrypted.'
     );
   }
 
-  // Derive key from token
-  const key = await deriveKeyFromToken(token, salt);
+  // Derive key from token (use trimmed token)
+  const key = await deriveKeyFromToken(trimmedToken, salt);
 
   // Decrypt
   try {

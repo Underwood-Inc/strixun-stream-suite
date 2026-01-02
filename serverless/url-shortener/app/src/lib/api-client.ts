@@ -88,17 +88,43 @@ class UrlShortenerApiClient {
     }
 
     private async decryptResponse<T>(response: Response): Promise<T> {
-        const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+        // Check if response is encrypted (headers are case-insensitive, but be defensive)
+        const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
+        const isEncrypted = encryptedHeader === 'true';
+        
         let data: any = await response.json();
         
-        if (isEncrypted && data && typeof data === 'object' && 'encrypted' in data && data.encrypted && this.token) {
-            try {
-                if (typeof (window as any).decryptWithJWT !== 'function') {
-                    throw new Error('Decryption library not loaded');
+        // Check if data looks encrypted (even if header check failed)
+        const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
+        
+        if ((isEncrypted || looksEncrypted) && this.token) {
+            // Wait for decryptWithJWT to be available (it's loaded via script tag)
+            let decryptFn = (window as any).decryptWithJWT;
+            
+            // Poll for decryptWithJWT if not immediately available (script might still be loading)
+            if (typeof decryptFn !== 'function') {
+                console.warn('[API Client] Decryption library not loaded yet, waiting...');
+                for (let i = 0; i < 10; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    decryptFn = (window as any).decryptWithJWT;
+                    if (typeof decryptFn === 'function') {
+                        console.log('[API Client] Decryption library loaded after wait');
+                        break;
+                    }
                 }
-                data = await (window as any).decryptWithJWT(data, this.token);
+            }
+            
+            if (typeof decryptFn !== 'function') {
+                console.error('[API Client] Decryption library not available after waiting. Response is encrypted but cannot decrypt.');
+                throw new Error('Decryption library not loaded');
+            }
+            
+            try {
+                // Trim token to ensure it matches what backend used for encryption
+                const trimmedToken = this.token.trim();
+                data = await decryptFn(data, trimmedToken);
             } catch (error) {
-                console.error('Failed to decrypt response:', error);
+                console.error('[API Client] Failed to decrypt response:', error);
                 throw new Error('Failed to decrypt response');
             }
         }

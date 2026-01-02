@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT, decryptBinaryWithJWT } from '@strixun/api-framework';
+import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
@@ -326,29 +326,25 @@ export async function handleDownloadVersion(
         
         if (isEncrypted) {
             console.log('[Download] File is encrypted, decrypting...');
-            // File is encrypted - decrypt it
-            // Get JWT token for decryption (outside try block for error handling)
-            // CRITICAL: Trim token to ensure it matches the token used for encryption
-            const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
-            console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length, modVisibility: modVisibility });
+            // File is encrypted - decrypt it with shared key
+            // Get shared encryption key for decryption
+            const sharedKey = env.MODS_ENCRYPTION_KEY;
+            
+            if (!sharedKey || sharedKey.length < 32) {
+                const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 500,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
             
             try {
-                // CRITICAL SECURITY: JWT is MANDATORY for all downloads
-                // No service key fallback - JWT encryption/decryption is the base requirement
-                if (!jwtToken) {
-                    const rfcError = createError(request, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
-                
                 // Normalize encryption format (trim whitespace, handle undefined)
                 encryptionFormat = encryptionFormat?.trim();
                 console.log('[Download] Encryption format from metadata:', { encryptionFormat, type: typeof encryptionFormat });
@@ -373,46 +369,24 @@ export async function handleDownloadVersion(
                     console.warn('[Download] Format mismatch - metadata:', encryptionFormat, 'detected:', detectedFormat, 'using detected format');
                     encryptionFormat = detectedFormat;
                 } else if (!encryptionFormat && !detectedFormat) {
-                    // No format detected - assume legacy JSON
-                    encryptionFormat = 'json-v3';
-                    console.log('[Download] No format detected, assuming legacy JSON format');
+                    // No format detected - assume legacy JSON (not supported with shared key)
+                    throw new Error('Legacy JSON encryption format is not supported. File must be re-uploaded with shared key encryption.');
                 }
                 
                 console.log('[Download] Final encryption format:', encryptionFormat);
                 
                 // Check encryption format and decrypt accordingly
                 if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                    // Binary encrypted format (v4 or v5) - decrypt with JWT ONLY
-                    // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
+                    // Binary encrypted format (v4 or v5) - decrypt with shared key
                     const version = encryptionFormat === 'binary-v5' ? 'v5' : 'v4';
-                    console.log(`[Download] Using binary decryption (${version}) with JWT...`);
+                    console.log(`[Download] Using binary decryption (${version}) with shared key...`);
                     
-                    // Decrypt with JWT (mandatory)
-                    decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
-                    console.log('[Download] Binary decryption successful with JWT, size:', decryptedFileBytes.length);
+                    // Decrypt with shared key (any authenticated user can decrypt)
+                    decryptedFileBytes = await decryptBinaryWithSharedKey(encryptedBinary, sharedKey);
+                    console.log('[Download] Binary decryption successful with shared key, size:', decryptedFileBytes.length);
                 } else {
-                    // Legacy JSON encrypted format - need to read as text
-                    // CRITICAL: We already read as arrayBuffer above, so we need to convert back
-                    // Convert the already-read binary to text for JSON parsing
-                    console.log('[Download] Using JSON decryption (v3)...');
-                    const textDecoder = new TextDecoder('utf-8');
-                    const encryptedData = textDecoder.decode(encryptedBinary);
-                    const encryptedJson = JSON.parse(encryptedData);
-                    console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
-                    
-                    // Decrypt the file with JWT ONLY
-                    // CRITICAL SECURITY: JWT is MANDATORY - no service key fallback
-                    console.log('[Download] Decrypting with JWT...');
-                    const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                    console.log('[Download] JSON decryption successful with JWT, base64 length:', decryptedBase64.length);
-                    
-                    // Convert base64 back to binary
-                    const binaryString = atob(decryptedBase64);
-                    decryptedFileBytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        decryptedFileBytes[i] = binaryString.charCodeAt(i);
-                    }
-                    console.log('[Download] Converted to binary, size:', decryptedFileBytes.length);
+                    // Legacy JSON encrypted format - not supported with shared key encryption
+                    throw new Error('Legacy JSON encryption format is not supported. File must be re-uploaded with shared key encryption.');
                 }
                 
                 // Get original content type from metadata
@@ -421,15 +395,13 @@ export async function handleDownloadVersion(
             } catch (error) {
                 console.error('[Download] File decryption error:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                const isKeyMismatch = errorMessage.includes('does not match') || errorMessage.includes('token does not match');
+                const isKeyMismatch = errorMessage.includes('does not match') || errorMessage.includes('key does not match');
                 
                 let detail = 'Failed to decrypt file.';
                 if (isKeyMismatch) {
-                    detail = 'Decryption key does not match. The file may have been encrypted with a different key. Legacy files encrypted with service key may need to be re-uploaded with JWT encryption.';
-                } else if (!jwtToken) {
-                    detail = 'JWT token is required for decryption. Please provide a valid JWT token in the Authorization header.';
+                    detail = 'Decryption key does not match. The file may have been encrypted with a different key. Legacy files encrypted with JWT may need to be re-uploaded with shared key encryption.';
                 } else {
-                    detail = 'Failed to decrypt file. Please ensure you are authenticated and using the correct JWT token.';
+                    detail = `Failed to decrypt file: ${errorMessage}. Please ensure the file was encrypted with the shared encryption key.`;
                 }
                 
                 const rfcError = createError(request, 500, 'Decryption Failed', detail);
@@ -523,6 +495,7 @@ export async function handleDownloadVersion(
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
+    MODS_ENCRYPTION_KEY?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }
