@@ -316,7 +316,7 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       
       console.log(`[Integration Tests] Customer ID: ${customerId}`);
       
-      // Verify customer exists in customer-api
+      // Verify customer exists in customer-api with retry for eventual consistency
       const { getCustomerService } = await import('../../utils/customer-api-service-client.js');
       const mockEnv = {
         CUSTOMER_API_URL,
@@ -325,7 +325,25 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
         SUPER_ADMIN_API_KEY: config.superAdminApiKey,
       };
       
-      const customer = await getCustomerService(customerId, mockEnv);
+      // Retry mechanism for eventual consistency (customer might not be immediately available)
+      let customer = null;
+      const maxRetries = 5;
+      const retryDelay = 500; // Start with 500ms
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        customer = await getCustomerService(customerId, mockEnv);
+        
+        if (customer && customer.customerId === customerId) {
+          break; // Found customer, exit retry loop
+        }
+        
+        if (attempt < maxRetries - 1) {
+          const delay = retryDelay * Math.pow(2, attempt); // Exponential backoff
+          console.log(`[Integration Tests] Customer not found yet, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      
       expect(customer).toBeDefined();
       expect(customer?.customerId).toBe(customerId);
       // Email should NOT be in response (privacy requirement)

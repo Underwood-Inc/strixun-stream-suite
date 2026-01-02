@@ -184,9 +184,33 @@ export async function handleListMods(
         // CRITICAL: Fetch display names dynamically from customer data
         // Customer is the primary data source for all customizable user info
         // Fetch by customerIds (not userIds) - customer is the source of truth
+        // IMPORTANT: This fetch is non-blocking - if customer-api is unavailable, we use stored values
         const uniqueCustomerIds = [...new Set(mods.map(mod => mod.customerId).filter((id): id is string => !!id))];
-        const { fetchDisplayNamesByCustomerIds } = await import('@strixun/api-framework');
-        const displayNames = await fetchDisplayNamesByCustomerIds(uniqueCustomerIds, env);
+        let displayNames = new Map<string, string | null>();
+        
+        if (uniqueCustomerIds.length > 0) {
+            try {
+                const { fetchDisplayNamesByCustomerIds } = await import('@strixun/api-framework');
+                
+                // Add timeout to prevent hanging if customer-api is not running
+                // Use Promise.race with a timeout promise
+                // getCustomerApiUrl already handles undefined ENVIRONMENT by defaulting to localhost
+                const fetchPromise = fetchDisplayNamesByCustomerIds(uniqueCustomerIds, env);
+                const timeoutPromise = new Promise<Map<string, string | null>>((resolve) => {
+                    setTimeout(() => {
+                        console.warn('[ListMods] Display name fetch timed out after 3s, using stored values');
+                        resolve(new Map());
+                    }, 3000); // 3 second timeout - customer-api should respond quickly if running
+                });
+                
+                displayNames = await Promise.race([fetchPromise, timeoutPromise]);
+            } catch (error) {
+                // If fetch fails (customer-api not running, network error, etc.), log but continue
+                console.warn('[ListMods] Failed to fetch display names, using stored values:', 
+                    error instanceof Error ? error.message : String(error));
+                displayNames = new Map();
+            }
+        }
         
         // Map display names to mods - always use fetched value from customer data if available
         // This ensures we have the latest display names from the source of truth

@@ -293,9 +293,6 @@ export class ServiceClient {
                     requestInit.body = requestBody;
                 }
                 
-                // Debug logging for authentication issues (reuse variables declared earlier)
-                const retrievedAuthHeaderValue = headers.get(authHeaderName);
-                
                 // Make request with timeout
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeout);

@@ -453,7 +453,8 @@ export async function generateUniqueDisplayName(
      'adjective-adjective-noun', 'adjective-noun-noun'];
   
   for (const fallbackPattern of fallbackPatterns) {
-    if (fallbackPattern === pattern && pattern !== 'random') continue;
+    // Skip if this fallback pattern matches the current pattern (already tried)
+    if (fallbackPattern === pattern) continue;
     
     for (let i = 0; i < 5; i++) {
       name = generateNamePattern(fallbackPattern, maxWords);

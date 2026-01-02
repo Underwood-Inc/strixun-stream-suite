@@ -15,8 +15,16 @@ export interface WebSocketConfig {
   queueMessages?: boolean;
 }
 
+// Browser WebSocket type with event handler properties
+interface BrowserWebSocket extends WebSocket {
+  onopen: ((this: WebSocket, ev: Event) => any) | null;
+  onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null;
+  onerror: ((this: WebSocket, ev: Event) => any) | null;
+  onclose: ((this: WebSocket, ev: CloseEvent) => any) | null;
+}
+
 export class WebSocketClient {
-  private ws: WebSocket | null = null;
+  private ws: BrowserWebSocket | null = null;
   private config: Required<WebSocketConfig>;
   private messageQueue: WebSocketRequest[] = [];
   private pendingRequests = new Map<string, {
@@ -66,9 +74,9 @@ export class WebSocketClient {
       this.emit('open');
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = (event: MessageEvent) => {
       try {
-        const response = JSON.parse(event.data) as WebSocketResponse;
+        const response = JSON.parse(event.data as string) as WebSocketResponse;
         this.handleMessage(response);
       } catch (error) {
         // Not JSON, emit as raw message
@@ -76,7 +84,7 @@ export class WebSocketClient {
       }
     };
 
-    this.ws.onerror = (error) => {
+    this.ws.onerror = (error: Event) => {
       this.emit('error', error);
     };
 

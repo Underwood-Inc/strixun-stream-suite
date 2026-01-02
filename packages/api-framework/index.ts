@@ -163,3 +163,17 @@ export type {
   JWTPayload,
 } from './jwt.js';
 
+// Re-export service URL resolution utilities
+export {
+  getServiceUrl,
+  getAuthApiUrl,
+  getCustomerApiUrl,
+  getModsApiUrl,
+  isLocalDev,
+} from './src/utils/service-url.js';
+
+export type {
+  ServiceUrlEnv,
+  ServiceUrlConfig,
+} from './src/utils/service-url.js';
+

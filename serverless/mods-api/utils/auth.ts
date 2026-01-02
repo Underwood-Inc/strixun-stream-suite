@@ -6,6 +6,7 @@
 
 // Use shared JWT utilities from api-framework (canonical implementation)
 import { verifyJWT as verifyJWTShared, getJWTSecret as getJWTSecretShared, type JWTPayload as JWTPayloadShared } from '@strixun/api-framework/jwt';
+import { getAuthApiUrl } from '@strixun/api-framework';
 
 /**
  * Get JWT secret from environment
@@ -56,26 +57,15 @@ export function isEmailAllowed(email: string | undefined, env: Env): boolean {
  */
 /**
  * Get the auth API URL with auto-detection for local dev
- * Priority:
- * 1. AUTH_API_URL env var (if explicitly set)
- * 2. localhost:8787 if ENVIRONMENT is 'test' or 'development'
- * 3. Production default (https://auth.idling.app)
+ * Uses centralized service URL resolution utility from api-framework
  */
-function getAuthApiUrl(env: Env): string {
-    if (env.AUTH_API_URL) {
-        return env.AUTH_API_URL;
-    }
-    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
-        // Local dev - use localhost (otp-auth-service runs on port 8787)
-        return 'http://localhost:8787';
-    }
-    // Production default
-    return 'https://auth.idling.app';
+function getAuthApiUrlLocal(env: Env): string {
+    return getAuthApiUrl(env);
 }
 
 async function fetchEmailFromAuthService(token: string, env: Env): Promise<string | undefined> {
     try {
-        const authApiUrl = getAuthApiUrl(env);
+        const authApiUrl = getAuthApiUrlLocal(env);
         const response = await fetch(`${authApiUrl}/auth/me`, {
             method: 'GET',
             headers: {

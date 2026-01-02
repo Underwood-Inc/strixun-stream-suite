@@ -227,11 +227,14 @@ export function DisplayNameEditor({
     if (apiBaseUrl) return apiBaseUrl;
     
     // Default to AUTH_API_URL pattern
+    // CRITICAL: In local development, ALWAYS use Vite proxy, never external URLs
+    // Use proxy in development (via Vite), direct URL in production
+    // E2E tests can override with VITE_AUTH_API_URL to use direct local worker URLs
     const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL 
-      ? import.meta.env.VITE_AUTH_API_URL
+      ? import.meta.env.VITE_AUTH_API_URL  // Explicit URL override (for E2E tests)
       : (import.meta.env.DEV 
-        ? '/auth-api'
-        : 'https://auth.idling.app');
+        ? '/auth-api'  // Vite proxy in development
+        : 'https://auth.idling.app');  // Production default
     
     return AUTH_API_URL;
   }, [apiBaseUrl]);

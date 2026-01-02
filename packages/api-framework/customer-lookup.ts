@@ -10,6 +10,7 @@
 
 import { createServiceClient, type ServiceClient } from '@strixun/service-client';
 import { createAPIClient } from './src/client.js';
+import { getCustomerApiUrl as getCustomerApiUrlFromUtils } from './src/utils/service-url.js';
 
 /**
  * Customer data structure
@@ -46,31 +47,34 @@ export interface CustomerLookupEnv {
 
 /**
  * Get the customer API base URL
- * Uses standardized port 8790 for local development
+ * Uses centralized service URL resolution utility
  * 
- * Priority:
- * 1. CUSTOMER_API_URL env var (if explicitly set)
- * 2. localhost:8790 if ENVIRONMENT is 'test' or 'development'
- * 3. Production default (workers.dev subdomain)
+ * @deprecated Use getCustomerApiUrl from '@strixun/api-framework' directly
  */
 function getCustomerApiUrl(env: CustomerLookupEnv): string {
-    if (env.CUSTOMER_API_URL) {
-        return env.CUSTOMER_API_URL;
-    }
-    // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
-        return 'http://localhost:8790'; // Local dev (customer-api runs on port 8790)
-    }
-    // Production default
-    return 'https://strixun-customer-api.strixuns-script-suite.workers.dev';
+    return getCustomerApiUrlFromUtils(env);
 }
 
 /**
  * Create service client for customer API (service-to-service)
  * Uses the service-client library which provides integrity verification
+ * 
+ * NOTE: Integrity verification is disabled in test/development environments
+ * because local workers may not have integrity headers configured
  */
 function createCustomerApiServiceClient(env: CustomerLookupEnv): ServiceClient {
     const customerApiUrl = getCustomerApiUrl(env);
+    
+    // Disable integrity verification in test/development environments
+    // Local workers may not have integrity headers configured
+    const isTestOrDev = env.ENVIRONMENT === 'test' || 
+                       env.ENVIRONMENT === 'development' || 
+                       env.ENVIRONMENT === 'dev' ||
+                       customerApiUrl.includes('localhost') ||
+                       customerApiUrl.includes('127.0.0.1');
+    
+    // Get keyphrase - required even if integrity is disabled
+    const keyphrase = env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-local-development';
     
     return createServiceClient(customerApiUrl, env, {
         retry: {
@@ -78,7 +82,14 @@ function createCustomerApiServiceClient(env: CustomerLookupEnv): ServiceClient {
             backoff: 'exponential',
             retryableErrors: [408, 429, 500, 502, 503, 504, 522, 530],
         },
-        timeout: 10000,
+        timeout: 3000, // Reduced timeout for faster failure if customer-api is not running
+        integrity: {
+            enabled: !isTestOrDev, // Disable integrity verification in test/dev
+            keyphrase, // Always required by ServiceClient
+            verifyResponse: !isTestOrDev, // Disable response verification in test/dev
+            verifyRequest: !isTestOrDev, // Disable request verification in test/dev
+            throwOnFailure: !isTestOrDev, // Don't throw on failure in test/dev
+        },
     });
 }
 

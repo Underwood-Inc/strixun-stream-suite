@@ -68,7 +68,7 @@ async function calculateHMACSignature(
     // Convert string to ArrayBuffer if needed
     let dataBuffer: ArrayBuffer;
     if (typeof data === 'string') {
-        dataBuffer = new TextEncoder().encode(data).buffer;
+        dataBuffer = new TextEncoder().encode(data).buffer as ArrayBuffer;
     } else {
         dataBuffer = data;
     }
@@ -151,7 +151,7 @@ export async function calculateRequestIntegrity(
     if (body !== null && body !== undefined) {
         let bodyData: ArrayBuffer;
         if (typeof body === 'string') {
-            bodyData = new TextEncoder().encode(body).buffer;
+            bodyData = new TextEncoder().encode(body).buffer as ArrayBuffer;
         } else {
             bodyData = body;
         }
@@ -181,7 +181,7 @@ export async function calculateResponseIntegrity(
     // Add body hash
     let bodyData: ArrayBuffer;
     if (typeof body === 'string') {
-        bodyData = new TextEncoder().encode(body).buffer;
+        bodyData = new TextEncoder().encode(body).buffer as ArrayBuffer;
     } else {
         bodyData = body;
     }

@@ -118,12 +118,35 @@ function getErrorMessage(error: unknown): { title: string; message: string; deta
             };
         }
         
-        // Network errors
-        if (errorMessage.includes('failed to fetch') || errorMessage.includes('network')) {
+        // Backend not available errors
+        if (errorMessage.includes('backend') && (errorMessage.includes('not available') || errorMessage.includes('not running'))) {
             return {
-                title: 'Network Error',
-                message: 'Unable to reach the mods API. Please check your internet connection.',
-                details: 'If the problem persists, the API server may be down or unreachable.'
+                title: 'Backend Server Not Running',
+                message: 'The mods API server is not available. Please start the backend server.',
+                details: 'In development, run: pnpm --filter strixun-mods-api dev (or pnpm dev:api from mods-hub directory)'
+            };
+        }
+        
+        // Network errors (including connection refused)
+        if (errorMessage.includes('failed to fetch') || errorMessage.includes('network') || 
+            errorMessage.includes('unable to connect') || errorMessage.includes('econnrefused')) {
+            return {
+                title: 'Connection Error',
+                message: 'Unable to connect to the mods API server.',
+                details: import.meta.env.DEV 
+                    ? 'Please ensure the backend server is running: pnpm --filter strixun-mods-api dev'
+                    : 'The API server may be down or unreachable. Please try again later.'
+            };
+        }
+        
+        // Timeout errors
+        if (errorMessage.includes('timeout') || errorMessage.includes('408')) {
+            return {
+                title: 'Request Timeout',
+                message: 'The request took too long to complete.',
+                details: import.meta.env.DEV
+                    ? 'The backend server may not be running or is unresponsive. Check: pnpm --filter strixun-mods-api dev'
+                    : 'The server may be experiencing high load. Please try again in a moment.'
             };
         }
         

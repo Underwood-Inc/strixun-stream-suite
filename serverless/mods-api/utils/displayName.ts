@@ -2,24 +2,7 @@
  * Utility to fetch user display names from auth API
  */
 
-/**
- * Get the auth API URL with auto-detection for local dev
- * Priority:
- * 1. AUTH_API_URL env var (if explicitly set)
- * 2. localhost:8787 if ENVIRONMENT is 'test' or 'development'
- * 3. Production default (https://auth.idling.app)
- */
-function getAuthApiUrl(env: Env): string {
-    if (env.AUTH_API_URL) {
-        return env.AUTH_API_URL;
-    }
-    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
-        // Local dev - use localhost (otp-auth-service runs on port 8787)
-        return 'http://localhost:8787';
-    }
-    // Production default
-    return 'https://auth.idling.app';
-}
+import { getAuthApiUrl } from '@strixun/api-framework';
 
 /**
  * Fetch display name for a user by userId

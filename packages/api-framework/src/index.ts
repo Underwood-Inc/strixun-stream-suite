@@ -15,6 +15,7 @@ export {
 
 // Types
 export type {
+  HTTPMethod,
   APIRequest,
   APIResponse,
   APIError,
@@ -118,6 +119,19 @@ export {
   isSuccessResponse,
   extractErrorMessage,
 } from './utils/response-handler';
+
+export {
+  getServiceUrl,
+  getAuthApiUrl,
+  getCustomerApiUrl,
+  getModsApiUrl,
+  isLocalDev,
+} from './utils/service-url';
+
+export type {
+  ServiceUrlEnv,
+  ServiceUrlConfig,
+} from './utils/service-url';
 
 // Middleware
 export {

@@ -468,10 +468,30 @@ export class APIClient {
           clearTimeout(timeoutId);
         }
 
-        // Handle abort
+        // Handle abort (timeout)
         if (error instanceof Error && error.name === 'AbortError') {
+          // Check if this is a connection error (backend not running)
+          const isConnectionError = error.message?.includes('Failed to fetch') || 
+                                   error.message?.includes('NetworkError') ||
+                                   error.message?.includes('ECONNREFUSED');
+          
+          if (isConnectionError) {
+            const apiError = new Error('Backend server is not available. Please ensure the API server is running.') as typeof error & { status?: number; code?: string };
+            apiError.status = 503;
+            apiError.code = 'BACKEND_NOT_AVAILABLE';
+            throw apiError;
+          }
+          
           const apiError = new Error('Request timeout') as typeof error & { status?: number };
           apiError.status = 408;
+          throw apiError;
+        }
+
+        // Handle network errors (backend not running, CORS, etc.)
+        if (error instanceof TypeError && error.message?.includes('Failed to fetch')) {
+          const apiError = new Error('Unable to connect to the API server. Please ensure the backend is running.') as typeof error & { status?: number; code?: string };
+          apiError.status = 503;
+          apiError.code = 'NETWORK_ERROR';
           throw apiError;
         }
 

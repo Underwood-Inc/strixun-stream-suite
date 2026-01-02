@@ -72,9 +72,21 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/mods-api/, ''),
         secure: false, // Local dev server doesn't use HTTPS
         ws: true, // Enable WebSocket proxying for API WebSockets (not Vite HMR)
+        timeout: 30000, // 30 second timeout for proxy requests
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+          proxy.on('error', (err, req, res) => {
             console.error('[Vite Proxy] Mods API proxy error:', err.message);
+            // If connection refused, the backend isn't running
+            if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+              if (res && !res.headersSent) {
+                res.writeHead(503, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  error: 'Service Unavailable',
+                  message: 'Mods API server is not running. Please start it with: pnpm --filter strixun-mods-api dev',
+                  code: 'BACKEND_NOT_RUNNING'
+                }));
+              }
+            }
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             // Skip logging for WebSocket upgrade requests to reduce noise
