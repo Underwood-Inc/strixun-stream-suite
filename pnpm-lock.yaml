@@ -400,9 +400,6 @@ importers:
 
   packages/api-framework:
     dependencies:
-      '@strixun/customer-lookup':
-        specifier: workspace:*
-        version: link:../customer-lookup
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../service-client

@@ -45,8 +45,7 @@
   },
   "dependencies": {
     "@strixun/service-client": "workspace:*",
-    "@strixun/types": "workspace:*",
-    "@strixun/customer-lookup": "workspace:*"
+    "@strixun/types": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^4.0.16",
