@@ -8,17 +8,6 @@ import { css, keyframes } from 'styled-components';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'link' | 'icon';
 
-// Candy shop slanted bar animation keyframes
-// Uses background-position for smooth movement
-const candyShopBars = keyframes`
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 56.568px 56.568px;
-  }
-`;
-
 /**
  * Get button styles for styled-components
  * Matches the @mixin button from shared-styles/_mixins.scss

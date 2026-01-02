@@ -3,7 +3,6 @@
  * Displays mod preview in grid
  */
 
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
@@ -94,8 +93,6 @@ interface ModCardProps {
 }
 
 export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
-    const [thumbnailError, setThumbnailError] = useState(false);
-
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -105,7 +102,8 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
     };
 
     const handleThumbnailError = () => {
-        setThumbnailError(true);
+        // Error handler for thumbnail loading failures
+        // Could be extended to show fallback UI in the future
     };
 
     return (

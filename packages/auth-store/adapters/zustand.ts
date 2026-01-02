@@ -30,8 +30,17 @@ export function createAuthStore(config?: AuthStoreConfig) {
         _lastRestoreAttempt: 0, // Timestamp of last restore attempt to debounce
         setUser: (user: User | null) => {
             // CRITICAL: Trim token when storing to ensure consistency with backend
-            let userToStore = user;
-            if (user?.token) {
+            if (!user) {
+                set({ 
+                    user: null, 
+                    isAuthenticated: false,
+                    isSuperAdmin: false,
+                });
+                return;
+            }
+            
+            let userToStore: User = user;
+            if (user.token) {
                 const trimmedToken = user.token.trim();
                 if (trimmedToken !== user.token) {
                     userToStore = { ...user, token: trimmedToken };
@@ -48,19 +57,19 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 }
                 
                 // Update user with extracted customerId if needed
-                if (customerId && customerId !== userToStore?.customerId) {
+                if (customerId && customerId !== userToStore.customerId) {
                     userToStore = { ...userToStore, customerId };
                 }
                 
                 set({ 
                     user: userToStore, 
-                    isAuthenticated: !!userToStore,
+                    isAuthenticated: true,
                     isSuperAdmin,
                 });
             } else {
                 set({ 
                     user: userToStore, 
-                    isAuthenticated: !!userToStore,
+                    isAuthenticated: true,
                     isSuperAdmin: false,
                 });
             }

@@ -579,7 +579,7 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
     updateTransform(rotateXRef.current, rotateYRef.current, 0, hoverX, hoverY);
   }, [isAnimating, isDragging, isZoomed, updateTransform]);
 
-  const handleThumbnailMouseLeave = useCallback((e: React.MouseEvent) => {
+  const handleThumbnailMouseLeave = useCallback(() => {
     // Only reset hover tilt when NOT flipped
     // Use ref to check current state
     if (isFlippedRef.current) return;

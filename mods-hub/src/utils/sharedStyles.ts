@@ -325,8 +325,6 @@ export function getGameCard3DStyles(
   maxRotation: string = '28deg',
   scale: number = 1.08
 ) {
-  const maxRot = parseFloat(maxRotation);
-  
   // Animated shimmer sweep keyframes
   const shimmerSweep = keyframes`
     0% {
