@@ -36,6 +36,8 @@ dev-dist/
 serverless/**/worker.js
 serverless/**/router.js
 serverless/**/handlers/**/*.js
+# Exception: display-name.js is a source file, not compiled output
+!serverless/url-shortener/handlers/display-name.js
 serverless/**/services/**/*.js
 serverless/**/utils/**/*.js
 serverless/**/router/**/*.js
