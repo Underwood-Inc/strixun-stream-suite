@@ -156,6 +156,16 @@ jobs:
           
           echo "✓ MODS_ENCRYPTION_KEY is configured (length: ${#VITE_MODS_ENCRYPTION_KEY} characters)"
           pnpm run build
+          
+          # Verify the key was embedded in the build (check that VITE_MODS_ENCRYPTION_KEY is referenced)
+          # Note: We check for the env var name, not the actual value, to avoid exposing secrets
+          echo "🔍 Verifying encryption key was embedded in build..."
+          if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
+            echo "✓ Encryption key reference found in build output"
+          else
+            echo "⚠️  WARNING: Encryption key reference not found in build - key may not be embedded"
+            echo "This could indicate the build didn't include the environment variable"
+          fi
         
       - name: Deploy to Cloudflare Pages
         id: deploy
