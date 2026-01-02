@@ -39,7 +39,7 @@ const CardFace = styled.div<{ isBack?: boolean }>`
 const ThumbnailImage = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   pointer-events: none;
 `;
