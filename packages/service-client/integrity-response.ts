@@ -71,27 +71,23 @@ export async function addResponseIntegrityHeader(
     response: Response,
     keyphrase: string
 ): Promise<Response> {
-    // Clone response to read body (CRITICAL: must clone before reading)
+    // CRITICAL: Clone response to read body without consuming original
     const responseClone = response.clone();
     
-    // Get response body text
-    // CRITICAL: Read body as text directly to preserve exact bytes for integrity hash
-    // DO NOT parse and re-stringify JSON as this can change the output (key order, whitespace, etc.)
-    // and cause integrity verification failures
-    let bodyText: string;
-    
+    // Read body as ArrayBuffer to preserve exact bytes (no encoding/decoding issues)
+    let bodyBytes: ArrayBuffer;
     try {
-        bodyText = await responseClone.text();
+        bodyBytes = await responseClone.arrayBuffer();
     } catch (error) {
-        // If body reading fails, use empty string (shouldn't happen but be safe)
+        // If body reading fails, use empty buffer (shouldn't happen but be safe)
         console.error('[NetworkIntegrity] Failed to read response body for integrity header:', error);
-        bodyText = '';
+        bodyBytes = new ArrayBuffer(0);
     }
     
-    // Calculate integrity signature
+    // Calculate integrity signature using exact bytes
     const integrityHeader = await calculateResponseIntegrity(
         response.status,
-        bodyText,
+        bodyBytes,
         keyphrase
     );
     
@@ -100,7 +96,8 @@ export async function addResponseIntegrityHeader(
     headers.set('X-Strixun-Response-Integrity', integrityHeader);
     
     // Return new response with integrity header
-    return new Response(bodyText, {
+    // CRITICAL: Use original body bytes directly to avoid any encoding/decoding issues
+    return new Response(bodyBytes, {
         status: response.status,
         statusText: response.statusText,
         headers: headers,

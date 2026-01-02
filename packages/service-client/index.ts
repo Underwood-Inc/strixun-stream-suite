@@ -247,11 +247,6 @@ export class ServiceClient {
                             authHeaderName,
                             allHeaders: Array.from(headers.entries()).map(([k]) => k),
                         });
-                    } else {
-                        console.log('[ServiceClient] Auth header verified', {
-                            authHeaderName,
-                            headerValueLength: verifyHeader.length,
-                        });
                     }
                 } else {
                     console.log('[ServiceClient] No auth header - making unauthenticated internal service call', {
@@ -298,15 +293,6 @@ export class ServiceClient {
                 
                 // Debug logging for authentication issues (reuse variables declared earlier)
                 const retrievedAuthHeaderValue = headers.get(authHeaderName);
-                console.log('[ServiceClient] Making request', {
-                    method,
-                    url,
-                    hasAuthHeader: !!retrievedAuthHeaderValue,
-                    authHeaderName: authHeaderName,
-                    authHeaderValueLength: retrievedAuthHeaderValue?.length || 0,
-                    hasIntegrityHeader: headers.has('X-Strixun-Request-Integrity'),
-                    allHeaders: Array.from(headers.entries()).map(([k]) => k),
-                });
                 
                 // Make request with timeout
                 const controller = new AbortController();
@@ -323,48 +309,24 @@ export class ServiceClient {
                     // Get response body text for integrity verification
                     const responseText = await response.text();
                     
-                    console.log('[ServiceClient] Response received', {
-                      status: response.status,
-                      statusText: response.statusText,
-                      bodyLength: responseText.length,
-                      hasIntegrityHeader: response.headers.has('X-Strixun-Response-Integrity'),
-                      integrityHeader: response.headers.get('X-Strixun-Response-Integrity')?.substring(0, 50) || 'missing',
-                      allHeaders: Array.from(response.headers.entries()).map(([k]) => k),
-                      integrityEnabled: this.config.integrity.enabled,
-                      verifyResponse: this.config.integrity.verifyResponse
-                    });
-                    
                     // Verify response integrity (baked-in security feature)
                     // CRITICAL: All service-to-service responses MUST include integrity header
-                    if (this.config.integrity.enabled && this.config.integrity.verifyResponse) {
-                        console.log('[ServiceClient] Verifying response integrity');
+                    // NOTE: Only verify if response is NOT encrypted (service-to-service calls shouldn't be encrypted)
+                    const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+                    if (this.config.integrity.enabled && this.config.integrity.verifyResponse && !isEncrypted) {
                         const verification = await this.verifyResponseIntegrity(
                             response.status,
                             responseText,
                             response.headers
                         );
                         
-                        console.log('[ServiceClient] Integrity verification result', {
-                          verified: verification.verified,
-                          error: verification.error
-                        });
-                        
                         if (!verification.verified) {
                             if (this.config.integrity.throwOnFailure) {
-                                console.error('[ServiceClient] Integrity verification FAILED - throwing error');
                                 throw new Error(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             } else {
                                 console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             }
-                        } else {
-                            console.log('[ServiceClient] Integrity verification PASSED');
                         }
-                    } else {
-                        console.log('[ServiceClient] Integrity verification skipped', {
-                          enabled: this.config.integrity.enabled,
-                          verifyResponse: this.config.integrity.verifyResponse
-                        });
-                    }
                     
                     // Parse response
                     let data: T;
