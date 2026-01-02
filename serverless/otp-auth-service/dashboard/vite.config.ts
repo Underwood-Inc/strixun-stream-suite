@@ -28,17 +28,24 @@ export default defineConfig({
     emptyOutDir: true,
     base: '/dashboard/',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
+    // Prevent chunking issues that cause circular dependency errors
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')
       },
+      // Preserve entry signatures to ensure proper initialization order
+      preserveEntrySignatures: 'strict',
       output: {
         // Use function-based manualChunks to handle circular dependencies properly
         // Keep all @strixun packages together to avoid initialization order issues
         manualChunks(id) {
-          // Keep @strixun packages together to avoid circular dependency issues
-          if (id.includes('@strixun/')) {
-            return 'strixun-vendor';
+          // CRITICAL: Put ALL @strixun packages in the main bundle (return undefined)
+          // This prevents chunk loading order issues that cause circular dependency errors
+          // The packages will be bundled with the app code to ensure proper initialization order
+          if (id.includes('@strixun/') || id.includes('node_modules/@strixun/')) {
+            // Return undefined to include in main bundle instead of separate chunk
+            return undefined;
           }
           // Vendor chunks for other node_modules
           if (id.includes('node_modules')) {

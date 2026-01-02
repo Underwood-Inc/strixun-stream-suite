@@ -9,11 +9,28 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
     // Ensure proper module resolution to avoid circular dependencies
-    dedupe: ['@strixun/api-framework'],
+    dedupe: [
+      '@strixun/api-framework',
+      '@strixun/api-framework/client',
+      '@strixun/otp-login',
+      '@strixun/auth-store',
+      '@strixun/search-query-parser',
+      '@strixun/virtualized-table',
+      '@strixun/dice-board-game',
+      '@strixun/e2e-helpers'
+    ],
   },
   optimizeDeps: {
-    // Force pre-bundling of api-framework to resolve circular dependencies
-    include: ['@strixun/api-framework', '@strixun/api-framework/client'],
+    // Force pre-bundling of @strixun packages to resolve circular dependencies
+    include: [
+      '@strixun/api-framework',
+      '@strixun/api-framework/client',
+      '@strixun/otp-login',
+      '@strixun/auth-store',
+      '@strixun/search-query-parser',
+      '@strixun/virtualized-table',
+      '@strixun/dice-board-game'
+    ],
     // Exclude from optimization to ensure proper module resolution
     exclude: [],
   },
@@ -111,16 +128,23 @@ export default defineConfig({
     minify: 'esbuild',
     target: 'es2020',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
+    // Prevent chunking issues that cause circular dependency errors
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      // Preserve entry signatures to ensure proper initialization order
+      preserveEntrySignatures: 'strict',
       output: {
         // Consistent chunk naming for better caching
         // Use function-based manualChunks to handle circular dependencies properly
         manualChunks(id) {
-          // Keep @strixun packages together to avoid circular dependency issues
-          if (id.includes('@strixun/')) {
-            return 'strixun-vendor';
+          // CRITICAL: Put ALL @strixun packages in the main bundle (return undefined)
+          // This prevents chunk loading order issues that cause circular dependency errors
+          // The packages will be bundled with the app code to ensure proper initialization order
+          if (id.includes('@strixun/') || id.includes('node_modules/@strixun/')) {
+            // Return undefined to include in main bundle instead of separate chunk
+            return undefined;
           }
-          // Vendor chunks
+          // Vendor chunks for other dependencies
           if (id.includes('node_modules')) {
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
               return 'react-vendor';
