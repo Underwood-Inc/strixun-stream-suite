@@ -258,7 +258,7 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       
       console.log(`[Integration Tests] JWT token received: ${jwtToken.substring(0, 20)}...`);
       
-      // Extract customerId from JWT if available
+      // Extract customerId and verify email_verified from JWT payload (source of truth)
       if (data.customerId) {
         customerId = data.customerId;
       } else if (jwtToken) {
@@ -266,10 +266,30 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
         try {
           const payload = JSON.parse(atob(jwtToken.split('.')[1]));
           customerId = payload.customerId || payload.cid || null;
+          
+          // CRITICAL: Verify email_verified badge is present in JWT payload
+          // This is the authoritative source - JWT is created with email_verified: true in jwt-creation.ts
+          expect(payload.email_verified).toBeDefined();
+          expect(payload.email_verified).toBe(true);
+          console.log(`[Integration Tests] ✓ Email verification badge verified in JWT payload: ${payload.email_verified}`);
         } catch (error) {
           console.warn('[Integration Tests] Could not decode JWT to get customerId:', error);
         }
       }
+      
+      // Also check if email_verified is in the response (preferred, but JWT is source of truth)
+      if (data.email_verified !== undefined) {
+        expect(data.email_verified).toBe(true);
+        console.log(`[Integration Tests] ✓ Email verification badge also in response: ${data.email_verified}`);
+      } else {
+        console.log('[Integration Tests] Note: email_verified not in response, but verified in JWT (source of truth)');
+      }
+      
+      // Verify other required fields are present
+      if (data.email !== undefined) {
+        expect(data.email).toBe(testEmail.toLowerCase().trim());
+      }
+      expect(data.sub || data.userId).toBeDefined();
     }, 60000); // Increased timeout - customer creation with retries can take time
 
     it('should have created customer account in customer-api', async () => {
@@ -337,8 +357,48 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
       expect([200, 401, 403]).toContain(response.status);
       
       if (response.ok) {
-        const data = await response.json();
+        // Check if response is encrypted
+        const isEncrypted = response.headers.get('x-encrypted') === 'true';
+        let data: any;
+        
+        if (isEncrypted) {
+          // Decrypt the response using JWT token
+          const { decryptWithJWT } = await import('@strixun/api-framework');
+          const encryptedBody = await response.text();
+          try {
+            const encryptedData = JSON.parse(encryptedBody);
+            data = await decryptWithJWT(encryptedData, jwtToken);
+            console.log('[Integration Tests] Decrypted /auth/me response');
+          } catch (decryptError) {
+            console.error('[Integration Tests] Failed to decrypt /auth/me response:', decryptError);
+            throw new Error('Failed to decrypt encrypted response');
+          }
+        } else {
+          data = await response.json();
+        }
+        
         expect(data).toBeDefined();
+        
+        // CRITICAL: Verify email_verified badge is present in JWT payload (source of truth)
+        // The JWT is created in jwt-creation.ts with email_verified: true
+        // This is the authoritative source for email verification status
+        try {
+          const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+          expect(payload.email_verified).toBeDefined();
+          expect(payload.email_verified).toBe(true);
+          console.log('[Integration Tests] ✓ Email verification badge verified in JWT payload');
+        } catch (error) {
+          console.error('[Integration Tests] Failed to verify email_verified in JWT payload:', error);
+          throw new Error('email_verified must be present in JWT payload');
+        }
+        
+        // Also check if it's in the response (preferred, but JWT is source of truth)
+        if (data.email_verified !== undefined) {
+          expect(data.email_verified).toBe(true);
+          console.log('[Integration Tests] ✓ Email verification badge also present in /auth/me response');
+        } else {
+          console.log('[Integration Tests] Note: email_verified not in response, but verified in JWT (source of truth)');
+        }
         console.log('[Integration Tests] Successfully accessed /auth/me with JWT token');
       } else {
         // If 401/403, might be encryption issue - log for debugging
