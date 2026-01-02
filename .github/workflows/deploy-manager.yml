@@ -158,6 +158,234 @@ jobs:
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: pnpm test
 
+  # Test jobs for services (skip if no test script)
+  test_twitch_api:
+    needs: setup
+    if: ${{ inputs.deploy_twitch_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/twitch-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Twitch API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/twitch-api
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Twitch API - skipping tests"
+
+  test_mods_api:
+    needs: setup
+    if: ${{ inputs.deploy_mods_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/mods-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Mods API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Mods API - skipping tests"
+
+  test_customer_api:
+    needs: setup
+    if: ${{ inputs.deploy_customer_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/customer-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Customer API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/customer-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Customer API - skipping tests"
+
+  test_game_api:
+    needs: setup
+    if: ${{ inputs.deploy_game_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/game-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Game API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/game-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Game API - skipping tests"
+
+  test_url_shortener:
+    needs: setup
+    if: ${{ inputs.deploy_url_shortener }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/url-shortener
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run URL Shortener Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/url-shortener
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in URL Shortener - skipping tests"
+
   # Twitch API Deployment
   deploy_twitch_api:
     needs: setup
@@ -222,8 +450,8 @@ jobs:
 
   # Mods API Deployment
   deploy_mods_api:
-    needs: setup
-    if: ${{ inputs.deploy_mods_api }}
+    needs: [setup, test_mods_api]
+    if: ${{ inputs.deploy_mods_api && (needs.test_mods_api.result == 'success' || needs.test_mods_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -454,8 +682,8 @@ jobs:
 
   # Game API Deployment
   deploy_game_api:
-    needs: setup
-    if: ${{ inputs.deploy_game_api }}
+    needs: [setup, test_game_api]
+    if: ${{ inputs.deploy_game_api && (needs.test_game_api.result == 'success' || needs.test_game_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -837,7 +1065,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_mods_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_mods_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -864,6 +1092,66 @@ jobs:
               echo "❌ **OTP Auth Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             else
               echo "⏭️ **OTP Auth Service Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
+            if [ "${{ needs.test_twitch_api.result }}" == "success" ]; then
+              echo "✅ **Twitch API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
+              echo "❌ **Twitch API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_twitch_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Twitch API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Twitch API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
+            if [ "${{ needs.test_mods_api.result }}" == "success" ]; then
+              echo "✅ **Mods API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
+              echo "❌ **Mods API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_mods_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Mods API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Mods API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
+            if [ "${{ needs.test_customer_api.result }}" == "success" ]; then
+              echo "✅ **Customer API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
+              echo "❌ **Customer API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_customer_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Customer API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Customer API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
+            if [ "${{ needs.test_game_api.result }}" == "success" ]; then
+              echo "✅ **Game API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_game_api.result }}" == "failure" ]; then
+              echo "❌ **Game API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_game_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Game API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Game API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_url_shortener }}" == "true" ]; then
+            if [ "${{ needs.test_url_shortener.result }}" == "success" ]; then
+              echo "✅ **URL Shortener Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
+              echo "❌ **URL Shortener Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_url_shortener.result }}" == "skipped" ]; then
+              echo "⏭️ **URL Shortener Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **URL Shortener Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

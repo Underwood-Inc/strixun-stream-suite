@@ -48,3 +48,10 @@ ALLOWED_ORIGINS=*
 # Managed uploaders are stored in KV and can be managed via /admin/users dashboard
 # APPROVED_UPLOADER_EMAILS=user1@example.com,user2@example.com
 
+# Mods Encryption Key (REQUIRED)
+# Shared encryption key for mod file encryption/decryption
+# Must match VITE_MODS_ENCRYPTION_KEY in mods-hub/.env
+# Minimum 32 characters (64+ recommended for PBKDF2)
+# For local dev, use: strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+

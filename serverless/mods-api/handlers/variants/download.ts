@@ -178,14 +178,35 @@ export async function handleDownloadVariant(
             const encryptedBytes = await encryptedFile.arrayBuffer();
             const encryptedArray = new Uint8Array(encryptedBytes);
 
-            if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                // Binary encrypted format - decrypt with shared key
+            // Check file format from bytes if metadata is missing or incorrect
+            // First byte indicates encryption version: 4 or 5 = shared key, anything else = invalid
+            const fileVersion = encryptedArray.length > 0 ? encryptedArray[0] : null;
+            const isBinaryEncrypted = fileVersion === 4 || fileVersion === 5;
+            
+            // If metadata says binary but file doesn't match, or if metadata is missing, detect from bytes
+            if ((encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') || isBinaryEncrypted) {
+                // Binary encrypted format - decrypt with shared key (ONLY method supported)
                 try {
                     decryptedData = await decryptBinaryWithSharedKey(encryptedArray, sharedKey);
                     console.log('[VariantDownload] Decrypted using shared key');
                 } catch (error) {
                     const errorMsg = error instanceof Error ? error.message : String(error);
-                    const rfcError = createError(request, 500, 'Decryption Failed', `Failed to decrypt variant file: ${errorMsg}`);
+                    // Check if error is about unsupported version (might be JWT-encrypted or unencrypted)
+                    if (errorMsg.includes('Unsupported binary encryption version')) {
+                        const rfcError = createError(request, 400, 'Invalid Encryption Format', `Variant file is not encrypted with shared key encryption. The file appears to be encrypted with a different method (JWT encryption is no longer supported) or is not encrypted at all. Please re-upload the variant file with shared key encryption. Error: ${errorMsg}`);
+                        const corsHeaders = createCORSHeaders(request, {
+                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        });
+                        return new Response(JSON.stringify(rfcError), {
+                            status: 400,
+                            headers: {
+                                'Content-Type': 'application/problem+json',
+                                ...Object.fromEntries(corsHeaders.entries()),
+                            },
+                        });
+                    }
+                    // Other decryption errors (wrong key, corrupted data, etc.)
+                    const rfcError = createError(request, 500, 'Decryption Failed', `Failed to decrypt variant file with shared key: ${errorMsg}`);
                     const corsHeaders = createCORSHeaders(request, {
                         allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                     });
@@ -198,8 +219,8 @@ export async function handleDownloadVariant(
                     });
                 }
             } else {
-                // Legacy JSON encrypted format - not supported with shared key encryption
-                const rfcError = createError(request, 400, 'Unsupported Format', 'Legacy JSON encryption format is not supported. Variant file must be re-uploaded with shared key encryption.');
+                // Legacy JSON encrypted format or unencrypted - not supported
+                const rfcError = createError(request, 400, 'Unsupported Format', 'Legacy JSON encryption format is not supported. Variant file must be re-uploaded with shared key encryption (binary format v4 or v5). JWT encryption is no longer supported.');
                 const corsHeaders = createCORSHeaders(request, {
                     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
                 });

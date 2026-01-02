@@ -29,6 +29,7 @@ const TEST_SECRETS = {
   NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-integration-tests',
   CUSTOMER_API_URL: 'http://localhost:8790', // Local dev customer-api URL
   ALLOWED_ORIGINS: '*',
+  MODS_ENCRYPTION_KEY: 'strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation', // Shared encryption key for mod files (must match mods-hub/.env VITE_MODS_ENCRYPTION_KEY)
 };
 
 /**
@@ -64,6 +65,7 @@ function setupDevVars() {
       content = content.replace(/JWT_SECRET=.*/m, `JWT_SECRET=${TEST_SECRETS.JWT_SECRET}`);
       content = content.replace(/NETWORK_INTEGRITY_KEYPHRASE=.*/m, `NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}`);
       content = content.replace(/CUSTOMER_API_URL=.*/m, `CUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}`);
+      content = content.replace(/MODS_ENCRYPTION_KEY=.*/m, `MODS_ENCRYPTION_KEY=${TEST_SECRETS.MODS_ENCRYPTION_KEY}`);
       content = content.replace(/SERVICE_ENCRYPTION_KEY=.*/m, '');
       // Add missing secrets if not present
       if (!content.includes('ENVIRONMENT=')) {
@@ -78,6 +80,9 @@ function setupDevVars() {
       if (!content.includes('ALLOWED_ORIGINS=')) {
         content += `\nALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}\n`;
       }
+      if (!content.includes('MODS_ENCRYPTION_KEY=')) {
+        content += `\nMODS_ENCRYPTION_KEY=${TEST_SECRETS.MODS_ENCRYPTION_KEY}\n`;
+      }
     } else {
       // Create from scratch
       content = `# Mods API - Development Environment Variables (Auto-generated for testing)
@@ -89,6 +94,7 @@ JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
 NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}
 CUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
+MODS_ENCRYPTION_KEY=${TEST_SECRETS.MODS_ENCRYPTION_KEY}
 `;
     }
     

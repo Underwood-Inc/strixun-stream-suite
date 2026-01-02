@@ -335,10 +335,29 @@ export async function updateMod(slug: string, updates: ModUpdateRequest, thumbna
         if (thumbnail) {
             formData.append('thumbnail', thumbnail);
         }
-        // Add variant files to FormData
+        // Add variant files to FormData - CRITICAL: Encrypt with shared key (same as uploadMod/uploadVersion)
         if (variantFiles) {
+            // SECURITY: Shared key encryption is MANDATORY for all file uploads
+            // All files must be encrypted with shared key so any authenticated user can decrypt
+            const sharedKey = import.meta.env.VITE_MODS_ENCRYPTION_KEY;
+            if (!sharedKey || sharedKey.length < 32) {
+                throw new Error('MODS_ENCRYPTION_KEY is required for file encryption. Please ensure the encryption key is configured in your environment.');
+            }
+            
             for (const [variantId, file] of Object.entries(variantFiles)) {
-                formData.append(`variant_${variantId}`, file);
+                // Encrypt variant file with shared key (same system as main mod upload)
+                const fileBuffer = await file.arrayBuffer();
+                const encryptedFile = await encryptBinaryWithSharedKey(fileBuffer, sharedKey);
+                
+                // Create encrypted File object with .encrypted extension
+                const encryptedArrayBuffer = encryptedFile.buffer.slice(
+                    encryptedFile.byteOffset,
+                    encryptedFile.byteOffset + encryptedFile.byteLength
+                ) as ArrayBuffer;
+                const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
+                const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+                
+                formData.append(`variant_${variantId}`, encryptedFileObj);
             }
         }
         // API framework automatically handles FormData - don't set Content-Type header

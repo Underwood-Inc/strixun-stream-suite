@@ -264,9 +264,20 @@ export async function handleRequestOTP(
                 return createEmailErrorResponse(request, error, env);
             }
         } else {
-            // Test/dev mode: Skip email sending, just log and record stats
+            // Test/dev mode: Skip email sending, but still store OTP in KV for /dev/otp endpoint
             // For local testing, use E2E_TEST_OTP_CODE from .dev.vars
             console.log(`[TEST/DEV] Skipping email send for ${email}. Using E2E_TEST_OTP_CODE for local tests.`);
+            
+            // CRITICAL: Store OTP in KV with e2e_otp_ key so /dev/otp endpoint can retrieve it
+            // This matches what sendOTPEmail does in test mode
+            // Note: hashEmail is already imported at the top of this file
+            if (env.ENVIRONMENT === 'test' && env.RESEND_API_KEY?.startsWith('re_test_')) {
+                const emailHashForKV = await hashEmail(email);
+                const e2eOTPKey = `e2e_otp_${emailHashForKV}`;
+                await env.OTP_AUTH_KV.put(e2eOTPKey, otp, { expirationTtl: 600 });
+                console.log(`[DEV] Stored OTP in KV for /dev/otp endpoint: ${e2eOTPKey}`);
+            }
+            
             await recordOTPRequestService(emailHash, clientIP, customerId, env);
         }
         

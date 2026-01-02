@@ -205,13 +205,14 @@ export default defineConfig({
         stderr: 'pipe' as const,
       },
       // URL Shortener (port 8793)
+      // Build assets before starting worker (required for app-assets, decrypt-script, otp-core-script)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/url-shortener && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`
-          : `cd serverless/url-shortener && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`,
+          ? `cd serverless/url-shortener && set CI=true && set NO_INPUT=1 && pnpm build:all && node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`
+          : `cd serverless/url-shortener && CI=true NO_INPUT=1 pnpm build:all && node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`,
         port: BASE_PORT + 6,
         reuseExistingServer: !process.env.CI,
-        timeout: 180 * 1000,
+        timeout: 300 * 1000, // Increased timeout to allow for build time
         stdout: 'pipe' as const,
         stderr: 'pipe' as const,
       },

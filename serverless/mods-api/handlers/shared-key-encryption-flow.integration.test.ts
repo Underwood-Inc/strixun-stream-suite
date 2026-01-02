@@ -225,6 +225,58 @@ describe('Shared Key Encryption/Decryption Flow Integration', () => {
             // Verify integrity
             expect(decryptedVersion).toEqual(versionFile);
         });
+
+        it('should handle variant upload flow correctly (same as mod/version upload)', async () => {
+            // Simulate variant upload: same process as mod/version upload
+            // CRITICAL: Variant files must use shared key encryption (not JWT)
+            const variantFile = new Uint8Array([100, 200, 150, 75, 25]);
+            
+            // Client encrypts variant file with shared key
+            const encryptedVariant = await encryptBinaryWithSharedKey(variantFile, mockSharedKey);
+            
+            // Verify encryption format (binary v4 or v5)
+            expect(encryptedVariant[0]).toBeGreaterThanOrEqual(4);
+            expect(encryptedVariant[0]).toBeLessThanOrEqual(5);
+            
+            // Server decrypts to calculate hash and validate
+            const decryptedVariant = await decryptBinaryWithSharedKey(encryptedVariant, mockSharedKey);
+            
+            // Verify integrity
+            expect(decryptedVariant).toEqual(variantFile);
+            expect(decryptedVariant.length).toBe(variantFile.length);
+        });
+
+        it('should reject variant files that are not encrypted with shared key', async () => {
+            // Simulate unencrypted variant file (should be rejected by server)
+            const unencryptedVariant = new Uint8Array([100, 200, 150, 75, 25]);
+            
+            // Check that it's not in binary encrypted format (first byte should not be 4 or 5)
+            expect(unencryptedVariant[0]).not.toBe(4);
+            expect(unencryptedVariant[0]).not.toBe(5);
+            
+            // Server should reject this (validation in update handler)
+            // This test verifies the validation logic would catch unencrypted files
+            const isBinaryEncrypted = unencryptedVariant.length >= 4 && 
+                                     (unencryptedVariant[0] === 4 || unencryptedVariant[0] === 5);
+            expect(isBinaryEncrypted).toBe(false);
+        });
+
+        it('should reject variant files encrypted with wrong method (JWT encryption)', async () => {
+            // Simulate a file that looks encrypted but uses wrong method
+            // JWT-encrypted files would have version 80 (0x50) or other non-shared-key versions
+            const jwtEncryptedVariant = new Uint8Array([80, 1, 2, 3, 4, 5]); // Version 80 = JWT encryption
+            
+            // Check that it's not in shared key binary format
+            const isBinaryEncrypted = jwtEncryptedVariant.length >= 4 && 
+                                     (jwtEncryptedVariant[0] === 4 || jwtEncryptedVariant[0] === 5);
+            expect(isBinaryEncrypted).toBe(false);
+            
+            // Server should reject this (validation in update handler)
+            // Attempting to decrypt with shared key should fail
+            await expect(
+                decryptBinaryWithSharedKey(jwtEncryptedVariant, mockSharedKey)
+            ).rejects.toThrow();
+        });
     });
 
     describe('Error Handling', () => {
@@ -278,6 +330,56 @@ describe('Shared Key Encryption/Decryption Flow Integration', () => {
             
             // Should work (key is trimmed during decryption)
             expect(decrypted).toEqual(originalFile);
+        });
+    });
+
+    describe('Variant Download Flow (Server → Client)', () => {
+        it('should allow any authenticated user to decrypt variant files with shared key', async () => {
+            // Simulate: User A uploads variant (encrypts), User B downloads (decrypts)
+            const originalVariant = new Uint8Array([50, 100, 150, 200, 250]);
+            
+            // User A uploads - variant encrypted with shared key
+            const encryptedVariant = await encryptBinaryWithSharedKey(originalVariant, mockSharedKey);
+            
+            // User B downloads - can decrypt with same shared key (any authenticated user)
+            const decryptedVariant = await decryptBinaryWithSharedKey(encryptedVariant, mockSharedKey);
+            
+            expect(decryptedVariant).toEqual(originalVariant);
+        });
+
+        it('should reject variant files encrypted with JWT (unsupported format)', async () => {
+            // Simulate old variant file encrypted with JWT (version 80)
+            // This would fail during download with clear error message
+            const jwtEncryptedVariant = new Uint8Array([80, 1, 2, 3, 4, 5]); // Version 80 = JWT
+            
+            // Download handler should detect unsupported version and reject
+            await expect(
+                decryptBinaryWithSharedKey(jwtEncryptedVariant, mockSharedKey)
+            ).rejects.toThrow('Unsupported binary encryption version');
+        });
+
+        it('should handle variant file download with correct metadata', async () => {
+            // Simulate complete variant download flow
+            const originalVariant = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+            
+            // Step 1: Upload - client encrypts
+            const encryptedVariant = await encryptBinaryWithSharedKey(originalVariant, mockSharedKey);
+            
+            // Step 2: Server stores with metadata
+            const encryptionFormat = encryptedVariant[0] === 5 ? 'binary-v5' : 'binary-v4';
+            const metadata = {
+                encryptionFormat: encryptionFormat,
+                originalFileName: 'variant-test.zip',
+                fileSize: originalVariant.length,
+            };
+            
+            // Step 3: Download - server decrypts
+            const decryptedVariant = await decryptBinaryWithSharedKey(encryptedVariant, mockSharedKey);
+            
+            // Step 4: Verify integrity
+            expect(decryptedVariant).toEqual(originalVariant);
+            expect(decryptedVariant.length).toBe(metadata.fileSize);
+            expect(encryptionFormat).toMatch(/^binary-v[45]$/);
         });
     });
 

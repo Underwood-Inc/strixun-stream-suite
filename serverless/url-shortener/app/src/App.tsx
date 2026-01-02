@@ -32,8 +32,11 @@ function getApiUrl(): string {
 }
 
 async function fetchUserDisplayName(token: string): Promise<string | null> {
+  console.log('[URL Shortener] fetchUserDisplayName called with token:', token ? `${token.substring(0, 20)}...` : 'null');
   try {
-    const response = await fetch(`${getApiUrl()}/auth/me`, {
+    const apiUrl = getApiUrl();
+    console.log('[URL Shortener] Fetching display name from:', `${apiUrl}/auth/me`);
+    const response = await fetch(`${apiUrl}/auth/me`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -41,15 +44,19 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
       },
     });
 
+    console.log('[URL Shortener] /auth/me response status:', response.status, response.statusText);
     if (response.ok) {
       // Check if response is encrypted (headers are case-insensitive, but be defensive)
       const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
       const isEncrypted = encryptedHeader === 'true';
+      console.log('[URL Shortener] Response encryption check:', { encryptedHeader, isEncrypted });
       
       let data: any = await response.json();
+      console.log('[URL Shortener] Response data type:', typeof data, 'keys:', data && typeof data === 'object' ? Object.keys(data) : 'not an object');
       
       // Check if data looks encrypted (even if header check failed)
       const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
+      console.log('[URL Shortener] Data encryption check:', { looksEncrypted, hasEncryptedKey: data && typeof data === 'object' && 'encrypted' in data });
       
       if (isEncrypted || looksEncrypted) {
         // Wait for decryptWithJWT to be available (it's loaded via script tag)
@@ -87,6 +94,12 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
       
       // Extract displayName from decrypted data
       const displayName = data?.displayName;
+      console.log('[URL Shortener] Decrypted data:', { 
+        hasDisplayName: !!displayName, 
+        displayName, 
+        allKeys: data ? Object.keys(data) : null,
+        fullData: data 
+      });
       if (displayName) {
         console.log('[URL Shortener] Found displayName:', displayName);
         return displayName;

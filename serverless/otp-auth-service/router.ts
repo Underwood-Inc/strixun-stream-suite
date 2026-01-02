@@ -94,15 +94,19 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             response = publicResponse;
         }
         
-        // Try dev routes (ONLY in test mode - disabled in production)
-        // SECURITY: handleDevRoutes returns null in production, so this code path is safe
-        // Production ENVIRONMENT is always 'production' (set in wrangler.toml)
+        // Try dev routes (ONLY in test mode - COMPLETELY ABSENT in production)
+        // SECURITY: handleDevRoutes returns null in production, so /dev/otp endpoint DOES NOT EXIST
+        // Production ENVIRONMENT is always 'production' (explicitly set in wrangler.toml [env.production.vars])
+        // Production RESEND_API_KEY is a real key (never starts with 're_test_')
+        // Result: In production, this returns null -> route not found -> 404 (endpoint is absent, not just disabled)
         if (!response) {
             const devResult = await handleDevRoutes(request, path, env);
             if (devResult) {
                 customerId = devResult.customerId || null;
                 response = devResult.response;
             }
+            // PRODUCTION: devResult is always null, so this block never executes
+            // The /dev/otp endpoint is completely absent in production
         }
         
         // Try dashboard routes
