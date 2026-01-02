@@ -15,6 +15,10 @@ const CardContainer = styled.div`
   perspective: 1200px;
   position: relative;
   pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 `;
 
 const CardInner = styled.div`
@@ -23,6 +27,10 @@ const CardInner = styled.div`
   height: 100%;
   transform-style: preserve-3d;
   /* Transform controlled entirely by JavaScript */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 `;
 
 const CardFace = styled.div<{ isBack?: boolean }>`
@@ -33,6 +41,10 @@ const CardFace = styled.div<{ isBack?: boolean }>`
   border-radius: 4px;
   overflow: hidden;
   transform-style: preserve-3d;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   ${props => props.isBack ? 'transform: rotateY(180deg) translateZ(0);' : 'transform: translateZ(0);'}
 `;
 
@@ -42,6 +54,11 @@ const ThumbnailImage = styled.img`
   object-fit: contain;
   display: block;
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-drag: none;
 `;
 
 const ThumbnailWrapper = styled.div`
@@ -136,6 +153,10 @@ const BackContent = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 60px; /* Reserve space for bottom buttons */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   
   &::-webkit-scrollbar {
     width: 4px;
@@ -153,6 +174,11 @@ const BackTitle = styled.h3`
   color: ${colors.text};
   margin: 0;
   line-height: 1.3;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
 `;
 
 const BackDescription = styled.p`
@@ -164,6 +190,11 @@ const BackDescription = styled.p`
   overflow-x: hidden;
   margin: 0;
   min-height: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
   
   &::-webkit-scrollbar {
     width: 4px;
@@ -184,17 +215,24 @@ const BackMeta = styled.div`
   flex-shrink: 0; /* Don't shrink, but don't push with margin-top: auto */
   padding-top: ${spacing.xs};
   border-top: 1px solid ${colors.border};
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
 `;
 
 const MetaRow = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing.xs};
+  pointer-events: none;
 `;
 
 const MetaLabel = styled.span`
   font-weight: 500;
   color: ${colors.textSecondary};
+  pointer-events: none;
 `;
 
 const FlipHint = styled.div`
@@ -211,32 +249,14 @@ const FlipHint = styled.div`
   background: rgba(0, 0, 0, 0.3);
   padding: 4px 8px;
   border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 `;
 
 const NavigateButton = styled.button`
-  position: absolute;
-  bottom: ${spacing.xs};
-  left: ${spacing.xs};
-  padding: ${spacing.xs} ${spacing.sm};
-  background: ${colors.accent}20;
-  border: 1px solid ${colors.accent};
-  border-radius: 4px;
-  color: ${colors.accent};
-  font-size: 0.7rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 2;
-  
-  &:hover {
-    background: ${colors.accent};
-    color: #000;
-    transform: translateY(-1px);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
+  display: none;
 `;
 
 const ZoomButton = styled.button`
@@ -414,8 +434,14 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
       return;
     }
     
+    // Only allow flip - prevent all other interactions
     e.preventDefault();
     e.stopPropagation();
+    
+    // Prevent text selection
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
     
     // Clear any hover animations immediately
     if (leaveTimeoutRef.current) {
@@ -638,21 +664,11 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
               onMouseLeave={handleThumbnailMouseLeave}
             >
               {mod.thumbnailUrl ? (
-                <>
-                  <ThumbnailImage
-                    src={mod.thumbnailUrl}
-                    alt={mod.title}
-                    onError={onError}
-                  />
-                  {!isFlipped && (
-                    <ZoomButton
-                      onClick={handleZoom}
-                      title="Zoom/Expand thumbnail"
-                    >
-                      🔍 Zoom
-                    </ZoomButton>
-                  )}
-                </>
+                <ThumbnailImage
+                  src={mod.thumbnailUrl}
+                  alt={mod.title}
+                  onError={onError}
+                />
               ) : (
                 <div style={{
                   width: '100%',
