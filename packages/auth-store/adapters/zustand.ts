@@ -36,11 +36,20 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 if (trimmedToken !== user.token) {
                     userToStore = { ...user, token: trimmedToken };
                 }
-                // Extract isSuperAdmin from JWT if not already set
+                // Extract isSuperAdmin and customerId from JWT if not already set
                 let isSuperAdmin = user.isSuperAdmin || false;
+                let customerId = user.customerId || null;
                 const payload = decodeJWTPayload(trimmedToken);
                 if (payload?.isSuperAdmin === true) {
                     isSuperAdmin = true;
+                }
+                if (payload?.customerId && !customerId) {
+                    customerId = payload.customerId as string | null;
+                }
+                
+                // Update user with extracted customerId if needed
+                if (customerId && customerId !== userToStore?.customerId) {
+                    userToStore = { ...userToStore, customerId };
                 }
                 
                 set({ 
