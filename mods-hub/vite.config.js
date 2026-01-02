@@ -8,11 +8,28 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
         // Ensure proper module resolution to avoid circular dependencies
-        dedupe: ['@strixun/api-framework'],
+        dedupe: [
+            '@strixun/api-framework',
+            '@strixun/api-framework/client',
+            '@strixun/otp-login',
+            '@strixun/auth-store',
+            '@strixun/search-query-parser',
+            '@strixun/virtualized-table',
+            '@strixun/dice-board-game',
+            '@strixun/e2e-helpers'
+        ],
     },
     optimizeDeps: {
-        // Force pre-bundling of api-framework to resolve circular dependencies
-        include: ['@strixun/api-framework', '@strixun/api-framework/client'],
+        // Force pre-bundling of @strixun packages to resolve circular dependencies
+        include: [
+            '@strixun/api-framework',
+            '@strixun/api-framework/client',
+            '@strixun/otp-login',
+            '@strixun/auth-store',
+            '@strixun/search-query-parser',
+            '@strixun/virtualized-table',
+            '@strixun/dice-board-game'
+        ],
         // Exclude from optimization to ensure proper module resolution
         exclude: [],
     },
@@ -110,14 +127,16 @@ export default defineConfig({
         minify: 'esbuild',
         target: 'es2020',
         cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
+        // Prevent chunking issues that cause circular dependency errors
+        chunkSizeWarningLimit: 1000,
         rollupOptions: {
+            // Preserve entry signatures to ensure proper initialization order
+            preserveEntrySignatures: 'strict',
             output: {
-                // Consistent chunk naming for better caching
-                manualChunks: {
-                    'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-                    'query-vendor': ['@tanstack/react-query'],
-                    'state-vendor': ['zustand'],
-                },
+                // CRITICAL: Disable ALL code splitting to prevent circular dependency initialization errors
+                // This ensures all @strixun packages are in the same bundle with proper initialization order
+                // Note: This will create a larger bundle but prevents "Cannot access X before initialization" errors
+                inlineDynamicImports: true, // Inline all dynamic imports to prevent chunk loading order issues
             },
         },
     },

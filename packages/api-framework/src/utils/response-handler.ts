@@ -4,8 +4,9 @@
  * Utility for handling and transforming API responses
  */
 
-import { decryptWithJWT } from '../enhanced/encryption/jwt-encryption';
-import { decryptBinaryWithJWT } from '@strixun/api-framework';
+// Import directly from encryption source to avoid circular dependency
+// Do NOT import from encryption/index.js or @strixun/api-framework as it creates cycles
+import { decryptWithJWT, decryptBinaryWithJWT } from '../../encryption/jwt-encryption.js';
 import type { APIError, APIRequest, APIResponse } from '../types';
 
 /**

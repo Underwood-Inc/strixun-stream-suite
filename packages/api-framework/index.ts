@@ -31,10 +31,12 @@ export type { APIResponse as EnhancedAPIResponse } from './src/enhanced/types.js
 
 // Re-export enhanced framework exports (excluding APIResponse)
 // Note: EnhancedAPIClientV2 has been merged into APIClient - use createAPIClient with feature flags instead
+// CRITICAL: Do NOT re-export encryptWithJWT/decryptWithJWT from enhanced to avoid circular dependency
+// These are already exported from encryption/index.js above
 export {
   applyFiltering, buildResponse, clearCachedMetric, COMMON_TAGS, composeServerMiddlewares, computeMetric,
   computeMetrics, createCORSHeaders, createCORSMiddleware, createE2EEncryptionMiddleware, createEnhancedHandler, createErrorLegendMiddleware, createGetHandler, createKVCache, createPostHandler, createResponseBuilderMiddleware, createResponseFilterMiddleware, createRFC7807Error, createRFC7807Response, createServerMiddleware, createWorkerAdapter,
-  createWorkerHandler, decryptWithJWT as decryptWithJWTEnhanced, detectPlatform, encryptWithJWT as encryptWithJWTEnhanced, enhanceErrorWithLegend, formatErrorAsRFC7807, generateMetricCacheKey, getStorageAdapter, getTagFields, getType, getTypeRegistry, handleCORSPreflight, initializeCommonTags, isBrowser, isCloudflareWorker, isNode, KVCache, parseFilteringParams, registerTag, registerType, TypeRegistry, validateResponse, withMiddleware, WorkerAdapter
+  createWorkerHandler, detectPlatform, enhanceErrorWithLegend, formatErrorAsRFC7807, generateMetricCacheKey, getStorageAdapter, getTagFields, getType, getTypeRegistry, handleCORSPreflight, initializeCommonTags, isBrowser, isCloudflareWorker, isNode, KVCache, parseFilteringParams, registerTag, registerType, TypeRegistry, validateResponse, withMiddleware, WorkerAdapter
 } from './src/enhanced/index.js';
 
 export type {

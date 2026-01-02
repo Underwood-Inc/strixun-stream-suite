@@ -26,10 +26,9 @@ export type {
 // Enhanced features are now part of APIClient - no separate client class needed
 // All enhanced functionality is available via APIClient with feature flags
 
-// Encryption
+// Encryption - only export the middleware, not the re-exports to avoid circular dependency
+// Users should import encryptWithJWT/decryptWithJWT directly from @strixun/api-framework
 export {
-  encryptWithJWT,
-  decryptWithJWT,
   createE2EEncryptionMiddleware,
 } from './encryption';
 
