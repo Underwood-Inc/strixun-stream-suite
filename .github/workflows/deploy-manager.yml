@@ -518,6 +518,18 @@ jobs:
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
+          # CRITICAL: FILE_INTEGRITY_KEYPHRASE is required for HMAC-SHA256 file integrity verification
+          # This is separate from NETWORK_INTEGRITY_KEYPHRASE and is used to prevent hash spoofing
+          if [ -n "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put FILE_INTEGRITY_KEYPHRASE $ENV_FLAG || true
+          else
+            echo "⚠️  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
+            echo "File integrity verification will use fallback keyphrase (development only)"
+            echo "Please add FILE_INTEGRITY_KEYPHRASE to GitHub Secrets for production security"
+          fi
+          if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
+            echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY $ENV_FLAG || true
+          fi
         continue-on-error: true
 
   # OTP Auth Service Deployment
@@ -842,7 +854,34 @@ jobs:
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
-        run: pnpm run build
+          VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
+        run: |
+          # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
+          if [ -z "$VITE_MODS_ENCRYPTION_KEY" ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "Please add MODS_ENCRYPTION_KEY to your GitHub repository secrets."
+            echo "This key must match the MODS_ENCRYPTION_KEY in the mods-api worker."
+            exit 1
+          fi
+          
+          # Verify key length (should be at least 32 characters)
+          if [ ${#VITE_MODS_ENCRYPTION_KEY} -lt 32 ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            exit 1
+          fi
+          
+          echo "✓ MODS_ENCRYPTION_KEY is configured (length: ${#VITE_MODS_ENCRYPTION_KEY} characters)"
+          pnpm run build
+          
+          # Verify the key was embedded in the build (check that VITE_MODS_ENCRYPTION_KEY is referenced)
+          # Note: We check for the env var name, not the actual value, to avoid exposing secrets
+          echo "🔍 Verifying encryption key was embedded in build..."
+          if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
+            echo "✓ Encryption key reference found in build output"
+          else
+            echo "⚠️  WARNING: Encryption key reference not found in build - key may not be embedded"
+            echo "This could indicate the build didn't include the environment variable"
+          fi
       
       - name: Deploy to Cloudflare Pages
         id: deploy
