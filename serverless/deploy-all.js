@@ -32,9 +32,9 @@ const services = [
 ];
 
 if (isDryRun) {
-  console.log('[EMOJI] DRY RUN MODE - Validating deployments without deploying\n');
+  console.log(' ★ DRY RUN MODE - Validating deployments without deploying\n');
 } else {
-  console.log('[EMOJI] Deploying All Cloudflare Workers\n');
+  console.log(' ★ Deploying All Cloudflare Workers\n');
 }
 console.log(`Found ${services.length} services to ${isDryRun ? 'validate' : 'deploy'}:\n`);
 services.forEach((service, index) => {
@@ -53,7 +53,7 @@ const results = [];
 function execWithTimeout(command, options, timeoutMs = 600000) { // 10 minutes default
   return new Promise((resolve, reject) => {
     console.log(`   [TIME]  Timeout: ${timeoutMs / 1000 / 60} minutes`);
-    console.log(`   [EMOJI] Starting command...\n`);
+    console.log(` ★ Starting command...\n`);
     
     const startTime = Date.now();
     
@@ -104,7 +104,7 @@ function execWithTimeout(command, options, timeoutMs = 600000) { // 10 minutes d
       const seconds = elapsed % 60;
       
       if (code === 0) {
-        console.log(`\n   [OK] Command completed in ${minutes}m ${seconds}s`);
+        console.log(`\n   ✓ Command completed in ${minutes}m ${seconds}s`);
         resolve();
       } else {
         reject(new Error(`Command exited with code ${code}${signal ? ` (signal: ${signal})` : ''} after ${minutes}m ${seconds}s`));
@@ -190,41 +190,71 @@ async function validateService(service) {
 }
 
 /**
+ * Prebuild step: Build required dependencies
+ * 
+ * CRITICAL: Prebuild failures MUST fail the entire deployment.
+ * No prebuild step is allowed to silently fail.
+ */
+async function prebuild() {
+  console.log('\n ★ Prebuild Step: Building required dependencies\n');
+  
+  console.log('ℹ Building @strixun/otp-login package (required for frontend apps)...');
+  try {
+    await execWithTimeout(
+      'pnpm --filter @strixun/otp-login build:react',
+      { cwd: join(__dirname, '..') },
+      300000 // 5 minutes timeout
+    );
+    console.log('✓ @strixun/otp-login built successfully\n');
+  } catch (error) {
+    console.error('✗ CRITICAL: Failed to build @strixun/otp-login:', error.message);
+    console.error('✗ Prebuild step failed - deployment aborted to prevent broken deployments\n');
+    // Re-throw to fail the entire script
+    throw new Error(`Prebuild step failed: ${error.message}`);
+  }
+}
+
+/**
  * Execute deployment or validation
  */
 async function deployAll() {
+  // Run prebuild step before deployment (skip for dry-run)
+  if (!isDryRun) {
+    await prebuild();
+  }
+  
   for (const service of services) {
     const servicePath = join(__dirname, service.path);
     
     if (isDryRun) {
-      console.log(`\n[EMOJI] Validating ${service.name}...`);
+      console.log(`\nℹ ${service.name}...`);
       console.log(`   Path: ${servicePath}`);
       console.log(`   Worker: ${service.worker}`);
       
       const validation = await validateService(service);
       
       if (validation.valid) {
-        console.log(`   [OK] Configuration valid`);
-        if (validation.info.name) console.log(`   [EMOJI] Name: ${validation.info.name}`);
-        if (validation.info.main) console.log(`   [EMOJI] Main: ${validation.info.main}`);
+        console.log(`   ✓ Configuration valid`);
+        if (validation.info.name) console.log(`   ℹ: ${validation.info.name}`);
+        if (validation.info.main) console.log(`   ℹ: ${validation.info.main}`);
         if (validation.info.compatibility_date) console.log(`    Compatibility: ${validation.info.compatibility_date}`);
         if (validation.info.kvNamespaces) console.log(`    KV Namespaces: ${validation.info.kvNamespaces}`);
         if (validation.info.routes) console.log(`     Routes: ${validation.info.routes}`);
-        if (validation.info.packageName) console.log(`   [EMOJI] Package: ${validation.info.packageName}`);
-        console.log(`   [OK] ${service.name} validation passed!`);
+        if (validation.info.packageName) console.log(`   ℹ: ${validation.info.packageName}`);
+        console.log(`   ✓ ${service.name} validation passed!`);
         successCount++;
         results.push({ service: service.name, status: 'valid' });
       } else {
-        console.error(`   [ERROR] Configuration issues found:`);
+        console.error(`   ✗ Configuration issues found:`);
         validation.issues.forEach(issue => {
           console.error(`      • ${issue}`);
         });
         failCount++;
         results.push({ service: service.name, status: 'invalid', issues: validation.issues });
-        console.log(`\n[WARNING]  Continuing with remaining services...`);
+        console.log(`\n⚠  Continuing with remaining services...`);
       }
     } else {
-      console.log(`\n[EMOJI] Deploying ${service.name}...`);
+      console.log(`\n ★ Deploying ${service.name}...`);
       console.log(`   Path: ${servicePath}`);
       console.log(`   Worker: ${service.worker}`);
       console.log(`   Command: ${service.command || 'wrangler deploy'}`);
@@ -239,17 +269,17 @@ async function deployAll() {
           timeout
         );
         
-        console.log(`[OK] ${service.name} deployed successfully!`);
+        console.log(`✓ ${service.name} deployed successfully!`);
         successCount++;
         results.push({ service: service.name, status: 'success' });
       } catch (error) {
-        console.error(`[ERROR] ${service.name} deployment failed!`);
+        console.error(`✗ ${service.name} deployment failed!`);
         console.error(`   Error: ${error.message}`);
         failCount++;
         results.push({ service: service.name, status: 'failed', error: error.message });
         
         // Ask if user wants to continue
-        console.log(`\n[WARNING]  Continuing with remaining services...`);
+        console.log(`\n⚠  Continuing with remaining services...`);
       }
     }
   }
@@ -260,14 +290,14 @@ deployAll().then(() => {
   // Summary
   console.log('\n' + '='.repeat(60));
   if (isDryRun) {
-    console.log('[EMOJI] Validation Summary');
+    console.log(' ★ Validation Summary');
   } else {
-    console.log('[EMOJI] Deployment Summary');
+    console.log(' ★ Deployment Summary');
   }
   console.log('='.repeat(60));
-  console.log(`[OK] ${isDryRun ? 'Valid' : 'Successful'}: ${successCount}`);
-  console.log(`[ERROR] ${isDryRun ? 'Invalid' : 'Failed'}: ${failCount}`);
-  console.log(`[EMOJI] Total: ${services.length}\n`);
+  console.log(`✓ ${isDryRun ? 'Valid' : 'Successful'}: ${successCount}`);
+  console.log(`✗ ${isDryRun ? 'Invalid' : 'Failed'}: ${failCount}`);
+  console.log(` ★ Total: ${services.length}\n`);
 
   if (failCount > 0) {
     if (isDryRun) {
@@ -275,7 +305,7 @@ deployAll().then(() => {
       results
         .filter(r => r.status === 'invalid' || r.status === 'failed')
         .forEach(r => {
-          console.log(`  [ERROR] ${r.service}`);
+          console.log(`  ✗ ${r.service}`);
           if (r.issues) {
             r.issues.forEach(issue => {
               console.log(`     • ${issue}`);
@@ -290,7 +320,7 @@ deployAll().then(() => {
       results
         .filter(r => r.status === 'failed')
         .forEach(r => {
-          console.log(`  [ERROR] ${r.service}`);
+          console.log(`  ✗ ${r.service}`);
         });
     }
     console.log('');
@@ -305,14 +335,14 @@ deployAll().then(() => {
     process.exit(0);
   } else {
     if (isDryRun) {
-      console.log('[WARNING]  Some services have validation issues. Fix them before deploying.\n');
+      console.log('⚠  Some services have validation issues. Fix them before deploying.\n');
     } else {
-      console.log('[WARNING]  Some deployments failed. Check the errors above.\n');
+      console.log('⚠  Some deployments failed. Check the errors above.\n');
     }
     process.exit(1);
   }
 }).catch((error) => {
-  console.error(`[ERROR] Fatal error during ${isDryRun ? 'validation' : 'deployment'}:`, error);
+  console.error(`✗ Fatal error during ${isDryRun ? 'validation' : 'deployment'}:`, error);
   process.exit(1);
 });
 

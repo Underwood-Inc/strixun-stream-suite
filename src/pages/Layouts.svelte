@@ -88,14 +88,14 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleRefreshLayouts} disabled={!$connected}>[EMOJI] Refresh</button>
+        <button on:click={handleRefreshLayouts} disabled={!$connected}>→ Refresh</button>
       </Tooltip>
     </div>
   </div>
   
   <!-- Animation Settings -->
   <div class="card">
-    <h3>[SETTINGS] Animation Settings</h3>
+    <h3>≡ Animation Settings</h3>
     <div class="row">
       <div style="flex:1">
         <label>Duration (ms)</label>
@@ -131,15 +131,14 @@
   
   <!-- How It Works -->
   <div class="card">
-    <h3>[INFO] How It Works</h3>
+    <h3>ℹ How It Works</h3>
     <ol style="padding-left:20px;color:var(--muted);font-size:0.85em;margin:0">
       <li>Arrange sources how you want them</li>
       <li>Enter a name and click "Capture"</li>
       <li>Rearrange sources or change layouts</li>
       <li>Click "Apply" to animate back</li>
     </ol>
-    <p style="color:var(--muted);font-size:0.8em;margin-top:8px">
-      [EMOJI] <b>Tip:</b> Assign hotkeys in OBS  Settings  Hotkeys for quick switching!
+    <p style="color:var(--muted);font-size:0.8em;margin-top:8px"> ★ <b>Tip:</b> Assign hotkeys in OBS  Settings  Hotkeys for quick switching!
     </p>
   </div>
 </div>

@@ -16,7 +16,7 @@ export default defineConfig({
         extend: true,
       },
     },
-    outDir: 'dist',
+    outDir: resolve(__dirname, '../../dist/otp-login'),
   },
   resolve: {
     alias: {

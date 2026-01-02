@@ -156,7 +156,8 @@ export async function handleVerifyVersion(
             // File is encrypted - decrypt it first (same process as download)
             try {
                 // Get JWT token for decryption
-                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                // CRITICAL: Trim token to ensure it matches the token used for encryption
+                const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '').trim() || '';
                 if (!jwtToken) {
                     const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and verify files');
                     const corsHeaders = createCORSHeaders(request, {

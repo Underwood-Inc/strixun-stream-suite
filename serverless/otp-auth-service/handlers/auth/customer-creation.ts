@@ -16,8 +16,6 @@ import {
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     CUSTOMER_API_URL?: string;
-    SERVICE_API_KEY?: string; // Service-to-service API key for customer-api (REQUIRED)
-    NETWORK_INTEGRITY_KEYPHRASE?: string; // Network integrity keyphrase (REQUIRED)
     [key: string]: any;
 }
 
@@ -82,6 +80,9 @@ async function upsertCustomerAccount(
     if (customerId) {
         try {
             existingCustomer = await getCustomerService(customerId, env);
+            if (existingCustomer) {
+                console.log(`[Customer Creation] Found existing customer by ID: ${customerId}`);
+            }
         } catch (error) {
             console.warn(`[Customer Creation] Error fetching customer by ID ${customerId}:`, error);
         }
@@ -90,8 +91,25 @@ async function upsertCustomerAccount(
     if (!existingCustomer) {
         try {
             existingCustomer = await getCustomerByEmailService(emailLower, env);
+            if (existingCustomer) {
+                console.log(`[Customer Creation] Found existing customer by email: ${emailLower} (customerId: ${existingCustomer.customerId})`);
+            } else {
+                console.log(`[Customer Creation] No customer found by email: ${emailLower} - will create new customer`);
+            }
         } catch (error) {
-            console.warn(`[Customer Creation] Error fetching customer by email ${emailLower}:`, error);
+            // If it's a 500 error, the customer API might be having issues
+            // Log the error but continue - we'll try to create the customer anyway
+            // If customer already exists, creation will fail and we can handle that
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const isServerError = errorMessage.includes('internal error') || errorMessage.includes('Internal Server Error');
+            
+            if (isServerError) {
+                console.warn(`[Customer Creation] Customer API returned server error when fetching by email ${emailLower}. Will attempt to create customer if it doesn't exist. Error:`, errorMessage);
+            } else {
+                console.warn(`[Customer Creation] Error fetching customer by email ${emailLower}. Will attempt to create customer if it doesn't exist. Error:`, error);
+            }
+            // Continue - if customer exists, creation will fail and we'll handle it in retry logic
+            // existingCustomer remains null, so we'll proceed to create
         }
     }
     
@@ -114,8 +132,10 @@ async function upsertCustomerAccount(
             needsUpdate = true;
         }
         
-        // Ensure required fields exist
-        if (!existingCustomer.displayName) {
+        // Ensure required fields exist - displayName is REQUIRED, not optional
+        // Check for undefined, null, empty string, or whitespace-only
+        if (!existingCustomer.displayName || existingCustomer.displayName.trim() === '') {
+            console.log(`[Customer Creation] Missing displayName for customer ${resolvedCustomerId}, generating one...`);
             const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
             const customerDisplayName = await generateUniqueDisplayName({
                 customerId: resolvedCustomerId,
@@ -125,6 +145,7 @@ async function upsertCustomerAccount(
             await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
             updates.displayName = customerDisplayName;
             needsUpdate = true;
+            console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
         }
         
         // Ensure subscriptions exist
@@ -211,7 +232,6 @@ async function upsertCustomerAccount(
     
     const customerData: import('../../services/customer.js').CustomerData = {
         customerId: resolvedCustomerId,
-        name: emailLower.split('@')[0], // Use email prefix as name
         email: emailLower,
         companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
         plan: 'free', // Legacy field
@@ -295,24 +315,9 @@ export async function ensureCustomerAccount(
 ): Promise<string> {
     const emailLower = email.toLowerCase().trim();
     
-    // CRITICAL: Validate required environment variables before attempting customer creation
-    if (!env.SERVICE_API_KEY) {
-        const errorMsg = 'SERVICE_API_KEY is not configured in otp-auth-service. This is required for service-to-service calls to customer-api. Set it via: wrangler secret put SERVICE_API_KEY';
-        console.error(`[Customer Creation] ${errorMsg}`);
-        throw new Error(errorMsg);
-    }
-    
-    if (!env.NETWORK_INTEGRITY_KEYPHRASE) {
-        const errorMsg = 'NETWORK_INTEGRITY_KEYPHRASE is not configured in otp-auth-service. This is required for service-to-service calls to customer-api. Set it via: wrangler secret put NETWORK_INTEGRITY_KEYPHRASE';
-        console.error(`[Customer Creation] ${errorMsg}`);
-        throw new Error(errorMsg);
-    }
-    
     try {
-        // UPSERT customer account with retry logic
-        const resolvedCustomerId = await retryWithBackoff(async () => {
-            return await upsertCustomerAccount(emailLower, customerId, env);
-        }, 3, 100);
+        // UPSERT customer account (retry logic is handled internally by upsertCustomerAccount)
+        const resolvedCustomerId = await upsertCustomerAccount(emailLower, customerId, env);
         
         if (!resolvedCustomerId) {
             throw new Error(`Failed to create or retrieve customer account for ${emailLower}`);
@@ -327,22 +332,7 @@ export async function ensureCustomerAccount(
         
         if (error instanceof Error) {
             const errorMsg = error.message;
-            
-            // Check for authentication errors (401)
-            if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('Authentication required')) {
-                errorMessage = `Service authentication failed. Please verify that SERVICE_API_KEY is set correctly in both otp-auth-service and customer-api workers, and that they match. Error: ${errorMsg}`;
-            }
-            // Check for missing environment variable errors
-            else if (errorMsg.includes('SERVICE_API_KEY') || errorMsg.includes('NETWORK_INTEGRITY_KEYPHRASE')) {
-                errorMessage = errorMsg; // Use the specific error message from validation
-            }
-            // Check for network/integrity errors
-            else if (errorMsg.includes('integrity') || errorMsg.includes('NETWORK_INTEGRITY')) {
-                errorMessage = `Network integrity verification failed. Please verify that NETWORK_INTEGRITY_KEYPHRASE is set correctly in both otp-auth-service and customer-api workers, and that they match. Error: ${errorMsg}`;
-            }
-            else {
-                errorMessage = `${errorMessage} Error: ${errorMsg}`;
-            }
+            errorMessage = `${errorMessage} Error: ${errorMsg}`;
         }
         
         // BUSINESS RULE: Customer account MUST ALWAYS be created - throw error instead of returning null

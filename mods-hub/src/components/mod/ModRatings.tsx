@@ -9,6 +9,7 @@ import { useAuthStore } from '../../stores/auth';
 import type { ModRating } from '../../types/mod';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
+import { getButtonStyles } from '../../utils/buttonStyles';
 
 const Container = styled.div`
   background: ${colors.bgSecondary};
@@ -52,9 +53,17 @@ const RatingStars = styled.div`
   margin-top: ${spacing.xs};
 `;
 
-const Star = styled.span<{ filled: boolean }>`
-  color: ${props => props.filled ? colors.accent : colors.textMuted};
+const Star = styled.span.withConfig({
+  shouldForwardProp: (prop) => prop !== 'filled' && prop !== 'hovered' && prop !== 'dimmed',
+})<{ filled: boolean; hovered?: boolean; dimmed?: boolean }>`
+  color: ${props => {
+    if (props.dimmed) return `${colors.accent}40`; // Dimmed filled stars (25% opacity)
+    if (props.filled) return colors.accent;
+    if (props.hovered) return `${colors.accent}80`; // Faded accent color (50% opacity)
+    return colors.textMuted;
+  }};
   font-size: 1.25rem;
+  transition: color 0.2s ease;
 `;
 
 const RatingCount = styled.div`
@@ -179,24 +188,8 @@ const TextArea = styled.textarea`
   }
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${props => props.variant === 'primary' ? colors.accent : colors.bgSecondary};
-  color: ${props => props.variant === 'primary' ? colors.bg : colors.text};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    opacity: 0.9;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
 `;
 
 const AuthPrompt = styled.div`
@@ -220,11 +213,11 @@ function renderStars(rating: number) {
     
     for (let i = 0; i < 5; i++) {
         if (i < fullStars) {
-            stars.push(<Star key={i} filled={true}>[EMOJI]</Star>);
+            stars.push(<Star key={i} filled={true}> ★ </Star>);
         } else if (i === fullStars && hasHalfStar) {
-            stars.push(<Star key={i} filled={true}>[EMOJI]</Star>);
+            stars.push(<Star key={i} filled={true}> ★ </Star>);
         } else {
-            stars.push(<Star key={i} filled={false}>[EMOJI]</Star>);
+            stars.push(<Star key={i} filled={false}> ★ </Star>);
         }
     }
     
@@ -244,8 +237,10 @@ function calculateRatingBreakdown(ratings: ModRating[]): number[] {
 export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatingSubmit }: ModRatingsProps) {
     const { isAuthenticated, user } = useAuthStore();
     const [selectedRating, setSelectedRating] = useState(0);
+    const [hoveredRating, setHoveredRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     
     // Calculate average rating if not provided
     const avgRating = averageRating || (ratings.length > 0 
@@ -255,26 +250,48 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
     const breakdown = calculateRatingBreakdown(ratings);
     const totalRatings = ratings.length;
     
+    // Check if user has already rated
+    const userRating = isAuthenticated && user 
+        ? ratings.find(r => r.userId === user.userId)
+        : null;
+    
+    // Initialize form with user's existing rating when entering edit mode
+    const handleEditClick = () => {
+        if (userRating) {
+            setSelectedRating(userRating.rating);
+            setComment(userRating.comment || '');
+            setIsEditing(true);
+        }
+    };
+    
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setSelectedRating(0);
+        setComment('');
+    };
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedRating || !onRatingSubmit) return;
+        
+        // CRITICAL: Check for customerId - required for rating submission
+        if (!user?.customerId) {
+            alert('Your account is missing a customer association. This is required for rating submissions. Please contact support or try logging out and back in.');
+            return;
+        }
         
         setIsSubmitting(true);
         try {
             await onRatingSubmit(selectedRating, comment);
             setSelectedRating(0);
             setComment('');
+            setIsEditing(false);
         } catch (error) {
             console.error('Failed to submit rating:', error);
         } finally {
             setIsSubmitting(false);
         }
     };
-    
-    // Check if user has already rated
-    const userRating = isAuthenticated && user 
-        ? ratings.find(r => r.userId === user.userId)
-        : null;
 
     return (
         <Container>
@@ -294,7 +311,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                                 const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
                                 return (
                                     <RatingBar key={star}>
-                                        <RatingLabel>{star}[EMOJI]</RatingLabel>
+                                        <RatingLabel>{star} ★ </RatingLabel>
                                         <BarContainer>
                                             <BarFill percentage={percentage} />
                                         </BarContainer>
@@ -311,34 +328,66 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                 </div>
             )}
 
-            {isAuthenticated && !userRating && onRatingSubmit && (
+            {isAuthenticated && (!userRating || isEditing) && onRatingSubmit && (
                 <ReviewForm onSubmit={handleSubmit}>
-                    <FormTitle>Rate this mod</FormTitle>
+                    <FormTitle>{isEditing ? 'Edit your review' : 'Rate this mod'}</FormTitle>
                     <RatingInput>
                         <span style={{ fontSize: '0.875rem', color: colors.text }}>Rating:</span>
-                        {[1, 2, 3, 4, 5].map((rating) => (
-                            <Star
-                                key={rating}
-                                filled={rating <= selectedRating}
-                                onClick={() => setSelectedRating(rating)}
-                                style={{ cursor: 'pointer', fontSize: '1.5rem' }}
-                            >
-                                {rating <= selectedRating ? '[EMOJI]' : '[EMOJI]'}
-                            </Star>
-                        ))}
+                        {[1, 2, 3, 4, 5].map((rating) => {
+                            const isFilled = rating <= selectedRating;
+                            const isInHoverRange = rating <= hoveredRating && hoveredRating > 0;
+                            const isHoveringLower = hoveredRating > 0 && hoveredRating < selectedRating;
+                            
+                            // Dim filled stars that are above the hovered rating when hovering lower than selected
+                            const isDimmed = isFilled && isHoveringLower && rating > hoveredRating;
+                            
+                            // Show outlined hover style for stars in hover range
+                            // If hovering lower than selected, show hover style even for filled stars in hover range
+                            const showHovered = isInHoverRange && (!isFilled || isHoveringLower);
+                            
+                            // Determine if star should appear filled (not dimmed)
+                            const shouldBeFilled = isFilled && !isDimmed && !showHovered;
+                            
+                            return (
+                                <Star
+                                    key={rating}
+                                    filled={shouldBeFilled}
+                                    hovered={showHovered}
+                                    dimmed={isDimmed}
+                                    onClick={() => setSelectedRating(rating)}
+                                    onMouseEnter={() => setHoveredRating(rating)}
+                                    onMouseLeave={() => setHoveredRating(0)}
+                                    style={{ cursor: 'pointer', fontSize: '1.5rem' }}
+                                >
+                                    {shouldBeFilled ? ' ★ ' : (showHovered ? ' ☆ ' : ' ★ ')}
+                                </Star>
+                            );
+                        })}
                     </RatingInput>
                     <TextArea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         placeholder="Write a review (optional)..."
                     />
-                    <Button 
-                        type="submit" 
-                        variant="primary"
-                        disabled={!selectedRating || isSubmitting}
-                    >
-                        {isSubmitting ? 'Submitting...' : 'Submit Rating'}
-                    </Button>
+                    <div style={{ display: 'flex', gap: spacing.sm }}>
+                        <Button
+                            type="submit"
+                            $variant="primary"
+                            disabled={!selectedRating || isSubmitting}
+                        >
+                            {isSubmitting ? 'Submitting...' : (isEditing ? 'Update Review' : 'Submit Rating')}
+                        </Button>
+                        {isEditing && (
+                            <Button 
+                                type="button" 
+                                $variant="secondary"
+                                onClick={handleCancelEdit}
+                                disabled={isSubmitting}
+                            >
+                                Cancel
+                            </Button>
+                        )}
+                    </div>
                 </ReviewForm>
             )}
 
@@ -348,14 +397,31 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                 </AuthPrompt>
             )}
 
-            {userRating && (
+            {userRating && !isEditing && (
                 <div style={{ padding: spacing.md, background: colors.bgTertiary, borderRadius: 8 }}>
-                    <div style={{ fontSize: '0.875rem', color: colors.textSecondary, marginBottom: spacing.xs }}>
-                        Your rating:
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
+                        <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
+                            Your rating:
+                        </div>
+                        {onRatingSubmit && (
+                            <Button 
+                                type="button"
+                                $variant="secondary"
+                                onClick={handleEditClick}
+                                style={{ fontSize: '0.875rem', padding: `${spacing.xs} ${spacing.sm}` }}
+                            >
+                                Edit
+                            </Button>
+                        )}
                     </div>
                     <ReviewRating>{renderStars(userRating.rating)}</ReviewRating>
                     {userRating.comment && (
                         <ReviewContent>{userRating.comment}</ReviewContent>
+                    )}
+                    {userRating.updatedAt && userRating.updatedAt !== userRating.createdAt && (
+                        <div style={{ fontSize: '0.75rem', color: colors.textMuted, marginTop: spacing.xs }}>
+                            Updated: {new Date(userRating.updatedAt).toLocaleDateString()}
+                        </div>
                     )}
                 </div>
             )}

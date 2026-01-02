@@ -345,7 +345,7 @@ export async function handleDashboard(request: Request, env: Env): Promise<Respo
                 </head>
                 <body>
                     <div class="container">
-                        <h1>[EMOJI] Start Dev Server</h1>
+                        <h1> ★ Start Dev Server</h1>
                         <p>To view the dashboard in development, start the Vite dev server:</p>
                         <pre style="background: #252017; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left;"><code>pnpm dev:all</code></pre>
                         <p>Or separately:</p>

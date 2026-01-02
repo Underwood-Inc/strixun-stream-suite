@@ -17,8 +17,7 @@
   target="_blank" 
   rel="noopener noreferrer"
   class="otp-auth-link"
->
-  [EMOJI] Secured by OTP Auth
+> ★ Secured by OTP Auth
 </a>
 
 <style lang="scss">

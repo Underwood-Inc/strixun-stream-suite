@@ -49,9 +49,19 @@ export async function handleGetModDetail(
             do {
                 const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor });
                 for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
+                    // Match both customer_{id}_mods_list and customer_{id}/mods_list patterns
+                    if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
+                        // CRITICAL: Customer IDs can contain underscores (e.g., cust_2233896f662d)
+                        // Extract everything between "customer_" and the final "_mods_list" or "/mods_list"
+                        let customerId: string | null = null;
+                        if (key.name.endsWith('_mods_list')) {
+                            const match = key.name.match(/^customer_(.+)_mods_list$/);
+                            customerId = match ? match[1] : null;
+                        } else if (key.name.endsWith('/mods_list')) {
+                            const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                            customerId = match ? match[1] : null;
+                        }
+                        
                         if (customerId) {
                             const customerModKey = getCustomerKey(customerId, modId);
                             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
@@ -242,14 +252,54 @@ export async function handleGetModDetail(
             return 0;
         });
 
-        // Fetch author display name from auth API
-        // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
-        // Always try to fetch latest, but preserve stored value if fetch fails
-        const storedDisplayName = mod.authorDisplayName;
-        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-        const fetchedDisplayName = await fetchDisplayNameByUserId(mod.authorId, env);
-        // Use fetched value if available, otherwise fall back to stored value
+        // CRITICAL: Ensure mod has customerId (for data scoping)
+        // Set customerId from auth context if missing (for legacy mods)
+        if (!mod.customerId && auth?.customerId) {
+            console.log('[GetModDetail] Setting missing customerId on legacy mod:', {
+                modId: mod.modId,
+                customerId: auth.customerId
+            });
+            mod.customerId = auth.customerId;
+        }
+
+        // CRITICAL: Fetch author display name from customer data
+        // Customer is the primary data source for all customizable user info
+        // Look up customer by mod.customerId to get displayName
+        const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
+        let fetchedDisplayName: string | null = null;
+        
+        if (mod.customerId) {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+            fetchedDisplayName = await fetchDisplayNameByCustomerId(mod.customerId, env);
+            if (fetchedDisplayName) {
+                console.log('[GetModDetail] Fetched authorDisplayName from customer data:', { 
+                    authorDisplayName: fetchedDisplayName, 
+                    customerId: mod.customerId,
+                    modId: mod.modId
+                });
+            } else {
+                console.warn('[GetModDetail] Could not fetch displayName from customer data:', {
+                    customerId: mod.customerId,
+                    modId: mod.modId
+                });
+            }
+        } else {
+            console.warn('[GetModDetail] Mod missing customerId, cannot fetch displayName from customer data:', {
+                modId: mod.modId,
+                authorId: mod.authorId
+            });
+        }
+        
+        // Always prefer fetched value from customer data - it's the source of truth
+        // Fall back to stored value only if fetch failed (for backward compatibility)
         mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
+        
+        if (!fetchedDisplayName && !storedDisplayName) {
+            console.warn('[GetModDetail] Could not fetch authorDisplayName and no stored value available:', {
+                customerId: mod.customerId,
+                modId: mod.modId
+            });
+        }
 
         const response: ModDetailResponse = {
             mod,

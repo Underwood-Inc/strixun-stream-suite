@@ -54,7 +54,7 @@
   const defaultIcons = {
     success: '',
     error: '',
-    info: '[INFO]',
+    info: 'ℹ',
     warning: ''
   };
   

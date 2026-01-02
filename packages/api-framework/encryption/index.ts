@@ -28,6 +28,12 @@ export {
   decryptBinaryWithJWT,
 } from './jwt-encryption.js';
 
+// Shared key encryption (for mod files)
+export {
+  encryptBinaryWithSharedKey,
+  decryptBinaryWithSharedKey,
+} from './shared-key-encryption.js';
+
 // Multi-stage encryption
 export {
   encryptMultiStage,
@@ -50,12 +56,7 @@ export {
   encryptResponse,
   createEncryptionContext,
   extractJWTToken,
-  getServiceKey,
   findMatchingPolicy,
-  encryptWithServiceKey,
-  decryptWithServiceKey,
-  encryptBinaryWithServiceKey,
-  decryptBinaryWithServiceKey,
   DEFAULT_ENCRYPTION_POLICIES,
 } from './route-encryption.js';
 

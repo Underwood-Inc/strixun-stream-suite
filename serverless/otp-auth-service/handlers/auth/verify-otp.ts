@@ -19,12 +19,11 @@ import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
 import { storeUserPreferences, getDefaultPreferences, getUserPreferences } from '../../services/user-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
-import { decryptWithServiceKey } from '@strixun/api-framework';
+// decryptWithServiceKey removed - service key encryption was obfuscation only
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     ENVIRONMENT?: string;
-    SERVICE_ENCRYPTION_KEY?: string; // Service encryption key for decrypting OTP requests (CRITICAL: Must match client VITE_SERVICE_ENCRYPTION_KEY)
     [key: string]: any;
 }
 
@@ -99,7 +98,10 @@ async function getOrCreateUser(
             changedAt: new Date().toISOString(),
             reason: 'auto-generated',
         });
-        preferences.displayName.lastChangedAt = new Date().toISOString();
+        // CRITICAL: Do NOT set lastChangedAt for auto-generated names
+        // This allows users to change their name immediately after account creation
+        // lastChangedAt should remain null until the user actually changes it themselves
+        preferences.displayName.lastChangedAt = null;
         await storeUserPreferences(userId, customerId, preferences, env);
     } else {
         // Ensure displayName exists (for users created before this feature)
@@ -136,63 +138,38 @@ async function getOrCreateUser(
 }
 
 /**
+ * Decrypt request body if encrypted, otherwise parse as plain JSON
+ * Supports both encrypted (using API framework) and plain JSON requests
+ * Backend accepts both for backward compatibility
+ */
+async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string }> {
+    const bodyText = await request.text();
+    let body: any;
+    
+    try {
+        body = JSON.parse(bodyText);
+    } catch {
+        throw new Error('Invalid JSON in request body');
+    }
+    
+    // Parse as plain JSON
+    if (body.email && body.otp) {
+        return { email: body.email, otp: body.otp };
+    }
+    
+    throw new Error('Missing email or otp in request body');
+}
+
+/**
  * Verify OTP endpoint
  * POST /auth/verify-otp
  */
-/**
- * Decrypt request body if encrypted, otherwise return as-is (backward compatibility)
- */
-async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string; otp: string }> {
-    const body = await request.json();
-    
-    // Check if body is encrypted (has encrypted field)
-    if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
-        // Body is encrypted - decrypt using SERVICE_ENCRYPTION_KEY
-        // In Cloudflare Workers, secrets are accessed via env.SECRET_NAME
-        // NOTE: Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
-        const serviceKey = env.SERVICE_ENCRYPTION_KEY as string | undefined;
-        if (!serviceKey || typeof serviceKey !== 'string') {
-            throw new Error('SERVICE_ENCRYPTION_KEY is required for decrypting OTP requests. Set it via: wrangler secret put SERVICE_ENCRYPTION_KEY');
-        }
-        
-        try {
-            const decrypted = await decryptWithServiceKey(body, serviceKey);
-            return decrypted as { email: string; otp: string };
-        } catch (error: any) {
-            const errorMessage = error?.message || String(error);
-            console.error('[VerifyOTP] Decryption failed:', {
-                error: errorMessage,
-                hasKey: !!serviceKey,
-                keyLength: serviceKey?.length || 0,
-                encryptedFields: Object.keys(body || {}),
-                errorType: error?.constructor?.name || typeof error
-            });
-            
-            // Provide more specific error message
-            if (errorMessage.includes('service key does not match')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY mismatch: The encryption key on the server does not match the client key. Please verify SERVICE_ENCRYPTION_KEY (worker) matches VITE_SERVICE_ENCRYPTION_KEY (frontend).');
-            } else if (errorMessage.includes('Valid service key is required')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY not configured: Please set SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets via: wrangler secret put SERVICE_ENCRYPTION_KEY');
-            } else {
-                throw new Error(`Failed to decrypt OTP request: ${errorMessage}`);
-            }
-        }
-    }
-    
-    // Body is not encrypted (backward compatibility)
-    return body as { email: string; otp: string };
-}
-
-export async function handleVerifyOTP(
-    request: Request,
-    env: Env,
-    customerId: string | null = null
-): Promise<Response> {
+export async function handleVerifyOTP(request: Request, env: Env, customerId: string | null = null): Promise<Response> {
     try {
-        // Decrypt request body if encrypted
+        // Decrypt/parse request body
         const { email, otp } = await decryptRequestBody(request, env);
         
-        // Validate input
+        // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return new Response(JSON.stringify({ 
                 type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
@@ -332,7 +309,10 @@ export async function handleVerifyOTP(
         }
         
         // OTP is valid! Delete it (single-use)
-        await deleteOTP(otpKey, latestOtpKey, env);
+        // EXCEPTION: In test mode with E2E_TEST_OTP_CODE, don't delete so tests can reuse it
+        if (!isTestOTP) {
+            await deleteOTP(otpKey, latestOtpKey, env);
+        }
         
         // BUSINESS RULE: Customer account MUST ALWAYS be created for users on login
         // ensureCustomerAccount will throw if it cannot create the account after retries

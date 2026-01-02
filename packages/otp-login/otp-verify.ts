@@ -2,12 +2,11 @@
  * OTP Verification Handler
  * 
  * Handles verifying OTP codes with the server
- * CRITICAL: Email and OTP are encrypted in transit using service key encryption
+ * SECURITY: HTTPS provides transport security. Service key encryption removed (was obfuscation only).
  */
 
 import { OTP_PATTERN, OTP_LENGTH_DESCRIPTION } from '../../shared-config/otp-config.js';
 import type { OtpLoginConfig, OtpLoginState, LoginSuccessData } from './types.js';
-import { encryptRequestBody, validateEncryptedBody } from './encryption.js';
 import { parseErrorResponse, handleNetworkError } from './utils.js';
 import { stopCountdown } from './countdown.js';
 import type { CountdownManager } from './countdown.js';
@@ -41,43 +40,13 @@ export async function verifyOtp(context: OtpVerifyContext): Promise<void> {
       Object.assign(headers, config.customHeaders);
     }
 
-    // CRITICAL: Encrypt request body (email and OTP) - NEVER send unencrypted
-    let encryptedBody: string;
-    try {
-      if (!config.otpEncryptionKey) {
-        throw new Error('OTP encryption key is required');
-      }
-      encryptedBody = await encryptRequestBody({
-        email: state.email,
-        otp,
-      }, config.otpEncryptionKey);
-    } catch (encryptError) {
-      console.error('[OtpLoginCore] [ERROR] ENCRYPTION FAILED - Aborting request to prevent unencrypted data transmission');
-      console.error('[OtpLoginCore] Encryption error:', encryptError);
-      setState({ 
-        loading: false, 
-        error: 'Encryption failed. Cannot send request without encryption. Please check your configuration.' 
-      });
-      config.onError?.('Encryption failed. Cannot send request without encryption.');
-      return; // CRITICAL: Do NOT send request if encryption fails
-    }
-    
-    // Verify encrypted body is actually encrypted (not plain JSON)
-    try {
-      validateEncryptedBody(encryptedBody);
-    } catch (validationError) {
-      setState({ 
-        loading: false, 
-        error: validationError instanceof Error ? validationError.message : 'Encryption validation failed. Request aborted for security.' 
-      });
-      config.onError?.('Encryption validation failed.');
-      return;
-    }
+    // Send plain JSON - HTTPS provides transport security
+    const requestBody = JSON.stringify({ email: state.email, otp });
 
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: encryptedBody,
+      body: requestBody,
     });
 
     const responseText = await response.text().catch(() => null);

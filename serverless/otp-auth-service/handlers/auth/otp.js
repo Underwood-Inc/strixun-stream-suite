@@ -671,7 +671,6 @@ export async function handleVerifyOTP(request, env, customerId = null) {
                     
                     const customerData = {
                         customerId: resolvedCustomerId,
-                        name: emailLower.split('@')[0], // Use email prefix as name
                         email: emailLower,
                         companyName: companyName.charAt(0).toUpperCase() + companyName.slice(1),
                         plan: 'free',

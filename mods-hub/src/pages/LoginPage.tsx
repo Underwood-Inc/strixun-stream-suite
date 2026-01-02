@@ -3,6 +3,7 @@
  * Uses shared OTP login component with full encryption support
  */
 
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
@@ -10,7 +11,7 @@ import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 // Import CSS explicitly to ensure styles are included in build
 import '@strixun/otp-login/dist/react/otp-login.css';
 
-import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
+// Service key encryption removed - it was obfuscation only (key is in bundle)
 
 // Use proxy in development (via Vite), direct URL in production
 // E2E tests can override with VITE_AUTH_API_URL to use direct local worker URLs
@@ -22,7 +23,17 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { setUser } = useAuthStore();
+    const { setUser, restoreSession } = useAuthStore();
+
+    // Restore session from backend on mount (same as main app)
+    // This enables cross-application session sharing for the same device
+    // If user already has a session, they'll be redirected automatically
+    useEffect(() => {
+        // Always try to restore - it will check if restoration is needed
+        restoreSession().catch(error => {
+            console.debug('[LoginPage] Session restoration failed (non-critical):', error);
+        });
+    }, [restoreSession]); // Only run once on mount
 
     const handleLoginSuccess = async (data: LoginSuccessData) => {
         // Decode JWT to extract isSuperAdmin from payload (matching main app)
@@ -63,29 +74,30 @@ export function LoginPage() {
         }
 
         // Set authentication - support both old format and OAuth 2.0 format (matching main app)
+        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
         const userData = {
             userId: data.userId || '',
             email: data.email,
             displayName: data.displayName || undefined,
-            token: data.token,
+            token: data.token.trim(), // Trim token to prevent hash mismatches
             expiresAt: expiresAt,
             isSuperAdmin: isSuperAdmin,
         };
 
         setUser(userData);
 
-        // Fetch admin status after login (will update isSuperAdmin if different from JWT)
-        const { useAuthStore } = await import('../stores/auth');
-        const store = useAuthStore.getState();
-        await store.fetchUserInfo();
+        console.log('[Login] ✓ User authenticated:', userData.email, 'Token expires at:', expiresAt);
 
-        console.log('[Login] [SUCCESS] User authenticated:', userData.email, 'Token expires at:', expiresAt);
+        // Don't call fetchUserInfo immediately after login - let the Layout component handle it
+        // This avoids token mismatch issues that can occur when calling it too quickly after login
+        // The Layout component's restoreSession will fetch user info when it mounts, which gives
+        // the store time to fully update and ensures the token is properly set
 
         navigate('/');
     };
 
     const handleLoginError = (error: string) => {
-        console.error('[Login] [ERROR] Login failed:', error);
+        console.error('[Login] ✗ Login failed:', error);
     };
 
     return (
@@ -93,7 +105,7 @@ export function LoginPage() {
             apiUrl={AUTH_API_URL}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            otpEncryptionKey={getOtpEncryptionKey()}
+            // Service key encryption removed - HTTPS provides transport security
             title="Login"
             subtitle="Enter your email to receive a verification code"
         />

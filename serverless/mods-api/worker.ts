@@ -17,6 +17,7 @@ import type { ExecutionContext } from '@strixun/types';
 import { createError } from './utils/errors.js';
 import { handleModRoutes } from './router/mod-routes.js';
 import { handleAdminRoutes } from './router/admin-routes.js';
+import { handleR2Cleanup } from './handlers/admin/r2-cleanup.js';
 
 /**
  * Route configuration interface
@@ -94,6 +95,7 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
     // Do NOT manually set Access-Control-Allow-Origin as it causes duplicate headers
     const corsHeaders = createCORSHeaders(request, {
         allowedOrigins: effectiveOrigins,
+        credentials: true, // Allow credentials for authenticated requests
     });
     
     // Convert Headers to Record<string, string>
@@ -119,23 +121,62 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
 
 /**
  * Health check endpoint
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env: Env, request: Request): Promise<Response> {
-    const routes = parseRoutes(env);
+    // Extract JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
     
-    return new Response(JSON.stringify({ 
+    // CRITICAL SECURITY: JWT is required for encryption/decryption
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...getCorsHeaders(env, request),
+            },
+        });
+    }
+    
+    // Authenticate request to get auth object for encryption
+    const { authenticateRequest } = await import('./utils/auth.js');
+    const auth = await authenticateRequest(request, env);
+    
+    // If authentication fails, still require JWT for encryption (even if invalid)
+    // We'll use the raw token for encryption
+    const authForEncryption = auth || { jwtToken, customerId: null };
+    
+    const routes = parseRoutes(env);
+    const healthData = { 
         status: 'ok', 
         message: 'Mods API is running',
         service: 'strixun-mods-api',
         timestamp: new Date().toISOString(),
         environment: env.ENVIRONMENT || 'development',
         routes: routes.length > 0 ? routes : undefined
-    }), {
+    };
+    
+    // Encrypt response with JWT
+    const { wrapWithEncryption } = await import('@strixun/api-framework');
+    const response = new Response(JSON.stringify(healthData), {
         headers: { 
             'Content-Type': 'application/json',
             ...getCorsHeaders(env, request),
         },
     });
+    
+    // Wrap with encryption (will encrypt with JWT token)
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    return encryptedResult.response;
 }
 
 /**
@@ -223,7 +264,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 }
 
 /**
- * Export worker with CORS support
+ * Export worker with CORS support and scheduled events
  */
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -244,6 +285,23 @@ export default {
         
         // Handle request
         return handleRequest(request, env, ctx);
+    },
+    
+    /**
+     * Handle scheduled events (cron triggers)
+     */
+    async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+        console.log('[Worker] Scheduled event triggered:', {
+            scheduledTime: new Date(event.scheduledTime).toISOString(),
+            cron: event.cron,
+        });
+        
+        // Handle R2 cleanup cron job
+        if (event.cron === '0 2 * * *') { // Daily at 2 AM UTC
+            await handleR2Cleanup(event, env, ctx);
+        } else {
+            console.warn('[Worker] Unknown cron schedule:', event.cron);
+        }
     },
 };
 
@@ -266,5 +324,11 @@ interface Env {
     ROUTES?: string; // OPTIONAL: JSON string array of route configurations (matches wrangler.toml routes)
     
     [key: string]: any;
+}
+
+interface ScheduledEvent {
+    scheduledTime: number;
+    cron: string;
+    noRetry: () => void;
 }
 

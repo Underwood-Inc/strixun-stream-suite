@@ -266,8 +266,7 @@
             </button>
           </Tooltip>
           <Tooltip text="User Presence | This feature is incomplete and still in progress" level="warning" position="bottom">
-            <button class="chat-header__action-btn wip" disabled>
-              [EMOJI] Presence
+            <button class="chat-header__action-btn wip" disabled> ★ Presence
             </button>
           </Tooltip>
         {/if}

@@ -37,7 +37,7 @@ export function updateStorageStatus(): void {
   
   if (idbEl) {
     const idbReady = (window as any).SSS_Storage ? (window as any).SSS_Storage.idbReady() : false;
-    idbEl.textContent = idbReady ? '[OK] IndexedDB' : '[ERROR] IndexedDB';
+    idbEl.textContent = idbReady ? '✓ IndexedDB' : '✗ IndexedDB';
     idbEl.style.color = idbReady ? 'var(--success)' : 'var(--danger)';
   }
   
@@ -49,7 +49,7 @@ export function updateStorageStatus(): void {
         return true;
       } catch (e) { return false; }
     })();
-    lsEl.textContent = lsWorks ? '[OK] localStorage' : '[ERROR] localStorage';
+    lsEl.textContent = lsWorks ? '✓ localStorage' : '✗ localStorage';
     lsEl.style.color = lsWorks ? 'var(--success)' : 'var(--danger)';
   }
   
@@ -439,7 +439,7 @@ export async function offerRecovery(): Promise<boolean> {
   const age = new Date().getTime() - new Date(recovery.timestamp).getTime();
   const ageStr = age < 3600000 ? `${Math.round(age/60000)} minutes` : `${Math.round(age/3600000)} hours`;
   
-  const msg = `[EMOJI] Recovery Data Found!
+  const msg = ` ★ Recovery Data Found!
 
 Your configs appear empty, but we found a backup from ${ageStr} ago:
 • ${recovery.swapConfigs?.length || 0} swap configs
@@ -675,7 +675,7 @@ export function renderDashSwaps(): void {
   if (!grid) return;
   const swapConfigs = (window as any).SourceSwaps ? (window as any).SourceSwaps.getConfigs() : [];
   if (swapConfigs.length === 0) {
-    grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to [EMOJI] tab to create one.</div>';
+    grid.innerHTML = '<div class="empty-state" style="padding:10px;grid-column:1/-1">No saved swaps. Go to ★ tab to create one.</div>';
     return;
   }
   // Render buttons with proper escaping

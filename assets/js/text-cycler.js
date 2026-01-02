@@ -92,7 +92,7 @@
             <div class="source-item" style="cursor:pointer" onclick="TextCycler.loadConfig(${i})">
                 <div>
                     <div class="name">${c.name || 'Unnamed'} ${c.isRunning ? '<span class="badge badge-success">Running</span>' : ''}</div>
-                    <div class="type">${c.mode === 'browser' ? '[EMOJI] Browser' : '[EMOJI] Legacy'} • ${(c.textLines || []).length} lines • ${c.transition || 'none'}</div>
+                    <div class="type">${c.mode === 'browser' ? '→ Browser' : ' ★ Legacy'} • ${(c.textLines || []).length} lines • ${c.transition || 'none'}</div>
                 </div>
                 <div style="display:flex;gap:4px">
                     <button onclick="event.stopPropagation(); TextCycler.quickStart(${i})" title="${c.isRunning ? 'Stop' : 'Start'}">${c.isRunning ? '' : '▶'}</button>

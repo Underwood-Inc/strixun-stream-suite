@@ -259,25 +259,25 @@ export async function handleRequest(request: any, env: any): Promise<any> {
 ### ✅ CORRECT - ASCII-Compatible Symbols (ALWAYS USE):
 ```powershell
 # PowerShell scripts
-Write-Host "[SUCCESS] Operation completed" -ForegroundColor Green
-Write-Host "[WARNING] This is a warning" -ForegroundColor Yellow
-Write-Host "[ERROR] Operation failed" -ForegroundColor Red
-Write-Host "[INFO] Processing..." -ForegroundColor Cyan
+Write-Host "✓ Operation completed" -ForegroundColor Green
+Write-Host "⚠ This is a warning" -ForegroundColor Yellow
+Write-Host "✗ Operation failed" -ForegroundColor Red
+Write-Host "ℹ Processing..." -ForegroundColor Cyan
 ```
 
 ```typescript
 // TypeScript/JavaScript
-console.log('[SUCCESS] All services configured successfully!');
-console.warn('[WARNING] Some services failed');
-console.error('[ERROR] Invalid input');
+console.log('✓ All services configured successfully!');
+console.warn('⚠ Some services failed');
+console.error('✗ Invalid input');
 ```
 
 ```markdown
 # Documentation
-- [SUCCESS] Feature implemented
-- [WARNING] Deprecated feature
-- [ERROR] Known issue
-- [INFO] Additional information
+- ✓ Feature implemented
+- ⚠ Deprecated feature
+- ✗ Known issue
+- ℹ Additional information
 ```
 
 ### ❌ WRONG - Emojis/Unicode (DO NOT USE):
@@ -294,20 +294,24 @@ console.warn('⚠️ Some services failed');
 ```
 
 ### ASCII Symbol Alternatives
-- Success: `[SUCCESS]`, `[OK]`, `[PASS]`, `+`, `*`
-- Warning: `[WARNING]`, `[WARN]`, `!`, `*`
-- Error: `[ERROR]`, `[FAIL]`, `[FAILED]`, `X`, `-`
-- Info: `[INFO]`, `[NOTE]`, `i`, `>`
-- Checkmark: `[OK]`, `[PASS]`, `+`, `*`
-- Cross/X: `[FAIL]`, `[ERROR]`, `X`, `-`
+- Success: `✓`, `✔`, `+`
+- Warning: `⚠`, `!`
+- Error: `✗`, `✘`, `X`
+- Info: `ℹ`, `i`, `>`
+- Checkmark: `✓`, `✔`
+- Cross/X: `✗`, `✘`, `X`
+- Star/Highlight: `★`, `☆`, `*`
+- Arrow: `→`, `→`, `>`
+- Heart: `♥`
+- Other: `≡`, `~`, `↻`, `↺`, `⇄`, `⊕`
 
 ### Preferred Format
-Always use bracketed text labels for status indicators:
-- `[SUCCESS]` instead of ✅
-- `[WARNING]` instead of ⚠️
-- `[ERROR]` instead of ❌
-- `[INFO]` instead of ℹ️
-- `[SECURITY]` instead of 🔒
+Always use ASCII special characters for status indicators:
+- `✓` instead of ✅ or [SUCCESS]
+- `⚠` instead of ⚠️ or [WARNING]
+- `✗` instead of ❌ or [ERROR]
+- `ℹ` instead of ℹ️ or [INFO]
+- `★` instead of [*] or other placeholders
 
 ## General Code Quality
 

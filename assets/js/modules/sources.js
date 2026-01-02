@@ -83,7 +83,7 @@ function renderScenesList() {
              onclick="onSceneSelect('${escapedName}')">
             <div>
                 <div class="name">${name}</div>
-                <div class="type">${isCurrent ? '[EMOJI] Live' : 'Scene'}</div>
+                <div class="type">${isCurrent ? ' ★ Live' : 'Scene'}</div>
             </div>
             ${isSelected ? '<span style="color:var(--accent)"></span>' : ''}
         </div>`;

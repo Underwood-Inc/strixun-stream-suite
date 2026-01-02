@@ -10,30 +10,6 @@ import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import type { ModRating, ModRatingRequest, ModRatingsResponse } from '../../types/rating.js';
 
 /**
- * Fetch user displayName from auth service
- */
-async function fetchUserDisplayName(token: string, env: Env): Promise<string | null> {
-    try {
-        // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-        const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-        const response = await fetch(`${authApiUrl}/auth/me`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        if (response.ok) {
-            const userData = await response.json() as { displayName?: string | null; [key: string]: any };
-            return userData.displayName || null;
-        }
-    } catch (error) {
-        console.warn('[Ratings] Failed to fetch displayName from auth service:', error);
-    }
-    return null;
-}
-
-/**
  * Generate a unique rating ID
  */
 function generateRatingId(): string {
@@ -145,6 +121,40 @@ export async function handleGetModRatings(
             }
         }
         
+        // Fetch missing display names for ratings that don't have userDisplayName
+        // Similar to how mod detail handler fetches missing authorDisplayName
+        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
+        const ratingsNeedingDisplayName = ratings.filter(r => !r.userDisplayName && r.userId);
+        
+        if (ratingsNeedingDisplayName.length > 0) {
+            // Fetch all missing display names in parallel for better performance
+            const displayNamePromises = ratingsNeedingDisplayName.map(async (rating) => {
+                const fetchedDisplayName = await fetchDisplayNameByUserId(rating.userId, env);
+                return { rating, fetchedDisplayName };
+            });
+            
+            const displayNameResults = await Promise.all(displayNamePromises);
+            
+            // Update ratings with fetched display names and prepare for storage update
+            const ratingsToUpdate: ModRating[] = [];
+            for (const { rating, fetchedDisplayName } of displayNameResults) {
+                if (fetchedDisplayName) {
+                    rating.userDisplayName = fetchedDisplayName;
+                    ratingsToUpdate.push(rating);
+                }
+            }
+            
+            // Update ratings in storage if we fetched any missing display names
+            // This ensures future requests don't need to fetch again
+            if (ratingsToUpdate.length > 0) {
+                const updatePromises = ratingsToUpdate.map(rating => {
+                    const ratingKey = getCustomerKey(null, `rating_${rating.ratingId}`);
+                    return env.MODS_KV.put(ratingKey, JSON.stringify(rating));
+                });
+                await Promise.all(updatePromises);
+            }
+        }
+        
         // Sort by creation date (newest first)
         ratings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
@@ -207,6 +217,26 @@ export async function handleSubmitModRating(
         // Validate rating
         if (!body.rating || body.rating < 1 || body.rating > 5) {
             const rfcError = createError(request, 400, 'Invalid Rating', 'Rating must be between 1 and 5');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
+        // CRITICAL: Validate customerId is present - required for display name lookups
+        if (!auth.customerId) {
+            console.error('[Ratings] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'Rejecting rating submission - customerId is required for display name lookups'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for rating submissions. Please ensure your account has a valid customer association.');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -294,9 +324,23 @@ export async function handleSubmitModRating(
             }
         }
         
-        // Get user displayName from auth service (once, reuse for both create and update)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-        const userDisplayName = jwtToken ? await fetchUserDisplayName(jwtToken, env) : null;
+        // CRITICAL: Get user displayName from customer data - customer is the source of truth
+        let userDisplayName: string | null = null;
+        
+        if (auth.customerId) {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+            userDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+            if (!userDisplayName) {
+                console.warn('[Ratings] Could not fetch displayName from customer data:', {
+                    customerId: auth.customerId,
+                    userId: auth.userId
+                });
+            }
+        } else {
+            console.warn('[Ratings] Missing customerId, cannot fetch displayName from customer data:', {
+                userId: auth.userId
+            });
+        }
         
         // Check if user has already rated this mod (use normalized modId from the found mod)
         const normalizedStoredModId = normalizeModId(mod.modId);
@@ -310,11 +354,16 @@ export async function handleSubmitModRating(
             const existingRating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
             if (existingRating && existingRating.userId === auth.userId) {
                 // User has already rated - update existing rating
+                // Allow comment to be cleared (empty string) or updated
+                const updatedComment = body.comment !== undefined 
+                    ? (body.comment || null) // Allow empty string to clear comment
+                    : existingRating.comment; // Keep existing if not provided
+                
                 const updatedRating: ModRating = {
                     ...existingRating,
                     userDisplayName: userDisplayName || existingRating.userDisplayName || null,
                     rating: body.rating,
-                    comment: body.comment || existingRating.comment,
+                    comment: updatedComment,
                     updatedAt: new Date().toISOString(),
                 };
                 

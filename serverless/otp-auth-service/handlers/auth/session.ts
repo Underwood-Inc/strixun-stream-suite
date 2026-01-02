@@ -63,7 +63,8 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
             });
         }
         
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
@@ -242,7 +243,8 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             });
         }
         
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
@@ -285,7 +287,7 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
             // from working with this session
             await env.OTP_AUTH_KV.delete(sessionKey);
             
-            console.log(`[Logout] [OK] Deleted session for user: ${userId}, customerId: ${customerId}`);
+            console.log(`[Logout] ✓ Deleted session for user: ${userId}, customerId: ${customerId}`);
         }
         
         return new Response(JSON.stringify({ 

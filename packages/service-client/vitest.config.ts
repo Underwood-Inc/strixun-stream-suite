@@ -5,8 +5,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/*.{test,spec}.{js,ts}'],
-    exclude: ['node_modules', 'dist', '**/*.e2e.{test,spec}.{js,ts}'],
+    include: ['**/*.test.{js,ts}'],
+    exclude: [
+      'node_modules', 
+      'dist', 
+      '**/*.e2e.{test,spec}.{js,ts}',
+      '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
+    ],
     testTimeout: 10000,
     passWithNoTests: true,
     coverage: {

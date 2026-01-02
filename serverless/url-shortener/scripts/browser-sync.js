@@ -11,7 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '..');
-const appDistDir = join(projectRoot, 'app', 'dist');
+// Vite outputs to dist/url-shortener-app at project root (see app/vite.config.ts)
+const appDistDir = join(projectRoot, '..', '..', 'dist', 'url-shortener-app');
 
 browserSync.init({
   proxy: 'http://localhost:8787',
@@ -30,10 +31,10 @@ browserSync.init({
   reloadOnRestart: true,
 }, (err, bs) => {
   if (err) {
-    console.error('[BrowserSync] [ERROR] Failed to start:', err);
+    console.error('[BrowserSync] ✗ Failed to start:', err);
     process.exit(1);
   }
-  console.log('[BrowserSync] [SUCCESS] Started on http://localhost:3000');
+  console.log('[BrowserSync] ✓ Started on http://localhost:3000');
   console.log('[BrowserSync] Proxying to http://localhost:8787');
   console.log('[BrowserSync] Watching:', appDistDir);
 });

@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # OTP Auth Service Worker
+  otp-auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: strixun-otp-auth-service
+    working_dir: /app/serverless/otp-auth-service
+    command: pnpm dev
+    ports:
+      - "8787:8787"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/serverless/otp-auth-service/node_modules
+      - wrangler-state-otp:/root/.wrangler/state
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - serverless/otp-auth-service/.dev.vars
+    networks:
+      - strixun-dev
+    restart: unless-stopped
+
+  # Mods API Worker
+  mods-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: strixun-mods-api
+    working_dir: /app/serverless/mods-api
+    command: pnpm dev
+    ports:
+      - "8788:8788"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/serverless/mods-api/node_modules
+      - wrangler-state-mods:/root/.wrangler/state
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - serverless/mods-api/.dev.vars
+    networks:
+      - strixun-dev
+    depends_on:
+      - customer-api
+    restart: unless-stopped
+
+  # Customer API Worker
+  customer-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: strixun-customer-api
+    working_dir: /app/serverless/customer-api
+    command: pnpm dev
+    ports:
+      - "8790:8790"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/serverless/customer-api/node_modules
+      - wrangler-state-customer:/root/.wrangler/state
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - serverless/customer-api/.dev.vars
+    networks:
+      - strixun-dev
+    restart: unless-stopped
+
+  # Mods Hub Frontend
+  mods-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: strixun-mods-hub
+    working_dir: /app/mods-hub
+    command: pnpm dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/mods-hub/node_modules
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - mods-hub/.env
+    networks:
+      - strixun-dev
+    depends_on:
+      - otp-auth-service
+      - mods-api
+      - customer-api
+    restart: unless-stopped
+
+  # Root App (Stream Suite)
+  stream-suite:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: strixun-stream-suite
+    working_dir: /app
+    command: pnpm dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    networks:
+      - strixun-dev
+    restart: unless-stopped
+
+  # Control Panel
+  control-panel:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: strixun-control-panel
+    working_dir: /app/control-panel
+    command: pnpm dev
+    ports:
+      - "5175:5175"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/control-panel/node_modules
+    environment:
+      - NODE_ENV=development
+    networks:
+      - strixun-dev
+    restart: unless-stopped
+
+volumes:
+  wrangler-state-otp:
+    driver: local
+  wrangler-state-mods:
+    driver: local
+  wrangler-state-customer:
+    driver: local
+
+networks:
+  strixun-dev:
+    driver: bridge

@@ -12,7 +12,7 @@ import { getCorsHeaders } from '../../utils/cors.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
 import { decryptData, getJWTSecret } from '../../utils/crypto.js';
-import { getCustomer } from '../../utils/customer-api-client.js';
+import { getCustomer } from '@strixun/api-framework';
 // Uses shared encryption suite from serverless/shared/encryption
 
 interface Env {
@@ -190,7 +190,8 @@ export async function handleCreateApiKey(
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
-        const jwtToken = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const jwtToken = authHeader.substring(7).trim();
         
         // Verify customer exists in customer-api
         const customer = await getCustomer(customerId, jwtToken, env);

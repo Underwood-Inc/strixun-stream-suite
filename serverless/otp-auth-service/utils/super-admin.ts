@@ -18,25 +18,48 @@ interface Env {
 
 /**
  * Get list of super admin emails from environment or KV
+ * 
+ * PRIMARY SOURCE: env.SUPER_ADMIN_EMAILS (from .dev.vars for local dev, or Cloudflare secrets for production)
+ * FALLBACK: KV storage (only used if env var is not set - mainly for production runtime updates)
+ * 
+ * For local development: Set SUPER_ADMIN_EMAILS in .dev.vars
+ * For production: Set via wrangler secret put SUPER_ADMIN_EMAILS or Cloudflare Dashboard
  */
 async function getSuperAdminEmails(env: Env): Promise<string[]> {
-    // First, check environment variable (comma-separated list)
+    // PRIMARY: Check environment variable first (from .dev.vars in local dev, or Cloudflare secrets in production)
     if (env.SUPER_ADMIN_EMAILS) {
-        return env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
+        const emails = env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
+        console.log('[SuperAdmin] ✓ Loaded from env.SUPER_ADMIN_EMAILS:', {
+            count: emails.length,
+            emails: emails,
+            source: 'environment variable (.dev.vars or Cloudflare secrets)'
+        });
+        return emails;
     }
     
-    // Fallback: Check KV for super admin list
+    // FALLBACK: Check KV for super admin list (only if env var not set)
+    // NOTE: In local dev with --local flag, KV is stored locally in ~/.wrangler/state/v3/kv/
+    // This fallback is mainly for production where admins might update KV directly
     if (env.OTP_AUTH_KV) {
         try {
             const kvEmails = await env.OTP_AUTH_KV.get('super_admin_emails');
             if (kvEmails) {
-                return kvEmails.split(',').map(email => email.trim().toLowerCase());
+                const emails = kvEmails.split(',').map(email => email.trim().toLowerCase());
+                console.log('[SuperAdmin] ⚠ Loaded from KV fallback (env.SUPER_ADMIN_EMAILS not set):', {
+                    count: emails.length,
+                    emails: emails,
+                    source: 'KV storage (fallback)',
+                    note: 'Set SUPER_ADMIN_EMAILS in .dev.vars for local dev to avoid KV dependency'
+                });
+                return emails;
             }
         } catch (e) {
-            // If KV read fails, continue to API key check
+            console.warn('[SuperAdmin] KV read failed:', e);
         }
     }
     
+    console.warn('[SuperAdmin] ✗ No super admin emails found - super admin access DISABLED');
+    console.warn('[SuperAdmin]   Set SUPER_ADMIN_EMAILS in .dev.vars (local dev) or Cloudflare secrets (production)');
     return [];
 }
 
@@ -50,8 +73,16 @@ export async function isSuperAdminEmail(email: string, env: Env): Promise<boolea
     
     const normalizedEmail = email.trim().toLowerCase();
     const superAdminEmails = await getSuperAdminEmails(env);
+    const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
     
-    return superAdminEmails.includes(normalizedEmail);
+    console.log('[SuperAdmin] Checking super admin status:', {
+        email: normalizedEmail,
+        isSuperAdmin: isSuperAdmin,
+        superAdminEmails: superAdminEmails,
+        emailInList: superAdminEmails.includes(normalizedEmail)
+    });
+    
+    return isSuperAdmin;
 }
 
 /**
@@ -81,7 +112,8 @@ export function authenticateSuperAdmin(request: Request, env: Env): boolean {
     let apiKey: string | null = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        apiKey = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        apiKey = authHeader.substring(7).trim();
     } else {
         apiKey = request.headers.get('X-Super-Admin-Key');
     }
@@ -105,7 +137,8 @@ export async function authenticateSuperAdminEmail(request: Request, env: Env): P
         return null;
     }
     
-    const token = authHeader.substring(7);
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
     
     try {
         // Import JWT verification utilities

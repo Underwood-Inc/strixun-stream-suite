@@ -1,16 +1,14 @@
 /**
- * Enhanced API Framework - JWT-Based E2E Encryption
+ * Enhanced API Framework - E2E Encryption Middleware
  * 
- * Re-exports shared encryption suite for use in API framework
- * All encryption logic is now in serverless/shared/encryption/
+ * Client-side middleware for automatic response encryption
+ * Uses the encryption suite from encryption/jwt-encryption.js
+ * 
+ * CRITICAL: Do NOT re-export from encryption/index.js to avoid circular dependency
+ * Only import what we need directly from jwt-encryption.js
  */
 
-// Import from encryption package (now part of api-framework)
-export {
-  encryptWithJWT,
-  decryptWithJWT,
-} from '../../../encryption/index.js';
-
+import { encryptWithJWT } from '../../../encryption/jwt-encryption.js';
 import type { E2EEncryptionConfig } from '../types';
 import type { APIRequest, APIResponse } from '../../types';
 
@@ -60,8 +58,7 @@ export function createE2EEncryptionMiddleware(
 
       const data = response.data;
 
-      // Encrypt data using shared encryption suite via workspace package
-      const { encryptWithJWT } = await import('@strixun/api-framework');
+      // Use the imported encryptWithJWT (already imported at top of file)
       const encrypted = await encryptWithJWT(data, token);
 
       // Create new response with encrypted data

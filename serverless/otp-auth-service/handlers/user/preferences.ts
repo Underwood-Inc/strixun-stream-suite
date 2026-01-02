@@ -33,7 +33,8 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
       });
     }
 
-    const token = authHeader.substring(7);
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 
@@ -114,7 +115,8 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
       });
     }
 
-    const token = authHeader.substring(7);
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const token = authHeader.substring(7).trim();
     const jwtSecret = getJWTSecret(env);
     const payload = await verifyJWT(token, jwtSecret);
 

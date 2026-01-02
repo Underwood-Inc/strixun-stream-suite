@@ -27,7 +27,7 @@
   </div>
   
   <div class="card">
-    <h3>[EMOJI] Browser Sources</h3>
+    <h3>→ Browser Sources</h3>
     <p class="hint" style="margin-bottom:12px">
       HTML files to add as Browser Sources in OBS.
     </p>
@@ -49,7 +49,7 @@
       
       <div class="script-card">
         <div class="script-header">
-          <span class="script-icon">[EMOJI]️</span>
+          <span class="script-icon"> ★ ️</span>
           <div>
             <div class="script-name">Control Panel Dock</div>
             <div class="script-version">Custom Dock</div>

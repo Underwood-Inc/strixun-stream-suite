@@ -5,6 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient, type ShortUrl } from '../lib/api-client';
+import { Tooltip } from '@mods-hub/components/common/Tooltip';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 interface UrlManagerProps {
   userDisplayName: string | null;
@@ -18,9 +20,14 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
   const [customCodeInput, setCustomCodeInput] = useState('');
   const [creating, setCreating] = useState(false);
   const [totalUrls, setTotalUrls] = useState<number | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; shortCode: string | null }>({
+    isOpen: false,
+    shortCode: null,
+  });
 
   useEffect(() => {
     loadUrls();
+    loadStats();
   }, []);
 
   async function loadUrls(): Promise<void> {
@@ -36,6 +43,17 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
       console.error('Error loading URLs:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStats(): Promise<void> {
+    try {
+      const response = await apiClient.getStats();
+      if (response.success && response.totalUrls !== undefined) {
+        setTotalUrls(response.totalUrls);
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
     }
   }
 
@@ -82,21 +100,30 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
     }
   }
 
-  async function deleteUrl(shortCode: string): Promise<void> {
-    if (!confirm('Are you sure you want to delete this short URL?')) {
-      return;
-    }
+  function handleDeleteClick(shortCode: string): void {
+    setDeleteModal({ isOpen: true, shortCode });
+  }
 
+  function handleDeleteCancel(): void {
+    setDeleteModal({ isOpen: false, shortCode: null });
+  }
+
+  async function handleDeleteConfirm(): Promise<void> {
+    if (!deleteModal.shortCode) return;
+
+    const shortCode = deleteModal.shortCode;
     try {
       const response = await apiClient.deleteUrl(shortCode);
       if (response.success) {
         showToast('Short URL deleted successfully', 'success');
         await loadUrls();
         await loadStats(); // Refresh stats after deleting URL
+        setDeleteModal({ isOpen: false, shortCode: null });
       } else {
         if (response.error?.includes('Unauthorized')) {
           showToast('Session expired. Please sign in again.', 'error');
           onLogout();
+          setDeleteModal({ isOpen: false, shortCode: null });
         } else {
           showToast(response.error || 'Failed to delete URL', 'error');
         }
@@ -105,6 +132,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
       if (error.message?.includes('Unauthorized')) {
         showToast('Session expired. Please sign in again.', 'error');
         onLogout();
+        setDeleteModal({ isOpen: false, shortCode: null });
       } else {
         showToast('Network error. Please try again.', 'error');
       }
@@ -170,7 +198,21 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
         <div className="header-content">
           <div>
             <h1>URL Shortener</h1>
-            <p className="user-info">Signed in as: <strong>{userDisplayName || 'User'}</strong></p>
+            <div className="user-info">
+              Signed in as: <strong>
+                <Tooltip text={userDisplayName || 'User'} detectTruncation position="bottom">
+                  <span style={{ 
+                    display: 'inline-block',
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {userDisplayName || 'User'}
+                  </span>
+                </Tooltip>
+              </strong>
+            </div>
             {totalUrls !== null && (
               <p className="stats-info">Total URLs shortened: <strong>{totalUrls.toLocaleString()}</strong></p>
             )}
@@ -223,7 +265,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
           <div className="urls-header">
             <h2>Your Short URLs</h2>
             <button className="btn btn-secondary" onClick={loadUrls} disabled={loading}>
-              [REFRESH] Refresh
+              ↻ Refresh
             </button>
           </div>
           
@@ -243,7 +285,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
                         onClick={() => copyToClipboard(url.shortUrl)}
                         title="Copy to clipboard"
                       >
-                        [COPY] Copy
+                        ✓ Copy
                       </button>
                     </div>
                     <button 
@@ -251,7 +293,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
                       onClick={() => deleteUrl(url.shortCode)}
                       title="Delete"
                     >
-                      [DELETE] Delete
+                      ✗ Delete
                     </button>
                   </div>
                   <div className="url-original">
@@ -270,6 +312,21 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
           )}
         </div>
       </main>
+
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Short URL"
+        message={
+          <>
+            <p>Are you sure you want to delete this short URL?</p>
+            <p>This action cannot be undone. The short URL will be permanently removed and the slug will become available for reuse.</p>
+          </>
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

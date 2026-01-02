@@ -3,28 +3,21 @@
  * Displays mod preview in grid
  */
 
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
+import { InteractiveThumbnail } from './InteractiveThumbnail';
 
 const CardContainer = styled.div`
+  ${getCardStyles('hover')}
   position: relative;
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
   overflow: hidden;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    border-color: ${colors.accent};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
 `;
 
-const Card = styled(Link)`
+const Card = styled.div`
   padding: ${spacing.lg};
   display: flex;
   flex-direction: column;
@@ -33,18 +26,22 @@ const Card = styled(Link)`
   color: inherit;
 `;
 
+const CardLink = styled(Link)`
+  text-decoration: none;
+  color: inherit;
+  
+  &:hover {
+    text-decoration: none;
+  }
+`;
+
 const DeleteButton = styled.button`
+  ${getButtonStyles('danger')}
   position: absolute;
   top: ${spacing.sm};
   right: ${spacing.sm};
-  padding: ${spacing.xs} ${spacing.sm};
-  background: ${colors.danger};
-  color: #fff;
-  border: none;
-  border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
+  padding: ${spacing.xs} ${spacing.sm};
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 10;
@@ -52,53 +49,8 @@ const DeleteButton = styled.button`
   ${CardContainer}:hover & {
     opacity: 1;
   }
-  
-  &:hover {
-    background: ${colors.danger}dd;
-  }
 `;
 
-const Thumbnail = styled.img`
-  width: 100%;
-  aspect-ratio: 16/9;
-  object-fit: cover;
-  border-radius: 4px;
-  background: ${colors.bgTertiary};
-`;
-
-const ThumbnailError = styled.div`
-  width: 100%;
-  aspect-ratio: 16/9;
-  border-radius: 4px;
-  background: ${colors.bgTertiary};
-  border: 2px dashed ${colors.warning || colors.accent}40;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${spacing.md};
-  text-align: center;
-  color: ${colors.textSecondary};
-`;
-
-const ErrorIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: ${spacing.xs};
-  opacity: 0.7;
-`;
-
-const ErrorMessage = styled.div`
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: ${colors.warning || colors.accent};
-  margin-bottom: ${spacing.xs};
-`;
-
-const ErrorDetail = styled.div`
-  font-size: 0.625rem;
-  color: ${colors.textMuted};
-  line-height: 1.4;
-`;
 
 const Title = styled.h3`
   font-size: 1.25rem;
@@ -141,8 +93,6 @@ interface ModCardProps {
 }
 
 export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
-    const [thumbnailError, setThumbnailError] = useState(false);
-
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -152,7 +102,8 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
     };
 
     const handleThumbnailError = () => {
-        setThumbnailError(true);
+        // Error handler for thumbnail loading failures
+        // Could be extended to show fallback UI in the future
     };
 
     return (
@@ -162,28 +113,22 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                     Delete
                 </DeleteButton>
             )}
-            <Card to={`/${mod.slug}`}>
-                {mod.thumbnailUrl ? (
-                    thumbnailError ? (
-                        <ThumbnailError>
-                            <ErrorIcon>[WARNING]</ErrorIcon>
-                            <ErrorMessage>Thumbnail unavailable</ErrorMessage>
-                            <ErrorDetail>Image failed to load</ErrorDetail>
-                        </ThumbnailError>
-                    ) : (
-                        <Thumbnail 
-                            src={mod.thumbnailUrl} 
-                            alt={mod.title}
-                            onError={handleThumbnailError}
-                        />
-                    )
-                ) : null}
-                <Title>{mod.title}</Title>
-                <Description>{mod.description || 'No description'}</Description>
-                <Meta>
-                    <span>{mod.downloadCount} downloads</span>
-                    <Category>{mod.category}</Category>
-                </Meta>
+            <Card>
+                <InteractiveThumbnail 
+                    mod={mod}
+                    onError={handleThumbnailError}
+                    onNavigate={() => {
+                        window.location.href = `/${mod.slug}`;
+                    }}
+                />
+                <CardLink to={`/${mod.slug}`}>
+                    <Title>{mod.title}</Title>
+                    <Description>{mod.description || 'No description'}</Description>
+                    <Meta>
+                        <span>{mod.downloadCount} downloads</span>
+                        <Category>{mod.category}</Category>
+                    </Meta>
+                </CardLink>
             </Card>
         </CardContainer>
     );

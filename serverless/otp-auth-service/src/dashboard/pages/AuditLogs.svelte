@@ -93,7 +93,7 @@
       <div class="audit-logs__error">{error}</div>
     {:else if logs.length === 0}
       <div class="audit-logs__empty">
-        <div class="audit-logs__empty-icon">[EMOJI]</div>
+        <div class="icon">★</div>
         <p>No audit logs found</p>
         <p class="audit-logs__empty-hint">Try adjusting your filters or check back later</p>
       </div>

@@ -1,122 +1,106 @@
 # Integration Tests Setup Guide
 
-Integration tests verify the actual connection between `otp-auth-service` and `customer-api` using the **live API**.
+Integration tests verify the actual connection between `otp-auth-service` and `customer-api` using **LOCAL workers only**.
+
+⚠ **CRITICAL: Integration tests ONLY work with LOCAL workers!**
+- NO SUPPORT FOR DEPLOYED/LIVE WORKERS
+- OTP Auth Service must be running on `http://localhost:8787`
+- Customer API must be running on `http://localhost:8790`
 
 ## Quick Start
 
-### 1. Create Configuration Files
+### 1. Start Required Services
 
-Copy the example files and fill in your values:
-
+**Terminal 1 - OTP Auth Service:**
 ```bash
-# For development environment
-cp .dev.toml.example .dev.toml
-
-# For production environment (optional)
-cp .prod.toml.example .prod.toml
+cd serverless/otp-auth-service
+pnpm dev
 ```
 
-### 2. Edit Configuration Files
-
-Edit `.dev.toml` (or `.prod.toml`) and fill in:
-
-```toml
-[integration]
-customer_api_url = "https://strixun-customer-api.strixuns-script-suite.workers.dev"
-service_api_key = "your-actual-service-api-key-here"
-use_live_api = true
+**Terminal 2 - Customer API:**
+```bash
+cd serverless/customer-api
+pnpm dev
 ```
 
-**[WARNING] IMPORTANT:** 
-- `.dev.toml` and `.prod.toml` are gitignored (secrets won't be committed)
-- Never commit these files with real secrets
-- Use `.dev.toml.example` and `.prod.toml.example` as templates
+### 2. Run Integration Tests
 
-### 3. Run Integration Tests
-
+**Terminal 3 - Run Tests:**
 ```bash
-# Run with dev config (default)
-pnpm test:integration:dev
-
-# Run with prod config
-pnpm test:integration:prod
-
-# Run with environment variables (overrides TOML)
-TEST_ENV=dev pnpm test:integration
-```
-
-## Configuration Priority
-
-The test config loader uses this priority (highest to lowest):
-
-1. **Environment Variables** (highest priority)
-   - `CUSTOMER_API_URL`
-   - `SERVICE_API_KEY`
-   - `USE_LIVE_API`
-
-2. **TOML Files**
-   - `.dev.toml` (when `TEST_ENV=dev` or default)
-   - `.prod.toml` (when `TEST_ENV=prod`)
-
-3. **Defaults** (lowest priority)
-   - Dev: `https://strixun-customer-api.strixuns-script-suite.workers.dev`
-   - Prod: `https://customer.idling.app`
-
-## Environment Variables
-
-You can override TOML config with environment variables:
-
-```bash
-# Using environment variables (no TOML needed)
-CUSTOMER_API_URL=https://strixun-customer-api.strixuns-script-suite.workers.dev \
-SERVICE_API_KEY=your-key \
-USE_LIVE_API=true \
+cd serverless/otp-auth-service
 pnpm test:integration
+```
+
+Or run specific test:
+```bash
+pnpm test:integration:otp
 ```
 
 ## What Gets Tested
 
 Integration tests verify:
 
-[OK] **Customer API URL is correct and reachable**
-- Catches wrong URLs, DNS issues, unreachable services
+✓ **OTP Login Flow**
+- Request OTP endpoint works
+- Verify OTP endpoint works
+- Customer account is created/retrieved during login
+- JWT token is returned after successful verification
+- Full integration between OTP auth service and customer-api
 
-[OK] **SERVICE_API_KEY authentication works**
-- Verifies service-to-service auth is configured correctly
+✓ **Customer Account Creation**
+- Customer API URL is correct and reachable
+- Customer account creation works end-to-end
+- UPSERT functionality (existing accounts are updated correctly)
 
-[OK] **Customer account creation works end-to-end**
-- Tests actual customer-api integration
+✓ **Service Integration**
+- Customer API is reachable from OTP auth service
+- Service-to-service calls work without JWT
 
-[OK] **UPSERT functionality**
-- Verifies existing accounts are updated correctly
+## Configuration
 
-## GitHub Actions CI
+Tests use these defaults (can be overridden with environment variables):
 
-Integration tests run automatically in CI using GitHub secrets:
-- `CUSTOMER_API_URL` (optional, has fallback)
-- `SERVICE_API_KEY` (required)
+- `CUSTOMER_API_URL` - Default: `http://localhost:8790`
+- `OTP_AUTH_SERVICE_URL` - Default: `http://localhost:8787`
 
-See `.github/workflows/test-otp-auth-integration.yml`
+**Environment Variables:**
+```bash
+# Override URLs if needed (but must be localhost!)
+CUSTOMER_API_URL=http://localhost:8790 \
+OTP_AUTH_SERVICE_URL=http://localhost:8787 \
+pnpm test:integration
+```
 
 ## Troubleshooting
 
-### "SERVICE_API_KEY is required"
-- Set it in `.dev.toml` or `.prod.toml`
-- Or use environment variable: `SERVICE_API_KEY=...`
+### "OTP Auth Service is not running!"
+- Start OTP auth service: `cd serverless/otp-auth-service && pnpm dev`
+- Verify it's running on port 8787
 
-### "Customer API URL is incorrect or unreachable"
-- Check `customer_api_url` in your TOML file
-- Verify customer-api worker is deployed
-- Test URL manually: `curl https://your-customer-api-url/health`
+### "Customer API is not running!"
+- Start customer API: `cd serverless/customer-api && pnpm dev`
+- Verify it's running on port 8790
 
-### "Tests skipped"
-- Set `use_live_api = true` in TOML file
-- Or set `USE_LIVE_API=true` environment variable
+### "CUSTOMER_API_URL must point to localhost"
+- Integration tests ONLY work with local workers
+- Do NOT use deployed worker URLs
+- Always use `http://localhost:8790` for customer API
+- Always use `http://localhost:8787` for OTP auth service
+
+### "OTP code not available"
+- Ensure OTP auth service is running in dev mode
+- Check `/dev/otp` endpoint is accessible
+- Or set `E2E_TEST_OTP_CODE` environment variable
+
+## CI/CD
+
+In GitHub Actions CI, integration tests:
+- Use local workers (via wrangler dev in CI)
+- Verify both services are running before tests
+- Fail fast if services aren't available
 
 ## Security Notes
 
-- [OK] `.dev.toml` and `.prod.toml` are gitignored
-- [OK] Example files (`.dev.toml.example`, `.prod.toml.example`) are safe to commit
-- [OK] Never commit actual secrets
-- [OK] Use different keys for dev/prod if possible
-
+- ✓ Integration tests only run against local workers
+- ✓ No secrets required for local testing
+- ✓ Tests use local KV namespaces (via wrangler dev)

@@ -5,13 +5,11 @@
 
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import type { ModMetadata, ModVersion } from '../../types/mod';
+import type { ModMetadata, ModVersion, ModVariant } from '../../types/mod';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const Container = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.lg};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
@@ -31,10 +29,7 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${colors.bgTertiary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.md};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.xs};
@@ -80,19 +75,36 @@ const VersionDownloads = styled.span`
 interface ModAnalyticsProps {
     mod: ModMetadata;
     versions: ModVersion[];
+    variants?: ModVariant[];
 }
 
-export function ModAnalytics({ mod, versions }: ModAnalyticsProps) {
+export function ModAnalytics({ mod, versions, variants = [] }: ModAnalyticsProps) {
+    // Calculate total downloads from versions
     const totalVersionDownloads = versions.reduce((sum, v) => sum + v.downloads, 0);
-    const versionCount = versions.length;
     
-    // Calculate average downloads per version
+    // Calculate total downloads from variants
+    const totalVariantDownloads = variants.reduce((sum, v) => sum + (v.downloads || 0), 0);
+    
+    // Total cumulative downloads (should match mod.downloadCount)
+    const calculatedTotal = totalVersionDownloads + totalVariantDownloads;
+    
+    const versionCount = versions.length;
+    const variantCount = variants.length;
+    
+    // Calculate average downloads per version (including variants in the calculation)
     const avgDownloadsPerVersion = versionCount > 0 ? Math.round(totalVersionDownloads / versionCount) : 0;
     
-    // Get top versions by downloads
-    const topVersions = [...versions]
-        .sort((a, b) => b.downloads - a.downloads)
-        .slice(0, 5);
+    // Get top versions by downloads (cumulative including variants)
+    const topVersions = versions.map(version => {
+        const versionVariants = variants.filter(v => v.version === version.version || !v.version);
+        const variantDownloads = versionVariants.reduce((sum, v) => sum + (v.downloads || 0), 0);
+        return {
+            ...version,
+            cumulativeDownloads: version.downloads + variantDownloads
+        };
+    })
+    .sort((a, b) => b.cumulativeDownloads - a.cumulativeDownloads)
+    .slice(0, 5);
 
     return (
         <Container>
@@ -102,11 +114,22 @@ export function ModAnalytics({ mod, versions }: ModAnalyticsProps) {
                 <StatCard>
                     <StatValue>{mod.downloadCount.toLocaleString()}</StatValue>
                     <StatLabel>Total Downloads</StatLabel>
+                    {calculatedTotal !== mod.downloadCount && (
+                        <div style={{ fontSize: '0.75rem', color: colors.textMuted, marginTop: spacing.xs }}>
+                            (Calculated: {calculatedTotal.toLocaleString()})
+                        </div>
+                    )}
                 </StatCard>
                 <StatCard>
                     <StatValue>{versionCount}</StatValue>
                     <StatLabel>Versions</StatLabel>
                 </StatCard>
+                {variantCount > 0 && (
+                    <StatCard>
+                        <StatValue>{variantCount}</StatValue>
+                        <StatLabel>Variants</StatLabel>
+                    </StatCard>
+                )}
                 <StatCard>
                     <StatValue>{avgDownloadsPerVersion.toLocaleString()}</StatValue>
                     <StatLabel>Avg Downloads/Version</StatLabel>
@@ -119,11 +142,11 @@ export function ModAnalytics({ mod, versions }: ModAnalyticsProps) {
 
             {topVersions.length > 0 && (
                 <VersionStats>
-                    <Title style={{ fontSize: '1rem', marginBottom: spacing.xs }}>Top Versions by Downloads</Title>
+                    <Title style={{ fontSize: '1rem', marginBottom: spacing.xs }}>Top Versions by Downloads (Cumulative)</Title>
                     {topVersions.map((version) => (
                         <VersionStatItem key={version.versionId}>
                             <VersionLabel>v{version.version}</VersionLabel>
-                            <VersionDownloads>{version.downloads.toLocaleString()} downloads</VersionDownloads>
+                            <VersionDownloads>{version.cumulativeDownloads.toLocaleString()} downloads</VersionDownloads>
                         </VersionStatItem>
                     ))}
                 </VersionStats>

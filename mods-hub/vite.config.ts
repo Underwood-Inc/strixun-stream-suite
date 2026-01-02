@@ -8,6 +8,31 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Ensure proper module resolution to avoid circular dependencies
+    dedupe: [
+      '@strixun/api-framework',
+      '@strixun/api-framework/client',
+      '@strixun/otp-login',
+      '@strixun/auth-store',
+      '@strixun/search-query-parser',
+      '@strixun/virtualized-table',
+      '@strixun/dice-board-game',
+      '@strixun/e2e-helpers'
+    ],
+  },
+  optimizeDeps: {
+    // Force pre-bundling of @strixun packages to resolve circular dependencies
+    include: [
+      '@strixun/api-framework',
+      '@strixun/api-framework/client',
+      '@strixun/otp-login',
+      '@strixun/auth-store',
+      '@strixun/search-query-parser',
+      '@strixun/virtualized-table',
+      '@strixun/dice-board-game'
+    ],
+    // Exclude from optimization to ensure proper module resolution
+    exclude: [],
   },
   // Base path for production deployment (root for Cloudflare Pages)
   base: '/',
@@ -64,9 +89,21 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/mods-api/, ''),
         secure: false, // Local dev server doesn't use HTTPS
         ws: true, // Enable WebSocket proxying for API WebSockets (not Vite HMR)
+        timeout: 30000, // 30 second timeout for proxy requests
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+          proxy.on('error', (err: NodeJS.ErrnoException, req, res) => {
             console.error('[Vite Proxy] Mods API proxy error:', err.message);
+            // If connection refused, the backend isn't running
+            if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+              if (res && typeof res === 'object' && 'writeHead' in res && 'headersSent' in res && !res.headersSent) {
+                (res as any).writeHead(503, { 'Content-Type': 'application/json' });
+                (res as any).end(JSON.stringify({
+                  error: 'Service Unavailable',
+                  message: 'Mods API server is not running. Please start it with: pnpm --filter strixun-mods-api dev',
+                  code: 'BACKEND_NOT_RUNNING'
+                }));
+              }
+            }
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             // Skip logging for WebSocket upgrade requests to reduce noise
@@ -84,21 +121,23 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, '../dist/mods-hub'),
     emptyOutDir: true,
     sourcemap: false,
     // Optimize for production
     minify: 'esbuild',
     target: 'es2020',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
+    // Prevent chunking issues that cause circular dependency errors
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      // Preserve entry signatures to ensure proper initialization order
+      preserveEntrySignatures: 'strict',
       output: {
-        // Consistent chunk naming for better caching
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'query-vendor': ['@tanstack/react-query'],
-          'state-vendor': ['zustand'],
-        },
+        // CRITICAL: Disable ALL code splitting to prevent circular dependency initialization errors
+        // This ensures all @strixun packages are in the same bundle with proper initialization order
+        // Note: This will create a larger bundle but prevents "Cannot access X before initialization" errors
+        inlineDynamicImports: true, // Inline all dynamic imports to prevent chunk loading order issues
       },
     },
   },

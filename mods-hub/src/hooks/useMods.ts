@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../services/api';
 import { useUIStore } from '../stores/ui';
 import { useAuthStore } from '../stores/auth';
+import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
+import { useNavigate } from 'react-router-dom';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 
 /**
@@ -147,11 +149,12 @@ export function useUpdateMod() {
     const addNotification = useUIStore((state) => state.addNotification);
     
     return useMutation({
-        mutationFn: ({ slug, updates, thumbnail }: {
+        mutationFn: ({ slug, updates, thumbnail, variantFiles }: {
             slug: string;
             updates: ModUpdateRequest;
             thumbnail?: File;
-        }) => api.updateMod(slug, updates, thumbnail),
+            variantFiles?: Record<string, File>;
+        }) => api.updateMod(slug, updates, thumbnail, variantFiles),
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.slug) });
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
@@ -175,11 +178,13 @@ export function useUpdateMod() {
 export function useDeleteMod() {
     const queryClient = useQueryClient();
     const addNotification = useUIStore((state) => state.addNotification);
+    const navigate = useNavigate();
     
     return useMutation({
         mutationFn: (slug: string) => api.deleteMod(slug),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: modKeys.details() });
             addNotification({
                 message: 'Mod deleted successfully!',
                 type: 'success',
@@ -187,9 +192,15 @@ export function useDeleteMod() {
         },
         onError: (error: Error) => {
             addNotification({
-                message: error.message || 'Failed to delete mod',
+                message: getUserFriendlyErrorMessage(error),
                 type: 'error',
             });
+            
+            if (shouldRedirectToLogin(error)) {
+                setTimeout(() => {
+                    navigate('/login');
+                }, 1000);
+            }
         },
     });
 }
@@ -440,4 +451,3 @@ export function useUpdateAdminSettings() {
         },
     });
 }
-

@@ -98,7 +98,7 @@ export function saveTwitchSettings(): void {
   
   const statusEl = document.getElementById('twitchApiStatus') as HTMLElement | null;
   if (statusEl) {
-    statusEl.innerHTML = '<span style="color:var(--success)">[OK] Settings saved!</span>';
+    statusEl.innerHTML = '<span style="color:var(--success)">✓ Settings saved!</span>';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
   }
   
@@ -123,11 +123,11 @@ export function loadTwitchSettings(): void {
     const autoClientId = window.STRIXUN_CONFIG?.TWITCH_CLIENT_ID;
     if (autoClientId && !autoClientId.startsWith('%%') && !manualClientId) {
       const masked = autoClientId.substring(0, 8) + '...' + autoClientId.substring(autoClientId.length - 4);
-      autoDetectedClientEl.innerHTML = `[OK] Auto-configured: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${masked}</code>`;
+      autoDetectedClientEl.innerHTML = `✓ Auto-configured: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${masked}</code>`;
     } else if (autoClientId && !autoClientId.startsWith('%%') && manualClientId) {
-      autoDetectedClientEl.innerHTML = `[INFO] Auto-configured but overridden with manual value`;
+      autoDetectedClientEl.innerHTML = `ℹ Auto-configured but overridden with manual value`;
     } else {
-      autoDetectedClientEl.innerHTML = `[WARNING] Not auto-configured. Add TWITCH_CLIENT_ID to GitHub Secrets.`;
+      autoDetectedClientEl.innerHTML = `⚠ Not auto-configured. Add TWITCH_CLIENT_ID to GitHub Secrets.`;
     }
   }
   
@@ -139,11 +139,11 @@ export function loadTwitchSettings(): void {
   if (autoDetectedApiEl && typeof window.getWorkerApiUrl === 'function') {
     const autoUrl = window.getWorkerApiUrl();
     if (autoUrl && !manualOverride) {
-      autoDetectedApiEl.innerHTML = `[OK] Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code>`;
+      autoDetectedApiEl.innerHTML = `✓ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code>`;
     } else if (autoUrl && manualOverride) {
-      autoDetectedApiEl.innerHTML = `[INFO] Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code> (overridden)`;
+      autoDetectedApiEl.innerHTML = `ℹ Auto-detected: <code style="background:var(--bg);padding:2px 6px;border-radius:3px">${autoUrl}</code> (overridden)`;
     } else {
-      autoDetectedApiEl.innerHTML = `[WARNING] No auto-detected URL. Deploy via GitHub Actions or configure manually.`;
+      autoDetectedApiEl.innerHTML = `⚠ No auto-detected URL. Deploy via GitHub Actions or configure manually.`;
     }
   }
 }
@@ -164,7 +164,7 @@ export async function testTwitchApi(): Promise<void> {
   const statusEl = document.getElementById('twitchApiStatus') as HTMLElement | null;
   
   if (!apiServer) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger)">[ERROR] API Server URL not configured</span>';
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger)">✗ API Server URL not configured</span>';
     return;
   }
   
@@ -178,14 +178,14 @@ export async function testTwitchApi(): Promise<void> {
     
     if (response.ok) {
       const data = await response.json() as { message?: string };
-      if (statusEl) statusEl.innerHTML = `<span style="color:var(--success)">[OK] Connected! ${data.message || 'API is healthy'}</span>`;
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--success)">✓ Connected! ${data.message || 'API is healthy'}</span>`;
       log('Twitch API test: Connected successfully', 'success');
     } else {
       throw new Error(`HTTP ${response.status}`);
     }
   } catch (err) {
     const error = err as Error;
-    if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger)">[ERROR] Failed: ${error.message}</span>`;
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger)">✗ Failed: ${error.message}</span>`;
     log(`Twitch API test failed: ${error.message}`, 'error');
   }
 }
@@ -197,7 +197,7 @@ export function openTwitchAuth(): void {
   const authUrl = getTwitchAuthUrl();
   
   if (!authUrl) {
-    log('[WARNING] Twitch Client ID not available. Deploy via GitHub Actions or check GitHub Secrets.', 'error');
+    log('⚠ Twitch Client ID not available. Deploy via GitHub Actions or check GitHub Secrets.', 'error');
     alert('Twitch Client ID not available!\n\nIf deployed via GitHub Pages, ensure TWITCH_CLIENT_ID is added to GitHub Secrets.\n\nOtherwise, you can manually add it in Setup  Twitch API Settings.');
     return;
   }
@@ -218,7 +218,7 @@ export function copyTwitchAuthUrl(): void {
   const authUrl = getTwitchAuthUrl();
   
   if (!authUrl) {
-    log('[WARNING] Twitch Client ID not available. Deploy via GitHub Actions or check GitHub Secrets.', 'error');
+    log('⚠ Twitch Client ID not available. Deploy via GitHub Actions or check GitHub Secrets.', 'error');
     alert('Twitch Client ID not available!\n\nIf deployed via GitHub Pages, ensure TWITCH_CLIENT_ID is added to GitHub Secrets.\n\nOtherwise, you can manually add it in Setup  Twitch API Settings.');
     return;
   }

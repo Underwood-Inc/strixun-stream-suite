@@ -11,55 +11,8 @@ console.log(' Processing built files for embedding...');
 
 const rootDir = path.join(__dirname, '..');
 
-// Get VITE_SERVICE_ENCRYPTION_KEY from environment or Cloudflare Worker secrets
-function getEncryptionKey() {
-  // First, check if it's already in the environment
-  if (process.env.VITE_SERVICE_ENCRYPTION_KEY) {
-    console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in environment');
-    return process.env.VITE_SERVICE_ENCRYPTION_KEY;
-  }
-
-  // Try to read from .env file in dashboard directory
-  const envPath = path.join(rootDir, 'dashboard', '.env');
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const match = envContent.match(/VITE_SERVICE_ENCRYPTION_KEY=(.+)/);
-    if (match && match[1]) {
-      const key = match[1].trim().replace(/^["']|["']$/g, ''); // Remove quotes
-      if (key.length >= 32) {
-        console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in dashboard/.env');
-        return key;
-      }
-    }
-  }
-
-  // Try to get from Cloudflare Worker secrets using wrangler
-  try {
-    console.log('[EMOJI] Attempting to get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets...');
-    const result = execSync('wrangler secret get VITE_SERVICE_ENCRYPTION_KEY 2>&1', {
-      cwd: rootDir,
-      encoding: 'utf8',
-      stdio: 'pipe'
-    });
-    const key = result.trim();
-    if (key && key.length >= 32 && !key.includes('error') && !key.includes('not found')) {
-      console.log('[OK] Found VITE_SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets');
-      return key;
-    }
-  } catch (error) {
-    // wrangler secret get might fail if not authenticated or secret doesn't exist
-    console.warn('[WARNING]  Could not get VITE_SERVICE_ENCRYPTION_KEY from Cloudflare Worker secrets');
-  }
-
-  console.error('[ERROR] VITE_SERVICE_ENCRYPTION_KEY not found!');
-  console.error('   Please set it in one of the following ways:');
-  console.error('   1. Environment variable: export VITE_SERVICE_ENCRYPTION_KEY=your-key');
-  console.error('   2. Dashboard .env file: echo "VITE_SERVICE_ENCRYPTION_KEY=your-key" > dashboard/.env');
-  console.error('   3. Cloudflare Worker secret: wrangler secret put VITE_SERVICE_ENCRYPTION_KEY');
-  process.exit(1);
-}
-
-// Note: Build should already be done by the parent script (cd dashboard && pnpm build)
+// Note: Service key encryption has been completely removed - we do not use it
+// Build should already be done by the parent script (cd dashboard && pnpm build)
 // This script just processes the built files and generates the assets module
 process.chdir(rootDir);
 
@@ -69,7 +22,7 @@ const distDir = path.join(rootDir, 'dashboard', 'dist');
 
 // Verify dist directory exists
 if (!fs.existsSync(distDir)) {
-  console.error(`[ERROR] Dashboard dist directory does not exist at: ${distDir}`);
+  console.error(`✗ Dashboard dist directory does not exist at: ${distDir}`);
   console.error('   Build may have failed. Make sure to run: cd dashboard && pnpm build');
   process.exit(1);
 }
@@ -78,14 +31,14 @@ const files = {};
 
 function readDirectory(dir, basePath = '') {
   if (!fs.existsSync(dir)) {
-    console.warn(`[WARNING]  Directory does not exist: ${dir}`);
+    console.warn(`⚠  Directory does not exist: ${dir}`);
     return;
   }
   
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   
   if (entries.length === 0) {
-    console.warn(`[WARNING]  Directory is empty: ${dir}`);
+    console.warn(`⚠  Directory is empty: ${dir}`);
     return;
   }
   
@@ -105,9 +58,9 @@ function readDirectory(dir, basePath = '') {
           : content.toString('utf8');
         
         files[relativePath] = encoded;
-        console.log(`  [EMOJI] ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
+        console.log(` ★ ${relativePath} (${(content.length / 1024).toFixed(2)} KB)`);
       } catch (error) {
-        console.error(`[ERROR] Failed to read file: ${fullPath}`, error.message);
+        console.error(`✗ Failed to read file: ${fullPath}`, error.message);
       }
     }
   }
@@ -132,28 +85,28 @@ readDirectory(distDir);
 // Verify CSS files are included
 const cssFiles = Object.keys(files).filter(key => key.endsWith('.css'));
 if (cssFiles.length === 0) {
-  console.warn('[WARNING]  WARNING: No CSS files found in build output!');
+  console.warn('⚠  WARNING: No CSS files found in build output!');
 } else {
-  console.log(`[OK] Found ${cssFiles.length} CSS file(s): ${cssFiles.join(', ')}`);
+  console.log(`✓ Found ${cssFiles.length} CSS file(s): ${cssFiles.join(', ')}`);
 }
 
 // Verify we have files to embed
 const fileCount = Object.keys(files).length;
 if (fileCount === 0) {
-  console.error('[ERROR] No files found in dist directory. Build may have failed.');
+  console.error('✗ No files found in dist directory. Build may have failed.');
   process.exit(1);
 }
 
-console.log(`[EMOJI] Found ${fileCount} files to embed`);
+console.log(` ★ Found ${fileCount} files to embed`);
 
 // Verify index.html exists
 if (!files['index.html']) {
-  console.error('[ERROR] index.html not found in dist directory. Build may have failed.');
+  console.error('✗ index.html not found in dist directory. Build may have failed.');
   process.exit(1);
 }
 
 // Fix asset paths in index.html - Vite's base path should handle this, but ensure it's correct
-console.log('[EMOJI] Fixing asset paths in index.html...');
+console.log(' ★ Fixing asset paths in index.html...');
 let htmlContent = files['index.html'];
 // Vite with base: '/dashboard/' should generate /dashboard/assets/... but it's generating /assets/...
 // We need to convert /assets/... to /dashboard/assets/... so they resolve correctly
@@ -166,10 +119,10 @@ htmlContent = htmlContent.replace(
   }
 );
 files['index.html'] = htmlContent;
-console.log('[OK] Fixed asset paths in index.html');
+console.log('✓ Fixed asset paths in index.html');
 
 // Generate dashboard-assets.js module
-console.log('[EMOJI] Generating assets module...');
+console.log(' ★ Generating assets module...');
 const startTime = Date.now();
 const output = `// Dashboard built files embedded as a module
 // This file is generated automatically when building the dashboard
@@ -185,6 +138,6 @@ fs.writeFileSync(outputPath, output);
 const writeTime = Date.now() - startTime;
 console.log(`[TIME]  Generated in ${writeTime}ms`);
 
-console.log(`[OK] Generated dashboard-assets.js (${Object.keys(files).length} files)`);
+console.log(`✓ Generated dashboard-assets.js (${Object.keys(files).length} files)`);
 console.log(' Build complete!');
 

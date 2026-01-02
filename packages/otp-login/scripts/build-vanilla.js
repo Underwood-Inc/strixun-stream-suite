@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '../..');
 const corePath = join(__dirname, '../core.ts');
-const outputDir = join(__dirname, '../dist/js');
+const outputDir = join(__dirname, '../../../dist/otp-login/js');
 const outputFile = join(outputDir, 'otp-login-core.js');
 const outputFileMin = join(outputDir, 'otp-login-core.min.js');
 const outputFileESM = join(outputDir, 'otp-login-core.esm.js');
@@ -94,12 +94,12 @@ try {
   writeFileSync(outputFile, wrapBundle(bundled));
   writeFileSync(outputFileMin, wrapBundle(bundledMin));
   
-  console.log(`[OK] Built Vanilla JS OTP Login to ${outputDir}/`);
+  console.log(`✓ Built Vanilla JS OTP Login to ${outputDir}/`);
   console.log(`   - IIFE (Development): otp-login-core.js`);
   console.log(`   - IIFE (Production): otp-login-core.min.js`);
   console.log(`   - ESM: otp-login-core.esm.js`);
 } catch (error) {
-  console.error('[ERROR] Failed to build Vanilla JS OTP Login:', error);
+  console.error('✗ Failed to build Vanilla JS OTP Login:', error);
   process.exit(1);
 }
 

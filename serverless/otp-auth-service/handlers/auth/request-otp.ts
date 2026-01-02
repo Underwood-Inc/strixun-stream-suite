@@ -4,7 +4,7 @@
  * Handles OTP request endpoint with validation, rate limiting, and email sending
  */
 
-import { decryptWithServiceKey } from '@strixun/api-framework';
+// Service key encryption removed - it's obfuscation only (key is in frontend bundle)
 import { checkQuota as checkQuotaService, trackUsage } from '../../services/analytics.js';
 import { getCustomer } from '../../services/customer.js';
 import {
@@ -26,7 +26,6 @@ interface Env {
     ENVIRONMENT?: string;
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
-    SERVICE_ENCRYPTION_KEY?: string; // Service encryption key for decrypting OTP requests (CRITICAL: Must match client VITE_SERVICE_ENCRYPTION_KEY)
     [key: string]: any;
 }
 
@@ -46,47 +45,24 @@ async function checkQuota(customerId: string | null, env: Env, email?: string) {
  * POST /auth/request-otp
  */
 /**
- * Decrypt request body if encrypted, otherwise return as-is (backward compatibility)
+ * Parse request body as plain JSON
+ * HTTPS provides transport security
  */
-async function decryptRequestBody(request: Request, env: Env): Promise<{ email: string }> {
-    const body = await request.json();
+async function parseRequestBody(request: Request): Promise<{ email: string }> {
+    const bodyText = await request.text();
+    let body: any;
     
-    // Check if body is encrypted (has encrypted field)
-    if (body && typeof body === 'object' && 'encrypted' in body && body.encrypted === true) {
-        // Body is encrypted - decrypt using SERVICE_ENCRYPTION_KEY
-        // In Cloudflare Workers, secrets are accessed via env.SECRET_NAME
-        // NOTE: Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
-        const serviceKey = env.SERVICE_ENCRYPTION_KEY as string | undefined;
-        if (!serviceKey || typeof serviceKey !== 'string') {
-            throw new Error('SERVICE_ENCRYPTION_KEY is required for decrypting OTP requests. Set it via: wrangler secret put SERVICE_ENCRYPTION_KEY');
-        }
-        
-        try {
-            const decrypted = await decryptWithServiceKey(body, serviceKey);
-            return decrypted as { email: string };
-        } catch (error: any) {
-            const errorMessage = error?.message || String(error);
-            console.error('[RequestOTP] Decryption failed:', {
-                error: errorMessage,
-                hasKey: !!serviceKey,
-                keyLength: serviceKey?.length || 0,
-                encryptedFields: Object.keys(body || {}),
-                errorType: error?.constructor?.name || typeof error
-            });
-            
-            // Provide more specific error message
-            if (errorMessage.includes('service key does not match')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY mismatch: The encryption key on the server does not match the client key. Please verify SERVICE_ENCRYPTION_KEY (worker) matches VITE_SERVICE_ENCRYPTION_KEY (frontend).');
-            } else if (errorMessage.includes('Valid service key is required')) {
-                throw new Error('SERVICE_ENCRYPTION_KEY not configured: Please set SERVICE_ENCRYPTION_KEY in Cloudflare Worker secrets via: wrangler secret put SERVICE_ENCRYPTION_KEY');
-            } else {
-                throw new Error(`Failed to decrypt OTP request: ${errorMessage}`);
-            }
-        }
+    try {
+        body = JSON.parse(bodyText);
+    } catch {
+        throw new Error('Invalid JSON in request body');
     }
     
-    // Body is not encrypted (backward compatibility)
-    return body as { email: string };
+    if (body.email) {
+        return { email: body.email };
+    }
+    
+    throw new Error('Request body must contain email field');
 }
 
 export async function handleRequestOTP(
@@ -95,8 +71,8 @@ export async function handleRequestOTP(
     customerId: string | null = null
 ): Promise<Response> {
     try {
-        // Decrypt request body if encrypted
-        const { email } = await decryptRequestBody(request, env);
+        // Parse request body as plain JSON - HTTPS provides transport security
+        const { email } = await parseRequestBody(request);
         
         // Validate email
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -116,7 +92,9 @@ export async function handleRequestOTP(
         }
         
         // Check quota first (super admins are exempt)
-        const quotaCheck = await checkQuota(customerId, env, email);
+        // Bypass quota/rate limits in test/dev mode for integration tests
+        const isTestMode = env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'dev';
+        const quotaCheck = isTestMode ? { allowed: true } : await checkQuota(customerId, env, email);
         if (!quotaCheck.allowed) {
             // Send webhook for quota exceeded
             if (customerId) {
@@ -149,11 +127,12 @@ export async function handleRequestOTP(
         }
         
         // Check rate limit (super admins are exempt)
+        // Bypass rate limits in test/dev mode for integration tests
         const emailHash = await hashEmail(email);
         // CF-Connecting-IP is set by Cloudflare and cannot be spoofed
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
         const getCustomerFn = (cid: string) => getCustomer(cid, env);
-        const rateLimit = await checkOTPRateLimitService(
+        const rateLimit = isTestMode ? { allowed: true, remaining: 999, resetAt: new Date().toISOString() } : await checkOTPRateLimitService(
             emailHash,
             customerId,
             clientIP,
@@ -243,44 +222,63 @@ export async function handleRequestOTP(
         const baseUrl = `${url.protocol}//${url.host}`;
         
         // Send email with tracking data
-        try {
-            const { sendOTPEmail } = await import('../email.js');
-            const emailResult = await sendOTPEmail(email, otp, customerId, env, {
-                emailHash,
-                otpKey,
-                baseUrl,
-                expiresAt
-            });
-            console.log('OTP email sent successfully:', emailResult);
-            
-            // Track usage
-            if (customerId) {
-                await trackUsage(customerId, 'otpRequests', 1, env);
-                await trackUsage(customerId, 'emailsSent', 1, env);
+        // In test/dev mode, skip email sending (OTP is available via /dev/otp endpoint)
+        if (!isTestMode) {
+            try {
+                const { sendOTPEmail } = await import('../email.js');
+                const emailResult = await sendOTPEmail(email, otp, customerId, env, {
+                    emailHash,
+                    otpKey,
+                    baseUrl,
+                    expiresAt
+                });
+                console.log('OTP email sent successfully:', emailResult);
                 
-                // Send webhook
-                await sendWebhook(customerId, 'otp.requested', {
+                // Track usage
+                if (customerId) {
+                    await trackUsage(customerId, 'otpRequests', 1, env);
+                    await trackUsage(customerId, 'emailsSent', 1, env);
+                    
+                    // Send webhook
+                    await sendWebhook(customerId, 'otp.requested', {
+                        email: email.toLowerCase().trim(),
+                        expiresIn: 600
+                    }, env);
+                }
+                
+                // Record successful OTP request for statistics
+                await recordOTPRequestService(emailHash, clientIP, customerId, env);
+            } catch (error: any) {
+                // Log the full error for debugging
+                console.error('Failed to send OTP email:', {
+                    message: error?.message,
+                    stack: error?.stack,
+                    name: error?.name,
                     email: email.toLowerCase().trim(),
-                    expiresIn: 600
-                }, env);
+                    hasResendKey: !!env.RESEND_API_KEY,
+                    hasResendFromEmail: !!env.RESEND_FROM_EMAIL,
+                    errorType: error?.constructor?.name || typeof error
+                });
+                
+                // Use centralized error handling
+                return createEmailErrorResponse(request, error, env);
+            }
+        } else {
+            // Test/dev mode: Skip email sending, but still store OTP in KV for /dev/otp endpoint
+            // For local testing, use E2E_TEST_OTP_CODE from .dev.vars
+            console.log(`[TEST/DEV] Skipping email send for ${email}. Using E2E_TEST_OTP_CODE for local tests.`);
+            
+            // CRITICAL: Store OTP in KV with e2e_otp_ key so /dev/otp endpoint can retrieve it
+            // This matches what sendOTPEmail does in test mode
+            // Note: hashEmail is already imported at the top of this file
+            if (env.ENVIRONMENT === 'test' && env.RESEND_API_KEY?.startsWith('re_test_')) {
+                const emailHashForKV = await hashEmail(email);
+                const e2eOTPKey = `e2e_otp_${emailHashForKV}`;
+                await env.OTP_AUTH_KV.put(e2eOTPKey, otp, { expirationTtl: 600 });
+                console.log(`[DEV] Stored OTP in KV for /dev/otp endpoint: ${e2eOTPKey}`);
             }
             
-            // Record successful OTP request for statistics
             await recordOTPRequestService(emailHash, clientIP, customerId, env);
-        } catch (error: any) {
-            // Log the full error for debugging
-            console.error('Failed to send OTP email:', {
-                message: error?.message,
-                stack: error?.stack,
-                name: error?.name,
-                email: email.toLowerCase().trim(),
-                hasResendKey: !!env.RESEND_API_KEY,
-                hasResendFromEmail: !!env.RESEND_FROM_EMAIL,
-                errorType: error?.constructor?.name || typeof error
-            });
-            
-            // Use centralized error handling
-            return createEmailErrorResponse(request, error, env);
         }
         
         return new Response(JSON.stringify({ 

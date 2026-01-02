@@ -37,6 +37,8 @@ export interface RouteProtectionEnv {
     SUPER_ADMIN_API_KEY?: string;
     JWT_SECRET?: string;
     ALLOWED_ORIGINS?: string;
+    CUSTOMER_API_URL?: string; // For customer lookup
+    NETWORK_INTEGRITY_KEYPHRASE?: string; // For service-to-service calls
     [key: string]: any;
 }
 
@@ -76,9 +78,12 @@ export async function getAdminEmails(env: RouteProtectionEnv): Promise<string[]>
 export async function isSuperAdminEmail(email: string | undefined, env: RouteProtectionEnv): Promise<boolean> {
     if (!email) return false;
     
+    // Normalize email (trim and lowercase) to match how super admin emails are stored
+    const normalizedEmail = email.trim().toLowerCase();
     const adminEmails = await getSuperAdminEmails(env);
-    return adminEmails.includes(email.toLowerCase());
+    return adminEmails.includes(normalizedEmail);
 }
+
 
 /**
  * Check if an email is a regular admin (or super admin)
@@ -149,7 +154,8 @@ export async function extractAuth(
     const authHeader = request.headers.get('Authorization');
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         return await authenticateJWT(token, env, verifyJWT);
     }
     
@@ -227,7 +233,8 @@ export async function protectAdminRoute(
     // Check for super admin API key (service-to-service calls)
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         if (verifySuperAdminKey(token, env)) {
             // Super admin API key authenticated - allow access
             return {
@@ -247,17 +254,47 @@ export async function protectAdminRoute(
     
     // Check admin level
     if (level === 'super-admin') {
-        if (!auth.email || !(await isSuperAdminEmail(auth.email, env))) {
+        // If email is in JWT, use it directly
+        if (auth.email) {
+            const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
+            if (!isSuperAdmin) {
+                return {
+                    allowed: false,
+                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                    auth,
+                };
+            }
             return {
-                allowed: false,
-                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                allowed: true,
                 auth,
+                level: 'super-admin',
             };
         }
+        
+        // If no email but we have customerId, look up customer to get email
+        if (auth.customerId) {
+            const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
+            const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
+            
+            if (!isSuperAdmin) {
+                return {
+                    allowed: false,
+                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                    auth,
+                };
+            }
+            return {
+                allowed: true,
+                auth,
+                level: 'super-admin',
+            };
+        }
+        
+        // No email and no customerId - cannot verify
         return {
-            allowed: true,
+            allowed: false,
+            error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
             auth,
-            level: 'super-admin',
         };
     } else {
         // Regular admin

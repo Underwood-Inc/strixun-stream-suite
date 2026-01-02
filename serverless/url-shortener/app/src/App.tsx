@@ -9,21 +9,65 @@ import UrlManager from './pages/UrlManager';
 import { OtpLogin } from '@strixun/otp-login/dist/react';
 import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import '@strixun/otp-login/dist/react/otp-login.css';
-import { getOtpEncryptionKey as getKey } from '../../../../shared-config/otp-encryption';
 import './app.scss';
 
-function getApiUrl(): string {
+/**
+ * Get auth API URL for OTP login
+ */
+function getAuthApiUrl(): string {
   if (typeof window === 'undefined') return '';
-  return 'https://auth.idling.app';
+  
+  // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+  // Check if we're running on localhost (development mode)
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      import.meta.env.DEV ||
+                      import.meta.env.MODE === 'development';
+  
+  if (isLocalhost) {
+    // NEVER fall back to production when on localhost
+    return 'http://localhost:8787';
+  }
+  
+  // Only use production URL if NOT on localhost
+  // Environment variable override for production builds
+  return import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
 }
 
-function getOtpEncryptionKey(): string | undefined {
-  return getKey();
+/**
+ * Get URL shortener API URL (same logic as api-client.ts)
+ */
+function getUrlShortenerApiUrl(): string {
+  if (typeof window === 'undefined') {
+    return 'https://s.idling.app';
+  }
+  
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      import.meta.env?.DEV ||
+                      import.meta.env?.MODE === 'development';
+  
+  if (isLocalhost) {
+    // URL shortener worker runs on port 8793
+    return 'http://localhost:8793';
+  }
+  
+  // Use current origin in production
+  return window.location.origin;
 }
 
+/**
+ * Fetch user display name from customer API
+ * Uses the same mechanism as other services - customer API is the source of truth
+ */
 async function fetchUserDisplayName(token: string): Promise<string | null> {
+  console.log('[URL Shortener] fetchUserDisplayName called with token:', token ? `${token.substring(0, 20)}...` : 'null');
   try {
-    const response = await fetch(`${getApiUrl()}/auth/me`, {
+    // Get the URL shortener API URL (not auth API)
+    const apiUrl = getUrlShortenerApiUrl();
+    
+    console.log('[URL Shortener] Fetching display name from:', `${apiUrl}/api/display-name`);
+    const response = await fetch(`${apiUrl}/api/display-name`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -31,9 +75,71 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
       },
     });
 
+    console.log('[URL Shortener] /api/display-name response status:', response.status, response.statusText);
     if (response.ok) {
-      const data: any = await response.json();
-      return data.displayName || null;
+      // Check if response is encrypted
+      const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
+      const isEncrypted = encryptedHeader === 'true';
+      console.log('[URL Shortener] Response encryption check:', { encryptedHeader, isEncrypted });
+      
+      let data: any = await response.json();
+      console.log('[URL Shortener] Response data type:', typeof data, 'keys:', data && typeof data === 'object' ? Object.keys(data) : 'not an object');
+      
+      // Check if data looks encrypted
+      const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
+      console.log('[URL Shortener] Data encryption check:', { looksEncrypted, hasEncryptedKey: data && typeof data === 'object' && 'encrypted' in data });
+      
+      if (isEncrypted || looksEncrypted) {
+        // Wait for decryptWithJWT to be available
+        let decryptFn = (window as any).decryptWithJWT;
+        
+        // Poll for decryptWithJWT if not immediately available
+        if (typeof decryptFn !== 'function') {
+          console.warn('[URL Shortener] Decryption library not loaded yet, waiting...');
+          for (let i = 0; i < 10; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            decryptFn = (window as any).decryptWithJWT;
+            if (typeof decryptFn === 'function') {
+              console.log('[URL Shortener] Decryption library loaded after wait');
+              break;
+            }
+          }
+        }
+        
+        if (typeof decryptFn !== 'function') {
+          console.error('[URL Shortener] Decryption library not available after waiting. Response is encrypted but cannot decrypt.');
+          return null;
+        }
+        
+        try {
+          const trimmedToken = token.trim();
+          data = await decryptFn(data, trimmedToken);
+          console.log('[URL Shortener] Successfully decrypted /api/display-name response');
+        } catch (error) {
+          console.error('[URL Shortener] Failed to decrypt response:', error);
+          return null;
+        }
+      }
+      
+      // Extract displayName from response
+      const displayName = data?.displayName;
+      console.log('[URL Shortener] Display name response:', { 
+        hasDisplayName: !!displayName, 
+        displayName, 
+        allKeys: data ? Object.keys(data) : null
+      });
+      
+      if (displayName) {
+        console.log('[URL Shortener] Found displayName:', displayName);
+        return displayName;
+      } else {
+        console.warn('[URL Shortener] No displayName in response. Response keys:', data ? Object.keys(data) : 'null');
+        return null;
+      }
+    } else {
+      console.error('[URL Shortener] /api/display-name returned non-OK status:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('[URL Shortener] Error response:', errorText);
     }
   } catch (error) {
     console.error('[URL Shortener] Failed to fetch display name:', error);
@@ -104,10 +210,9 @@ export default function App() {
       return (
         <div className="app-container">
           <OtpLogin
-            apiUrl={getApiUrl()}
+            apiUrl={getAuthApiUrl()}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            otpEncryptionKey={getOtpEncryptionKey()}
             title="Sign In"
             subtitle="Enter your email to receive a verification code"
             showAsModal={true}

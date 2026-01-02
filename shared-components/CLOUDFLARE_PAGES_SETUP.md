@@ -2,14 +2,14 @@
 
 This guide covers setting up Cloudflare Pages to serve Storybook at `design.idling.app`.
 
-## [EMOJI] Prerequisites
+## ★ Prerequisites
 
 1. **Cloudflare Account** with `idling.app` domain added
 2. **GitHub Secrets** configured:
    - `CF_API_TOKEN` - Cloudflare API token with Pages write permissions
    - `CF_ACCOUNT_ID` - Your Cloudflare Account ID
 
-## [EMOJI] Setup Steps
+## ★ Setup Steps
 
 ### Step 1: Create Cloudflare API Token
 
@@ -61,7 +61,7 @@ After the first deployment:
 2. Verify there's a CNAME record:
    - **Name:** `design`
    - **Target:** `storybook.pages.dev` (or similar Cloudflare Pages hostname)
-   - **Proxy status:** Proxied (orange cloud) [OK]
+   - **Proxy status:** Proxied (orange cloud) ✓
 
 **Note:** Cloudflare automatically manages this DNS record. You don't need to create it manually.
 
@@ -71,7 +71,7 @@ After the first deployment:
 2. Ensure **SSL/TLS encryption mode** is set to **Full** or **Full (strict)**
 3. Cloudflare Pages automatically provisions SSL certificates - no manual action needed
 
-## [EMOJI] Automatic Deployments
+## ★ Automatic Deployments
 
 After initial setup, the GitHub Actions workflow will automatically:
 
@@ -81,7 +81,7 @@ After initial setup, the GitHub Actions workflow will automatically:
 
 **No manual steps required** after initial configuration.
 
-## [EMOJI] Testing the Setup
+## ★ Testing the Setup
 
 After first deployment:
 
@@ -89,7 +89,7 @@ After first deployment:
 2. Visit: `https://design.idling.app`
 3. You should see your Storybook interface
 
-## [EMOJI] Troubleshooting
+## ★ Troubleshooting
 
 ### Domain Not Resolving
 
@@ -116,7 +116,7 @@ After first deployment:
 2. Check that `index.html` exists in build output
 3. Ensure base path in Storybook config is `/` (not a subdirectory)
 
-## [EMOJI] Manual Deployment (Testing)
+## ★ Manual Deployment (Testing)
 
 If you need to test deployment manually:
 
@@ -127,19 +127,19 @@ pnpm build-storybook
 pnpm exec wrangler pages deploy storybook-static --project-name=storybook --branch=main
 ```
 
-## [EMOJI] Summary
+## ★ Summary
 
 **What Cloudflare Does Automatically:**
-- [OK] Creates DNS CNAME record
-- [OK] Provisions SSL certificate
-- [OK] Routes traffic from `design.idling.app` to Pages
-- [OK] Handles CDN caching and optimization
+- ✓ Creates DNS CNAME record
+- ✓ Provisions SSL certificate
+- ✓ Routes traffic from `design.idling.app` to Pages
+- ✓ Handles CDN caching and optimization
 
 **What You Need to Do:**
-- [OK] Create Cloudflare API token
-- [OK] Add secrets to GitHub
-- [OK] Configure custom domain in Pages dashboard (first time only)
-- [OK] Push code to trigger deployment
+- ✓ Create Cloudflare API token
+- ✓ Add secrets to GitHub
+- ✓ Configure custom domain in Pages dashboard (first time only)
+- ✓ Push code to trigger deployment
 
 That's it! 
 

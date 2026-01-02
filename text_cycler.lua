@@ -404,7 +404,7 @@ function script_properties()
         obs.obs_property_list_add_string(src_list, name, name)
     end
     
-    obs.obs_properties_add_button(props, "refresh_btn", "[EMOJI] Refresh Sources", function()
+    obs.obs_properties_add_button(props, "refresh_btn", "→ Refresh Sources", function()
         return true
     end)
     

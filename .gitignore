@@ -10,6 +10,9 @@ build/
 *.local
 dev-dist/
 
+# Turborepo
+.turbo/
+
 # Auto-generated assets (may contain secrets)
 **/app-assets.ts
 **/app-assets.js
@@ -33,6 +36,8 @@ dev-dist/
 serverless/**/worker.js
 serverless/**/router.js
 serverless/**/handlers/**/*.js
+# Exception: display-name.js is a source file, not compiled output
+!serverless/url-shortener/handlers/display-name.js
 serverless/**/services/**/*.js
 serverless/**/utils/**/*.js
 serverless/**/router/**/*.js
@@ -96,5 +101,5 @@ playwright/.cache/
 **/.playwright/
 
 # Explicitly include PANDA_CORE directory (do not ignore)
-!__╠═══ PANDA_CORE ═══╣__/
-!__╠═══ PANDA_CORE ═══╣__/**
+!╠═══ PANDA_CORE ═══╣/
+!╠═══ PANDA_CORE ═══╣/**

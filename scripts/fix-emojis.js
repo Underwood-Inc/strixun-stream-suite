@@ -21,13 +21,13 @@ const emojiReplacements = {
   '\u2049': '[!?]',  // ⁉️
   
   // Status indicators
-  '\u2705': '[OK]',        // ✅
-  '\u274C': '[ERROR]',     // ❌
-  '\u26A0\uFE0F': '[WARNING]', // ⚠️
-  '\u26A0': '[WARNING]',    // ⚠ (without variation selector)
+  '\u2705': '✓',        // ✅
+  '\u274C': '✗',     // ❌
+  '\u26A0\uFE0F': '⚠', // ⚠️
+  '\u26A0': '⚠',    // ⚠ (without variation selector)
   '\u1F512': '[SECURITY]', // 🔒
-  '\u2139\uFE0F': '[INFO]', // ℹ️
-  '\u2139': '[INFO]',      // ℹ (without variation selector)
+  '\u2139\uFE0F': 'ℹ', // ℹ️
+  '\u2139': 'ℹ',      // ℹ (without variation selector)
   '\u1F4DD': '[NOTE]',      // 📝
   '\u1F680': '[DEPLOY]',   // 🚀
   '\u1F527': '[CONFIG]',   // 🔧
@@ -172,8 +172,8 @@ function replaceEmojis(text, filePath) {
       // Skip if already in our replacement map (might be a variation)
       const isInMap = sortedReplacements.some(([e]) => e.includes(emoji) || emoji.includes(e));
       if (!isInMap) {
-        result = result.replaceAll(emoji, '[EMOJI]');
-        replacements.push({ emoji, replacement: '[EMOJI]', count: 1 });
+        result = result.replaceAll(emoji, ' ★ ');
+        replacements.push({ emoji, replacement: ' ★ ', count: 1 });
       }
     }
   }
@@ -215,7 +215,7 @@ function scanAndFix(dirPath, stats = { files: 0, fixed: 0, totalReplacements: 0 
               }
             } catch (error) {
               if (error.code !== 'EISDIR' && error.code !== 'ENOENT') {
-                console.warn(`[WARN] Could not process: ${fullPath}`);
+                console.warn(`⚠ Could not process: ${fullPath}`);
               }
             }
           }
@@ -240,7 +240,7 @@ async function main() {
   console.log('========================================');
   console.log('');
   
-  console.log('[INFO] Scanning and fixing emojis...');
+  console.log('ℹ Scanning and fixing emojis...');
   const stats = scanAndFix(projectRoot);
   
   console.log('');
@@ -251,7 +251,7 @@ async function main() {
   console.log(`  Files fixed: ${stats.fixed}`);
   console.log(`  Total replacements: ${stats.totalReplacements}`);
   console.log('');
-  console.log('[SUCCESS] Emoji fixing complete!');
+  console.log('✓ Emoji fixing complete!');
   console.log('');
 }
 

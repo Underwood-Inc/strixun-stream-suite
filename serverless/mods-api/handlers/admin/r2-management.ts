@@ -10,7 +10,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { isSuperAdminEmail } from '../../utils/admin.js';
 import { getCustomerR2Key, getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { fetchDisplayNameByUserId, fetchDisplayNamesByUserIds } from '../../utils/displayName.js';
+import { fetchDisplayNameByCustomerId, fetchDisplayNamesByCustomerIds } from '@strixun/api-framework';
 import { getR2SourceInfo } from '../../utils/r2-source.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
 
@@ -131,9 +131,19 @@ async function fetchModMetadata(
         do {
             const listResult = await env.MODS_KV.list({ prefix: customerListPrefix, cursor: customerCursor });
             for (const key of listResult.keys) {
-                if (key.name.endsWith('_mods_list')) {
-                    const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                    const foundCustomerId = match ? match[1] : null;
+                // Match both customer_{id}_mods_list and customer_{id}/mods_list patterns
+                if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
+                    // CRITICAL: Customer IDs can contain underscores (e.g., cust_2233896f662d)
+                    // Extract everything between "customer_" and the final "_mods_list" or "/mods_list"
+                    let foundCustomerId: string | null = null;
+                    if (key.name.endsWith('_mods_list')) {
+                        const match = key.name.match(/^customer_(.+)_mods_list$/);
+                        foundCustomerId = match ? match[1] : null;
+                    } else if (key.name.endsWith('/mods_list')) {
+                        const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                        foundCustomerId = match ? match[1] : null;
+                    }
+                    
                     if (foundCustomerId) {
                         const customerModKey = getCustomerKey(foundCustomerId, `mod_${normalizedModId}`);
                         const mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
@@ -281,8 +291,20 @@ async function fetchAssociatedData(
     }
     
     // Fetch user display name if uploadedBy is available
+    // CRITICAL: Try to use customerId from mod metadata if available (customer is source of truth)
+    // TODO: Store customerId in R2 metadata to avoid needing mod lookup
     if (uploadedBy) {
-        const displayName = await fetchDisplayNameByUserId(uploadedBy, env);
+        let displayName: string | null = null;
+        
+        // If we have mod metadata with customerId, use customer lookup
+        if (associatedData.mod?.customerId) {
+            displayName = await fetchDisplayNameByCustomerId(associatedData.mod.customerId, env);
+        }
+        
+        // Fallback: If no customerId or lookup failed, we'd need userId->customerId mapping
+        // For now, we'll leave this as null if customer lookup fails
+        // In the future, R2 metadata should store customerId directly
+        
         associatedData.uploadedBy = {
             userId: uploadedBy,
             displayName: displayName || null,
@@ -302,16 +324,26 @@ async function fetchAssociatedDataBatch(
 ): Promise<Map<string, R2FileAssociatedData>> {
     const results = new Map<string, R2FileAssociatedData>();
     
-    // Collect all unique user IDs for batch fetching
-    const userIds = new Set<string>();
-    for (const file of files) {
-        if (file.customMetadata?.uploadedBy) {
-            userIds.add(file.customMetadata.uploadedBy);
-        }
-    }
+    // CRITICAL: Use customer-based lookup - customer is the source of truth
+    // First, fetch mod metadata to get customerIds for batch lookup
+    const customerIds = new Set<string>();
+    const fileModMap = new Map<string, string | null>(); // file key -> customerId
     
-    // Fetch all display names in parallel
-    const displayNames = await fetchDisplayNamesByUserIds(Array.from(userIds), env);
+    // Collect modIds and fetch mods to get customerIds
+    const modPromises = files.map(async (file) => {
+        if (!file.customMetadata?.modId) return;
+        const modId = file.customMetadata.modId;
+        const customerId = extractCustomerIdFromR2Key(file.key);
+        const mod = await fetchModMetadata(modId, customerId, env);
+        if (mod?.customerId) {
+            customerIds.add(mod.customerId);
+            fileModMap.set(file.key, mod.customerId);
+        }
+    });
+    await Promise.all(modPromises);
+    
+    // Fetch all display names by customerIds in parallel
+    const displayNames = await fetchDisplayNamesByCustomerIds(Array.from(customerIds), env);
     
     // Process each file
     const promises = files.map(async (file) => {
@@ -376,9 +408,13 @@ async function fetchAssociatedDataBatch(
             }
         }
         
-        // Use batch-fetched display name
+        // Use customer-based display name lookup (customer is source of truth)
+        // TODO: Store customerId in R2 metadata to avoid needing mod lookup
         if (uploadedBy) {
-            const displayName = displayNames.get(uploadedBy) || null;
+            // Get customerId from mod metadata (we fetched it above)
+            const customerIdForLookup = fileModMap.get(file.key) || associatedData.mod?.customerId;
+            const displayName = customerIdForLookup ? displayNames.get(customerIdForLookup) || null : null;
+            
             associatedData.uploadedBy = {
                 userId: uploadedBy,
                 displayName: displayName || null,
@@ -811,8 +847,50 @@ export async function handleDetectDuplicates(
 }
 
 /**
+ * Check if a thumbnail is associated with an existing mod
+ * Returns true if the mod exists and the thumbnail should be protected
+ */
+async function isThumbnailProtected(
+    r2Key: string,
+    env: Env
+): Promise<{ protected: boolean; modId?: string; reason?: string }> {
+    // Check if this is a thumbnail file
+    if (!r2Key.includes('/thumbnails/')) {
+        return { protected: false };
+    }
+
+    // Extract modId from R2 key
+    // Format: customer_xxx/thumbnails/modId.ext or thumbnails/modId.ext
+    const thumbnailMatch = r2Key.match(/thumbnails\/([^/]+)\.(png|jpg|jpeg|webp|gif)$/i);
+    if (!thumbnailMatch) {
+        return { protected: false };
+    }
+
+    const thumbnailModId = thumbnailMatch[1];
+    const normalizedModId = normalizeModId(thumbnailModId);
+    
+    // Extract customer ID from key if present
+    const customerId = extractCustomerIdFromR2Key(r2Key);
+    
+    // Check if mod exists in KV
+    const mod = await fetchModMetadata(normalizedModId, customerId, env);
+    
+    if (mod) {
+        return {
+            protected: true,
+            modId: mod.modId,
+            reason: `Thumbnail is associated with mod "${mod.title}" (${mod.modId})`
+        };
+    }
+    
+    return { protected: false };
+}
+
+/**
  * Delete R2 file(s)
  * DELETE /admin/r2/files/:key or POST /admin/r2/files/delete (bulk)
+ * 
+ * CRITICAL: Prevents deletion of thumbnails that are associated with existing mods
  */
 export async function handleDeleteR2File(
     request: Request,
@@ -824,7 +902,7 @@ export async function handleDeleteR2File(
         // Route-level protection ensures user is super admin
         // Handle bulk delete
         if (request.method === 'POST' && !key) {
-            const body = await request.json() as { keys: string[] };
+            const body = await request.json() as { keys: string[]; force?: boolean };
             if (!body.keys || !Array.isArray(body.keys)) {
                 const rfcError = createError(request, 400, 'Invalid Request', 'keys array is required');
                 const corsHeaders = createCORSHeaders(request, {
@@ -839,11 +917,47 @@ export async function handleDeleteR2File(
                 });
             }
 
-            const results: Array<{ key: string; deleted: boolean; error?: string }> = [];
+            const results: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean; marked?: boolean }> = [];
+            const force = body.force === true;
             for (const fileKey of body.keys) {
                 try {
-                    await env.MODS_R2.delete(fileKey);
-                    results.push({ key: fileKey, deleted: true });
+                    // Check if thumbnail is protected (associated with existing mod)
+                    // Skip protection check if force=true
+                    if (!force) {
+                        const protectionCheck = await isThumbnailProtected(fileKey, env);
+                        if (protectionCheck.protected) {
+                            results.push({
+                                key: fileKey,
+                                deleted: false,
+                                protected: true,
+                                error: protectionCheck.reason || 'Thumbnail is associated with an existing mod'
+                            });
+                            continue;
+                        }
+                    }
+
+                    // Mark file for deletion instead of deleting immediately
+                    // Get current file and metadata to preserve it
+                    const file = await env.MODS_R2.get(fileKey);
+                    if (!file) {
+                        results.push({ key: fileKey, deleted: false, error: 'File not found' });
+                        continue;
+                    }
+                    
+                    const existingMetadata = file.customMetadata || {};
+                    const fileBody = await file.arrayBuffer();
+                    
+                    // Mark for deletion with timestamp
+                    await env.MODS_R2.put(fileKey, fileBody, {
+                        httpMetadata: file.httpMetadata,
+                        customMetadata: {
+                            ...existingMetadata,
+                            marked_for_deletion: 'true',
+                            marked_for_deletion_on: Date.now().toString(),
+                        },
+                    });
+                    
+                    results.push({ key: fileKey, deleted: true, marked: true });
                 } catch (error: any) {
                     results.push({ key: fileKey, deleted: false, error: error.message });
                 }
@@ -853,9 +967,14 @@ export async function handleDeleteR2File(
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
 
+            const protectedCount = results.filter(r => r.protected).length;
+            const deletedCount = results.filter(r => r.deleted).length;
+            const failedCount = results.filter(r => !r.deleted && !r.protected).length;
+
             return new Response(JSON.stringify({
-                deleted: results.filter(r => r.deleted).length,
-                failed: results.filter(r => !r.deleted).length,
+                deleted: deletedCount,
+                failed: failedCount,
+                protected: protectedCount,
                 results,
             }), {
                 status: 200,
@@ -881,7 +1000,62 @@ export async function handleDeleteR2File(
             });
         }
 
-        await env.MODS_R2.delete(key);
+        // Check if thumbnail is protected (associated with existing mod)
+        // Allow deletion if force=true query parameter is provided
+        const url = new URL(request.url);
+        const force = url.searchParams.get('force') === 'true';
+        
+        if (!force) {
+            const protectionCheck = await isThumbnailProtected(key, env);
+            if (protectionCheck.protected) {
+                const rfcError = createError(
+                    request,
+                    403,
+                    'Protected File',
+                    protectionCheck.reason || 'This thumbnail is associated with an existing mod and cannot be deleted'
+                );
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+        }
+
+        // Mark file for deletion instead of deleting immediately
+        // Get current file and metadata to preserve it
+        const file = await env.MODS_R2.get(key);
+        if (!file) {
+            const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const existingMetadata = file.customMetadata || {};
+        const fileBody = await file.arrayBuffer();
+        
+        // Mark for deletion with timestamp
+        await env.MODS_R2.put(key, fileBody, {
+            httpMetadata: file.httpMetadata,
+            customMetadata: {
+                ...existingMetadata,
+                marked_for_deletion: 'true',
+                marked_for_deletion_on: Date.now().toString(),
+            },
+        });
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -889,7 +1063,9 @@ export async function handleDeleteR2File(
 
         return new Response(JSON.stringify({
             deleted: true,
+            marked: true,
             key,
+            message: 'File marked for deletion. It will be permanently deleted after 5 days.',
         }), {
             status: 200,
             headers: {
@@ -918,6 +1094,101 @@ export async function handleDeleteR2File(
     }
 }
 
+
+/**
+ * Set deletion timestamp for a file (for testing only)
+ * PUT /admin/r2/files/:key/timestamp
+ * Body: { timestamp: number } - Unix timestamp in milliseconds
+ */
+export async function handleSetDeletionTimestamp(
+    request: Request,
+    env: Env,
+    auth: { userId: string; email?: string; customerId: string | null },
+    key: string
+): Promise<Response> {
+    try {
+        // Route-level protection ensures user is super admin
+        const body = await request.json() as { timestamp?: number };
+        
+        if (!body.timestamp || typeof body.timestamp !== 'number') {
+            const rfcError = createError(request, 400, 'Invalid Request', 'timestamp (number) is required');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        // Get current file
+        const file = await env.MODS_R2.get(key);
+        if (!file) {
+            const rfcError = createError(request, 404, 'File Not Found', 'The requested file was not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 404,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const existingMetadata = file.customMetadata || {};
+        const fileBody = await file.arrayBuffer();
+        
+        // Update metadata with new timestamp
+        await env.MODS_R2.put(key, fileBody, {
+            httpMetadata: file.httpMetadata,
+            customMetadata: {
+                ...existingMetadata,
+                marked_for_deletion: 'true',
+                marked_for_deletion_on: body.timestamp.toString(),
+            },
+        });
+        
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        
+        return new Response(JSON.stringify({
+            success: true,
+            key,
+            timestamp: body.timestamp,
+            message: 'Deletion timestamp updated',
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    } catch (error: any) {
+        console.error('Set deletion timestamp error:', error);
+        const rfcError = createError(
+            request,
+            500,
+            'Failed to Set Deletion Timestamp',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while setting the timestamp'
+        );
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(rfcError), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+}
 
 interface Env {
     MODS_KV: KVNamespace;

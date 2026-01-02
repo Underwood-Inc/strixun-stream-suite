@@ -9,9 +9,14 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     include: [
-      'src/**/*.{test,spec}.{js,ts,tsx}',
+      'src/**/*.test.{js,ts,tsx}',
     ],
-    exclude: ['node_modules', 'dist', '**/*.e2e.{test,spec}.{js,ts,tsx}'],
+    exclude: [
+      'node_modules', 
+      'dist', 
+      '**/*.e2e.{test,spec}.{js,ts,tsx}',
+      '**/*.spec.{js,ts,tsx}', // Exclude .spec files (Playwright e2e only)
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

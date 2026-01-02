@@ -4,15 +4,29 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [svelte({
+    compilerOptions: {
+      css: 'injected',
+    },
     onwarn: (warning, handler) => {
-      // Suppress CSS selector warnings during build (they're just warnings, not errors)
-      if (warning.code === 'css-unused-selector') {
-        return;
+      // Suppress CSS selector warnings - check code, message, and toString
+      const warningStr = String(warning);
+      const warningMessage = warning.message || warning.toString();
+      const isCssUnusedSelector = 
+        warning.code === 'css-unused-selector' || 
+        warning.code === 'css_unused_selector' ||
+        warningMessage.includes('Unused CSS selector') ||
+        warningMessage.includes('css_unused_selector') ||
+        warningStr.includes('Unused CSS selector');
+      
+      if (isCssUnusedSelector) {
+        return; // Suppress this warning
       }
+      
       // Suppress accessibility warnings during build (can be fixed later)
       if (warning.code?.startsWith('a11y-')) {
         return;
       }
+      
       // Call default handler for other warnings
       handler(warning);
     },
@@ -37,7 +51,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, '../../dist/otp-auth-service'),
     emptyOutDir: true,
     base: '/',
     rollupOptions: {

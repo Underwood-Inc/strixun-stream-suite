@@ -14,6 +14,7 @@ import { handleVerifyOTP } from '../handlers/auth/verify-otp.js';
 import { handleSessionByIP } from '../handlers/auth/session-by-ip.js';
 import { handleRestoreSession } from '../handlers/auth/restore-session.js';
 import { handleUserLookup } from '../handlers/auth/user-lookup.js';
+import { wrapWithEncryption } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -38,7 +39,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<ApiKeyAu
     let apiKey: string | null = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        apiKey = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        apiKey = authHeader.substring(7).trim();
     } else {
         apiKey = request.headers.get('X-OTP-API-Key');
     }
@@ -109,31 +111,125 @@ export async function handleAuthRoutes(
         }, env);
     }
     
+    // Extract JWT token for encryption (if present)
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const authHeader = request.headers.get('Authorization');
+    const rawJwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const jwtToken = rawJwtToken ? rawJwtToken.trim() : null;
+    const wasTrimmed = rawJwtToken && rawJwtToken !== jwtToken;
+    
+    if (path === '/auth/me' && jwtToken) {
+        console.log('[AuthRoutes] /auth/me - Token extraction for encryption:', {
+            rawTokenLength: rawJwtToken?.length || 0,
+            trimmedTokenLength: jwtToken?.length || 0,
+            wasTrimmed,
+            rawTokenPrefix: rawJwtToken ? rawJwtToken.substring(0, 20) + '...' : 'none',
+            trimmedTokenPrefix: jwtToken ? jwtToken.substring(0, 20) + '...' : 'none',
+            rawTokenSuffix: rawJwtToken ? '...' + rawJwtToken.substring(rawJwtToken.length - 10) : 'none',
+            trimmedTokenSuffix: jwtToken ? '...' + jwtToken.substring(jwtToken.length - 10) : 'none',
+            authHeaderPrefix: authHeader ? authHeader.substring(0, 27) + '...' : 'none',
+        });
+    }
+    
+    const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
+    
+    // Authentication endpoints that generate JWTs - MUST use requireJWT: false
+    const AUTH_ENDPOINTS_NO_JWT = ['/auth/request-otp', '/auth/verify-otp', '/auth/restore-session'];
+    const isAuthEndpointNoJWT = AUTH_ENDPOINTS_NO_JWT.includes(path);
+    
     // Attach customerId to request context by wrapping handlers
     if (path === '/auth/request-otp' && request.method === 'POST') {
-        return { response: await handleRequestOTP(request, env, customerId), customerId };
+        const handlerResponse = await handleRequestOTP(request, env, customerId);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env,
+            { 
+                requireJWT: false, // ⚠️ Exception - part of auth flow
+                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+            }
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/verify-otp' && request.method === 'POST') {
-        return { response: await handleVerifyOTP(request, env, customerId), customerId };
+        const handlerResponse = await handleVerifyOTP(request, env, customerId);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env,
+            { 
+                requireJWT: false, // ⚠️ CRITICAL - Returns JWT token (chicken-and-egg problem)
+                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+            }
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/me' && request.method === 'GET') {
-        return { response: await authHandlers.handleGetMe(request, env), customerId };
+        const handlerResponse = await authHandlers.handleGetMe(request, env);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/quota' && request.method === 'GET') {
-        return { response: await authHandlers.handleGetQuota(request, env), customerId };
+        const handlerResponse = await authHandlers.handleGetQuota(request, env);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/logout' && request.method === 'POST') {
-        return { response: await authHandlers.handleLogout(request, env), customerId };
+        const handlerResponse = await authHandlers.handleLogout(request, env);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/refresh' && request.method === 'POST') {
-        return { response: await authHandlers.handleRefresh(request, env), customerId };
+        const handlerResponse = await authHandlers.handleRefresh(request, env);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/session-by-ip' && request.method === 'GET') {
-        return { response: await handleSessionByIP(request, env), customerId };
+        const handlerResponse = await handleSessionByIP(request, env);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env
+        );
+        return { response: encryptedResult.response, customerId };
     }
     if (path === '/auth/restore-session' && request.method === 'POST') {
         // restore-session doesn't require API key authentication (it's for unauthenticated session restoration)
-        return { response: await handleRestoreSession(request, env), customerId: null };
+        const handlerResponse = await handleRestoreSession(request, env);
+        const encryptedResult = await wrapWithEncryption(
+            handlerResponse,
+            authForEncryption,
+            request,
+            env,
+            { 
+                requireJWT: false, // ⚠️ Exception - may return JWT
+                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+            }
+        );
+        return { response: encryptedResult.response, customerId: null };
     }
     
     // Public user lookup endpoint - GET /auth/user/:userId

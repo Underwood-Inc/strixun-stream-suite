@@ -157,7 +157,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: resolve(__dirname, 'dist/stream-suite'),
     emptyOutDir: true,
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
     rollupOptions: {

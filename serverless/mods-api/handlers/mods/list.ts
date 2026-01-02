@@ -167,18 +167,58 @@ export async function handleListMods(
         // Sort by updatedAt (newest first)
         mods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-        // Fetch display names for all unique authors
-        // CRITICAL: Use stored authorDisplayName as fallback - it was set during upload
-        // If auth API times out or fails, we still have the stored value
-        const uniqueAuthorIds = [...new Set(mods.map(mod => mod.authorId))];
-        const { fetchDisplayNamesByUserIds } = await import('../../utils/displayName.js');
-        const displayNames = await fetchDisplayNamesByUserIds(uniqueAuthorIds, env);
-        
-        // Map display names to mods (use fetched displayName if available, otherwise keep stored one)
+        // CRITICAL: Ensure all mods have customerId (for data scoping)
+        // Set customerId from auth context if missing (for legacy mods)
         mods.forEach(mod => {
-            const storedDisplayName = mod.authorDisplayName; // Preserve stored value
-            const fetchedDisplayName = displayNames.get(mod.authorId);
-            // Use fetched value if available, otherwise fall back to stored value
+            if (!mod.customerId && auth?.customerId) {
+                // Only set if we have auth context and mod is missing customerId
+                // This handles legacy mods that were created before customerId was required
+                console.log('[ListMods] Setting missing customerId on legacy mod:', {
+                    modId: mod.modId,
+                    customerId: auth.customerId
+                });
+                mod.customerId = auth.customerId;
+            }
+        });
+
+        // CRITICAL: Fetch display names dynamically from customer data
+        // Customer is the primary data source for all customizable user info
+        // Fetch by customerIds (not userIds) - customer is the source of truth
+        // IMPORTANT: This fetch is non-blocking - if customer-api is unavailable, we use stored values
+        const uniqueCustomerIds = [...new Set(mods.map(mod => mod.customerId).filter((id): id is string => !!id))];
+        let displayNames = new Map<string, string | null>();
+        
+        if (uniqueCustomerIds.length > 0) {
+            try {
+                const { fetchDisplayNamesByCustomerIds } = await import('@strixun/api-framework');
+                
+                // Add timeout to prevent hanging if customer-api is not running
+                // Use Promise.race with a timeout promise
+                // getCustomerApiUrl already handles undefined ENVIRONMENT by defaulting to localhost
+                const fetchPromise = fetchDisplayNamesByCustomerIds(uniqueCustomerIds, env);
+                const timeoutPromise = new Promise<Map<string, string | null>>((resolve) => {
+                    setTimeout(() => {
+                        console.warn('[ListMods] Display name fetch timed out after 3s, using stored values');
+                        resolve(new Map());
+                    }, 3000); // 3 second timeout - customer-api should respond quickly if running
+                });
+                
+                displayNames = await Promise.race([fetchPromise, timeoutPromise]);
+            } catch (error) {
+                // If fetch fails (customer-api not running, network error, etc.), log but continue
+                console.warn('[ListMods] Failed to fetch display names, using stored values:', 
+                    error instanceof Error ? error.message : String(error));
+                displayNames = new Map();
+            }
+        }
+        
+        // Map display names to mods - always use fetched value from customer data if available
+        // This ensures we have the latest display names from the source of truth
+        mods.forEach(mod => {
+            const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
+            const fetchedDisplayName = mod.customerId ? displayNames.get(mod.customerId) : null;
+            // Always prefer fetched value from customer data - it's the source of truth
+            // Fall back to stored value only if fetch failed (for backward compatibility)
             mod.authorDisplayName = fetchedDisplayName || storedDisplayName || null;
         });
 

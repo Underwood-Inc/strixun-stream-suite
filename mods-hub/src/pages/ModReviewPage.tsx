@@ -11,6 +11,9 @@ import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme/index';
 import type { ModStatus } from '../types/mod';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles, getCardStyles } from '../utils/sharedStyles';
+import { getStatusBadgeType } from '../utils/badgeHelpers';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -42,37 +45,12 @@ const Title = styled.h1`
 `;
 
 const StatusBadge = styled.span<{ status: ModStatus }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
+  ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
   font-size: 0.875rem;
-  font-weight: 500;
-  background: ${props => {
-    switch (props.status) {
-      case 'published': return `${colors.success}20`;
-      case 'approved': return `${colors.success}20`;
-      case 'pending': return `${colors.warning}20`;
-      case 'changes_requested': return `${colors.warning}20`;
-      case 'denied': return `${colors.danger}20`;
-      default: return colors.bgTertiary;
-    }
-  }};
-  color: ${props => {
-    switch (props.status) {
-      case 'published': return colors.success;
-      case 'approved': return colors.success;
-      case 'pending': return colors.warning;
-      case 'changes_requested': return colors.warning;
-      case 'denied': return colors.danger;
-      default: return colors.textSecondary;
-    }
-  }};
 `;
 
 const Section = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.lg};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
@@ -140,13 +118,8 @@ const TextArea = styled.textarea`
   resize: vertical;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' }>`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${props => props.variant === 'primary' ? colors.accent : props.variant === 'danger' ? colors.danger : colors.bgSecondary};
-  color: ${props => props.variant === 'primary' || props.variant === 'danger' ? '#fff' : colors.text};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-weight: 500;
+const Button = styled.button<{ $variant?: 'primary' | 'danger' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   cursor: pointer;
   transition: all 0.2s ease;
   
@@ -232,6 +205,19 @@ export function ModReviewPage() {
         return null;
     }
 
+    // CRITICAL: For non-admin users (uploaders), customerId is required for review operations
+    if (!isAdmin && !user?.customerId) {
+        return (
+            <Error>
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <h2>Customer Account Required</h2>
+                    <p>Your account is missing a customer association. This is required for review operations.</p>
+                    <p>Please contact support or try logging out and back in to refresh your account information.</p>
+                </div>
+            </Error>
+        );
+    }
+
     return (
         <PageContainer>
             <Header>
@@ -249,7 +235,7 @@ export function ModReviewPage() {
                         {isAdmin && (
                             <>
                                 <Button
-                                    variant="primary"
+                                    $variant="primary"
                                     onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'approved' })}
                                     disabled={updateStatus.isPending || mod.status === 'approved'}
                                 >
@@ -262,7 +248,7 @@ export function ModReviewPage() {
                                     Request Changes
                                 </Button>
                                 <Button
-                                    variant="danger"
+                                    $variant="danger"
                                     onClick={() => updateStatus.mutateAsync({ modId: mod.modId, status: 'denied' })}
                                     disabled={updateStatus.isPending || mod.status === 'denied'}
                                 >
@@ -287,7 +273,7 @@ export function ModReviewPage() {
                             <Comment key={comment.commentId} isAdmin={comment.isAdmin}>
                                 <CommentHeader>
                                     <CommentAuthor>
-                                        {comment.isAdmin ? '[ADMIN] Admin' : (comment.authorDisplayName || 'Unknown User')}
+                                        {comment.isAdmin ? '👑 Admin' : (comment.authorDisplayName || 'Unknown User')}
                                     </CommentAuthor>
                                     <CommentDate>
                                         {new Date(comment.createdAt).toLocaleString()}

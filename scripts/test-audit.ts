@@ -121,13 +121,13 @@ function getPackagesWithTestScripts(): string[] {
     
     return packagesWithTests;
   } catch (error) {
-    console.error('[ERROR] Failed to get packages with test scripts:', error);
+    console.error('✗ Failed to get packages with test scripts:', error);
     return [];
   }
 }
 
 async function main() {
-  console.log('[INFO] Auditing test files in codebase...\n');
+  console.log('ℹ Auditing test files in codebase...\n');
   
   const testFiles = await findTestFiles(ROOT_DIR);
   const packagesWithTests = getPackagesWithTestScripts();
@@ -178,7 +178,7 @@ async function main() {
       p.includes(summary.package.replace('strixun-', ''))
     );
     
-    const status = hasTestScript ? '[OK]' : '[MISSING TEST SCRIPT]';
+    const status = hasTestScript ? '✓' : '[MISSING TEST SCRIPT]';
     console.log(`\n${status} ${summary.package}`);
     console.log(`  Test Files: ${summary.testFiles}`);
     console.log(`  Test Suites: ${summary.totalDescribes}`);
@@ -223,19 +223,19 @@ async function main() {
   });
   
   if (missingScripts.length > 0) {
-    console.log('\n[WARNING] Packages with test files but missing test scripts:');
+    console.log('\n⚠ Packages with test files but missing test scripts:');
     for (const pkg of missingScripts) {
       console.log(`  - ${pkg.package} (${pkg.testFiles} test files)`);
     }
   }
   
-  console.log('\n[INFO] Run "pnpm test:all" to execute all tests');
-  console.log('[INFO] Run "pnpm test:all:sequential" for sequential execution');
+  console.log('\nℹ Run "pnpm test:all" to execute all tests');
+  console.log('ℹ Run "pnpm test:all:sequential" for sequential execution');
   console.log('\n');
 }
 
 main().catch(error => {
-  console.error('[ERROR]', error);
+  console.error('✗', error);
   process.exit(1);
 });
 

@@ -21,11 +21,11 @@ const emojiReplacements = {
   '\u2049': '[!?]',     // ⁉️
   
   // Status indicators
-  '\u2705': '[SUCCESS]',      // ✅
-  '\u274C': '[ERROR]',        // ❌
-  '\u26A0\uFE0F': '[WARNING]', // ⚠️
+  '\u2705': '✓',      // ✅
+  '\u274C': '✗',        // ❌
+  '\u26A0\uFE0F': '⚠', // ⚠️
   '\u1F512': '[SECURITY]',    // 🔒
-  '\u2139\uFE0F': '[INFO]',   // ℹ️
+  '\u2139\uFE0F': 'ℹ',   // ℹ️
   '\u1F4DD': '[NOTE]',        // 📝
   '\u1F680': '[DEPLOY]',       // 🚀
   '\u1F527': '[CONFIG]',      // 🔧
@@ -163,7 +163,7 @@ function findEmojisWithContext(text, filePath) {
       const isInCodeBlock = text.substring(0, text.indexOf(line)).split('```').length % 2 === 1;
       
       // Determine appropriate replacement
-      let replacement = emojiReplacements[emoji] || '[EMOJI]';
+      let replacement = emojiReplacements[emoji] || ' ★ ';
       let issue = '';
       
       if (isQuestionMark && !isInCodeBlock) {
@@ -222,7 +222,7 @@ function scanDirectory(dirPath, results = { files: [], emojis: new Map() }) {
             } catch (error) {
               // Skip binary files or files that can't be read
               if (error.code !== 'EISDIR' && error.code !== 'ENOENT') {
-                console.warn(`[WARN] Could not read file: ${fullPath}`);
+                console.warn(`⚠ Could not read file: ${fullPath}`);
               }
             }
           }
@@ -251,15 +251,15 @@ async function main() {
   console.log('');
   
   // Step 1: Audit
-  console.log('[INFO] Scanning codebase for emojis...');
+  console.log('ℹ Scanning codebase for emojis...');
   const audit = scanDirectory(projectRoot);
   
-  console.log(`[INFO] Found ${audit.files.length} files to check`);
-  console.log(`[INFO] Found ${audit.emojis.size} files with emojis`);
+  console.log(`ℹ Found ${audit.files.length} files to check`);
+  console.log(`ℹ Found ${audit.emojis.size} files with emojis`);
   console.log('');
   
   if (audit.emojis.size === 0) {
-    console.log('[SUCCESS] No emojis found in codebase!');
+    console.log('✓ No emojis found in codebase!');
     return;
   }
   
@@ -305,7 +305,7 @@ async function main() {
   console.log('========================================');
   
   if (templateGuideIssues.length > 0) {
-    console.log('\n[!] TEMPLATE_GUIDE.md CONTRADICTS ITS OWN RULES:');
+    console.log('\n⚠ TEMPLATE_GUIDE.md CONTRADICTS ITS OWN RULES:');
     for (const { file, emojis } of templateGuideIssues) {
       console.log(`\n  ${file}:`);
       for (const emoji of emojis) {
@@ -317,7 +317,7 @@ async function main() {
   }
   
   if (questionMarkIssues.length > 0) {
-    console.log('\n[!] QUESTION MARK EMOJIS (❓) USED INCORRECTLY:');
+    console.log('\n⚠ QUESTION MARK EMOJIS (❓) USED INCORRECTLY:');
     for (const { file, emojis } of questionMarkIssues) {
       console.log(`\n  ${file}:`);
       for (const emoji of emojis) {
@@ -353,7 +353,7 @@ async function main() {
     const uniqueEmojis = new Set(emojis.map(e => e.emoji));
     console.log(`  Unique emojis: ${Array.from(uniqueEmojis).join(' ')}`);
     if (emojis.some(e => e.issue)) {
-      console.log(`  [!] Has problematic usage`);
+      console.log(`  ⚠ Has problematic usage`);
     }
   }
   
@@ -366,8 +366,8 @@ async function main() {
   console.log(`  Question mark issues: ${questionMarkIssues.length}`);
   console.log(`  Template guide issues: ${templateGuideIssues.length}`);
   console.log('');
-  console.log('[INFO] Audit complete. Review the issues above.');
-  console.log('[INFO] Use the replacement suggestions to fix problematic emoji usage.');
+  console.log('ℹ Audit complete. Review the issues above.');
+  console.log('ℹ Use the replacement suggestions to fix problematic emoji usage.');
   console.log('');
 }
 

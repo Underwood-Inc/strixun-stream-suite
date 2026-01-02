@@ -134,6 +134,9 @@ export async function addDisplayNameToHistory(
 
 /**
  * Check if user can change display name (monthly limit)
+ * 
+ * CRITICAL: Auto-generated names should NOT count toward the monthly limit.
+ * If lastChangedAt is set but the only change was auto-generated, allow the change.
  */
 export async function canChangeDisplayName(
   userId: string,
@@ -142,7 +145,23 @@ export async function canChangeDisplayName(
 ): Promise<{ allowed: boolean; reason?: string; nextChangeDate?: string }> {
   const preferences = await getUserPreferences(userId, customerId, env);
 
+  // If lastChangedAt is null, user can always change (new account or never changed)
   if (!preferences.displayName.lastChangedAt) {
+    return { allowed: true };
+  }
+
+  // Check if the only name change was auto-generated
+  // If all previous names are 'auto-generated', this shouldn't count as a user change
+  const userChanges = preferences.displayName.previousNames.filter(
+    entry => entry.reason !== 'auto-generated'
+  );
+  
+  // If there are no user-initiated changes, allow the change
+  // This handles the case where lastChangedAt was incorrectly set during account creation
+  if (userChanges.length === 0) {
+    // Reset lastChangedAt to null since it was incorrectly set
+    preferences.displayName.lastChangedAt = null;
+    await storeUserPreferences(userId, customerId, preferences, env);
     return { allowed: true };
   }
 

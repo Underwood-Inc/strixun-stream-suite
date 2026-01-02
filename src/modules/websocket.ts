@@ -229,10 +229,10 @@ export function updateSecurityWarning(): void {
   
   if (remember && pw) {
     if (authenticated) {
-      warn.textContent = '[EMOJI] Password will be saved securely in the cloud (expires in 7 hours)';
+      warn.textContent = ' ★ Password will be saved securely in the cloud (expires in 7 hours)';
       (warn as HTMLElement).style.color = 'var(--success)';
     } else {
-      warn.textContent = '[WARNING] Sign in to save password securely in the cloud';
+      warn.textContent = '⚠ Sign in to save password securely in the cloud';
       (warn as HTMLElement).style.color = 'var(--warning)';
     }
   } else {

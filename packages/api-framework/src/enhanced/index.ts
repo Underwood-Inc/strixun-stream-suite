@@ -23,19 +23,12 @@ export type {
   BuiltResponse,
 } from './types';
 
-// Client
-export {
-  EnhancedAPIClientV2,
-  createEnhancedAPIClient,
-  getEnhancedAPIClient,
-  setEnhancedAPIClient,
-  resetEnhancedAPIClient,
-} from './client';
+// Enhanced features are now part of APIClient - no separate client class needed
+// All enhanced functionality is available via APIClient with feature flags
 
-// Encryption
+// Encryption - only export the middleware, not the re-exports to avoid circular dependency
+// Users should import encryptWithJWT/decryptWithJWT directly from @strixun/api-framework
 export {
-  encryptWithJWT,
-  decryptWithJWT,
   createE2EEncryptionMiddleware,
 } from './encryption';
 
@@ -77,9 +70,18 @@ export {
   handleCORSPreflight,
 } from './workers/cors';
 
+export {
+  getCorsHeaders,
+  createCORSHeaders as createCORSHeadersWithLocalhost,
+  handleCORSPreflight as handleCORSPreflightWithLocalhost,
+} from './workers/cors-with-localhost';
+
 export type {
   CORSOptions,
 } from './workers/cors';
+export type {
+  CORSWithLocalhostOptions,
+} from './workers/cors-with-localhost';
 
 // Workers - Handler utilities
 export {

@@ -26,7 +26,6 @@ pnpm setup:test-secrets
 The script sets these default test secrets (safe for local development):
 
 - `JWT_SECRET`: `test-jwt-secret-for-local-development-...`
-- `SERVICE_ENCRYPTION_KEY`: `test-service-encryption-key-for-local-development-...`
 - `ALLOWED_ORIGINS`: `*` (allow all origins locally)
 
 ### CI Integration
@@ -59,9 +58,9 @@ When `wrangler dev` runs, secrets are loaded in this order (highest to lowest):
 3. **Environment variables** - System/env vars
 
 This ensures:
-- [OK] CI secrets always win (set via `wrangler secret put`)
-- [OK] Local dev has defaults (from `.dev.vars`)
-- [OK] No accidental overwrites of production secrets
+- ✓ CI secrets always win (set via `wrangler secret put`)
+- ✓ Local dev has defaults (from `.dev.vars`)
+- ✓ No accidental overwrites of production secrets
 
 ### Automatic Setup
 

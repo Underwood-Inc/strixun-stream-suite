@@ -158,7 +158,7 @@ import { showToast } from '../../stores/toast-queue';
     <div class="encryption-settings__status-item">
       <span class="encryption-settings__label">Encryption Status:</span>
       <span class="encryption-settings__value" class:encryption-settings__value--enabled={encryptionEnabled}>
-        {encryptionEnabled ? '[OK] Enabled' : '[ERROR] Disabled'}
+        {encryptionEnabled ? '✓ Enabled' : '✗ Disabled'}
       </span>
     </div>
     <div class="encryption-settings__status-item">
@@ -223,7 +223,7 @@ import { showToast } from '../../stores/toast-queue';
       
       {#if !tokenMatches}
         <div class="encryption-settings__warning">
-          <strong>[WARNING] Token Mismatch:</strong> 
+          <strong>⚠ Token Mismatch:</strong> 
           Your current authentication token does not match the token used for encryption. 
           You may not be able to decrypt existing data. 
           Please log out and log in again to refresh your token.

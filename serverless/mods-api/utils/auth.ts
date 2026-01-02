@@ -4,76 +4,32 @@
  * Uses the same JWT_SECRET as the OTP auth service
  */
 
+// Use shared JWT utilities from api-framework (canonical implementation)
+import { verifyJWT as verifyJWTShared, getJWTSecret as getJWTSecretShared, type JWTPayload as JWTPayloadShared } from '@strixun/api-framework/jwt';
+import { getAuthApiUrl } from '@strixun/api-framework';
+
 /**
  * Get JWT secret from environment
  * @param env - Worker environment
  * @returns JWT secret
  */
 export function getJWTSecret(env: Env): string {
-    if (!env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is required. Please set it via: wrangler secret put JWT_SECRET');
-    }
-    return env.JWT_SECRET;
+    return getJWTSecretShared(env);
 }
 
 /**
  * Verify JWT token
+ * Uses shared implementation from api-framework
  * @param token - JWT token
  * @param secret - Secret key for verification
  * @returns Decoded payload or null if invalid
  */
 export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        
-        const [headerB64, payloadB64, signatureB64] = parts;
-        
-        // Verify signature
-        const encoder = new TextEncoder();
-        const signatureInput = `${headerB64}.${payloadB64}`;
-        const keyData = encoder.encode(secret);
-        const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['verify']
-        );
-        
-        // Decode signature (handle base64url encoding - add padding if needed)
-        let signatureBase64 = signatureB64.replace(/-/g, '+').replace(/_/g, '/');
-        while (signatureBase64.length % 4) {
-            signatureBase64 += '=';
-        }
-        const signature = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0));
-        
-        // Verify signature
-        const isValid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(signatureInput));
-        console.log(`[Auth] JWT signature verification: isValid=${isValid}, signatureLength=${signature.length}, signatureInputLength=${signatureInput.length}, signatureBase64Length=${signatureBase64.length}`);
-        if (!isValid) {
-            console.log('[Auth] JWT signature verification failed - signature does not match');
-            return null;
-        }
-        
-        // Decode payload (handle base64url encoding - add padding if needed)
-        let payloadBase64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
-        while (payloadBase64.length % 4) {
-            payloadBase64 += '=';
-        }
-        const payloadJson = atob(payloadBase64);
-        const payload = JSON.parse(payloadJson) as JWTPayload;
-        
-        // Check expiration
-        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-            return null;
-        }
-        
-        return payload;
-    } catch (error) {
-        console.error('JWT verification error:', error);
-        return null;
+    const payload = await verifyJWTShared(token, secret);
+    if (!payload) {
+        console.log('[Auth] JWT signature verification failed - signature does not match');
     }
+    return payload;
 }
 
 /**
@@ -101,26 +57,15 @@ export function isEmailAllowed(email: string | undefined, env: Env): boolean {
  */
 /**
  * Get the auth API URL with auto-detection for local dev
- * Priority:
- * 1. AUTH_API_URL env var (if explicitly set)
- * 2. localhost:8787 if ENVIRONMENT is 'test' or 'development'
- * 3. Production default (https://auth.idling.app)
+ * Uses centralized service URL resolution utility from api-framework
  */
-function getAuthApiUrl(env: Env): string {
-    if (env.AUTH_API_URL) {
-        return env.AUTH_API_URL;
-    }
-    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
-        // Local dev - use localhost (otp-auth-service runs on port 8787)
-        return 'http://localhost:8787';
-    }
-    // Production default
-    return 'https://auth.idling.app';
+function getAuthApiUrlLocal(env: Env): string {
+    return getAuthApiUrl(env);
 }
 
 async function fetchEmailFromAuthService(token: string, env: Env): Promise<string | undefined> {
     try {
-        const authApiUrl = getAuthApiUrl(env);
+        const authApiUrl = getAuthApiUrlLocal(env);
         const response = await fetch(`${authApiUrl}/auth/me`, {
             method: 'GET',
             headers: {
@@ -156,7 +101,8 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             return null;
         }
 
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         const jwtSecret = getJWTSecret(env);
         console.debug(`[Auth] Verifying JWT: tokenLength=${token.length}, secretLength=${jwtSecret.length}, secretFirstChars=${jwtSecret.substring(0, 20)}`);
         const payload = await verifyJWT(token, jwtSecret);
@@ -193,15 +139,9 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
 
 /**
  * JWT Payload interface
+ * Re-export from shared JWT utilities
  */
-interface JWTPayload {
-    sub: string; // User ID
-    email?: string;
-    customerId?: string | null;
-    exp?: number;
-    iat?: number;
-    [key: string]: any;
-}
+export type { JWTPayload } from '@strixun/api-framework/jwt';
 
 /**
  * Auth result interface

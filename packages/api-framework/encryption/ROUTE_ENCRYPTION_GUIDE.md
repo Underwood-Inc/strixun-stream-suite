@@ -1,10 +1,8 @@
-# Per-Route Encryption System Guide [EMOJI]
-
-> **Industry-standard encryption middleware that ensures ALL routes encrypt responses with appropriate keys based on route type and authentication status.**
+# Per-Route Encryption System Guide ★ > **Industry-standard encryption middleware that ensures ALL routes encrypt responses with appropriate keys based on route type and authentication status.**
 
 ---
 
-## [EMOJI] Overview
+## ★ Overview
 
 The Per-Route Encryption System provides:
 
@@ -63,48 +61,9 @@ The system comes with sensible defaults:
 
 ---
 
-## [EMOJI] Quick Start
+## ★ Quick Start
 
-### 1. Set Service Key
-
-First, set the service encryption key as a Cloudflare Worker secret **for each worker that uses the encryption middleware**.
-
-**Which Workers Need This?**
-
-Set the service key in any Cloudflare Worker that uses `applyEncryptionMiddleware()`. For example:
-
-```bash
-# Step 1: Generate a strong random key (do this once)
-openssl rand -hex 32
-# Copy the output - you'll use this same key for all services
-
-# Step 2: Set the SAME key in ALL services
-cd serverless/otp-auth-service
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../customer-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-cd ../game-api
-wrangler secret put SERVICE_ENCRYPTION_KEY
-# Paste the same key
-
-# ... repeat for chat-signaling, mods-api, url-shortener, twitch-api
-```
-
-**Recommended: Same Key for All Services**
-
-Using the **same service key** across all services is recommended because:
-- [OK] **Simpler key management** - One key to rotate instead of seven
-- [OK] **Service interoperability** - Services can decrypt each other's responses
-- [OK] **Consistent encryption** - All services use the same standard
-- [OK] **Easier client implementation** - Clients only need one service key
-
-**Security Consideration:** Since service-key encryption is for **public routes** (not sensitive authenticated data), sharing the key is an acceptable trade-off for operational simplicity. Sensitive data should use JWT encryption (user-specific keys).
-
-### 2. Use Middleware in Router
+### 1. Use Middleware in Router
 
 ```typescript
 import { applyEncryptionMiddleware } from '@strixun/api-framework';
@@ -137,7 +96,7 @@ export const handleGetUser = withEncryption(async (request: Request, env: Env) =
 
 ---
 
-## [EMOJI] Advanced Usage
+## ★ Advanced Usage
 
 ### Custom Policies
 
@@ -220,7 +179,7 @@ const encryptedResponse = await applyEncryptionMiddleware(
 
 ---
 
-## [EMOJI] Integration Examples
+## ★ Integration Examples
 
 ### Example 1: Update Existing Router
 
@@ -235,7 +194,7 @@ async function handleUserRoute(handler, request, env, auth) {
     return new Response(JSON.stringify(encrypted), { ... });
   }
   
-  return handlerResponse; // [WARNING] Unencrypted if no JWT
+  return handlerResponse; // ⚠ Unencrypted if no JWT
 }
 
 // After (mandatory encryption)
@@ -244,7 +203,7 @@ import { applyEncryptionMiddleware } from '@strixun/api-framework';
 async function handleUserRoute(handler, request, env, auth) {
   const handlerResponse = await handler(request, env);
   
-  // [OK] Always encrypts (JWT or service key)
+  // ✓ Always encrypts (JWT or service key)
   return await applyEncryptionMiddleware(handlerResponse, request, env);
 }
 ```
@@ -260,7 +219,7 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
     headers: { 'Content-Type': 'application/json' },
   });
   
-  // [OK] Encrypts with service key (no JWT required)
+  // ✓ Encrypts with service key (no JWT required)
   return await applyEncryptionMiddleware(response, request, env);
 }
 ```
@@ -284,14 +243,14 @@ export async function route(request: Request, env: Env): Promise<Response> {
     response = await handlePublicRoutes(request, path, env);
   }
   
-  // [OK] Apply encryption middleware to ALL responses
+  // ✓ Apply encryption middleware to ALL responses
   return await applyEncryptionMiddleware(response, request, env);
 }
 ```
 
 ---
 
-## [EMOJI] Security Benefits
+## ★ Security Benefits
 
 ### Defense in Depth
 
@@ -313,7 +272,7 @@ export async function route(request: Request, env: Env): Promise<Response> {
 
 ---
 
-## [EMOJI] Response Headers
+## ★ Response Headers
 
 Encrypted responses include:
 
@@ -326,10 +285,7 @@ Encrypted responses include:
 
 ### Environment Variables
 
-```bash
-# Required: Service encryption key (minimum 32 characters)
-SERVICE_ENCRYPTION_KEY=your-strong-random-key-here
-```
+All encryption uses JWT tokens (per-user, per-session). No service encryption key is needed.
 
 ### Policy Configuration
 
@@ -340,12 +296,11 @@ Policies are defined in code and can be:
 
 ---
 
-## [WARNING] Important Notes
+## ⚠ Important Notes
 
-1. **Service Key Security**
-   - Store service key as Cloudflare Worker secret
-   - Never commit to version control
-   - Rotate periodically (requires client updates)
+1. **JWT Token Security**
+   - All encryption uses JWT tokens (per-user, per-session)
+   - No shared service key needed
 
 2. **Mandatory vs Optional**
    - `mandatory: true` - Returns error if encryption fails
@@ -363,7 +318,7 @@ Policies are defined in code and can be:
 
 ---
 
-## [EMOJI] Related Documentation
+## ★ Related Documentation
 
 - [JWT Encryption](./jwt-encryption.ts) - JWT-based encryption
 - [Multi-Stage Encryption](./multi-stage-encryption.ts) - Multi-party encryption

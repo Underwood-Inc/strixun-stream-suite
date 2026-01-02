@@ -16,7 +16,7 @@ const __dirname = dirname(__filename);
 
 const projectRoot = resolve(__dirname, '../..');
 const entryPath = resolve(__dirname, '../react/OtpLogin.tsx');
-const outputDir = resolve(__dirname, '../dist/react');
+const outputDir = resolve(__dirname, '../../../dist/otp-login/react');
 
 // Ensure dist directory exists
 mkdirSync(outputDir, { recursive: true });
@@ -100,13 +100,13 @@ export type { LoginSuccessData, OtpLoginState, OtpLoginConfig } from '../../core
 `;
   writeFileSync(resolve(outputDir, 'index.d.ts'), indexDtsContent, 'utf-8');
 
-  console.log(`[OK] Built React OTP Login components to ${outputDir}/`);
+  console.log(`✓ Built React OTP Login components to ${outputDir}/`);
   console.log(`   - ES Module: otp-login.js`);
   console.log(`   - CommonJS: otp-login.cjs`);
   console.log(`   - Index: index.js`);
   console.log(`   - Types: index.d.ts`);
 } catch (error) {
-  console.error('[ERROR] Failed to build React OTP Login components:', error);
+  console.error('✗ Failed to build React OTP Login components:', error);
   process.exit(1);
 }
 

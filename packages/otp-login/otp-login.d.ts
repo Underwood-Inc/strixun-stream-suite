@@ -100,8 +100,7 @@ declare namespace OtpLoginCoreLib {
     };
     /** Optional: Custom headers to include in requests */
     customHeaders?: Record<string, string>;
-    /** OTP encryption key for encrypting request bodies (required) */
-    otpEncryptionKey: string;
+    // otpEncryptionKey removed - service key encryption was obfuscation only, HTTPS provides transport security
   }
 
   /**
@@ -183,8 +182,6 @@ declare namespace OtpLoginSvelteLib {
     target: HTMLElement;
     /** OTP Auth API base URL */
     apiUrl: string;
-    /** OTP encryption key (required, must be 32+ characters) */
-    otpEncryptionKey: string;
     /** Callback when login succeeds */
     onSuccess: (data: OtpLoginCoreLib.LoginSuccessData) => void;
     /** Callback when login fails */

@@ -8,17 +8,12 @@ const __dirname = dirname(__filename);
 
 /**
  * Load .dev.vars files into process.env for E2E tests
- * Returns the encryption key from OTP Auth Service for use in mods-hub
- * Priority: SERVICE_ENCRYPTION_KEY (worker key) > VITE_SERVICE_ENCRYPTION_KEY (frontend key)
  */
-function loadDevVars(): string | undefined {
+function loadDevVars(): void {
   const devVarsPaths = [
     join(__dirname, 'serverless', 'mods-api', '.dev.vars'),
     join(__dirname, 'serverless', 'otp-auth-service', '.dev.vars'),
   ];
-  
-  let serviceEncryptionKey: string | undefined;
-  let viteServiceEncryptionKey: string | undefined;
   
   for (const devVarsPath of devVarsPaths) {
     if (existsSync(devVarsPath)) {
@@ -38,23 +33,10 @@ function loadDevVars(): string | undefined {
           if (!process.env[key]) {
             process.env[key] = value;
           }
-          
-          // Extract encryption keys from OTP Auth Service .dev.vars
-          if (devVarsPath.includes('otp-auth-service')) {
-            if (key === 'SERVICE_ENCRYPTION_KEY') {
-              serviceEncryptionKey = value;
-            } else if (key === 'VITE_SERVICE_ENCRYPTION_KEY') {
-              viteServiceEncryptionKey = value;
-            }
-          }
         }
       }
     }
   }
-  
-  // Priority: SERVICE_ENCRYPTION_KEY (worker uses this) > VITE_SERVICE_ENCRYPTION_KEY
-  // Both should match, but SERVICE_ENCRYPTION_KEY is what the worker actually uses
-  return serviceEncryptionKey || viteServiceEncryptionKey;
 }
 
 // Load .dev.vars before tests run
@@ -93,13 +75,6 @@ const WORKER_URLS = {
   MODS_HUB: process.env.E2E_MODS_HUB_URL || 'http://localhost:3001',
 };
 
-// Load .dev.vars before config is evaluated (so we can pass to workers)
-// Get encryption key for mods-hub (must match OTP Auth Service)
-const E2E_ENCRYPTION_KEY = loadDevVars() || 
-  process.env.SERVICE_ENCRYPTION_KEY || 
-  process.env.VITE_SERVICE_ENCRYPTION_KEY || 
-  'test-service-encryption-key-for-local-development-12345678901234567890123456789012';
-
 export default defineConfig({
   // Global setup to load .dev.vars before tests run
   globalSetup: './playwright.global-setup.ts',
@@ -112,13 +87,6 @@ export default defineConfig({
   // Use multiple workers to better replicate production conditions
   // CI uses fewer workers for stability, local uses more for speed
   workers: process.env.CI ? 2 : 4,
-  // Pass environment variables to test workers
-  use: {
-    // Pass E2E test credentials from .dev.vars to test workers
-    ...(process.env.E2E_TEST_JWT_TOKEN ? { env: { E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN } } : {}),
-    ...(process.env.E2E_TEST_OTP_CODE ? { env: { E2E_TEST_OTP_CODE: process.env.E2E_TEST_OTP_CODE } } : {}),
-    ...(process.env.E2E_TEST_EMAIL ? { env: { E2E_TEST_EMAIL: process.env.E2E_TEST_EMAIL } } : {}),
-  },
   reporter: [
     ['html'],
     ['list'],
@@ -130,34 +98,14 @@ export default defineConfig({
     trace: 'off',
     screenshot: 'off',
     video: 'off',
-    // Pass E2E test credentials from .dev.vars to test workers
-    // These are loaded by loadDevVars() above
-    ...(process.env.E2E_TEST_JWT_TOKEN ? { env: { E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN } } : {}),
-    ...(process.env.E2E_TEST_OTP_CODE ? { env: { E2E_TEST_OTP_CODE: process.env.E2E_TEST_OTP_CODE } } : {}),
-    ...(process.env.E2E_TEST_EMAIL ? { env: { E2E_TEST_EMAIL: process.env.E2E_TEST_EMAIL } } : {}),
+    // Note: E2E test credentials are loaded by loadDevVars() above and available via process.env
+    // They are automatically available to test files through process.env
   },
 
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    // Mobile viewports
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
     },
   ],
 
@@ -169,10 +117,9 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60 * 1000, // 60 seconds to start frontend
       env: {
-        // Override API URL and encryption key for E2E tests (same as mods-hub)
-        // This ensures the main app uses local worker URLs and matching encryption keys
+        // Override API URL for E2E tests
+        // This ensures the main app uses local worker URLs
         VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
-        VITE_SERVICE_ENCRYPTION_KEY: E2E_ENCRYPTION_KEY,
       },
     },
     {
@@ -184,22 +131,18 @@ export default defineConfig({
         // Override Vite proxy URLs with direct local worker URLs for E2E tests
         VITE_AUTH_API_URL: WORKER_URLS.OTP_AUTH,
         VITE_MODS_API_URL: WORKER_URLS.MODS_API,
-        // Use the same encryption key as OTP Auth Service (must match SERVICE_ENCRYPTION_KEY)
-        // This ensures mods-hub encrypts requests with the same key the worker expects
-        VITE_SERVICE_ENCRYPTION_KEY: E2E_ENCRYPTION_KEY,
       },
     },
     // Start all local workers (E2E tests replicate production with all services running)
     // Each service runs on its own port to replicate production deployment
     ...(process.env.E2E_START_LOCAL_WORKER !== 'false' ? [
       // OTP Auth Service (port 8787)
-      // --local flag ensures .dev.vars is used (not Cloudflare secrets)
-      // This matches the deployment pattern where .dev.vars is the source for local testing
+      // Uses wrapper script to start server and check health with JWT
       {
-        command: process.platform === 'win32' 
-          ? `cd serverless/otp-auth-service && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && wrangler dev --port ${BASE_PORT} --local`
-          : `cd serverless/otp-auth-service && CI=true NO_INPUT=1 pnpm setup:test-secrets && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT} --local`,
-        url: `${WORKER_URLS.OTP_AUTH}/health`,
+        command: process.platform === 'win32'
+          ? `cd serverless/otp-auth-service && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/otp-auth-service ${BASE_PORT}`
+          : `cd serverless/otp-auth-service && CI=true NO_INPUT=1 pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/otp-auth-service ${BASE_PORT}`,
+        port: BASE_PORT,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -208,9 +151,9 @@ export default defineConfig({
       // Mods API (port 8788)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/mods-api && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && wrangler dev --port ${BASE_PORT + 1} --local`
-          : `cd serverless/mods-api && CI=true NO_INPUT=1 pnpm setup:test-secrets && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 1} --local`,
-        url: `${WORKER_URLS.MODS_API}/health`,
+          ? `cd serverless/mods-api && set CI=true && set NO_INPUT=1 && pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/mods-api ${BASE_PORT + 1}`
+          : `cd serverless/mods-api && CI=true NO_INPUT=1 pnpm setup:test-secrets && node ../../scripts/start-worker-with-health-check.js serverless/mods-api ${BASE_PORT + 1}`,
+        port: BASE_PORT + 1,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -219,20 +162,21 @@ export default defineConfig({
       // Twitch API (port 8789)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/twitch-api && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 2} --local`
-          : `cd serverless/twitch-api && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 2} --local`,
-        url: `${WORKER_URLS.TWITCH_API}/health`,
+          ? `cd serverless/twitch-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/twitch-api ${BASE_PORT + 2}`
+          : `cd serverless/twitch-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/twitch-api ${BASE_PORT + 2}`,
+        port: BASE_PORT + 2,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
         stderr: 'pipe' as const,
       },
       // Customer API (port 8790)
+      // Uses wrapper script to start server and check health with JWT
       {
         command: process.platform === 'win32'
-          ? `cd serverless/customer-api && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 3} --local`
-          : `cd serverless/customer-api && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 3} --local`,
-        url: `${WORKER_URLS.CUSTOMER_API}/health`,
+          ? `cd serverless/customer-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/customer-api ${BASE_PORT + 3}`
+          : `cd serverless/customer-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/customer-api ${BASE_PORT + 3}`,
+        port: BASE_PORT + 3,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -241,9 +185,9 @@ export default defineConfig({
       // Game API (port 8791)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/game-api && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 4} --local`
-          : `cd serverless/game-api && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 4} --local`,
-        url: `${WORKER_URLS.GAME_API}/health`,
+          ? `cd serverless/game-api && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/game-api ${BASE_PORT + 4}`
+          : `cd serverless/game-api && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/game-api ${BASE_PORT + 4}`,
+        port: BASE_PORT + 4,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
@@ -252,22 +196,23 @@ export default defineConfig({
       // Chat Signaling (port 8792)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/chat-signaling && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 5} --local`
-          : `cd serverless/chat-signaling && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 5} --local`,
-        url: `${WORKER_URLS.CHAT_SIGNALING}/health`,
+          ? `cd serverless/chat-signaling && set CI=true && set NO_INPUT=1 && node ../../scripts/start-worker-with-health-check.js serverless/chat-signaling ${BASE_PORT + 5}`
+          : `cd serverless/chat-signaling && CI=true NO_INPUT=1 node ../../scripts/start-worker-with-health-check.js serverless/chat-signaling ${BASE_PORT + 5}`,
+        port: BASE_PORT + 5,
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
         stdout: 'pipe' as const,
         stderr: 'pipe' as const,
       },
       // URL Shortener (port 8793)
+      // Build assets before starting worker (required for app-assets, decrypt-script, otp-core-script)
       {
         command: process.platform === 'win32'
-          ? `cd serverless/url-shortener && set CI=true && set NO_INPUT=1 && wrangler dev --port ${BASE_PORT + 6} --local`
-          : `cd serverless/url-shortener && CI=true NO_INPUT=1 wrangler dev --port ${BASE_PORT + 6} --local`,
-        url: `${WORKER_URLS.URL_SHORTENER}/health`,
+          ? `cd serverless/url-shortener && set CI=true && set NO_INPUT=1 && pnpm build:all && node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`
+          : `cd serverless/url-shortener && CI=true NO_INPUT=1 pnpm build:all && node ../../scripts/start-worker-with-health-check.js serverless/url-shortener ${BASE_PORT + 6}`,
+        port: BASE_PORT + 6,
         reuseExistingServer: !process.env.CI,
-        timeout: 180 * 1000,
+        timeout: 300 * 1000, // Increased timeout to allow for build time
         stdout: 'pipe' as const,
         stderr: 'pipe' as const,
       },

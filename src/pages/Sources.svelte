@@ -145,11 +145,10 @@
       </div>
     </div>
     <div class="row" style="margin-top:12px">
-      <button on:click={handleApplyOpacity} style="flex:1">[OK] Apply</button>
-      <button on:click={handleResetOpacity} class="btn-secondary" style="flex:1">[EMOJI] Reset to 100%</button>
+      <button on:click={handleApplyOpacity} style="flex:1">✓ Apply</button>
+      <button on:click={handleResetOpacity} class="btn-secondary" style="flex:1">→ Reset to 100%</button>
     </div>
-    <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)">
-      [EMOJI] Setting to 100% removes the filter (no overhead)
+    <p class="hint" style="margin-top:8px;font-size:0.75em;color:var(--muted)"> ★ Setting to 100% removes the filter (no overhead)
     </p>
   </div>
   
@@ -174,7 +173,7 @@
   
   <!-- Source Browser -->
   <div class="card">
-    <h3>[EMOJI] Sources</h3>
+    <h3> ★ Sources</h3>
     <p class="hint" id="sourcesSceneLabel" style="margin-bottom:8px">
       {#if $currentScene}
         Scene: {$currentScene}

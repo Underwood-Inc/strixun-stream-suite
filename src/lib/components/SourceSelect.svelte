@@ -143,7 +143,7 @@
     {#if isOpen}
       <div class="source-select__dropdown">
         <div class="source-select__search">
-          <span class="source-select__search-icon">[EMOJI]</span>
+          <span class="source-select__search-icon"> ★ </span>
           <input
             type="text"
             class="source-select__search-input"

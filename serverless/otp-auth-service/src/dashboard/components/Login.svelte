@@ -3,36 +3,23 @@
   import type { LoginSuccessData } from '@strixun/otp-login';
   import OtpLogin from '@strixun/otp-login/svelte/OtpLogin.svelte';
 
-  // Get API URL - dashboard uses production worker in dev for testing real workflow
+  // Get API URL - dashboard uses Vite proxy in dev to connect to local worker
   // In production, this would be the same origin
   function getApiUrl(): string {
     if (typeof window === 'undefined') return '';
     
-    // In development, use production worker to test real workflow
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isDev) {
-      // Allow override via window.OTP_AUTH_API_URL for testing
-      if ((window as any).OTP_AUTH_API_URL) {
-        return (window as any).OTP_AUTH_API_URL;
-      }
-      // Use custom domain in dev for real workflow testing
-      return 'https://auth.idling.app';
+    // Allow override via window.OTP_AUTH_API_URL for testing
+    if ((window as any).OTP_AUTH_API_URL) {
+      return (window as any).OTP_AUTH_API_URL;
     }
     
-    // Production: use same origin
+    // In development, use same origin (Vite proxy forwards /auth to local worker at localhost:8787)
+    // In production, use same origin
+    // This allows the Vite proxy to handle CORS and route to the local worker
     return window.location.origin;
   }
   
   const apiUrl = getApiUrl();
-  
-  import { getOtpEncryptionKey as getKey } from '@shared-config/otp-encryption';
-  
-  /**
-   * Get OTP encryption key from centralized config
-   */
-  function getOtpEncryptionKey(): string | undefined {
-    return getKey();
-  }
 
   let showNoAccountError = false;
   let noAccountError: string | null = null;
@@ -131,7 +118,7 @@
   <div class="login-content">
     {#if showNoAccountError && noAccountError}
       <div class="login-error-banner">
-        <div class="login-error-icon">[WARNING]</div>
+        <div class="login-error-icon">⚠</div>
         <div class="login-error-content">
           <strong>Account Required</strong>
           <p>{noAccountError}</p>
@@ -144,7 +131,6 @@
       {apiUrl}
       onSuccess={handleLoginSuccess}
       onError={handleLoginError}
-      otpEncryptionKey={getOtpEncryptionKey()}
       customHeaders={{ 'X-Dashboard-Request': 'true' }}
       title="Developer Dashboard"
       subtitle="Sign in with your email to access your dashboard"

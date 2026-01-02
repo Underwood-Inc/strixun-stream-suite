@@ -43,7 +43,8 @@ export async function handleCreateDataRequest(request: Request, env: Env): Promi
         // Try to get from JWT token
         const authHeader = request.headers.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
+            // CRITICAL: Trim token to ensure it matches the token used for encryption
+            const token = authHeader.substring(7).trim();
             const jwtSecret = getJWTSecret(env);
             const payload = await verifyJWT(token, jwtSecret);
             
@@ -269,7 +270,8 @@ export async function handleListDataRequests(request: Request, env: Env): Promis
             });
         }
 
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret);
 

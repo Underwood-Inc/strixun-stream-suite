@@ -50,7 +50,7 @@ export async function handleUpdateCustomerById(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
@@ -59,7 +59,6 @@ export async function handleUpdateCustomerById(
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
-        if (body.name !== undefined) customer.name = body.name;
         if (body.companyName !== undefined) customer.companyName = body.companyName;
         if (body.tier !== undefined) customer.tier = body.tier;
         if (body.status !== undefined) customer.status = body.status;
@@ -74,16 +73,17 @@ export async function handleUpdateCustomerById(
         await storeCustomer(customerId, customer, env);
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     } catch (error: any) {
@@ -98,7 +98,7 @@ export async function handleUpdateCustomerById(
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     }
@@ -119,21 +119,21 @@ export async function handleGetCustomer(
     });
 
     try {
-        // Determine which customer to get
+        // Determine which customer to get - ONLY use customerId (no email fallback)
         const targetCustomerId = customerId || auth.customerId;
 
         if (!targetCustomerId) {
-            const rfcError = createError(request, 404, 'Not Found', 'Customer not found');
+            const rfcError = createError(request, 404, 'Not Found', 'Customer not found. Customer ID is required.');
             return new Response(JSON.stringify(rfcError), {
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
 
-        // Get customer
+        // Get customer by customerId only
         const customer = await getCustomer(targetCustomerId, env);
 
         if (!customer) {
@@ -142,7 +142,7 @@ export async function handleGetCustomer(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
@@ -154,22 +154,58 @@ export async function handleGetCustomer(
                 status: 403,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
 
+        // CRITICAL: displayName is REQUIRED, not optional
+        // If missing, generate it using the existing name generator and update the customer
+        if (!customer.displayName || customer.displayName.trim() === '') {
+            console.warn(`[Customer API] Customer ${customer.customerId} is missing displayName. Generating and updating...`);
+            
+            try {
+                // Import the existing name generator from otp-auth-service package
+                // Pass CUSTOMER_KV as OTP_AUTH_KV so it can check uniqueness
+                const { generateUniqueDisplayName, reserveDisplayName } = await import('@strixun/otp-auth-service/services/nameGenerator');
+                const nameGeneratorEnv = {
+                    OTP_AUTH_KV: env.CUSTOMER_KV, // Use CUSTOMER_KV for uniqueness checks
+                } as { OTP_AUTH_KV: KVNamespace; [key: string]: any };
+                
+                const customerDisplayName = await generateUniqueDisplayName({
+                    customerId: customer.customerId,
+                    maxAttempts: 10,
+                }, nameGeneratorEnv);
+                
+                // Reserve the display name
+                await reserveDisplayName(customerDisplayName, customer.customerId, customer.customerId, nameGeneratorEnv);
+                
+                // Update the customer record with the generated displayName
+                customer.displayName = customerDisplayName;
+                customer.updatedAt = new Date().toISOString();
+                await storeCustomer(customer.customerId, customer, env);
+                
+                console.log(`[Customer API] Generated and set displayName "${customerDisplayName}" for customer ${customer.customerId}`);
+            } catch (error) {
+                console.error(`[Customer API] Failed to generate displayName for customer ${customer.customerId}:`, error);
+                // Don't throw - return customer without displayName rather than failing the request
+                // It will be fixed on next authentication via ensureCustomerAccount
+            }
+        }
+
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        // (Exception: mods-hub profile page will have special handling for own profile)
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     } catch (error: any) {
@@ -184,7 +220,7 @@ export async function handleGetCustomer(
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     }
@@ -205,7 +241,7 @@ export async function handleCreateCustomer(
 
     try {
         const body = await request.json() as Partial<CustomerData>;
-        const { email, name, companyName } = body;
+        const { email, companyName, displayName, customerId: providedCustomerId, subscriptions, flairs, config, features } = body;
 
         if (!email) {
             const rfcError = createError(request, 400, 'Bad Request', 'Email is required');
@@ -213,7 +249,7 @@ export async function handleCreateCustomer(
                 status: 400,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
@@ -226,24 +262,40 @@ export async function handleCreateCustomer(
                 status: 409,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
 
-        // Generate customer ID
-        const customerId = generateCustomerId();
+        // Use provided customerId or generate new one
+        const customerId = providedCustomerId || generateCustomerId();
 
-        // Create customer data
+        // CRITICAL: displayName is REQUIRED - generate if not provided
+        let finalDisplayName = displayName;
+        if (!finalDisplayName || finalDisplayName.trim() === '') {
+            const { generateUniqueDisplayName, reserveDisplayName } = await import('@strixun/otp-auth-service/services/nameGenerator');
+            const nameGeneratorEnv = {
+                OTP_AUTH_KV: env.CUSTOMER_KV,
+            } as { OTP_AUTH_KV: KVNamespace; [key: string]: any };
+            
+            finalDisplayName = await generateUniqueDisplayName({
+                customerId: customerId,
+                maxAttempts: 10,
+            }, nameGeneratorEnv);
+            
+            await reserveDisplayName(finalDisplayName, customerId, customerId, nameGeneratorEnv);
+        }
+
+        // Create customer data - use provided fields or defaults
         const customerData: CustomerData = {
             customerId,
             email: email.toLowerCase().trim(),
-            name: name || email.split('@')[0],
             companyName: companyName || email.split('@')[1]?.split('.')[0] || 'My App',
-            tier: 'free',
-            plan: 'free', // Legacy
-            status: 'active',
-            subscriptions: [{
+            displayName: finalDisplayName, // REQUIRED: Use provided or generated displayName
+            tier: body.tier || 'free',
+            plan: body.plan || 'free', // Legacy
+            status: body.status || 'active',
+            subscriptions: subscriptions || [{
                 planId: 'free',
                 status: 'active',
                 startDate: new Date().toISOString(),
@@ -251,25 +303,28 @@ export async function handleCreateCustomer(
                 planName: 'Free',
                 billingCycle: 'monthly',
             }],
-            flairs: [],
-            createdAt: new Date().toISOString(),
+            flairs: flairs || [],
+            config: config,
+            features: features,
+            createdAt: body.createdAt || new Date().toISOString(),
         };
 
         // Store customer
         await storeCustomer(customerId, customerData, env);
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        const { email: _, ...customerDataWithoutEmail } = customerData;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            customerId: customerData.customerId,
-            ...customerData,
+            ...customerDataWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
             status: 201,
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     } catch (error: any) {
@@ -284,7 +339,7 @@ export async function handleCreateCustomer(
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     }
@@ -314,22 +369,24 @@ export async function handleGetCustomerByEmail(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth and service-to-service lookups
+        // This endpoint is service-to-service only, but we still don't return email for consistency
+        const { email: _, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     } catch (error: any) {
@@ -344,7 +401,7 @@ export async function handleGetCustomerByEmail(
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     }
@@ -370,7 +427,7 @@ export async function handleUpdateCustomer(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
@@ -383,7 +440,7 @@ export async function handleUpdateCustomer(
                 status: 404,
                 headers: {
                     'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
+                    ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
                 },
             });
         }
@@ -392,7 +449,6 @@ export async function handleUpdateCustomer(
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
-        if (body.name !== undefined) customer.name = body.name;
         if (body.companyName !== undefined) customer.companyName = body.companyName;
         if (body.tier !== undefined) customer.tier = body.tier;
         if (body.status !== undefined) customer.status = body.status;
@@ -407,16 +463,17 @@ export async function handleUpdateCustomer(
         await storeCustomer(auth.customerId, customer, env);
 
         // Build response with id and customerId (API architecture compliance)
+        // NEVER return email - email is only for OTP auth, never exposed in API responses
+        const { email, ...customerWithoutEmail } = customer;
         const responseData = {
             id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            customerId: customer.customerId,
-            ...customer,
+            ...customerWithoutEmail,
         };
 
         return new Response(JSON.stringify(responseData), {
             headers: {
                 'Content-Type': 'application/json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     } catch (error: any) {
@@ -431,7 +488,7 @@ export async function handleUpdateCustomer(
             status: 500,
             headers: {
                 'Content-Type': 'application/problem+json',
-                ...Object.fromEntries(corsHeaders.entries()),
+                ...Object.fromEntries(Array.from((corsHeaders as any).entries())),
             },
         });
     }

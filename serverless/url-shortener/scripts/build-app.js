@@ -14,7 +14,8 @@ const __dirname = dirname(__filename);
 
 const projectRoot = join(__dirname, '..');
 const appDir = join(projectRoot, 'app');
-const distDir = join(appDir, 'dist');
+// Vite outputs to dist/url-shortener-app at project root (see app/vite.config.ts)
+const distDir = join(projectRoot, '..', '..', 'dist', 'url-shortener-app');
 const workerDistDir = join(projectRoot, 'dist');
 const outputFile = join(workerDistDir, 'app-assets.ts');
 
@@ -88,10 +89,10 @@ export default APP_ASSETS;
     throw new Error(`Failed to create ${outputFile}`);
   }
   
-  console.log(`[OK] Built app assets to ${outputFile}`);
+  console.log(`✓ Built app assets to ${outputFile}`);
   console.log(`   Found ${Object.keys(assets).length} files`);
 } catch (error) {
-  console.error('[ERROR] Failed to build app:', error);
+  console.error('✗ Failed to build app:', error);
   process.exit(1);
 }
 

@@ -35,6 +35,26 @@ export async function handleDeleteMod(
             });
         }
 
+        // CRITICAL: Validate customerId is present - required for data scoping
+        if (!auth.customerId) {
+            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated user:', {
+                userId: auth.userId,
+                email: auth.email,
+                note: 'Rejecting mod deletion - customerId is required for data scoping'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod deletion. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
         const normalizedModId = normalizeModId(modId);
@@ -194,6 +214,20 @@ export async function handleDeleteMod(
                 const updatedGlobalList = globalModsList.filter(id => id !== actualModId);
                 await env.MODS_KV.put(globalListKey, JSON.stringify(updatedGlobalList));
             }
+        }
+
+        // CRITICAL: Release slug indexes immediately when mod is deleted
+        // This ensures the slug is immediately available for reuse by anyone
+        if (mod.slug) {
+            // Delete customer slug index
+            const customerSlugKey = getCustomerKey(auth.customerId, `slug_${mod.slug}`);
+            await env.MODS_KV.delete(customerSlugKey);
+            console.log('[DeleteMod] Released customer slug index:', { slug: mod.slug, customerSlugKey });
+            
+            // Delete global slug index (if it exists - mod might have been public)
+            const globalSlugKey = `slug_${mod.slug}`;
+            await env.MODS_KV.delete(globalSlugKey);
+            console.log('[DeleteMod] Released global slug index:', { slug: mod.slug, globalSlugKey });
         }
 
         const corsHeaders = createCORSHeaders(request, {

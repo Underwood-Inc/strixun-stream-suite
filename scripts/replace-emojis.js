@@ -18,11 +18,11 @@ const projectRoot = join(__dirname, '..');
 // The values are their ASCII-compatible replacements
 const emojiReplacements = {
   // Common status emojis
-  '\u2705': '[SUCCESS]',      // ✅
-  '\u274C': '[ERROR]',        // ❌
-  '\u26A0\uFE0F': '[WARNING]', // ⚠️
+  '\u2705': '✓',      // ✅
+  '\u274C': '✗',        // ❌
+  '\u26A0\uFE0F': '⚠', // ⚠️
   '\u1F512': '[SECURITY]',    // 🔒
-  '\u2139\uFE0F': '[INFO]',   // ℹ️
+  '\u2139\uFE0F': 'ℹ',   // ℹ️
   '\u1F4DD': '[NOTE]',        // 📝
   '\u1F680': '[DEPLOY]',       // 🚀
   '\u1F527': '[CONFIG]',      // 🔧
@@ -161,15 +161,15 @@ function replaceEmojis(text) {
     }
   }
   
-  // Also replace any remaining emojis with generic [EMOJI] tag
+  // Also replace any remaining emojis with generic ★ tag
   const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2190}-\u{21FF}]|[\u{2300}-\u{23FF}]|[\u{2B50}-\u{2B55}]|[\u{3030}-\u{303F}]|[\u{FE00}-\u{FE0F}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]/gu;
   
   const remainingEmojis = [...new Set(result.match(emojiRegex) || [])];
   if (remainingEmojis.length > 0) {
     for (const emoji of remainingEmojis) {
       if (!emojiReplacements[emoji]) {
-        result = result.replaceAll(emoji, '[EMOJI]');
-        replaced.push({ emoji, replacement: '[EMOJI]' });
+        result = result.replaceAll(emoji, ' ★ ');
+        replaced.push({ emoji, replacement: ' ★ ' });
       }
     }
   }
@@ -209,7 +209,7 @@ function scanDirectory(dirPath, results = { files: [], emojis: new Map() }) {
             } catch (error) {
               // Skip binary files or files that can't be read
               if (error.code !== 'EISDIR') {
-                console.warn(`[WARN] Could not read file: ${fullPath}`);
+                console.warn(`⚠ Could not read file: ${fullPath}`);
               }
             }
           }
@@ -217,12 +217,12 @@ function scanDirectory(dirPath, results = { files: [], emojis: new Map() }) {
       } catch (error) {
         // Skip files we can't access
         if (error.code !== 'ENOENT') {
-          console.warn(`[WARN] Could not access: ${fullPath}`);
+          console.warn(`⚠ Could not access: ${fullPath}`);
         }
       }
     }
   } catch (error) {
-    console.warn(`[WARN] Could not scan directory: ${dirPath}`);
+    console.warn(`⚠ Could not scan directory: ${dirPath}`);
   }
   
   return results;
@@ -238,15 +238,15 @@ async function main() {
   console.log('');
   
   // Step 1: Audit
-  console.log('[INFO] Scanning codebase for emojis...');
+  console.log('ℹ Scanning codebase for emojis...');
   const audit = scanDirectory(projectRoot);
   
-  console.log(`[INFO] Found ${audit.files.length} files to check`);
-  console.log(`[INFO] Found ${audit.emojis.size} files with emojis`);
+  console.log(`ℹ Found ${audit.files.length} files to check`);
+  console.log(`ℹ Found ${audit.emojis.size} files with emojis`);
   console.log('');
   
   if (audit.emojis.size === 0) {
-    console.log('[SUCCESS] No emojis found in codebase!');
+    console.log('✓ No emojis found in codebase!');
     return;
   }
   
@@ -267,7 +267,7 @@ async function main() {
   console.log('========================================');
   console.log('Unique emojis found:');
   for (const emoji of allEmojis) {
-    const replacement = emojiReplacements[emoji] || '[EMOJI]';
+    const replacement = emojiReplacements[emoji] || ' ★ ';
     console.log(`  ${emoji} -> ${replacement}`);
   }
   console.log('');
@@ -281,7 +281,7 @@ async function main() {
   // For safety, we'll create a backup or dry-run mode
   
   // Step 4: Replace
-  console.log('[INFO] Replacing emojis...');
+  console.log('ℹ Replacing emojis...');
   let totalReplacements = 0;
   const modifiedFiles = [];
   
@@ -296,10 +296,10 @@ async function main() {
         writeFileSync(fullPath, result, 'utf-8');
         totalReplacements += replaced.length;
         modifiedFiles.push({ file: filePath, replacements: replaced });
-        console.log(`[SUCCESS] ${filePath}: ${replaced.length} replacement(s)`);
+        console.log(`✓ ${filePath}: ${replaced.length} replacement(s)`);
       }
     } catch (error) {
-      console.error(`[ERROR] Failed to process ${filePath}: ${error.message}`);
+      console.error(`✗ Failed to process ${filePath}: ${error.message}`);
     }
   }
   
@@ -310,7 +310,7 @@ async function main() {
   console.log(`  Files modified: ${modifiedFiles.length}`);
   console.log(`  Total replacements: ${totalReplacements}`);
   console.log('');
-  console.log('[SUCCESS] Emoji replacement complete!');
+  console.log('✓ Emoji replacement complete!');
   console.log('');
 }
 

@@ -12,7 +12,7 @@
  * - Optimized for performance
  */
 
-import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
@@ -23,16 +23,26 @@ import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { useAdminDeleteMod, useAdminModsList, useUpdateModStatus } from '../hooks/useMods';
 import { colors, spacing } from '../theme/index';
 import type { ModMetadata, ModStatus } from '../types/mod';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles } from '../utils/sharedStyles';
+import { getStatusBadgeType } from '../utils/badgeHelpers';
 import { exportModsToCSV, exportModsToJSON } from '../utils/exportMods';
 import { filterModsBySearchQuery } from '../utils/searchMods';
+
+// Lazy load dice board game to avoid loading if not needed
+const DiceBoardGameContainer = React.lazy(() => 
+  import('@strixun/dice-board-game/react').then(module => ({
+    default: module.DiceBoardGameContainer,
+  }))
+);
 
 const PageContainer = styled.div`
   max-width: 1800px;
   margin: 0 auto;
-  padding: ${spacing.xl};
+  padding: ${spacing.md} ${spacing.lg};
   display: flex;
   flex-direction: column;
-  gap: ${spacing.xl};
+  gap: ${spacing.md};
   min-height: calc(100vh - 120px);
   height: 100%;
   overflow: hidden;
@@ -50,23 +60,21 @@ const PageHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: ${spacing.md};
+  gap: ${spacing.sm};
   flex-shrink: 0;
 `;
 
-const Filters = styled.div`
-  display: flex;
-  gap: ${spacing.md};
-  align-items: center;
-  flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-end;
-`;
-
 const SearchContainer = styled.div`
-  min-width: 300px;
+  min-width: 250px;
   flex: 1;
-  max-width: 500px;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  
+  /* Ensure the input wrapper aligns properly */
+  > div {
+    width: 100%;
+  }
 `;
 
 const Select = styled.select`
@@ -84,27 +92,30 @@ const Toolbar = styled.div`
   gap: ${spacing.sm};
   align-items: center;
   flex-wrap: wrap;
-  padding: ${spacing.md};
+  padding: ${spacing.sm} ${spacing.md};
   background: ${colors.bgSecondary};
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid ${colors.border};
   flex-shrink: 0;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
+  
   padding: ${spacing.xs} ${spacing.sm};
   border: 1px solid ${colors.border};
   border-radius: 4px;
   background: ${props => {
-    if (props.variant === 'primary') return colors.accent;
-    if (props.variant === 'danger') return colors.danger;
+    if (props.$variant === 'primary') return colors.accent;
+    if (props.$variant === 'danger') return colors.danger;
     return colors.bgTertiary;
   }};
-  color: ${props => props.variant === 'primary' || props.variant === 'danger' ? '#fff' : colors.text};
-  font-size: 0.75rem;
+  color: ${props => props.$variant === 'primary' || props.$variant === 'danger' ? '#fff' : colors.text};
+  font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  line-height: 1.4;
   
   &:hover:not(:disabled) {
     opacity: 0.9;
@@ -118,38 +129,14 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
 `;
 
 const StatusBadge = styled.span<{ status: ModStatus }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => {
-    switch (props.status) {
-      case 'published': return `${colors.success}20`;
-      case 'approved': return `${colors.success}20`;
-      case 'pending': return `${colors.warning}20`;
-      case 'changes_requested': return `${colors.warning}20`;
-      case 'denied': return `${colors.danger}20`;
-      case 'draft': return `${colors.bgTertiary}`;
-      case 'archived': return `${colors.bgTertiary}`;
-      default: return colors.bgTertiary;
-    }
-  }};
-  color: ${props => {
-    switch (props.status) {
-      case 'published': return colors.success;
-      case 'approved': return colors.success;
-      case 'pending': return colors.warning;
-      case 'changes_requested': return colors.warning;
-      case 'denied': return colors.danger;
-      default: return colors.textSecondary;
-    }
-  }};
+  ${({ status }) => getBadgeStyles(getStatusBadgeType(status))}
 `;
 
 const ActionGroup = styled.div`
   display: flex;
   gap: ${spacing.xs};
   flex-wrap: wrap;
+  align-items: center;
 `;
 
 const StyledLink = styled(Link)`
@@ -164,7 +151,8 @@ const StyledLink = styled(Link)`
 const SelectionInfo = styled.div`
   color: ${colors.textSecondary};
   font-size: 0.875rem;
-  padding: ${spacing.xs} ${spacing.sm};
+  padding: ${spacing.xs};
+  margin-right: ${spacing.xs};
 `;
 
 const Loading = styled.div`
@@ -197,6 +185,46 @@ const TableContainer = styled.div`
   }
 `;
 
+const TestSection = styled.div`
+  margin-top: ${spacing.lg};
+  padding: ${spacing.md};
+  background: ${colors.bgSecondary};
+  border: 1px solid ${colors.border};
+  border-radius: 6px;
+`;
+
+const TestSectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${spacing.md};
+  cursor: pointer;
+  user-select: none;
+`;
+
+const TestSectionTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: ${colors.text};
+  margin: 0;
+`;
+
+const TestSectionContent = styled.div<{ $isOpen: boolean }>`
+  display: ${props => props.$isOpen ? 'block' : 'none'};
+  height: ${props => props.$isOpen ? '600px' : '0'};
+  transition: height 0.3s ease;
+  overflow: hidden;
+`;
+
+const GameContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  border: 2px solid ${colors.border};
+  border-radius: 6px;
+  overflow: hidden;
+  background: ${colors.bg};
+`;
+
 export function AdminPanel() {
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -208,6 +236,34 @@ export function AdminPanel() {
     const [modToDelete, setModToDelete] = useState<{ modId: string; title: string } | null>(null);
     const [tableHeight, setTableHeight] = useState<number>(600);
     const tableContainerRef = useRef<HTMLDivElement>(null);
+    const [testSectionOpen, setTestSectionOpen] = useState(false);
+    const gameContainerRef = useRef<HTMLDivElement>(null);
+    
+    // Memoized game configs to prevent re-renders
+    const gameConfig = useMemo(() => ({
+        width: 15,
+        height: 15,
+        tileSize: 1,
+        wrapEdges: true,
+        forkProbability: 0.3,
+        minForkChainLength: 5,
+    }), []);
+    
+    const diceConfig = useMemo(() => ({
+        sides: 6,
+        count: 2,
+        size: 0.5,
+        material: 'standard' as const,
+    }), []);
+    
+    // Memoized callbacks to prevent re-renders
+    const handleGameStateChange = useCallback((state: unknown) => {
+        console.log('[Dice Board Game] State changed:', state);
+    }, []);
+    
+    const handleGameEvent = useCallback((event: unknown) => {
+        console.log('[Dice Board Game] Event triggered:', event);
+    }, []);
     
     const { data, isLoading, error } = useAdminModsList({
         page: 1,
@@ -388,7 +444,7 @@ export function AdminPanel() {
             render: (mod) => (
                 <ActionGroup>
                     <Button
-                        variant="primary"
+                        $variant="primary"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleStatusChange(mod.modId, 'approved');
@@ -407,7 +463,7 @@ export function AdminPanel() {
                         Request Changes
                     </Button>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleStatusChange(mod.modId, 'denied');
@@ -425,7 +481,7 @@ export function AdminPanel() {
                         Review
                     </Button>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteClick(mod.modId, mod.title);
@@ -509,35 +565,34 @@ export function AdminPanel() {
             <AdminNavigation />
             <PageHeader>
                 <Title>Mod Triage</Title>
-                <Filters>
-                    <SearchContainer>
-                        <AdvancedSearchInput
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder='Search mods... (use "quotes" for exact, space for AND, | for OR)'
-                        />
-                    </SearchContainer>
-                    <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="changes_requested">Changes Requested</option>
-                        <option value="denied">Denied</option>
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
-                        <option value="archived">Archived</option>
-                    </Select>
-                </Filters>
             </PageHeader>
 
             <AdminStats mods={data?.mods || []} filteredMods={filteredMods} />
 
             <Toolbar>
+                <SearchContainer>
+                    <AdvancedSearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder='Search mods... (use "quotes" for exact, space for AND, | for OR)'
+                        showHint={false}
+                    />
+                </SearchContainer>
+                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="changes_requested">Changes Requested</option>
+                    <option value="denied">Denied</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                </Select>
                 {hasSelection && (
                     <>
                         <SelectionInfo>{selectedCount} selected</SelectionInfo>
                         <Button
-                            variant="primary"
+                            $variant="primary"
                             onClick={() => {
                                 setBulkAction('approved');
                                 setBulkActionModalOpen(true);
@@ -556,7 +611,7 @@ export function AdminPanel() {
                             Bulk Deny
                         </Button>
                         <Button
-                            variant="danger"
+                            $variant="danger"
                             onClick={() => {
                                 setBulkAction('delete');
                                 setBulkActionModalOpen(true);
@@ -570,7 +625,7 @@ export function AdminPanel() {
                         </Button>
                     </>
                 )}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: spacing.sm }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: spacing.xs }}>
                     <Button onClick={handleExportCSV} disabled={sortedMods.length === 0}>
                         Export CSV
                     </Button>
@@ -641,6 +696,36 @@ export function AdminPanel() {
                 cancelText="Cancel"
                 isLoading={updateStatus.isPending || deleteMod.isPending}
             />
+
+            {/* Test Section - Dice Board Game */}
+            <TestSection>
+                <TestSectionHeader onClick={() => setTestSectionOpen(!testSectionOpen)}>
+                    <TestSectionTitle>Test: Dice Board Game (Experimental)</TestSectionTitle>
+                    <Button $variant="secondary" onClick={(e) => {
+                        e.stopPropagation();
+                        setTestSectionOpen(!testSectionOpen);
+                    }}>
+                        {testSectionOpen ? 'Hide' : 'Show'}
+                    </Button>
+                </TestSectionHeader>
+                <TestSectionContent $isOpen={testSectionOpen}>
+                    <GameContainer ref={gameContainerRef}>
+                        <React.Suspense fallback={<div style={{ padding: spacing.lg, textAlign: 'center', color: colors.textSecondary }}>Loading dice board game...</div>}>
+                            {testSectionOpen && (
+                                <DiceBoardGameContainer
+                                    containerRef={gameContainerRef as React.RefObject<HTMLElement>}
+                                    width="100%"
+                                    height="600px"
+                                    config={gameConfig}
+                                    diceConfig={diceConfig}
+                                    onStateChange={handleGameStateChange}
+                                    onEventTriggered={handleGameEvent}
+                                />
+                            )}
+                        </React.Suspense>
+                    </GameContainer>
+                </TestSectionContent>
+            </TestSection>
         </PageContainer>
     );
 }

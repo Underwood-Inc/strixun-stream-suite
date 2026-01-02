@@ -17,15 +17,13 @@ const OTP_AUTH_DIR = join(__dirname, '..');
 
 // Test secrets - safe defaults for local development
 // IMPORTANT: JWT_SECRET must match mods-api JWT_SECRET for auth to work
-// IMPORTANT: SERVICE_ENCRYPTION_KEY must match frontend VITE_SERVICE_ENCRYPTION_KEY
-// NOTE: Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
+// IMPORTANT: NETWORK_INTEGRITY_KEYPHRASE must match customer-api and mods-api for service-to-service calls
 const TEST_SECRETS = {
   ENVIRONMENT: 'test', // Set to 'test' for E2E mode to skip Vite proxy
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
+  NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-integration-tests',
   RESEND_API_KEY: 're_test_key_for_local_development',
   RESEND_FROM_EMAIL: 'test@example.com',
-  SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
-  VITE_SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
   ALLOWED_ORIGINS: '*',
   SUPER_ADMIN_EMAILS: 'test@example.com',
 };
@@ -61,16 +59,14 @@ function setupDevVars() {
       // Replace placeholder values with test defaults
       content = content.replace(/ENVIRONMENT=.*/m, `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}`);
       content = content.replace(/JWT_SECRET=.*/m, `JWT_SECRET=${TEST_SECRETS.JWT_SECRET}`);
+      content = content.replace(/NETWORK_INTEGRITY_KEYPHRASE=.*/m, `NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}`);
       content = content.replace(/RESEND_API_KEY=.*/m, `RESEND_API_KEY=${TEST_SECRETS.RESEND_API_KEY}`);
       content = content.replace(/RESEND_FROM_EMAIL=.*/m, `RESEND_FROM_EMAIL=${TEST_SECRETS.RESEND_FROM_EMAIL}`);
       if (!content.includes('ENVIRONMENT=')) {
         content = `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}\n${content}`;
       }
-      if (!content.includes('SERVICE_ENCRYPTION_KEY=')) {
-        content += `\nSERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}\n`;
-      }
-      if (!content.includes('VITE_SERVICE_ENCRYPTION_KEY=')) {
-        content += `\nVITE_SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.VITE_SERVICE_ENCRYPTION_KEY}\n`;
+      if (!content.includes('NETWORK_INTEGRITY_KEYPHRASE=')) {
+        content += `\nNETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}\n`;
       }
       if (!content.includes('ALLOWED_ORIGINS=')) {
         content += `\nALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}\n`;
@@ -86,17 +82,16 @@ function setupDevVars() {
 
 ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
+NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}
 RESEND_API_KEY=${TEST_SECRETS.RESEND_API_KEY}
 RESEND_FROM_EMAIL=${TEST_SECRETS.RESEND_FROM_EMAIL}
-SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}
-VITE_SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.VITE_SERVICE_ENCRYPTION_KEY}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
 SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
 `;
     }
     
     writeFileSync(devVarsPath, content, 'utf-8');
-    console.log('[SUCCESS] Created .dev.vars with test secrets');
+    console.log('✓ Created .dev.vars with test secrets');
   } else {
     // Check if secrets are missing and add them
     const existingContent = readFileSync(devVarsPath, 'utf-8');
@@ -142,9 +137,9 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
     
     if (updated) {
       writeFileSync(devVarsPath, newContent, 'utf-8');
-      console.log('[SUCCESS] Updated .dev.vars with missing test secrets');
+      console.log('✓ Updated .dev.vars with missing test secrets');
     } else {
-      console.log('[INFO] .dev.vars already has all required secrets');
+      console.log('ℹ .dev.vars already has all required secrets');
     }
   }
 }
@@ -153,9 +148,12 @@ SUPER_ADMIN_EMAILS=${TEST_SECRETS.SUPER_ADMIN_EMAILS}
  * Main setup function
  */
 function main() {
-  // Skip in CI - CI should use wrangler secret put directly
+  // Skip key generation in CI - CI should use GitHub secrets
   if (process.env.CI === 'true') {
-    console.log('[INFO] Running in CI - skipping local secret setup');
+    console.log('ℹ Running in CI - skipping local secret setup');
+    console.log('ℹ CI should use GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE');
+    // Still set up .dev.vars for local workers (but not test keys)
+    setupDevVars();
     return;
   }
   
@@ -170,9 +168,9 @@ function main() {
       generateTestKeys();
     }
     
-    console.log('[SUCCESS] Test secrets are ready for local development');
+    console.log('✓ Test secrets are ready for local development');
   } catch (error) {
-    console.error('[ERROR] Failed to setup test secrets:', error.message);
+    console.error('✗ Failed to setup test secrets:', error.message);
     process.exit(1);
   }
 }
@@ -210,7 +208,7 @@ function generateTestKeys() {
     email: 'test@example.com',
     email_verified: true,
     userId: 'user_test12345678',
-    customerId: null,
+    customerId: 'test_customer_e2e', // Test customer ID for E2E testing (required for mod uploads)
     csrf: `csrf_${Math.random().toString(36).substring(7)}`,
     isSuperAdmin: true,
   };
@@ -260,7 +258,7 @@ function generateTestKeys() {
   content += `E2E_TEST_JWT_TOKEN=${testJWTToken}\n`;
   
   writeFileSync(devVarsPath, content, 'utf-8');
-  console.log(`[SUCCESS] Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
+  console.log(`✓ Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
 }
 
 main();

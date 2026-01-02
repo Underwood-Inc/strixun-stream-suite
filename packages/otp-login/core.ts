@@ -4,8 +4,7 @@
  * Framework-agnostic email OTP authentication component
  * Can be used with any framework or vanilla JavaScript
  * 
- * CRITICAL: All OTP requests (email and OTP code) are encrypted in transit
- * using service key encryption for maximum security.
+ * SECURITY: HTTPS provides transport security. Service key encryption removed (was obfuscation only).
  */
 
 // Import OTP configuration
@@ -101,7 +100,7 @@ export class OtpLoginCore implements CountdownManager {
 
   /**
    * Request OTP code
-   * CRITICAL: Email is encrypted in transit using service key encryption
+   * HTTPS provides transport security
    */
   async requestOtp(): Promise<void> {
     await requestOtp({

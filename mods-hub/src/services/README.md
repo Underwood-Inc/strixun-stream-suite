@@ -38,10 +38,10 @@ pnpm test:ui
 ## Coverage Requirements
 
 The API service requires **100% test coverage**:
-- [OK] Lines: 100%
-- [OK] Functions: 100%
-- [OK] Branches: 100%
-- [OK] Statements: 100%
+- ✓ Lines: 100%
+- ✓ Functions: 100%
+- ✓ Branches: 100%
+- ✓ Statements: 100%
 
 Coverage is enforced in:
 - Vitest configuration
@@ -67,54 +67,54 @@ The CI pipeline will:
 ### Functions Tested
 
 #### Mod Operations
-- [OK] `listMods` - With all filter combinations
-- [OK] `getModDetail` - By ID and slug
-- [OK] `uploadMod` - With and without thumbnail
-- [OK] `updateMod` - All update scenarios
-- [OK] `deleteMod` - Delete operations
-- [OK] `uploadVersion` - Version uploads
+- ✓ `listMods` - With all filter combinations
+- ✓ `getModDetail` - By ID and slug
+- ✓ `uploadMod` - With and without thumbnail
+- ✓ `updateMod` - All update scenarios
+- ✓ `deleteMod` - Delete operations
+- ✓ `uploadVersion` - Version uploads
 
 #### Admin Operations
-- [OK] `listAllMods` - Admin list with filters
-- [OK] `getModReview` - Review data retrieval
-- [OK] `updateModStatus` - Status updates with/without reason
-- [OK] `addReviewComment` - Comment creation
-- [OK] `adminDeleteMod` - Admin delete operations
+- ✓ `listAllMods` - Admin list with filters
+- ✓ `getModReview` - Review data retrieval
+- ✓ `updateModStatus` - Status updates with/without reason
+- ✓ `addReviewComment` - Comment creation
+- ✓ `adminDeleteMod` - Admin delete operations
 
 #### Ratings
-- [OK] `getModRatings` - Rating retrieval
-- [OK] `submitModRating` - With and without comment
+- ✓ `getModRatings` - Rating retrieval
+- ✓ `submitModRating` - With and without comment
 
 #### User Management
-- [OK] `listUsers` - User listing with filters
-- [OK] `getUserDetails` - User detail retrieval
-- [OK] `updateUser` - User updates
-- [OK] `getUserMods` - User's mods listing
+- ✓ `listUsers` - User listing with filters
+- ✓ `getUserDetails` - User detail retrieval
+- ✓ `updateUser` - User updates
+- ✓ `getUserMods` - User's mods listing
 
 #### Permissions
-- [OK] `checkUploadPermission` - Permission checking
+- ✓ `checkUploadPermission` - Permission checking
 
 #### Settings
-- [OK] `getAdminSettings` - Settings retrieval
-- [OK] `updateAdminSettings` - Settings updates
+- ✓ `getAdminSettings` - Settings retrieval
+- ✓ `updateAdminSettings` - Settings updates
 
 #### Downloads
-- [OK] `downloadVersion` - File downloads with error handling
+- ✓ `downloadVersion` - File downloads with error handling
 
 #### R2 Management
-- [OK] `listR2Files` - File listing with date transformation
-- [OK] `detectDuplicates` - Duplicate detection with date transformation
-- [OK] `deleteR2File` - Single file deletion with URL encoding
-- [OK] `bulkDeleteR2Files` - Bulk deletion with error handling
+- ✓ `listR2Files` - File listing with date transformation
+- ✓ `detectDuplicates` - Duplicate detection with date transformation
+- ✓ `deleteR2File` - Single file deletion with URL encoding
+- ✓ `bulkDeleteR2Files` - Bulk deletion with error handling
 
 ### Edge Cases Tested
-- [OK] Missing optional parameters
-- [OK] URL encoding for special characters
-- [OK] Date string to Date object transformation
-- [OK] Error responses and error handling
-- [OK] Token expiration and logout events
-- [OK] FormData creation for file uploads
-- [OK] Query parameter building
+- ✓ Missing optional parameters
+- ✓ URL encoding for special characters
+- ✓ Date string to Date object transformation
+- ✓ Error responses and error handling
+- ✓ Token expiration and logout events
+- ✓ FormData creation for file uploads
+- ✓ Query parameter building
 
 ## Adding New Tests
 

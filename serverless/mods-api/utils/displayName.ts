@@ -2,24 +2,7 @@
  * Utility to fetch user display names from auth API
  */
 
-/**
- * Get the auth API URL with auto-detection for local dev
- * Priority:
- * 1. AUTH_API_URL env var (if explicitly set)
- * 2. localhost:8787 if ENVIRONMENT is 'test' or 'development'
- * 3. Production default (https://auth.idling.app)
- */
-function getAuthApiUrl(env: Env): string {
-    if (env.AUTH_API_URL) {
-        return env.AUTH_API_URL;
-    }
-    if (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development') {
-        // Local dev - use localhost (otp-auth-service runs on port 8787)
-        return 'http://localhost:8787';
-    }
-    // Production default
-    return 'https://auth.idling.app';
-}
+import { getAuthApiUrl } from '@strixun/api-framework';
 
 /**
  * Fetch display name for a user by userId
@@ -104,6 +87,113 @@ export async function fetchDisplayNameByUserId(userId: string, env: Env, timeout
                 continue; // Retry
             } else {
                 console.error('[DisplayName] Failed to fetch displayName for userId after retry:', { userId, error: error instanceof Error ? error.message : String(error) });
+                return null;
+            }
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Fetch display name using /auth/me endpoint (requires JWT token)
+ * This is more reliable when we have authentication, as it uses the token to get current user info
+ * Falls back to fetchDisplayNameByUserId if token is not provided
+ */
+export async function fetchDisplayNameByToken(
+    token: string,
+    env: Env,
+    timeoutMs: number = 10000
+): Promise<string | null> {
+    if (!token) {
+        console.warn('[DisplayName] No token provided for fetchDisplayNameByToken');
+        return null;
+    }
+    
+    const authApiUrl = getAuthApiUrl(env);
+    const url = `${authApiUrl}/auth/me`;
+    
+    console.log('[DisplayName] Fetching displayName via /auth/me:', { url, timeoutMs });
+    
+    // Retry logic: try once, retry once on timeout
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            
+            try {
+                // Call /auth/me endpoint with JWT token
+                // NOTE: Do NOT use cache option - not supported in Cloudflare Workers
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    signal: controller.signal,
+                });
+                
+                clearTimeout(timeoutId);
+                
+                console.log('[DisplayName] /auth/me response status:', { status: response.status, ok: response.ok, attempt: attempt + 1 });
+                
+                if (response.ok) {
+                    const responseData = await response.json();
+                    
+                    // Check if response is encrypted (has X-Encrypted header or encrypted field)
+                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
+                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
+                    
+                    let userData: { displayName?: string | null; [key: string]: any };
+                    if (isEncrypted) {
+                        // Decrypt the response using JWT token
+                        const { decryptWithJWT } = await import('@strixun/api-framework');
+                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
+                    } else {
+                        userData = responseData;
+                    }
+                    
+                    const displayName = userData?.displayName || null;
+                    console.log('[DisplayName] Found displayName via /auth/me:', { displayName, hasDisplayName: !!displayName, attempt: attempt + 1 });
+                    return displayName;
+                } else if (response.status === 522 || response.status === 504) {
+                    // Gateway timeout - retry if this is first attempt
+                    if (attempt === 0) {
+                        console.warn('[DisplayName] /auth/me gateway timeout, will retry:', { status: response.status, attempt: attempt + 1 });
+                        continue; // Retry
+                    } else {
+                        console.error('[DisplayName] /auth/me gateway timeout after retry:', { status: response.status, url });
+                        return null;
+                    }
+                } else {
+                    console.error('[DisplayName] /auth/me unexpected response status:', { status: response.status, url, attempt: attempt + 1 });
+                    return null;
+                }
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                
+                // Check if it's an abort (timeout)
+                if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+                    if (attempt === 0) {
+                        console.warn('[DisplayName] /auth/me request timeout, will retry:', { timeoutMs, attempt: attempt + 1 });
+                        continue; // Retry
+                    } else {
+                        console.error('[DisplayName] /auth/me request timeout after retry:', { timeoutMs, url });
+                        return null;
+                    }
+                }
+                throw fetchError; // Re-throw other errors
+            }
+        } catch (error) {
+            // Network errors or other issues
+            if (attempt === 0) {
+                console.warn('[DisplayName] /auth/me fetch error, will retry:', { error: error instanceof Error ? error.message : String(error), attempt: attempt + 1 });
+                // Wait a bit before retry
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue; // Retry
+            } else {
+                console.error('[DisplayName] Failed to fetch displayName via /auth/me after retry:', { error: error instanceof Error ? error.message : String(error) });
                 return null;
             }
         }

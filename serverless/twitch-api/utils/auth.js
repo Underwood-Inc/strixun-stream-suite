@@ -15,70 +15,37 @@ export async function hashEmail(email) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Use shared JWT utilities from api-framework (canonical implementation)
+import { verifyJWT as verifyJWTShared, getJWTSecret as getJWTSecretShared, createJWT as createJWTShared } from '@strixun/api-framework/jwt';
+
 /**
  * Verify JWT token
+ * Uses shared implementation from api-framework
  * @param {string} token - JWT token
  * @param {string} secret - Secret key for verification
  * @returns {Promise<object|null>} Decoded payload or null if invalid
  */
 export async function verifyJWT(token, secret) {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        
-        const [headerB64, payloadB64, signatureB64] = parts;
-        
-        // Verify signature
-        const encoder = new TextEncoder();
-        const signatureInput = `${headerB64}.${payloadB64}`;
-        const keyData = encoder.encode(secret);
-        const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['verify']
-        );
-        
-        // Decode signature
-        const signature = Uint8Array.from(
-            atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')),
-            c => c.charCodeAt(0)
-        );
-        
-        const isValid = await crypto.subtle.verify(
-            'HMAC',
-            key,
-            signature,
-            encoder.encode(signatureInput)
-        );
-        
-        if (!isValid) return null;
-        
-        // Decode payload
-        const payload = JSON.parse(
-            atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-        );
-        
-        // Check expiration
-        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-            return null;
-        }
-        
-        return payload;
-    } catch (error) {
-        return null;
-    }
+    return verifyJWTShared(token, secret);
+}
+
+/**
+ * Create JWT token
+ * Uses shared implementation from api-framework
+ * @param {object} payload - Token payload
+ * @param {string} secret - Secret key for signing
+ * @returns {Promise<string>} JWT token
+ */
+export async function createJWT(payload, secret) {
+    return createJWTShared(payload, secret);
 }
 
 /**
  * Get JWT secret from environment
+ * Uses shared implementation from api-framework
  */
 export function getJWTSecret(env) {
-    if (!env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is required. Set it via: wrangler secret put JWT_SECRET');
-    }
-    return env.JWT_SECRET;
+    return getJWTSecretShared(env);
 }
 
 /**

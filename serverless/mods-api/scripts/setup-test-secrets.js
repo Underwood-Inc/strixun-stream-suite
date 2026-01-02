@@ -24,9 +24,12 @@ const MODS_API_DIR = join(__dirname, '..');
 
 // Test secrets - safe defaults for local development
 const TEST_SECRETS = {
+  ENVIRONMENT: 'development', // Set to 'development' for local dev to use localhost URLs
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
-  SERVICE_ENCRYPTION_KEY: 'test-service-encryption-key-for-local-development-12345678901234567890123456789012',
+  NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase-for-integration-tests',
+  CUSTOMER_API_URL: 'http://localhost:8790', // Local dev customer-api URL
   ALLOWED_ORIGINS: '*',
+  MODS_ENCRYPTION_KEY: 'strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation', // Shared encryption key for mod files (must match mods-hub/.env VITE_MODS_ENCRYPTION_KEY)
 };
 
 /**
@@ -58,10 +61,27 @@ function setupDevVars() {
     if (existsSync(devVarsExamplePath)) {
       content = readFileSync(devVarsExamplePath, 'utf-8');
       // Replace placeholder values with test defaults
+      content = content.replace(/ENVIRONMENT=.*/m, `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}`);
       content = content.replace(/JWT_SECRET=.*/m, `JWT_SECRET=${TEST_SECRETS.JWT_SECRET}`);
-      content = content.replace(/SERVICE_ENCRYPTION_KEY=.*/m, `SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}`);
+      content = content.replace(/NETWORK_INTEGRITY_KEYPHRASE=.*/m, `NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}`);
+      content = content.replace(/CUSTOMER_API_URL=.*/m, `CUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}`);
+      content = content.replace(/MODS_ENCRYPTION_KEY=.*/m, `MODS_ENCRYPTION_KEY=${TEST_SECRETS.MODS_ENCRYPTION_KEY}`);
+      content = content.replace(/SERVICE_ENCRYPTION_KEY=.*/m, '');
+      // Add missing secrets if not present
+      if (!content.includes('ENVIRONMENT=')) {
+        content = `ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}\n${content}`;
+      }
+      if (!content.includes('NETWORK_INTEGRITY_KEYPHRASE=')) {
+        content += `\nNETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}\n`;
+      }
+      if (!content.includes('CUSTOMER_API_URL=')) {
+        content += `\nCUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}\n`;
+      }
       if (!content.includes('ALLOWED_ORIGINS=')) {
         content += `\nALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}\n`;
+      }
+      if (!content.includes('MODS_ENCRYPTION_KEY=')) {
+        content += `\nMODS_ENCRYPTION_KEY=${TEST_SECRETS.MODS_ENCRYPTION_KEY}\n`;
       }
     } else {
       // Create from scratch
@@ -69,14 +89,17 @@ function setupDevVars() {
 # This file is gitignored and used by wrangler dev
 # For local development, these test values are safe to use
 
+ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}
-SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}
+NETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}
+CUSTOMER_API_URL=${TEST_SECRETS.CUSTOMER_API_URL}
 ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
+MODS_ENCRYPTION_KEY=${TEST_SECRETS.MODS_ENCRYPTION_KEY}
 `;
     }
     
     writeFileSync(devVarsPath, content, 'utf-8');
-    console.log('[SUCCESS] Created .dev.vars with test secrets');
+    console.log('✓ Created .dev.vars with test secrets');
   } else {
     // Check if secrets are missing and add them
     const existingContent = readFileSync(devVarsPath, 'utf-8');
@@ -93,9 +116,9 @@ ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
     
     if (updated) {
       writeFileSync(devVarsPath, newContent, 'utf-8');
-      console.log('[SUCCESS] Updated .dev.vars with missing test secrets');
+      console.log('✓ Updated .dev.vars with missing test secrets');
     } else {
-      console.log('[INFO] .dev.vars already has all required secrets');
+      console.log('ℹ .dev.vars already has all required secrets');
     }
   }
 }
@@ -104,10 +127,12 @@ ALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}
  * Main setup function
  */
 function main() {
-  // Skip in CI - CI should use wrangler secret put directly
+  // Skip in CI - CI should use GitHub secrets
   if (process.env.CI === 'true') {
-    console.log('[INFO] Running in CI - skipping local secret setup');
-    console.log('[INFO] CI should use wrangler secret put to set secrets');
+    console.log('ℹ Running in CI - skipping local secret setup');
+    console.log('ℹ CI should use GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE');
+    // Still set up .dev.vars for local workers (but not test keys)
+    setupDevVars();
     return;
   }
   
@@ -123,11 +148,11 @@ function main() {
       generateTestKeys();
     }
     
-    console.log('\n[SUCCESS] Test secrets are ready for local development');
-    console.log('[INFO] Secrets are stored in .dev.vars (gitignored)');
-    console.log('[INFO] For CI, set E2E_TEST_OTP_CODE and E2E_TEST_JWT_TOKEN as environment variables');
+    console.log('\n✓ Test secrets are ready for local development');
+    console.log('ℹ Secrets are stored in .dev.vars (gitignored)');
+    console.log('ℹ For CI, set E2E_TEST_OTP_CODE and E2E_TEST_JWT_TOKEN as GitHub secrets');
   } catch (error) {
-    console.error('[ERROR] Failed to setup test secrets:', error.message);
+    console.error('✗ Failed to setup test secrets:', error.message);
     process.exit(1);
   }
 }
@@ -165,7 +190,7 @@ function generateTestKeys() {
     email: 'test@example.com',
     email_verified: true,
     userId: 'user_test12345678',
-    customerId: null,
+    customerId: 'test_customer_e2e', // Test customer ID for E2E testing (required for mod uploads)
     csrf: `csrf_${Math.random().toString(36).substring(7)}`,
     isSuperAdmin: true,
   };
@@ -214,7 +239,10 @@ function generateTestKeys() {
   content += `E2E_TEST_JWT_TOKEN=${testJWTToken}\n`;
   
   writeFileSync(devVarsPath, content, 'utf-8');
-  console.log(`[SUCCESS] Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
+  console.log(`✓ Generated test keys: E2E_TEST_OTP_CODE=${testOTPCode}, E2E_TEST_JWT_TOKEN=...`);
+  
+  // Return keys so they can be exported to process.env if needed
+  return { otpCode: testOTPCode, jwtToken: testJWTToken };
 }
 
 main();

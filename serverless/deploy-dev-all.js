@@ -21,12 +21,25 @@ const workers = [
 
 const dryRun = process.argv.includes('--dry-run');
 
-console.log('[INFO] Deploying all workers to development environment...\n');
+console.log('ℹ Deploying all workers to development environment...\n');
 
 if (dryRun) {
   console.log('[DRY RUN] Would deploy the following workers:');
   workers.forEach((w) => console.log(`  - ${w.name}`));
   process.exit(0);
+}
+
+// Prebuild step: Build otp-login package (required for mods-hub and other frontends)
+console.log('ℹ Building @strixun/otp-login package (required dependency)...');
+try {
+  execSync('pnpm --filter @strixun/otp-login build:react', {
+    stdio: 'inherit',
+    cwd: process.cwd(),
+  });
+  console.log('✓ @strixun/otp-login built successfully\n');
+} catch (error) {
+  console.error('✗ Failed to build @strixun/otp-login:', error.message);
+  console.error('⚠  Continuing with deployment, but frontend apps may fail if they depend on otp-login\n');
 }
 
 let successCount = 0;
@@ -35,18 +48,18 @@ const failures = [];
 
 for (const worker of workers) {
   try {
-    console.log(`[INFO] Deploying ${worker.name}...`);
+    console.log(`ℹ Deploying ${worker.name}...`);
     const cwd = join(process.cwd(), 'serverless', worker.path);
     
     // Check if wrangler.toml exists
     try {
       const wranglerToml = readFileSync(join(cwd, 'wrangler.toml'), 'utf-8');
       if (!wranglerToml.includes('[env.development]')) {
-        console.log(`[WARNING] ${worker.name} does not have development environment configured. Skipping.`);
+        console.log(`⚠ ${worker.name} does not have development environment configured. Skipping.`);
         continue;
       }
     } catch (error) {
-      console.log(`[WARNING] Could not read wrangler.toml for ${worker.name}. Skipping.`);
+      console.log(`⚠ Could not read wrangler.toml for ${worker.name}. Skipping.`);
       continue;
     }
     
@@ -56,24 +69,24 @@ for (const worker of workers) {
       stdio: 'inherit',
     });
     
-    console.log(`[SUCCESS] ${worker.name} deployed successfully\n`);
+    console.log(`✓ ${worker.name} deployed successfully\n`);
     successCount++;
   } catch (error) {
-    console.error(`[ERROR] Failed to deploy ${worker.name}:`, error.message);
+    console.error(`✗ Failed to deploy ${worker.name}:`, error.message);
     failures.push(worker.name);
     failCount++;
   }
 }
 
-console.log('\n[INFO] Deployment Summary:');
+console.log('\nℹ Deployment Summary:');
 console.log(`  Success: ${successCount}`);
 console.log(`  Failed: ${failCount}`);
 
 if (failures.length > 0) {
-  console.log(`\n[ERROR] Failed workers: ${failures.join(', ')}`);
+  console.log(`\n✗ Failed workers: ${failures.join(', ')}`);
   process.exit(1);
 }
 
-console.log('\n[SUCCESS] All workers deployed to development environment!');
-console.log('[INFO] You can now run E2E tests: pnpm test:e2e');
+console.log('\n✓ All workers deployed to development environment!');
+console.log('ℹ You can now run E2E tests: pnpm test:e2e');
 

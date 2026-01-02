@@ -151,7 +151,240 @@ jobs:
       
       - name: Run OTP Auth Service Tests
         working-directory: serverless/otp-auth-service
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: pnpm test
+
+  # Test jobs for services (skip if no test script)
+  test_twitch_api:
+    needs: setup
+    if: ${{ inputs.deploy_twitch_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/twitch-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Twitch API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/twitch-api
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Twitch API - skipping tests"
+
+  test_mods_api:
+    needs: setup
+    if: ${{ inputs.deploy_mods_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/mods-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Mods API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Mods API - skipping tests"
+
+  test_customer_api:
+    needs: setup
+    if: ${{ inputs.deploy_customer_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/customer-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Customer API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/customer-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Customer API - skipping tests"
+
+  test_game_api:
+    needs: setup
+    if: ${{ inputs.deploy_game_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/game-api
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Game API Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/game-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in Game API - skipping tests"
+
+  test_url_shortener:
+    needs: setup
+    if: ${{ inputs.deploy_url_shortener }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.1
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      
+      - name: Install all dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for test script
+        id: check_test
+        working-directory: serverless/url-shortener
+        run: |
+          if grep -q '"test"' package.json && ! grep -q '"test".*"Error: no test specified"' package.json; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run URL Shortener Tests
+        if: steps.check_test.outputs.has_tests == 'true'
+        working-directory: serverless/url-shortener
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+        run: pnpm test
+      
+      - name: Skip Tests (No test script)
+        if: steps.check_test.outputs.has_tests == 'false'
+        run: echo "⚠️ No test script found in URL Shortener - skipping tests"
 
   # Twitch API Deployment
   deploy_twitch_api:
@@ -217,8 +450,8 @@ jobs:
 
   # Mods API Deployment
   deploy_mods_api:
-    needs: setup
-    if: ${{ inputs.deploy_mods_api }}
+    needs: [setup, test_mods_api]
+    if: ${{ inputs.deploy_mods_api && (needs.test_mods_api.result == 'success' || needs.test_mods_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -285,6 +518,18 @@ jobs:
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
+          # CRITICAL: FILE_INTEGRITY_KEYPHRASE is required for HMAC-SHA256 file integrity verification
+          # This is separate from NETWORK_INTEGRITY_KEYPHRASE and is used to prevent hash spoofing
+          if [ -n "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put FILE_INTEGRITY_KEYPHRASE $ENV_FLAG || true
+          else
+            echo "⚠️  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
+            echo "File integrity verification will use fallback keyphrase (development only)"
+            echo "Please add FILE_INTEGRITY_KEYPHRASE to GitHub Secrets for production security"
+          fi
+          if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
+            echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY $ENV_FLAG || true
+          fi
         continue-on-error: true
 
   # OTP Auth Service Deployment
@@ -318,7 +563,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: |
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
@@ -358,12 +602,12 @@ jobs:
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
           fi
-          # CRITICAL: Workers use SERVICE_ENCRYPTION_KEY (not VITE_SERVICE_ENCRYPTION_KEY)
-          # Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
-          # They must have the SAME value, but different names for their respective environments
-          if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY $ENV_FLAG || true
-          fi
+          # ⚠️ DEPRECATED: SERVICE_ENCRYPTION_KEY removed - all encryption now uses JWT tokens
+          # Service key encryption has been completely removed from the codebase
+          # This block can be removed in a future cleanup
+          # if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
+          #   echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY $ENV_FLAG || true
+          # fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           fi
@@ -450,8 +694,8 @@ jobs:
 
   # Game API Deployment
   deploy_game_api:
-    needs: setup
-    if: ${{ inputs.deploy_game_api }}
+    needs: [setup, test_game_api]
+    if: ${{ inputs.deploy_game_api && (needs.test_game_api.result == 'success' || needs.test_game_api.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -610,8 +854,34 @@ jobs:
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: pnpm run build
+          VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
+        run: |
+          # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
+          if [ -z "$VITE_MODS_ENCRYPTION_KEY" ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "Please add MODS_ENCRYPTION_KEY to your GitHub repository secrets."
+            echo "This key must match the MODS_ENCRYPTION_KEY in the mods-api worker."
+            exit 1
+          fi
+          
+          # Verify key length (should be at least 32 characters)
+          if [ ${#VITE_MODS_ENCRYPTION_KEY} -lt 32 ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            exit 1
+          fi
+          
+          echo "✓ MODS_ENCRYPTION_KEY is configured (length: ${#VITE_MODS_ENCRYPTION_KEY} characters)"
+          pnpm run build
+          
+          # Verify the key was embedded in the build (check that VITE_MODS_ENCRYPTION_KEY is referenced)
+          # Note: We check for the env var name, not the actual value, to avoid exposing secrets
+          echo "🔍 Verifying encryption key was embedded in build..."
+          if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
+            echo "✓ Encryption key reference found in build output"
+          else
+            echo "⚠️  WARNING: Encryption key reference not found in build - key may not be embedded"
+            echo "This could indicate the build didn't include the environment variable"
+          fi
       
       - name: Deploy to Cloudflare Pages
         id: deploy
@@ -622,7 +892,8 @@ jobs:
         run: |
           # Create project if it doesn't exist (suppress error if already exists)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
-          pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+          # Build outputs to ../dist/mods-hub (relative to mods-hub directory)
+          pnpm exec wrangler pages deploy ../dist/mods-hub --project-name=mods-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
@@ -833,7 +1104,7 @@ jobs:
 
   # Deployment Summary
   summary:
-    needs: [test_root, test_otp_auth, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_mods_hub, deploy_storybook, deploy_pages]
+    needs: [test_root, test_otp_auth, test_twitch_api, test_mods_api, test_customer_api, test_game_api, test_url_shortener, deploy_twitch_api, deploy_mods_api, deploy_otp_auth, deploy_customer_api, deploy_game_api, deploy_url_shortener, deploy_mods_hub, deploy_storybook, deploy_pages]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -860,6 +1131,66 @@ jobs:
               echo "❌ **OTP Auth Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             else
               echo "⏭️ **OTP Auth Service Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
+            if [ "${{ needs.test_twitch_api.result }}" == "success" ]; then
+              echo "✅ **Twitch API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
+              echo "❌ **Twitch API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_twitch_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Twitch API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Twitch API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
+            if [ "${{ needs.test_mods_api.result }}" == "success" ]; then
+              echo "✅ **Mods API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
+              echo "❌ **Mods API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_mods_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Mods API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Mods API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
+            if [ "${{ needs.test_customer_api.result }}" == "success" ]; then
+              echo "✅ **Customer API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
+              echo "❌ **Customer API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_customer_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Customer API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Customer API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
+            if [ "${{ needs.test_game_api.result }}" == "success" ]; then
+              echo "✅ **Game API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_game_api.result }}" == "failure" ]; then
+              echo "❌ **Game API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_game_api.result }}" == "skipped" ]; then
+              echo "⏭️ **Game API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **Game API Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [ "${{ inputs.deploy_url_shortener }}" == "true" ]; then
+            if [ "${{ needs.test_url_shortener.result }}" == "success" ]; then
+              echo "✅ **URL Shortener Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
+              echo "❌ **URL Shortener Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test_url_shortener.result }}" == "skipped" ]; then
+              echo "⏭️ **URL Shortener Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⏭️ **URL Shortener Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

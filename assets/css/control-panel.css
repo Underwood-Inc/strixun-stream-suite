@@ -929,7 +929,7 @@ input[type="range"] {
     cursor: not-allowed;
 }
 .tab.disabled::after {
-    content: '[EMOJI]';
+    content: ' ★ ';
     margin-left: 2px;
     font-size: 0.7em;
 }

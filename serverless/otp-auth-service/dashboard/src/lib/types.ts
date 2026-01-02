@@ -8,12 +8,13 @@ export interface User {
   email_verified: boolean;
   iss?: string;
   aud?: string;
+  isSuperAdmin?: boolean;
 }
 
 export interface Customer {
   customerId: string;
   email: string;
-  name?: string;
+  displayName?: string; // Randomly generated display name - use this instead of email in UI
   status: 'active' | 'suspended' | 'pending';
   plan: string;
   createdAt: string;

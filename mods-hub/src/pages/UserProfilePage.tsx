@@ -8,6 +8,9 @@ import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { useNavigate } from 'react-router-dom';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getBadgeStyles, getCardStyles } from '../utils/sharedStyles';
+import { DisplayNameEditor } from '../components/common/DisplayNameEditor';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -30,10 +33,7 @@ const Title = styled.h1`
 `;
 
 const ProfileSection = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.lg};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
@@ -78,10 +78,7 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${colors.bgTertiary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.md};
+  ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
   gap: ${spacing.xs};
@@ -98,13 +95,8 @@ const StatLabel = styled.div`
   color: ${colors.textSecondary};
 `;
 
-const Badge = styled.span<{ variant?: 'admin' | 'default' }>`
-  padding: ${spacing.xs} ${spacing.sm};
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: ${props => props.variant === 'admin' ? `${colors.accent}20` : colors.bgTertiary};
-  color: ${props => props.variant === 'admin' ? colors.accent : colors.textSecondary};
+const Badge = styled.span<{ $variant?: 'admin' | 'default' }>`
+  ${({ $variant }) => getBadgeStyles($variant === 'admin' ? 'accent' : 'default')}
 `;
 
 const Loading = styled.div`
@@ -120,14 +112,7 @@ const Error = styled.div`
 `;
 
 const Button = styled.button`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.accent};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  ${getButtonStyles('primary')}
   
   &:hover {
     background: ${colors.accentHover};
@@ -169,13 +154,23 @@ export function UserProfilePage() {
             <ProfileSection>
                 <SectionTitle>Account Information</SectionTitle>
                 <InfoGrid>
-                    <InfoItem>
-                        <InfoLabel>Username</InfoLabel>
-                        <InfoValue>{user.displayName || 'Not set'}</InfoValue>
-                    </InfoItem>
-                    <InfoItem>
+                    <InfoItem style={{ gridColumn: '1 / -1' }}>
                         <InfoLabel>Display Name</InfoLabel>
-                        <InfoValue>{user.displayName || 'Not set'}</InfoValue>
+                        <DisplayNameEditor
+                            currentDisplayName={user.displayName}
+                            onUpdate={async (newDisplayName) => {
+                                // Update the user in the auth store
+                                const { setUser } = useAuthStore.getState();
+                                setUser({
+                                    ...user,
+                                    displayName: newDisplayName,
+                                });
+                                // Refresh user info to get latest from server
+                                await useAuthStore.getState().fetchUserInfo();
+                            }}
+                            apiEndpoint="/user/display-name"
+                            authToken={user.token}
+                        />
                     </InfoItem>
                     <InfoItem>
                         <InfoLabel>User ID</InfoLabel>
@@ -188,7 +183,7 @@ export function UserProfilePage() {
                         <div style={{ display: 'flex', gap: spacing.xs, alignItems: 'center' }}>
                             <InfoValue>Standard User</InfoValue>
                             {isSuperAdmin && (
-                                <Badge variant="admin">Super Admin</Badge>
+                                <Badge $variant="admin">Super Admin</Badge>
                             )}
                         </div>
                     </InfoItem>

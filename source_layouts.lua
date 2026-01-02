@@ -1242,7 +1242,7 @@ function script_properties()
         obs.obs_property_list_add_string(delete_list, name, name)
     end
     
-    obs.obs_properties_add_button(props, "delete_btn", "[EMOJI]️ Delete Selected",
+    obs.obs_properties_add_button(props, "delete_btn", " ★ ️ Delete Selected",
         function(properties, property)
             if settings_ref == nil then return false end
             
@@ -1254,7 +1254,7 @@ function script_properties()
             return true
         end)
     
-    obs.obs_properties_add_button(props, "list_btn", "[EMOJI] List All Layouts",
+    obs.obs_properties_add_button(props, "list_btn", " ★ List All Layouts",
         function(properties, property)
             log_info("=== Layouts for Current Scene ===")
             local layouts = list_layouts()
@@ -1273,7 +1273,7 @@ function script_properties()
             return false
         end)
     
-    obs.obs_properties_add_button(props, "refresh_btn", "[EMOJI] Refresh",
+    obs.obs_properties_add_button(props, "refresh_btn", "→ Refresh",
         function(properties, property)
             return true
         end)
@@ -1284,7 +1284,7 @@ function script_properties()
     obs.obs_properties_add_text(props, "h5",
         "═══════════ INFO ═══════════", obs.OBS_TEXT_INFO)
     obs.obs_properties_add_text(props, "hotkey_info",
-        "[EMOJI] Hotkeys: Settings  Hotkeys  'Apply Layout: [name]'", obs.OBS_TEXT_INFO)
+        " ★ Hotkeys: Settings  Hotkeys  'Apply Layout: [name]'", obs.OBS_TEXT_INFO)
     
     return props
 end

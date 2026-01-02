@@ -200,7 +200,7 @@ export function ScrollbarCustomizer() {
 
   if (loading) {
     return (
-      <Card title="Scrollbar Customizer" icon="[EMOJI]">
+      <Card title="Scrollbar Customizer" icon=" ★ ">
         <LoadingMessage>
           Loading scrollbar customizer from {getWorkerUrl()}/cdn/scrollbar-customizer.js...
         </LoadingMessage>
@@ -210,7 +210,7 @@ export function ScrollbarCustomizer() {
 
   if (error) {
     return (
-      <Card title="Scrollbar Customizer" icon="[EMOJI]">
+      <Card title="Scrollbar Customizer" icon=" ★ ">
         <ErrorMessage>
           <strong>Error:</strong> {error}
         </ErrorMessage>
@@ -222,7 +222,7 @@ export function ScrollbarCustomizer() {
   }
 
   return (
-    <Card title="Scrollbar Customizer" icon="[EMOJI]">
+    <Card title="Scrollbar Customizer" icon=" ★ ">
       <InfoText>
         Customize the appearance of scrollbars across your application. Changes are applied immediately and saved automatically.
       </InfoText>

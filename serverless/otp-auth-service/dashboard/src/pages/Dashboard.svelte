@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiClient } from '$lib/api-client';
-  import type { Customer, Analytics, ApiKey, EncryptedApiKeyData } from '$lib/types';
+  import type { Customer, Analytics, ApiKey, EncryptedApiKeyData, User } from '$lib/types';
   import Card from '$components/Card.svelte';
 
   export let customer: Customer | null = null;
+  export let user: User | null = null;
 
   let analytics: Analytics | null = null;
   let apiKeys: ApiKey[] = [];
@@ -35,20 +36,27 @@
     error = null;
 
     try {
-      // Load customer, analytics, and API keys in parallel for better performance
-      const [customerData, analyticsData, apiKeysData] = await Promise.all([
+      // Load customer and API keys - analytics only for super-admins
+      const [customerData, apiKeysData] = await Promise.all([
         customer ? Promise.resolve(customer) : apiClient.getCustomer().catch(() => null),
-        apiClient.getAnalytics().catch(() => null),
         customer?.customerId ? apiClient.getApiKeys(customer.customerId).catch(() => ({ apiKeys: [] })) : Promise.resolve({ apiKeys: [] })
       ]);
       
       customer = customerData;
-      analytics = analyticsData;
       
       // API keys are double-encrypted - keep them encrypted until user clicks reveal
       if (apiKeysData && apiKeysData.apiKeys) {
         apiKeys = apiKeysData.apiKeys;
       }
+      
+      // Load analytics for all authenticated users (customer-scoped)
+      apiClient.getAnalytics()
+        .then((data) => {
+          analytics = data;
+        })
+        .catch((err: any) => {
+          console.warn('Failed to load analytics:', err);
+        });
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       error = err instanceof Error ? err.message : 'Failed to load dashboard data';
@@ -221,7 +229,7 @@
     {:else}
       <Card>
         <div class="dashboard__empty">
-          <div class="dashboard__empty-icon">[EMOJI]</div>
+          <div class="icon">★</div>
           <p>No analytics data available yet</p>
           <p class="dashboard__empty-hint">Analytics will appear here once you start using the API</p>
         </div>

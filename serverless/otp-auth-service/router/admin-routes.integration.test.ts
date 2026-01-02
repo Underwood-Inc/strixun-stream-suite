@@ -1,5 +1,5 @@
 /**
- * Integration Tests for OTP Auth Service Admin Routes
+ * Integration Tests for OTP Auth Service Dashboard Routes
  * 
  * Tests verify actual authentication flow and route protection:
  * - Real JWT verification and super-admin checking
@@ -12,7 +12,7 @@
 
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleAdminRoutes } from './admin-routes.js';
+import { handleDashboardRoutes } from './dashboard-routes.js';
 import { createJWT } from '../utils/crypto.js';
 
 // Only mock external dependencies (KV, handlers), NOT auth functions
@@ -26,8 +26,6 @@ vi.mock('../services/api-key.js', () => ({
 }));
 
 vi.mock('../handlers/admin.js', () => ({
-    handleAdminGetMe: vi.fn().mockResolvedValue(new Response(JSON.stringify({ customer: {} }), { status: 200 })),
-    handleUpdateMe: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleGetAnalytics: vi.fn().mockResolvedValue(new Response(JSON.stringify({ analytics: {} }), { status: 200 })),
     handleGetRealtimeAnalytics: vi.fn().mockResolvedValue(new Response(JSON.stringify({ realtime: {} }), { status: 200 })),
     handleGetErrorAnalytics: vi.fn().mockResolvedValue(new Response(JSON.stringify({ errors: [] }), { status: 200 })),
@@ -119,7 +117,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
 
-            const result = await handleAdminRoutes(request, '/admin/customers', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(201);
@@ -134,7 +132,7 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
 
-            const result = await handleAdminRoutes(request, '/admin/customers', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(401);
@@ -148,128 +146,17 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
 
-            const result = await handleAdminRoutes(request, '/admin/customers', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/customers', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(401);
         });
     });
 
-    describe('JWT Token Authentication with Super Admin Email', () => {
-        it('should authenticate with valid JWT token for super admin email and allow GET /admin/customers/me', async () => {
-            // Create a valid JWT token for a super admin email
-            const jwtToken = await createJWT({
-                email: 'admin@example.com',
-                customerId: 'cust_123',
-                exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-            }, mockEnv.JWT_SECRET!);
-
-            const request = new Request('https://api.example.com/admin/customers/me', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
-                },
-            });
-
-            const result = await handleAdminRoutes(request, '/admin/customers/me', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(200);
-        });
-
-        it('should reject GET /admin/customers/me with JWT token for non-super-admin email', async () => {
-            // Create a valid JWT token for a non-super-admin email
-            const jwtToken = await createJWT({
-                email: 'regularuser@example.com',
-                customerId: 'cust_456',
-                exp: Math.floor(Date.now() / 1000) + 3600,
-            }, mockEnv.JWT_SECRET!);
-
-            const request = new Request('https://api.example.com/admin/customers/me', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
-                },
-            });
-
-            const result = await handleAdminRoutes(request, '/admin/customers/me', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(401);
-        });
-
-        it('should reject GET /admin/customers/me with invalid JWT token', async () => {
-            const request = new Request('https://api.example.com/admin/customers/me', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer invalid.jwt.token',
-                },
-            });
-
-            const result = await handleAdminRoutes(request, '/admin/customers/me', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(401);
-        });
-
-        it('should reject GET /admin/customers/me with expired JWT token', async () => {
-            // Create an expired JWT token
-            const jwtToken = await createJWT({
-                email: 'admin@example.com',
-                customerId: 'cust_123',
-                exp: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago (expired)
-            }, mockEnv.JWT_SECRET!);
-
-            const request = new Request('https://api.example.com/admin/customers/me', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
-                },
-            });
-
-            const result = await handleAdminRoutes(request, '/admin/customers/me', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(401);
-        });
-
-        it('should reject GET /admin/customers/me with blacklisted JWT token', async () => {
-            // Create a valid JWT token
-            const jwtToken = await createJWT({
-                email: 'admin@example.com',
-                customerId: 'cust_123',
-                exp: Math.floor(Date.now() / 1000) + 3600,
-            }, mockEnv.JWT_SECRET!);
-
-            // Mock KV to return blacklisted token
-            const { hashEmail } = await import('../utils/crypto.js');
-            const { getCustomerKey } = await import('../services/customer.js');
-            const tokenHash = await hashEmail(jwtToken);
-            const blacklistKey = getCustomerKey('cust_123', `blacklist_${tokenHash}`);
-            mockEnv.OTP_AUTH_KV.get = vi.fn().mockImplementation(async (key: string) => {
-                if (key === blacklistKey) {
-                    return 'blacklisted'; // Token is blacklisted
-                }
-                return null;
-            });
-
-            const request = new Request('https://api.example.com/admin/customers/me', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
-                },
-            });
-
-            const result = await handleAdminRoutes(request, '/admin/customers/me', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(401);
-        });
-    });
 
     describe('Authentication Flow Integration', () => {
-        it('should authenticate with JWT, check super admin, and allow GET /admin/analytics', async () => {
-            // Create a valid JWT token for a super admin email
+        it('should authenticate with JWT and allow GET /admin/analytics for any authenticated user', async () => {
+            // Create a valid JWT token for any user (analytics are customer-scoped)
             const jwtToken = await createJWT({
                 email: 'admin@example.com',
                 customerId: 'cust_123',
@@ -283,14 +170,15 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 },
             });
 
-            const result = await handleAdminRoutes(request, '/admin/analytics', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/analytics', mockEnv);
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
         });
 
-        it('should require both super admin AND regular auth for GET /admin/analytics', async () => {
-            // Create a valid JWT token but for non-super-admin email
+        it('should allow regular users to access their own analytics (customer-scoped)', async () => {
+            // Create a valid JWT token for a regular user (not super admin)
+            // Analytics are filtered by customerId, so regular users see only their own data
             const jwtToken = await createJWT({
                 email: 'regularuser@example.com',
                 customerId: 'cust_456',
@@ -304,11 +192,11 @@ describe('OTP Auth Service Admin Routes - Integration Tests', () => {
                 },
             });
 
-            const result = await handleAdminRoutes(request, '/admin/analytics', mockEnv);
+            const result = await handleDashboardRoutes(request, '/admin/analytics', mockEnv);
 
-            // Should be rejected because email is not in SUPER_ADMIN_EMAILS
+            // Should succeed - analytics are customer-scoped, so regular users can access their own
             expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(401);
+            expect(result?.response.status).toBe(200);
         });
     });
 });

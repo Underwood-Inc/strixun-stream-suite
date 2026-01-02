@@ -108,7 +108,33 @@ export async function encryptWithJWT(
   data: unknown,
   token: string
 ): Promise<EncryptedData> {
-  if (!token || token.length < 10) {
+  // Only log for /auth/me related data (check if data contains email or userId)
+  const shouldLog = data && typeof data === 'object' && (
+    'email' in data || 
+    'userId' in data || 
+    'customerId' in data
+  );
+  
+  // CRITICAL: Trim token to ensure consistency with backend
+  const rawToken = token;
+  const trimmedToken = token?.trim() || token;
+  const wasTrimmed = rawToken !== trimmedToken;
+  const tokenToUse = trimmedToken;
+  
+  if (shouldLog) {
+    console.log('[encryptWithJWT] Encrypting data with token:', {
+      rawTokenLength: rawToken?.length || 0,
+      trimmedTokenLength: trimmedToken?.length || 0,
+      wasTrimmed,
+      rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+      trimmedTokenPrefix: trimmedToken ? trimmedToken.substring(0, 20) + '...' : 'none',
+      rawTokenSuffix: rawToken ? '...' + rawToken.substring(rawToken.length - 10) : 'none',
+      trimmedTokenSuffix: trimmedToken ? '...' + trimmedToken.substring(trimmedToken.length - 10) : 'none',
+      dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+    });
+  }
+  
+  if (!tokenToUse || tokenToUse.length < 10) {
     throw new Error('Valid JWT token is required for encryption');
   }
 
@@ -116,11 +142,18 @@ export async function encryptWithJWT(
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
-  // Derive key from token
-  const key = await deriveKeyFromToken(token, salt);
+  // Derive key from token (use trimmed token)
+  const key = await deriveKeyFromToken(tokenToUse, salt);
 
-  // Hash token for verification
-  const tokenHash = await hashToken(token);
+  // Hash token for verification (use trimmed token)
+  const tokenHash = await hashToken(tokenToUse);
+  
+  if (shouldLog) {
+    console.log('[encryptWithJWT] Token hash generated:', {
+      tokenHash,
+      tokenHashLength: tokenHash?.length || 0,
+    });
+  }
 
   // Encrypt data
   const encoder = new TextEncoder();
@@ -157,6 +190,12 @@ export async function decryptWithJWT(
   encryptedData: EncryptedData | unknown,
   token: string
 ): Promise<unknown> {
+  // DEBUG: Log token used for decryption (for /auth/me debugging)
+  const rawToken = token;
+  const trimmedToken = token?.trim() || token;
+  const wasTrimmed = rawToken !== trimmedToken;
+  const tokenToUse = trimmedToken;
+  
   // Check if encrypted
   if (!encryptedData || typeof encryptedData !== 'object' || !('encrypted' in encryptedData)) {
     // Not encrypted, return as-is (backward compatibility)
@@ -169,9 +208,28 @@ export async function decryptWithJWT(
     return encryptedData;
   }
 
-  if (!token || token.length < 10) {
+  if (!tokenToUse || tokenToUse.length < 10) {
     throw new Error('Valid JWT token is required for decryption');
   }
+  
+  // DEBUG: Log token details for /auth/me debugging
+  const shouldLog = encrypted.tokenHash && encrypted.data;
+  if (shouldLog) {
+    console.log('[decryptWithJWT] Decrypting with token:', {
+      rawTokenLength: rawToken?.length || 0,
+      trimmedTokenLength: trimmedToken?.length || 0,
+      wasTrimmed,
+      rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+      trimmedTokenPrefix: trimmedToken ? trimmedToken.substring(0, 20) + '...' : 'none',
+      rawTokenSuffix: rawToken ? '...' + rawToken.substring(rawToken.length - 10) : 'none',
+      trimmedTokenSuffix: trimmedToken ? '...' + trimmedToken.substring(trimmedToken.length - 10) : 'none',
+      storedTokenHash: encrypted.tokenHash,
+      hasEncryptedData: !!encrypted.data,
+    });
+  }
+  
+  // Use trimmed token for all operations
+  token = tokenToUse;
 
   // Extract metadata
   const salt = base64ToArrayBuffer(encrypted.salt);
@@ -181,11 +239,40 @@ export async function decryptWithJWT(
   // Verify token hash matches (if present)
   if (encrypted.tokenHash) {
     const tokenHash = await hashToken(token);
-    if (encrypted.tokenHash !== tokenHash) {
-      throw new Error(
-        'Decryption failed - token does not match. ' +
-        'Only authenticated users (with email OTP access) can decrypt this data.'
-      );
+    const tokenHashMatches = encrypted.tokenHash === tokenHash;
+    
+    // DEBUG: Log token hash comparison
+    if (shouldLog) {
+      console.log('[decryptWithJWT] Token hash comparison:', {
+        storedTokenHash: encrypted.tokenHash,
+        computedTokenHash: tokenHash,
+        hashesMatch: tokenHashMatches,
+        storedTokenHashLength: encrypted.tokenHash?.length || 0,
+        computedTokenHashLength: tokenHash?.length || 0,
+        tokenLength: token?.length || 0,
+        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+        tokenSuffix: token ? '...' + token.substring(token.length - 10) : 'none',
+        rawTokenLength: rawToken?.length || 0,
+        rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+        wasTrimmed,
+      });
+    }
+    
+    if (!tokenHashMatches) {
+      const errorMessage = 'Decryption failed - token does not match. ' +
+        'The token used for decryption does not match the token used for encryption.';
+      console.error('[decryptWithJWT] Token hash mismatch:', {
+        error: errorMessage,
+        storedTokenHash: encrypted.tokenHash,
+        computedTokenHash: tokenHash,
+        tokenLength: token?.length || 0,
+        tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+        tokenSuffix: token ? '...' + token.substring(token.length - 10) : 'none',
+        rawTokenLength: rawToken?.length || 0,
+        rawTokenPrefix: rawToken ? rawToken.substring(0, 20) + '...' : 'none',
+        wasTrimmed,
+      });
+      throw new Error(errorMessage);
     }
   }
 
@@ -422,7 +509,9 @@ export async function encryptBinaryWithJWT(
  * for backward compatibility.
  * 
  * @param encryptedBinary - Binary encrypted data with header (ArrayBuffer or Uint8Array)
- * @param token - JWT token for decryption
+ * @param token - JWT token for decryption (or deterministic token for public files)
+ * @param options - Optional decryption options
+ * @param options.publicModToken - If provided, use this token for key derivation instead of verifying token hash (for public mods)
  * @returns Decrypted binary data (Uint8Array)
  * 
  * @throws Error if token doesn't match or decryption fails
@@ -434,6 +523,10 @@ export async function decryptBinaryWithJWT(
   if (!token || token.length < 10) {
     throw new Error('Valid JWT token is required for decryption');
   }
+
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  // This prevents mismatches due to whitespace differences
+  const trimmedToken = token.trim();
 
   const data = encryptedBinary instanceof ArrayBuffer 
     ? new Uint8Array(encryptedBinary) 
@@ -479,8 +572,8 @@ export async function decryptBinaryWithJWT(
 
   const encryptedData = data.slice(offset);
 
-  // Verify token hash
-  const tokenHashHex = await hashToken(token);
+  // Verify token hash (use trimmed token)
+  const tokenHashHex = await hashToken(trimmedToken);
   const expectedTokenHash = new Uint8Array(32);
   for (let i = 0; i < 32; i++) {
     expectedTokenHash[i] = parseInt(tokenHashHex.substr(i * 2, 2), 16);
@@ -497,12 +590,13 @@ export async function decryptBinaryWithJWT(
   if (!hashMatch) {
     throw new Error(
       'Decryption failed - token does not match. ' +
-      'Only authenticated users (with email OTP access) can decrypt this data.'
+      'Only authenticated users (with email OTP access) can decrypt this data. ' +
+      'This usually means the token was refreshed or changed since the file was encrypted.'
     );
   }
 
-  // Derive key from token
-  const key = await deriveKeyFromToken(token, salt);
+  // Derive key from token (use trimmed token)
+  const key = await deriveKeyFromToken(trimmedToken, salt);
 
   // Decrypt
   try {

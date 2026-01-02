@@ -13,7 +13,8 @@ import { buildResponse } from '../building/response-builder';
 import { createRFC7807Response } from '../errors';
 import { applyFiltering, parseFilteringParams } from '../filtering';
 import { WorkerAdapter } from './adapter';
-import { encryptWithJWT } from '../encryption';
+// Import directly from encryption source to avoid circular dependency
+import { encryptWithJWT } from '../../../encryption/jwt-encryption.js';
 
 export interface HandlerOptions {
   typeDef?: TypeDefinition;
@@ -117,8 +118,9 @@ export function createEnhancedHandler<T extends Record<string, any> = Record<str
       
       if (context.user) {
         // Extract JWT token from request
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
         const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
         
         if (token && token.length >= 10) {
           try {
@@ -180,7 +182,8 @@ async function extractUserFromRequest(
     return null;
   }
 
-  const token = authHeader.substring(7);
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  const token = authHeader.substring(7).trim();
   
   try {
     // Decode JWT (simplified - in production, verify signature)

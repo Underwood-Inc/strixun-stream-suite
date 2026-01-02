@@ -36,6 +36,11 @@ jobs:
       
       - name: Run OTP Auth Service Tests
         working-directory: serverless/otp-auth-service
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: pnpm test
       
       - name: Generate coverage report
@@ -106,10 +111,16 @@ jobs:
       - name: Build workspace dependencies
         working-directory: .
         run: |
-          # Build workspace packages that are needed by the dashboard
-          pnpm --filter "@strixun/otp-login" run build:react || echo "OTP login build skipped if no build script"
-          # Note: @strixun/status-flair and @strixun/ad-carousel are Svelte components, no build needed
-          # but they need export specifiers in package.json (which we've fixed)
+          echo "🔨 Building workspace dependencies required for OTP Auth Service..."
+          # Build API Framework (required by dashboard for encryption/decryption)
+          echo "  → Building @strixun/api-framework..."
+          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ️  API Framework has no build script (skipped)"
+          # Build OTP Login (required by dashboard login component)
+          echo "  → Building @strixun/otp-login (React)..."
+          pnpm --filter "@strixun/otp-login" run build:react || (echo "  ⚠️  OTP Login React build failed" && exit 1)
+          # Note: @strixun/tooltip, @strixun/status-flair, and @strixun/ad-carousel are Svelte components
+          # They don't need builds but must have proper export specifiers in package.json
+          echo "✅ All workspace dependencies built successfully"
       
       - name: Build and Deploy to Cloudflare Workers
         id: deploy
@@ -117,7 +128,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
+          # VITE_SERVICE_ENCRYPTION_KEY removed - all encryption now uses JWT tokens
         run: |
           # Build the dashboard and generate assets
           echo "🔨 Building dashboard..."
@@ -176,12 +187,6 @@ jobs:
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY --env=""
-          fi
-          # CRITICAL: Workers use SERVICE_ENCRYPTION_KEY (not VITE_SERVICE_ENCRYPTION_KEY)
-          # Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
-          # They must have the SAME value, but different names for their respective environments
-          if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY --env=""
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE --env=""

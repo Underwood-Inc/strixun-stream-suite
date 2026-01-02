@@ -3,20 +3,8 @@
  * OTP generation, hashing, JWT creation and verification
  */
 
-interface JWTPayload {
-    sub?: string;
-    iss?: string;
-    aud?: string;
-    exp?: number;
-    iat?: number;
-    jti?: string;
-    email?: string;
-    email_verified?: boolean;
-    userId?: string;
-    customerId?: string | null;
-    csrf?: string;
-    [key: string]: any;
-}
+// Re-export JWTPayload from shared utilities
+export type { JWTPayload } from '@strixun/api-framework/jwt';
 
 interface Env {
     JWT_SECRET?: string;
@@ -70,93 +58,29 @@ export async function generateUserId(email: string): Promise<string> {
     return `user_${hash.substring(0, 12)}`;
 }
 
+// Use shared JWT utilities from api-framework (canonical implementation)
+import { createJWT as createJWTShared, verifyJWT as verifyJWTShared, type JWTPayload as JWTPayloadShared } from '@strixun/api-framework/jwt';
+
 /**
  * Create JWT token
+ * Uses shared implementation from api-framework
  * @param payload - Token payload
  * @param secret - Secret key for signing
  * @returns JWT token
  */
 export async function createJWT(payload: JWTPayload, secret: string): Promise<string> {
-    const header = {
-        alg: 'HS256',
-        typ: 'JWT'
-    };
-    
-    const encoder = new TextEncoder();
-    const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-    const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-    
-    const signatureInput = `${headerB64}.${payloadB64}`;
-    const keyData = encoder.encode(secret);
-    const key = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signatureInput));
-    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-        .replace(/=/g, '').replace(/\+/g, '-').replace(/_/g, '/');
-    
-    return `${signatureInput}.${signatureB64}`;
+    return createJWTShared(payload, secret);
 }
 
 /**
  * Verify JWT token
+ * Uses shared implementation from api-framework
  * @param token - JWT token
  * @param secret - Secret key for verification
  * @returns Decoded payload or null if invalid
  */
 export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        
-        const [headerB64, payloadB64, signatureB64] = parts;
-        
-        // Verify signature
-        const encoder = new TextEncoder();
-        const signatureInput = `${headerB64}.${payloadB64}`;
-        const keyData = encoder.encode(secret);
-        const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['verify']
-        );
-        
-        // Decode signature
-        const signature = Uint8Array.from(
-            atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')),
-            c => c.charCodeAt(0)
-        );
-        
-        const isValid = await crypto.subtle.verify(
-            'HMAC',
-            key,
-            signature,
-            encoder.encode(signatureInput)
-        );
-        
-        if (!isValid) return null;
-        
-        // Decode payload
-        const payload = JSON.parse(
-            atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-        ) as JWTPayload;
-        
-        // Check expiration
-        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-            return null;
-        }
-        
-        return payload;
-    } catch (error) {
-        return null;
-    }
+    return verifyJWTShared(token, secret);
 }
 
 /**

@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT, decryptBinaryWithJWT, decryptBinaryWithServiceKey, getServiceKey } from '@strixun/api-framework';
+import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
 import { formatStrixunHash } from '../../utils/hash.js';
@@ -145,12 +145,9 @@ export async function handleDownloadVersion(
             });
         }
         
-        // NOTE: Public/unlisted mods should be encrypted with service key during upload to allow
-        // anonymous downloads. Currently, all files are encrypted with user's JWT client-side,
-        // which prevents public downloads without authentication. The proper fix requires:
-        // 1. Client-side: Check if mod is public, encrypt with service key instead of JWT
-        // 2. OR server-side: Re-encrypt public mods with service key after upload
-        // For now, we check visibility and try service key decryption for public mods
+        // CRITICAL SECURITY: All files must be encrypted with JWT
+        // JWT encryption is MANDATORY for all downloads - no service key fallback
+        // Legacy files encrypted with service key must be re-uploaded with JWT encryption
 
         // Get version metadata - check mod's customer scope first (most reliable), then global, then search all
         // CRITICAL: Use mod's customerId (not auth customerId) to find version
@@ -329,65 +326,25 @@ export async function handleDownloadVersion(
         
         if (isEncrypted) {
             console.log('[Download] File is encrypted, decrypting...');
-            // File is encrypted - decrypt it
-            // Get JWT token for decryption (outside try block for error handling)
-            const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
-            console.log('[Download] JWT token check:', { hasToken: !!jwtToken, tokenLength: jwtToken.length, modVisibility: modVisibility });
+            // File is encrypted - decrypt it with shared key
+            // Get shared encryption key for decryption
+            const sharedKey = env.MODS_ENCRYPTION_KEY;
+            
+            if (!sharedKey || sharedKey.length < 32) {
+                const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 500,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
             
             try {
-                // CRITICAL FIX: Decryption key selection based on visibility
-                // Public/unlisted mods: try service key first (allows anonymous downloads)
-                // If service key fails, try JWT as fallback (for backward compatibility)
-                // Private mods: require JWT (already checked above)
-                let decryptionKey: string | null = jwtToken;
-                let useServiceKey = false;
-                
-                // For public/unlisted mods, try service key first (even if JWT is present)
-                // This handles files encrypted with service key during upload
-                if (modVisibility === 'public' || modVisibility === 'unlisted') {
-                    const serviceKey = getServiceKey(env);
-                    if (serviceKey) {
-                        // Try service key first for public mods
-                        decryptionKey = serviceKey;
-                        useServiceKey = true;
-                        console.log('[Download] Using service key for public mod decryption (visibility-based)');
-                    } else {
-                        console.warn('[Download] Public mod but no service key configured, falling back to JWT');
-                        // Fall back to JWT if service key not available
-                        if (!jwtToken) {
-                            const rfcError = createError(
-                                request, 
-                                500, 
-                                'Configuration Error', 
-                                'Service key not configured for public mod decryption'
-                            );
-                            const corsHeaders = createCORSHeaders(request, {
-                                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                            });
-                            return new Response(JSON.stringify(rfcError), {
-                                status: 500,
-                                headers: {
-                                    'Content-Type': 'application/problem+json',
-                                    ...Object.fromEntries(corsHeaders.entries()),
-                                },
-                            });
-                        }
-                    }
-                } else if (!jwtToken) {
-                    // Private mods require JWT
-                    const rfcError = createError(request, 401, 'Authentication Required', 'JWT token required to decrypt and download files');
-                    const corsHeaders = createCORSHeaders(request, {
-                        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-                    });
-                    return new Response(JSON.stringify(rfcError), {
-                        status: 401,
-                        headers: {
-                            'Content-Type': 'application/problem+json',
-                            ...Object.fromEntries(corsHeaders.entries()),
-                        },
-                    });
-                }
-                
                 // Normalize encryption format (trim whitespace, handle undefined)
                 encryptionFormat = encryptionFormat?.trim();
                 console.log('[Download] Encryption format from metadata:', { encryptionFormat, type: typeof encryptionFormat });
@@ -412,101 +369,24 @@ export async function handleDownloadVersion(
                     console.warn('[Download] Format mismatch - metadata:', encryptionFormat, 'detected:', detectedFormat, 'using detected format');
                     encryptionFormat = detectedFormat;
                 } else if (!encryptionFormat && !detectedFormat) {
-                    // No format detected - assume legacy JSON
-                    encryptionFormat = 'json-v3';
-                    console.log('[Download] No format detected, assuming legacy JSON format');
+                    // No format detected - assume legacy JSON (not supported with shared key)
+                    throw new Error('Legacy JSON encryption format is not supported. File must be re-uploaded with shared key encryption.');
                 }
                 
                 console.log('[Download] Final encryption format:', encryptionFormat);
                 
                 // Check encryption format and decrypt accordingly
                 if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
-                    // Binary encrypted format (v4 or v5) - decrypt with service key or JWT
-                    // CRITICAL FIX: Try service key first for public mods, fallback to JWT if it fails
+                    // Binary encrypted format (v4 or v5) - decrypt with shared key
                     const version = encryptionFormat === 'binary-v5' ? 'v5' : 'v4';
-                    console.log(`[Download] Using binary decryption (${version}) with ${useServiceKey ? 'service key' : 'JWT'}...`);
+                    console.log(`[Download] Using binary decryption (${version}) with shared key...`);
                     
-                    let decryptionAttempted = false;
-                    if (useServiceKey && decryptionKey) {
-                        try {
-                            decryptedFileBytes = await decryptBinaryWithServiceKey(encryptedBinary, decryptionKey);
-                            decryptionAttempted = true;
-                            console.log('[Download] Binary decryption successful with service key, size:', decryptedFileBytes.length);
-                        } catch (serviceKeyError) {
-                            // Service key decryption failed - try JWT as fallback (for backward compatibility)
-                            console.warn('[Download] Service key decryption failed, trying JWT fallback:', {
-                                error: serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError),
-                                hasJWT: !!jwtToken
-                            });
-                            if (jwtToken) {
-                                decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, jwtToken);
-                                decryptionAttempted = true;
-                                console.log('[Download] Binary decryption successful with JWT fallback, size:', decryptedFileBytes.length);
-                            } else {
-                                throw serviceKeyError; // Re-throw if no JWT fallback available
-                            }
-                        }
-                    } else if (decryptionKey) {
-                        decryptedFileBytes = await decryptBinaryWithJWT(encryptedBinary, decryptionKey);
-                        decryptionAttempted = true;
-                        console.log('[Download] Binary decryption successful with JWT, size:', decryptedFileBytes.length);
-                    }
-                    
-                    if (!decryptionAttempted) {
-                        throw new Error('No decryption key available');
-                    }
+                    // Decrypt with shared key (any authenticated user can decrypt)
+                    decryptedFileBytes = await decryptBinaryWithSharedKey(encryptedBinary, sharedKey);
+                    console.log('[Download] Binary decryption successful with shared key, size:', decryptedFileBytes.length);
                 } else {
-                    // Legacy JSON encrypted format - need to read as text
-                    // CRITICAL: We already read as arrayBuffer above, so we need to convert back
-                    // Convert the already-read binary to text for JSON parsing
-                    console.log('[Download] Using JSON decryption (v3)...');
-                    const textDecoder = new TextDecoder('utf-8');
-                    const encryptedData = textDecoder.decode(encryptedBinary);
-                    const encryptedJson = JSON.parse(encryptedData);
-                    console.log('[Download] Encrypted data parsed, size:', encryptedData.length);
-                    
-                    // Decrypt the file with service key or JWT
-                    // CRITICAL FIX: Try service key first for public mods, fallback to JWT if it fails
-                    console.log(`[Download] Decrypting with ${useServiceKey ? 'service key' : 'JWT'}...`);
-                    let decryptedBase64: string;
-                    let decryptionAttempted = false;
-                    if (useServiceKey && decryptionKey) {
-                        try {
-                            const { decryptWithServiceKey } = await import('@strixun/api-framework');
-                            decryptedBase64 = await decryptWithServiceKey(encryptedJson, decryptionKey) as string;
-                            decryptionAttempted = true;
-                            console.log('[Download] JSON decryption successful with service key, base64 length:', decryptedBase64.length);
-                        } catch (serviceKeyError) {
-                            // Service key decryption failed - try JWT as fallback (for backward compatibility)
-                            console.warn('[Download] Service key decryption failed, trying JWT fallback:', {
-                                error: serviceKeyError instanceof Error ? serviceKeyError.message : String(serviceKeyError),
-                                hasJWT: !!jwtToken
-                            });
-                            if (jwtToken) {
-                                decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                                decryptionAttempted = true;
-                                console.log('[Download] JSON decryption successful with JWT fallback, base64 length:', decryptedBase64.length);
-                            } else {
-                                throw serviceKeyError; // Re-throw if no JWT fallback available
-                            }
-                        }
-                    } else if (decryptionKey) {
-                        decryptedBase64 = await decryptWithJWT(encryptedJson, decryptionKey) as string;
-                        decryptionAttempted = true;
-                        console.log('[Download] JSON decryption successful with JWT, base64 length:', decryptedBase64.length);
-                    }
-                    
-                    if (!decryptionAttempted) {
-                        throw new Error('No decryption key available');
-                    }
-                    
-                    // Convert base64 back to binary
-                    const binaryString = atob(decryptedBase64);
-                    decryptedFileBytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        decryptedFileBytes[i] = binaryString.charCodeAt(i);
-                    }
-                    console.log('[Download] Converted to binary, size:', decryptedFileBytes.length);
+                    // Legacy JSON encrypted format - not supported with shared key encryption
+                    throw new Error('Legacy JSON encryption format is not supported. File must be re-uploaded with shared key encryption.');
                 }
                 
                 // Get original content type from metadata
@@ -515,17 +395,13 @@ export async function handleDownloadVersion(
             } catch (error) {
                 console.error('[Download] File decryption error:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                const isKeyMismatch = errorMessage.includes('does not match') || errorMessage.includes('token does not match');
+                const isKeyMismatch = errorMessage.includes('does not match') || errorMessage.includes('key does not match');
                 
                 let detail = 'Failed to decrypt file.';
-                if (isKeyMismatch && modVisibility === 'public' && !jwtToken) {
-                    detail = 'This file was encrypted with a different key type. Public mods uploaded before this update may require re-uploading with service key encryption.';
-                } else if (isKeyMismatch) {
-                    detail = 'Decryption key does not match. The file may have been encrypted with a different key.';
-                } else if (modVisibility === 'public' && !jwtToken) {
-                    detail = 'Failed to decrypt public mod file. Please ensure the file was encrypted with service key.';
+                if (isKeyMismatch) {
+                    detail = 'Decryption key does not match. The file may have been encrypted with a different key. Legacy files encrypted with JWT may need to be re-uploaded with shared key encryption.';
                 } else {
-                    detail = 'Failed to decrypt file. Please ensure you are authenticated and using the correct key.';
+                    detail = `Failed to decrypt file: ${errorMessage}. Please ensure the file was encrypted with the shared encryption key.`;
                 }
                 
                 const rfcError = createError(request, 500, 'Decryption Failed', detail);
@@ -619,6 +495,7 @@ export async function handleDownloadVersion(
 interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
+    MODS_ENCRYPTION_KEY?: string;
     ENVIRONMENT?: string;
     [key: string]: any;
 }

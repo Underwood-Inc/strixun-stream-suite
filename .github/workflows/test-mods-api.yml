@@ -39,10 +39,16 @@ jobs:
       
       - name: Run all tests (unit + integration)
         working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
         run: pnpm test
       
       - name: Run integration tests explicitly
         working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
         run: pnpm test handlers/*.integration.test.ts
         continue-on-error: false
       

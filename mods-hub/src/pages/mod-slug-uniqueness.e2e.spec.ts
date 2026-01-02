@@ -16,7 +16,7 @@
 
 import { test, expect } from '@playwright/test';
 import { WORKER_URLS, verifyWorkersHealth } from '@strixun/e2e-helpers';
-import { encryptBinaryWithServiceKey, encryptBinaryWithJWT, decryptWithJWT } from '@strixun/api-framework';
+import { encryptBinaryWithJWT, decryptWithJWT } from '@strixun/api-framework';
 import { existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -138,17 +138,8 @@ async function createTestMod(
   ) as ArrayBuffer;
   
   // CRITICAL: Encrypt file before upload
-  // Public mods use service key, private/unlisted use JWT token
-  let encryptedFile: Uint8Array;
-  const serviceKey = process.env.SERVICE_ENCRYPTION_KEY || process.env.VITE_SERVICE_ENCRYPTION_KEY;
-  
-  if (visibility === 'public' && serviceKey) {
-    // Public mods: encrypt with service key for anonymous downloads
-    encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
-  } else {
-    // Private/unlisted mods: encrypt with JWT token
-    encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
-  }
+  // All mods use JWT encryption (service key encryption removed - it was obfuscation only)
+  const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
   
   // Convert encrypted Uint8Array to ArrayBuffer for Blob
   const encryptedArrayBuffer = encryptedFile.buffer.slice(
@@ -330,6 +321,7 @@ test.describe('ModId Uniqueness', () => {
     expect(mod.modId).toMatch(/^mod_\d+_[a-z0-9]+$/);
     
     // Verify we can access mod by modId directly
+    // Public browsing - no JWT required, but JWT can be provided for encrypted response
     const response = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.modId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -338,6 +330,13 @@ test.describe('ModId Uniqueness', () => {
     let dataRaw = await response.json() as any;
     const data = await decryptResponseIfNeeded(response, dataRaw, token) as { mod: { modId: string } };
     expect(data.mod.modId).toBe(mod.modId);
+    
+    // Also verify public browsing works without JWT
+    const publicResponse = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.modId}`);
+    expect(publicResponse.ok).toBe(true);
+    const publicDataRaw = await publicResponse.json() as any;
+    const publicData = await decryptResponseIfNeeded(publicResponse, publicDataRaw) as { mod: { modId: string } };
+    expect(publicData.mod.modId).toBe(mod.modId);
   });
 });
 
@@ -358,11 +357,8 @@ test.describe('Slug Uniqueness', () => {
       testFileContent.byteOffset + testFileContent.byteLength
     ) as ArrayBuffer;
     
-    // Encrypt file
-    const serviceKey = process.env.SERVICE_ENCRYPTION_KEY || process.env.VITE_SERVICE_ENCRYPTION_KEY;
-    const encryptedFile = serviceKey 
-      ? await encryptBinaryWithServiceKey(fileBuffer, serviceKey)
-      : await encryptBinaryWithJWT(fileBuffer, token);
+    // Encrypt file - JWT encryption is MANDATORY (service key encryption removed)
+    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
     
     const encryptedArrayBuffer = encryptedFile.buffer.slice(
       encryptedFile.byteOffset,
@@ -416,17 +412,18 @@ test.describe('Slug Uniqueness', () => {
     // Create two mods with different unique titles for test isolation
     const title1 = generateUniqueTestTitle('First Mod');
     const title2 = generateUniqueTestTitle('Second Mod');
-    const mod1 = await createTestMod(token, title1, 'public', false);
+    // Create first mod (not assigned as we only need its slug to exist)
+    void await createTestMod(token, title1, 'public', false);
     const mod2 = await createTestMod(token, title2, 'public', false);
     
-    // Try to update mod2 to have the same slug as mod1 (should fail)
+    // Try to update mod2 to have the same slug as the first mod (should fail)
     const response = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod2.modId}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: title1 }), // Same title as mod1
+      body: JSON.stringify({ title: title1 }), // Same title as first mod
     });
     
     // Should reject with 409
@@ -571,22 +568,17 @@ test.describe('Cross-Customer Slug Uniqueness', () => {
   test('should enforce slug uniqueness across all customers', async () => {
     const token1 = await getAuthToken(TEST_CONFIG.TEST_EMAIL);
     
-    // Create mod with customer1 (use unique title for test isolation)
-    const uniqueTitle = generateUniqueTestTitle('Cross Customer Test');
-    const mod1 = await createTestMod(token1, uniqueTitle, 'public', false);
-    
-    // Try to create another mod with same title (should fail even for same user)
-    const testFileContent = Buffer.from([0x50, 0x4B, 0x03, 0x04]);
+    // Create test file content
+    const testFileContent = Buffer.from([0x50, 0x4B, 0x03, 0x04]); // ZIP file header
     const fileBuffer = testFileContent.buffer.slice(
       testFileContent.byteOffset,
       testFileContent.byteOffset + testFileContent.byteLength
     ) as ArrayBuffer;
     
-    // Encrypt file
-    const serviceKey = process.env.SERVICE_ENCRYPTION_KEY || process.env.VITE_SERVICE_ENCRYPTION_KEY;
-    const encryptedFile = serviceKey 
-      ? await encryptBinaryWithServiceKey(fileBuffer, serviceKey)
-      : await encryptBinaryWithJWT(fileBuffer, token1);
+    // Create mod with customer1 (use unique title for test isolation)
+    const uniqueTitle = generateUniqueTestTitle('Cross Customer Test');
+    // Encrypt file with JWT (service key encryption removed - it was obfuscation only)
+    const encryptedFile = await encryptBinaryWithJWT(fileBuffer, token1);
     
     const encryptedArrayBuffer = encryptedFile.buffer.slice(
       encryptedFile.byteOffset,
@@ -679,21 +671,28 @@ test.describe('ModId and Slug as Index Keys', () => {
     const uniqueTitle = generateUniqueTestTitle('Dual Index Test');
     const mod = await createTestMod(token, uniqueTitle, 'public', false);
     
-    // Access by modId
+    // Access by modId (public browsing - JWT optional)
     const responseById = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.modId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     expect(responseById.ok).toBe(true);
     let dataByIdRaw = await responseById.json() as any;
     const dataById = await decryptResponseIfNeeded(responseById, dataByIdRaw, token) as { mod: { modId: string; slug: string } };
-    
-    // Access by slug
+
+    // Access by slug (public browsing - JWT optional)
     const responseBySlug = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.slug}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     expect(responseBySlug.ok).toBe(true);
     let dataBySlugRaw = await responseBySlug.json() as any;
     const dataBySlug = await decryptResponseIfNeeded(responseBySlug, dataBySlugRaw, token) as { mod: { modId: string; slug: string } };
+    
+    // Verify public browsing works without JWT
+    const publicResponseById = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.modId}`);
+    expect(publicResponseById.ok).toBe(true);
+    
+    const publicResponseBySlug = await fetch(`${TEST_CONFIG.API_URL}/mods/${mod.slug}`);
+    expect(publicResponseBySlug.ok).toBe(true);
     
     // Both should return identical mod data
     expect(dataById.mod.modId).toBe(dataBySlug.mod.modId);

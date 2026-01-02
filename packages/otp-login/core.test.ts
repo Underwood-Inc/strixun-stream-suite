@@ -7,11 +7,26 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OtpLoginCore, type OtpLoginConfig, type OtpLoginState } from './core';
+import { startCountdown } from './countdown.js';
 
 // Mock fetch globally
 global.fetch = vi.fn();
 
-// Mock crypto for encryption tests
+// Mock API framework encryption
+vi.mock('@strixun/api-framework', () => ({
+  encryptWithJWT: vi.fn().mockResolvedValue({
+    version: 3,
+    encrypted: true,
+    algorithm: 'AES-GCM-256',
+    iv: 'mock-iv',
+    salt: 'mock-salt',
+    tokenHash: 'mock-hash',
+    data: 'mock-encrypted-data',
+    timestamp: new Date().toISOString(),
+  }),
+}));
+
+// Mock crypto for any remaining crypto operations
 const mockCrypto = {
   getRandomValues: vi.fn((arr: Uint8Array) => {
     // Return predictable values for testing
@@ -48,11 +63,7 @@ describe('OtpLoginCore', () => {
     vi.clearAllMocks();
     core = new OtpLoginCore(mockConfig);
     
-    // Setup default crypto mocks
-    mockCrypto.subtle.digest = vi.fn().mockResolvedValue(new ArrayBuffer(32));
-    mockCrypto.subtle.importKey = vi.fn().mockResolvedValue({} as CryptoKey);
-    mockCrypto.subtle.deriveKey = vi.fn().mockResolvedValue({} as CryptoKey);
-    mockCrypto.subtle.encrypt = vi.fn().mockResolvedValue(new ArrayBuffer(16));
+    // Encryption is mocked at module level via vi.mock
   });
 
   afterEach(() => {
@@ -217,26 +228,6 @@ describe('OtpLoginCore', () => {
 
     it('should encrypt and send request with valid email', async () => {
       core.setEmail('test@example.com');
-      
-      // Mock successful encryption
-      const mockEncryptedData = JSON.stringify({
-        version: 3,
-        encrypted: true,
-        algorithm: 'AES-GCM-256',
-        iv: 'mock-iv',
-        salt: 'mock-salt',
-        tokenHash: 'mock-hash',
-        data: 'mock-data',
-        timestamp: new Date().toISOString(),
-      });
-
-      // Mock crypto operations
-      mockCrypto.subtle.digest = vi.fn().mockResolvedValue(new ArrayBuffer(32));
-      mockCrypto.subtle.importKey = vi.fn().mockResolvedValue({} as CryptoKey);
-      mockCrypto.subtle.deriveKey = vi.fn().mockResolvedValue({} as CryptoKey);
-      mockCrypto.subtle.encrypt = vi.fn().mockResolvedValue(
-        new TextEncoder().encode('encrypted-data').buffer
-      );
 
       // Mock successful response
       (global.fetch as any).mockResolvedValueOnce({
@@ -277,14 +268,6 @@ describe('OtpLoginCore', () => {
 
     it('should handle rate limit errors', async () => {
       core.setEmail('test@example.com');
-      
-      // Mock encryption
-      mockCrypto.subtle.digest = vi.fn().mockResolvedValue(new ArrayBuffer(32));
-      mockCrypto.subtle.importKey = vi.fn().mockResolvedValue({} as CryptoKey);
-      mockCrypto.subtle.deriveKey = vi.fn().mockResolvedValue({} as CryptoKey);
-      mockCrypto.subtle.encrypt = vi.fn().mockResolvedValue(
-        new TextEncoder().encode('encrypted-data').buffer
-      );
 
       // Mock rate limit response
       const resetAt = new Date(Date.now() + 60000).toISOString();
@@ -308,36 +291,60 @@ describe('OtpLoginCore', () => {
       expect(state.rateLimitResetAt).toBe(resetAt);
     });
 
-    it('should fail if encryption key is missing', async () => {
+    it('should send plain JSON if encryption key is missing', async () => {
       const coreWithoutKey = new OtpLoginCore({
         ...mockConfig,
         otpEncryptionKey: undefined,
       });
       
       coreWithoutKey.setEmail('test@example.com');
+
+      // Mock successful response (backend accepts plain JSON)
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify({ success: true }),
+      });
       
       await coreWithoutKey.requestOtp();
       
-      const state = coreWithoutKey.getState();
-      expect(state.error).toContain('Encryption failed');
-      expect(mockConfig.onError).toHaveBeenCalled();
+      // Should succeed (encryption is optional, HTTPS provides transport security)
+      expect(global.fetch).toHaveBeenCalled();
+      const fetchCall = (global.fetch as any).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.email).toBe('test@example.com');
+      // Should be plain JSON, not encrypted
+      expect(body.encrypted).toBeUndefined();
       
       coreWithoutKey.destroy();
     });
 
-    it('should fail if encryption key is too short', async () => {
+    it('should send plain JSON if encryption key is too short', async () => {
       const coreWithShortKey = new OtpLoginCore({
         ...mockConfig,
         otpEncryptionKey: 'short',
       });
       
       coreWithShortKey.setEmail('test@example.com');
+
+      // Mock successful response (backend accepts plain JSON)
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify({ success: true }),
+      });
       
       await coreWithShortKey.requestOtp();
       
-      const state = coreWithShortKey.getState();
-      expect(state.error).toContain('Encryption failed');
-      expect(mockConfig.onError).toHaveBeenCalled();
+      // Should succeed (encryption is optional, HTTPS provides transport security)
+      expect(global.fetch).toHaveBeenCalled();
+      const fetchCall = (global.fetch as any).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.email).toBe('test@example.com');
+      // Should be plain JSON, not encrypted
+      expect(body.encrypted).toBeUndefined();
       
       coreWithShortKey.destroy();
     });
@@ -403,14 +410,6 @@ describe('OtpLoginCore', () => {
 
     it('should handle verification errors', async () => {
       core.setOtp('123456789');
-      
-      // Mock encryption
-      mockCrypto.subtle.digest = vi.fn().mockResolvedValue(new ArrayBuffer(32));
-      mockCrypto.subtle.importKey = vi.fn().mockResolvedValue({} as CryptoKey);
-      mockCrypto.subtle.deriveKey = vi.fn().mockResolvedValue({} as CryptoKey);
-      mockCrypto.subtle.encrypt = vi.fn().mockResolvedValue(
-        new TextEncoder().encode('encrypted-data').buffer
-      );
 
       // Mock error response
       (global.fetch as any).mockResolvedValueOnce({
@@ -592,13 +591,19 @@ describe('OtpLoginCore', () => {
       
       // Start countdown
       (core as any).setState({ countdown: 600 });
-      (core as any).startCountdown();
+      startCountdown(core);
+      
+      // Verify countdown is running
+      expect(core.countdownInterval).not.toBeNull();
       
       core.destroy();
       
+      // Verify countdown was stopped
+      expect(core.countdownInterval).toBeNull();
+      
       vi.advanceTimersByTime(2000);
       
-      // Countdown should not have changed
+      // Countdown should not have changed since it was stopped
       const state = core.getState();
       expect(state.countdown).toBe(600);
       

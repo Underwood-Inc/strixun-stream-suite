@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className="error-boundary">
           <div className="error-boundary__container">
-            <h1 className="error-boundary__title">[ERROR] Something went wrong</h1>
+            <h1 className="error-boundary__title">✗ Something went wrong</h1>
             <div className="error-boundary__details">
               <h2 className="error-boundary__error-name">{this.state.error.name}</h2>
               <p className="error-boundary__error-message">{this.state.error.message}</p>

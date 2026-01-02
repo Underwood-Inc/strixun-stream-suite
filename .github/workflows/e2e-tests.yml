@@ -1,12 +1,12 @@
 # Strixun Stream Suite - E2E Tests Workflow
 #
-# This workflow runs end-to-end tests against development Cloudflare Workers.
-# It automatically deploys workers to development environment before running tests.
+# This workflow runs end-to-end tests against LOCAL Cloudflare Workers (wrangler dev).
+# All workers run locally on the CI runner - no deployment required.
 #
 # Requirements:
-#   - All workers must have [env.development] configured in wrangler.toml
-#   - Development secrets must be set (JWT_SECRET, etc.)
-#   - Workers are deployed to development environment before tests run
+#   - Wrangler CLI must be available (installed via pnpm)
+#   - Test secrets are automatically generated via setup:test-secrets scripts
+#   - Local workers start automatically via playwright.config.ts webServer config
 
 name: E2E Tests
 
@@ -55,156 +55,20 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
       
-      - name: Validate Development Worker Configurations (Dry Run)
+      - name: Run E2E Tests (Local Workers)
         working-directory: .
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          E2E_TEST_JWT_TOKEN: ${{ secrets.E2E_TEST_JWT_TOKEN }}
+          E2E_TEST_OTP_CODE: ${{ secrets.E2E_TEST_OTP_CODE }}
         run: |
-          echo "[INFO] Validating development worker configurations (dry run)..."
-          pnpm deploy:dev:all:dry-run
-          if [ $? -ne 0 ]; then
-            echo "[ERROR] Development worker configuration validation failed - aborting"
+          echo "[INFO] Running E2E tests against local workers..."
+          echo "[INFO] Using GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE"
+          echo "[INFO] Local workers will start automatically via playwright.config.ts"
+          if [ -z "$E2E_TEST_JWT_TOKEN" ]; then
+            echo "[ERROR] E2E_TEST_JWT_TOKEN secret is not set in GitHub repository secrets"
             exit 1
           fi
-          echo "[SUCCESS] All worker configurations validated"
-      
-      - name: Deploy Workers to Development Environment
-        working-directory: .
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "[INFO] Deploying all workers to development environment..."
-          pnpm deploy:dev:all
-          if [ $? -ne 0 ]; then
-            echo "[ERROR] Development worker deployment failed - aborting E2E tests"
-            exit 1
-          fi
-          echo "[SUCCESS] All workers deployed to development environment"
-      
-      - name: Set Development Secrets
-        working-directory: .
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "[INFO] Setting development secrets..."
-          
-          # OTP Auth Service
-          cd serverless/otp-auth-service
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-            echo "${{ secrets.RESEND_API_KEY }}" | pnpm exec wrangler secret put RESEND_API_KEY --env development || true
-          fi
-          if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
-            echo "${{ secrets.RESEND_FROM_EMAIL }}" | pnpm exec wrangler secret put RESEND_FROM_EMAIL --env development || true
-          fi
-          
-          # Mods API
-          cd ../mods-api
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          if [ -n "${{ secrets.SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "${{ secrets.SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY --env development || true
-          fi
-          if [ -n "${{ secrets.ALLOWED_EMAILS }}" ]; then
-            echo "${{ secrets.ALLOWED_EMAILS }}" | pnpm exec wrangler secret put ALLOWED_EMAILS --env development || true
-          fi
-          if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
-            echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS --env development || true
-          fi
-          
-          # Twitch API
-          cd ../twitch-api
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          if [ -n "${{ secrets.TWITCH_CLIENT_ID }}" ]; then
-            echo "${{ secrets.TWITCH_CLIENT_ID }}" | pnpm exec wrangler secret put TWITCH_CLIENT_ID --env development || true
-          fi
-          if [ -n "${{ secrets.TWITCH_CLIENT_SECRET }}" ]; then
-            echo "${{ secrets.TWITCH_CLIENT_SECRET }}" | pnpm exec wrangler secret put TWITCH_CLIENT_SECRET --env development || true
-          fi
-          
-          # Customer API
-          cd ../customer-api
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          
-          # Game API
-          cd ../game-api
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          
-          # Chat Signaling
-          cd ../chat-signaling
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          
-          # URL Shortener
-          cd ../url-shortener
-          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
-            echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET --env development || true
-          fi
-          
-          echo "[SUCCESS] Development secrets set"
-        continue-on-error: true
-      
-      - name: Verify Workers Health
-        run: |
-          echo "[INFO] Verifying development workers are healthy..."
-          # Wait a moment for deployments to propagate
-          sleep 15
-          
-          # Check each worker health endpoint
-          WORKERS=(
-            "OTP Auth:https://otp-auth-service-dev.strixuns-script-suite.workers.dev"
-            "Mods API:https://strixun-mods-api-dev.strixuns-script-suite.workers.dev"
-            "Twitch API:https://strixun-twitch-api-dev.strixuns-script-suite.workers.dev"
-            "Customer API:https://strixun-customer-api-dev.strixuns-script-suite.workers.dev"
-            "Game API:https://strixun-game-api-dev.strixuns-script-suite.workers.dev"
-            "Chat Signaling:https://strixun-chat-signaling-dev.strixuns-script-suite.workers.dev"
-            "URL Shortener:https://strixun-url-shortener-dev.strixuns-script-suite.workers.dev"
-          )
-          
-          FAILED=0
-          for WORKER_INFO in "${WORKERS[@]}"; do
-            NAME="${WORKER_INFO%%:*}"
-            URL="${WORKER_INFO##*:}"
-            if curl -f -s --max-time 10 "${URL}/health" > /dev/null 2>&1; then
-              echo "[SUCCESS] ${NAME} (${URL}) is healthy"
-            else
-              echo "[ERROR] ${NAME} (${URL}) is not responding"
-              FAILED=$((FAILED + 1))
-            fi
-          done
-          
-          if [ $FAILED -gt 0 ]; then
-            echo "[ERROR] $FAILED worker(s) failed health checks - aborting E2E tests"
-            exit 1
-          fi
-          echo "[SUCCESS] All workers are healthy"
-      
-      - name: Run E2E Tests
-        working-directory: .
-        env:
-          E2E_OTP_AUTH_URL: https://otp-auth-service-dev.strixuns-script-suite.workers.dev
-          E2E_MODS_API_URL: https://strixun-mods-api-dev.strixuns-script-suite.workers.dev
-          E2E_TWITCH_API_URL: https://strixun-twitch-api-dev.strixuns-script-suite.workers.dev
-          E2E_CUSTOMER_API_URL: https://strixun-customer-api-dev.strixuns-script-suite.workers.dev
-          E2E_GAME_API_URL: https://strixun-game-api-dev.strixuns-script-suite.workers.dev
-          E2E_CHAT_SIGNALING_URL: https://strixun-chat-signaling-dev.strixuns-script-suite.workers.dev
-          E2E_URL_SHORTENER_URL: https://strixun-url-shortener-dev.strixuns-script-suite.workers.dev
-          E2E_FRONTEND_URL: http://localhost:5173
-          E2E_MODS_HUB_URL: http://localhost:3001
-        run: pnpm test:e2e
+          pnpm test:e2e
       
       - name: Upload E2E Test Results
         if: always()
@@ -232,14 +96,14 @@ jobs:
           if [ "${{ job.status }}" == "success" ]; then
             echo "[SUCCESS] All E2E tests passed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Tests ran against development worker deployments:" >> $GITHUB_STEP_SUMMARY
-            echo "- OTP Auth Service (dev)" >> $GITHUB_STEP_SUMMARY
-            echo "- Mods API (dev)" >> $GITHUB_STEP_SUMMARY
-            echo "- Twitch API (dev)" >> $GITHUB_STEP_SUMMARY
-            echo "- Customer API (dev)" >> $GITHUB_STEP_SUMMARY
-            echo "- Game API (dev)" >> $GITHUB_STEP_SUMMARY
-            echo "- Chat Signaling (dev)" >> $GITHUB_STEP_SUMMARY
-            echo "- URL Shortener (dev)" >> $GITHUB_STEP_SUMMARY
+            echo "Tests ran against local workers (wrangler dev):" >> $GITHUB_STEP_SUMMARY
+            echo "- OTP Auth Service (localhost:8787)" >> $GITHUB_STEP_SUMMARY
+            echo "- Mods API (localhost:8788)" >> $GITHUB_STEP_SUMMARY
+            echo "- Twitch API (localhost:8789)" >> $GITHUB_STEP_SUMMARY
+            echo "- Customer API (localhost:8790)" >> $GITHUB_STEP_SUMMARY
+            echo "- Game API (localhost:8791)" >> $GITHUB_STEP_SUMMARY
+            echo "- Chat Signaling (localhost:8792)" >> $GITHUB_STEP_SUMMARY
+            echo "- URL Shortener (localhost:8793)" >> $GITHUB_STEP_SUMMARY
           else
             echo "[ERROR] E2E tests failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY

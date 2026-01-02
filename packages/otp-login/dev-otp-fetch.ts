@@ -54,9 +54,9 @@ export async function autoFetchDevOtp(email: string, config: DevOtpFetchConfig):
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as { otp?: string } | null;
     
-    if (data.otp && typeof data.otp === 'string') {
+    if (data && typeof data === 'object' && 'otp' in data && typeof data.otp === 'string') {
       // Auto-populate OTP code
       config.setState({ otp: data.otp });
       console.log('[OtpLoginCore] [DEV] Auto-populated OTP code from dev endpoint');

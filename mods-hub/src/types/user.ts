@@ -9,6 +9,8 @@ export interface UserListItem {
     createdAt: string | null;
     lastLogin: string | null;
     hasUploadPermission: boolean;
+    permissionSource?: 'super-admin' | 'env-var' | 'kv' | 'none'; // Source of upload permission
+    isSuperAdmin?: boolean; // True if user is super admin
     modCount: number;
 }
 

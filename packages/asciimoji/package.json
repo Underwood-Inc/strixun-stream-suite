@@ -1,0 +1,43 @@
+{
+  "name": "@strixun/asciimoji",
+  "version": "1.0.0",
+  "description": "Framework-agnostic ASCIImoji DOM text transformer - CDN ready",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./asciimoji.d.ts",
+  "exports": {
+    ".": {
+      "types": "./asciimoji.d.ts",
+      "default": "./index.ts"
+    },
+    "./patterns": {
+      "types": "./patterns.d.ts",
+      "default": "./patterns.ts"
+    },
+    "./dist/js": "../../dist/asciimoji/js/index.js"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "prebuild": "node scripts/clean-dist.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "files": [
+    "core.ts",
+    "patterns.ts",
+    "asciimoji.d.ts",
+    "patterns.d.ts",
+    "../../dist/asciimoji/",
+    "README.md",
+    "CDN_USAGE.md"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16",
+    "jsdom": "^25.0.1"
+  }
+}

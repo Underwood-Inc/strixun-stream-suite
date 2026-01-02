@@ -10,6 +10,7 @@ import { handleListUsers, handleGetUserDetails } from './users.js';
 // Mock dependencies
 vi.mock('../../utils/admin.js', () => ({
     getApprovedUploaders: vi.fn(),
+    getUserUploadPermissionInfo: vi.fn(),
 }));
 
 vi.mock('../../utils/customer.js', () => ({
@@ -30,7 +31,7 @@ vi.mock('../../utils/errors.js', () => ({
     })),
 }));
 
-import { getApprovedUploaders } from '../../utils/admin.js';
+import { getApprovedUploaders, getUserUploadPermissionInfo } from '../../utils/admin.js';
 
 // Mock the service client to avoid actual network calls
 vi.mock('@strixun/service-client', () => ({
@@ -91,6 +92,14 @@ describe('Email Privacy in Admin User Handlers', () => {
                 },
             }),
         } as any);
+        
+        // Mock getUserUploadPermissionInfo to return default permission info
+        vi.mocked(getUserUploadPermissionInfo).mockResolvedValue({
+            hasPermission: false,
+            isSuperAdmin: false,
+            isApprovedUploader: false,
+            permissionSource: 'none' as const,
+        });
         
         // Mock KV operations to return empty immediately (prevents hanging on cursor loops)
         vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(null);

@@ -2,61 +2,19 @@
 
 This directory contains centralized configuration that is shared across all applications in the workspace.
 
-## SERVICE_ENCRYPTION_KEY
+## Encryption
 
-**File**: `otp-encryption.ts`
-
-This is the **SINGLE SOURCE OF TRUTH** for retrieving the SERVICE_ENCRYPTION_KEY. All apps import from this file to ensure consistent key retrieval.
-
-### [EMOJI] Security
-
-**CRITICAL**: The encryption key is **NEVER** stored in:
-- [ERROR] Source code (no hardcoded constants)
-- [ERROR] localStorage/sessionStorage (browser storage)
-- [ERROR] Version control (git)
-
-The key **MUST** be provided via:
-- [OK] Environment variables (`VITE_SERVICE_ENCRYPTION_KEY`)
-- [OK] Build-time injection (CI/CD secrets)
-- [OK] Runtime injection via `window.getOtpEncryptionKey()` (development only)
-
-### To Configure the Encryption Key
-
-1. **Create/update `.env` file** in each app directory:
-   ```bash
-   # mods-hub/.env
-   VITE_SERVICE_ENCRYPTION_KEY=KEY_HERE
-   
-   # serverless/url-shortener/app/.env
-   VITE_SERVICE_ENCRYPTION_KEY=KEY_HERE
-   ```
-
-2. **Update server-side secrets** to match:
-   ```bash
-   cd serverless/otp-auth-service
-   wrangler secret put SERVICE_ENCRYPTION_KEY
-   # Paste: KEY_HERE
-   ```
-
-3. **Never commit `.env` files** - Add to `.gitignore`
-
-### Usage in Apps
+All encryption uses **JWT tokens** (per-user, per-session) via `@strixun/api-framework`:
 
 ```typescript
-import { getOtpEncryptionKey } from '../../shared-config/otp-encryption';
+import { encryptWithJWT, decryptWithJWT } from '@strixun/api-framework';
 
-const key = getOtpEncryptionKey();
-if (!key) {
-  throw new Error('SERVICE_ENCRYPTION_KEY not configured. Set VITE_SERVICE_ENCRYPTION_KEY in .env');
-}
+// Client-side: Encrypt with user's JWT token
+const encrypted = await encryptWithJWT(data, jwtToken);
+
+// Server-side: Decrypt with same JWT token
+const decrypted = await decryptWithJWT(encrypted, jwtToken);
 ```
 
-### Why This Approach?
-
-- [OK] **Single source of truth** - One function, consistent behavior everywhere
-- [OK] **Secure** - Key never stored in code or browser storage
-- [OK] **Type-safe** - TypeScript ensures correct usage
-- [OK] **Environment-based** - Uses standard Vite environment variables
-- [OK] **Easy to update** - Change .env files, all apps get the update
-- [OK] **Consistent** - Uses same SERVICE_ENCRYPTION_KEY as all other services
+See `packages/api-framework/encryption/` for implementation details.
 

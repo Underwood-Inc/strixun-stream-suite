@@ -106,7 +106,7 @@
         level={$connected ? 'log' : 'warning'}
       >
         <button class="btn-primary btn-lg" on:click={handleExecuteSwap} disabled={!$connected}>
-          [EMOJI] Swap Now
+          → Swap Now
         </button>
       </Tooltip>
     </div>
@@ -149,7 +149,7 @@
     </div>
     
     <div style="margin-top:8px">
-      <label>[PERF] Temporary Override</label>
+      <label>★ Temporary Override</label>
       <select id="swapTempOverride" bind:value={swapTempOverride}>
         <option value="off" selected>Off (use config/global)</option>
         <option value="preserve">Preserve</option>
@@ -199,7 +199,7 @@
       level={$connected ? 'log' : 'warning'}
     >
       <button class="btn-primary" style="margin-top:12px;width:100%" on:click={handleAddSwapConfig} disabled={!$connected}>
-        [ADD] Add Config
+        ⊕ Add Config
       </button>
     </Tooltip>
   </div>
@@ -224,7 +224,7 @@
         position="bottom"
         level={$connected ? 'log' : 'warning'}
       >
-        <button on:click={handleRefreshSwapSources} disabled={!$connected}>[EMOJI] Refresh Sources</button>
+        <button on:click={handleRefreshSwapSources} disabled={!$connected}>→ Refresh Sources</button>
       </Tooltip>
       <button on:click={handleExportConfigs}> Export</button>
       <button on:click={handleImportConfigs}> Import</button>

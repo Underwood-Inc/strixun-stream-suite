@@ -55,7 +55,33 @@ export class ApiClient {
 
   constructor() {
     // Customer API uses different base URL
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    // Check if we're running on localhost (development mode)
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
+    
+    // ALWAYS use localhost in local dev - NEVER fall back to production URL
+    // Force localhost if we're running on localhost, regardless of env vars
+    const customerApiUrl = isLocalhost 
+      ? 'http://localhost:8790'
+      : (import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app');
+    
+    // Debug logging
+    if (typeof window !== 'undefined') {
+      console.log('[ApiClient] Customer API URL detection:', {
+        hostname: window.location.hostname,
+        isLocalhost,
+        envDEV: import.meta.env.DEV,
+        envMODE: import.meta.env.MODE,
+        envVITE_CUSTOMER_API_URL: import.meta.env.VITE_CUSTOMER_API_URL,
+        finalUrl: customerApiUrl
+      });
+    }
+    
     this.customerApi = createAPIClient({
       baseURL: customerApiUrl,
       defaultHeaders: {
@@ -94,7 +120,21 @@ export class ApiClient {
     }
     // Recreate clients to pick up new token
     this.api = createClient();
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app';
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    // Check if we're running on localhost (development mode)
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      import.meta.env?.DEV ||
+      import.meta.env?.MODE === 'development'
+    );
+    
+    // ALWAYS use localhost in local dev - NEVER fall back to production URL
+    // Force localhost if we're running on localhost, regardless of env vars
+    const customerApiUrl = isLocalhost 
+      ? 'http://localhost:8790'
+      : (import.meta.env.VITE_CUSTOMER_API_URL || 'https://customer-api.idling.app');
+    
     this.customerApi = createAPIClient({
       baseURL: customerApiUrl,
       defaultHeaders: {
@@ -162,7 +202,7 @@ export class ApiClient {
     this.setToken(null);
   }
 
-  // Customer endpoints (now using customer-api)
+  // Customer endpoints (using customer-api - consolidated from /admin/customers/me)
   async getCustomer(): Promise<Customer> {
     const response = await this.customerApi.get<Customer>('/customer/me');
     if (response.status !== 200 || !response.data) {

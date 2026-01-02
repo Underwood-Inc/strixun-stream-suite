@@ -106,12 +106,7 @@ export function wrapWithEnhanced(originalHandler: (request: Request, env: any, c
       // If response is already data object, return it
       return response;
     },
-    {
-      typeDef: options.typeName ? getTypeRegistry().get(options.typeName) : undefined,
-      filterConfig: getServiceFilterConfig(),
-      requireAuth: options.requireAuth ?? false,
-      cors: options.cors ?? true,
-    }
+    options
   );
 }
 
@@ -189,7 +184,8 @@ export async function extractUserFromRequest(request: Request, env: any): Promis
     return null;
   }
 
-  const token = authHeader.substring(7);
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  const token = authHeader.substring(7).trim();
   
   try {
     // Decode JWT (simplified - in production, verify signature)

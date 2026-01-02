@@ -5,7 +5,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getApprovedUploaders } from '../../utils/admin.js';
+import { getApprovedUploaders, getUserUploadPermissionInfo, isSuperAdminEmail } from '../../utils/admin.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 
@@ -31,7 +31,7 @@ interface UserListItem {
 
 interface UserDetail extends UserListItem {
     emailHash?: string; // For admin reference only, not the actual email
-    approvedAt?: string | null;
+    approvedAt?: string | null; // Only set if permissionSource is 'kv'
 }
 
 interface UserListResponse {
@@ -51,15 +51,15 @@ async function listAllUsers(env: Env): Promise<User[]> {
     
     // Always use service-to-service call to OTP auth service
     // This ensures we get ALL users across the entire system, not just mods-hub users
-    // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
+    // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY
     console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
     try {
         const { createServiceClient } = await import('@strixun/service-client');
-        // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-        const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
+        const { getAuthApiUrl } = await import('@strixun/api-framework');
+        const authApiUrl = getAuthApiUrl(env);
         
-        // For admin endpoints, we need SUPER_ADMIN_API_KEY (not SERVICE_API_KEY)
-        // createServiceClient will automatically use SUPER_ADMIN_API_KEY if available
+        // For admin endpoints, we need SUPER_ADMIN_API_KEY
+        // createServiceClient requires SUPER_ADMIN_API_KEY
         // This is correct for admin operations
         const client = createServiceClient(authApiUrl, env);
         
@@ -269,10 +269,6 @@ export async function handleListUsers(
         // Get all users from OTP auth service
         const allUsers = await listAllUsers(env);
         
-        // Get approved uploaders list
-        const approvedUploaders = await getApprovedUploaders(env);
-        const approvedSet = new Set(approvedUploaders);
-        
         // Aggregate user data
         const userItems: UserListItem[] = [];
         
@@ -293,13 +289,19 @@ export async function handleListUsers(
                 }
             }
             
+            // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
+            // Note: user.email may be empty string from listAllUsers (privacy), but we can get it from KV metadata
+            const permissionInfo = await getUserUploadPermissionInfo(user.userId, user.email || undefined, env);
+            
             userItems.push({
                 userId: user.userId,
                 displayName: user.displayName || null,
                 customerId: user.customerId || null,
                 createdAt: user.createdAt || null,
                 lastLogin: user.lastLogin || null,
-                hasUploadPermission: approvedSet.has(user.userId),
+                hasUploadPermission: permissionInfo.hasPermission,
+                permissionSource: permissionInfo.permissionSource,
+                isSuperAdmin: permissionInfo.isSuperAdmin,
                 modCount,
             });
         }
@@ -385,13 +387,13 @@ export async function handleGetUserDetails(
             });
         }
         
-        // Get upload permission status
-        const approvedUploaders = await getApprovedUploaders(env);
-        const hasUploadPermission = approvedUploaders.includes(userId);
+        // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
+        const permissionInfo = await getUserUploadPermissionInfo(user.userId, user.email || undefined, env);
+        const hasUploadPermission = permissionInfo.hasPermission;
         
-        // Get approval metadata if approved
+        // Get approval metadata if approved via KV
         let approvedAt: string | null = null;
-        if (hasUploadPermission && env.MODS_KV) {
+        if (permissionInfo.permissionSource === 'kv' && env.MODS_KV) {
             const approvalKey = `upload_approval_${userId}`;
             const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { metadata?: { approvedAt?: string } } | null;
             approvedAt = approvalData?.metadata?.approvedAt || null;
@@ -484,15 +486,27 @@ export async function handleUpdateUser(
         
         // Update upload permission if provided
         if (typeof requestData.hasUploadPermission === 'boolean') {
-            const { approveUserUpload, revokeUserUpload } = await import('../../utils/admin.js');
+            const { approveUserUpload, revokeUserUpload, getUserUploadPermissionInfo } = await import('../../utils/admin.js');
             
-            if (requestData.hasUploadPermission) {
-                // Find user to get email for metadata
-                const allUsers = await listAllUsers(env);
-                const user = allUsers.find(u => u.userId === userId);
+            // Check current permission source
+            const allUsers = await listAllUsers(env);
+            const user = allUsers.find(u => u.userId === userId);
+            const currentPermissionInfo = await getUserUploadPermissionInfo(userId, user?.email || undefined, env);
+            
+            // If user has env-var or super-admin permission, warn that revoking KV won't remove their permission
+            // (They'll still have permission from env var)
+            if (!requestData.hasUploadPermission && 
+                (currentPermissionInfo.permissionSource === 'env-var' || currentPermissionInfo.permissionSource === 'super-admin')) {
+                // User has env-based permission - revoking KV won't actually remove their upload permission
+                // But we'll still remove the KV entry for consistency
+                await revokeUserUpload(userId, env);
+                // Note: User will still have permission from APPROVED_UPLOADER_EMAILS or SUPER_ADMIN_EMAILS
+            } else if (requestData.hasUploadPermission) {
+                // Approve user (adds to KV)
                 const email = user?.email || '';
                 await approveUserUpload(userId, email, env);
             } else {
+                // Revoke KV approval
                 await revokeUserUpload(userId, env);
             }
         }
@@ -662,9 +676,8 @@ export async function handleGetUserMods(
 interface Env {
     MODS_KV: KVNamespace;
     OTP_AUTH_KV?: KVNamespace; // Optional - for direct access if available
-    AUTH_API_URL?: string; // For service-to-service calls
-    SUPER_ADMIN_API_KEY?: string; // For service-to-service calls to OTP auth service
-    SERVICE_API_KEY?: string; // Fallback for service-to-service calls
+    AUTH_API_URL?: string;
+    SUPER_ADMIN_API_KEY?: string;
     SUPER_ADMIN_EMAILS?: string;
     ENVIRONMENT?: string;
     ALLOWED_ORIGINS?: string;

@@ -1,22 +1,31 @@
 <script lang="ts">
-  import type { User } from '$lib/types';
+  import type { User, Customer } from '$lib/types';
   import { createEventDispatcher } from 'svelte';
+  import TruncatedText from '../../../../../src/lib/components/TruncatedText.svelte';
 
   export let user: User | null = null;
+  export let customer: Customer | null = null;
 
   const dispatch = createEventDispatcher();
 
   function handleLogout() {
     dispatch('logout');
   }
+
+  // Display customer displayName or fallback - NEVER show email
+  $: displayName = customer?.displayName || 'User';
 </script>
 
 <header class="app-header">
   <div class="app-header__content">
-    <a href="/" class="app-header__logo">[EMOJI] OTP Auth API</a>
+    <a href="/" class="app-header__logo"> ★ OTP Auth API</a>
     {#if user}
       <div class="app-header__user">
-        <span class="app-header__email">{user.email || 'User'}</span>
+        <TruncatedText position="bottom">
+          <span class="app-header__email" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {displayName}
+          </span>
+        </TruncatedText>
         <button class="app-header__logout" onclick={handleLogout}>Logout</button>
       </div>
     {/if}

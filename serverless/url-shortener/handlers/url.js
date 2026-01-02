@@ -45,6 +45,7 @@ export async function handleCreateShortUrl(request, env) {
       }
 
       // Check if custom code already exists
+      // Note: Deleted URLs release their slugs immediately, so previously used slugs can be reused
       const existingKey = `url_${shortCode}`;
       const existing = await env.URL_KV.get(existingKey);
       if (existing) {
@@ -55,6 +56,7 @@ export async function handleCreateShortUrl(request, env) {
       }
     } else {
       // Generate unique short code
+      // Note: Deleted URLs release their slugs immediately, so previously used slugs can be reused
       let attempts = 0;
       do {
         shortCode = generateShortCode(6);
@@ -283,7 +285,18 @@ export async function handleListUrls(request, env) {
     const auth = await authenticateRequest(request, env);
     if (!auth.authenticated) {
       return new Response(JSON.stringify({ error: auth.error }), {
-        status: auth.status,
+        status: auth.status || 401,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!auth.userId) {
+      console.error('[List URLs] No userId in auth result:', auth);
+      return new Response(JSON.stringify({ 
+        error: 'Authentication failed',
+        detail: 'User ID not found in token'
+      }), {
+        status: 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
@@ -308,9 +321,12 @@ export async function handleListUrls(request, env) {
       headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error('[List URLs] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({
       error: 'Failed to list URLs',
-      message: error.message,
+      message: errorMessage,
+      detail: env.ENVIRONMENT === 'development' ? error.stack : undefined,
     }), {
       status: 500,
       headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -399,7 +415,8 @@ export async function handleDeleteUrl(request, env) {
       });
     }
 
-    // Delete URL
+    // Delete URL - this automatically releases the slug for reuse by anyone
+    // The slug becomes immediately available for new shortened URLs (both custom and auto-generated)
     await env.URL_KV.delete(urlKey);
 
     // Remove from user's URL list

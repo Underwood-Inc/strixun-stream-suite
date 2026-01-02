@@ -1,4 +1,4 @@
-﻿# Mods API Service - Cloudflare Worker Configuration
+# Mods API Service - Cloudflare Worker Configuration
 # Dedicated worker for mod hosting and version control
 
 name = "strixun-mods-api"
@@ -12,6 +12,7 @@ compatibility_flags = ["nodejs_compat"]
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
 #   wrangler secret put JWT_SECRET          # REQUIRED: JWT signing secret (must match OTP auth service)
+#   wrangler secret put MODS_ENCRYPTION_KEY # REQUIRED: Shared encryption key for mod files (minimum 32 characters)
 #   wrangler secret put ALLOWED_EMAILS      # REQUIRED: Comma-separated list of allowed email addresses for upload/management
 #   wrangler secret put ALLOWED_ORIGINS     # OPTIONAL: Comma-separated CORS origins (recommended for production)
 #   wrangler secret put MODS_PUBLIC_URL     # OPTIONAL: Public URL for R2 bucket (if using custom domain)
@@ -110,4 +111,9 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+# Scheduled triggers (cron jobs)
+# R2 cleanup job - runs daily at 2 AM UTC to permanently delete files marked for deletion 5+ days ago
+[triggers]
+crons = ["0 2 * * *"]
 

@@ -120,39 +120,52 @@ jobs:
       
       - name: Build workspace dependencies
         working-directory: .
-        run: pnpm --filter "@strixun/api-framework" run build || echo "Workspace dependency build skipped if no build script"
-      
-      - name: Verify OTP Encryption Key
-        env:
-          OTP_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: |
-          if [ -z "$OTP_KEY" ]; then
-            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
-            echo ""
-            echo "To fix this:"
-            echo "1. Go to Settings → Secrets and variables → Actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: VITE_SERVICE_ENCRYPTION_KEY"
-            echo "4. Value: Your SERVICE_ENCRYPTION_KEY (same as Cloudflare Workers secret)"
-            echo "5. Click 'Add secret'"
-            echo ""
-            exit 1
-          fi
-          KEY_LENGTH=${#OTP_KEY}
-          if [ $KEY_LENGTH -lt 32 ]; then
-            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY is too short (must be at least 32 characters)"
-            echo "Current length: $KEY_LENGTH"
-            exit 1
-          fi
-          echo "✅ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
-        
+          echo "🔨 Building workspace dependencies required for mods-hub..."
+          # Build OTP Login (required for mods-hub login page)
+          echo "  → Building @strixun/otp-login..."
+          pnpm --filter "@strixun/otp-login" run build:react || (echo "⚠️  OTP Login build failed or skipped" && exit 1)
+          # Build Dice Board Game (required for mods-hub admin panel)
+          echo "  → Building @strixun/dice-board-game..."
+          pnpm --filter "@strixun/dice-board-game" run build || (echo "⚠️  Dice Board Game build failed or skipped" && exit 1)
+          # Build API Framework (if it has a build script)
+          echo "  → Building @strixun/api-framework (if needed)..."
+          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ️  API Framework has no build script (skipped)"
+          echo "✅ All workspace dependencies built successfully"
+      
       - name: Build Mods Hub
         working-directory: mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: pnpm run build
+          VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
+        run: |
+          # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
+          if [ -z "$VITE_MODS_ENCRYPTION_KEY" ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "Please add MODS_ENCRYPTION_KEY to your GitHub repository secrets."
+            echo "This key must match the MODS_ENCRYPTION_KEY in the mods-api worker."
+            exit 1
+          fi
+          
+          # Verify key length (should be at least 32 characters)
+          if [ ${#VITE_MODS_ENCRYPTION_KEY} -lt 32 ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            exit 1
+          fi
+          
+          echo "✓ MODS_ENCRYPTION_KEY is configured (length: ${#VITE_MODS_ENCRYPTION_KEY} characters)"
+          pnpm run build
+          
+          # Verify the key was embedded in the build (check that VITE_MODS_ENCRYPTION_KEY is referenced)
+          # Note: We check for the env var name, not the actual value, to avoid exposing secrets
+          echo "🔍 Verifying encryption key was embedded in build..."
+          if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
+            echo "✓ Encryption key reference found in build output"
+          else
+            echo "⚠️  WARNING: Encryption key reference not found in build - key may not be embedded"
+            echo "This could indicate the build didn't include the environment variable"
+          fi
         
       - name: Deploy to Cloudflare Pages
         id: deploy
@@ -165,7 +178,8 @@ jobs:
           # Project name matches the directory for consistency
           # Suppress error output if project already exists (this is expected and harmless)
           pnpm exec wrangler pages project create mods-hub --production-branch=main 2>/dev/null || echo "Project already exists, continuing with deployment..."
-          pnpm exec wrangler pages deploy dist --project-name=mods-hub --branch=main
+          # Build outputs to ../dist/mods-hub (relative to mods-hub directory)
+          pnpm exec wrangler pages deploy ../dist/mods-hub --project-name=mods-hub --branch=main
       
       - name: Rollback on Failure
         if: failure()
@@ -186,10 +200,21 @@ jobs:
           echo "- Mods API: \`https://mods-api.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "- Auth API: \`https://auth.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 Encryption Key Configuration:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**CRITICAL:** The \`MODS_ENCRYPTION_KEY\` GitHub secret must:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Exist in GitHub repository secrets" >> $GITHUB_STEP_SUMMARY
+          echo "2. Match the \`MODS_ENCRYPTION_KEY\` secret in the mods-api Cloudflare Worker" >> $GITHUB_STEP_SUMMARY
+          echo "3. Be at least 32 characters long" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "If mod uploads fail with 'MODS_ENCRYPTION_KEY is required', check:" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Secrets: Settings → Secrets and variables → Actions → \`MODS_ENCRYPTION_KEY\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloudflare Worker: Workers & Pages → mods-api → Settings → Secrets → \`MODS_ENCRYPTION_KEY\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Configure custom domain in Cloudflare Dashboard (if not already done)" >> $GITHUB_STEP_SUMMARY
-          echo "2. Verify DNS CNAME record is created" >> $GITHUB_STEP_SUMMARY
-          echo "3. Wait for SSL certificate provisioning (usually 1-5 minutes)" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify \`MODS_ENCRYPTION_KEY\` exists in GitHub Secrets" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify it matches the mods-api worker secret" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Test mod upload** to verify encryption keys are synchronized" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> 💡 The Mods Hub is deployed to Cloudflare Pages. Access it via your custom domain." >> $GITHUB_STEP_SUMMARY
 

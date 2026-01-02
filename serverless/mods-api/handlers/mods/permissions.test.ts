@@ -14,6 +14,7 @@ vi.mock('../../utils/admin.js', () => ({
 
 vi.mock('@strixun/api-framework/enhanced', () => ({
     createCORSHeaders: vi.fn(() => new Headers()),
+    getCorsHeaders: vi.fn(() => new Headers()),
 }));
 
 vi.mock('../../utils/errors.js', () => ({

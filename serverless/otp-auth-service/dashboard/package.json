@@ -4,7 +4,8 @@
   "description": "Developer Dashboard for OTP Auth Service - Svelte + TypeScript",
   "type": "module",
   "scripts": {
-    "prebuild": "pnpm --filter @strixun/otp-login build",
+    "predev": "pnpm --filter @strixun/api-framework build",
+    "prebuild": "pnpm --filter @strixun/api-framework build",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -17,6 +18,7 @@
     "@observablehq/plot": "^0.6.15",
     "@strixun/api-framework": "workspace:*",
     "@strixun/otp-login": "workspace:*",
+    "@strixun/tooltip": "workspace:*",
     "svelte": "^5.46.0"
   },
   "devDependencies": {

@@ -26,7 +26,8 @@ export async function enhanceRouterResponse(response: Response, request: Request
 
   // Extract user from request if not provided
   if (!context.user) {
-    context.user = await extractUserFromRequest(request, env);
+    const extractedUser = await extractUserFromRequest(request, env);
+    context.user = extractedUser || undefined;
   }
 
   // For JSON responses, add root config

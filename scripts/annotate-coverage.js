@@ -23,7 +23,7 @@ function parseCoverageSummary(filePath) {
     const content = readFileSync(filePath, 'utf-8');
     return JSON.parse(content);
   } catch (error) {
-    console.error(`[ERROR] Failed to parse coverage file: ${filePath}`, error);
+    console.error(`✗ Failed to parse coverage file: ${filePath}`, error);
     return null;
   }
 }
@@ -105,9 +105,9 @@ function main() {
   const workspaceRoot = args[1] || process.cwd();
   const serviceName = args[2] || 'Unknown Service';
 
-  console.log(`[INFO] Analyzing coverage for: ${serviceName}`);
-  console.log(`[INFO] Coverage file: ${coveragePath}`);
-  console.log(`[INFO] Workspace root: ${workspaceRoot}`);
+  console.log(`ℹ Analyzing coverage for: ${serviceName}`);
+  console.log(`ℹ Coverage file: ${coveragePath}`);
+  console.log(`ℹ Workspace root: ${workspaceRoot}`);
 
   const summary = parseCoverageSummary(coveragePath);
   
@@ -161,10 +161,10 @@ function main() {
 
   // Exit with appropriate code
   if (uncovered.length > 0 || lowCoverage.length > 0) {
-    console.log(`\n[WARNING] Found ${uncovered.length} files without coverage and ${lowCoverage.length} files with low coverage`);
+    console.log(`\n⚠ Found ${uncovered.length} files without coverage and ${lowCoverage.length} files with low coverage`);
     process.exit(0); // Don't fail the build, just report
   } else {
-    console.log(`\n[SUCCESS] All files have adequate test coverage`);
+    console.log(`\n✓ All files have adequate test coverage`);
     process.exit(0);
   }
 }

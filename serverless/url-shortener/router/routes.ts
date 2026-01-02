@@ -11,6 +11,7 @@ import { handleHealth } from '../handlers/health.js';
 import { handleDecryptScript } from '../handlers/decrypt-script.js';
 import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
 import { handleAppAssets } from '../handlers/app-assets.js';
+import { handleGetDisplayName } from '../handlers/display-name.js';
 
 interface Env {
   ENVIRONMENT?: string;
@@ -42,24 +43,43 @@ export function createRouter() {
     try {
       // Health check (moved before root to ensure it works)
       if (path === '/health') {
-        return handleHealth();
+        return handleHealth(request, env);
       }
 
       // Serve decryption script
       if (path === '/decrypt.js' && request.method === 'GET') {
-        return handleDecryptScript();
+        return handleDecryptScript(request, env);
       }
 
       // Serve OTP core script
       if (path === '/otp-core.js' && request.method === 'GET') {
-        return handleOtpCoreScript();
+        return handleOtpCoreScript(request, env);
       }
 
-      // Public stats endpoint (service-to-service only, no JWT required)
+      // Public stats endpoint - now requires JWT encryption
       if (path === '/api/stats' && request.method === 'GET') {
         const response = await handleGetStats(request, env);
-        // Pass null auth for public endpoint - API framework will detect service-to-service calls
-        return await wrapWithEncryption(response, request, env, null);
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        if (!jwtToken) {
+          const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+          };
+          const corsHeaders = getCorsHeaders(env, request);
+          return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/problem+json',
+              ...corsHeaders,
+            },
+          });
+        }
+        const auth = { userId: 'anonymous', customerId: null, jwtToken };
+        return await wrapWithEncryption(response, request, env, auth);
       }
 
       // API endpoints (require authentication)
@@ -81,11 +101,43 @@ export function createRouter() {
       }
 
       if (path === '/api/list' && request.method === 'GET') {
-        const response = await handleListUrls(request, env);
-        const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-        const auth = token ? { jwtToken: token } : null;
-        return await wrapWithEncryption(response, request, env, auth);
+        try {
+          const response = await handleListUrls(request, env);
+          
+          // If response is already an error (401, 500, etc.), return it directly without encryption
+          if (response.status >= 400) {
+            return response;
+          }
+          
+          // Extract auth info for encryption
+          const authHeader = request.headers.get('Authorization');
+          const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+          
+          // Only wrap with encryption if we have a token and response is successful
+          if (token && response.status < 400) {
+            try {
+              const auth = { jwtToken: token };
+              return await wrapWithEncryption(response, request, env, auth);
+            } catch (encryptError) {
+              console.error('[URL Shortener] Encryption failed for /api/list, returning unencrypted:', encryptError);
+              // Fallback to unencrypted response if encryption fails
+              return response;
+            }
+          }
+          
+          // If no token but response is OK, return unencrypted (shouldn't happen - auth should fail first)
+          return response;
+        } catch (routeError) {
+          console.error('[URL Shortener] Route handler error for /api/list:', routeError);
+          const errorMessage = routeError instanceof Error ? routeError.message : String(routeError);
+          return new Response(JSON.stringify({
+            error: 'Internal server error',
+            message: errorMessage,
+          }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
@@ -96,20 +148,42 @@ export function createRouter() {
         return await wrapWithEncryption(response, request, env, auth);
       }
 
-      // Redirect endpoint (public, no auth required)
+      // Get display name endpoint - uses customer API as source of truth
+      if (path === '/api/display-name' && request.method === 'GET') {
+        const response = await handleGetDisplayName(request, env);
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const auth = token ? { jwtToken: token } : null;
+        return await wrapWithEncryption(response, request, env, auth);
+      }
+
+      // Redirect endpoint - PUBLICLY ACCESSIBLE (no JWT required)
+      // Short links need to work for anyone who clicks them, so redirects must be public
       // Check for short code redirects before serving app
       // Short codes are 3-20 alphanumeric characters
       if (request.method === 'GET' && path !== '/' && !path.startsWith('/api/') && /^\/[a-zA-Z0-9_-]{3,20}$/.test(path)) {
         const redirectResponse = await handleRedirect(request, env);
-        // If redirect found, return it; otherwise fall through to app
+        // If redirect found, return it directly (redirects are public)
+        // Otherwise fall through to app
         if (redirectResponse.status !== 404) {
           return redirectResponse;
         }
       }
 
       // Serve React app (SPA routing - all non-API paths serve the app)
+      // App assets (HTML, JS, CSS) are PUBLICLY ACCESSIBLE - no JWT required
+      // Users need to load the app to authenticate and get a JWT token
       if (request.method === 'GET' && !path.startsWith('/api/')) {
-        return handleAppAssets(request, env);
+        // Serve app assets without encryption - they're static files needed for authentication
+        const appResponse = await handleAppAssets(request, env);
+        const corsHeaders = getCorsHeaders(env, request);
+        return new Response(appResponse.body, {
+          status: appResponse.status,
+          headers: {
+            ...corsHeaders,
+            ...Object.fromEntries(appResponse.headers.entries()),
+          },
+        });
       }
 
       // Not found

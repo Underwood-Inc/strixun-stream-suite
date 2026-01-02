@@ -5,7 +5,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "prebuild": "pnpm --filter @strixun/otp-login build:react",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

@@ -106,10 +106,34 @@ function saveAuthState(userData: User | null): void {
 function getOtpAuthApiUrl(): string {
   // Try to get from window config (injected during build)
   if (typeof window !== 'undefined') {
-    if ((window as any).getOtpAuthApiUrl) {
-      return (window as any).getOtpAuthApiUrl() || '';
+    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        import.meta.env?.DEV ||
+                        import.meta.env?.MODE === 'development';
+    
+    if (isLocalhost) {
+      // NEVER fall back to production when on localhost
+      return 'http://localhost:8787';
     }
-    // Fallback to hardcoded URL
+    
+    // Priority 1: VITE_AUTH_API_URL (for E2E tests, set by playwright config)
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AUTH_API_URL) {
+      const viteUrl = import.meta.env.VITE_AUTH_API_URL;
+      if (viteUrl) {
+        return viteUrl;
+      }
+    }
+    
+    // Priority 2: window.getOtpAuthApiUrl() (from config.js)
+    if ((window as any).getOtpAuthApiUrl) {
+      const url = (window as any).getOtpAuthApiUrl();
+      if (url) {
+        return url;
+      }
+    }
+    
+    // Only use production URL if NOT on localhost
     return 'https://auth.idling.app';
   }
   return '';
@@ -194,7 +218,7 @@ async function restoreSessionFromBackend(): Promise<boolean> {
       };
       
       saveAuthState(userData);
-      console.log('[Auth] [OK] Session restored from backend for user:', userData.email);
+      console.log('[Auth] ✓ Session restored from backend for user:', userData.email);
       return true;
     }
 
@@ -319,7 +343,7 @@ export async function loadAuthState(): Promise<void> {
         // Update userData with isSuperAdmin from JWT if not already set
         const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
         saveAuthState(updatedUserData as User);
-        console.log('[Auth] [OK] User authenticated from storage, token valid until:', userData.expiresAt);
+        console.log('[Auth] ✓ User authenticated from storage, token valid until:', userData.expiresAt);
         return;
       } else {
         // Token expired, try to restore from backend before clearing

@@ -12,6 +12,7 @@ import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import type { ModMetadata } from '../types/mod';
+import { getButtonStyles } from '../utils/buttonStyles';
 
 const PageContainer = styled.div`
   display: flex;
@@ -32,12 +33,7 @@ const Title = styled.h1`
 `;
 
 const Button = styled.button`
-  padding: ${spacing.sm} ${spacing.md};
-  background: ${colors.accent};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
+  ${getButtonStyles('primary')}
   cursor: pointer;
   transition: all 0.2s ease;
   

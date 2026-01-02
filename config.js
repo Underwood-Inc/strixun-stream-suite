@@ -148,13 +148,30 @@ window.getWorkerApiUrl = function() {
         }
     }
     
-    // Priority 3: Hardcoded fallback for local development
+    // Priority 3: Check if running on localhost (CRITICAL: NO FALLBACKS ON LOCAL)
+    const isLocalhost = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1'
+    );
+    
+    if (isLocalhost) {
+        // NEVER fall back to production when on localhost
+        // Twitch API worker runs on port 8789
+        if (!apiUrlLogged) {
+            console.log('[Config] Using localhost Worker URL: http://localhost:8789');
+            apiUrlLogged = true;
+        }
+        cachedApiUrl = 'http://localhost:8789';
+        return cachedApiUrl;
+    }
+    
+    // Priority 4: Hardcoded fallback for production
     // Using custom domain: api.idling.app
     const HARDCODED_WORKER_URL = 'https://api.idling.app';
     if (HARDCODED_WORKER_URL && !HARDCODED_WORKER_URL.includes('UPDATE-ME')) {
         if (!apiUrlLogged) {
             console.log('[Config] Using hardcoded Worker URL:', HARDCODED_WORKER_URL);
-            console.warn('[Config] [WARNING] Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
+            console.warn('[Config] ⚠ Using hardcoded fallback. For production, add WORKER_URL to GitHub Actions.');
             apiUrlLogged = true;
         }
         cachedApiUrl = HARDCODED_WORKER_URL;
@@ -163,7 +180,7 @@ window.getWorkerApiUrl = function() {
     
     // Priority 4: No configuration available
     if (!apiUrlLogged) {
-        console.error('[Config] [ERROR] No API server configured!');
+        console.error('[Config] ✗ No API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_WORKER_URL in config.js with your actual Worker URL');
         console.log('  2. OR manually configure in Setup  Twitch API Settings');
@@ -216,7 +233,24 @@ window.getUrlShortenerApiUrl = function() {
         return cachedUrlShortenerApiUrl;
     }
     
-    // Priority 3: Hardcoded fallback - use custom domain (s.idling.app)
+    // Priority 3: Check if running on localhost (CRITICAL: NO FALLBACKS ON LOCAL)
+    const isLocalhost = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1'
+    );
+    
+    if (isLocalhost) {
+        // NEVER fall back to production when on localhost
+        // URL shortener worker runs on port 8793
+        if (!urlShortenerApiUrlLogged) {
+            console.log('[Config] Using localhost URL Shortener Worker URL: http://localhost:8793');
+            urlShortenerApiUrlLogged = true;
+        }
+        cachedUrlShortenerApiUrl = 'http://localhost:8793';
+        return cachedUrlShortenerApiUrl;
+    }
+    
+    // Priority 4: Hardcoded fallback for production - use custom domain (s.idling.app)
     const CUSTOM_DOMAIN_URL = 'https://s.idling.app';
     const WORKERS_DEV_URL = 'https://strixun-url-shortener.strixuns-script-suite.workers.dev';
     
@@ -226,7 +260,7 @@ window.getUrlShortenerApiUrl = function() {
     if (HARDCODED_URL_SHORTENER_URL && !HARDCODED_URL_SHORTENER_URL.includes('UPDATE-ME')) {
         if (!urlShortenerApiUrlLogged) {
             console.log('[Config] Using hardcoded URL Shortener Worker URL:', HARDCODED_URL_SHORTENER_URL);
-            console.log('[Config] [OK] Using custom domain: s.idling.app');
+            console.log('[Config] ✓ Using custom domain: s.idling.app');
             urlShortenerApiUrlLogged = true;
         }
         cachedUrlShortenerApiUrl = HARDCODED_URL_SHORTENER_URL;
@@ -235,7 +269,7 @@ window.getUrlShortenerApiUrl = function() {
     
     // Priority 4: No configuration available
     if (!urlShortenerApiUrlLogged) {
-        console.error('[Config] [ERROR] No URL shortener API server configured!');
+        console.error('[Config] ✗ No URL shortener API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_URL_SHORTENER_URL in config.js with your actual Worker URL');
         console.log('  2. OR manually configure in localStorage (url_shortener_api_server)');
@@ -259,7 +293,28 @@ let cachedOtpAuthApiUrl = null;
 let otpAuthApiUrlLogged = false;
 
 window.getOtpAuthApiUrl = function() {
-    // Return cached value if available
+    // CRITICAL: Check localhost FIRST (before ANY other checks including cache)
+    // This ensures we NEVER use production URLs when running locally
+    // Force clear cache on localhost to prevent stale production URLs
+    const isLocalhost = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1'
+    );
+    
+    if (isLocalhost) {
+        // NEVER fall back to production when on localhost
+        // OTP Auth worker runs on port 8787
+        // Force clear cache EVERY TIME on localhost to prevent stale production URLs
+        cachedOtpAuthApiUrl = 'http://localhost:8787';
+        if (!otpAuthApiUrlLogged) {
+            console.log('[Config] 🔒 LOCALHOST DETECTED - Using local OTP Auth Worker: http://localhost:8787');
+            console.log('[Config] ⚠️  Cache cleared to prevent production URL usage');
+            otpAuthApiUrlLogged = true;
+        }
+        return 'http://localhost:8787'; // Return directly, don't use cache
+    }
+    
+    // Return cached value if available (only if NOT on localhost)
     if (cachedOtpAuthApiUrl !== null) {
         return cachedOtpAuthApiUrl;
     }
@@ -277,7 +332,7 @@ window.getOtpAuthApiUrl = function() {
         }
     }
     
-    // Priority 2: Auto-injected during deployment
+    // Priority 2: Auto-injected during deployment (ONLY if NOT on localhost - already checked above)
     const injected = window.STRIXUN_CONFIG.OTP_AUTH_API_URL;
     if (injected && !injected.startsWith('%%')) {
         if (!otpAuthApiUrlLogged) {
@@ -288,7 +343,7 @@ window.getOtpAuthApiUrl = function() {
         return cachedOtpAuthApiUrl;
     }
     
-    // Priority 3: Hardcoded fallback - use custom domain as primary
+    // Priority 4: Hardcoded fallback for production - use custom domain as primary
     const CUSTOM_DOMAIN_URL = 'https://auth.idling.app';
     const WORKERS_DEV_URL = 'https://otp-auth-service.strixuns-script-suite.workers.dev';
     
@@ -298,7 +353,7 @@ window.getOtpAuthApiUrl = function() {
     if (HARDCODED_OTP_AUTH_URL && !HARDCODED_OTP_AUTH_URL.includes('UPDATE-ME')) {
         if (!otpAuthApiUrlLogged) {
             console.log('[Config] Using hardcoded OTP Auth Worker URL:', HARDCODED_OTP_AUTH_URL);
-            console.log('[Config] [OK] Using custom domain: auth.idling.app');
+            console.log('[Config] ✓ Using custom domain: auth.idling.app');
             otpAuthApiUrlLogged = true;
         }
         cachedOtpAuthApiUrl = HARDCODED_OTP_AUTH_URL;
@@ -307,7 +362,7 @@ window.getOtpAuthApiUrl = function() {
     
     // Priority 4: No configuration available
     if (!otpAuthApiUrlLogged) {
-        console.error('[Config] [ERROR] No OTP auth API server configured!');
+        console.error('[Config] ✗ No OTP auth API server configured!');
         console.log('[Config] Solutions:');
         console.log('  1. Update HARDCODED_OTP_AUTH_URL in config.js with your actual Worker URL');
         console.log('  2. OR manually configure in localStorage (otp_auth_api_server)');
@@ -431,9 +486,9 @@ window.testWorkerApi = async function() {
  */
 window.initStrixunConfig = async function() {
     console.group(' Strixun Stream Suite - Configuration');
-    console.log('Worker API URL:', window.getWorkerApiUrl() || '[ERROR] Not configured');
-    console.log('URL Shortener API URL:', window.getUrlShortenerApiUrl() || '[ERROR] Not configured');
-    console.log('OTP Auth API URL:', window.getOtpAuthApiUrl() || '[ERROR] Not configured');
+    console.log('Worker API URL:', window.getWorkerApiUrl() || '✗ Not configured');
+    console.log('URL Shortener API URL:', window.getUrlShortenerApiUrl() || '✗ Not configured');
+    console.log('OTP Auth API URL:', window.getOtpAuthApiUrl() || '✗ Not configured');
     console.log('GitHub Pages URL:', window.getGitHubPagesUrl());
     console.log('Deployed At:', window.STRIXUN_CONFIG.DEPLOYED_AT);
     console.log('Environment:', window.STRIXUN_CONFIG.DEPLOYMENT_ENV);
@@ -441,10 +496,10 @@ window.initStrixunConfig = async function() {
     if (window.STRIXUN_CONFIG.FEATURES.WORKER_HEALTH_CHECK) {
         const healthCheck = await window.testWorkerApi();
         if (healthCheck.success) {
-            console.log('[OK] Worker API Health Check: PASSED');
+            console.log('✓ Worker API Health Check: PASSED');
             console.log('Worker Info:', healthCheck.data);
         } else {
-            console.warn('[WARNING] Worker API Health Check: FAILED');
+            console.warn('⚠ Worker API Health Check: FAILED');
             console.warn('Error:', healthCheck.error);
             console.warn('Message:', healthCheck.message);
         }

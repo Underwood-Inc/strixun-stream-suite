@@ -4,20 +4,18 @@
  * Facebook/Meta-level API framework for Strixun Stream Suite
  */
 
-// Core client
-export { APIClient } from './client';
-export { EnhancedAPIClient } from './enhanced-client';
-
-// Factory functions
+// Export APIClient - single client with optional features
 export {
+  APIClient,
   createAPIClient,
   getAPIClient,
   setAPIClient,
   resetAPIClient,
-} from './factory';
+} from './client.js';
 
 // Types
 export type {
+  HTTPMethod,
   APIRequest,
   APIResponse,
   APIError,
@@ -121,6 +119,19 @@ export {
   isSuccessResponse,
   extractErrorMessage,
 } from './utils/response-handler';
+
+export {
+  getServiceUrl,
+  getAuthApiUrl,
+  getCustomerApiUrl,
+  getModsApiUrl,
+  isLocalDev,
+} from './utils/service-url';
+
+export type {
+  ServiceUrlEnv,
+  ServiceUrlConfig,
+} from './utils/service-url';
 
 // Middleware
 export {

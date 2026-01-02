@@ -5,7 +5,7 @@
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
-import { decryptWithJWT } from '@strixun/api-framework';
+import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, getCustomerR2Key } from '../../utils/customer.js';
 import { isEmailAllowed } from '../../utils/auth.js';
@@ -254,12 +254,22 @@ export async function handleUploadMod(
             });
         }
 
-        // Get JWT token for decryption (required for private mods)
-        const jwtToken = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+        // Get shared encryption key for decryption (MANDATORY - all files must be encrypted with shared key)
+        const sharedKey = env.MODS_ENCRYPTION_KEY;
         
-        // Determine expected encryption method from metadata visibility
-        const isPublic = metadata.visibility === 'public';
-        const expectedServiceKeyEncryption = isPublic;
+        if (!sharedKey || sharedKey.length < 32) {
+            const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
         
         // Check file format: binary encrypted (v4/v5) or legacy JSON encrypted (v3)
         const fileBuffer = await file.arrayBuffer();
@@ -292,74 +302,14 @@ export async function handleUploadMod(
         
         try {
             if (isBinaryEncrypted) {
-                // Binary encrypted format - try expected method first based on visibility
-                const { decryptBinaryWithServiceKey, decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                // Binary encrypted format - Shared key encryption is MANDATORY
                 let decryptedBytes: Uint8Array;
-                let decryptionAttempted = false;
-                let lastError: Error | null = null;
-                
-                // Try expected encryption method first (based on metadata visibility)
-                if (expectedServiceKeyEncryption) {
-                    // Public mod: try service key first
-                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                    if (serviceKey && serviceKey.length >= 32) {
-                        try {
-                            decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
-                            decryptionAttempted = true;
-                            console.log('[Upload] Binary decryption successful with service key (public mod)');
-                        } catch (serviceKeyError) {
-                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
-                        }
-                    }
-                } else {
-                    // Private mod: try JWT first
-                    if (!jwtToken) {
-                        throw new Error('JWT token required for private mod decryption');
-                    }
-                    try {
-                        decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
-                        decryptionAttempted = true;
-                        console.log('[Upload] Binary decryption successful with JWT (private mod)');
-                    } catch (jwtError) {
-                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
-                    }
-                }
-                
-                // Try fallback method if expected method didn't work
-                if (!decryptionAttempted) {
-                    if (expectedServiceKeyEncryption) {
-                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
-                        if (jwtToken) {
-                            try {
-                                decryptedBytes = await decryptBinaryWithJWT(fileBytes, jwtToken);
-                                decryptionAttempted = true;
-                                console.log('[Upload] Binary decryption successful with JWT fallback (public mod)');
-                            } catch (jwtError) {
-                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                            }
-                        }
-                    } else {
-                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
-                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                        if (serviceKey && serviceKey.length >= 32) {
-                            try {
-                                decryptedBytes = await decryptBinaryWithServiceKey(fileBytes, serviceKey);
-                                decryptionAttempted = true;
-                                console.log('[Upload] Binary decryption successful with service key fallback (private mod)');
-                            } catch (serviceKeyError) {
-                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            }
-                        }
-                    }
-                }
-                
-                if (!decryptionAttempted) {
-                    const errorMsg = lastError 
-                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
-                        : 'Failed to decrypt file - neither service key nor JWT worked';
-                    throw new Error(errorMsg);
+                try {
+                    decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
+                    console.log('[Upload] Binary decryption successful with shared key');
+                } catch (decryptError) {
+                    const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
+                    throw new Error(`Failed to decrypt file with shared key. All files must be encrypted with the shared encryption key. Error: ${errorMsg}`);
                 }
                 
                 fileSize = decryptedBytes.length;
@@ -367,97 +317,14 @@ export async function handleUploadMod(
                 // Determine version from first byte (4 or 5)
                 encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
             } else {
-                // Legacy JSON encrypted format - try expected method first based on visibility
-                const encryptedData = await file.text();
-                const encryptedJson = JSON.parse(encryptedData);
-                
-                // Verify it's a valid encrypted structure
-                if (!encryptedJson || typeof encryptedJson !== 'object' || !encryptedJson.encrypted) {
-                    throw new Error('Invalid encrypted file format');
-                }
-                
-                const { decryptWithServiceKey, decryptWithJWT } = await import('@strixun/api-framework');
-                let decryptedBase64: string;
-                let decryptionAttempted = false;
-                let lastError: Error | null = null;
-                
-                // Try expected encryption method first (based on metadata visibility)
-                if (expectedServiceKeyEncryption) {
-                    // Public mod: try service key first
-                    const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                    if (serviceKey && serviceKey.length >= 32) {
-                        try {
-                            decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
-                            decryptionAttempted = true;
-                            console.log('[Upload] JSON decryption successful with service key (public mod)');
-                        } catch (serviceKeyError) {
-                            lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            console.log('[Upload] Service key decryption failed (expected for public mod), trying JWT fallback:', lastError.message);
-                        }
-                    }
-                } else {
-                    // Private mod: try JWT first
-                    if (!jwtToken) {
-                        throw new Error('JWT token required for private mod decryption');
-                    }
-                    try {
-                        decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                        decryptionAttempted = true;
-                        console.log('[Upload] JSON decryption successful with JWT (private mod)');
-                    } catch (jwtError) {
-                        lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                        console.log('[Upload] JWT decryption failed (expected for private mod), trying service key fallback:', lastError.message);
-                    }
-                }
-                
-                // Try fallback method if expected method didn't work
-                if (!decryptionAttempted) {
-                    if (expectedServiceKeyEncryption) {
-                        // Public mod failed with service key, try JWT (shouldn't happen, but handle gracefully)
-                        if (jwtToken) {
-                            try {
-                                decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
-                                decryptionAttempted = true;
-                                console.log('[Upload] JSON decryption successful with JWT fallback (public mod)');
-                            } catch (jwtError) {
-                                lastError = jwtError instanceof Error ? jwtError : new Error(String(jwtError));
-                            }
-                        }
-                    } else {
-                        // Private mod failed with JWT, try service key (shouldn't happen, but handle gracefully)
-                        const serviceKey = env.SERVICE_ENCRYPTION_KEY;
-                        if (serviceKey && serviceKey.length >= 32) {
-                            try {
-                                decryptedBase64 = await decryptWithServiceKey(encryptedJson, serviceKey) as string;
-                                decryptionAttempted = true;
-                                console.log('[Upload] JSON decryption successful with service key fallback (private mod)');
-                            } catch (serviceKeyError) {
-                                lastError = serviceKeyError instanceof Error ? serviceKeyError : new Error(String(serviceKeyError));
-                            }
-                        }
-                    }
-                }
-                
-                if (!decryptionAttempted) {
-                    const errorMsg = lastError 
-                        ? `Failed to decrypt file. Expected ${expectedServiceKeyEncryption ? 'service key' : 'JWT'} encryption for ${isPublic ? 'public' : 'private'} mod, but both methods failed. Last error: ${lastError.message}`
-                        : 'Failed to decrypt file - neither service key nor JWT worked';
-                    throw new Error(errorMsg);
-                }
-                
-                // Convert base64 back to binary for hash calculation
-                const binaryString = atob(decryptedBase64);
-                const fileBytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    fileBytes[i] = binaryString.charCodeAt(i);
-                }
-                fileSize = fileBytes.length;
-                fileHash = await calculateStrixunHash(fileBytes, env);
-                encryptionFormat = 'json-v3';
+                // Legacy JSON encrypted format - not supported with shared key encryption
+                // All new uploads must use binary format
+                throw new Error('Legacy JSON encryption format is not supported. Please re-upload the file using the latest client version.');
             }
         } catch (error) {
             console.error('File decryption error during upload:', error);
-            const rfcError = createError(request, 400, 'Decryption Failed', 'Failed to decrypt uploaded file. Please ensure the file was encrypted with either the service key (for public mods) or your JWT token (for private mods).');
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with the shared encryption key. ${errorMsg}`);
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -579,11 +446,29 @@ export async function handleUploadMod(
 
         // Upload thumbnail first (before creating mod metadata) so we can use the slug
         // Support both binary file upload (preferred) and legacy base64
+        // CRITICAL: Thumbnails must NEVER be encrypted - they are public images
         const thumbnailFile = formData.get('thumbnail') as File | null;
         let thumbnailUrl: string | undefined;
         let thumbnailExtension: string | undefined;
         
         if (thumbnailFile) {
+            // CRITICAL: Verify thumbnail is NOT encrypted before processing
+            // Thumbnails are public images and must be unencrypted
+            const thumbnailBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
+            if (thumbnailBuffer.length >= 4 && (thumbnailBuffer[0] === 4 || thumbnailBuffer[0] === 5)) {
+                const rfcError = createError(request, 400, 'Invalid Thumbnail', 'Thumbnail file appears to be encrypted. Thumbnails must be unencrypted image files (PNG, JPEG, GIF, or WebP). Please upload the original image file without encryption.');
+                const corsHeaders = createCORSHeaders(request, {
+                    allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                });
+                return new Response(JSON.stringify(rfcError), {
+                    status: 400,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...Object.fromEntries(corsHeaders.entries()),
+                    },
+                });
+            }
+            
             // Binary file upload (optimized - no base64 overhead)
             thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, slug, request, env, auth.customerId);
             // CRITICAL FIX: Extract extension from file type for faster lookup
@@ -600,164 +485,44 @@ export async function handleUploadMod(
             }
         }
 
-        // Fetch author display name from auth API during upload
-        // CRITICAL FIX: Make this synchronous - wait for result before storing mod
-        // This prevents "Unknown User" from being stored if fetch fails
-        // NOTE: /auth/me returns encrypted responses that need to be decrypted
-        // Includes timeout handling and retry logic with exponential backoff
+        // CRITICAL: Fetch author display name from customer data
+        // Customer is the primary data source for all customizable user info
+        // Look up customer by auth.customerId to get displayName
         let authorDisplayName: string | null = null;
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
-            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-            const url = `${authApiUrl}/auth/me`;
-            const timeoutMs = 10000; // Increased to 10 second timeout
-            const maxAttempts = 3; // Increased retry attempts
+        
+        if (auth.customerId) {
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+            console.log('[Upload] Fetching authorDisplayName from customer data:', { 
+                customerId: auth.customerId,
+                userId: auth.userId
+            });
+            authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             
-            // Retry logic with exponential backoff: try up to 3 times
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                try {
-                    // Create AbortController for timeout
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-                    
-                    try {
-                        const response = await fetch(url, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                            // CRITICAL: Prevent caching of service-to-service API calls
-                            // Even server-side calls should not be cached to ensure fresh data
-                            cache: 'no-store',
-                            signal: controller.signal,
-                        });
-                        
-                        clearTimeout(timeoutId);
-                        
-                        if (response.ok) {
-                            const responseData = await response.json();
-                            
-                            // Check if response is encrypted (has X-Encrypted header or encrypted field)
-                            const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                               (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                            
-                            let userData: { displayName?: string | null; [key: string]: any };
-                            if (isEncrypted) {
-                                // Decrypt the response using JWT token
-                                const { decryptWithJWT } = await import('@strixun/api-framework');
-                                userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                            } else {
-                                userData = responseData;
-                            }
-                            
-                            authorDisplayName = userData?.displayName || null;
-                            console.log('[Upload] Fetched authorDisplayName:', { 
-                                authorDisplayName, 
-                                hasDisplayName: !!authorDisplayName,
-                                userId: auth.userId,
-                                userDataKeys: userData ? Object.keys(userData) : [],
-                                attempt: attempt + 1
-                            });
-                            break; // Success, exit retry loop
-                            } else if (response.status === 522 || response.status === 504) {
-                            // Gateway timeout - retry with exponential backoff
-                            if (attempt < maxAttempts - 1) {
-                                const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff: 1s, 2s, 4s (max 5s)
-                                console.warn('[Upload] /auth/me gateway timeout, will retry:', { 
-                                    status: response.status, 
-                                    userId: auth.userId,
-                                    attempt: attempt + 1,
-                                    maxAttempts,
-                                    backoffMs
-                                });
-                                await new Promise(resolve => setTimeout(resolve, backoffMs));
-                                continue; // Retry
-                            } else {
-                                const errorText = await response.text().catch(() => 'Unable to read error');
-                                console.error('[Upload] /auth/me gateway timeout after all retries:', { 
-                                    status: response.status, 
-                                    statusText: response.statusText,
-                                    error: errorText,
-                                    userId: auth.userId,
-                                    attempts: maxAttempts
-                                });
-                                break; // Give up after all retries
-                            }
-                        } else {
-                            const errorText = await response.text().catch(() => 'Unable to read error');
-                            console.warn('[Upload] /auth/me returned non-200 status:', { 
-                                status: response.status, 
-                                statusText: response.statusText,
-                                error: errorText,
-                                userId: auth.userId,
-                                attempt: attempt + 1
-                            });
-                            break; // Don't retry on non-timeout errors
-                        }
-                    } catch (fetchError) {
-                        clearTimeout(timeoutId);
-                        
-                        // Check if it's an abort (timeout)
-                        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-                            if (attempt < maxAttempts - 1) {
-                                const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
-                                console.warn('[Upload] /auth/me request timeout, will retry:', { 
-                                    timeoutMs, 
-                                    userId: auth.userId,
-                                    attempt: attempt + 1,
-                                    maxAttempts,
-                                    backoffMs
-                                });
-                                await new Promise(resolve => setTimeout(resolve, backoffMs));
-                                continue; // Retry
-                            } else {
-                                console.error('[Upload] /auth/me request timeout after all retries:', { 
-                                    timeoutMs, 
-                                    userId: auth.userId,
-                                    attempts: maxAttempts
-                                });
-                                break; // Give up after all retries
-                            }
-                        }
-                        throw fetchError; // Re-throw other errors
-                    }
-                } catch (error) {
-                    // Network errors or other issues
-                    if (attempt < maxAttempts - 1) {
-                        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
-                        console.warn('[Upload] Failed to fetch displayName from auth service, will retry:', { 
-                            error: error instanceof Error ? error.message : String(error),
-                            userId: auth.userId,
-                            attempt: attempt + 1,
-                            maxAttempts,
-                            backoffMs
-                        });
-                        await new Promise(resolve => setTimeout(resolve, backoffMs));
-                        continue; // Retry
-                    } else {
-                        console.error('[Upload] Failed to fetch displayName from auth service after all retries:', { 
-                            error: error instanceof Error ? error.message : String(error),
-                            userId: auth.userId,
-                            attempts: maxAttempts
-                        });
-                        break; // Give up after all retries
-                    }
-                }
+            if (authorDisplayName) {
+                console.log('[Upload] Successfully fetched authorDisplayName from customer data:', { 
+                    authorDisplayName, 
+                    customerId: auth.customerId,
+                    userId: auth.userId
+                });
+            } else {
+                console.warn('[Upload] Could not fetch displayName from customer data:', {
+                    customerId: auth.customerId,
+                    userId: auth.userId
+                });
             }
         } else {
-            console.warn('[Upload] No Authorization header found for displayName fetch');
-        }
-        
-        // CRITICAL FIX: Log if displayName is still null after all retries
-        // This helps identify persistent issues with auth API
-        if (!authorDisplayName) {
-            console.warn('[Upload] authorDisplayName is null after all fetch attempts:', {
+            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', {
                 userId: auth.userId,
                 customerId: auth.customerId,
-                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again'
+                note: 'UI will show "Unknown User" - customerId should be set during authentication'
+            });
+        }
+        
+        if (!authorDisplayName) {
+            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', {
+                userId: auth.userId,
+                customerId: auth.customerId,
+                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again on next load'
             });
         }
         
@@ -765,24 +530,37 @@ export async function handleUploadMod(
         // If displayName is null, UI will show "Unknown User"
         // Note: For previously uploaded mods with null displayName, the detail handler will attempt to fetch it
 
-        // CRITICAL FIX: Validate customerId is present before storing mod
-        // This ensures proper data scoping and prevents lookup issues
+        // CRITICAL: Validate customerId is present before storing mod
+        // This ensures proper data scoping and display name lookups
+        // customerId is REQUIRED - reject uploads without it
         if (!auth.customerId) {
             console.error('[Upload] CRITICAL: customerId is null for authenticated user:', {
                 userId: auth.userId,
                 email: auth.email,
-                note: 'This will cause data scoping issues'
+                note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
             });
-            // Still allow upload but log the issue - customerId may be null for some auth flows
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for mod uploads. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
         }
         
         // Create mod metadata with initial status
         // CRITICAL: Never store email - email is ONLY for OTP authentication
+        // CRITICAL: authorDisplayName is fetched dynamically - stored value is fallback only
+        // Display names are always fetched fresh from auth API to support user name changes
         const mod: ModMetadata = {
             modId,
             slug,
-            authorId: auth.userId, // userId from OTP auth service
-            authorDisplayName, // Display name fetched from /auth/me (never use email)
+            authorId: auth.userId, // userId from OTP auth service (used for display name lookups)
+            authorDisplayName, // Display name fetched dynamically (fallback only - always fetch fresh)
             title: metadata.title,
             description: metadata.description || '',
             category: metadata.category,
@@ -795,7 +573,7 @@ export async function handleUploadMod(
             downloadCount: 0,
             visibility: metadata.visibility || 'public',
             featured: false,
-            customerId: auth.customerId, // Customer ID for data scoping
+            customerId: auth.customerId, // Customer ID for data scoping (REQUIRED)
             status: 'pending', // New mods start as pending review
             statusHistory: [{
                 status: 'pending',
@@ -972,7 +750,20 @@ async function handleThumbnailBinaryUpload(
             imageType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
         
         if (!isValidImage) {
-            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image`);
+            // Log diagnostic information to help debug
+            console.error('[Thumbnail] Invalid image format detected:', {
+                imageType,
+                fileName: thumbnailFile.name,
+                fileType: thumbnailFile.type,
+                fileSize: thumbnailFile.size,
+                bufferLength: imageBuffer.length,
+                firstBytes: Array.from(imageBuffer.slice(0, 8)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' '),
+                expectedPNG: '0x89 0x50 0x4e 0x47',
+                expectedJPEG: '0xff 0xd8 0xff',
+                expectedGIF: '0x47 0x49 0x46 0x38',
+                expectedWebP: '0x52 0x49 0x46 0x46',
+            });
+            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image. First bytes: ${Array.from(imageBuffer.slice(0, 4)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' ')}`);
         }
         
         // Upload to R2
@@ -1003,7 +794,7 @@ async function handleThumbnailBinaryUpload(
         // Return API proxy URL using slug for consistency
         const requestUrl = new URL(request.url);
         const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
             : `https://mods-api.idling.app`;  // Production
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
@@ -1088,7 +879,7 @@ async function handleThumbnailUpload(
         // Use request URL to determine base URL dynamically
         const requestUrl = new URL(request.url);
         const API_BASE_URL = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1'
-            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8787'}`  // Local dev
+            ? `${requestUrl.protocol}//${requestUrl.hostname}:${requestUrl.port || '8788'}`  // Local dev (mods-api runs on 8788)
             : `https://mods-api.idling.app`;  // Production
         return `${API_BASE_URL}/mods/${slug}/thumbnail`;
     } catch (error) {
@@ -1101,6 +892,7 @@ interface Env {
     MODS_KV: KVNamespace;
     MODS_R2: R2Bucket;
     MODS_PUBLIC_URL?: string;
+    MODS_ENCRYPTION_KEY?: string;
     ALLOWED_EMAILS?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;

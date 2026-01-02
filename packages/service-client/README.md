@@ -4,7 +4,7 @@ Reusable, agnostic library for making authenticated service-to-service API calls
 
 ## Features
 
-- **Multiple Authentication Methods**: Supports both `SUPER_ADMIN_API_KEY` and `SERVICE_API_KEY`
+- **Authentication**: Supports `SUPER_ADMIN_API_KEY` for admin/system-wide operations
 - **Automatic Cache Prevention**: All service calls use `cache: 'no-store'` to ensure fresh data
 - **Retry Logic**: Configurable exponential/linear/fixed backoff retry on failures
 - **Type-Safe**: Full TypeScript support with generic types
@@ -43,8 +43,6 @@ const client = new ServiceClient({
     baseURL: 'https://auth.idling.app',
     auth: {
         superAdminKey: env.SUPER_ADMIN_API_KEY, // For admin operations
-        // OR
-        serviceKey: env.SERVICE_API_KEY, // For general service calls
     },
     timeout: 60000, // 60 seconds
     retry: {
@@ -72,18 +70,6 @@ const client = new ServiceClient({
 });
 ```
 
-#### SERVICE_API_KEY
-Use for general service-to-service calls. Authenticates as a service (not a user).
-
-```typescript
-const client = new ServiceClient({
-    baseURL: 'https://customer-api.idling.app',
-    auth: {
-        serviceKey: env.SERVICE_API_KEY,
-        serviceKeyHeader: 'X-Service-Key', // Optional, defaults to 'X-Service-Key'
-    },
-});
-```
 
 ### Request Methods
 
@@ -135,7 +121,7 @@ try {
 ### Before (Direct fetch)
 
 ```typescript
-// [ERROR] Old way - manual fetch with authentication
+// ✗ Old way - manual fetch with authentication
 const response = await fetch(`${authApiUrl}/admin/users`, {
     method: 'GET',
     headers: {
@@ -149,7 +135,7 @@ const response = await fetch(`${authApiUrl}/admin/users`, {
 ### After (Service Client)
 
 ```typescript
-// [OK] New way - using service client
+// ✓ New way - using service client
 import { createServiceClient } from '@strixun/service-client';
 
 const client = createServiceClient(authApiUrl, env);
@@ -183,10 +169,10 @@ NETWORK_INTEGRITY_KEYPHRASE=your-secret-keyphrase-here
 
 ### What Gets Verified
 
-- [OK] Request method, path, and body
-- [OK] Response status code and body
-- [OK] Request timestamp (prevents replay attacks)
-- [ERROR] Headers (not included in signature - can vary)
+- ✓ Request method, path, and body
+- ✓ Response status code and body
+- ✓ Request timestamp (prevents replay attacks)
+- ✗ Headers (not included in signature - can vary)
 
 ### Error Handling
 
@@ -195,7 +181,7 @@ By default, integrity failures throw an error. You can configure this behavior:
 ```typescript
 const client = new ServiceClient({
     baseURL: 'https://api.example.com',
-    auth: { serviceKey: '...' },
+    auth: { superAdminKey: '...' },
     integrity: {
         throwOnFailure: false, // Log warning instead of throwing
     },
@@ -205,7 +191,6 @@ const client = new ServiceClient({
 ## Best Practices
 
 1. **Use SUPER_ADMIN_API_KEY for admin operations**: When you need system-wide access
-2. **Use SERVICE_API_KEY for general service calls**: For regular service-to-service communication
 3. **Always handle errors**: Wrap service calls in try-catch blocks
 4. **Use type parameters**: Specify response types for better type safety
 5. **Configure timeouts appropriately**: Longer timeouts for complex operations

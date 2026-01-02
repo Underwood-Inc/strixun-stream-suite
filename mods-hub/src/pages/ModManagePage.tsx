@@ -103,9 +103,24 @@ export function ModManagePage() {
         );
     }
 
-    const handleUpdate = async (updates: any, thumbnail?: File) => {
+    // CRITICAL: Check for customerId - required for mod operations
+    if (!user?.customerId) {
+        return (
+            <Unauthorized>
+                <UnauthorizedTitle>Customer Account Required</UnauthorizedTitle>
+                <UnauthorizedMessage>
+                    Your account is missing a customer association. This is required for mod management.
+                    <br />
+                    <br />
+                    Please contact support or try logging out and back in to refresh your account information.
+                </UnauthorizedMessage>
+            </Unauthorized>
+        );
+    }
+
+    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>) => {
         try {
-            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail });
+            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
         } catch {
             // Error handled by mutation
         }

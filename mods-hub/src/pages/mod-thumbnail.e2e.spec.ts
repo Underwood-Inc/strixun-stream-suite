@@ -41,29 +41,61 @@ interface ModsListResponse {
 
 /**
  * Helper: Get a mod with thumbnail from API
+ * CRITICAL: All API responses are encrypted and require JWT token for decryption
  */
 async function getModWithThumbnail(): Promise<{ slug: string; thumbnailUrl: string | null } | null> {
   try {
-    const response = await fetch(`${MODS_API_URL}/mods?limit=20`);
+    // Get JWT token for API calls (required for decryption even for public endpoints)
+    const testJWTToken = process.env.E2E_TEST_JWT_TOKEN;
+    if (!testJWTToken) {
+      console.warn('[E2E] E2E_TEST_JWT_TOKEN not set - API calls may fail');
+      return null;
+    }
+    
+    const { decryptWithJWT } = await import('@strixun/api-framework');
+    
+    const response = await fetch(`${MODS_API_URL}/mods?limit=20`, {
+      headers: {
+        'Authorization': `Bearer ${testJWTToken}`,
+      },
+    });
     if (!response.ok) return null;
     
-    const data = await response.json() as ModsListResponse;
+    let data = await response.json() as ModsListResponse;
+    // Decrypt if encrypted
+    const isEncrypted = response.headers.get('x-encrypted') === 'true' || 
+                       (data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true);
+    if (isEncrypted) {
+      data = await decryptWithJWT(data, testJWTToken) as ModsListResponse;
+    }
+    
     if (!data.mods || data.mods.length === 0) return null;
     
     // Find first mod (with or without thumbnail)
     const mod = data.mods[0];
     
     // Get mod detail to check thumbnail
-    const detailResponse = await fetch(`${MODS_API_URL}/mods/${mod.slug}`);
+    const detailResponse = await fetch(`${MODS_API_URL}/mods/${mod.slug}`, {
+      headers: {
+        'Authorization': `Bearer ${testJWTToken}`,
+      },
+    });
     if (!detailResponse.ok) return null;
     
-    const detailData = await detailResponse.json() as ModResponse;
+    let detailData = await detailResponse.json() as ModResponse;
+    // Decrypt if encrypted
+    const detailEncrypted = detailResponse.headers.get('x-encrypted') === 'true' || 
+                           (detailData && typeof detailData === 'object' && 'encrypted' in detailData && detailData.encrypted === true);
+    if (detailEncrypted) {
+      detailData = await decryptWithJWT(detailData, testJWTToken) as ModResponse;
+    }
     
     return {
       slug: mod.slug,
       thumbnailUrl: detailData.mod?.thumbnailUrl || mod.thumbnailUrl || null,
     };
-  } catch {
+  } catch (error) {
+    console.error('[E2E] Failed to get mod with thumbnail:', error);
     return null;
   }
 }

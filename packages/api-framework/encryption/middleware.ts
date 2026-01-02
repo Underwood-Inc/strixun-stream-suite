@@ -132,15 +132,29 @@ export function createEncryptionWrapper<T extends (...args: any[]) => Promise<Re
 }
 
 /**
+ * Options for wrapWithEncryption
+ */
+export interface WrapWithEncryptionOptions {
+  /** Whether JWT encryption is required (default: true - MANDATORY) */
+  requireJWT?: boolean;
+  /** Whether to allow service-to-service calls without JWT (default: false) */
+  allowServiceCallsWithoutJWT?: boolean;
+}
+
+/**
  * Helper function to wrap route handlers with automatic encryption
  * 
  * This is a convenience function that extracts auth from handler arguments
  * and automatically encrypts responses.
  * 
+ * **SECURITY HARDENING**: By default, JWT encryption is MANDATORY. All responses
+ * must be encrypted with JWT token. This is the base security requirement.
+ * 
  * @param handler - Handler function that returns Response
  * @param request - HTTP request
  * @param env - Worker environment
  * @param auth - Authentication result
+ * @param options - Encryption options (default: requireJWT=true)
  * @returns Route result with encrypted response (if applicable)
  * 
  * @example
@@ -160,8 +174,12 @@ export async function wrapWithEncryption(
   handlerResponse: Response,
   auth: AuthResult | null | undefined,
   request?: Request,
-  env?: { NETWORK_INTEGRITY_KEYPHRASE?: string; [key: string]: any }
+  env?: { NETWORK_INTEGRITY_KEYPHRASE?: string; [key: string]: any },
+  options?: WrapWithEncryptionOptions
 ): Promise<RouteResult> {
+  // Default to requiring JWT (security hardening)
+  const requireJWT = options?.requireJWT !== false; // Default: true
+  const allowServiceCallsWithoutJWT = options?.allowServiceCallsWithoutJWT === true; // Default: false
     // Import isServiceToServiceCall to properly detect service-to-service calls
     // This distinguishes between browser requests (no auth) and service-to-service calls (API key/service key)
     let isServiceCall = false;
@@ -247,14 +265,102 @@ export async function wrapWithEncryption(
     throw new Error('[NetworkIntegrity] Service-to-service calls require request and env to add integrity headers');
   }
 
-  // If no JWT token and not a service call, return unencrypted (browser request without auth)
+  // CRITICAL SECURITY: JWT encryption is MANDATORY by default
+  // If no JWT token and JWT is required, return 401 Unauthorized
   if (!auth?.jwtToken) {
-    // Browser request without authentication - return unencrypted
-    const contentType = handlerResponse.headers.get('content-type');
+    // If requireJWT is explicitly false, allow unencrypted responses (for auth endpoints)
+    if (!requireJWT) {
+      // JWT not required - return unencrypted response
+      const contentType = handlerResponse.headers.get('content-type');
+      const headers = new Headers(handlerResponse.headers);
+      headers.set('X-Encrypted', 'false');
+      
+      if (contentType?.includes('application/json')) {
+        const bodyText = await handlerResponse.text();
+        return {
+          response: new Response(bodyText, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: headers,
+          }),
+          customerId: auth?.customerId || null,
+        };
+      }
+      
+      return {
+        response: new Response(handlerResponse.body, {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        }),
+        customerId: auth?.customerId || null,
+      };
+    }
+    
+    // Check if this is a service-to-service call that's allowed without JWT
+    if (isServiceCall && allowServiceCallsWithoutJWT) {
+      // Service call allowed without JWT - return unencrypted with integrity header
+      const contentType = handlerResponse.headers.get('content-type');
+      const headers = new Headers(handlerResponse.headers);
+      headers.set('X-Encrypted', 'false');
+      
+      if (contentType?.includes('application/json')) {
+        const bodyText = await handlerResponse.text();
+        return {
+          response: new Response(bodyText, {
+            status: handlerResponse.status,
+            statusText: handlerResponse.statusText,
+            headers: headers,
+          }),
+          customerId: auth?.customerId || null,
+        };
+      }
+      
+      return {
+        response: new Response(handlerResponse.body, {
+          status: handlerResponse.status,
+          statusText: handlerResponse.statusText,
+          headers: headers,
+        }),
+        customerId: auth?.customerId || null,
+      };
+    }
+    
+    // JWT is required but not present - return 401 Unauthorized
+    if (requireJWT) {
+      const errorResponse = {
+        type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+        instance: request?.url || '/'
+      };
+      
+      const corsHeaders = request ? await import('@strixun/api-framework/enhanced').then(m => 
+        m.createCORSHeaders(request, { allowedOrigins: ['*'] })
+      ) : new Headers();
+      
+      return {
+        response: new Response(JSON.stringify(errorResponse), {
+          status: 401,
+          statusText: 'Unauthorized',
+          headers: {
+            'Content-Type': 'application/problem+json',
+            ...Object.fromEntries(corsHeaders.entries()),
+            'X-Encrypted': 'false',
+          },
+        }),
+        customerId: null,
+      };
+    }
+    
+    // JWT not required - return unencrypted (for endpoints that explicitly don't require JWT, like auth endpoints that return JWTs)
     const headers = new Headers(handlerResponse.headers);
     headers.set('X-Encrypted', 'false');
     
-    // If JSON, we need to clone and read the body
+    // Get content type before reading body
+    const contentType = handlerResponse.headers.get('content-type');
+    
     if (contentType?.includes('application/json')) {
       const bodyText = await handlerResponse.text();
       return {
@@ -267,7 +373,6 @@ export async function wrapWithEncryption(
       };
     }
     
-    // Not JSON, return as-is
     return {
       response: new Response(handlerResponse.body, {
         status: handlerResponse.status,
@@ -302,6 +407,18 @@ export async function wrapWithEncryption(
     // Parse and encrypt (we know auth.jwtToken exists from check above)
     responseData = await handlerResponse.json();
     
+    // DEBUG: Log token used for encryption (especially for /auth/me)
+    const isAuthMe = request?.url?.includes('/auth/me');
+    if (isAuthMe) {
+        console.log('[wrapWithEncryption] Preparing to encrypt /auth/me response:', {
+            jwtTokenLength: auth.jwtToken?.length || 0,
+            jwtTokenPrefix: auth.jwtToken ? auth.jwtToken.substring(0, 20) + '...' : 'none',
+            jwtTokenSuffix: auth.jwtToken ? '...' + auth.jwtToken.substring(auth.jwtToken.length - 10) : 'none',
+            responseDataType: typeof responseData,
+            responseDataKeys: responseData && typeof responseData === 'object' ? Object.keys(responseData) : null,
+        });
+    }
+    
     // CRITICAL: Exclude thumbnailUrl from encryption - it's a public URL that browsers need to fetch directly
     // Extract thumbnailUrls before encryption and store them separately
     thumbnailUrlsMap = null;
@@ -330,6 +447,15 @@ export async function wrapWithEncryption(
     }
     
     const encrypted = await encryptWithJWT(responseData, auth.jwtToken);
+    
+    if (isAuthMe) {
+        console.log('[wrapWithEncryption] /auth/me response encrypted:', {
+            encryptedKeys: encrypted && typeof encrypted === 'object' ? Object.keys(encrypted) : null,
+            hasTokenHash: encrypted && typeof encrypted === 'object' && 'tokenHash' in encrypted ? !!encrypted.tokenHash : false,
+            tokenHash: encrypted && typeof encrypted === 'object' && 'tokenHash' in encrypted ? (encrypted as any).tokenHash : null,
+            tokenHashLength: encrypted && typeof encrypted === 'object' && 'tokenHash' in encrypted ? String((encrypted as any).tokenHash).length : 0,
+        });
+    }
     
     // Add thumbnailUrls at top level (outside encrypted data) so they remain accessible
     // The frontend will need to merge them back after decryption

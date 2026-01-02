@@ -2,9 +2,7 @@
  * Service-to-Service Client Library
  * 
  * Reusable, agnostic library for making authenticated service-to-service API calls
- * Supports multiple authentication methods:
- * - SUPER_ADMIN_API_KEY: For admin/system-wide operations
- * - SERVICE_API_KEY: For general service-to-service calls
+ * Supports SUPER_ADMIN_API_KEY for admin/system-wide operations
  * 
  * Features:
  * - Automatic authentication header injection
@@ -31,17 +29,6 @@ export interface ServiceClientConfig {
          * This authenticates as a super-admin with system-wide access
          */
         superAdminKey?: string;
-        
-        /**
-         * Use SERVICE_API_KEY for general service-to-service calls
-         * This authenticates as a service (not a user)
-         */
-        serviceKey?: string;
-        
-        /**
-         * Custom header name for service key (default: 'X-Service-Key')
-         */
-        serviceKeyHeader?: string;
     };
     
     /**
@@ -107,8 +94,6 @@ interface InternalServiceClientConfig {
     baseURL: string;
     auth: {
         superAdminKey?: string;
-        serviceKey?: string;
-        serviceKeyHeader: string;
     };
     integrity: {
         enabled: boolean;
@@ -131,14 +116,8 @@ export class ServiceClient {
     private integrityKeyphrase: string;
     
     constructor(config: ServiceClientConfig) {
-        // Validate auth config
-        if (!config.auth.superAdminKey && !config.auth.serviceKey) {
-            throw new Error('ServiceClient: Either superAdminKey or serviceKey must be provided');
-        }
-        
-        if (config.auth.superAdminKey && config.auth.serviceKey) {
-            throw new Error('ServiceClient: Cannot use both superAdminKey and serviceKey. Use one or the other.');
-        }
+        // Auth is optional for internal service-to-service calls
+        // Some services (like customer-api) allow unauthenticated internal calls
         
         // Validate integrity config
         if (!config.integrity) {
@@ -157,8 +136,6 @@ export class ServiceClient {
             baseURL: config.baseURL,
             auth: {
                 superAdminKey: config.auth.superAdminKey,
-                serviceKey: config.auth.serviceKey,
-                serviceKeyHeader: config.auth.serviceKeyHeader || 'X-Service-Key',
             },
             integrity: {
                 enabled: config.integrity.enabled !== false, // Default to true
@@ -182,28 +159,21 @@ export class ServiceClient {
     
     /**
      * Get authentication header value
+     * Returns null if no auth is configured (for internal service-to-service calls)
      */
-    private getAuthHeader(): string {
+    private getAuthHeader(): string | null {
         if (this.config.auth.superAdminKey) {
             return `Bearer ${this.config.auth.superAdminKey}`;
         }
-        if (this.config.auth.serviceKey) {
-            return this.config.auth.serviceKey;
-        }
-        throw new Error('ServiceClient: No authentication key configured');
+        // No auth configured - allowed for internal service-to-service calls
+        return null;
     }
     
     /**
      * Get authentication header name
      */
     private getAuthHeaderName(): string {
-        if (this.config.auth.superAdminKey) {
-            return 'Authorization';
-        }
-        if (this.config.auth.serviceKey) {
-            return this.config.auth.serviceKeyHeader;
-        }
-        throw new Error('ServiceClient: No authentication key configured');
+        return 'Authorization';
     }
     
     /**
@@ -259,29 +229,30 @@ export class ServiceClient {
                 const url = this.buildURL(path, options.params);
                 const headers = new Headers(this.config.defaultHeaders);
                 
-                // Add authentication header
+                // Add authentication header (optional for internal service-to-service calls)
                 const authHeaderName = this.getAuthHeaderName();
                 const authHeaderValue = this.getAuthHeader();
-                console.log('[ServiceClient] Setting auth header', {
-                    authHeaderName,
-                    authHeaderValueLength: authHeaderValue.length,
-                    hasSuperAdminKey: !!this.config.auth.superAdminKey,
-                    hasServiceKey: !!this.config.auth.serviceKey,
-                    serviceKeyHeader: this.config.auth.serviceKeyHeader,
-                });
-                headers.set(authHeaderName, authHeaderValue);
-                
-                // Verify header was set correctly
-                const verifyHeader = headers.get(authHeaderName);
-                if (!verifyHeader) {
-                    console.error('[ServiceClient] CRITICAL: Auth header was not set!', {
+                if (authHeaderValue) {
+                    console.log('[ServiceClient] Setting auth header', {
                         authHeaderName,
-                        allHeaders: Array.from(headers.entries()).map(([k]) => k),
+                        authHeaderValueLength: authHeaderValue.length,
+                        hasSuperAdminKey: !!this.config.auth.superAdminKey,
                     });
+                    headers.set(authHeaderName, authHeaderValue);
+                    
+                    // Verify header was set correctly
+                    const verifyHeader = headers.get(authHeaderName);
+                    if (!verifyHeader) {
+                        const allHeaders: string[] = [];
+                        headers.forEach((_, key) => allHeaders.push(key));
+                        console.error('[ServiceClient] CRITICAL: Auth header was not set!', {
+                            authHeaderName,
+                            allHeaders,
+                        });
+                    }
                 } else {
-                    console.log('[ServiceClient] Auth header verified', {
-                        authHeaderName,
-                        headerValueLength: verifyHeader.length,
+                    console.log('[ServiceClient] No auth header - making unauthenticated internal service call', {
+                        url,
                     });
                 }
                 
@@ -310,30 +281,17 @@ export class ServiceClient {
                 }
                 
                 // Build request
+                // NOTE: Cloudflare Workers doesn't support the 'cache' option in RequestInit
+                // Workers fetch API doesn't cache by default, so we don't need to set it
                 const requestInit: RequestInit = {
                     method,
                     headers,
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
                 };
                 
                 // Add body to request
                 if (requestBody !== null) {
                     requestInit.body = requestBody;
                 }
-                
-                // Debug logging for authentication issues (reuse variables declared earlier)
-                const retrievedAuthHeaderValue = headers.get(authHeaderName);
-                console.log('[ServiceClient] Making request', {
-                    method,
-                    url,
-                    hasAuthHeader: !!retrievedAuthHeaderValue,
-                    authHeaderName: authHeaderName,
-                    authHeaderValueLength: retrievedAuthHeaderValue?.length || 0,
-                    hasIntegrityHeader: headers.has('X-Strixun-Request-Integrity'),
-                    allHeaders: Array.from(headers.entries()).map(([k]) => k),
-                });
                 
                 // Make request with timeout
                 const controller = new AbortController();
@@ -350,47 +308,24 @@ export class ServiceClient {
                     // Get response body text for integrity verification
                     const responseText = await response.text();
                     
-                    console.log('[ServiceClient] Response received', {
-                      status: response.status,
-                      statusText: response.statusText,
-                      bodyLength: responseText.length,
-                      hasIntegrityHeader: response.headers.has('X-Strixun-Response-Integrity'),
-                      integrityHeader: response.headers.get('X-Strixun-Response-Integrity')?.substring(0, 50) || 'missing',
-                      allHeaders: Array.from(response.headers.entries()).map(([k]) => k),
-                      integrityEnabled: this.config.integrity.enabled,
-                      verifyResponse: this.config.integrity.verifyResponse
-                    });
-                    
                     // Verify response integrity (baked-in security feature)
                     // CRITICAL: All service-to-service responses MUST include integrity header
-                    if (this.config.integrity.enabled && this.config.integrity.verifyResponse) {
-                        console.log('[ServiceClient] Verifying response integrity');
+                    // NOTE: Only verify if response is NOT encrypted (service-to-service calls shouldn't be encrypted)
+                    const isEncrypted = response.headers.get('X-Encrypted') === 'true';
+                    if (this.config.integrity.enabled && this.config.integrity.verifyResponse && !isEncrypted) {
                         const verification = await this.verifyResponseIntegrity(
                             response.status,
                             responseText,
                             response.headers
                         );
                         
-                        console.log('[ServiceClient] Integrity verification result', {
-                          verified: verification.verified,
-                          error: verification.error
-                        });
-                        
                         if (!verification.verified) {
                             if (this.config.integrity.throwOnFailure) {
-                                console.error('[ServiceClient] Integrity verification FAILED - throwing error');
                                 throw new Error(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             } else {
                                 console.warn(`[NetworkIntegrity] ${verification.error || 'Response integrity verification failed'}`);
                             }
-                        } else {
-                            console.log('[ServiceClient] Integrity verification PASSED');
                         }
-                    } else {
-                        console.log('[ServiceClient] Integrity verification skipped', {
-                          enabled: this.config.integrity.enabled,
-                          verifyResponse: this.config.integrity.verifyResponse
-                        });
                     }
                     
                     // Parse response
@@ -515,6 +450,7 @@ export class ServiceClient {
 /**
  * Create a service client from environment variables
  * Automatically detects which auth method to use based on available env vars
+ * Auth is optional - allows unauthenticated internal service-to-service calls
  */
 export function createServiceClient(
     baseURL: string,
@@ -526,15 +462,10 @@ export function createServiceClient(
     },
     config?: Partial<ServiceClientConfig>
 ): ServiceClient {
-    const auth: ServiceClientConfig['auth'] = {};
-    
-    if (env.SUPER_ADMIN_API_KEY) {
-        auth.superAdminKey = env.SUPER_ADMIN_API_KEY;
-    } else if (env.SERVICE_API_KEY) {
-        auth.serviceKey = env.SERVICE_API_KEY;
-    } else {
-        throw new Error('ServiceClient: Either SUPER_ADMIN_API_KEY or SERVICE_API_KEY must be set in environment');
-    }
+    // Auth is optional - use SUPER_ADMIN_API_KEY if available, otherwise SERVICE_API_KEY, otherwise no auth
+    const auth: ServiceClientConfig['auth'] = {
+        superAdminKey: env.SUPER_ADMIN_API_KEY || env.SERVICE_API_KEY || undefined,
+    };
     
     // Get integrity keyphrase from env or config
     const integrityKeyphrase = config?.integrity?.keyphrase || env.NETWORK_INTEGRITY_KEYPHRASE;

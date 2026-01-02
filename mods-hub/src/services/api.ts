@@ -4,10 +4,9 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import { encryptBinaryWithJWT, encryptBinaryWithServiceKey } from '@strixun/api-framework';
-import { getOtpEncryptionKey } from '../../../shared-config/otp-encryption';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
+import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
 /**
  * API base URL for constructing absolute URLs
@@ -42,9 +41,20 @@ const createClient = () => {
                     const { useAuthStore } = await import('../stores/auth');
                     const store = useAuthStore.getState();
                     if (store.user?.token) {
-                        const token = store.user.token.trim();
+                        const rawToken = store.user.token;
+                        const token = rawToken.trim();
+                        const wasTrimmed = rawToken !== token;
+                        
                         if (token && token.length > 0) {
-                            console.debug('[API] Token retrieved from Zustand store');
+                            console.log('[API] Token retrieved from Zustand store:', {
+                                rawTokenLength: rawToken.length,
+                                trimmedTokenLength: token.length,
+                                wasTrimmed,
+                                rawTokenPrefix: rawToken.substring(0, 20) + '...',
+                                trimmedTokenPrefix: token.substring(0, 20) + '...',
+                                rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+                                trimmedTokenSuffix: '...' + token.substring(token.length - 10),
+                            });
                             return token;
                         }
                     }
@@ -67,9 +77,20 @@ const createClient = () => {
                         }
                         
                         if (token) {
+                            const rawToken = token;
                             const trimmedToken = token.trim();
+                            const wasTrimmed = rawToken !== trimmedToken;
+                            
                             if (trimmedToken && trimmedToken.length > 0) {
-                                console.debug('[API] Token retrieved from localStorage');
+                                console.log('[API] Token retrieved from localStorage:', {
+                                    rawTokenLength: rawToken.length,
+                                    trimmedTokenLength: trimmedToken.length,
+                                    wasTrimmed,
+                                    rawTokenPrefix: rawToken.substring(0, 20) + '...',
+                                    trimmedTokenPrefix: trimmedToken.substring(0, 20) + '...',
+                                    rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+                                    trimmedTokenSuffix: '...' + trimmedToken.substring(trimmedToken.length - 10),
+                                });
                                 return trimmedToken;
                             }
                         }
@@ -81,9 +102,20 @@ const createClient = () => {
                 // Priority 3: Legacy keys for backwards compatibility
                 const legacyToken = localStorage.getItem('auth_token') || localStorage.getItem('access_token');
                 if (legacyToken) {
+                    const rawToken = legacyToken;
                     const trimmedToken = legacyToken.trim();
+                    const wasTrimmed = rawToken !== trimmedToken;
+                    
                     if (trimmedToken && trimmedToken.length > 0) {
-                        console.debug('[API] Token retrieved from legacy storage');
+                        console.log('[API] Token retrieved from legacy storage:', {
+                            rawTokenLength: rawToken.length,
+                            trimmedTokenLength: trimmedToken.length,
+                            wasTrimmed,
+                            rawTokenPrefix: rawToken.substring(0, 20) + '...',
+                            trimmedTokenPrefix: trimmedToken.substring(0, 20) + '...',
+                            rawTokenSuffix: '...' + rawToken.substring(rawToken.length - 10),
+                            trimmedTokenSuffix: '...' + trimmedToken.substring(trimmedToken.length - 10),
+                        });
                         return trimmedToken;
                     }
                 }
@@ -114,7 +146,25 @@ const createClient = () => {
         retry: {
             maxAttempts: 3,
             backoff: 'exponential',
+            initialDelay: 1000,
+            maxDelay: 10000,
             retryableErrors: [408, 429, 500, 502, 503, 504],
+        },
+        // Opt-in to specific features as needed
+        features: {
+            // Enable cancellation for request cancellation support
+            cancellation: true,
+            // Enable logging for debugging (can be disabled in production)
+            logging: import.meta.env.DEV,
+            // Other features disabled by default - enable as needed
+            deduplication: false,
+            queue: false,
+            circuitBreaker: false,
+            offlineQueue: false,
+            optimisticUpdates: false,
+            metrics: false,
+            // E2E encryption is handled automatically by response handler
+            // No need to enable e2eEncryption feature flag - response handler decrypts based on X-Encrypted header
         },
     });
 };
@@ -126,8 +176,11 @@ const api = createClient();
  * Get authentication token using the same logic as the API client
  * This is a helper function to access the token for encryption without
  * accessing the private config property
+ * 
+ * Exported for use in components that need to make authenticated requests
+ * outside of the API client (e.g., badge images that need auth headers)
  */
-async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(): Promise<string | null> {
     if (typeof window === 'undefined') {
         return null;
     }
@@ -183,6 +236,10 @@ async function getAuthToken(): Promise<string | null> {
 
 /**
  * List mods (public endpoint - returns approved mods only)
+ * Uses API framework client which automatically handles:
+ * - Authentication token injection
+ * - Encrypted response decryption
+ * - Error handling and retries
  */
 export async function listMods(filters: {
     page?: number;
@@ -208,6 +265,8 @@ export async function listMods(filters: {
     if (filters.visibility) params.append('visibility', filters.visibility);
     
     const queryString = params.toString() ? `?${params.toString()}` : '';
+    // API framework automatically handles encrypted responses via X-Encrypted header
+    // Response handler decrypts using token from request.metadata.token (set by auth middleware)
     const response = await api.get<{
         mods: any[];
         total: number;
@@ -233,46 +292,15 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
-    // Determine encryption method based on mod visibility
-    // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
-    // This allows anonymous downloads once mod is published, even if uploaded as pending
-    // Private/draft mods use JWT (requires authentication to download)
-    const isPublic = metadata.visibility === 'public';
-    let encryptedFile: Uint8Array;
-    
-    if (isPublic) {
-        // Public mods: encrypt with service key for anonymous downloads
-        // This works even if status is 'pending' - allows downloads once published
-        const serviceKey = getOtpEncryptionKey();
-        if (!serviceKey) {
-            throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
-    } else {
-        // Private/draft mods: encrypt with JWT (requires authentication to download)
-        const token = await getAuthToken();
-        if (!token) {
-            throw new Error('Authentication token required for file encryption');
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
-    }
-    
-    // Create encrypted File object with .encrypted extension
-    // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
-    // Create a new ArrayBuffer copy to ensure type compatibility
-    const encryptedArrayBuffer = encryptedFile.buffer.slice(
-        encryptedFile.byteOffset,
-        encryptedFile.byteOffset + encryptedFile.byteLength
-    ) as ArrayBuffer;
-    const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
-    const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+    // Encrypt file using shared utility (handles compression automatically)
+    const encryptedFileObj = await encryptFileForUpload(file);
 
     const formData = new FormData();
     formData.append('file', encryptedFileObj);
     formData.append('metadata', JSON.stringify(metadata));
     if (thumbnail) {
+        // CRITICAL: Thumbnails must NEVER be encrypted - they are public images
+        // Append thumbnail directly as unencrypted File object
         formData.append('thumbnail', thumbnail);
     }
     
@@ -284,12 +312,33 @@ export async function uploadMod(
 /**
  * Update mod (requires authentication and ownership/admin)
  */
-export async function updateMod(slug: string, updates: ModUpdateRequest, thumbnail?: File): Promise<any> {
-    // If thumbnail is provided, use FormData; otherwise use JSON
-    if (thumbnail) {
+export async function updateMod(slug: string, updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>): Promise<any> {
+    // If thumbnail or variant files are provided, use FormData; otherwise use JSON
+    if (thumbnail || (variantFiles && Object.keys(variantFiles).length > 0)) {
         const formData = new FormData();
         formData.append('metadata', JSON.stringify(updates));
-        formData.append('thumbnail', thumbnail);
+        if (thumbnail) {
+            // CRITICAL: Thumbnails must NEVER be encrypted - they are public images
+            // Append thumbnail directly as unencrypted File object
+            formData.append('thumbnail', thumbnail);
+        }
+        // Add variant files to FormData - CRITICAL: Encrypt with shared key (same as uploadMod/uploadVersion)
+        if (variantFiles) {
+            for (const [variantId, file] of Object.entries(variantFiles)) {
+                try {
+                    // Encrypt variant file using shared utility (handles compression automatically)
+                    // Same encryption system as main mod upload
+                    const encryptedFileObj = await encryptFileForUpload(file);
+                    formData.append(`variant_${variantId}`, encryptedFileObj);
+                } catch (error) {
+                    // Re-throw with context about which variant failed
+                    if (error instanceof Error) {
+                        throw new Error(`Failed to encrypt variant file "${file.name}" (variantId: ${variantId}): ${error.message}`);
+                    }
+                    throw error;
+                }
+            }
+        }
         // API framework automatically handles FormData - don't set Content-Type header
         const response = await api.put<any>(`/mods/${slug}`, formData);
         return response.data;
@@ -314,46 +363,8 @@ export async function uploadVersion(
     file: File,
     metadata: VersionUploadRequest
 ): Promise<any> {
-    // Fetch mod to check visibility - versions inherit mod's visibility
-    // CRITICAL FIX: Public mods use service key regardless of status (pending/published)
-    let isPublic = false;
-    try {
-        const mod = await getModDetail(modId);
-        isPublic = mod.visibility === 'public';
-    } catch (error) {
-        console.warn('[uploadVersion] Could not fetch mod to check visibility, defaulting to private encryption:', error);
-        // Default to private if we can't fetch mod (backward compatible)
-    }
-    
-    let encryptedFile: Uint8Array;
-    
-    if (isPublic) {
-        // Public mods: encrypt with service key for anonymous downloads
-        const serviceKey = getOtpEncryptionKey();
-        if (!serviceKey) {
-            throw new Error('Service encryption key not configured. Set VITE_SERVICE_ENCRYPTION_KEY in environment.');
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithServiceKey(fileBuffer, serviceKey);
-    } else {
-        // Private/draft mods: encrypt with JWT (requires authentication to download)
-        const token = await getAuthToken();
-        if (!token) {
-            throw new Error('Authentication token required for file encryption');
-        }
-        const fileBuffer = await file.arrayBuffer();
-        encryptedFile = await encryptBinaryWithJWT(fileBuffer, token);
-    }
-    
-    // Create encrypted File object with .encrypted extension
-    // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
-    // Create a new ArrayBuffer copy to ensure type compatibility
-    const encryptedArrayBuffer = encryptedFile.buffer.slice(
-        encryptedFile.byteOffset,
-        encryptedFile.byteOffset + encryptedFile.byteLength
-    ) as ArrayBuffer;
-    const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
-    const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+    // Encrypt file using shared utility (handles compression automatically)
+    const encryptedFileObj = await encryptFileForUpload(file);
 
     const formData = new FormData();
     formData.append('file', encryptedFileObj);
@@ -561,6 +572,7 @@ export async function updateAdminSettings(settings: { allowedFileExtensions: str
  * Download mod version
  * Uses API framework for authentication and proper error handling
  * The response handler automatically converts binary responses to ArrayBuffer
+ * Files are decrypted server-side before being sent to the client
  */
 export async function downloadVersion(modSlug: string, versionId: string, fileName: string): Promise<void> {
     // Use API framework's get method - response handler converts binary to ArrayBuffer
@@ -570,29 +582,93 @@ export async function downloadVersion(modSlug: string, versionId: string, fileNa
         throw new Error(`Failed to download version: ${response.statusText || 'Unknown error'}`);
     }
 
-    // Convert ArrayBuffer to Blob for download
-    const blob = new Blob([response.data as ArrayBuffer]);
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrl);
+    // Use shared utility to handle download (files are already decrypted server-side)
+    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+}
+
+/**
+ * Download mod variant
+ * Uses API framework for authentication and proper error handling
+ * The response handler automatically converts binary responses to ArrayBuffer
+ * Files are decrypted server-side before being sent to the client
+ */
+export async function downloadVariant(modSlug: string, variantId: string, fileName: string): Promise<void> {
+    // Use API framework's get method - response handler converts binary to ArrayBuffer
+    const response = await api.get<ArrayBuffer>(`/mods/${modSlug}/variants/${variantId}/download`);
+
+    if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to download variant: ${response.statusText || 'Unknown error'}`);
+    }
+
+    // Use shared utility to handle download (files are already decrypted server-side)
+    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+}
+
+/**
+ * Associated data types for R2 files
+ */
+export interface R2FileAssociatedMod {
+    modId: string;
+    title: string;
+    slug: string;
+    authorId: string;
+    authorDisplayName?: string | null;
+    description: string;
+    category: string;
+    status: string;
+    customerId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    latestVersion: string;
+    downloadCount: number;
+    visibility: string;
+    featured: boolean;
+}
+
+export interface R2FileAssociatedVersion {
+    versionId: string;
+    modId: string;
+    version: string;
+    changelog: string;
+    fileSize: number;
+    fileName: string;
+    sha256: string;
+    createdAt: string;
+    downloads: number;
+    gameVersions: string[];
+    dependencies?: Array<{ modId: string; version?: string; required: boolean }>;
+}
+
+export interface R2FileAssociatedUser {
+    userId: string;
+    displayName?: string | null;
+}
+
+export interface R2FileAssociatedData {
+    mod?: R2FileAssociatedMod;
+    version?: R2FileAssociatedVersion;
+    uploadedBy?: R2FileAssociatedUser;
+    isThumbnail?: boolean;
+    isModFile?: boolean;
+}
+
+export interface R2FileInfo {
+    key: string;
+    size: number;
+    uploaded: Date;
+    contentType?: string;
+    customMetadata?: Record<string, string>;
+    isOrphaned?: boolean;
+    associatedModId?: string;
+    associatedVersionId?: string;
+    associatedData?: R2FileAssociatedData;
 }
 
 /**
  * List R2 files
  */
 export async function listR2Files(options?: { limit?: number }): Promise<{
-    files: Array<{
-        key: string;
-        size: number;
-        uploaded: Date;
-        contentType?: string;
-        customMetadata?: Record<string, string>;
-    }>;
+    files: R2FileInfo[];
     total: number;
 }> {
     const params = new URLSearchParams();
@@ -607,6 +683,10 @@ export async function listR2Files(options?: { limit?: number }): Promise<{
             uploaded: string;
             contentType?: string;
             customMetadata?: Record<string, string>;
+            isOrphaned?: boolean;
+            associatedModId?: string;
+            associatedVersionId?: string;
+            associatedData?: R2FileAssociatedData;
         }>;
         total: number;
     }>(`/admin/r2/files${queryString}`);
@@ -632,24 +712,12 @@ export async function detectDuplicates(): Promise<{
         duplicateWastedSize: number;
     };
     duplicateGroups: Array<{
-        files: Array<{
-            key: string;
-            size: number;
-            uploaded: Date;
-            contentType?: string;
-            customMetadata?: Record<string, string>;
-        }>;
+        files: R2FileInfo[];
         count: number;
         totalSize: number;
         recommendedKeep?: string;
     }>;
-    orphanedFiles: Array<{
-        key: string;
-        size: number;
-        uploaded: Date;
-        contentType?: string;
-        customMetadata?: Record<string, string>;
-    }>;
+    orphanedFiles: R2FileInfo[];
 }> {
     const response = await api.get<{
         summary: {
@@ -667,6 +735,10 @@ export async function detectDuplicates(): Promise<{
                 uploaded: string;
                 contentType?: string;
                 customMetadata?: Record<string, string>;
+                isOrphaned?: boolean;
+                associatedModId?: string;
+                associatedVersionId?: string;
+                associatedData?: R2FileAssociatedData;
             }>;
             count: number;
             totalSize: number;
@@ -678,6 +750,10 @@ export async function detectDuplicates(): Promise<{
             uploaded: string;
             contentType?: string;
             customMetadata?: Record<string, string>;
+            isOrphaned?: boolean;
+            associatedModId?: string;
+            associatedVersionId?: string;
+            associatedData?: R2FileAssociatedData;
         }>;
     }>('/admin/r2/duplicates');
     return {
@@ -698,24 +774,31 @@ export async function detectDuplicates(): Promise<{
 
 /**
  * Delete single R2 file
+ * @param key - File key to delete
+ * @param force - If true, allows deletion of protected files (files associated with mods)
  */
-export async function deleteR2File(key: string): Promise<void> {
+export async function deleteR2File(key: string, force?: boolean): Promise<void> {
     const encodedKey = encodeURIComponent(key);
-    await api.delete(`/admin/r2/files/${encodedKey}`);
+    const url = `/admin/r2/files/${encodedKey}${force ? '?force=true' : ''}`;
+    await api.delete(url);
 }
 
 /**
  * Bulk delete R2 files
+ * @param keys - Array of file keys to delete
+ * @param force - If true, allows deletion of protected files (files associated with mods)
  */
-export async function bulkDeleteR2Files(keys: string[]): Promise<{
+export async function bulkDeleteR2Files(keys: string[], force?: boolean): Promise<{
     deleted: number;
     failed: number;
-    errors?: Array<{ key: string; error: string }>;
+    protected?: number;
+    results?: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean }>;
 }> {
     const response = await api.post<{
         deleted: number;
         failed: number;
-        errors?: Array<{ key: string; error: string }>;
-    }>('/admin/r2/files/delete', { keys });
+        protected?: number;
+        results?: Array<{ key: string; deleted: boolean; error?: string; protected?: boolean }>;
+    }>('/admin/r2/files/delete', { keys, force });
     return response.data;
 }

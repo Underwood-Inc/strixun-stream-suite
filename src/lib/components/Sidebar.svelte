@@ -109,8 +109,7 @@
         on:click={handleCycleAspect}
         disabled={!$connected}
         title="Cycle aspect ratio override"
-      >
-        [EMOJI] Cycle Aspect
+      > ★ Cycle Aspect
       </button>
       <button
         class="sidebar__action"
@@ -125,8 +124,7 @@
         on:click={handleToggleTextCycler}
         disabled={!$connected}
         title="Toggle text cycler (Space)"
-      >
-        [EMOJI] Toggle Text Cycler
+      > ★ Toggle Text Cycler
       </button>
     </div>
   </div>
@@ -184,16 +182,14 @@
         target="_blank"
         rel="noopener noreferrer"
         class="sidebar__link"
-      >
-        [EMOJI] Modrinth Profile
+      > ★ Modrinth Profile
       </a>
       <a
         href="https://github.com/strixun"
         target="_blank"
         rel="noopener noreferrer"
         class="sidebar__link"
-      >
-        [EMOJI] GitHub
+      > ★ GitHub
       </a>
     </div>
   </div>

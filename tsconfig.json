@@ -27,7 +27,7 @@
       "@styles/*": ["./src/styles/*"],
       "@shared-components/*": ["./shared-components/*"]
     },
-    "types": ["vite/client", "svelte", "node", "@cloudflare/workers-types"]
+    "types": ["vite/client", "svelte", "node"]
   },
   "include": [
     "src/**/*.ts",

@@ -66,7 +66,8 @@ async function authenticateRequest(
     return { authenticated: false, status: 401, error: 'Authorization header required' };
   }
 
-  const token = authHeader.substring(7);
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  const token = authHeader.substring(7).trim();
   const jwtSecret = getJWTSecret(env);
   const payload = await verifyJWT(token, jwtSecret);
 
@@ -274,7 +275,8 @@ export async function handleAttachTwitchAccount(
     const finalTwitchUserId = twitchUserId || twitchInfo.twitchUserId;
     const finalTwitchUsername = twitchUsername || twitchInfo.twitchUsername;
 
-    const authToken = request.headers.get('Authorization')?.substring(7) || '';
+    // CRITICAL: Trim token to ensure it matches the token used for encryption
+    const authToken = request.headers.get('Authorization')?.substring(7).trim() || '';
     const encryptedToken = await encryptToken(accessToken, authToken, env);
 
     const emailHash = await hashEmail(auth.email!);

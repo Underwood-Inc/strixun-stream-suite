@@ -6,11 +6,13 @@
  * for any confirmation that requires extra safety (deletions, irreversible actions, etc.)
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { generateRandomName } from '../../utils/nameGenerator';
+import { getButtonStyles } from '../../utils/buttonStyles';
+import { getCardStyles } from '../../utils/sharedStyles';
 
 const Overlay = styled.div`
     position: fixed;
@@ -27,10 +29,7 @@ const Overlay = styled.div`
 `;
 
 const Modal = styled.div`
-    background: ${colors.bgSecondary};
-    border: 1px solid ${colors.border};
-    border-radius: 8px;
-    padding: ${spacing.xl};
+    ${getCardStyles('default')}
     max-width: 600px;
     width: 100%;
     max-height: 90vh;
@@ -48,13 +47,22 @@ const Title = styled.h2`
     margin: 0;
 `;
 
-const Message = styled.p`
+const Message = styled.div`
     color: ${colors.textSecondary};
     line-height: 1.6;
     margin: 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
+    white-space: pre-line;
+    
+    p {
+        margin: 0 0 ${spacing.md} 0;
+        
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
 `;
 
 const ConfirmationSection = styled.div`
@@ -121,47 +129,9 @@ const ButtonGroup = styled.div`
     justify-content: flex-end;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
-    padding: ${spacing.sm} ${spacing.md};
-    border: 1px solid ${colors.border};
-    border-radius: 4px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
+    ${({ $variant = 'primary' }) => getButtonStyles($variant)}
     font-size: 0.875rem;
-    
-    ${props => {
-        if (props.variant === 'danger') {
-            return `
-                background: ${colors.danger};
-                color: #fff;
-                &:hover:not(:disabled) {
-                    background: ${colors.danger}dd;
-                }
-            `;
-        }
-        if (props.variant === 'primary') {
-            return `
-                background: ${colors.accent};
-                color: ${colors.bg};
-                &:hover:not(:disabled) {
-                    background: ${colors.accentHover};
-                }
-            `;
-        }
-        return `
-            background: ${colors.bgSecondary};
-            color: ${colors.text};
-            &:hover:not(:disabled) {
-                background: ${colors.bgTertiary};
-            }
-        `;
-    }}
-    
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
 `;
 
 export interface ConfirmationModalProps {
@@ -169,7 +139,7 @@ export interface ConfirmationModalProps {
     onClose: () => void;
     onConfirm: () => void | Promise<void>;
     title: string;
-    message: string;
+    message: string | React.ReactNode;
     confirmText?: string;
     cancelText?: string;
     isLoading?: boolean;
@@ -253,14 +223,14 @@ export function ConfirmationModal({
 
                 <ButtonGroup>
                     <Button
-                        variant="secondary"
+                        $variant="secondary"
                         onClick={onClose}
                         disabled={isLoading}
                     >
                         {cancelText}
                     </Button>
                     <Button
-                        variant="danger"
+                        $variant="danger"
                         onClick={handleConfirm}
                         disabled={isLoading || confirmationName.trim() !== requiredName}
                     >

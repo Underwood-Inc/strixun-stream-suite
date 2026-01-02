@@ -35,6 +35,66 @@
   } @else if $variant == 'danger' {
     @include arcade-button(var(--danger), color.scale(color('danger'), $lightness: -20%));
     color: #fff;
+  } @else if $variant == 'link' {
+    background: transparent;
+    color: var(--accent);
+    padding: 4px 8px;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(237, 174, 73, 0.1);
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+    
+    &:active {
+      background: rgba(237, 174, 73, 0.2);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  } @else if $variant == 'icon' {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 0 var(--border);
+    position: relative;
+    overflow: hidden;
+    
+    @include ripple-effect(rgba(255, 255, 255, 0.2));
+    
+    &:hover {
+      background: var(--border);
+      color: var(--text);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 0 var(--border);
+    }
+    
+    &:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 0 2px 0 var(--border);
+    }
   } @else {
     // Default arcade style
     @include arcade-button(var(--accent), var(--accent-dark));
@@ -440,5 +500,378 @@
 // COMING SOON utility class
 .coming-soon {
   @include coming-soon-state;
+}
+
+// ============ Card ============
+// Base card styling - consistent across all apps
+@mixin card($variant: 'default') {
+  background: var(--card, var(--bg-secondary));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  
+  @if $variant == 'hover' {
+    &:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+// ============ Status Badge/Flair ============
+// Status badges for mods, users, etc.
+@mixin status-badge($type: 'default') {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: capitalize;
+  
+  @if $type == 'success' {
+    background: var(--success)20;
+    color: var(--success);
+  } @else if $type == 'warning' {
+    background: var(--warning)20;
+    color: var(--warning);
+  } @else if $type == 'danger' {
+    background: var(--danger)20;
+    color: var(--danger);
+  } @else if $type == 'info' {
+    background: var(--info)20;
+    color: var(--info);
+  } @else if $type == 'accent' {
+    background: var(--accent)20;
+    color: var(--accent);
+  } @else {
+    // Default - muted
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+}
+
+// Verified badge (green with checkmark)
+@mixin verified-badge {
+  @include status-badge('success');
+  
+  &::before {
+    content: '✓';
+    font-weight: 700;
+  }
+}
+
+// Strixun badge (grey/muted)
+@mixin strixun-badge {
+  @include status-badge('default');
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+// ============ Tooltip ============
+// Tooltip base styles (component handles positioning, but styles are here)
+@mixin tooltip {
+  position: absolute;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: var(--bg-dark, rgba(15, 14, 11, 0.95));
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 300px;
+  
+  // Arrow (component should add this element)
+  &::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+}
+
+// Tooltip arrow positions
+@mixin tooltip-arrow($position: 'top') {
+  @if $position == 'top' {
+    &::before {
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 6px 0 6px;
+      border-color: var(--border) transparent transparent transparent;
+    }
+  } @else if $position == 'bottom' {
+    &::before {
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 0 6px 6px 6px;
+      border-color: transparent transparent var(--border) transparent;
+    }
+  } @else if $position == 'left' {
+    &::before {
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-width: 6px 0 6px 6px;
+      border-color: transparent transparent transparent var(--border);
+    }
+  } @else if $position == 'right' {
+    &::before {
+      left: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-width: 6px 6px 6px 0;
+      border-color: transparent var(--border) transparent transparent;
+    }
+  }
+}
+
+// ============ Copy Button ============
+// Small secondary button for copy actions
+@mixin copy-button {
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+// ============ Click Effect (Ripple) ============
+// Cursor-position click ripple effect for interactive elements
+// Usage: @include click-effect;
+// Optional: @include click-effect(rgba(255, 255, 255, 0.3), 100px); // color, size
+// Note: Requires JavaScript to set --ripple-x and --ripple-y CSS variables at click position
+@mixin click-effect($color: rgba(255, 255, 255, 0.3), $size: 100px) {
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    width: $size;
+    height: $size;
+    border-radius: 50%;
+    background: $color;
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    left: var(--ripple-x, 50%);
+    top: var(--ripple-y, 50%);
+    margin-left: calc(-#{$size} / 2);
+    margin-top: calc(-#{$size} / 2);
+  }
+  
+  &:active::after {
+    transform: scale(4);
+    opacity: 1;
+    transition: transform 0s, opacity 0s;
+  }
+  
+  // Prevent text selection during click
+  &:active {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}
+
+// ============ Candy Shop Slanted Bar Animation ============
+// Classic retro candy shop moving slanted bar effect
+// Creates diagonal stripes that move continuously across the element
+// Usage: @include candy-shop-bars;
+// Optional: @include candy-shop-bars(45deg, 20px, rgba(255, 255, 255, 0.3), 2s);
+// Parameters:
+//   $angle: Angle of the stripes (default: 45deg for diagonal)
+//   $stripe-width: Width of each stripe (default: 20px)
+//   $stripe-color: Color of the stripes (default: rgba(255, 255, 255, 0.3))
+//   $duration: Animation duration (default: 6s - 3x slower for smooth effect)
+@mixin candy-shop-bars(
+  $angle: 45deg,
+  $stripe-width: 20px,
+  $stripe-color: rgba(255, 255, 255, 0.3),
+  $duration: 6s
+) {
+  position: relative;
+  overflow: hidden;
+  
+  // Create the moving slanted bars using a pseudo-element
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: repeating-linear-gradient(
+      $angle,
+      transparent,
+      transparent $stripe-width,
+      $stripe-color $stripe-width,
+      $stripe-color calc(#{$stripe-width} * 2)
+    );
+    // Fixed background-size for consistent speed regardless of element width
+    // 56.568px = sqrt(40px^2) for 45deg diagonal movement matching stripe pattern
+    background-size: 56.568px 56.568px;
+    animation: candy-shop-bars $duration linear infinite;
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: overlay;
+  }
+  
+  // Ensure text/content stays above the animation
+  > * {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+// ============ Quirky Click Interaction ============
+// Smooth wobble-pop effect on click - adds personality to interactive elements
+// Usage: @include quirky-click;
+// Optional: @include quirky-click(0.5s, 8deg, 1.12); // duration, rotation, scale
+// Parameters:
+//   $duration: Animation duration (default: 0.5s)
+//   $rotation: Max rotation angle (default: 8deg)
+//   $scale: Max scale multiplier (default: 1.12)
+@mixin quirky-click($duration: 0.5s, $rotation: 8deg, $scale: 1.12) {
+  cursor: pointer;
+  transition: transform 0.1s ease-out;
+  
+  &:active {
+    animation: quirky-wobble-pop $duration cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+// ============ Digital Game Card 3D Effect ============
+// 3D card effect with mouse-based tilt, perspective, hover lift, and dynamic light sheen
+// Mimics a physical game card with depth and interactivity
+// Requires JavaScript to set --mouse-x and --mouse-y CSS variables (use useMousePosition hook)
+// Usage: @include game-card-3d;
+// Optional: @include game-card-3d(24px, 28deg, 1.08); // lift, maxRotation, scale
+// Parameters:
+//   $lift-distance: How much the card lifts on hover (default: 24px)
+//   $max-rotation: Max rotation angle based on mouse position (default: 28deg)
+//   $scale: Scale multiplier on hover (default: 1.08)
+@mixin game-card-3d($lift-distance: 24px, $max-rotation: 28deg, $scale: 1.08) {
+  position: relative;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  --mouse-x: 0;
+  --mouse-y: 0;
+  transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1), 
+              box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  
+  // Smooth transition out with slight delay to prevent jerky animations
+  &:not(:hover) {
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1) 0.1s,
+                box-shadow 0.3s cubic-bezier(0.23, 1, 0.32, 1) 0.1s;
+  }
+  
+  // Subtle 3D shadow for depth
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15),
+              0 1px 3px rgba(0, 0, 0, 0.1);
+  
+  &:hover {
+    transform: translateY(-#{$lift-distance}) 
+               translateZ(40px)
+               rotateX(var(--rotate-x, 0deg))
+               rotateY(var(--rotate-y, 0deg))
+               scale($scale);
+    // Enhanced drop shadow for lifted effect - more pronounced and spread out
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6),
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                0 10px 30px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  }
+  
+  // Dynamic intense glare that follows mouse position
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      circle 200px at calc(50% + var(--mouse-x) * 50%) calc(50% + var(--mouse-y) * 50%),
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.4) 20%,
+      rgba(255, 255, 255, 0.2) 40%,
+      rgba(255, 255, 255, 0) 60%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: 1;
+    mix-blend-mode: overlay;
+  }
+  
+  &:hover::before {
+    opacity: 1;
+  }
+  
+  // Animated sweeping shimmer glare - more visible
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.6) 40%,
+      rgba(255, 255, 255, 1) 50%,
+      rgba(255, 255, 255, 0.6) 60%,
+      transparent 75%
+    );
+    opacity: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: 1;
+    animation: shimmer-sweep 2.5s ease-in-out infinite;
+    mix-blend-mode: overlay;
+    will-change: transform, opacity;
+  }
+  
+  &:hover::after {
+    opacity: 0.9;
+  }
+  
+  // Ensure content stays above shine effects
+  > * {
+    position: relative;
+    z-index: 2;
+  }
 }
 

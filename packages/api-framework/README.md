@@ -58,17 +58,17 @@ const response = await api.get('/endpoint');
 
 ## Features
 
-- [OK] Type-safe API client
-- [OK] Request deduplication
-- [OK] Automatic retry with exponential backoff
-- [OK] Multi-level caching
-- [OK] Request queue with priorities
-- [OK] Circuit breaker
-- [OK] Offline queue
-- [OK] Optimistic updates
-- [OK] E2E encryption
-- [OK] Response filtering
-- [OK] Type-based response building
-- [OK] RFC 7807 error handling
-- [OK] Cloudflare Worker support
+- ✓ Type-safe API client
+- ✓ Request deduplication
+- ✓ Automatic retry with exponential backoff
+- ✓ Multi-level caching
+- ✓ Request queue with priorities
+- ✓ Circuit breaker
+- ✓ Offline queue
+- ✓ Optimistic updates
+- ✓ E2E encryption
+- ✓ Response filtering
+- ✓ Type-based response building
+- ✓ RFC 7807 error handling
+- ✓ Cloudflare Worker support
 

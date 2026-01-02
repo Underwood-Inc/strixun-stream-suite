@@ -46,7 +46,7 @@ print_option() {
 
 # Function to print info
 print_info() {
-    echo -e "${CYAN}[INFO]${NC} $1"
+    echo -e "${CYAN}ℹ${NC} $1"
 }
 
 # Function to print warning

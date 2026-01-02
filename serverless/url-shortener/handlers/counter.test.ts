@@ -316,4 +316,85 @@ describe('URL Counter Logic', () => {
       expect(counterPutCalls.length).toBe(0);
     });
   });
+
+  describe('Slug Release on Delete', () => {
+    it('should release slug when URL is deleted, making it available for reuse', async () => {
+      // Arrange - First, delete a URL
+      const deleteRequest = new Request('https://s.idling.app/api/delete/abc123', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': 'Bearer test-token',
+        },
+      });
+
+      const urlData = {
+        url: 'https://example.com',
+        shortCode: 'abc123',
+        userId: 'user-123',
+        email: 'test@example.com',
+        createdAt: new Date().toISOString(),
+        clickCount: 0,
+      };
+
+      vi.mocked(mockEnv.URL_KV.get).mockImplementation((key: string, options?: any) => {
+        if (key === 'url_abc123') {
+          return Promise.resolve(JSON.stringify(urlData));
+        }
+        if (key === 'user_urls_user-123' && options?.type === 'json') {
+          return Promise.resolve([{ shortCode: 'abc123', url: 'https://example.com' }]);
+        }
+        if (key === 'total_urls_count') {
+          return Promise.resolve('10');
+        }
+        return Promise.resolve(null);
+      });
+
+      vi.mocked(mockEnv.URL_KV.put).mockResolvedValue(undefined);
+      vi.mocked(mockEnv.URL_KV.delete).mockResolvedValue(undefined);
+
+      // Act - Delete the URL
+      await handleDeleteUrl(deleteRequest, mockEnv);
+
+      // Assert - Verify the slug key was deleted
+      expect(mockEnv.URL_KV.delete).toHaveBeenCalledWith('url_abc123');
+
+      // Now verify the slug can be reused by creating a new URL with the same slug
+      vi.clearAllMocks();
+      vi.mocked(authenticateRequest).mockResolvedValue(mockAuth);
+
+      const createRequest = new Request('https://s.idling.app/api/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer test-token',
+        },
+        body: JSON.stringify({ 
+          url: 'https://new-example.com',
+          customCode: 'abc123' // Reusing the deleted slug
+        }),
+      });
+
+      // Mock: slug check should return null (slug is available)
+      vi.mocked(mockEnv.URL_KV.get)
+        .mockResolvedValueOnce(null) // Slug check - should be null (available)
+        .mockResolvedValueOnce(null) // User URLs
+        .mockResolvedValueOnce('9'); // Counter (decremented from 10)
+
+      vi.mocked(mockEnv.URL_KV.put).mockResolvedValue(undefined);
+
+      // Act - Create new URL with the same slug
+      const response = await handleCreateShortUrl(createRequest, mockEnv);
+      const responseData = await response.json();
+
+      // Assert - Should succeed and use the previously deleted slug
+      expect(responseData.success).toBe(true);
+      expect(responseData.shortCode).toBe('abc123');
+      expect(mockEnv.URL_KV.get).toHaveBeenCalledWith('url_abc123'); // Should check for availability
+      expect(mockEnv.URL_KV.put).toHaveBeenCalledWith(
+        'url_abc123',
+        expect.stringContaining('"shortCode":"abc123"'),
+        expect.objectContaining({ expirationTtl: expect.any(Number) })
+      );
+    });
+  });
 });

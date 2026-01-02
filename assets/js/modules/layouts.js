@@ -432,7 +432,7 @@ function renderSavedLayouts() {
                 <div class="config-item__actions">
                     <button onclick="applyLayout(${originalIndex})" class="btn-primary btn-sm">▶ Apply</button>
                     <button onclick="previewLayout(${originalIndex})" class="btn-secondary btn-sm"></button>
-                    <button onclick="deleteLayout(${originalIndex})" class="btn-danger btn-sm">[EMOJI]️</button>
+                    <button onclick="deleteLayout(${originalIndex})" class="btn-danger btn-sm"> ★ ️</button>
                 </div>
             </div>
         `;

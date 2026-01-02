@@ -31,8 +31,7 @@ export interface OtpLoginConfig {
   };
   /** Optional: Custom headers to include in requests */
   customHeaders?: Record<string, string>;
-  /** Optional: OTP encryption key for encrypting request bodies (required for full encryption) */
-  otpEncryptionKey?: string;
+  // otpEncryptionKey removed - service key encryption was obfuscation only
 }
 
 export interface LoginSuccessData {

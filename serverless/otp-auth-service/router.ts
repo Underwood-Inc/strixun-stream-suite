@@ -9,12 +9,29 @@ import { sendWebhook } from './services/webhooks.js';
 import { getPlanLimits } from './utils/validation.js';
 import { handlePublicRoutes } from './router/public-routes.js';
 import { handleDevRoutes } from './router/dev-routes.js';
-import { handleAdminRoutes } from './router/admin-routes.js';
+import { handleDashboardRoutes } from './router/dashboard-routes.js';
 import { handleAuthRoutes } from './router/auth-routes.js';
 import { handleUserRoutes } from './router/user-routes.js';
 import { handleGameRoutes } from './router/game-routes.js';
-import { applyEncryptionMiddleware } from '@strixun/api-framework';
+import { wrapWithEncryption } from '@strixun/api-framework';
 import type { ExecutionContext } from '@strixun/types';
+
+/**
+ * Endpoints that MUST NOT require JWT (chicken-and-egg problem)
+ * These endpoints generate JWT tokens or are called by systems that can't send JWT headers
+ */
+const NO_JWT_REQUIRED_PATHS = [
+    '/auth/request-otp',
+    '/auth/verify-otp',      // ⚠️ CRITICAL - Returns JWT token
+    '/auth/restore-session',
+    '/signup',
+    '/signup/verify',
+    '/track/email-open',     // Email clients can't send headers
+    '/assets/',              // Static assets (CSS, JS, images) - must be public
+    '/dashboard',            // Dashboard SPA - assets served via /assets/ but dashboard itself is public
+    '/',                     // Landing page for first-time visitors
+    ''
+];
 
 /**
  * Check for high error rate and alert
@@ -79,23 +96,27 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             response = publicResponse;
         }
         
-        // Try dev routes (ONLY in test mode - disabled in production)
-        // SECURITY: handleDevRoutes returns null in production, so this code path is safe
-        // Production ENVIRONMENT is always 'production' (set in wrangler.toml)
+        // Try dev routes (ONLY in test mode - COMPLETELY ABSENT in production)
+        // SECURITY: handleDevRoutes returns null in production, so /dev/otp endpoint DOES NOT EXIST
+        // Production ENVIRONMENT is always 'production' (explicitly set in wrangler.toml [env.production.vars])
+        // Production RESEND_API_KEY is a real key (never starts with 're_test_')
+        // Result: In production, this returns null -> route not found -> 404 (endpoint is absent, not just disabled)
         if (!response) {
             const devResult = await handleDevRoutes(request, path, env);
             if (devResult) {
                 customerId = devResult.customerId || null;
                 response = devResult.response;
             }
+            // PRODUCTION: devResult is always null, so this block never executes
+            // The /dev/otp endpoint is completely absent in production
         }
         
-        // Try admin routes
+        // Try dashboard routes
         if (!response) {
-            const adminResult = await handleAdminRoutes(request, path, env);
-            if (adminResult) {
-                customerId = adminResult.customerId || null;
-                response = adminResult.response;
+            const dashboardResult = await handleDashboardRoutes(request, path, env);
+            if (dashboardResult) {
+                customerId = dashboardResult.customerId || null;
+                response = dashboardResult.response;
             }
         }
         
@@ -140,8 +161,85 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             await trackResponseTime(customerId, endpoint, responseTime, env);
         }
         
-        // Apply encryption middleware to ALL responses
-        return await applyEncryptionMiddleware(response, request, env);
+        // CRITICAL: Handle JWT encryption requirements per route
+        // Extract JWT token from request for encryption
+        // CRITICAL: Trim token to ensure it matches the token used for decryption
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+        const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
+        
+        // Check if this endpoint should NOT require JWT
+        const shouldRequireJWT = !NO_JWT_REQUIRED_PATHS.some(noJwtPath => {
+            if (noJwtPath === '/' || noJwtPath === '') {
+                return path === '/' || path === '';
+            }
+            // Handle paths that end with / (like /assets/) - match both exact and sub-paths
+            if (noJwtPath.endsWith('/')) {
+                return path === noJwtPath || path.startsWith(noJwtPath);
+            }
+            // Handle exact match or sub-path match
+            return path === noJwtPath || path.startsWith(noJwtPath + '/');
+        });
+        
+        // Special case: Email tracking - NO encryption at all
+        if (path === '/track/email-open') {
+            return response; // Return as-is, no encryption
+        }
+        
+        // Check if response is binary (HTML, JS, CSS, images) vs JSON
+        const contentType = response.headers.get('Content-Type') || '';
+        const isBinary = !contentType.includes('application/json') && 
+                        (contentType.includes('text/html') || 
+                         contentType.includes('application/javascript') || 
+                         contentType.includes('text/css') || 
+                         contentType.includes('image/') ||
+                         contentType.includes('font/'));
+        
+        // For binary responses, handle encryption differently
+        if (isBinary && shouldRequireJWT) {
+            if (!jwtToken) {
+                const errorResponse = {
+                    type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+                    title: 'Unauthorized',
+                    status: 401,
+                    detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+                    instance: request.url
+                };
+                const corsHeaders = getCorsHeaders(env, request);
+                return new Response(JSON.stringify(errorResponse), {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/problem+json',
+                        ...corsHeaders,
+                    },
+                });
+            }
+            
+            // Encrypt binary response
+            const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
+            const bodyBytes = await response.arrayBuffer();
+            const encryptedBody = await encryptBinaryWithJWT(new Uint8Array(bodyBytes), jwtToken);
+            const corsHeaders = getCorsHeaders(env, request);
+            return new Response(encryptedBody, {
+                status: response.status,
+                headers: {
+                    ...corsHeaders,
+                    'Content-Type': 'application/octet-stream',
+                    'X-Encrypted': 'true',
+                    'X-Original-Content-Type': contentType,
+                },
+            });
+        }
+        
+        // For JSON responses or non-required JWT, use wrapWithEncryption
+        const encryptedResult = await wrapWithEncryption(
+            response,
+            authForEncryption,
+            request,
+            env,
+            { requireJWT: shouldRequireJWT }
+        );
+        return encryptedResult.response;
     } catch (error: any) {
         console.error('Request handler error:', error);
         
@@ -166,8 +264,19 @@ export async function route(request: Request, env: any, ctx?: ExecutionContext):
             await trackResponseTime(customerId, endpoint, responseTime, env);
         }
         
-        // Apply encryption middleware to error responses too
-        return await applyEncryptionMiddleware(errorResponse, request, env);
+        // Apply encryption to error responses (but don't require JWT for errors)
+        // CRITICAL: Trim token to ensure it matches the token used for decryption
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+        const authForEncryption = jwtToken ? { userId: 'anonymous', customerId, jwtToken } : null;
+        const encryptedError = await wrapWithEncryption(
+            errorResponse,
+            authForEncryption,
+            request,
+            env,
+            { requireJWT: false } // Don't require JWT for error responses
+        );
+        return encryptedError.response;
     } finally {
         // Track response time
         const responseTime = performance.now() - startTime;

@@ -20,8 +20,8 @@ export type ModStatus =
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
-    authorId: string; // userId from OTP auth service
-    authorDisplayName?: string | null; // Display name from customer account (never use email)
+    authorId: string; // userId from OTP auth service (used for display name lookups)
+    authorDisplayName?: string | null; // Display name fetched dynamically from auth API (always fresh, fallback only)
     title: string;
     description: string;
     category: ModCategory;
@@ -34,14 +34,17 @@ export interface ModMetadata {
     downloadCount: number;
     visibility: ModVisibility;
     featured: boolean;
-    customerId: string | null; // Customer ID for data scoping (from OTP auth)
+    customerId: string | null; // Customer ID for data scoping (REQUIRED - set automatically if missing)
     status: ModStatus; // Review/triage status
     statusHistory?: ModStatusHistory[]; // History of status changes
     reviewComments?: ModReviewComment[]; // Comments from admins/uploader
     variants?: ModVariant[]; // Variants for the mod
     gameId?: string; // Associated game ID (sub-category)
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
-    // Use authorId to lookup displayName via /auth/user/:userId if needed
+    // CRITICAL: authorDisplayName is fetched dynamically from /auth/user/:userId on every API call
+    // This ensures display names stay current when users change them
+    // The stored value is a fallback only if the fetch fails
+    // CRITICAL: customerId is required for proper data scoping and is set automatically if missing
 }
 
 /**
@@ -171,6 +174,7 @@ export interface ModVariant {
     name: string;
     description?: string;
     fileUrl?: string; // For existing variants
+    r2Key?: string; // R2 storage key for the variant file (for reliable lookup)
     fileName?: string;
     fileSize?: number;
     version?: string;
@@ -179,6 +183,7 @@ export interface ModVariant {
     dependencies?: ModDependency[];
     createdAt?: string;
     updatedAt?: string;
+    downloads?: number; // Individual download count for this variant
 }
 
 /**

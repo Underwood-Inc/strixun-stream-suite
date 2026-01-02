@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ModListPage } from './pages/ModListPage';
 import { ModDetailPage } from './pages/ModDetailPage';
@@ -18,6 +18,7 @@ import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { AdminRoute } from './components/routing/AdminRoute';
 import { UploadPermissionRoute } from './components/routing/UploadPermissionRoute';
+import { useAuthStore } from './stores/auth';
 
 function ConditionalLayout({ children }: { children: React.ReactNode }) {
     const location = useLocation();
@@ -31,6 +32,19 @@ function ConditionalLayout({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
+    const { restoreSession } = useAuthStore();
+
+    // Restore session from backend on app initialization
+    // This enables cross-application session sharing for the same device
+    // Called early in app lifecycle, similar to main app's loadAuthState()
+    useEffect(() => {
+        // Always try to restore - it will check if restoration is needed
+        // (validates existing tokens, checks expiration, etc.)
+        restoreSession().catch(error => {
+            console.debug('[App] Session restoration failed (non-critical):', error);
+        });
+    }, [restoreSession]); // Only run once on mount
+
     return (
         <BrowserRouter>
             <ConditionalLayout>

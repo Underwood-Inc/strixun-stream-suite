@@ -47,6 +47,11 @@ jobs:
       - name: Run Mods API Tests
         if: steps.check_test.outputs.has_tests == 'true'
         working-directory: serverless/mods-api
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
+          FILE_INTEGRITY_KEYPHRASE: ${{ secrets.FILE_INTEGRITY_KEYPHRASE }}
+          MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
         run: pnpm test
       
       - name: Generate coverage report
@@ -106,7 +111,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
+        run: pnpm exec wrangler deploy --env production
       
       - name: Rollback on Failure
         if: failure()
@@ -136,6 +141,18 @@ jobs:
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE
           fi
+          # CRITICAL: FILE_INTEGRITY_KEYPHRASE is required for HMAC-SHA256 file integrity verification
+          # This is separate from NETWORK_INTEGRITY_KEYPHRASE and is used to prevent hash spoofing
+          if [ -n "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" ]; then
+            echo "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put FILE_INTEGRITY_KEYPHRASE
+          else
+            echo "⚠️  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
+            echo "File integrity verification will use fallback keyphrase (development only)"
+            echo "Please add FILE_INTEGRITY_KEYPHRASE to GitHub Secrets for production security"
+          fi
+          if [ -n "${{ secrets.MODS_ENCRYPTION_KEY }}" ]; then
+            echo "${{ secrets.MODS_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put MODS_ENCRYPTION_KEY
+          fi
         continue-on-error: true
       
       - name: Deployment Summary
@@ -146,13 +163,38 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Service URL:** \`https://mods-api.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 Required Secrets:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**CRITICAL:** The following secrets must be set in both GitHub Secrets and Cloudflare Worker:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. **\`MODS_ENCRYPTION_KEY\`** - Shared encryption key for file encryption/decryption" >> $GITHUB_STEP_SUMMARY
+          echo "   - Must match the key used in mods-hub frontend build" >> $GITHUB_STEP_SUMMARY
+          echo "   - Minimum 32 characters" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "2. **\`FILE_INTEGRITY_KEYPHRASE\`** - Secret keyphrase for HMAC-SHA256 file integrity verification" >> $GITHUB_STEP_SUMMARY
+          echo "   - **Server-side only** - prevents hash spoofing attacks" >> $GITHUB_STEP_SUMMARY
+          echo "   - Used to calculate cryptographic signatures that cannot be forged" >> $GITHUB_STEP_SUMMARY
+          echo "   - **NOT exposed in frontend** - this is the security that prevents spoofing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "3. **\`JWT_SECRET\`** - JWT signing secret for authentication" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 API Endpoints:" >> $GITHUB_STEP_SUMMARY
           echo "- Health check: https://mods-api.idling.app/health" >> $GITHUB_STEP_SUMMARY
-          echo "- API endpoints:" >> $GITHUB_STEP_SUMMARY
-          echo "  - GET /mods - List mods" >> $GITHUB_STEP_SUMMARY
-          echo "  - GET /mods/:modId - Get mod detail" >> $GITHUB_STEP_SUMMARY
-          echo "  - POST /mods - Upload mod (auth required)" >> $GITHUB_STEP_SUMMARY
-          echo "  - PATCH /mods/:modId - Update mod (auth required)" >> $GITHUB_STEP_SUMMARY
-          echo "  - DELETE /mods/:modId - Delete mod (auth required)" >> $GITHUB_STEP_SUMMARY
-          echo "  - POST /mods/:modId/versions - Upload version (auth required)" >> $GITHUB_STEP_SUMMARY
-          echo "  - GET /mods/:modId/versions/:versionId/download - Download version" >> $GITHUB_STEP_SUMMARY
+          echo "- GET /mods - List mods" >> $GITHUB_STEP_SUMMARY
+          echo "- GET /mods/:modId - Get mod detail" >> $GITHUB_STEP_SUMMARY
+          echo "- POST /mods - Upload mod (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "- PATCH /mods/:modId - Update mod (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "- DELETE /mods/:modId - Delete mod (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "- POST /mods/:modId/versions - Upload version (auth required)" >> $GITHUB_STEP_SUMMARY
+          echo "- GET /mods/:modId/versions/:versionId/download - Download version" >> $GITHUB_STEP_SUMMARY
+          echo "- GET /mods/:modId/versions/:versionId/verify - Verify file integrity" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Security Notes:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**File Integrity Protection:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Files are encrypted with \`MODS_ENCRYPTION_KEY\` (exposed in frontend for client-side encryption)" >> $GITHUB_STEP_SUMMARY
+          echo "- Integrity hashes use \`FILE_INTEGRITY_KEYPHRASE\` (server-side secret) - **cannot be spoofed**" >> $GITHUB_STEP_SUMMARY
+          echo "- Even if someone extracts \`MODS_ENCRYPTION_KEY\` from the frontend, they cannot forge integrity hashes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 The \`FILE_INTEGRITY_KEYPHRASE\` secret ensures that file integrity verification cannot be bypassed, even if the encryption key is exposed." >> $GITHUB_STEP_SUMMARY
 

@@ -5,15 +5,26 @@
 # For E2E testing and TDD, these defaults are automatically set if missing
 # CI secrets will override these values (they take precedence)
 
+# Environment (REQUIRED for local dev)
+# Set to 'development' or 'test' to use localhost URLs for service-to-service calls
+ENVIRONMENT=development
+
 # JWT Secret (REQUIRED)
 # For local dev, you can use any value. For CI, this must match other services
 # Generate with: openssl rand -hex 32
 JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
 
-# Service Encryption Key (REQUIRED for public mod encryption/decryption)
-# Must be 32+ characters. For local dev, use any value.
-# Generate with: openssl rand -hex 32
-SERVICE_ENCRYPTION_KEY=test-service-encryption-key-for-local-development-12345678901234567890123456789012
+# Network Integrity Keyphrase (REQUIRED for service-to-service calls)
+# Must match otp-auth-service and customer-api for integrity verification to work
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+
+# Customer API URL (REQUIRED for local dev)
+# Must point to localhost:8790 for local development
+CUSTOMER_API_URL=http://localhost:8790
+
+# Auth API URL (OPTIONAL)
+# Defaults to localhost:8787 in development, https://auth.idling.app in production
+# AUTH_API_URL=http://localhost:8787
 
 # Allowed Origins (OPTIONAL)
 # Use "*" to allow all origins locally, or specify comma-separated list
@@ -26,10 +37,21 @@ ALLOWED_ORIGINS=*
 # ALLOWED_EMAILS=test@example.com,admin@example.com
 
 # Super Admin Emails (OPTIONAL)
-# Comma-separated list of emails with admin access
+# Comma-separated list of emails with full admin access + automatic upload permission
+# These users can access admin dashboard and manage all mods
 # SUPER_ADMIN_EMAILS=admin@example.com
 
-# Network Integrity Keyphrase (OPTIONAL)
-# Used for network integrity checks
-# NETWORK_INTEGRITY_KEYPHRASE=your-keyphrase-here
+# Approved Uploader Emails (OPTIONAL - backup list for upload permissions)
+# Comma-separated list of emails with upload permission ONLY (NO admin dashboard access)
+# These users can upload and manage their own mods, but cannot access admin dashboard
+# This serves as a hardcoded backup in case the admin dashboard UI is broken
+# Managed uploaders are stored in KV and can be managed via /admin/users dashboard
+# APPROVED_UPLOADER_EMAILS=user1@example.com,user2@example.com
+
+# Mods Encryption Key (REQUIRED)
+# Shared encryption key for mod file encryption/decryption
+# Must match VITE_MODS_ENCRYPTION_KEY in mods-hub/.env
+# Minimum 32 characters (64+ recommended for PBKDF2)
+# For local dev, use: strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
 

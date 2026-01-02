@@ -63,10 +63,10 @@ export const BUNDLED_DECRYPT_SCRIPT = ${JSON.stringify(wrapped)};
 `;
 
   writeFileSync(outputTsFile, tsContent);
-  console.log(`[OK] Bundled decryptWithJWT to ${outputFile}`);
-  console.log(`[OK] Created TypeScript export at ${outputTsFile}`);
+  console.log(`✓ Bundled decryptWithJWT to ${outputFile}`);
+  console.log(`✓ Created TypeScript export at ${outputTsFile}`);
 } catch (error) {
-  console.error('[ERROR] Failed to bundle decryptWithJWT:', error);
+  console.error('✗ Failed to bundle decryptWithJWT:', error);
   process.exit(1);
 }
 

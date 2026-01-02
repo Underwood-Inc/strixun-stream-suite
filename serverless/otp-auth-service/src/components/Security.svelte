@@ -3,7 +3,7 @@
     <h2>Security You Can Trust</h2>
     <div class="security-grid">
       <div class="security-item">
-        <h3>[EMOJI] Cryptographically Secure</h3>
+        <h3> ★ Cryptographically Secure</h3>
         <p>9-digit OTP codes generated using cryptographically secure random number generators. 1 billion possible combinations.</p>
       </div>
       <div class="security-item">
@@ -11,7 +11,7 @@
         <p>OTP codes expire after 10 minutes. Single-use only—once verified, the code is immediately invalidated.</p>
       </div>
       <div class="security-item">
-        <h3>[EMOJI]️ Brute Force Protection</h3>
+        <h3> ★ ️ Brute Force Protection</h3>
         <p>Maximum 5 verification attempts per OTP code. After that, a new code must be requested.</p>
       </div>
       <div class="security-item">
@@ -23,15 +23,15 @@
         <p>HMAC-SHA256 signed tokens with 7-hour expiration. Token blacklisting for secure logout.</p>
       </div>
       <div class="security-item">
-        <h3>[EMOJI] Audit Logging</h3>
+        <h3> ★ Audit Logging</h3>
         <p>Comprehensive security event logging with 90-day retention. Track all authentication attempts and failures.</p>
       </div>
       <div class="security-item">
-        <h3>[EMOJI] CORS Protection</h3>
+        <h3> ★ CORS Protection</h3>
         <p>Configurable CORS policies per customer. IP allowlisting for additional security layers.</p>
       </div>
       <div class="security-item">
-        <h3>[OK] GDPR Compliant</h3>
+        <h3>✓ GDPR Compliant</h3>
         <p>Data export and deletion endpoints. Complete user data portability and right to be forgotten.</p>
       </div>
     </div>

@@ -8,6 +8,8 @@ import styled from 'styled-components';
 import { colors, spacing } from '../theme';
 import { useAdminSettings, useUpdateAdminSettings } from '../hooks/useMods';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getCardStyles } from '../utils/sharedStyles';
 
 const PageContainer = styled.div`
   max-width: 1000px;
@@ -23,10 +25,7 @@ const Title = styled.h1`
 `;
 
 const Section = styled.div`
-  background: ${colors.bgSecondary};
-  border: 1px solid ${colors.border};
-  border-radius: 8px;
-  padding: ${spacing.xl};
+  ${getCardStyles('default')}
   margin-bottom: ${spacing.lg};
 `;
 
@@ -90,57 +89,19 @@ const ExtensionTag = styled.div`
 `;
 
 const RemoveButton = styled.button`
-  padding: 2px 4px;
-  background: ${colors.danger};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 2px;
+  ${getButtonStyles('danger')}
   font-size: 0.75rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  
-  &:hover {
-    background: ${colors.danger}dd;
-  }
+  padding: 2px 4px;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary'; disabled?: boolean }>`
-  padding: ${spacing.md} ${spacing.lg};
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s ease;
-  border: none;
+const Button = styled.button<{ $variant?: 'primary' | 'secondary'; disabled?: boolean }>`
+  ${({ $variant = 'primary' }) => getButtonStyles($variant)}
   
-  ${({ variant = 'primary', disabled }) => {
-    if (disabled) {
-      return `
-        background: ${colors.border};
-        color: ${colors.textMuted};
-      `;
-    }
-    switch (variant) {
-      case 'primary':
-        return `
-          background: ${colors.accent};
-          color: ${colors.bg};
-          
-          &:hover {
-            background: ${colors.accentHover};
-          }
-        `;
-      case 'secondary':
-        return `
-          background: transparent;
-          color: ${colors.text};
-          border: 1px solid ${colors.border};
-          
-          &:hover {
-            border-color: ${colors.borderLight};
-          }
-        `;
-    }
-  }}
+  ${({ disabled }) => disabled && `
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  `}
 `;
 
 const ButtonGroup = styled.div`
@@ -238,7 +199,7 @@ export function AdminSettingsPage() {
                             }}
                             placeholder=".lua, .js, .zip, etc."
                         />
-                        <Button variant="secondary" onClick={handleAddExtension}>
+                        <Button $variant="secondary" onClick={handleAddExtension}>
                             Add
                         </Button>
                     </div>
@@ -268,14 +229,14 @@ export function AdminSettingsPage() {
 
                 <ButtonGroup>
                     <Button
-                        variant="primary"
+                        $variant="primary"
                         onClick={handleSave}
                         disabled={updateSettings.isPending}
                     >
                         {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                     <Button
-                        variant="secondary"
+                        $variant="secondary"
                         onClick={handleReset}
                         disabled={updateSettings.isPending || !settings}
                     >

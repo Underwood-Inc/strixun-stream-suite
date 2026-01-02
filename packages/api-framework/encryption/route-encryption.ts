@@ -8,14 +8,13 @@
  * - Route-level encryption policies define encryption requirements
  * - Centralized middleware enforces encryption for all routes
  * - JWT-based encryption for authenticated routes
- * - Service key encryption for public routes (when no JWT available)
  * - Configurable per-route encryption strategies
  * 
  * Security Benefits:
  * - Defense in depth: Even if authentication is bypassed, data is encrypted
  * - Industry standard: All responses encrypted, no plaintext data in transit
  * - Per-route control: Different encryption strategies for different route types
- * - Key isolation: Public routes use service keys, authenticated routes use JWT
+ * - JWT-based encryption: All authenticated routes use JWT encryption
  */
 
 import type { EncryptedData } from './types.js';
@@ -52,8 +51,6 @@ export interface RouteEncryptionPolicy {
 export interface EncryptionContext {
   /** JWT token if available */
   jwtToken: string | null;
-  /** Service key for public routes */
-  serviceKey: string | null;
   /** Route path */
   path: string;
   /** Request method */
@@ -74,420 +71,56 @@ export interface EncryptionResult {
   error?: Error;
 }
 
-// ============ Constants ============
-
-const PBKDF2_ITERATIONS = 100000;
-const SALT_LENGTH = 16;
-const IV_LENGTH = 12;
-const KEY_LENGTH = 256;
-
 // ============ Service Key Encryption ============
 
 /**
- * Derive encryption key from service key using PBKDF2
- */
-async function deriveKeyFromServiceKey(serviceKey: string, salt: Uint8Array): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(serviceKey),
-    'PBKDF2',
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-
-  // Ensure salt is a proper BufferSource for deriveKey
-  // Create a new Uint8Array from the buffer to avoid type inference issues
-  // Convert to ArrayBuffer explicitly to avoid SharedArrayBuffer issues
-  const saltBuffer = new ArrayBuffer(salt.byteLength);
-  const saltView = new Uint8Array(saltBuffer);
-  saltView.set(salt);
-  const saltArray = saltView;
-
-  const derivedKey = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: saltArray,
-      iterations: PBKDF2_ITERATIONS,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: KEY_LENGTH },
-    false,
-    ['encrypt', 'decrypt']
-  );
-
-  return derivedKey;
-}
-
-/**
- * Hash service key for verification
- */
-async function hashServiceKey(key: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(key);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Convert ArrayBuffer to base64
- */
-function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-/**
- * Encrypt data using service key (for public routes)
+ * Encrypt data using service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT encryption instead.
  */
 export async function encryptWithServiceKey(
-  data: unknown,
-  serviceKey: string
+  _data: unknown,
+  _serviceKey: string
 ): Promise<EncryptedData> {
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for encryption (minimum 32 characters)');
-  }
-
-  // Generate random salt and IV
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-
-  // Derive key from service key
-  const key = await deriveKeyFromServiceKey(serviceKey, salt);
-
-  // Hash service key for verification
-  const keyHash = await hashServiceKey(serviceKey);
-
-  // Encrypt data
-  const encoder = new TextEncoder();
-  const dataStr = JSON.stringify(data);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv },
-    key,
-    encoder.encode(dataStr)
-  );
-
-  // Return encrypted blob
-  return {
-    version: 3,
-    encrypted: true,
-    algorithm: 'AES-GCM-256',
-    iv: arrayBufferToBase64(iv.buffer),
-    salt: arrayBufferToBase64(salt.buffer),
-    tokenHash: keyHash, // Reuse tokenHash field for service key hash
-    data: arrayBufferToBase64(encrypted),
-    timestamp: new Date().toISOString(),
-  };
+  throw new Error('Service key encryption has been completely removed. Use JWT encryption (encryptWithJWT) instead.');
 }
 
 /**
- * Convert base64 to ArrayBuffer
- */
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-/**
- * Decrypt data using service key
- * 
- * @param encryptedData - Encrypted data blob
- * @param serviceKey - Service encryption key
- * @returns Decrypted data
- * 
- * @throws Error if service key doesn't match or decryption fails
+ * Decrypt data using service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT decryption instead.
  */
 export async function decryptWithServiceKey(
-  encryptedData: EncryptedData | unknown,
-  serviceKey: string
+  _encryptedData: EncryptedData | unknown,
+  _serviceKey: string
 ): Promise<unknown> {
-  // Check if encrypted
-  if (!encryptedData || typeof encryptedData !== 'object' || !('encrypted' in encryptedData)) {
-    // Not encrypted, return as-is (backward compatibility)
-    return encryptedData;
-  }
-
-  const encrypted = encryptedData as EncryptedData;
-
-  if (!encrypted.encrypted) {
-    return encryptedData;
-  }
-
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for decryption (minimum 32 characters)');
-  }
-
-  // Extract metadata
-  const salt = base64ToArrayBuffer(encrypted.salt);
-  const iv = base64ToArrayBuffer(encrypted.iv);
-  const encryptedDataBuffer = base64ToArrayBuffer(encrypted.data);
-
-  // Verify service key hash matches (if present)
-  if (encrypted.tokenHash) {
-    const keyHash = await hashServiceKey(serviceKey);
-    if (encrypted.tokenHash !== keyHash) {
-      throw new Error(
-        'Decryption failed - service key does not match. ' +
-        'The service key used for encryption does not match the provided key.'
-      );
-    }
-  }
-
-  // Derive key from service key
-  const key = await deriveKeyFromServiceKey(serviceKey, new Uint8Array(salt));
-
-  // Decrypt
-  try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: new Uint8Array(iv) },
-      key,
-      encryptedDataBuffer
-    );
-
-    const decoder = new TextDecoder();
-    const dataStr = decoder.decode(decrypted);
-    return JSON.parse(dataStr);
-  } catch (error) {
-    throw new Error(
-      'Decryption failed - incorrect service key or corrupted data. ' +
-      'Please verify the service key matches the one used for encryption.'
-    );
-  }
+  throw new Error('Service key decryption has been completely removed. Use JWT decryption (decryptWithJWT) instead.');
 }
 
 // ============ Binary Service Key Encryption ============
-// Reuses existing deriveKeyFromServiceKey and hashServiceKey functions above
 
 /**
- * Compress data with gzip (reused from JWT encryption pattern)
- */
-async function compressDataForServiceKey(data: Uint8Array & { buffer: ArrayBuffer }): Promise<Uint8Array> {
-  const stream = new CompressionStream('gzip');
-  const writer = stream.writable.getWriter();
-  const reader = stream.readable.getReader();
-  
-  writer.write(data);
-  writer.close();
-  
-  const chunks: Uint8Array[] = [];
-  let done = false;
-  while (!done) {
-    const { value, done: readerDone } = await reader.read();
-    done = readerDone;
-    if (value) chunks.push(value);
-  }
-  
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  
-  return result;
-}
-
-/**
- * Decompress gzip data (reused from JWT encryption pattern)
- */
-async function decompressDataForServiceKey(compressedData: Uint8Array): Promise<Uint8Array> {
-  const stream = new DecompressionStream('gzip');
-  const writer = stream.writable.getWriter();
-  const reader = stream.readable.getReader();
-  
-  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
-  if (compressedData.buffer instanceof ArrayBuffer) {
-    dataBuffer = compressedData as Uint8Array & { buffer: ArrayBuffer };
-  } else {
-    const arrayBuffer = compressedData.buffer.slice(compressedData.byteOffset, compressedData.byteOffset + compressedData.byteLength) as unknown as ArrayBuffer;
-    dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
-  }
-  writer.write(dataBuffer);
-  writer.close();
-  
-  const chunks: Uint8Array[] = [];
-  let done = false;
-  while (!done) {
-    const { value, done: readerDone } = await reader.read();
-    done = readerDone;
-    if (value) chunks.push(value);
-  }
-  
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  
-  return result;
-}
-
-/**
- * Encrypt binary data using service key (for public mods)
- * Uses same binary format as JWT encryption (version 5) but with service key
+ * Encrypt binary data using service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT binary encryption instead.
  */
 export async function encryptBinaryWithServiceKey(
-  data: ArrayBuffer | Uint8Array,
-  serviceKey: string
+  _data: ArrayBuffer | Uint8Array,
+  _serviceKey: string
 ): Promise<Uint8Array> {
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for encryption (minimum 32 characters)');
-  }
-
-  let dataBuffer: Uint8Array & { buffer: ArrayBuffer };
-  if (data instanceof ArrayBuffer) {
-    dataBuffer = new Uint8Array(data) as Uint8Array & { buffer: ArrayBuffer };
-  } else {
-    if (data.buffer instanceof SharedArrayBuffer || 
-        data.byteOffset !== 0 || 
-        data.byteLength !== data.buffer.byteLength) {
-      const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
-      dataBuffer = new Uint8Array(arrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
-    } else {
-      dataBuffer = new Uint8Array(data.buffer as ArrayBuffer) as Uint8Array & { buffer: ArrayBuffer };
-    }
-  }
-
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-
-  const key = await deriveKeyFromServiceKey(serviceKey, salt);
-  const keyHashHex = await hashServiceKey(serviceKey);
-  const keyHash = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) {
-    keyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
-  }
-
-  const compressedData = await compressDataForServiceKey(dataBuffer);
-  const useCompression = compressedData.length < dataBuffer.length - 18;
-  const dataToEncrypt = useCompression ? (compressedData as Uint8Array & { buffer: ArrayBuffer }) : dataBuffer;
-
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv },
-    key,
-    dataToEncrypt
-  );
-
-  const encryptedArray = new Uint8Array(encrypted);
-  const headerSize = 5;
-  const totalSize = headerSize + salt.length + iv.length + keyHash.length + encryptedArray.length;
-  const result = new Uint8Array(totalSize);
-  let offset = 0;
-
-  result[offset++] = 5; // Version 5
-  result[offset++] = useCompression ? 1 : 0;
-  result[offset++] = salt.length;
-  result[offset++] = iv.length;
-  result[offset++] = keyHash.length;
-
-  result.set(salt, offset);
-  offset += salt.length;
-  result.set(iv, offset);
-  offset += iv.length;
-  result.set(keyHash, offset);
-  offset += keyHash.length;
-  result.set(encryptedArray, offset);
-
-  return result;
+  throw new Error('Service key binary encryption has been completely removed. Use JWT binary encryption (encryptBinaryWithJWT) instead.');
 }
 
 /**
- * Decrypt binary data encrypted with service key
- * Detects format and handles compression automatically
+ * Decrypt binary data encrypted with service key (DEPRECATED - REMOVED)
+ * Service key encryption was obfuscation only (key is in frontend bundle).
+ * Use JWT binary decryption instead.
  */
 export async function decryptBinaryWithServiceKey(
-  encryptedBinary: ArrayBuffer | Uint8Array,
-  serviceKey: string
+  _encryptedBinary: ArrayBuffer | Uint8Array,
+  _serviceKey: string
 ): Promise<Uint8Array> {
-  if (!serviceKey || serviceKey.length < 32) {
-    throw new Error('Valid service key is required for decryption (minimum 32 characters)');
-  }
-
-  const data = encryptedBinary instanceof ArrayBuffer 
-    ? new Uint8Array(encryptedBinary) 
-    : encryptedBinary;
-
-  if (data.length < 4) {
-    throw new Error('Invalid encrypted binary format: too short');
-  }
-
-  let offset = 0;
-  const version = data[offset++];
-  
-  if (version !== 4 && version !== 5) {
-    throw new Error(`Unsupported binary encryption version: ${version}`);
-  }
-
-  let isCompressed = false;
-  if (version === 5) {
-    isCompressed = data[offset++] === 1;
-  }
-
-  const saltLength = data[offset++];
-  const ivLength = data[offset++];
-  const keyHashLength = data[offset++];
-
-  if (saltLength !== SALT_LENGTH || ivLength !== IV_LENGTH || keyHashLength !== 32) {
-    throw new Error('Invalid encrypted binary format: invalid header lengths');
-  }
-
-  const salt = data.slice(offset, offset + saltLength);
-  offset += saltLength;
-  const iv = data.slice(offset, offset + ivLength);
-  offset += ivLength;
-  const storedKeyHash = data.slice(offset, offset + keyHashLength);
-  offset += keyHashLength;
-  const encryptedData = data.slice(offset);
-
-  const keyHashHex = await hashServiceKey(serviceKey);
-  const expectedKeyHash = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) {
-    expectedKeyHash[i] = parseInt(keyHashHex.substr(i * 2, 2), 16);
-  }
-
-  let hashMatch = true;
-  for (let i = 0; i < 32; i++) {
-    if (storedKeyHash[i] !== expectedKeyHash[i]) {
-      hashMatch = false;
-    }
-  }
-
-  if (!hashMatch) {
-    throw new Error('Decryption failed - service key does not match');
-  }
-
-  const key = await deriveKeyFromServiceKey(serviceKey, salt);
-
-  try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      encryptedData
-    );
-
-    const decryptedData = new Uint8Array(decrypted);
-
-    if (isCompressed) {
-      return await decompressDataForServiceKey(decryptedData);
-    }
-
-    return decryptedData;
-  } catch (error) {
-    throw new Error('Decryption failed - incorrect service key or corrupted data');
-  }
+  throw new Error('Service key binary decryption has been completely removed. Use JWT binary decryption (decryptBinaryWithJWT) instead.');
 }
 
 // ============ Route Pattern Matching ============
@@ -563,35 +196,18 @@ export async function encryptResponse(
         strategy = 'jwt';
         break;
 
-      case 'service-key':
-        if (!context.serviceKey) {
-          if (policy.mandatory) {
-            throw new Error(`Service key required for route ${context.path} but not configured`);
-          }
-          return {
-            encrypted: false,
-            error: new Error('Service key required but not configured'),
-          };
-        }
-        encryptedData = await encryptWithServiceKey(data, context.serviceKey);
-        strategy = 'service-key';
-        break;
-
       case 'conditional-jwt':
-        // Try JWT first, fallback to service key
+        // Try JWT only - service key fallback removed
         if (context.jwtToken) {
           encryptedData = await encryptWithJWT(data, context.jwtToken);
           strategy = 'jwt';
-        } else if (context.serviceKey) {
-          encryptedData = await encryptWithServiceKey(data, context.serviceKey);
-          strategy = 'service-key';
         } else {
           if (policy.mandatory) {
-            throw new Error(`Encryption required for route ${context.path} but no key available`);
+            throw new Error(`Encryption required for route ${context.path} but no JWT token available`);
           }
           return {
             encrypted: false,
-            error: new Error('No encryption key available (JWT or service key)'),
+            error: new Error('No JWT token available - service key fallback removed'),
           };
         }
         break;
@@ -725,25 +341,9 @@ export function extractJWTToken(request: Request): string | null {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
-  const token = authHeader.substring(7);
+  // CRITICAL: Trim token to ensure it matches the token used for encryption
+  const token = authHeader.substring(7).trim();
   return token.length >= 10 ? token : null;
-}
-
-/**
- * Get service key from environment
- * Service key should be stored as a Cloudflare Worker secret
- * 
- * CRITICAL: This function is for BACKEND WORKERS ONLY
- * - Backend workers use: SERVICE_ENCRYPTION_KEY
- * - Frontend uses: VITE_SERVICE_ENCRYPTION_KEY (via shared-config/otp-encryption.ts)
- * 
- * These are DIFFERENT variable names for the SAME key value, but each environment
- * uses its own naming convention (Vite requires VITE_ prefix for client-side vars)
- */
-export function getServiceKey(env: any): string | null {
-  // Backend workers ONLY use SERVICE_ENCRYPTION_KEY
-  // Frontend has its own getOtpEncryptionKey() function that uses VITE_SERVICE_ENCRYPTION_KEY
-  return env.SERVICE_ENCRYPTION_KEY || null;
 }
 
 /**
@@ -751,11 +351,10 @@ export function getServiceKey(env: any): string | null {
  */
 export function createEncryptionContext(
   request: Request,
-  env: any
+  _env: any
 ): EncryptionContext {
   return {
     jwtToken: extractJWTToken(request),
-    serviceKey: getServiceKey(env),
     path: new URL(request.url).pathname,
     method: request.method,
   };

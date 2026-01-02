@@ -54,6 +54,12 @@ vi.mock('../handlers/admin/settings.js', () => ({
     handleUpdateSettings: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
 }));
 
+// Mock customer lookup
+const mockFetchCustomerByCustomerId = vi.fn();
+vi.mock('@strixun/customer-lookup', () => ({
+    fetchCustomerByCustomerId: mockFetchCustomerByCustomerId,
+}));
+
 vi.mock('@strixun/api-framework', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@strixun/api-framework')>();
     return {
@@ -74,12 +80,30 @@ vi.mock('@strixun/api-framework', async (importOriginal) => {
             if (!payload) {
                 return { allowed: false, error: new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 }) };
             }
-            const email = (payload as any).email;
-            const isSuperAdmin = env.SUPER_ADMIN_EMAILS?.split(',').map(e => e.trim()).includes(email);
+            
+            // Use customerId lookup flow: get customer by customerId, check email against SUPER_ADMIN_EMAILS
+            const customerId = (payload as any).customerId;
+            let isSuperAdmin = false;
+            
+            if (customerId) {
+                const customer = await mockFetchCustomerByCustomerId(customerId, env);
+                if (customer && customer.email) {
+                    const superAdminEmails = env.SUPER_ADMIN_EMAILS?.split(',').map((e: string) => e.trim().toLowerCase()) || [];
+                    isSuperAdmin = superAdminEmails.includes(customer.email.toLowerCase());
+                }
+            }
+            
+            // Fallback to email check if customerId lookup fails
+            if (!isSuperAdmin && (payload as any).email) {
+                const email = (payload as any).email;
+                const superAdminEmails = env.SUPER_ADMIN_EMAILS?.split(',').map((e: string) => e.trim().toLowerCase()) || [];
+                isSuperAdmin = superAdminEmails.includes(email.toLowerCase());
+            }
+            
             if (level === 'super-admin' && !isSuperAdmin) {
                 return { allowed: false, error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) };
             }
-            return { allowed: true, auth: { userId: (payload as any).sub, email, customerId: (payload as any).customerId || null } };
+            return { allowed: true, auth: { userId: (payload as any).sub, email: (payload as any).email, customerId: customerId || null } };
         }),
     };
 });
@@ -94,18 +118,38 @@ describe('Mods API Admin Routes', () => {
 
     const superAdminJWT = {
         sub: 'admin_123',
-        email: 'admin@example.com',
         customerId: 'cust_123',
+        // email not in JWT - should be looked up from customer record
     };
 
     const regularUserJWT = {
         sub: 'user_123',
-        email: 'user@example.com',
         customerId: 'cust_456',
+        // email not in JWT - should be looked up from customer record
     };
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mockFetchCustomerByCustomerId.mockClear();
+        
+        // Setup customer lookup mocks - customerId determines admin status via email lookup
+        mockFetchCustomerByCustomerId.mockImplementation(async (customerId: string) => {
+            if (customerId === 'cust_123') {
+                return {
+                    customerId: 'cust_123',
+                    email: 'admin@example.com', // Super admin email (matches SUPER_ADMIN_EMAILS)
+                    displayName: 'Admin User',
+                };
+            }
+            if (customerId === 'cust_456') {
+                return {
+                    customerId: 'cust_456',
+                    email: 'user@example.com', // Regular user email (not in SUPER_ADMIN_EMAILS)
+                    displayName: 'Regular User',
+                };
+            }
+            return null;
+        });
     });
 
     describe('Unauthorized Access', () => {
@@ -149,6 +193,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(403);
+            // Verify customer lookup was called
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_456', expect.any(Object));
         });
     });
 
@@ -167,6 +213,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow GET /admin/settings for super admin', async () => {
@@ -183,6 +231,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow PUT /admin/settings for super admin', async () => {
@@ -201,6 +251,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow POST /admin/mods/:modId/status for super admin', async () => {
@@ -219,6 +271,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow DELETE /admin/mods/:modId for super admin', async () => {
@@ -235,6 +289,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow GET /admin/users for super admin', async () => {
@@ -251,6 +307,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow GET /admin/users/:userId for super admin', async () => {
@@ -267,6 +325,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow GET /admin/r2/files for super admin', async () => {
@@ -283,6 +343,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
         it('should allow GET /admin/approvals for super admin', async () => {
@@ -299,6 +361,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
     });
 
@@ -334,6 +398,8 @@ describe('Mods API Admin Routes', () => {
 
             expect(result).not.toBeNull();
             expect(result?.response.status).toBe(200);
+            // Verify customer lookup was called to get email from customer record
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
     });
 

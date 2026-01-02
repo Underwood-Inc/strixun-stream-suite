@@ -14,27 +14,58 @@ import { handleTestEmail, handleClearRateLimit } from './handlers/test.js';
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from './utils/errors.js';
 import { authenticateRequest } from './utils/auth.js';
+import { wrapWithEncryption } from '@strixun/api-framework';
 
 /**
  * Health check endpoint
+ * CRITICAL: JWT encryption is MANDATORY for all endpoints, including /health
  */
 async function handleHealth(env, request) {
-    // Simple health check - just verify the worker is running
-    // Don't test Twitch API access as credentials may not be configured for E2E tests
-    const corsHeaders = createCORSHeaders(request, {
-        allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-    });
-    return new Response(JSON.stringify({ 
+    // CRITICAL SECURITY: JWT encryption is MANDATORY for all endpoints
+    // Get JWT token from request
+    const authHeader = request.headers.get('Authorization');
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (!jwtToken) {
+        const errorResponse = {
+            type: 'https://tools.ietf.org/html/rfc7235#section-3.1',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.',
+            instance: request.url
+        };
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        });
+        return new Response(JSON.stringify(errorResponse), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/problem+json',
+                ...Object.fromEntries(corsHeaders.entries()),
+            },
+        });
+    }
+
+    // Create auth object for encryption
+    const authForEncryption = { userId: 'anonymous', customerId: null, jwtToken };
+
+    // Create health check response
+    const healthData = { 
         status: 'ok', 
         message: 'Twitch API worker is running',
         features: ['twitch-api', 'cloud-storage', 'scrollbar-customizer'],
         timestamp: new Date().toISOString()
-    }), {
+    };
+    
+    const response = new Response(JSON.stringify(healthData), {
         headers: {
             'Content-Type': 'application/json',
-            ...Object.fromEntries(corsHeaders.entries()),
         },
     });
+
+    // Wrap with encryption to ensure JWT encryption is applied
+    const encryptedResult = await wrapWithEncryption(response, authForEncryption, request, env);
+    return encryptedResult.response;
 }
 
 /**
@@ -70,11 +101,46 @@ export async function route(request, env) {
         if (path === '/cdn/scrollbar-compensation.js' && request.method === 'GET') return handleScrollbarCompensation(request, env);
         
         // Authentication endpoints (legacy - new auth should use OTP Auth Service)
-        if (path === '/auth/request-otp' && request.method === 'POST') return handleRequestOTP(request, env);
-        if (path === '/auth/verify-otp' && request.method === 'POST') return handleVerifyOTP(request, env);
-        if (path === '/auth/me' && request.method === 'GET') return handleGetMe(request, env);
-        if (path === '/auth/logout' && request.method === 'POST') return handleLogout(request, env);
-        if (path === '/auth/refresh' && request.method === 'POST') return handleRefresh(request, env);
+        // NOTE: These endpoints generate JWTs, so they can't require JWT to call them
+        // However, responses should still be encrypted if JWT is provided
+        if (path === '/auth/request-otp' && request.method === 'POST') {
+            const response = await handleRequestOTP(request, env);
+            const authHeader = request.headers.get('Authorization');
+            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            // Use requireJWT: false for auth endpoints that generate JWTs (temporary - needs architectural review)
+            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+        }
+        if (path === '/auth/verify-otp' && request.method === 'POST') {
+            const response = await handleVerifyOTP(request, env);
+            const authHeader = request.headers.get('Authorization');
+            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            // Use requireJWT: false for auth endpoints that generate JWTs (temporary - needs architectural review)
+            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+        }
+        if (path === '/auth/me' && request.method === 'GET') {
+            const response = await handleGetMe(request, env);
+            const authHeader = request.headers.get('Authorization');
+            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+        if (path === '/auth/logout' && request.method === 'POST') {
+            const response = await handleLogout(request, env);
+            const authHeader = request.headers.get('Authorization');
+            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            return await wrapWithEncryption(response, auth, request, env);
+        }
+        if (path === '/auth/refresh' && request.method === 'POST') {
+            const response = await handleRefresh(request, env);
+            const authHeader = request.headers.get('Authorization');
+            const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+            const auth = jwtToken ? { userId: 'anonymous', customerId: null, jwtToken } : null;
+            // Use requireJWT: false for auth endpoints that generate JWTs (temporary - needs architectural review)
+            return await wrapWithEncryption(response, auth, request, env, { requireJWT: false });
+        }
         
         // Notes/Notebook endpoints (require authentication)
         if (path === '/notes/save' && request.method === 'POST') return handleNotesSave(request, env, authenticateRequest);

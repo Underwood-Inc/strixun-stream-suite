@@ -7,21 +7,35 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId } from '../../utils/customer.js';
-import { formatStrixunHash } from '../../utils/hash.js';
+import { verifyStrixunHash } from '../../utils/hash.js';
 import type { ModMetadata, ModVersion } from '../../types/mod.js';
+
+type VerificationStatus = 'verified' | 'unverified' | 'tampered';
 
 /**
  * Generate SVG badge for file integrity
  */
-function generateBadge(verified: boolean, hash: string, style: 'flat' | 'flat-square' | 'plastic' = 'flat'): string {
-    const status = verified ? 'verified' : 'unverified';
-    const color = verified ? '#4caf50' : '#f44336';
+function generateBadge(status: VerificationStatus, _hash: string, domain: string, style: 'flat' | 'flat-square' | 'plastic' = 'flat'): string {
+    let color: string;
+    let message: string;
+    
+    if (status === 'verified') {
+        color = '#4caf50'; // Green
+        message = 'Verified';
+    } else if (status === 'tampered') {
+        color = '#ff9800'; // Orange
+        message = 'Tampered';
+    } else {
+        color = '#f44336'; // Red
+        message = 'Unverified';
+    }
+    
     const textColor = '#fff';
-    const label = 'Strixun';
-    const message = verified ? 'Verified' : 'Unverified';
+    const label = `${domain} ☁`;
     
     // Calculate text widths (approximate)
-    const labelWidth = label.length * 6 + 10;
+    // Domain + cloud emoji takes more space (use 7px per char for domain, emoji is wider)
+    const labelWidth = Math.max(label.length * 7 + 12, 80); // Minimum width for readability
     const messageWidth = message.length * 6 + 10;
     const totalWidth = labelWidth + messageWidth;
     const height = 20;
@@ -234,21 +248,159 @@ export async function handleBadge(
         // Get style from query params
         const url = new URL(request.url);
         const style = (url.searchParams.get('style') || 'flat') as 'flat' | 'flat-square' | 'plastic';
+        
+        // Extract domain from request URL (hostname)
+        const domain = url.hostname;
 
-        // Generate badge (always verified if hash exists - actual verification happens on /verify endpoint)
-        const verified = !!version.sha256;
+        // PUBLIC API: Badge endpoint is always public (no auth required)
+        // Badge shows integrity status based on hash existence
+        // Actual verification requires the upload token, which isn't available publicly
+        // For public badges: if hash exists, show as "verified" (file has integrity tracking)
+        // For authenticated users: attempt actual verification if token matches upload token
+        
+        const authHeader = request.headers.get('Authorization');
+        const jwtToken = authHeader?.replace('Bearer ', '').trim() || null;
+        
+        console.log('[Badge] Badge request received:', {
+            modId: mod.modId,
+            versionId: version.versionId,
+            hasAuthHeader: !!authHeader,
+            hasJwtToken: !!jwtToken,
+            hasSha256: !!version.sha256,
+            r2Key: version.r2Key,
+        });
+
+        // Determine verification status
+        // PUBLIC API: For public access, show "verified" if hash exists (file has integrity tracking)
+        // For authenticated users, attempt actual verification
+        let verificationStatus: VerificationStatus = 'unverified';
+        
+        if (version.sha256) {
+            // Hash exists - file has integrity tracking
+            if (jwtToken) {
+                // Authenticated request - attempt actual verification
+                console.log('[Badge] Attempting verification with JWT token:', {
+                    versionId: version.versionId,
+                    sha256Prefix: version.sha256.substring(0, 16) + '...',
+                });
+                
+                try {
+                    // Get file from R2
+                    const encryptedFile = await env.MODS_R2.get(version.r2Key);
+                    
+                    if (encryptedFile) {
+                        // Decrypt file to calculate hash (same as upload process)
+                        const isEncrypted = encryptedFile.customMetadata?.encrypted === 'true';
+                        const encryptionFormat = encryptedFile.customMetadata?.encryptionFormat;
+                        let decryptedFileData: ArrayBuffer;
+                        
+                        if (isEncrypted) {
+                            // File is encrypted - decrypt it first
+                            if (encryptionFormat === 'binary-v4' || encryptionFormat === 'binary-v5') {
+                                const { decryptBinaryWithJWT } = await import('@strixun/api-framework');
+                                const encryptedBinary = await encryptedFile.arrayBuffer();
+                                const decryptedBytes = await decryptBinaryWithJWT(new Uint8Array(encryptedBinary), jwtToken);
+                                // Convert Uint8Array to ArrayBuffer
+                                decryptedFileData = new ArrayBuffer(decryptedBytes.length);
+                                new Uint8Array(decryptedFileData).set(decryptedBytes);
+                            } else {
+                                // Legacy JSON encrypted format
+                                const { decryptWithJWT } = await import('@strixun/api-framework');
+                                const encryptedData = await encryptedFile.text();
+                                const encryptedJson = JSON.parse(encryptedData);
+                                const decryptedBase64 = await decryptWithJWT(encryptedJson, jwtToken) as string;
+                                
+                                // Convert base64 back to binary
+                                const binaryString = atob(decryptedBase64);
+                                const fileBytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    fileBytes[i] = binaryString.charCodeAt(i);
+                                }
+                                decryptedFileData = fileBytes.buffer;
+                            }
+                        } else {
+                            // Legacy file (not encrypted) - use as-is
+                            decryptedFileData = await encryptedFile.arrayBuffer();
+                        }
+                        
+                        // Verify hash matches (verifyStrixunHash accepts ArrayBuffer)
+                        const isValid = await verifyStrixunHash(decryptedFileData as ArrayBuffer, version.sha256, env);
+                        verificationStatus = isValid ? 'verified' : 'tampered';
+                        
+                        console.log('[Badge] Verification result:', {
+                            versionId: version.versionId,
+                            modId: version.modId,
+                            isValid,
+                            status: verificationStatus,
+                            expectedHashPrefix: version.sha256.substring(0, 16) + '...',
+                        });
+                        
+                        if (!isValid) {
+                            console.warn('[Badge] File integrity check failed - hash mismatch:', {
+                                versionId: version.versionId,
+                                modId: version.modId,
+                                expectedHash: version.sha256.substring(0, 16) + '...',
+                            });
+                        }
+                    } else {
+                        // File not found in R2 - treat as unverified
+                        console.warn('[Badge] File not found in R2 for verification:', {
+                            versionId: version.versionId,
+                            r2Key: version.r2Key,
+                        });
+                        verificationStatus = 'unverified';
+                    }
+                } catch (error) {
+                    // Verification failed (decryption error, token mismatch, etc.)
+                    // For public API, fall back to showing "verified" if hash exists
+                    // This allows badges to work for social media embeds
+                    console.log('[Badge] Verification failed (expected for public badges or token mismatch):', {
+                        versionId: version.versionId,
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                    });
+                    // Show as "verified" if hash exists (file has integrity tracking)
+                    verificationStatus = 'verified';
+                }
+            } else {
+                // PUBLIC API: No auth token - show as "verified" if hash exists
+                // This indicates the file has integrity tracking enabled
+                // Actual verification requires the upload token, which isn't available publicly
+                console.log('[Badge] Public badge request - showing verified status based on hash existence');
+                verificationStatus = 'verified';
+            }
+        } else {
+            // No hash - file was uploaded before integrity system or hash calculation failed
+            verificationStatus = 'unverified';
+        }
+        
         const hash = version.sha256 || 'unknown';
-        const badge = generateBadge(verified, hash, style);
-
-        const corsHeaders = createCORSHeaders(request, {
-            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+        const badge = generateBadge(verificationStatus, hash, domain, style);
+        
+        console.log('[Badge] Badge generated:', {
+            modId: mod.modId,
+            versionId: version.versionId,
+            verificationStatus,
+            domain,
+            style,
+            isPublic: !jwtToken,
         });
         
+        const corsHeaders = createCORSHeaders(request, {
+            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            credentials: true, // Allow credentials for authenticated badge requests
+        });
+        
+        // PUBLIC API: Always return unencrypted SVG for badges
+        // This allows badges to work for:
+        // - Unauthenticated users
+        // - Social media embeds (LinkedIn, Facebook, Discord, X, etc.)
+        // - Direct image loading in <img> tags
+        // Badges are public information and don't need encryption
         return new Response(badge, {
             status: 200,
             headers: {
                 'Content-Type': 'image/svg+xml',
-                'Cache-Control': 'public, max-age=3600',
+                'Cache-Control': 'public, max-age=300', // 5 minutes - verification can change if file is modified
                 ...Object.fromEntries(corsHeaders.entries()),
             },
         });

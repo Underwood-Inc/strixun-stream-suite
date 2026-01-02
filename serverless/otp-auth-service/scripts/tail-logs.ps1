@@ -46,7 +46,7 @@ function Print-Info {
 # Function to print warning
 function Print-Warning {
     param([string]$Message)
-    Write-Host "[!] " -ForegroundColor Yellow -NoNewline
+    Write-Host "⚠ " -ForegroundColor Yellow -NoNewline
     Write-Host $Message
 }
 
@@ -60,7 +60,7 @@ function Print-Error {
 # Function to print success
 function Print-Success {
     param([string]$Message)
-    Write-Host "[OK] " -ForegroundColor Green -NoNewline
+    Write-Host "✓ " -ForegroundColor Green -NoNewline
     Write-Host $Message
 }
 

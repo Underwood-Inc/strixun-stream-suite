@@ -13,8 +13,14 @@ import { IntegrityBadge } from '../components/mod/IntegrityBadge';
 import { ModMetaTags } from '../components/MetaTags';
 import { useAuthStore } from '../stores/auth';
 import { downloadVersion } from '../services/api';
+import { getUserFriendlyErrorMessage, shouldRedirectToLogin } from '../utils/error-messages';
+import { celebrateClick } from '../utils/confetti';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
+import { getButtonStyles } from '../utils/buttonStyles';
+import { getCardStyles } from '../utils/sharedStyles';
+import { candyShopAnimation } from '../utils/candyShopAnimation';
+import { InteractiveThumbnail } from '../components/mod/InteractiveThumbnail';
 
 const PageContainer = styled.div`
   display: flex;
@@ -27,49 +33,14 @@ const Header = styled.div`
   gap: ${spacing.lg};
 `;
 
-const Thumbnail = styled.img`
+const ThumbnailContainer = styled.div`
   width: 200px;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid ${colors.border};
-`;
-
-const ThumbnailError = styled.div`
-  width: 200px;
-  height: 200px;
-  border-radius: 8px;
-  border: 2px dashed ${colors.warning || colors.accent}40;
-  background: ${colors.bgTertiary};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${spacing.md};
-  text-align: center;
-  color: ${colors.textSecondary};
-`;
-
-const ErrorIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: ${spacing.xs};
-  opacity: 0.7;
-`;
-
-const ErrorMessage = styled.div`
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${colors.warning || colors.accent};
-  margin-bottom: ${spacing.xs};
-`;
-
-const ErrorDetail = styled.div`
-  font-size: 0.75rem;
-  color: ${colors.textMuted};
-  line-height: 1.4;
+  flex-shrink: 0;
+  /* InteractiveThumbnail has aspect-ratio: 16/9, so height will be calculated */
 `;
 
 const Info = styled.div`
+  ${getCardStyles('default')}
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -127,56 +98,29 @@ const Actions = styled.div`
   margin-top: ${spacing.md};
 `;
 
-const DownloadButton = styled.button`
-  padding: ${spacing.md} ${spacing.lg};
-  background: ${colors.accent};
-  color: ${colors.bg};
-  border: none;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
+const ManageButton = styled.button`
+  ${getButtonStyles('secondary')}
   display: inline-flex;
   align-items: center;
   gap: ${spacing.sm};
-  
-  &:hover:not(:disabled) {
-    background: ${colors.accentHover};
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  font-size: 1rem;
 `;
 
-const ManageButton = styled.button`
-  padding: ${spacing.md} ${spacing.lg};
-  background: ${colors.bgSecondary};
-  color: ${colors.text};
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
+const DownloadButton = styled.button`
+  ${getButtonStyles('primary')}
+  ${candyShopAnimation}
   display: inline-flex;
   align-items: center;
   gap: ${spacing.sm};
-  
-  &:hover {
-    background: ${colors.bgTertiary};
-  }
+  font-size: 1rem;
 `;
 
 export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
-    const { data, isLoading, error } = useModDetail(slug || '');
-    const { user } = useAuthStore();
+    const { data, isLoading, error, refetch } = useModDetail(slug || '');
+    const { user, isAuthenticated } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
-    const [thumbnailError, setThumbnailError] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState<string | null>(null);
     
@@ -185,7 +129,10 @@ export function ModDetailPage() {
     const submitRating = useSubmitModRating();
 
     if (isLoading) return <Loading>Loading mod...</Loading>;
-    if (error) return <Error>Failed to load mod: {(error as Error).message}</Error>;
+    if (error) {
+        const friendlyMessage = getUserFriendlyErrorMessage(error);
+        return <Error>{friendlyMessage}</Error>;
+    }
     if (!data) return <Error>Mod not found</Error>;
 
     const { mod, versions } = data;
@@ -199,22 +146,42 @@ export function ModDetailPage() {
         });
     };
 
-    const handleThumbnailError = () => {
-        setThumbnailError(true);
-    };
 
-    const handleDownload = async () => {
-        if (!latestVersion) return;
+    const handleDownloadLatest = async () => {
+        if (!latestVersion || !slug) return;
+        
+        // SECURITY: Prevent unauthenticated download attempts
+        if (!isAuthenticated) {
+            setDownloadError('Please log in to download files');
+            setTimeout(() => {
+                setDownloadError(null);
+                navigate('/login');
+            }, 2000);
+            return;
+        }
         
         setDownloading(true);
         setDownloadError(null);
         
         try {
-            await downloadVersion(mod.slug, latestVersion.versionId, latestVersion.fileName || `mod-${mod.slug}-v${latestVersion.version}.jar`);
-        } catch (error: any) {
+            const fileName = latestVersion.fileName || `mod-${slug}-v${latestVersion.version}.jar`;
+            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
+            await downloadVersion(slug, latestVersion.versionId, fileName);
+            
+            // Download successful - refetch mod data to get updated download counts
+            console.log('[ModDetailPage] Download completed, refetching mod data for updated counts');
+            await refetch();
+        } catch (error) {
             console.error('[ModDetailPage] Download failed:', error);
-            setDownloadError(error.message || 'Failed to download file');
+            setDownloadError(getUserFriendlyErrorMessage(error));
             setTimeout(() => setDownloadError(null), 5000);
+            
+            // Redirect to login if auth error
+            if (shouldRedirectToLogin(error)) {
+                setTimeout(() => {
+                    navigate('/login');
+                }, 1000);
+            }
         } finally {
             setDownloading(false);
         }
@@ -225,21 +192,16 @@ export function ModDetailPage() {
             <ModMetaTags mod={mod} />
             <PageContainer>
                 <Header>
-                {mod.thumbnailUrl ? (
-                    thumbnailError ? (
-                        <ThumbnailError>
-                            <ErrorIcon>[WARNING]</ErrorIcon>
-                            <ErrorMessage>Thumbnail unavailable</ErrorMessage>
-                            <ErrorDetail>Image failed to load</ErrorDetail>
-                        </ThumbnailError>
-                    ) : (
-                        <Thumbnail 
-                            src={mod.thumbnailUrl} 
-                            alt={mod.title}
-                            onError={handleThumbnailError}
+                {mod.thumbnailUrl && (
+                    <ThumbnailContainer>
+                        <InteractiveThumbnail 
+                            mod={mod}
+                            onNavigate={() => {
+                                // Already on detail page, no navigation needed
+                            }}
                         />
-                    )
-                ) : null}
+                    </ThumbnailContainer>
+                )}
                 <Info>
                     <Title>{mod.title}</Title>
                     <Description>{mod.description}</Description>
@@ -257,7 +219,6 @@ export function ModDetailPage() {
                                 <IntegrityBadge 
                                     slug={mod.slug}
                                     versionId={latestVersion.versionId}
-                                    showCopyButton={isUploader}
                                 />
                             </>
                         )}
@@ -269,23 +230,6 @@ export function ModDetailPage() {
                     </Tags>
                     {latestVersion && (
                         <Actions>
-                            {downloadError && (
-                                <div style={{ 
-                                    padding: spacing.sm, 
-                                    background: `${colors.danger}20`, 
-                                    color: colors.danger, 
-                                    borderRadius: 4,
-                                    fontSize: '0.875rem'
-                                }}>
-                                    {downloadError}
-                                </div>
-                            )}
-                            <DownloadButton
-                                onClick={handleDownload}
-                                disabled={downloading}
-                            >
-                                {downloading ? 'Downloading...' : `Download Latest Version (v${latestVersion.version})`}
-                            </DownloadButton>
                             {isUploader && (
                                 <ManageButton
                                     onClick={() => navigate(`/manage/${mod.slug}`)}
@@ -293,15 +237,34 @@ export function ModDetailPage() {
                                     Manage Mod
                                 </ManageButton>
                             )}
+                            <DownloadButton
+                                onClick={(e) => {
+                                    celebrateClick(e.currentTarget);
+                                    handleDownloadLatest();
+                                }}
+                                disabled={downloading || !latestVersion || !isAuthenticated}
+                                title={!isAuthenticated ? 'Please log in to download' : undefined}
+                            >
+                                {downloading ? 'Downloading...' : `Download Latest ${latestVersion.version}`}
+                            </DownloadButton>
+                            {downloadError && (
+                                <span style={{ color: colors.danger, fontSize: '0.875rem' }}>
+                                    {downloadError}
+                                </span>
+                            )}
                         </Actions>
                     )}
                 </Info>
             </Header>
 
-            <ModVersionList modSlug={mod.slug} versions={versions} isUploader={isUploader} />
+            <ModVersionList 
+                modSlug={mod.slug} 
+                versions={versions} 
+                variants={mod.variants || []}
+            />
             
             {isUploader && (
-                <ModAnalytics mod={mod} versions={versions} />
+                <ModAnalytics mod={mod} versions={versions} variants={mod.variants || []} />
             )}
             
             <ModRatings 

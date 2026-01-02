@@ -18,16 +18,18 @@ export function isServiceToServiceCall(
     request: Request,
     auth: { userId?: string; jwtToken?: string; customerId?: string | null } | null
 ): boolean {
-    // Check for service key header (X-Service-Key)
-    const serviceKey = request.headers.get('X-Service-Key');
-    if (serviceKey) {
+    // CRITICAL: Check for X-Strixun-Request-Integrity header first
+    // This is the most reliable indicator of a service-to-service call from service-client
+    const requestIntegrityHeader = request.headers.get('X-Strixun-Request-Integrity');
+    if (requestIntegrityHeader) {
         return true;
     }
     
     // Check for SUPER_ADMIN_API_KEY in Authorization header (Bearer token that's not a JWT)
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
+        // CRITICAL: Trim token to ensure it matches the token used for encryption
+        const token = authHeader.substring(7).trim();
         // SUPER_ADMIN_API_KEY is typically a long random string, not a JWT
         // JWT tokens have 3 parts separated by dots (header.payload.signature)
         // If it doesn't have dots or has more than 3 parts, it's likely an API key
@@ -69,35 +71,23 @@ export async function addResponseIntegrityHeader(
     response: Response,
     keyphrase: string
 ): Promise<Response> {
-    // Clone response to read body (CRITICAL: must clone before reading)
+    // CRITICAL: Clone response to read body without consuming original
     const responseClone = response.clone();
     
-    // Get response body text
-    let bodyText: string;
-    const contentType = response.headers.get('content-type');
-    
+    // Read body as ArrayBuffer to preserve exact bytes (no encoding/decoding issues)
+    let bodyBytes: ArrayBuffer;
     try {
-        if (contentType?.includes('application/json')) {
-            try {
-                const data = await responseClone.json();
-                bodyText = JSON.stringify(data);
-            } catch (error) {
-                // If JSON parsing fails, try text
-                bodyText = await responseClone.text();
-            }
-        } else {
-            bodyText = await responseClone.text();
-        }
+        bodyBytes = await responseClone.arrayBuffer();
     } catch (error) {
-        // If body reading fails, use empty string (shouldn't happen but be safe)
+        // If body reading fails, use empty buffer (shouldn't happen but be safe)
         console.error('[NetworkIntegrity] Failed to read response body for integrity header:', error);
-        bodyText = '';
+        bodyBytes = new ArrayBuffer(0);
     }
     
-    // Calculate integrity signature
+    // Calculate integrity signature using exact bytes
     const integrityHeader = await calculateResponseIntegrity(
         response.status,
-        bodyText,
+        bodyBytes,
         keyphrase
     );
     
@@ -106,7 +96,8 @@ export async function addResponseIntegrityHeader(
     headers.set('X-Strixun-Response-Integrity', integrityHeader);
     
     // Return new response with integrity header
-    return new Response(bodyText, {
+    // CRITICAL: Use original body bytes directly to avoid any encoding/decoding issues
+    return new Response(bodyBytes, {
         status: response.status,
         statusText: response.statusText,
         headers: headers,
@@ -116,16 +107,14 @@ export async function addResponseIntegrityHeader(
 /**
  * Get network integrity keyphrase from environment
  * @param env - Worker environment
- * @returns Keyphrase or dev fallback
+ * @returns Keyphrase
+ * @throws Error if NETWORK_INTEGRITY_KEYPHRASE is not set
  */
 export function getNetworkIntegrityKeyphrase(env: { NETWORK_INTEGRITY_KEYPHRASE?: string }): string {
-    if (env.NETWORK_INTEGRITY_KEYPHRASE) {
-        return env.NETWORK_INTEGRITY_KEYPHRASE;
+    if (!env.NETWORK_INTEGRITY_KEYPHRASE) {
+        throw new Error('NETWORK_INTEGRITY_KEYPHRASE environment variable is required. Set it via: wrangler secret put NETWORK_INTEGRITY_KEYPHRASE');
     }
-    
-    // Fallback for development (should not be used in production)
-    console.warn('[NetworkIntegrity] Using dev fallback for NETWORK_INTEGRITY_KEYPHRASE - set NETWORK_INTEGRITY_KEYPHRASE in production!');
-    return 'strixun:network-integrity:dev-fallback';
+    return env.NETWORK_INTEGRITY_KEYPHRASE;
 }
 
 /**
@@ -169,12 +158,8 @@ export async function wrapResponseWithIntegrity(
         // Image responses need integrity headers too
     }
     
-    // Get keyphrase
+    // Get keyphrase - throws if not set (no fallbacks!)
     const keyphrase = getNetworkIntegrityKeyphrase(env);
-    if (!keyphrase) {
-        console.error('[wrapResponseWithIntegrity] NETWORK_INTEGRITY_KEYPHRASE is missing');
-        throw new Error('[NetworkIntegrity] NETWORK_INTEGRITY_KEYPHRASE is required but not set');
-    }
     
     // Add integrity header (CRITICAL: must always succeed for service calls)
     try {

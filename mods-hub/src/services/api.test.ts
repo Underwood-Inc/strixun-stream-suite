@@ -726,7 +726,7 @@ describe('Mods Hub API Service - Unit Tests', () => {
                 data: {
                     deleted: 1,
                     failed: 1,
-                    errors: [{ key: 'file2.zip', error: 'Not found' }],
+                    results: [{ key: 'file2.zip', deleted: false, error: 'Not found' }],
                 },
                 status: 200,
                 statusText: 'OK',
@@ -735,8 +735,8 @@ describe('Mods Hub API Service - Unit Tests', () => {
 
             const result = await bulkDeleteR2Files(['file1.zip', 'file2.zip']);
 
-            expect(result.errors).toBeDefined();
-            expect(result.errors?.[0].error).toBe('Not found');
+            expect(result.results).toBeDefined();
+            expect(result.results?.[0].error).toBe('Not found');
         });
     });
 });

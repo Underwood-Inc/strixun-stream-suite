@@ -53,10 +53,20 @@ export async function handleUpdateModStatus(
                 console.log('[UpdateModStatus] Listing customer keys:', { keysFound: listResult.keys.length, cursor: !!cursor });
                 
                 for (const key of listResult.keys) {
-                    if (key.name.endsWith('_mods_list')) {
+                    // Match both customer_{id}_mods_list and customer_{id}/mods_list patterns
+                    if (key.name.endsWith('_mods_list') || key.name.endsWith('/mods_list')) {
                         modsListsFound++;
-                        const match = key.name.match(/^customer_([^_/]+)[_/]mods_list$/);
-                        const customerId = match ? match[1] : null;
+                        // CRITICAL: Customer IDs can contain underscores (e.g., cust_2233896f662d)
+                        // Extract everything between "customer_" and the final "_mods_list" or "/mods_list"
+                        let customerId: string | null = null;
+                        if (key.name.endsWith('_mods_list')) {
+                            const match = key.name.match(/^customer_(.+)_mods_list$/);
+                            customerId = match ? match[1] : null;
+                        } else if (key.name.endsWith('/mods_list')) {
+                            const match = key.name.match(/^customer_(.+)\/mods_list$/);
+                            customerId = match ? match[1] : null;
+                        }
+                        
                         if (customerId) {
                             customerScopesSearched++;
                             const customerModKey = getCustomerKey(customerId, modId);
@@ -128,7 +138,8 @@ export async function handleUpdateModStatus(
                     });
                 }
                 
-                const token = authHeader.substring(7);
+                // CRITICAL: Trim token to ensure it matches the token used for encryption
+                const token = authHeader.substring(7).trim();
                 
                 // Validate token before decryption
                 if (!token || token.length < 10) {
@@ -203,37 +214,16 @@ export async function handleUpdateModStatus(
 
         // Add to status history
         // CRITICAL: Never store email - email is ONLY for OTP authentication
-        // Fetch displayName from auth API if available
+        // Fetch displayName from customer data - customer is the source of truth
         let changedByDisplayName: string | null = null;
         try {
-            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const response = await fetch(`${authApiUrl}/auth/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
+            if (auth.customerId) {
+                const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+                changedByDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+            } else {
+                console.warn('[Triage] Missing customerId, cannot fetch displayName for status history:', {
+                    userId: auth.userId
                 });
-                if (response.ok) {
-                    const responseData = await response.json();
-                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                    let userData: { displayName?: string | null; [key: string]: any };
-                    if (isEncrypted) {
-                        const { decryptWithJWT } = await import('@strixun/api-framework');
-                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                    } else {
-                        userData = responseData;
-                    }
-                    changedByDisplayName = userData?.displayName || null;
-                }
             }
         } catch (error) {
             console.warn('[Triage] Failed to fetch displayName for status history:', error);
@@ -445,6 +435,27 @@ export async function handleAddReviewComment(
             });
         }
 
+        // CRITICAL: For non-admin users (uploaders), customerId is required for display name lookup
+        if (!isAdmin && !auth.customerId) {
+            console.error('[Triage] CRITICAL: customerId is null for non-admin user:', {
+                userId: auth.userId,
+                email: auth.email,
+                isUploader,
+                note: 'Rejecting comment - customerId is required for display name lookups'
+            });
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for adding review comments. Please ensure your account has a valid customer association.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         // Parse comment request
         const commentData = await request.json() as { content: string };
         if (!commentData.content || commentData.content.trim().length === 0) {
@@ -469,34 +480,14 @@ export async function handleAddReviewComment(
         // Fetch displayName from auth API if available
         let authorDisplayName: string | null = null;
         try {
-            // Auto-detect local dev: if ENVIRONMENT is 'test' or 'development', use localhost
-            const authApiUrl = env.AUTH_API_URL || (env.ENVIRONMENT === 'test' || env.ENVIRONMENT === 'development' ? 'http://localhost:8787' : 'https://auth.idling.app');
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.substring(7);
-                const response = await fetch(`${authApiUrl}/auth/me`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    // CRITICAL: Prevent caching of service-to-service API calls
-                    // Even server-side calls should not be cached to ensure fresh data
-                    cache: 'no-store',
+            // CRITICAL: Fetch displayName from customer data - customer is the source of truth
+            if (auth.customerId) {
+                const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+                authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+            } else {
+                console.warn('[Triage] Missing customerId, cannot fetch displayName for comment:', {
+                    userId: auth.userId
                 });
-                if (response.ok) {
-                    const responseData = await response.json();
-                    const isEncrypted = response.headers.get('X-Encrypted') === 'true' || 
-                                       (typeof responseData === 'object' && responseData && 'encrypted' in responseData);
-                    let userData: { displayName?: string | null; [key: string]: any };
-                    if (isEncrypted) {
-                        const { decryptWithJWT } = await import('@strixun/api-framework');
-                        userData = await decryptWithJWT(responseData, token) as { displayName?: string | null; [key: string]: any };
-                    } else {
-                        userData = responseData;
-                    }
-                    authorDisplayName = userData?.displayName || null;
-                }
             }
         } catch (error) {
             console.warn('[Triage] Failed to fetch displayName for comment:', error);
