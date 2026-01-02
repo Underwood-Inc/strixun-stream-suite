@@ -44,9 +44,10 @@ function runSetupScript() {
   writeFileSync(tempScriptPath, modifiedScript);
   
   try {
-    execSync(`node ${tempScriptPath}`, {
+    execSync(`node "${tempScriptPath}"`, {
       cwd: TEST_DIR,
       stdio: 'pipe',
+      shell: true,
     });
   } finally {
     if (existsSync(tempScriptPath)) {
@@ -146,6 +147,11 @@ describe('setup-cloud-ide.js', () => {
   });
 
   it('should create files with matching JWT secrets', () => {
+    // Clean up any existing files to ensure fresh creation
+    if (existsSync(TEST_PATHS.otpAuthDevVars)) rmSync(TEST_PATHS.otpAuthDevVars, { force: true });
+    if (existsSync(TEST_PATHS.modsApiDevVars)) rmSync(TEST_PATHS.modsApiDevVars, { force: true });
+    if (existsSync(TEST_PATHS.customerApiDevVars)) rmSync(TEST_PATHS.customerApiDevVars, { force: true });
+    
     runSetupScript();
 
     // Read all files that need matching JWT secrets
@@ -154,9 +160,9 @@ describe('setup-cloud-ide.js', () => {
     const customerApiContent = readFileSync(TEST_PATHS.customerApiDevVars, 'utf-8');
 
     // Extract JWT secrets
-    const otpAuthSecretMatch = otpAuthContent.match(/JWT_SECRET=(.+)/);
-    const modsApiSecretMatch = modsApiContent.match(/JWT_SECRET=(.+)/);
-    const customerApiSecretMatch = customerApiContent.match(/JWT_SECRET=(.+)/);
+    const otpAuthSecretMatch = otpAuthContent.match(/JWT_SECRET=([^\r\n]+)/);
+    const modsApiSecretMatch = modsApiContent.match(/JWT_SECRET=([^\r\n]+)/);
+    const customerApiSecretMatch = customerApiContent.match(/JWT_SECRET=([^\r\n]+)/);
 
     expect(otpAuthSecretMatch).toBeTruthy();
     expect(modsApiSecretMatch).toBeTruthy();
@@ -171,6 +177,11 @@ describe('setup-cloud-ide.js', () => {
   });
 
   it('should create files with matching network integrity keyphrases', () => {
+    // Clean up any existing files to ensure fresh creation
+    if (existsSync(TEST_PATHS.otpAuthDevVars)) rmSync(TEST_PATHS.otpAuthDevVars, { force: true });
+    if (existsSync(TEST_PATHS.modsApiDevVars)) rmSync(TEST_PATHS.modsApiDevVars, { force: true });
+    if (existsSync(TEST_PATHS.customerApiDevVars)) rmSync(TEST_PATHS.customerApiDevVars, { force: true });
+    
     runSetupScript();
 
     // Read all files that need matching network integrity keyphrases
@@ -179,9 +190,9 @@ describe('setup-cloud-ide.js', () => {
     const customerApiContent = readFileSync(TEST_PATHS.customerApiDevVars, 'utf-8');
 
     // Extract network integrity keyphrases
-    const otpAuthKeyphraseMatch = otpAuthContent.match(/NETWORK_INTEGRITY_KEYPHRASE=(.+)/);
-    const modsApiKeyphraseMatch = modsApiContent.match(/NETWORK_INTEGRITY_KEYPHRASE=(.+)/);
-    const customerApiKeyphraseMatch = customerApiContent.match(/NETWORK_INTEGRITY_KEYPHRASE=(.+)/);
+    const otpAuthKeyphraseMatch = otpAuthContent.match(/NETWORK_INTEGRITY_KEYPHRASE=([^\r\n]+)/);
+    const modsApiKeyphraseMatch = modsApiContent.match(/NETWORK_INTEGRITY_KEYPHRASE=([^\r\n]+)/);
+    const customerApiKeyphraseMatch = customerApiContent.match(/NETWORK_INTEGRITY_KEYPHRASE=([^\r\n]+)/);
 
     expect(otpAuthKeyphraseMatch).toBeTruthy();
     expect(modsApiKeyphraseMatch).toBeTruthy();

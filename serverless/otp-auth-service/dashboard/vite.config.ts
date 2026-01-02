@@ -22,7 +22,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: path.resolve(__dirname, '../../../dist/otp-auth-service-dashboard'),
+    outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
     base: '/dashboard/',
     cssCodeSplit: false, // Bundle all CSS into a single file to avoid missing styles
