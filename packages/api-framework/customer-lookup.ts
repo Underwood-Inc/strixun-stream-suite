@@ -4,10 +4,12 @@
  * Consolidated customer API client using the API framework as source of truth
  * Supports both JWT authentication (for user requests) and service-client (for service-to-service)
  * Customer is the primary data source for all customizable user info
+ * 
+ * This module is part of api-framework to avoid dependency cycles.
  */
 
 import { createServiceClient, type ServiceClient } from '@strixun/service-client';
-import { createAPIClient } from '@strixun/api-framework/client';
+import { createAPIClient } from './src/client.js';
 
 /**
  * Customer data structure
@@ -38,6 +40,7 @@ export interface CustomerLookupEnv {
     SUPER_ADMIN_API_KEY?: string;
     NETWORK_INTEGRITY_KEYPHRASE?: string;
     ENVIRONMENT?: string;
+    SUPER_ADMIN_EMAILS?: string;
     [key: string]: any;
 }
 
@@ -419,4 +422,41 @@ export async function fetchDisplayNamesByCustomerIds(
     });
     
     return displayNames;
+}
+
+/**
+ * Check if a customerId belongs to a super admin
+ * Looks up customer by customerId, gets email from customer record, checks against SUPER_ADMIN_EMAILS
+ * 
+ * @param customerId - Customer ID to check
+ * @param env - Environment with SUPER_ADMIN_EMAILS and customer lookup config
+ * @returns true if customer email is in SUPER_ADMIN_EMAILS
+ */
+export async function isSuperAdminByCustomerId(
+    customerId: string | null,
+    env: CustomerLookupEnv & { SUPER_ADMIN_EMAILS?: string }
+): Promise<boolean> {
+    if (!customerId) return false;
+    
+    try {
+        // Look up customer by customerId
+        const customer = await fetchCustomerByCustomerId(customerId, env);
+        
+        if (!customer || !customer.email) {
+            return false;
+        }
+        
+        // Check if customer's email is in SUPER_ADMIN_EMAILS
+        if (!env.SUPER_ADMIN_EMAILS) {
+            return false;
+        }
+        
+        const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map(email => email.trim().toLowerCase());
+        const normalizedEmail = customer.email.trim().toLowerCase();
+        
+        return superAdminEmails.includes(normalizedEmail);
+    } catch (error) {
+        console.error('[CustomerLookup] Error checking super admin by customerId:', error);
+        return false;
+    }
 }

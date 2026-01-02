@@ -116,6 +116,28 @@ export type {
   RouteProtectionResult,
 } from './route-protection.js';
 
+// Re-export customer lookup utilities (customer-lookup is part of api-framework)
+// All application code should import these from @strixun/api-framework
+export {
+  fetchCustomerByCustomerId,
+  fetchDisplayNameByCustomerId,
+  fetchDisplayNamesByCustomerIds,
+  fetchCustomersByCustomerIds,
+  getCustomer,
+  getCustomerByEmail,
+  getCurrentCustomer,
+  getCustomerService,
+  getCustomerByEmailService,
+  createCustomer,
+  updateCustomer,
+  isSuperAdminByCustomerId,
+} from './customer-lookup.js';
+
+export type {
+  CustomerData,
+  CustomerLookupEnv,
+} from './customer-lookup.js';
+
 // Re-export upload limits utilities
 export {
   BASE_UPLOAD_LIMIT,

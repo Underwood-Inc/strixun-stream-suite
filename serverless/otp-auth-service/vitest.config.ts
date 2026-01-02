@@ -5,10 +5,6 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: '@strixun/customer-lookup',
-        replacement: resolve(__dirname, '../../packages/customer-lookup/index.ts'),
-      },
-      {
         find: '@strixun/api-framework/jwt',
         replacement: resolve(__dirname, '../../packages/api-framework/jwt.ts'),
       },

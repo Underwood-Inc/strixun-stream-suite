@@ -1,10 +1,10 @@
 /**
  * Customer API Service Client
  * 
- * Re-exports from consolidated customer-lookup package
- * This file maintains backward compatibility while using the consolidated implementation
+ * Re-exports from @strixun/api-framework (which re-exports from customer-lookup)
+ * This file maintains backward compatibility
  * 
- * @deprecated Use @strixun/customer-lookup directly for new code
+ * @deprecated Use @strixun/api-framework directly for new code (customer-lookup functions are re-exported there)
  */
 
 import { 
@@ -14,7 +14,7 @@ import {
     updateCustomer,
     type CustomerData,
     type CustomerLookupEnv 
-} from '@strixun/customer-lookup';
+} from '@strixun/api-framework';
 
 // Re-export types for backward compatibility
 export type { CustomerData, CustomerLookupEnv };

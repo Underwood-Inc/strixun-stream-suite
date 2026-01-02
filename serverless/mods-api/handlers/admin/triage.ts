@@ -218,7 +218,7 @@ export async function handleUpdateModStatus(
         let changedByDisplayName: string | null = null;
         try {
             if (auth.customerId) {
-                const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+                const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
                 changedByDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             } else {
                 console.warn('[Triage] Missing customerId, cannot fetch displayName for status history:', {
@@ -482,7 +482,7 @@ export async function handleAddReviewComment(
         try {
             // CRITICAL: Fetch displayName from customer data - customer is the source of truth
             if (auth.customerId) {
-                const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+                const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
                 authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             } else {
                 console.warn('[Triage] Missing customerId, cannot fetch displayName for comment:', {

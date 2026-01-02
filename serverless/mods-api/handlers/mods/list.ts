@@ -185,7 +185,7 @@ export async function handleListMods(
         // Customer is the primary data source for all customizable user info
         // Fetch by customerIds (not userIds) - customer is the source of truth
         const uniqueCustomerIds = [...new Set(mods.map(mod => mod.customerId).filter((id): id is string => !!id))];
-        const { fetchDisplayNamesByCustomerIds } = await import('@strixun/customer-lookup');
+        const { fetchDisplayNamesByCustomerIds } = await import('@strixun/api-framework');
         const displayNames = await fetchDisplayNamesByCustomerIds(uniqueCustomerIds, env);
         
         // Map display names to mods - always use fetched value from customer data if available

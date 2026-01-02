@@ -178,7 +178,7 @@ export async function handleListAllMods(
         const uniqueCustomerIds = [...new Set(mods.map(mod => mod.customerId).filter((id): id is string => !!id))];
         console.log('[AdminList] Fetching display names for', uniqueCustomerIds.length, 'unique customers');
         
-        const { fetchDisplayNamesByCustomerIds } = await import('@strixun/customer-lookup');
+        const { fetchDisplayNamesByCustomerIds } = await import('@strixun/api-framework');
         const displayNames = await fetchDisplayNamesByCustomerIds(uniqueCustomerIds, env);
         
         console.log('[AdminList] Fetched display names from customer data:', {

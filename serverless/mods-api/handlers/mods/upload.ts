@@ -511,7 +511,7 @@ export async function handleUploadMod(
         let authorDisplayName: string | null = null;
         
         if (auth.customerId) {
-            const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
             console.log('[Upload] Fetching authorDisplayName from customer data:', { 
                 customerId: auth.customerId,
                 userId: auth.userId

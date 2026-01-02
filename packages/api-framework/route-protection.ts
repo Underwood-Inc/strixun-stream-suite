@@ -84,29 +84,6 @@ export async function isSuperAdminEmail(email: string | undefined, env: RoutePro
     return adminEmails.includes(normalizedEmail);
 }
 
-/**
- * Check if a customerId belongs to a super admin
- * Looks up customer by customerId, gets email from customer record, checks against SUPER_ADMIN_EMAILS
- */
-export async function isSuperAdminByCustomerId(customerId: string | null, env: RouteProtectionEnv): Promise<boolean> {
-    if (!customerId) return false;
-    
-    try {
-        // Look up customer by customerId
-        const { fetchCustomerByCustomerId } = await import('@strixun/customer-lookup');
-        const customer = await fetchCustomerByCustomerId(customerId, env);
-        
-        if (!customer || !customer.email) {
-            return false;
-        }
-        
-        // Check if customer's email is in SUPER_ADMIN_EMAILS
-        return await isSuperAdminEmail(customer.email, env);
-    } catch (error) {
-        console.error('[RouteProtection] Error checking super admin by customerId:', error);
-        return false;
-    }
-}
 
 /**
  * Check if an email is a regular admin (or super admin)
@@ -277,29 +254,47 @@ export async function protectAdminRoute(
     
     // Check admin level
     if (level === 'super-admin') {
-        // Use customerId to look up customer, get email from customer record, check against SUPER_ADMIN_EMAILS
-        // NO FALLBACK - customerId is required after OTP auth
-        if (!auth.customerId) {
+        // If email is in JWT, use it directly
+        if (auth.email) {
+            const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
+            if (!isSuperAdmin) {
+                return {
+                    allowed: false,
+                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                    auth,
+                };
+            }
             return {
-                allowed: false,
-                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                allowed: true,
                 auth,
+                level: 'super-admin',
             };
         }
         
-        const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
-        
-        if (!isSuperAdmin) {
+        // If no email but we have customerId, look up customer to get email
+        if (auth.customerId) {
+            const { isSuperAdminByCustomerId } = await import('./customer-lookup.js');
+            const isSuperAdmin = await isSuperAdminByCustomerId(auth.customerId, env);
+            
+            if (!isSuperAdmin) {
+                return {
+                    allowed: false,
+                    error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                    auth,
+                };
+            }
             return {
-                allowed: false,
-                error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
+                allowed: true,
                 auth,
+                level: 'super-admin',
             };
         }
+        
+        // No email and no customerId - cannot verify
         return {
-            allowed: true,
+            allowed: false,
+            error: createForbiddenResponse(request, env, 'Super admin access required', 'SUPER_ADMIN_REQUIRED'),
             auth,
-            level: 'super-admin',
         };
     } else {
         // Regular admin

@@ -18,6 +18,13 @@ export function isServiceToServiceCall(
     request: Request,
     auth: { userId?: string; jwtToken?: string; customerId?: string | null } | null
 ): boolean {
+    // CRITICAL: Check for X-Strixun-Request-Integrity header first
+    // This is the most reliable indicator of a service-to-service call from service-client
+    const requestIntegrityHeader = request.headers.get('X-Strixun-Request-Integrity');
+    if (requestIntegrityHeader) {
+        return true;
+    }
+    
     // Check for SUPER_ADMIN_API_KEY in Authorization header (Bearer token that's not a JWT)
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {

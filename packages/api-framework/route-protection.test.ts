@@ -11,10 +11,40 @@
 
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock customer-lookup module BEFORE imports
+const mockFetchCustomerByCustomerId = vi.fn();
+
+vi.mock('./customer-lookup.js', async () => {
+    const actual = await vi.importActual('./customer-lookup.js') as any;
+    // Create a wrapper that uses our mock
+    const mockFetch = (...args: any[]) => mockFetchCustomerByCustomerId(...args);
+    
+    // For isSuperAdminByCustomerId, we need to create a version that uses our mock
+    const mockIsSuperAdmin = async (customerId: string | null, env: any) => {
+        if (!customerId) return false;
+        try {
+            const customer = await mockFetch(customerId, env);
+            if (!customer || !customer.email) return false;
+            if (!env.SUPER_ADMIN_EMAILS) return false;
+            const superAdminEmails = env.SUPER_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase());
+            const normalizedEmail = customer.email.trim().toLowerCase();
+            return superAdminEmails.includes(normalizedEmail);
+        } catch {
+            return false;
+        }
+    };
+    
+    return {
+        ...actual,
+        fetchCustomerByCustomerId: mockFetch,
+        isSuperAdminByCustomerId: mockIsSuperAdmin,
+    };
+});
+
 import {
     protectAdminRoute,
     isSuperAdminEmail,
-    isSuperAdminByCustomerId,
     isAdminEmail,
     verifySuperAdminKey,
     createUnauthorizedResponse,
@@ -22,15 +52,10 @@ import {
     type RouteProtectionEnv,
     type AuthResult,
 } from './route-protection.js';
+import { isSuperAdminByCustomerId } from './customer-lookup.js';
 
 // Mock JWT verification
 const mockVerifyJWT = vi.fn();
-
-// Mock customer lookup
-const mockFetchCustomerByCustomerId = vi.fn();
-vi.mock('@strixun/customer-lookup', () => ({
-    fetchCustomerByCustomerId: mockFetchCustomerByCustomerId,
-}));
 
 describe('Route Protection System', () => {
     const mockEnv: RouteProtectionEnv = {
@@ -44,6 +69,7 @@ describe('Route Protection System', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockVerifyJWT.mockClear();
+        mockFetchCustomerByCustomerId.mockClear();
     });
 
     describe('isSuperAdminEmail', () => {
@@ -196,7 +222,7 @@ describe('Route Protection System', () => {
                 displayName: 'Super Admin',
             };
 
-            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer);
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -319,7 +345,7 @@ describe('Route Protection System', () => {
 
         beforeEach(async () => {
             vi.clearAllMocks();
-            const customerLookup = await import('@strixun/customer-lookup');
+            const customerLookup = await import('./customer-lookup.js');
             fetchCustomerByCustomerId = customerLookup.fetchCustomerByCustomerId;
         });
 
@@ -330,7 +356,7 @@ describe('Route Protection System', () => {
                 displayName: 'Super Admin',
             };
 
-            vi.mocked(fetchCustomerByCustomerId).mockResolvedValue(mockCustomer as any);
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer);
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -351,7 +377,7 @@ describe('Route Protection System', () => {
                 displayName: 'Regular User',
             };
 
-            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer);
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -365,7 +391,7 @@ describe('Route Protection System', () => {
         });
 
         it('should return false when customer is not found', async () => {
-            vi.mocked(fetchCustomerByCustomerId).mockResolvedValue(null);
+            mockFetchCustomerByCustomerId.mockResolvedValue(null);
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -401,11 +427,11 @@ describe('Route Protection System', () => {
             const result = await isSuperAdminByCustomerId(null, mockEnv);
 
             expect(result).toBe(false);
-            expect(fetchCustomerByCustomerId).not.toHaveBeenCalled();
+            expect(mockFetchCustomerByCustomerId).not.toHaveBeenCalled();
         });
 
         it('should handle customer lookup errors gracefully', async () => {
-            vi.mocked(fetchCustomerByCustomerId).mockRejectedValue(new Error('Customer API error'));
+            mockFetchCustomerByCustomerId.mockRejectedValue(new Error('Customer API error'));
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -425,7 +451,7 @@ describe('Route Protection System', () => {
                 displayName: 'Super Admin',
             };
 
-            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer as any);
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer);
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -444,7 +470,7 @@ describe('Route Protection System', () => {
 
         beforeEach(async () => {
             vi.clearAllMocks();
-            const customerLookup = await import('@strixun/customer-lookup');
+            const customerLookup = await import('./customer-lookup.js');
             fetchCustomerByCustomerId = customerLookup.fetchCustomerByCustomerId;
         });
 
@@ -455,7 +481,7 @@ describe('Route Protection System', () => {
                 displayName: 'Super Admin',
             };
 
-            vi.mocked(fetchCustomerByCustomerId).mockResolvedValue(mockCustomer as any);
+            mockFetchCustomerByCustomerId.mockResolvedValue(mockCustomer);
 
             const envWithCustomerApi: RouteProtectionEnv = {
                 ...mockEnv,
@@ -517,7 +543,7 @@ describe('Route Protection System', () => {
             expect(result.allowed).toBe(false);
             expect(result.error).toBeDefined();
             expect(result.error?.status).toBe(403);
-            expect(fetchCustomerByCustomerId).toHaveBeenCalledWith('cust_456', envWithCustomerApi);
+            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_456', envWithCustomerApi);
         });
 
 

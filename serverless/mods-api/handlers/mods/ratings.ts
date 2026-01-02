@@ -328,7 +328,7 @@ export async function handleSubmitModRating(
         let userDisplayName: string | null = null;
         
         if (auth.customerId) {
-            const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
             userDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             if (!userDisplayName) {
                 console.warn('[Ratings] Could not fetch displayName from customer data:', {

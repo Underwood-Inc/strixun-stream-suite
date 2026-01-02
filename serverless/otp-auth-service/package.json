@@ -56,7 +56,6 @@
     "@strixun/otp-login": "workspace:*",
     "@strixun/status-flair": "workspace:*",
     "@strixun/ad-carousel": "workspace:*",
-    "@strixun/customer-lookup": "workspace:*",
     "mermaid": "^11.12.2",
     "prismjs": "^1.30.0",
     "svelte": "^5.46.0",

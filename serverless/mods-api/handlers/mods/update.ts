@@ -341,7 +341,7 @@ export async function handleUpdateMod(
         let fetchedDisplayName: string | null = null;
         
         if (mod.customerId) {
-            const { fetchDisplayNameByCustomerId } = await import('@strixun/customer-lookup');
+            const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
             fetchedDisplayName = await fetchDisplayNameByCustomerId(mod.customerId, env);
             
             if (fetchedDisplayName) {

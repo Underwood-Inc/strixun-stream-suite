@@ -12,7 +12,7 @@ import { getCorsHeaders } from '../../utils/cors.js';
 import { createApiKeyForCustomer } from '../../services/api-key.js';
 import { logSecurityEvent } from '../../services/security.js';
 import { decryptData, getJWTSecret } from '../../utils/crypto.js';
-import { getCustomer } from '@strixun/customer-lookup';
+import { getCustomer } from '@strixun/api-framework';
 // Uses shared encryption suite from serverless/shared/encryption
 
 interface Env {
