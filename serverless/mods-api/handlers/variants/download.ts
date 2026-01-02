@@ -8,7 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId, getCustomerR2Key } from '../../utils/customer.js';
-import type { ModMetadata, ModVariant } from '../../types/mod.js';
+import type { ModMetadata, ModVariant, ModVersion } from '../../types/mod.js';
 
 /**
  * Handle download variant request
@@ -252,6 +252,84 @@ export async function handleDownloadVariant(
 
         // Increment download count for mod
         mod.downloadCount = (mod.downloadCount || 0) + 1;
+        
+        // Also increment download count for the latest version (same as version downloads)
+        let latestVersion: ModVersion | null = null;
+        if (mod.latestVersion) {
+            // Get version list to find the latest version
+            const versionsListKey = mod.customerId 
+                ? getCustomerKey(mod.customerId, `mod_${normalizedModId}_versions`)
+                : `mod_${normalizedModId}_versions`;
+            const versionIds = await env.MODS_KV.get(versionsListKey, { type: 'json' }) as string[] | null;
+            
+            if (versionIds && versionIds.length > 0) {
+                // Load all versions and find the one matching latestVersion semantic version
+                const versions: ModVersion[] = [];
+                for (const versionId of versionIds) {
+                    let version: ModVersion | null = null;
+                    
+                    // Try customer scope first
+                    if (mod.customerId) {
+                        const customerVersionKey = getCustomerKey(mod.customerId, `version_${versionId}`);
+                        version = await env.MODS_KV.get(customerVersionKey, { type: 'json' }) as ModVersion | null;
+                    }
+                    
+                    // Try global scope if not found
+                    if (!version) {
+                        const globalVersionKey = `version_${versionId}`;
+                        version = await env.MODS_KV.get(globalVersionKey, { type: 'json' }) as ModVersion | null;
+                    }
+                    
+                    if (version) {
+                        versions.push(version);
+                        // If this matches the latestVersion semantic version, use it
+                        if (version.version === mod.latestVersion) {
+                            latestVersion = version;
+                        }
+                    }
+                }
+                
+                // If no exact match found, use the newest version (sorted by semantic version)
+                if (!latestVersion && versions.length > 0) {
+                    versions.sort((a, b) => {
+                        const aParts = a.version.split('.').map(Number);
+                        const bParts = b.version.split('.').map(Number);
+                        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                            const aPart = aParts[i] || 0;
+                            const bPart = bParts[i] || 0;
+                            if (aPart !== bPart) {
+                                return bPart - aPart; // Newest first
+                            }
+                        }
+                        return 0;
+                    });
+                    latestVersion = versions[0]; // Use newest version
+                }
+            }
+        }
+        
+        // Increment version download count if latest version was found
+        if (latestVersion) {
+            latestVersion.downloads = (latestVersion.downloads || 0) + 1;
+            
+            // Save version back to the appropriate scope (same logic as version downloads)
+            if (mod.customerId) {
+                const modCustomerVersionKey = getCustomerKey(mod.customerId, `version_${latestVersion.versionId}`);
+                await env.MODS_KV.put(modCustomerVersionKey, JSON.stringify(latestVersion));
+            }
+            if (mod.visibility === 'public') {
+                const globalVersionKey = `version_${latestVersion.versionId}`;
+                await env.MODS_KV.put(globalVersionKey, JSON.stringify(latestVersion));
+            }
+            
+            console.log('[VariantDownload] Incremented download count for latest version:', {
+                versionId: latestVersion.versionId,
+                version: latestVersion.version,
+                downloads: latestVersion.downloads
+            });
+        } else {
+            console.log('[VariantDownload] Could not find latest version to increment download count');
+        }
         
         // Save mod back to the appropriate scope
         if (mod.customerId) {
