@@ -38,6 +38,12 @@ function createDevVars(filePath, content) {
     return;
   }
   
+  // Ensure directory exists
+  const dir = dirname(filePath);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  
   writeFileSync(filePath, content, 'utf-8');
   console.log(`✓ Created ${filePath}`);
 }

@@ -108,11 +108,6 @@ export async function encryptWithJWT(
   data: unknown,
   token: string
 ): Promise<EncryptedData> {
-  // DEBUG: Log token used for encryption (for /auth/me debugging)
-  const tokenLength = token?.length || 0;
-  const tokenPrefix = token ? token.substring(0, 20) + '...' : 'none';
-  const tokenSuffix = token ? '...' + token.substring(token.length - 10) : 'none';
-  
   // Only log for /auth/me related data (check if data contains email or userId)
   const shouldLog = data && typeof data === 'object' && (
     'email' in data || 
@@ -523,8 +518,7 @@ export async function encryptBinaryWithJWT(
  */
 export async function decryptBinaryWithJWT(
   encryptedBinary: ArrayBuffer | Uint8Array,
-  token: string,
-  options?: { publicModToken?: string }
+  token: string
 ): Promise<Uint8Array> {
   if (!token || token.length < 10) {
     throw new Error('Valid JWT token is required for decryption');
