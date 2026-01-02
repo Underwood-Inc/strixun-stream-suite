@@ -43,17 +43,6 @@ openssl rand -hex 32
 2. Add and verify your email address (or use a test email)
 3. This will be your `RESEND_FROM_EMAIL`
 
-### Step 5: Get Encryption Key
-
-The encryption key must match what your frontend uses. Check your frontend `.env` file for `VITE_SERVICE_ENCRYPTION_KEY`.
-
-**If you don't have one, generate it:**
-```powershell
-# Windows PowerShell
--join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object {[char]$_})
-```
-
-**Important:** Use the **same** key in both frontend and backend!
 
 ### Step 6: Edit `.dev.vars`
 
@@ -66,9 +55,6 @@ JWT_SECRET=your_generated_jwt_secret_here_64_chars
 # Email Service (REQUIRED)
 RESEND_API_KEY=re_your_resend_api_key_here
 RESEND_FROM_EMAIL=noreply@yourdomain.com
-
-# Encryption Key (REQUIRED - must match frontend VITE_SERVICE_ENCRYPTION_KEY)
-VITE_SERVICE_ENCRYPTION_KEY=your_encryption_key_here_64_chars
 
 # Optional
 ENVIRONMENT=development
@@ -101,9 +87,6 @@ pnpm dev:all
 - Check that `JWT_SECRET=` line is not commented out
 - Restart the wrangler dev server
 
-### Error: "VITE_SERVICE_ENCRYPTION_KEY is required"
-- Add `VITE_SERVICE_ENCRYPTION_KEY` to `.dev.vars`
-- Make sure it matches the frontend `.env` file
 
 ### Error: "Failed to send email" or 500 on OTP request
 - Verify `RESEND_API_KEY` is correct

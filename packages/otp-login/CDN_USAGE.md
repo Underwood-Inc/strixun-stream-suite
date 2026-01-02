@@ -25,7 +25,6 @@ This library can be used directly from a CDN without any build step. Simply incl
     const component = OtpLoginSvelte.mountOtpLogin({
       target: document.getElementById('login-container'),
       apiUrl: 'https://auth.idling.app',
-      otpEncryptionKey: 'YOUR_ENCRYPTION_KEY_HERE', // Required: 32+ characters
       onSuccess: (data) => {
         console.log('Login successful!', data);
         // Store the token
@@ -56,7 +55,7 @@ Mounts the OTP login component to a DOM element.
 
 - `target` (HTMLElement, required) - The DOM element to mount the component to
 - `apiUrl` (string, required) - Base URL of the OTP auth API
-- `otpEncryptionKey` (string, required) - Encryption key for OTP requests (must be 32+ characters)
+- ~~`otpEncryptionKey`~~ (REMOVED) - Service key encryption was deprecated. All encryption now uses JWT tokens.
 - `onSuccess` (function, required) - Callback when login succeeds
   - Receives: `{ token: string, email: string, userId?: string, displayName?: string, expiresAt?: number }`
 - `onError` (function, optional) - Callback when login fails
@@ -89,7 +88,6 @@ If you want to build your own UI and only use the core logic:
 <script>
   const login = new OtpLoginCore({
     apiUrl: 'https://auth.idling.app',
-    otpEncryptionKey: 'YOUR_ENCRYPTION_KEY_HERE',
     onSuccess: (data) => {
       console.log('Login successful!', data);
       localStorage.setItem('auth_token', data.token);
@@ -183,7 +181,7 @@ The component uses CSS variables for theming. Include these in your CSS:
 
 ## Security Notes
 
-1. **Encryption Key**: The `otpEncryptionKey` must be at least 32 characters long and should match your server's `SERVICE_ENCRYPTION_KEY`.
+1. **Encryption**: All encryption uses JWT tokens (per-user, per-session). No encryption key is needed.
 
 2. **HTTPS Only**: Always serve the library over HTTPS in production.
 

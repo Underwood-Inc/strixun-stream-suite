@@ -23,7 +23,6 @@ const __dirname = dirname(__filename);
 const MODS_API_DIR = join(__dirname, '..');
 
 // Test secrets - safe defaults for local development
-// NOTE: SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 const TEST_SECRETS = {
   ENVIRONMENT: 'development', // Set to 'development' for local dev to use localhost URLs
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
@@ -84,7 +83,6 @@ function setupDevVars() {
       content = `# Mods API - Development Environment Variables (Auto-generated for testing)
 # This file is gitignored and used by wrangler dev
 # For local development, these test values are safe to use
-# NOTE: SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 
 ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}

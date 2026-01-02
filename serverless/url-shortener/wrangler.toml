@@ -1,9 +1,9 @@
-﻿name = "strixun-url-shortener"
+name = "strixun-url-shortener"
 main = "worker.ts"
 compatibility_date = "2024-01-01"
 
 # Build is handled by GitHub Actions workflow before deployment
-# The workflow runs: pnpm build:all (with VITE_SERVICE_ENCRYPTION_KEY)
+# The workflow runs: pnpm build:all
 # Then deploys with: wrangler deploy --no-bundle
 # [build]
 # command = "pnpm build:all"

@@ -173,10 +173,6 @@ pnpm deploy:dev:all
 
 ### Tests Fail with "Encryption Failed"
 
-Ensure encryption key is configured:
-```bash
-export VITE_SERVICE_ENCRYPTION_KEY=your-32-character-encryption-key
-```
 
 ### UI Elements Not Found
 
@@ -205,7 +201,6 @@ These tests can be integrated into CI/CD pipelines:
   env:
     E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
     E2E_OTP_AUTH_URL: ${{ secrets.E2E_OTP_AUTH_URL }}
-    VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
 ```
 
 ## See Also

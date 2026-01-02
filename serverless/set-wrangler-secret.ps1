@@ -81,7 +81,7 @@ Write-Host ""
 
 # Step 1: Get secret name
 if ([string]::IsNullOrWhiteSpace($SecretName)) {
-    $SecretName = Read-Host "Enter the secret name (e.g., NETWORK_INTEGRITY_KEYPHRASE, JWT_SECRET, SERVICE_ENCRYPTION_KEY)"
+    $SecretName = Read-Host "Enter the secret name (e.g., NETWORK_INTEGRITY_KEYPHRASE, JWT_SECRET)"
 }
 
 if ([string]::IsNullOrWhiteSpace($SecretName)) {

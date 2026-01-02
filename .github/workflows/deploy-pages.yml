@@ -81,69 +81,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Verify OTP Encryption Key
-        env:
-          OTP_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: |
-          echo "[DEBUG] Checking VITE_SERVICE_ENCRYPTION_KEY secret..."
-          if [ -z "$OTP_KEY" ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
-            echo ""
-            echo "To fix this:"
-            echo "1. Go to Settings → Secrets and variables → Actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: VITE_SERVICE_ENCRYPTION_KEY"
-            echo "4. Value: Your SERVICE_ENCRYPTION_KEY (same as Cloudflare Workers secret)"
-            echo "5. Click 'Add secret'"
-            echo ""
-            exit 1
-          fi
-          KEY_LENGTH=${#OTP_KEY}
-          if [ $KEY_LENGTH -lt 32 ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is too short (must be at least 32 characters)"
-            echo "Current length: $KEY_LENGTH"
-            exit 1
-          fi
-          echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
-          echo ""
-          echo "⚠️  CRITICAL: This key MUST match the SERVICE_ENCRYPTION_KEY secret in Cloudflare Workers"
-          echo "   - Frontend encrypts with: VITE_SERVICE_ENCRYPTION_KEY (GitHub secret)"
-          echo "   - Backend decrypts with: SERVICE_ENCRYPTION_KEY (Cloudflare secret)"
-          echo "   - If they don't match, encrypted operations will fail"
-          echo "   - Verify both secrets are synchronized before deployment"
-          echo ""
-        
       - name: Build Svelte app
         env:
           # Use root path (/) for custom domain deployment
           # If you need to support both custom domain and github.io, use:
           # VITE_BASE_PATH: ${{ secrets.CUSTOM_DOMAIN && '/' || format('/{0}/', github.event.repository.name) }}
           VITE_BASE_PATH: /
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: |
-          # Verify the key is available before building
-          if [ -z "$VITE_SERVICE_ENCRYPTION_KEY" ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is not set in environment!"
-            exit 1
-          fi
-          KEY_LENGTH=${#VITE_SERVICE_ENCRYPTION_KEY}
-          if [ $KEY_LENGTH -lt 32 ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is too short (${KEY_LENGTH} chars, need 32+)"
-            exit 1
-          fi
-          echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is set (length: ${KEY_LENGTH} chars)"
-          pnpm build
-      
-      - name: Verify encryption key in build output
-        run: |
-          # Check if the key is present in the built JavaScript files
-          # Vite replaces import.meta.env.VITE_SERVICE_ENCRYPTION_KEY with the actual value
-          if grep -r "VITE_SERVICE_ENCRYPTION_KEY" dist/assets/js/*.js 2>/dev/null | grep -q "undefined\|''\|\"\""; then
-            echo "[WARNING] VITE_SERVICE_ENCRYPTION_KEY appears to be undefined in build output"
-            echo "This may indicate the key was not properly injected during build"
-          else
-            echo "[SUCCESS] Build output verified - encryption key should be available"
-          fi
+        run: pnpm build
         
       - name: Setup Pages
         uses: actions/configure-pages@v4

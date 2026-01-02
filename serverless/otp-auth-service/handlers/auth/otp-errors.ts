@@ -234,14 +234,14 @@ export function createInternalErrorResponse(request: Request, error: any, env: E
         userMessage = 'Storage error: Unable to access data storage. Please try again.';
         errorCode = 'storage_error';
         httpStatusCode = 500;
-    } else if (errorMessage.includes('VITE_SERVICE_ENCRYPTION_KEY') || errorMessage.includes('SERVICE_ENCRYPTION_KEY') || errorMessage.includes('decrypt')) {
+    } else if (errorMessage.includes('decrypt')) {
         // Decryption errors - provide clear feedback
         if (errorMessage.includes('mismatch')) {
-            userMessage = 'Encryption key mismatch: Server encryption key does not match client. Please contact support.';
-            errorCode = 'encryption_key_mismatch';
+            userMessage = 'Decryption error: Unable to decrypt data. Please try again.';
+            errorCode = 'decryption_error';
             httpStatusCode = 500;
         } else if (errorMessage.includes('not configured')) {
-            userMessage = 'Encryption not configured: Server encryption is not properly configured. Please contact support.';
+            userMessage = 'Decryption error: Unable to decrypt data. Please try again.';
             errorCode = 'encryption_not_configured';
             httpStatusCode = 500;
         } else {

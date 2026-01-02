@@ -122,7 +122,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
+          # VITE_SERVICE_ENCRYPTION_KEY removed - all encryption now uses JWT tokens
         run: |
           # Build the dashboard and generate assets
           echo "🔨 Building dashboard..."
@@ -181,12 +181,6 @@ jobs:
           fi
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY --env=""
-          fi
-          # CRITICAL: Workers use SERVICE_ENCRYPTION_KEY (not VITE_SERVICE_ENCRYPTION_KEY)
-          # Frontend uses VITE_SERVICE_ENCRYPTION_KEY, but workers use SERVICE_ENCRYPTION_KEY
-          # They must have the SAME value, but different names for their respective environments
-          if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" | pnpm exec wrangler secret put SERVICE_ENCRYPTION_KEY --env=""
           fi
           if [ -n "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put NETWORK_INTEGRITY_KEYPHRASE --env=""

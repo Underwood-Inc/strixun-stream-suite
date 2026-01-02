@@ -18,7 +18,6 @@ const OTP_AUTH_DIR = join(__dirname, '..');
 // Test secrets - safe defaults for local development
 // IMPORTANT: JWT_SECRET must match mods-api JWT_SECRET for auth to work
 // IMPORTANT: NETWORK_INTEGRITY_KEYPHRASE must match customer-api and mods-api for service-to-service calls
-// NOTE: SERVICE_ENCRYPTION_KEY and VITE_SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 const TEST_SECRETS = {
   ENVIRONMENT: 'test', // Set to 'test' for E2E mode to skip Vite proxy
   JWT_SECRET: 'test-jwt-secret-for-local-development-12345678901234567890123456789012',
@@ -69,12 +68,6 @@ function setupDevVars() {
       if (!content.includes('NETWORK_INTEGRITY_KEYPHRASE=')) {
         content += `\nNETWORK_INTEGRITY_KEYPHRASE=${TEST_SECRETS.NETWORK_INTEGRITY_KEYPHRASE}\n`;
       }
-      if (!content.includes('SERVICE_ENCRYPTION_KEY=')) {
-        content += `\nSERVICE_ENCRYPTION_KEY=${TEST_SECRETS.SERVICE_ENCRYPTION_KEY}\n`;
-      }
-      if (!content.includes('VITE_SERVICE_ENCRYPTION_KEY=')) {
-        content += `\nVITE_SERVICE_ENCRYPTION_KEY=${TEST_SECRETS.VITE_SERVICE_ENCRYPTION_KEY}\n`;
-      }
       if (!content.includes('ALLOWED_ORIGINS=')) {
         content += `\nALLOWED_ORIGINS=${TEST_SECRETS.ALLOWED_ORIGINS}\n`;
       }
@@ -86,7 +79,6 @@ function setupDevVars() {
       content = `# OTP Auth Service - Development Environment Variables (Auto-generated for testing)
 # This file is gitignored and used by wrangler dev
 # For local development, these test values are safe to use
-# NOTE: SERVICE_ENCRYPTION_KEY and VITE_SERVICE_ENCRYPTION_KEY removed - service key encryption has been completely removed
 
 ENVIRONMENT=${TEST_SECRETS.ENVIRONMENT}
 JWT_SECRET=${TEST_SECRETS.JWT_SECRET}

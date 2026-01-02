@@ -26,7 +26,6 @@ pnpm setup:test-secrets
 The script sets these default test secrets (safe for local development):
 
 - `JWT_SECRET`: `test-jwt-secret-for-local-development-...`
-- `SERVICE_ENCRYPTION_KEY`: `test-service-encryption-key-for-local-development-...`
 - `ALLOWED_ORIGINS`: `*` (allow all origins locally)
 
 ### CI Integration

@@ -114,41 +114,9 @@ The API client uses `window.location.origin` by default:
 
 To change the API endpoint, modify `API_BASE_URL` in `src/lib/api-client.ts`.
 
-### OTP Encryption Key (CRITICAL) ★ **The dashboard REQUIRES `VITE_SERVICE_ENCRYPTION_KEY` to be set at build time.**
+### Encryption
 
-Without this key, the login form will not work - the "Send OTP Code" button will be disabled.
-
-#### Setup Steps
-
-1. **Get the encryption key from the OTP auth service:**
-   ```bash
-   cd serverless/otp-auth-service
-   wrangler secret list
-   # Look for SERVICE_ENCRYPTION_KEY
-   ```
-
-2. **Create a `.env` file in the dashboard directory:**
-   ```bash
-   cd serverless/otp-auth-service/dashboard
-   echo "VITE_SERVICE_ENCRYPTION_KEY=your-key-here-must-be-32-chars-minimum" > .env
-   ```
-
-3. **Rebuild the dashboard:**
-   ```bash
-   pnpm build
-   ```
-
-**Important Notes:**
-- The key must be at least 32 characters long
-- The key must match the `SERVICE_ENCRYPTION_KEY` set in the Cloudflare Worker secrets
-- Never commit `.env` files to version control
-- Vite only exposes env vars starting with `VITE_` to the client
-
-**For Production:**
-- Set `VITE_SERVICE_ENCRYPTION_KEY` in your CI/CD environment variables
-- The key will be bundled into the JavaScript at build time
-
-See `serverless/url-shortener/ENCRYPTION_SETUP.md` for detailed encryption setup documentation.
+All encryption uses **JWT tokens** (per-user, per-session). No encryption key setup is needed.
 
 ## Building for Production
 

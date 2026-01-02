@@ -24,7 +24,6 @@ import { createGenericOTPError, createInternalErrorResponse } from './otp-errors
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     ENVIRONMENT?: string;
-    SERVICE_ENCRYPTION_KEY?: string; // Service encryption key for decrypting OTP requests (CRITICAL: Must match client VITE_SERVICE_ENCRYPTION_KEY)
     [key: string]: any;
 }
 
@@ -151,27 +150,6 @@ async function decryptRequestBody(request: Request, env: Env): Promise<{ email: 
         body = JSON.parse(bodyText);
     } catch {
         throw new Error('Invalid JSON in request body');
-    }
-    
-    // Check if body is encrypted (has encrypted: true and data field)
-    if (body.encrypted === true && body.data && typeof body.data === 'string') {
-        // Try to decrypt using API framework if service key is available
-        // For now, encrypted requests without a configured key will fall back to plain JSON
-        // This allows backward compatibility while supporting encryption when configured
-        if (env.SERVICE_ENCRYPTION_KEY && env.SERVICE_ENCRYPTION_KEY.length >= 32) {
-            try {
-                const { decryptWithJWT } = await import('@strixun/api-framework');
-                const decrypted = await decryptWithJWT(body, env.SERVICE_ENCRYPTION_KEY);
-                if (decrypted && typeof decrypted === 'object' && 'email' in decrypted && 'otp' in decrypted) {
-                    return { email: (decrypted as any).email, otp: (decrypted as any).otp };
-                }
-            } catch (decryptError) {
-                console.warn('[OTP Verify] Failed to decrypt encrypted body, falling back to plain JSON:', decryptError);
-                // Fall through to plain JSON parsing
-            }
-        } else {
-            console.warn('[OTP Verify] Encrypted body received but no SERVICE_ENCRYPTION_KEY configured, treating as plain JSON');
-        }
     }
     
     // Parse as plain JSON

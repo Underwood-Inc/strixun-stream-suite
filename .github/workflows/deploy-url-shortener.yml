@@ -100,53 +100,13 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile
       
-      - name: Validate Required Secrets
-        run: |
-          if [ -z "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub repository secrets"
-            echo "Please add VITE_SERVICE_ENCRYPTION_KEY to your GitHub repository secrets:"
-            echo "1. Go to Settings > Secrets and variables > Actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: VITE_SERVICE_ENCRYPTION_KEY"
-            echo "4. Value: (use the same key as SERVICE_ENCRYPTION_KEY in OTP Auth Service)"
-            exit 1
-          fi
-          echo "[SUCCESS] VITE_SERVICE_ENCRYPTION_KEY is configured"
-          echo ""
-          echo "⚠️  CRITICAL: This key MUST match the SERVICE_ENCRYPTION_KEY secret in Cloudflare Workers"
-          echo "   - Frontend encrypts with: VITE_SERVICE_ENCRYPTION_KEY (GitHub secret)"
-          echo "   - Backend decrypts with: SERVICE_ENCRYPTION_KEY (Cloudflare secret)"
-          echo "   - If they don't match, encrypted operations will fail"
-          echo "   - Verify both secrets are synchronized before deployment"
-          echo ""
-      
       - name: Build URL Shortener App
         working-directory: serverless/url-shortener
-        env:
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: |
-          # Verify the environment variable is available
-          if [ -z "$VITE_SERVICE_ENCRYPTION_KEY" ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY is not set in build environment"
-            exit 1
-          fi
-          if [ ${#VITE_SERVICE_ENCRYPTION_KEY} -lt 32 ]; then
-            echo "[ERROR] VITE_SERVICE_ENCRYPTION_KEY must be at least 32 characters (current: ${#VITE_SERVICE_ENCRYPTION_KEY})"
-            exit 1
-          fi
-          echo "[INFO] Building URL Shortener app with encryption key configured (length: ${#VITE_SERVICE_ENCRYPTION_KEY})"
-          # Export the variable to ensure it's available to all subprocesses
-          export VITE_SERVICE_ENCRYPTION_KEY
-          # Verify it's available before building
-          echo "[DEBUG] VITE_SERVICE_ENCRYPTION_KEY is set: ${VITE_SERVICE_ENCRYPTION_KEY:0:10}... (length: ${#VITE_SERVICE_ENCRYPTION_KEY})"
-          # Explicitly pass the environment variable to pnpm to ensure it's available to all child processes
-          VITE_SERVICE_ENCRYPTION_KEY="$VITE_SERVICE_ENCRYPTION_KEY" pnpm build:all
+        run: pnpm build:all
       
       - name: Verify Build Output
         working-directory: serverless/url-shortener
         run: |
-          # Verify that the build completed successfully
-          # Vite outputs to dist/url-shortener-app at project root (see app/vite.config.ts)
           if [ ! -d "../../dist/url-shortener-app" ]; then
             echo "[ERROR] Build output directory not found at ../../dist/url-shortener-app"
             exit 1
@@ -154,14 +114,6 @@ jobs:
           if [ ! -f "dist/app-assets.ts" ]; then
             echo "[ERROR] app-assets.ts not found - build may have failed"
             exit 1
-          fi
-          # Verify that the encryption key was embedded in the bundle
-          # The key should be present in the built JavaScript files
-          if grep -r "VITE_SERVICE_ENCRYPTION_KEY" ../../dist/url-shortener-app/assets/*.js 2>/dev/null | grep -q "VITE_SERVICE_ENCRYPTION_KEY"; then
-            echo "[SUCCESS] Encryption key reference found in built bundle"
-          else
-            echo "[WARNING] Encryption key reference not found in built bundle - this may indicate the key wasn't embedded"
-            echo "[INFO] This is expected if the key is minified/obfuscated, but verify the app works correctly"
           fi
           echo "[SUCCESS] Build output verified"
       

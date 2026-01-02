@@ -11,12 +11,12 @@
 graph TB
     subgraph "Client (Browser/Frontend)"
         A[User] -->|1. Enters Email| B[OTP Login Component]
-        B -->|2. Encrypts with SERVICE_ENCRYPTION_KEY| C[Encrypted Request Body]
+        B -->|2. Sends Request| C[Request Body]
         C -->|3. POST /auth/request-otp<br/>Header: X-OTP-API-Key?| D[OTP Auth Service]
     end
     
     subgraph "OTP Auth Service - Request OTP"
-        D -->|4. Decrypts with SERVICE_ENCRYPTION_KEY| E{API Key Present?}
+        D -->|4. Processes Request| E{API Key Present?}
         E -->|Yes| F[Verify API Key<br/>Get Customer ID]
         E -->|No| G[Customer ID = null<br/>Backward Compatible]
         F --> H[Check IP Allowlist]
@@ -31,12 +31,12 @@ graph TB
     
     subgraph "Client - Verify OTP"
         N -->|6. User Enters OTP| O[OTP Login Component]
-        O -->|7. Encrypts {email, otp}<br/>with SERVICE_ENCRYPTION_KEY| P[Encrypted Request Body]
+        O -->|7. Sends {email, otp}| P[Request Body]
         P -->|8. POST /auth/verify-otp<br/>Header: X-OTP-API-Key?| Q[OTP Auth Service]
     end
     
     subgraph "OTP Auth Service - Verify OTP"
-        Q -->|9. Decrypts with SERVICE_ENCRYPTION_KEY| R{API Key Present?}
+        Q -->|9. Processes Request| R{API Key Present?}
         R -->|Yes| S[Verify API Key<br/>Get Customer ID]
         R -->|No| T[Customer ID = null]
         S --> U[Verify OTP from KV<br/>Customer-Isolated Lookup]
@@ -77,10 +77,8 @@ graph TB
 
 ### Layer 1: OTP Request Encryption (Pre-Authentication)
 
-**Why SERVICE_ENCRYPTION_KEY is Required:**
-- User doesn't have JWT yet (chicken-and-egg problem)
-- Email must be encrypted in transit
-- Prevents email harvesting from network traffic
+**Security:**
+- HTTPS/TLS encrypts all traffic in transit
 - **API Key is OPTIONAL** but recommended for:
   - Multi-tenant customer isolation
   - IP allowlist enforcement
@@ -89,16 +87,15 @@ graph TB
 
 **Flow:**
 ```
-Client: encryptWithServiceKey({ email }, VITE_SERVICE_ENCRYPTION_KEY)
+Client: Sends { email } over HTTPS
   ↓
-Network: Encrypted payload
+Network: HTTPS/TLS encrypted
   ↓
-Server: decryptWithServiceKey(body, SERVICE_ENCRYPTION_KEY)
+Server: Processes request
 ```
 
 **Security Properties:**
-- ✅ Email encrypted in transit
-- ✅ Service key never exposed to network
+- ✅ HTTPS/TLS encrypts all traffic
 - ✅ API key optional (backward compatible)
 - ✅ IP allowlist check (if API key provided)
 - ✅ Rate limiting per email/IP/customer
@@ -107,21 +104,17 @@ Server: decryptWithServiceKey(body, SERVICE_ENCRYPTION_KEY)
 
 ### Layer 2: OTP Verification (Pre-Authentication)
 
-**Why SERVICE_ENCRYPTION_KEY is Required:**
-- User still doesn't have JWT
-- OTP code must be encrypted in transit
-- Prevents OTP interception
+**Security:**
+- HTTPS/TLS encrypts all traffic in transit
 - **API Key is OPTIONAL** but recommended for customer isolation
 
 **Flow:**
 ```
-Client: encryptWithServiceKey({ email, otp }, VITE_SERVICE_ENCRYPTION_KEY)
+Client: Sends { email, otp } over HTTPS
   ↓
-Network: Encrypted payload
+Network: HTTPS/TLS encrypted
   ↓
-Server: decryptWithServiceKey(body, SERVICE_ENCRYPTION_KEY)
-  ↓
-Server: Verify OTP → Generate JWT
+Server: Processes request → Verify OTP → Generate JWT
   ↓
 Response: { access_token: "JWT_HERE", ... } (UNENCRYPTED - chicken-and-egg)
 ```
@@ -213,17 +206,11 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    A[SERVICE_ENCRYPTION_KEY] -->|Used For| B[OTP Request Encryption]
-    A -->|Used For| C[OTP Verification Encryption]
-    A -->|NOT Used For| D[API Responses]
-    A -->|NOT Used For| E[File Uploads]
-    
     F[JWT Token] -->|Derives| G[User-Specific Encryption Key]
-    G -->|Used For| D
-    G -->|Used For| E
+    G -->|Used For| D[API Responses]
+    G -->|Used For| E[File Uploads]
     G -->|Used For| H[All Authenticated Responses]
     
-    style A fill:#ff9999
     style F fill:#99ff99
     style G fill:#99ff99
     style D fill:#99ff99
@@ -231,10 +218,9 @@ graph LR
     style H fill:#99ff99
 ```
 
-**Key Separation:**
-- **SERVICE_ENCRYPTION_KEY**: Pre-authentication only (OTP flow)
-- **JWT-Derived Key**: Post-authentication only (all API calls)
-- **No Overlap**: Service key never used for responses, JWT never used for OTP requests
+**Encryption:**
+- **JWT-Derived Key**: All encryption uses JWT tokens (per-user, per-session)
+- **HTTPS/TLS**: Pre-authentication traffic encrypted by HTTPS
 
 ---
 
@@ -243,7 +229,7 @@ graph LR
 ### ✅ Strengths
 
 1. **Encryption at Every Layer**
-   - OTP requests encrypted with SERVICE_ENCRYPTION_KEY
+   - OTP requests encrypted by HTTPS/TLS
    - All API responses encrypted with JWT
    - File uploads encrypted with JWT
 
@@ -259,16 +245,15 @@ graph LR
    - JWT signature verification
 
 4. **No Key Exposure**
-   - Service key only on server (never in client bundle)
-   - JWT-derived keys (user-specific)
-   - No service key fallback for responses
+   - JWT-derived keys (user-specific, per-session)
+   - No shared service keys
 
 ### ⚠️ Current Implementation
 
 1. **API Key is Currently Optional**
    - Backward compatibility allows requests without API key
    - Without API key: customerId = null, no IP allowlist
-   - **Current Status**: API key optional, SERVICE_ENCRYPTION_KEY required for encryption
+   - **Current Status**: API key optional, HTTPS/TLS encrypts all traffic
    - **For Third-Party Use**: API key should be required
 
 2. **JWT Response Unencrypted**
@@ -276,16 +261,14 @@ graph LR
    - **Necessary**: User needs JWT to decrypt future responses
    - **Mitigation**: JWT is short-lived, HTTPS required
 
-3. **Service Key Encryption Requirement**
-   - `VITE_SERVICE_ENCRYPTION_KEY` required in frontend for OTP encryption
-   - `SERVICE_ENCRYPTION_KEY` required on server for OTP decryption
-   - **Purpose**: Encrypt OTP requests (user doesn't have JWT yet)
+3. **OTP Request Security**
+   - HTTPS/TLS encrypts all OTP requests in transit
    - **Security**: OTP has rate limits, short expiration, single-use
 
 ### 🔒 Security Recommendations
 
 **For Third-Party Integration (External Users of OTP Service):**
-- ✅ **SERVICE_ENCRYPTION_KEY is REQUIRED** - Must match between client and server for OTP encryption
+- ✅ **HTTPS/TLS** - Encrypts all OTP requests in transit
 - ✅ **API Key SHOULD BE REQUIRED** - For production third-party integrations
 - **Current Status**: API key is optional (backward compatible)
 - **Recommendation**: Enforce API key requirement for third-party integrations
@@ -299,13 +282,8 @@ graph LR
 **Security Model:**
 ```
 Third-Party Integration Requirements:
-├── SERVICE_ENCRYPTION_KEY (REQUIRED)
-│   └── Used for: Encrypting OTP requests/verification
-│   └── Must match: Client VITE_SERVICE_ENCRYPTION_KEY = Server SERVICE_ENCRYPTION_KEY
-│
 └── API Key (SHOULD BE REQUIRED for production)
     └── Used for: Customer identification, IP allowlist, quota management
-    └── Not used for: Encryption (that's SERVICE_ENCRYPTION_KEY's job)
     └── Header: X-OTP-API-Key or Authorization: Bearer <api_key>
 ```
 
@@ -314,7 +292,7 @@ Third-Party Integration Requirements:
 ## 📋 Security Checklist
 
 ### OTP Request Security
-- [x] Email encrypted with SERVICE_ENCRYPTION_KEY
+- [x] Email encrypted by HTTPS/TLS
 - [x] API key optional (backward compatible)
 - [x] IP allowlist check (if API key provided)
 - [x] Rate limiting (per email, IP, customer)
@@ -323,7 +301,7 @@ Third-Party Integration Requirements:
 - [x] OTP single-use
 
 ### OTP Verification Security
-- [x] OTP encrypted with SERVICE_ENCRYPTION_KEY
+- [x] OTP encrypted by HTTPS/TLS
 - [x] Constant-time OTP comparison
 - [x] JWT generation with user/customer data
 - [x] JWT signature verification
@@ -362,17 +340,17 @@ Third-Party Integration Requirements:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PRE-AUTHENTICATION                       │
-│  (SERVICE_ENCRYPTION_KEY Required for OTP Encryption)       │
+│  (HTTPS/TLS Encrypts All Traffic)                          │
 ├─────────────────────────────────────────────────────────────┤
 │ 1. Request OTP:                                             │
-│    - Encrypt email with SERVICE_ENCRYPTION_KEY             │
+│    - Send email over HTTPS                                  │
 │    - API Key optional (for customer isolation)             │
-│    - Server decrypts, generates OTP, sends email            │
+│    - Server generates OTP, sends email                      │
 │                                                             │
 │ 2. Verify OTP:                                              │
-│    - Encrypt {email, otp} with SERVICE_ENCRYPTION_KEY       │
+│    - Send {email, otp} over HTTPS                           │
 │    - API Key optional (for customer isolation)             │
-│    - Server decrypts, verifies OTP, generates JWT           │
+│    - Server verifies OTP, generates JWT                    │
 │    - Response contains JWT (unencrypted - necessary)         │
 └─────────────────────────────────────────────────────────────┘
 
@@ -396,6 +374,5 @@ Third-Party Integration Requirements:
 ---
 
 **Key Security Principle:** 
-- **Pre-Auth**: SERVICE_ENCRYPTION_KEY (shared, for OTP encryption)
-- **Post-Auth**: JWT-Derived Key (user-specific, for all encryption)
-- **Separation**: Never mix keys - service key for OTP only, JWT for everything else
+- **Pre-Auth**: HTTPS/TLS encrypts all traffic
+- **Post-Auth**: JWT-Derived Key (user-specific, per-session, for all encryption)

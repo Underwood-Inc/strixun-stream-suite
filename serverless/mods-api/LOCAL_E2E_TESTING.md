@@ -80,14 +80,12 @@ pnpm setup:test-secrets
 
 # Or set secrets manually via wrangler
 wrangler secret put JWT_SECRET
-wrangler secret put SERVICE_ENCRYPTION_KEY
 wrangler secret put ALLOWED_ORIGINS
 ```
 
 **Important Notes:**
 - **Automatic**: Test secrets are set up automatically before e2e tests run
 - **JWT_SECRET**: Can be any value for local dev. Defaults to a test value.
-- **SERVICE_ENCRYPTION_KEY**: Must be 32+ characters. Defaults to a test value.
 - **ALLOWED_ORIGINS**: Defaults to `"*"` (allow all) for local development
 - **ALLOWED_EMAILS**: Optional - leave unset to allow all authenticated users
 - **CI Override**: CI secrets (set via `wrangler secret put`) take precedence over defaults
@@ -161,11 +159,7 @@ pnpm test:e2e:local:debug
 **Error**: `Decryption failed - service key does not match`
 
 **Solution**:
-1. For local development, ensure `SERVICE_ENCRYPTION_KEY` matches between:
-   - Local worker secrets: `wrangler secret put SERVICE_ENCRYPTION_KEY`
-   - Frontend environment: `VITE_SERVICE_ENCRYPTION_KEY` (if testing uploads)
-2. **For local dev only**: You can use any matching values - they don't need to match production
-3. Generate a test key: `openssl rand -hex 32` and use the same value in both places
+All encryption uses JWT tokens (per-user, per-session). No service encryption key is needed.
 
 ## Benefits of Local Testing
 
@@ -188,7 +182,6 @@ For local development, you have **full flexibility**:
 - **KV/R2**: Still uses Cloudflare resources (not fully local)
 - **Secrets**: Must be configured via `wrangler secret put` (stored locally in `.dev.vars`)
 - **Network**: Requires internet connection for KV/R2 access
-- **Format requirements**: SERVICE_ENCRYPTION_KEY must be 32+ characters
 - **JWT_SECRET matching**: Only matters if testing cross-service auth flows
 
 ## Next Steps

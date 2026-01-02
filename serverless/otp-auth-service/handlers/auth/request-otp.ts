@@ -26,7 +26,6 @@ interface Env {
     ENVIRONMENT?: string;
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
-    // SERVICE_ENCRYPTION_KEY removed - service key encryption was obfuscation only
     [key: string]: any;
 }
 

@@ -285,10 +285,7 @@ Encrypted responses include:
 
 ### Environment Variables
 
-```bash
-# Required: Service encryption key (minimum 32 characters)
-SERVICE_ENCRYPTION_KEY=your-strong-random-key-here
-```
+All encryption uses JWT tokens (per-user, per-session). No service encryption key is needed.
 
 ### Policy Configuration
 
@@ -301,10 +298,9 @@ Policies are defined in code and can be:
 
 ## ⚠ Important Notes
 
-1. **Service Key Security**
-   - Store service key as Cloudflare Worker secret
-   - Never commit to version control
-   - Rotate periodically (requires client updates)
+1. **JWT Token Security**
+   - All encryption uses JWT tokens (per-user, per-session)
+   - No shared service key needed
 
 2. **Mandatory vs Optional**
    - `mandatory: true` - Returns error if encryption fails

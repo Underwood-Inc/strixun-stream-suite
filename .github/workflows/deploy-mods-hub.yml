@@ -133,43 +133,11 @@ jobs:
           pnpm --filter "@strixun/api-framework" run build || echo "  ℹ️  API Framework has no build script (skipped)"
           echo "✅ All workspace dependencies built successfully"
       
-      - name: Verify OTP Encryption Key
-        env:
-          OTP_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
-        run: |
-          if [ -z "$OTP_KEY" ]; then
-            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
-            echo ""
-            echo "To fix this:"
-            echo "1. Go to Settings → Secrets and variables → Actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: VITE_SERVICE_ENCRYPTION_KEY"
-            echo "4. Value: Your SERVICE_ENCRYPTION_KEY (same as Cloudflare Workers secret)"
-            echo "5. Click 'Add secret'"
-            echo ""
-            exit 1
-          fi
-          KEY_LENGTH=${#OTP_KEY}
-          if [ $KEY_LENGTH -lt 32 ]; then
-            echo "❌ ERROR: VITE_SERVICE_ENCRYPTION_KEY is too short (must be at least 32 characters)"
-            echo "Current length: $KEY_LENGTH"
-            exit 1
-          fi
-          echo "✅ VITE_SERVICE_ENCRYPTION_KEY is set (length: $KEY_LENGTH characters)"
-          echo ""
-          echo "⚠️  CRITICAL: This key MUST match the SERVICE_ENCRYPTION_KEY secret in Cloudflare Workers"
-          echo "   - Frontend encrypts with: VITE_SERVICE_ENCRYPTION_KEY (GitHub secret)"
-          echo "   - Backend decrypts with: SERVICE_ENCRYPTION_KEY (Cloudflare secret)"
-          echo "   - If they don't match, mod uploads will fail with 'Decryption Failed' error"
-          echo "   - Verify both secrets are synchronized before deployment"
-          echo ""
-        
       - name: Build Mods Hub
         working-directory: mods-hub
         env:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
-          VITE_SERVICE_ENCRYPTION_KEY: ${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}
         run: pnpm run build
         
       - name: Deploy to Cloudflare Pages
@@ -206,7 +174,6 @@ jobs:
           echo "- Auth API: \`https://auth.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ⚠️  Encryption Key Verification:" >> $GITHUB_STEP_SUMMARY
-          echo "**CRITICAL**: Verify that \`VITE_SERVICE_ENCRYPTION_KEY\` (GitHub secret) matches \`SERVICE_ENCRYPTION_KEY\` (Cloudflare secret)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "If keys don't match, mod uploads will fail with 'Decryption Failed' error." >> $GITHUB_STEP_SUMMARY
           echo "See \`mods-hub/PRODUCTION_ENCRYPTION_KEY_FIX.md\` for troubleshooting." >> $GITHUB_STEP_SUMMARY
