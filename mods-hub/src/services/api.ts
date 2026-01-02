@@ -4,9 +4,9 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import { encryptBinaryWithSharedKey } from '@strixun/api-framework';
 import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
+import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
 /**
  * API base URL for constructing absolute URLs
@@ -292,25 +292,8 @@ export async function uploadMod(
     metadata: ModUploadRequest,
     thumbnail?: File
 ): Promise<{ mod: any; version: any }> {
-    // SECURITY: Shared key encryption is MANDATORY for all file uploads
-    // All files must be encrypted with shared key so any authenticated user can decrypt
-    const sharedKey = import.meta.env.VITE_MODS_ENCRYPTION_KEY;
-    if (!sharedKey || sharedKey.length < 32) {
-        throw new Error('MODS_ENCRYPTION_KEY is required for file encryption. Please ensure the encryption key is configured in your environment.');
-    }
-    
-    const fileBuffer = await file.arrayBuffer();
-    const encryptedFile = await encryptBinaryWithSharedKey(fileBuffer, sharedKey);
-    
-    // Create encrypted File object with .encrypted extension
-    // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
-    // Create a new ArrayBuffer copy to ensure type compatibility
-    const encryptedArrayBuffer = encryptedFile.buffer.slice(
-        encryptedFile.byteOffset,
-        encryptedFile.byteOffset + encryptedFile.byteLength
-    ) as ArrayBuffer;
-    const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
-    const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+    // Encrypt file using shared utility (handles compression automatically)
+    const encryptedFileObj = await encryptFileForUpload(file);
 
     const formData = new FormData();
     formData.append('file', encryptedFileObj);
@@ -337,27 +320,19 @@ export async function updateMod(slug: string, updates: ModUpdateRequest, thumbna
         }
         // Add variant files to FormData - CRITICAL: Encrypt with shared key (same as uploadMod/uploadVersion)
         if (variantFiles) {
-            // SECURITY: Shared key encryption is MANDATORY for all file uploads
-            // All files must be encrypted with shared key so any authenticated user can decrypt
-            const sharedKey = import.meta.env.VITE_MODS_ENCRYPTION_KEY;
-            if (!sharedKey || sharedKey.length < 32) {
-                throw new Error('MODS_ENCRYPTION_KEY is required for file encryption. Please ensure the encryption key is configured in your environment.');
-            }
-            
             for (const [variantId, file] of Object.entries(variantFiles)) {
-                // Encrypt variant file with shared key (same system as main mod upload)
-                const fileBuffer = await file.arrayBuffer();
-                const encryptedFile = await encryptBinaryWithSharedKey(fileBuffer, sharedKey);
-                
-                // Create encrypted File object with .encrypted extension
-                const encryptedArrayBuffer = encryptedFile.buffer.slice(
-                    encryptedFile.byteOffset,
-                    encryptedFile.byteOffset + encryptedFile.byteLength
-                ) as ArrayBuffer;
-                const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
-                const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
-                
-                formData.append(`variant_${variantId}`, encryptedFileObj);
+                try {
+                    // Encrypt variant file using shared utility (handles compression automatically)
+                    // Same encryption system as main mod upload
+                    const encryptedFileObj = await encryptFileForUpload(file);
+                    formData.append(`variant_${variantId}`, encryptedFileObj);
+                } catch (error) {
+                    // Re-throw with context about which variant failed
+                    if (error instanceof Error) {
+                        throw new Error(`Failed to encrypt variant file "${file.name}" (variantId: ${variantId}): ${error.message}`);
+                    }
+                    throw error;
+                }
             }
         }
         // API framework automatically handles FormData - don't set Content-Type header
@@ -384,25 +359,8 @@ export async function uploadVersion(
     file: File,
     metadata: VersionUploadRequest
 ): Promise<any> {
-    // SECURITY: Shared key encryption is MANDATORY for all file uploads
-    // All files must be encrypted with shared key so any authenticated user can decrypt
-    const sharedKey = import.meta.env.VITE_MODS_ENCRYPTION_KEY;
-    if (!sharedKey || sharedKey.length < 32) {
-        throw new Error('MODS_ENCRYPTION_KEY is required for file encryption. Please ensure the encryption key is configured in your environment.');
-    }
-    
-    const fileBuffer = await file.arrayBuffer();
-    const encryptedFile = await encryptBinaryWithSharedKey(fileBuffer, sharedKey);
-    
-    // Create encrypted File object with .encrypted extension
-    // Convert Uint8Array to ArrayBuffer for Blob constructor compatibility
-    // Create a new ArrayBuffer copy to ensure type compatibility
-    const encryptedArrayBuffer = encryptedFile.buffer.slice(
-        encryptedFile.byteOffset,
-        encryptedFile.byteOffset + encryptedFile.byteLength
-    ) as ArrayBuffer;
-    const encryptedBlob = new Blob([encryptedArrayBuffer], { type: 'application/octet-stream' });
-    const encryptedFileObj = new File([encryptedBlob], `${file.name}.encrypted`, { type: 'application/octet-stream' });
+    // Encrypt file using shared utility (handles compression automatically)
+    const encryptedFileObj = await encryptFileForUpload(file);
 
     const formData = new FormData();
     formData.append('file', encryptedFileObj);
@@ -610,6 +568,7 @@ export async function updateAdminSettings(settings: { allowedFileExtensions: str
  * Download mod version
  * Uses API framework for authentication and proper error handling
  * The response handler automatically converts binary responses to ArrayBuffer
+ * Files are decrypted server-side before being sent to the client
  */
 export async function downloadVersion(modSlug: string, versionId: string, fileName: string): Promise<void> {
     // Use API framework's get method - response handler converts binary to ArrayBuffer
@@ -619,22 +578,15 @@ export async function downloadVersion(modSlug: string, versionId: string, fileNa
         throw new Error(`Failed to download version: ${response.statusText || 'Unknown error'}`);
     }
 
-    // Convert ArrayBuffer to Blob for download
-    const blob = new Blob([response.data as ArrayBuffer]);
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrl);
+    // Use shared utility to handle download (files are already decrypted server-side)
+    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
 }
 
 /**
  * Download mod variant
  * Uses API framework for authentication and proper error handling
  * The response handler automatically converts binary responses to ArrayBuffer
+ * Files are decrypted server-side before being sent to the client
  */
 export async function downloadVariant(modSlug: string, variantId: string, fileName: string): Promise<void> {
     // Use API framework's get method - response handler converts binary to ArrayBuffer
@@ -644,16 +596,8 @@ export async function downloadVariant(modSlug: string, variantId: string, fileNa
         throw new Error(`Failed to download variant: ${response.statusText || 'Unknown error'}`);
     }
 
-    // Convert ArrayBuffer to Blob for download
-    const blob = new Blob([response.data as ArrayBuffer]);
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrl);
+    // Use shared utility to handle download (files are already decrypted server-side)
+    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
 }
 
 /**

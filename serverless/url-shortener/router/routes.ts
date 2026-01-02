@@ -11,6 +11,7 @@ import { handleHealth } from '../handlers/health.js';
 import { handleDecryptScript } from '../handlers/decrypt-script.js';
 import { handleOtpCoreScript } from '../handlers/otp-core-script.js';
 import { handleAppAssets } from '../handlers/app-assets.js';
+import { handleGetDisplayName } from '../handlers/display-name.js';
 
 interface Env {
   ENVIRONMENT?: string;
@@ -141,6 +142,15 @@ export function createRouter() {
 
       if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
         const response = await handleDeleteUrl(request, env);
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        const auth = token ? { jwtToken: token } : null;
+        return await wrapWithEncryption(response, request, env, auth);
+      }
+
+      // Get display name endpoint - uses customer API as source of truth
+      if (path === '/api/display-name' && request.method === 'GET') {
+        const response = await handleGetDisplayName(request, env);
         const authHeader = request.headers.get('Authorization');
         const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
         const auth = token ? { jwtToken: token } : null;

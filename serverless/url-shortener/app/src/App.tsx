@@ -11,7 +11,10 @@ import type { LoginSuccessData } from '@strixun/otp-login/dist/react';
 import '@strixun/otp-login/dist/react/otp-login.css';
 import './app.scss';
 
-function getApiUrl(): string {
+/**
+ * Get auth API URL for OTP login
+ */
+function getAuthApiUrl(): string {
   if (typeof window === 'undefined') return '';
   
   // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
@@ -31,12 +34,40 @@ function getApiUrl(): string {
   return import.meta.env.VITE_AUTH_API_URL || 'https://auth.idling.app';
 }
 
+/**
+ * Get URL shortener API URL (same logic as api-client.ts)
+ */
+function getUrlShortenerApiUrl(): string {
+  if (typeof window === 'undefined') {
+    return 'https://s.idling.app';
+  }
+  
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      import.meta.env?.DEV ||
+                      import.meta.env?.MODE === 'development';
+  
+  if (isLocalhost) {
+    // URL shortener worker runs on port 8793
+    return 'http://localhost:8793';
+  }
+  
+  // Use current origin in production
+  return window.location.origin;
+}
+
+/**
+ * Fetch user display name from customer API
+ * Uses the same mechanism as other services - customer API is the source of truth
+ */
 async function fetchUserDisplayName(token: string): Promise<string | null> {
   console.log('[URL Shortener] fetchUserDisplayName called with token:', token ? `${token.substring(0, 20)}...` : 'null');
   try {
-    const apiUrl = getApiUrl();
-    console.log('[URL Shortener] Fetching display name from:', `${apiUrl}/auth/me`);
-    const response = await fetch(`${apiUrl}/auth/me`, {
+    // Get the URL shortener API URL (not auth API)
+    const apiUrl = getUrlShortenerApiUrl();
+    
+    console.log('[URL Shortener] Fetching display name from:', `${apiUrl}/api/display-name`);
+    const response = await fetch(`${apiUrl}/api/display-name`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -44,9 +75,9 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
       },
     });
 
-    console.log('[URL Shortener] /auth/me response status:', response.status, response.statusText);
+    console.log('[URL Shortener] /api/display-name response status:', response.status, response.statusText);
     if (response.ok) {
-      // Check if response is encrypted (headers are case-insensitive, but be defensive)
+      // Check if response is encrypted
       const encryptedHeader = response.headers.get('X-Encrypted') || response.headers.get('x-encrypted');
       const isEncrypted = encryptedHeader === 'true';
       console.log('[URL Shortener] Response encryption check:', { encryptedHeader, isEncrypted });
@@ -54,15 +85,15 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
       let data: any = await response.json();
       console.log('[URL Shortener] Response data type:', typeof data, 'keys:', data && typeof data === 'object' ? Object.keys(data) : 'not an object');
       
-      // Check if data looks encrypted (even if header check failed)
+      // Check if data looks encrypted
       const looksEncrypted = data && typeof data === 'object' && 'encrypted' in data && data.encrypted === true;
       console.log('[URL Shortener] Data encryption check:', { looksEncrypted, hasEncryptedKey: data && typeof data === 'object' && 'encrypted' in data });
       
       if (isEncrypted || looksEncrypted) {
-        // Wait for decryptWithJWT to be available (it's loaded via script tag)
+        // Wait for decryptWithJWT to be available
         let decryptFn = (window as any).decryptWithJWT;
         
-        // Poll for decryptWithJWT if not immediately available (script might still be loading)
+        // Poll for decryptWithJWT if not immediately available
         if (typeof decryptFn !== 'function') {
           console.warn('[URL Shortener] Decryption library not loaded yet, waiting...');
           for (let i = 0; i < 10; i++) {
@@ -81,25 +112,23 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
         }
         
         try {
-          // Trim token to ensure it matches what backend used for encryption
           const trimmedToken = token.trim();
           data = await decryptFn(data, trimmedToken);
-          console.log('[URL Shortener] Successfully decrypted /auth/me response');
+          console.log('[URL Shortener] Successfully decrypted /api/display-name response');
         } catch (error) {
           console.error('[URL Shortener] Failed to decrypt response:', error);
-          // If decryption fails, we can't extract displayName from encrypted data
           return null;
         }
       }
       
-      // Extract displayName from decrypted data
+      // Extract displayName from response
       const displayName = data?.displayName;
-      console.log('[URL Shortener] Decrypted data:', { 
+      console.log('[URL Shortener] Display name response:', { 
         hasDisplayName: !!displayName, 
         displayName, 
-        allKeys: data ? Object.keys(data) : null,
-        fullData: data 
+        allKeys: data ? Object.keys(data) : null
       });
+      
       if (displayName) {
         console.log('[URL Shortener] Found displayName:', displayName);
         return displayName;
@@ -108,7 +137,9 @@ async function fetchUserDisplayName(token: string): Promise<string | null> {
         return null;
       }
     } else {
-      console.error('[URL Shortener] /auth/me returned non-OK status:', response.status, response.statusText);
+      console.error('[URL Shortener] /api/display-name returned non-OK status:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('[URL Shortener] Error response:', errorText);
     }
   } catch (error) {
     console.error('[URL Shortener] Failed to fetch display name:', error);
@@ -179,7 +210,7 @@ export default function App() {
       return (
         <div className="app-container">
           <OtpLogin
-            apiUrl={getApiUrl()}
+            apiUrl={getAuthApiUrl()}
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
             title="Sign In"
