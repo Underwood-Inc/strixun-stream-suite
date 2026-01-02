@@ -19,7 +19,29 @@ import * as apiKeyService from '../../services/api-key.js';
 import * as nameGenerator from '../../services/nameGenerator.js';
 
 // Mock dependencies
-vi.mock('../../utils/customer-api-service-client.js');
+// Mock @strixun/api-framework first (customer-api-service-client re-exports from it)
+// This prevents real HTTP calls from being made
+vi.mock('@strixun/api-framework', () => ({
+    getCustomerService: vi.fn(),
+    getCustomerByEmailService: vi.fn(),
+    createCustomer: vi.fn(),
+    updateCustomer: vi.fn(),
+    // Export types to avoid type errors
+    CustomerData: {},
+    CustomerLookupEnv: {},
+}));
+
+// Mock customer-api-service-client (re-exports from api-framework)
+// Use simple mocks - vitest will handle the rest
+vi.mock('../../utils/customer-api-service-client.js', () => ({
+    getCustomerService: vi.fn(),
+    getCustomerByEmailService: vi.fn(),
+    createCustomerService: vi.fn(),
+    updateCustomerService: vi.fn(),
+    CustomerData: {},
+    CustomerLookupEnv: {},
+}));
+
 vi.mock('../../services/customer.js');
 vi.mock('../../services/api-key.js');
 vi.mock('../../services/nameGenerator.js');
