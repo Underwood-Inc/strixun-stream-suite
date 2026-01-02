@@ -316,10 +316,8 @@ export async function ensureCustomerAccount(
     const emailLower = email.toLowerCase().trim();
     
     try {
-        // UPSERT customer account with retry logic
-        const resolvedCustomerId = await retryWithBackoff(async () => {
-            return await upsertCustomerAccount(emailLower, customerId, env);
-        }, 3, 100);
+        // UPSERT customer account (retry logic is handled internally by upsertCustomerAccount)
+        const resolvedCustomerId = await upsertCustomerAccount(emailLower, customerId, env);
         
         if (!resolvedCustomerId) {
             throw new Error(`Failed to create or retrieve customer account for ${emailLower}`);

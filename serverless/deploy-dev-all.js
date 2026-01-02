@@ -29,6 +29,19 @@ if (dryRun) {
   process.exit(0);
 }
 
+// Prebuild step: Build otp-login package (required for mods-hub and other frontends)
+console.log('ℹ Building @strixun/otp-login package (required dependency)...');
+try {
+  execSync('pnpm --filter @strixun/otp-login build:react', {
+    stdio: 'inherit',
+    cwd: process.cwd(),
+  });
+  console.log('✓ @strixun/otp-login built successfully\n');
+} catch (error) {
+  console.error('✗ Failed to build @strixun/otp-login:', error.message);
+  console.error('⚠  Continuing with deployment, but frontend apps may fail if they depend on otp-login\n');
+}
+
 let successCount = 0;
 let failCount = 0;
 const failures = [];

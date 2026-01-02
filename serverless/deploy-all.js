@@ -190,9 +190,39 @@ async function validateService(service) {
 }
 
 /**
+ * Prebuild step: Build required dependencies
+ * 
+ * CRITICAL: Prebuild failures MUST fail the entire deployment.
+ * No prebuild step is allowed to silently fail.
+ */
+async function prebuild() {
+  console.log('\n ★ Prebuild Step: Building required dependencies\n');
+  
+  console.log('ℹ Building @strixun/otp-login package (required for frontend apps)...');
+  try {
+    await execWithTimeout(
+      'pnpm --filter @strixun/otp-login build:react',
+      { cwd: join(__dirname, '..') },
+      300000 // 5 minutes timeout
+    );
+    console.log('✓ @strixun/otp-login built successfully\n');
+  } catch (error) {
+    console.error('✗ CRITICAL: Failed to build @strixun/otp-login:', error.message);
+    console.error('✗ Prebuild step failed - deployment aborted to prevent broken deployments\n');
+    // Re-throw to fail the entire script
+    throw new Error(`Prebuild step failed: ${error.message}`);
+  }
+}
+
+/**
  * Execute deployment or validation
  */
 async function deployAll() {
+  // Run prebuild step before deployment (skip for dry-run)
+  if (!isDryRun) {
+    await prebuild();
+  }
+  
   for (const service of services) {
     const servicePath = join(__dirname, service.path);
     
