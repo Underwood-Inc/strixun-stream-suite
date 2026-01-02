@@ -283,7 +283,18 @@ export async function handleListUrls(request, env) {
     const auth = await authenticateRequest(request, env);
     if (!auth.authenticated) {
       return new Response(JSON.stringify({ error: auth.error }), {
-        status: auth.status,
+        status: auth.status || 401,
+        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!auth.userId) {
+      console.error('[List URLs] No userId in auth result:', auth);
+      return new Response(JSON.stringify({ 
+        error: 'Authentication failed',
+        detail: 'User ID not found in token'
+      }), {
+        status: 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
@@ -308,9 +319,12 @@ export async function handleListUrls(request, env) {
       headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error('[List URLs] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({
       error: 'Failed to list URLs',
-      message: error.message,
+      message: errorMessage,
+      detail: env.ENVIRONMENT === 'development' ? error.stack : undefined,
     }), {
       status: 500,
       headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },

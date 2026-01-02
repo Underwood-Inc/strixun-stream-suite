@@ -100,31 +100,43 @@ export function createRouter() {
       }
 
       if (path === '/api/list' && request.method === 'GET') {
-        const response = await handleListUrls(request, env);
-        
-        // If response is already an error (401, 500, etc.), return it directly without encryption
-        if (response.status >= 400) {
-          return response;
-        }
-        
-        // Extract auth info for encryption
-        const authHeader = request.headers.get('Authorization');
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-        
-        // Only wrap with encryption if we have a token and response is successful
-        if (token && response.status < 400) {
-          try {
-            const auth = { jwtToken: token };
-            return await wrapWithEncryption(response, request, env, auth);
-          } catch (encryptError) {
-            console.error('[URL Shortener] Encryption failed for /api/list, returning unencrypted:', encryptError);
-            // Fallback to unencrypted response if encryption fails
+        try {
+          const response = await handleListUrls(request, env);
+          
+          // If response is already an error (401, 500, etc.), return it directly without encryption
+          if (response.status >= 400) {
             return response;
           }
+          
+          // Extract auth info for encryption
+          const authHeader = request.headers.get('Authorization');
+          const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+          
+          // Only wrap with encryption if we have a token and response is successful
+          if (token && response.status < 400) {
+            try {
+              const auth = { jwtToken: token };
+              return await wrapWithEncryption(response, request, env, auth);
+            } catch (encryptError) {
+              console.error('[URL Shortener] Encryption failed for /api/list, returning unencrypted:', encryptError);
+              // Fallback to unencrypted response if encryption fails
+              return response;
+            }
+          }
+          
+          // If no token but response is OK, return unencrypted (shouldn't happen - auth should fail first)
+          return response;
+        } catch (routeError) {
+          console.error('[URL Shortener] Route handler error for /api/list:', routeError);
+          const errorMessage = routeError instanceof Error ? routeError.message : String(routeError);
+          return new Response(JSON.stringify({
+            error: 'Internal server error',
+            message: errorMessage,
+          }), {
+            status: 500,
+            headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+          });
         }
-        
-        // If no token but response is OK, return unencrypted (shouldn't happen - auth should fail first)
-        return response;
       }
 
       if (path.startsWith('/api/delete/') && request.method === 'DELETE') {
