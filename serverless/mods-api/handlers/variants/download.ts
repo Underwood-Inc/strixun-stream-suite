@@ -95,16 +95,22 @@ export async function handleDownloadVariant(
             });
         }
 
-        // Extract R2 key from fileUrl if available, otherwise construct from metadata
+        // Extract R2 key - prioritize stored r2Key, then fileUrl, then construct from metadata
         // fileUrl format: https://pub-xxx.r2.dev/mods/modId/variants/variantId.ext
         // or: ${MODS_PUBLIC_URL}/mods/modId/variants/variantId.ext
         let r2Key: string | null = null;
         
-        if (variant.fileUrl) {
+        // First priority: use stored r2Key if available (most reliable)
+        if (variant.r2Key) {
+            r2Key = variant.r2Key;
+            console.log('[VariantDownload] Using stored r2Key from variant metadata:', r2Key);
+        } else if (variant.fileUrl) {
+            // Second priority: extract from fileUrl
             try {
                 const url = new URL(variant.fileUrl);
                 // Remove leading slash if present
                 r2Key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                console.log('[VariantDownload] Extracted r2Key from fileUrl:', r2Key);
             } catch {
                 // If fileUrl is not a valid URL, try to extract from the path
                 // Assume it's already an R2 key or path
@@ -112,15 +118,17 @@ export async function handleDownloadVariant(
                 if (r2Key && !r2Key.startsWith('mods/')) {
                     r2Key = `mods/${normalizedModId}/variants/${variantId}${r2Key}`;
                 }
+                console.log('[VariantDownload] Extracted r2Key from fileUrl path:', r2Key);
             }
         }
 
-        // Fallback: construct R2 key from variant metadata if fileUrl extraction failed
+        // Fallback: construct R2 key from variant metadata if extraction failed
         if (!r2Key) {
             const fileExtension = variant.fileName?.includes('.') 
                 ? variant.fileName.substring(variant.fileName.lastIndexOf('.'))
                 : '.zip';
             r2Key = getCustomerR2Key(mod.customerId, `mods/${normalizedModId}/variants/${variantId}${fileExtension}`);
+            console.log('[VariantDownload] Constructed r2Key from metadata fallback:', r2Key);
         }
 
         // Get encrypted file from R2

@@ -174,6 +174,7 @@ export interface ModVariant {
     name: string;
     description?: string;
     fileUrl?: string; // For existing variants
+    r2Key?: string; // R2 storage key for the variant file (for reliable lookup)
     fileName?: string;
     fileSize?: number;
     version?: string;

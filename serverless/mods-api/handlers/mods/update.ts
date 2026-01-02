@@ -355,6 +355,46 @@ export async function handleUpdateMod(
                             });
                         }
                         
+                        // CRITICAL: Delete any existing variant files for this variantId before storing the new one
+                        // This ensures we don't leave orphaned files when the extension changes
+                        const commonExtensions = ['zip', 'jar', 'mod', 'dat', 'json'];
+                        for (const ext of commonExtensions) {
+                            try {
+                                const oldVariantKey = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${ext}`);
+                                const oldFile = await env.MODS_R2.get(oldVariantKey);
+                                if (oldFile) {
+                                    // Check if this file belongs to this variant by checking metadata
+                                    const oldMetadata = oldFile.customMetadata;
+                                    if (oldMetadata?.variantId === variant.variantId) {
+                                        console.log('[UpdateMod] Deleting old variant file:', oldVariantKey);
+                                        await env.MODS_R2.delete(oldVariantKey);
+                                    }
+                                }
+                            } catch (error) {
+                                // Ignore errors when deleting old files (file might not exist)
+                                console.log('[UpdateMod] Could not delete old variant file (may not exist):', error);
+                            }
+                        }
+                        
+                        // Also try to delete using the variant's existing fileUrl if available
+                        if (variant.fileUrl) {
+                            try {
+                                const url = new URL(variant.fileUrl);
+                                const oldKey = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                                const oldFile = await env.MODS_R2.get(oldKey);
+                                if (oldFile) {
+                                    const oldMetadata = oldFile.customMetadata;
+                                    if (oldMetadata?.variantId === variant.variantId) {
+                                        console.log('[UpdateMod] Deleting old variant file from fileUrl:', oldKey);
+                                        await env.MODS_R2.delete(oldKey);
+                                    }
+                                }
+                            } catch (error) {
+                                // Ignore errors - fileUrl might be invalid or file might not exist
+                                console.log('[UpdateMod] Could not delete variant file from fileUrl:', error);
+                            }
+                        }
+                        
                         // Store variant file in R2
                         const variantR2Key = getCustomerR2Key(auth.customerId, `mods/${normalizedModId}/variants/${variant.variantId}.${extensionForR2}`);
                         
@@ -387,6 +427,7 @@ export async function handleUpdateMod(
                         
                         // Update variant metadata with file info (use original filename, not encrypted filename)
                         variant.fileUrl = downloadUrl;
+                        variant.r2Key = variantR2Key; // Store R2 key for reliable lookup
                         variant.fileName = originalFileName;
                         variant.fileSize = fileSize; // Use decrypted file size
                         variant.updatedAt = now;
