@@ -30,10 +30,14 @@ if (!jwtToken) {
 const healthUrl = `http://localhost:${port}/health`;
 const workerPath = join(__dirname, '..', workerDir);
 
-console.log(`[Worker Start] Starting ${workerDir} on port ${port}...`);
+// Calculate unique inspector port to avoid conflicts (9229 + offset based on worker port)
+// Base port is 8787, so offset = port - 8787, then add to 9229
+const inspectorPort = 9229 + (parseInt(port, 10) - 8787);
 
-// Start wrangler dev with --no-inspector to avoid port 9229 conflicts
-const wrangler = spawn('wrangler', ['dev', '--port', port, '--local', '--no-inspector'], {
+console.log(`[Worker Start] Starting ${workerDir} on port ${port} (inspector port ${inspectorPort})...`);
+
+// Start wrangler dev with unique inspector port to avoid port 9229 conflicts
+const wrangler = spawn('wrangler', ['dev', '--port', port, '--local', '--inspector-port', String(inspectorPort)], {
   cwd: workerPath,
   stdio: 'inherit',
   shell: true,
