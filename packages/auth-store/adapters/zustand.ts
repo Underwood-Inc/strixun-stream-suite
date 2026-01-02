@@ -13,7 +13,11 @@ import {
     decodeJWTPayload 
 } from '../core/api.js';
 
-interface ZustandAuthState extends AuthState, AuthStoreMethods {}
+interface ZustandAuthState extends AuthState, AuthStoreMethods {
+    _isRestoring?: boolean; // Guard to prevent concurrent restore calls
+    _lastRestoreAttempt?: number; // Timestamp of last restore attempt to debounce
+    _lastLogoutTime?: number; // Timestamp of last logout to prevent immediate restoration
+}
 
 /**
  * Create Zustand auth store
