@@ -25,6 +25,8 @@
   let tooltipId = `tooltip-${Math.random().toString(36).substr(2, 9)}`;
   let isHoveringTooltip = false;
   let hideTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let mouseX = 0;
+  let mouseY = 0;
   
   // Portal action to render tooltip at body level
   function portal(node: HTMLElement, target: HTMLElement) {
@@ -148,6 +150,7 @@
       if (tooltipElement && wrapperElement) {
         await tick(); // Wait for tooltip to render
         fixedStyle = calculateFixedPosition();
+        updateNotchPosition();
       }
     }, delay);
   }
@@ -207,7 +210,51 @@
     }
     if (showTooltip && tooltipElement && wrapperElement) {
       fixedStyle = calculateFixedPosition();
+      updateNotchPosition();
     }
+  }
+
+  // Track mouse position for better positioning
+  function handleMouseMove(e: MouseEvent): void {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    // Update notch position as mouse moves
+    if (showTooltip && tooltipElement) {
+      updateNotchPosition();
+    }
+  }
+
+  // Calculate and update notch position to be closest to mouse cursor
+  function updateNotchPosition(): void {
+    if (!tooltipElement) return;
+    
+    const tooltipRect = tooltipElement.getBoundingClientRect();
+    const minOffsetPercent = 5; // Minimum distance from tooltip edge as percentage
+    
+    // Calculate mouse position relative to tooltip
+    const mouseRelativeX = mouseX - tooltipRect.left;
+    const mouseRelativeY = mouseY - tooltipRect.top;
+    
+    let notchOffset = '50%'; // Default to center
+    
+    if (position === 'top' || position === 'bottom') {
+      // For top/bottom tooltips, notch moves horizontally
+      // Calculate as percentage of tooltip width
+      const mousePercentX = (mouseRelativeX / tooltipRect.width) * 100;
+      // Clamp to keep notch within reasonable bounds (5% to 95% of width)
+      const clampedPercent = Math.max(minOffsetPercent, Math.min(100 - minOffsetPercent, mousePercentX));
+      notchOffset = `${clampedPercent}%`;
+    } else if (position === 'left' || position === 'right') {
+      // For left/right tooltips, notch moves vertically
+      // Calculate as percentage of tooltip height
+      const mousePercentY = (mouseRelativeY / tooltipRect.height) * 100;
+      // Clamp to keep notch within reasonable bounds (5% to 95% of height)
+      const clampedPercent = Math.max(minOffsetPercent, Math.min(100 - minOffsetPercent, mousePercentY));
+      notchOffset = `${clampedPercent}%`;
+    }
+    
+    // Set CSS custom property for notch position
+    tooltipElement.style.setProperty('--notch-offset', notchOffset);
   }
   
   onMount(() => {
@@ -249,6 +296,16 @@
   $: if (showTooltip && tooltipElement && wrapperElement) {
     tick().then(() => {
       fixedStyle = calculateFixedPosition();
+      updateNotchPosition();
+    });
+  }
+
+  // Update notch position when tooltip position changes
+  $: if (showTooltip && tooltipElement && position) {
+    tick().then(() => {
+      if (tooltipElement) {
+        updateNotchPosition();
+      }
     });
   }
 </script>
@@ -258,6 +315,7 @@
   bind:this={wrapperElement}
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
+  onmousemove={handleMouseMove}
   role="presentation"
 >
   <slot />
@@ -428,7 +486,7 @@
       content: '';
       position: absolute;
       top: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border: 5px solid transparent;
       border-top-color: var(--card, var(--tooltip-bg, #2a2a2a));
@@ -440,7 +498,7 @@
       content: '';
       position: absolute;
       top: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border: 6px solid transparent;
       margin-top: -1px;
@@ -474,7 +532,7 @@
       content: '';
       position: absolute;
       bottom: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border: 5px solid transparent;
       border-bottom-color: var(--card, var(--tooltip-bg, #2a2a2a));
@@ -486,7 +544,7 @@
       content: '';
       position: absolute;
       bottom: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border: 6px solid transparent;
       margin-bottom: -1px;
@@ -566,7 +624,7 @@
       content: '';
       position: absolute;
       right: 100%;
-      top: 50%;
+      top: var(--notch-offset, 50%);
       transform: translateY(-50%);
       border: 5px solid transparent;
       border-right-color: var(--card, var(--tooltip-bg, #2a2a2a));
@@ -578,7 +636,7 @@
       content: '';
       position: absolute;
       right: 100%;
-      top: 50%;
+      top: var(--notch-offset, 50%);
       transform: translateY(-50%);
       border: 6px solid transparent;
       margin-right: -1px;

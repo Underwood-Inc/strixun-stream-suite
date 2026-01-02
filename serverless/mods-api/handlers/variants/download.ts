@@ -253,6 +253,24 @@ export async function handleDownloadVariant(
         // Increment download count for mod
         mod.downloadCount = (mod.downloadCount || 0) + 1;
         
+        // Increment variant-specific download count
+        // CRITICAL: variant is a reference to mod.variants array element, so updating it updates the mod
+        if (variant) {
+            variant.downloads = (variant.downloads || 0) + 1;
+            // Ensure the updated variant is in mod.variants (it should be since variant is a reference)
+            if (mod.variants) {
+                const variantIndex = mod.variants.findIndex(v => v.variantId === variantId);
+                if (variantIndex >= 0) {
+                    mod.variants[variantIndex] = variant; // Explicitly update in array (though reference should work)
+                }
+            }
+            console.log('[VariantDownload] Incremented download count for variant:', {
+                variantId: variant.variantId,
+                variantName: variant.name,
+                downloads: variant.downloads
+            });
+        }
+        
         // Also increment download count for the latest version (same as version downloads)
         let latestVersion: ModVersion | null = null;
         if (mod.latestVersion) {

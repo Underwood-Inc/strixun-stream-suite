@@ -81,7 +81,29 @@ const TooltipContent = styled.div`
   flex-direction: column;
   gap: ${spacing.sm};
   max-width: 400px;
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   text-align: left;
+  
+  /* Custom scrollbar styling for better UX */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--bg-tertiary, ${colors.bgTertiary});
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--border, ${colors.border});
+    border-radius: 4px;
+    
+    &:hover {
+      background: var(--text-secondary, ${colors.textSecondary});
+    }
+  }
 `;
 
 const TooltipTitle = styled.div`

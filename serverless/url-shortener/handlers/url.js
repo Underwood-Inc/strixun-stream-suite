@@ -45,6 +45,7 @@ export async function handleCreateShortUrl(request, env) {
       }
 
       // Check if custom code already exists
+      // Note: Deleted URLs release their slugs immediately, so previously used slugs can be reused
       const existingKey = `url_${shortCode}`;
       const existing = await env.URL_KV.get(existingKey);
       if (existing) {
@@ -55,6 +56,7 @@ export async function handleCreateShortUrl(request, env) {
       }
     } else {
       // Generate unique short code
+      // Note: Deleted URLs release their slugs immediately, so previously used slugs can be reused
       let attempts = 0;
       do {
         shortCode = generateShortCode(6);
@@ -413,7 +415,8 @@ export async function handleDeleteUrl(request, env) {
       });
     }
 
-    // Delete URL
+    // Delete URL - this automatically releases the slug for reuse by anyone
+    // The slug becomes immediately available for new shortened URLs (both custom and auto-generated)
     await env.URL_KV.delete(urlKey);
 
     // Remove from user's URL list

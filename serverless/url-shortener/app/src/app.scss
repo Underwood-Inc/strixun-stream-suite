@@ -5,6 +5,9 @@
 
 @use '@shared-styles/variables' as *;
 
+// Minimum width for app containers (standard mobile minimum)
+$min-app-width: 320px;
+
 * {
     margin: 0;
     padding: 0;
@@ -17,10 +20,13 @@ body {
     color: var(--text);
     line-height: 1.6;
     min-height: 100vh;
+    min-width: 320px; // Reasonable minimum width for mobile devices
+    overflow-x: auto; // Allow horizontal scroll if content exceeds minimum width
 }
 
 #app {
     min-height: 100vh;
+    min-width: 320px; // Reasonable minimum width for mobile devices
 }
 
 .error-boundary {
@@ -119,6 +125,7 @@ body {
 
 .app-container {
     min-height: 100vh;
+    min-width: $min-app-width;
     display: flex;
     flex-direction: column;
 }
@@ -179,6 +186,8 @@ body {
 
 .url-manager {
     min-height: 100vh;
+    min-width: $min-app-width;
+    width: 100%;
     display: flex;
     flex-direction: column;
 }
@@ -187,14 +196,20 @@ body {
     background: var(--card);
     border-bottom: 1px solid var(--border);
     padding: var(--spacing-lg) var(--spacing-xl);
+    min-width: $min-app-width;
+    box-sizing: border-box;
+    overflow-x: hidden; // Prevent horizontal scrollbar on header
 }
 
 .header-content {
     max-width: 1200px;
+    min-width: $min-app-width;
+    width: 100%;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-sizing: border-box;
 }
 
 .header h1 {
@@ -228,6 +243,7 @@ body {
 .main-content {
     flex: 1;
     max-width: 1200px;
+    min-width: $min-app-width;
     width: 100%;
     margin: 0 auto;
     padding: var(--spacing-xl);
@@ -449,12 +465,14 @@ body {
 @media (max-width: 600px) {
     .main-content {
         padding: var(--spacing-md);
+        min-width: $min-app-width;
     }
 
     .header-content {
         flex-direction: column;
         align-items: flex-start;
         gap: var(--spacing-md);
+        min-width: $min-app-width;
     }
 
     .url-card-header {

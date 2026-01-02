@@ -44,6 +44,12 @@
     "update-badge": "node scripts/update-version-badge.js",
     "migrate-wiki": "node scripts/migrate-wiki.js",
     "list-migrated-docs": "node scripts/list-migrated-docs.js",
+    "setup:cloud-ide": "node scripts/setup-cloud-ide.js",
+    "test:setup-cloud-ide": "vitest run scripts/setup-cloud-ide.test.js",
+    "test:setup-cloud-ide:coverage": "vitest run --coverage scripts/setup-cloud-ide.test.js",
+    "docker:dev": "docker-compose up",
+    "docker:dev:build": "docker-compose up --build",
+    "docker:dev:down": "docker-compose down",
     "storybook": "pnpm --filter @strixun/shared-components storybook",
     "build-storybook": "pnpm --filter @strixun/shared-components build-storybook"
   },

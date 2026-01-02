@@ -19,6 +19,7 @@ export default defineConfig({
     include: [
       'src/**/*.test.{js,ts}',
       'shared-components/**/*.test.{js,ts}', // Include shared-components tests
+      'scripts/**/*.test.{js,ts}', // Include script tests
     ],
     exclude: [
       'node_modules', 
@@ -45,6 +46,7 @@ export default defineConfig({
       ],
       include: [
         'shared-components/otp-login/**/*.ts', // Include OTP login core for coverage
+        'scripts/setup-cloud-ide.js', // Include setup script for coverage
       ],
     },
   },

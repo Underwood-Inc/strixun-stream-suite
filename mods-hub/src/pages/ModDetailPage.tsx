@@ -150,7 +150,7 @@ const DownloadButton = styled.button`
 export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
-    const { data, isLoading, error } = useModDetail(slug || '');
+    const { data, isLoading, error, refetch } = useModDetail(slug || '');
     const { user, isAuthenticated } = useAuthStore();
     const isUploader = user?.userId === data?.mod.authorId;
     const [thumbnailError, setThumbnailError] = useState(false);
@@ -201,7 +201,12 @@ export function ModDetailPage() {
         
         try {
             const fileName = latestVersion.fileName || `mod-${slug}-v${latestVersion.version}.jar`;
+            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
             await downloadVersion(slug, latestVersion.versionId, fileName);
+            
+            // Download successful - refetch mod data to get updated download counts
+            console.log('[ModDetailPage] Download completed, refetching mod data for updated counts');
+            await refetch();
         } catch (error) {
             console.error('[ModDetailPage] Download failed:', error);
             setDownloadError(getUserFriendlyErrorMessage(error));
@@ -213,6 +218,7 @@ export function ModDetailPage() {
                     navigate('/login');
                 }, 1000);
             }
+        } finally {
             setDownloading(false);
         }
     };
@@ -296,7 +302,7 @@ export function ModDetailPage() {
             />
             
             {isUploader && (
-                <ModAnalytics mod={mod} versions={versions} />
+                <ModAnalytics mod={mod} versions={versions} variants={mod.variants || []} />
             )}
             
             <ModRatings 

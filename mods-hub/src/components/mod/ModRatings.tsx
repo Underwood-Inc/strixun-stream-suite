@@ -54,10 +54,16 @@ const RatingStars = styled.div`
 `;
 
 const Star = styled.span.withConfig({
-  shouldForwardProp: (prop) => prop !== 'filled',
-})<{ filled: boolean }>`
-  color: ${props => props.filled ? colors.accent : colors.textMuted};
+  shouldForwardProp: (prop) => prop !== 'filled' && prop !== 'hovered' && prop !== 'dimmed',
+})<{ filled: boolean; hovered?: boolean; dimmed?: boolean }>`
+  color: ${props => {
+    if (props.dimmed) return `${colors.accent}40`; // Dimmed filled stars (25% opacity)
+    if (props.filled) return colors.accent;
+    if (props.hovered) return `${colors.accent}80`; // Faded accent color (50% opacity)
+    return colors.textMuted;
+  }};
   font-size: 1.25rem;
+  transition: color 0.2s ease;
 `;
 
 const RatingCount = styled.div`
@@ -231,6 +237,7 @@ function calculateRatingBreakdown(ratings: ModRating[]): number[] {
 export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatingSubmit }: ModRatingsProps) {
     const { isAuthenticated, user } = useAuthStore();
     const [selectedRating, setSelectedRating] = useState(0);
+    const [hoveredRating, setHoveredRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -326,16 +333,36 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
                     <FormTitle>{isEditing ? 'Edit your review' : 'Rate this mod'}</FormTitle>
                     <RatingInput>
                         <span style={{ fontSize: '0.875rem', color: colors.text }}>Rating:</span>
-                        {[1, 2, 3, 4, 5].map((rating) => (
-                            <Star
-                                key={rating}
-                                filled={rating <= selectedRating}
-                                onClick={() => setSelectedRating(rating)}
-                                style={{ cursor: 'pointer', fontSize: '1.5rem' }}
-                            >
-                                {rating <= selectedRating ? ' ★ ' : ' ★ '}
-                            </Star>
-                        ))}
+                        {[1, 2, 3, 4, 5].map((rating) => {
+                            const isFilled = rating <= selectedRating;
+                            const isInHoverRange = rating <= hoveredRating && hoveredRating > 0;
+                            const isHoveringLower = hoveredRating > 0 && hoveredRating < selectedRating;
+                            
+                            // Dim filled stars that are above the hovered rating when hovering lower than selected
+                            const isDimmed = isFilled && isHoveringLower && rating > hoveredRating;
+                            
+                            // Show outlined hover style for stars in hover range
+                            // If hovering lower than selected, show hover style even for filled stars in hover range
+                            const showHovered = isInHoverRange && (!isFilled || isHoveringLower);
+                            
+                            // Determine if star should appear filled (not dimmed)
+                            const shouldBeFilled = isFilled && !isDimmed && !showHovered;
+                            
+                            return (
+                                <Star
+                                    key={rating}
+                                    filled={shouldBeFilled}
+                                    hovered={showHovered}
+                                    dimmed={isDimmed}
+                                    onClick={() => setSelectedRating(rating)}
+                                    onMouseEnter={() => setHoveredRating(rating)}
+                                    onMouseLeave={() => setHoveredRating(0)}
+                                    style={{ cursor: 'pointer', fontSize: '1.5rem' }}
+                                >
+                                    {shouldBeFilled ? ' ★ ' : (showHovered ? ' ☆ ' : ' ★ ')}
+                                </Star>
+                            );
+                        })}
                     </RatingInput>
                     <TextArea
                         value={comment}

@@ -14,6 +14,7 @@ import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixu
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getBadgeStyles } from '../../utils/sharedStyles';
 import { getStatusBadgeType } from '../../utils/badgeHelpers';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
 const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from shared framework)
@@ -238,6 +239,68 @@ const VariantItem = styled.div`
     }
 `;
 
+const ModalMessageContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: ${spacing.md};
+`;
+
+const ModalParagraph = styled.p`
+    margin: 0;
+    color: ${colors.textSecondary};
+    line-height: 1.6;
+`;
+
+const WarningSection = styled.div`
+    padding: ${spacing.md};
+    background: ${colors.bgTertiary};
+    border-left: 4px solid ${colors.danger || '#ff6b6b'};
+    border-radius: 4px;
+    margin: ${spacing.sm} 0;
+`;
+
+const WarningTitle = styled.div`
+    font-weight: 700;
+    color: ${colors.danger || '#ff6b6b'};
+    margin-bottom: ${spacing.xs};
+    display: flex;
+    align-items: center;
+    gap: ${spacing.xs};
+    font-size: 0.9375rem;
+`;
+
+const WarningText = styled.p`
+    margin: 0;
+    color: ${colors.textSecondary};
+    line-height: 1.6;
+    font-size: 0.875rem;
+`;
+
+const RecommendationSection = styled.div`
+    padding: ${spacing.md};
+    background: ${colors.bgTertiary};
+    border-left: 4px solid ${colors.accent};
+    border-radius: 4px;
+    margin: ${spacing.sm} 0;
+`;
+
+const RecommendationTitle = styled.div`
+    font-weight: 700;
+    color: ${colors.accent};
+    margin-bottom: ${spacing.xs};
+    display: flex;
+    align-items: center;
+    gap: ${spacing.xs};
+    font-size: 0.9375rem;
+`;
+
+const RecommendationText = styled.p`
+    margin: 0;
+    color: ${colors.textSecondary};
+    line-height: 1.6;
+    font-size: 0.875rem;
+`;
+
 export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoading }: ModManageFormProps) {
     const { data: settings } = useAdminSettings();
     const [title, setTitle] = useState(mod.title);
@@ -251,6 +314,8 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(mod.thumbnailUrl || null);
     const [variantFileErrors, setVariantFileErrors] = useState<Record<string, string | null>>({});
     const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+    const [variantReplaceModal, setVariantReplaceModal] = useState<{ variantId: string; variantName: string; file: File } | null>(null);
+    const [pendingVariantFiles, setPendingVariantFiles] = useState<Record<string, File>>({});
 
     const handleThumbnailFileChange = (file: File | null) => {
         if (file) {
@@ -335,8 +400,22 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         if (file) {
             const validation = validateFileSize(file.size, MAX_MOD_FILE_SIZE);
             if (validation.valid) {
-                handleVariantChange(variantId, 'file', file);
-                setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+                // Check if this variant already has a file (existing variant being replaced)
+                const variant = variants.find(v => v.variantId === variantId);
+                const isReplacingExistingFile = variant && (variant.fileUrl || (variant.fileName && variant.fileSize !== undefined));
+                
+                if (isReplacingExistingFile) {
+                    // Show warning modal before replacing
+                    setVariantReplaceModal({
+                        variantId,
+                        variantName: variant.name || 'Unnamed Variant',
+                        file
+                    });
+                } else {
+                    // New variant or variant without existing file - no warning needed
+                    handleVariantChange(variantId, 'file', file);
+                    setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+                }
             } else {
                 setVariantFileErrors(prev => ({ 
                     ...prev, 
@@ -347,18 +426,46 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         } else {
             handleVariantChange(variantId, 'file', null);
             setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+            // Remove from pending files if it was there
+            setPendingVariantFiles(prev => {
+                const next = { ...prev };
+                delete next[variantId];
+                return next;
+            });
+        }
+    };
+
+    const handleVariantReplaceConfirm = () => {
+        if (variantReplaceModal) {
+            const { variantId, file } = variantReplaceModal;
+            handleVariantChange(variantId, 'file', file);
+            setPendingVariantFiles(prev => ({ ...prev, [variantId]: file }));
+            setVariantFileErrors(prev => ({ ...prev, [variantId]: null }));
+            setVariantReplaceModal(null);
+        }
+    };
+
+    const handleVariantReplaceCancel = () => {
+        if (variantReplaceModal) {
+            const { variantId } = variantReplaceModal;
+            // Clear the file selection
+            handleVariantChange(variantId, 'file', null);
+            setVariantReplaceModal(null);
         }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // Extract variant files before serializing variants
+        // Include both files from variant.file and pendingVariantFiles
         const variantFiles: Record<string, File> = {};
         const variantsWithoutFiles = variants.map(variant => {
-            if (variant.file) {
-                variantFiles[variant.variantId] = variant.file;
+            // Check pending files first (confirmed replacements), then regular file selection
+            const file = pendingVariantFiles[variant.variantId] || variant.file;
+            if (file) {
+                variantFiles[variant.variantId] = file;
                 // Return variant without File object (can't be serialized)
-                const { file, ...variantWithoutFile } = variant;
+                const { file: _, ...variantWithoutFile } = variant;
                 return variantWithoutFile;
             }
             return variant;
@@ -555,6 +662,49 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                     Delete Mod
                 </Button>
             </ButtonGroup>
+
+            <ConfirmationModal
+                isOpen={!!variantReplaceModal}
+                onClose={handleVariantReplaceCancel}
+                onConfirm={handleVariantReplaceConfirm}
+                title="Replace Variant File?"
+                message={
+                    variantReplaceModal ? (
+                        <ModalMessageContainer>
+                            <ModalParagraph>
+                                You are about to replace the file for variant <strong>"{variantReplaceModal.variantName}"</strong>.
+                            </ModalParagraph>
+                            
+                            <WarningSection>
+                                <WarningTitle>
+                                    <span>⚠️</span>
+                                    <span>WARNING</span>
+                                </WarningTitle>
+                                <WarningText>
+                                    Replacing the variant file will reset the download counter for this variant to 0. All previous download statistics for this variant will be lost.
+                                </WarningText>
+                            </WarningSection>
+                            
+                            <RecommendationSection>
+                                <RecommendationTitle>
+                                    <span>💡</span>
+                                    <span>RECOMMENDATION</span>
+                                </RecommendationTitle>
+                                <RecommendationText>
+                                    Instead of replacing the file, consider uploading it as a new variant to preserve download statistics.
+                                </RecommendationText>
+                            </RecommendationSection>
+                            
+                            <ModalParagraph>
+                                Are you sure you want to proceed with replacing the file?
+                            </ModalParagraph>
+                        </ModalMessageContainer>
+                    ) : ''
+                }
+                confirmText="Yes, Replace File (Reset Counter)"
+                cancelText="Cancel"
+                isLoading={isLoading}
+            />
         </Form>
     );
 }

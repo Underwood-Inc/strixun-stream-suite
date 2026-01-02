@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import Tooltip from '@strixun/tooltip/Tooltip.svelte';
+  import { StatusFlair } from '@strixun/status-flair';
 
   export let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
 
@@ -10,28 +11,74 @@
     { 
       id: 'dashboard', 
       label: 'Dashboard',
-      tooltip: 'Overview of your API usage and account information',
-      level: 'log' as const
+      baseTooltip: 'Overview of your account information, API keys, and usage metrics',
+      level: 'log' as const,
+      status: 'in-testing' as 'wip' | 'in-testing' | 'beta' | 'alpha' | 'experimental' | 'deprecated' | 'coming-soon' | 'super-admin' | null
     },
     { 
       id: 'api-keys', 
       label: 'API Keys',
-      tooltip: 'Manage your API keys for authenticating requests',
-      level: 'log' as const
+      baseTooltip: 'Create, manage, and revoke API keys for authenticating your requests',
+      level: 'log' as const,
+      status: 'in-testing' as 'wip' | 'in-testing' | 'beta' | 'alpha' | 'experimental' | 'deprecated' | 'coming-soon' | 'super-admin' | null
     },
     { 
       id: 'audit-logs', 
       label: 'Audit Logs',
-      tooltip: 'View detailed logs of all API requests and authentication events',
-      level: 'info' as const
+      baseTooltip: 'View detailed logs of all API requests, authentication events, and security activities',
+      level: 'info' as const,
+      status: 'in-testing' as 'wip' | 'in-testing' | 'beta' | 'alpha' | 'experimental' | 'deprecated' | 'coming-soon' | 'super-admin' | null
     },
     { 
       id: 'analytics', 
       label: 'Analytics',
-      tooltip: 'Track usage statistics, performance metrics, and trends',
-      level: 'info' as const
+      baseTooltip: 'Track usage statistics, performance metrics, success rates, and trends over time',
+      level: 'info' as const,
+      status: 'in-testing' as 'wip' | 'in-testing' | 'beta' | 'alpha' | 'experimental' | 'deprecated' | 'coming-soon' | 'super-admin' | null
     }
   ] as const;
+
+  // Generate tooltip content as formatted HTML with status header and description body
+  function getTooltipContent(page: typeof pages[number]): string {
+    let statusHeader = '';
+    
+    if (page.status === 'in-testing') {
+      statusHeader = 'This feature is currently in testing';
+    } else if (page.status === 'wip') {
+      statusHeader = 'This feature is incomplete and still in progress';
+    } else if (page.status === 'beta') {
+      statusHeader = 'This feature is in beta and may have bugs or incomplete features';
+    } else if (page.status === 'alpha') {
+      statusHeader = 'This feature is in alpha and is experimental';
+    } else if (page.status === 'experimental') {
+      statusHeader = 'This feature is experimental and may change';
+    } else if (page.status === 'deprecated') {
+      statusHeader = 'This feature is deprecated and may be removed';
+    } else if (page.status === 'coming-soon') {
+      statusHeader = 'This feature is coming soon';
+    } else if (page.status === 'super-admin') {
+      statusHeader = 'This feature requires super admin privileges';
+    }
+    
+    // Format as HTML with proper structure: header and body
+    if (statusHeader) {
+      return `<div class="tooltip-header">${statusHeader}</div><div class="tooltip-body">${page.baseTooltip}</div>`;
+    }
+    
+    // No status - just return the base tooltip as plain text
+    return page.baseTooltip;
+  }
+
+  function getTooltipLevel(page: typeof pages[number]): 'log' | 'info' | 'warning' | 'error' {
+    if (page.status === 'in-testing') {
+      return 'info';
+    } else if (page.status === 'wip' || page.status === 'deprecated') {
+      return 'warning';
+    } else if (page.status === 'super-admin') {
+      return 'warning';
+    }
+    return page.level;
+  }
 
   function handleClick(page: typeof currentPage) {
     dispatch('navigate', page);
@@ -43,25 +90,29 @@
     {#each pages as page}
       <li class="app-nav__item">
         <Tooltip 
-          text={page.tooltip} 
+          text={getTooltipContent(page)} 
           position="bottom" 
           delay={0}
-          level={page.level}
+          level={getTooltipLevel(page)}
         >
-          <button
-            class="app-nav__link"
-            class:active={currentPage === page.id}
-            onclick={() => handleClick(page.id)}
-          >
-            {page.label}
-          </button>
+          <StatusFlair status={page.status}>
+            <button
+              class="app-nav__link"
+              class:active={currentPage === page.id}
+              onclick={() => handleClick(page.id)}
+            >
+              {page.label}
+            </button>
+          </StatusFlair>
         </Tooltip>
       </li>
     {/each}
   </ul>
 </nav>
 
-<style>
+<style lang="scss">
+  @use '../../../../../shared-styles/mixins' as *;
+
   .app-nav {
     background: var(--card);
     border: 1px solid var(--border);
@@ -98,7 +149,7 @@
     cursor: pointer;
   }
 
-  .app-nav__link:hover {
+  .app-nav__link:hover:not(.active) {
     color: var(--text);
     background: var(--bg-dark);
   }
@@ -107,6 +158,53 @@
     color: var(--accent);
     border-color: var(--accent);
     background: var(--bg-dark);
+  }
+
+  // Status flairs - base state is handled by StatusFlair component via shared mixin
+  // We only add component-specific overrides for hover/active states
+
+  // Hover state for in-testing tabs - mixin handles background-image, we adjust text color
+  .app-nav :global(.status-flair--in-testing > .app-nav__link):hover:not(.active) {
+    color: var(--text);
+  }
+
+  // Active state for in-testing tabs - preserve pattern with accent (component-specific override)
+  .app-nav :global(.status-flair--in-testing > .app-nav__link.active) {
+    background: var(--accent);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(100, 149, 237, 0.15),
+      rgba(100, 149, 237, 0.15) 6px,
+      rgba(100, 149, 237, 0.2) 6px,
+      rgba(100, 149, 237, 0.2) 12px
+    );
+    border-color: var(--info);
+    color: #000;
+  }
+
+  // Tooltip content formatting - styles for structured tooltip content
+  :global(.tooltip-content .tooltip-header) {
+    font-weight: 600;
+    color: var(--info, #6495ed);
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  :global(.tooltip-content .tooltip-body) {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  // Adjust for different tooltip levels
+  :global(.tooltip--warning .tooltip-content .tooltip-header) {
+    color: #ff8c00;
+  }
+
+  :global(.tooltip--error .tooltip-content .tooltip-header) {
+    color: var(--danger, #ea2b1f);
   }
 </style>
 

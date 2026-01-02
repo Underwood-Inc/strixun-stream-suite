@@ -13,6 +13,8 @@ import { IntegrityBadge } from './IntegrityBadge';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
 import { useAuthStore } from '../../stores/auth';
+import { useQueryClient } from '@tanstack/react-query';
+import { modKeys } from '../../hooks/useMods';
 
 const Container = styled.div`
   display: flex;
@@ -185,6 +187,7 @@ interface ModVersionListProps {
 export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionListProps) {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuthStore();
+    const queryClient = useQueryClient();
     const [downloading, setDownloading] = useState<Set<string>>(new Set());
     const [downloadingVariants, setDownloadingVariants] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -227,7 +230,12 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
         setDownloadError(null);
         
         try {
+            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
             await downloadVersion(modSlug, version.versionId, version.fileName || `mod-${modSlug}-v${version.version}.jar`);
+            
+            // Download successful - refetch mod data to get updated download counts
+            console.log('[ModVersionList] Download completed, refetching mod data for updated counts');
+            await queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
         } catch (error: any) {
             console.error('[ModVersionList] Download failed:', error);
             setDownloadError(error.message || 'Failed to download file');
@@ -263,9 +271,13 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
         setDownloadError(null);
 
         try {
-            // Download variant file through API endpoint (handles decryption)
+            // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
             const fileName = variant.fileName || `${variant.name || 'variant'}.zip`;
             await downloadVariant(modSlug, variant.variantId, fileName);
+            
+            // Download successful - refetch mod data to get updated download counts
+            console.log('[ModVersionList] Variant download completed, refetching mod data for updated counts');
+            await queryClient.refetchQueries({ queryKey: modKeys.detail(modSlug) });
         } catch (error: any) {
             console.error('[ModVersionList] Variant download failed:', error);
             setDownloadError(error.message || 'Failed to download variant');
@@ -302,6 +314,10 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                 const isExpanded = expandedVersions.has(version.versionId);
                 const versionVariants = getVariantsForVersion(version);
                 
+                // Calculate cumulative downloads for this version (version + all variants)
+                const variantDownloads = versionVariants.reduce((sum, v) => sum + (v.downloads || 0), 0);
+                const cumulativeDownloads = version.downloads + variantDownloads;
+                
                 return (
                     <VersionCard key={version.versionId} isExpanded={isExpanded}>
                         <VersionCardHeader onClick={() => toggleVersion(version.versionId)}>
@@ -314,7 +330,7 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                 <Meta>
                                     <span>{formatFileSize(version.fileSize)}</span>
                                     <span>•</span>
-                                    <span>{version.downloads} downloads</span>
+                                    <span>{cumulativeDownloads} downloads{versionVariants.length > 0 ? ` (${version.downloads} main + ${variantDownloads} variants)` : ''}</span>
                                     {version.gameVersions.length > 0 && (
                                         <>
                                             <span>•</span>
@@ -376,7 +392,13 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                                             <span>•</span>
                                                         </>
                                                     )}
-                                                    {variant.fileName && <span>{variant.fileName}</span>}
+                                                    <span>{(variant.downloads || 0)} downloads</span>
+                                                    {variant.fileName && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>{variant.fileName}</span>
+                                                        </>
+                                                    )}
                                                     {variant.gameVersions && variant.gameVersions.length > 0 && (
                                                         <>
                                                             <span>•</span>

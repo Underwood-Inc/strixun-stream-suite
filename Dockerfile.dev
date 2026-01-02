@@ -1,0 +1,32 @@
+# Development Dockerfile for Strixun Stream Suite
+# Optimized for hot reload and development workflow
+
+FROM node:20-alpine
+
+# Install pnpm
+RUN npm install -g pnpm@9.15.1
+
+# Install wrangler globally for Cloudflare Workers
+RUN npm install -g wrangler@latest
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+
+# Copy all package.json files for workspace dependencies
+COPY packages/*/package.json ./packages/
+COPY serverless/*/package.json ./serverless/
+COPY mods-hub/package.json ./mods-hub/
+COPY control-panel/package.json ./control-panel/
+COPY dice-board-game/package.json ./dice-board-game/
+
+# Install dependencies (will be overridden by volume mount, but needed for initial setup)
+RUN pnpm install --frozen-lockfile || pnpm install
+
+# Expose common ports
+EXPOSE 5173 3001 5175 8787 8788 8790
+
+# Default command (overridden in docker-compose.yml)
+CMD ["pnpm", "dev"]

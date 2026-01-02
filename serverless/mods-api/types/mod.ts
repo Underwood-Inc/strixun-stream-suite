@@ -183,6 +183,7 @@ export interface ModVariant {
     dependencies?: ModDependency[];
     createdAt?: string;
     updatedAt?: string;
+    downloads?: number; // Individual download count for this variant
 }
 
 /**

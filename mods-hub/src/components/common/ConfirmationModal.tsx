@@ -6,7 +6,7 @@
  * for any confirmation that requires extra safety (deletions, irreversible actions, etc.)
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
@@ -47,13 +47,22 @@ const Title = styled.h2`
     margin: 0;
 `;
 
-const Message = styled.p`
+const Message = styled.div`
     color: ${colors.textSecondary};
     line-height: 1.6;
     margin: 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
+    white-space: pre-line;
+    
+    p {
+        margin: 0 0 ${spacing.md} 0;
+        
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
 `;
 
 const ConfirmationSection = styled.div`
@@ -130,7 +139,7 @@ export interface ConfirmationModalProps {
     onClose: () => void;
     onConfirm: () => void | Promise<void>;
     title: string;
-    message: string;
+    message: string | React.ReactNode;
     confirmText?: string;
     cancelText?: string;
     isLoading?: boolean;

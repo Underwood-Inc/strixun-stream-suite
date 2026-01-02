@@ -539,6 +539,372 @@ The control panel will automatically attempt to connect to OBS via WebSocket. Ma
 
 ---
 
+<details>
+<summary><strong>🚀 Developer Setup - Local Development & Cloud IDE</strong></summary>
+
+### Quick Answer: Cloudflare Setup for Local Dev
+
+**❌ NO Cloudflare account needed for local development!**
+
+When using `wrangler dev --local` (default in all dev scripts):
+- ✅ R2 buckets stored locally in `~/.wrangler/state/v3/r2/`
+- ✅ KV namespaces stored locally in `~/.wrangler/state/v3/kv/`
+- ✅ No cloud access required
+- ✅ Works completely offline
+- ✅ No costs
+
+Cloudflare setup is **only needed for production deployment**.
+
+---
+
+### Minimum Steps to Clone and Run Locally
+
+#### Prerequisites
+- Node.js 18+ (`node --version`)
+- pnpm 9+ (`npm install -g pnpm@9.15.1`)
+- Git
+
+#### Step 1: Clone and Install
+```bash
+git clone <repository-url>
+cd "source fade script plugin"
+pnpm install
+```
+
+#### Step 2: Configure OTP Auth Service (Required for Authentication)
+
+**🔒 IMPORTANT: Local dev uses test mode - emails are intercepted, NOT sent via Resend!**
+
+For local development, emails are **intercepted and logged to console** - no Resend API calls are made. This prevents consuming your Resend quota during development.
+
+**Option A: Use Test Mode (Recommended - No Resend Account Needed)**
+
+1. **Run the setup script:**
+```bash
+cd serverless/otp-auth-service
+pnpm setup:test-secrets
+```
+
+This automatically creates `.dev.vars` with:
+- `ENVIRONMENT=test` (enables email interception)
+- `RESEND_API_KEY=re_test_key_for_local_development` (test key, not a real API key)
+- All other required test secrets
+
+**✅ OTP Codes:** OTP codes are intercepted and printed to the console. Check the wrangler dev output for `[DEV] OTP Code for email@example.com: 123456789`
+
+**Option B: Manual Setup (If you prefer)**
+
+1. **Create `.dev.vars` file:**
+```bash
+cd serverless/otp-auth-service
+cp .dev.vars.example .dev.vars
+```
+
+2. **Edit `serverless/otp-auth-service/.dev.vars` with test mode:**
+```bash
+# CRITICAL: ENVIRONMENT=test enables email interception (no Resend API calls)
+ENVIRONMENT=test
+
+# JWT Secret (use standard dev value)
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+
+# Test API key (NOT a real Resend key - emails are intercepted)
+RESEND_API_KEY=re_test_key_for_local_development
+
+# Test email (not used, but required)
+RESEND_FROM_EMAIL=test@example.com
+
+# Network Integrity (for service-to-service calls)
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+```
+
+**✅ OTP Codes:** OTP codes are intercepted and printed to console. No emails are sent, no Resend API is consumed.
+
+**⚠️ Production Note:** For production deployment, you'll need a real Resend account and API key. But for local dev, test mode is recommended to avoid consuming your Resend quota.
+
+#### Step 3: Configure Mods API (If Using Mods Hub)
+
+1. **Create `.dev.vars` file:**
+```bash
+cd serverless/mods-api
+cp .dev.vars.example .dev.vars
+```
+
+2. **Edit `serverless/mods-api/.dev.vars`** (use standard dev values):
+```bash
+# Use 'test' or 'development' - both work for local dev
+ENVIRONMENT=test
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+CUSTOMER_API_URL=http://localhost:8790
+ALLOWED_ORIGINS=*
+MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+```
+
+#### Step 4: Configure Customer API (If Using Mods Hub)
+
+1. **Create `serverless/customer-api/.dev.vars`:**
+```bash
+cd serverless/customer-api
+```
+
+2. **Create `.dev.vars` file:**
+```bash
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+ENVIRONMENT=test
+```
+
+#### Step 5: Configure Mods Hub Frontend (If Using Mods Hub)
+
+The `.env` file is **auto-generated** by `setup:env.js` when you run `pnpm dev`, but you can create it manually:
+
+**Create `mods-hub/.env`:**
+```bash
+# Shared encryption key for mod file encryption
+# Must match MODS_ENCRYPTION_KEY in serverless/mods-api/.dev.vars
+VITE_MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+```
+
+**Note:** The `predev` script automatically runs `setup:env.js`, so this file is created on first run.
+
+#### Step 6: Start Development Servers
+
+**Option A: Full Stack (Mods Hub + All Services)**
+```bash
+cd mods-hub
+pnpm dev:all
+```
+
+This starts:
+- Frontend: http://localhost:3001
+- Mods API: http://localhost:8788
+- OTP Auth Service: http://localhost:8787
+- Customer API: http://localhost:8790
+
+**Option B: Main OBS Control Panel Only**
+```bash
+# From root directory
+pnpm dev
+```
+Runs at: http://localhost:5173
+
+**Option C: All Services (Turborepo)**
+```bash
+# From root directory
+pnpm dev:turbo
+```
+Starts all frontend apps and backend workers simultaneously.
+
+---
+
+### Critical Environment Variables
+
+**Must match across all services:**
+
+1. **JWT_SECRET** - Standard dev value: `test-jwt-secret-for-local-development-12345678901234567890123456789012`
+   - Used by: otp-auth-service, mods-api, customer-api, url-shortener, chat-signaling, twitch-api, game-api
+
+2. **NETWORK_INTEGRITY_KEYPHRASE** - Standard dev value: `test-integrity-keyphrase-for-integration-tests`
+   - Used by: otp-auth-service, mods-api, customer-api
+
+3. **MODS_ENCRYPTION_KEY** (Mods Hub only) - Standard dev value: `strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation`
+   - Must match between `mods-hub/.env` (VITE_MODS_ENCRYPTION_KEY) and `serverless/mods-api/.dev.vars` (MODS_ENCRYPTION_KEY)
+
+---
+
+### Cloud IDE Compatibility (CodeSandbox, StackBlitz, etc.)
+
+**✅ Yes, the codebase works in cloud IDEs with minimum setup!**
+
+**Quick Setup (One Command - No Manual Copy/Paste Needed!):**
+
+Run this single command to automatically create all required environment files:
+
+```bash
+pnpm setup:cloud-ide
+```
+
+That's it! The script automatically creates:
+- `serverless/otp-auth-service/.dev.vars`
+- `serverless/mods-api/.dev.vars`
+- `serverless/customer-api/.dev.vars`
+- `mods-hub/.env`
+
+All files are pre-configured with test mode defaults (emails intercepted, no Resend API calls). **No manual copy/paste required!**
+
+After running the script, you can immediately start development:
+```bash
+cd mods-hub
+pnpm dev:all
+```
+
+**Manual Setup (Alternative):**
+
+If you prefer to create files manually, here are the exact contents:
+
+<details>
+<summary><strong>📋 Manual File Contents (Click to Expand)</strong></summary>
+
+**1. Create `serverless/otp-auth-service/.dev.vars`:**
+```bash
+ENVIRONMENT=test
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+RESEND_API_KEY=re_test_key_for_local_development
+RESEND_FROM_EMAIL=test@example.com
+ALLOWED_ORIGINS=*
+SUPER_ADMIN_EMAILS=test@example.com
+```
+
+**2. Create `serverless/mods-api/.dev.vars`:**
+```bash
+ENVIRONMENT=test
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+CUSTOMER_API_URL=http://localhost:8790
+ALLOWED_ORIGINS=*
+MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+```
+
+**3. Create `serverless/customer-api/.dev.vars`:**
+```bash
+ENVIRONMENT=test
+JWT_SECRET=test-jwt-secret-for-local-development-12345678901234567890123456789012
+NETWORK_INTEGRITY_KEYPHRASE=test-integrity-keyphrase-for-integration-tests
+```
+
+**4. Create `mods-hub/.env`:**
+```bash
+VITE_MODS_ENCRYPTION_KEY=strixun_mods_encryption_key_dev_2025_secure_random_64_char_minimum_required_for_pbkdf2_derivation
+```
+
+</details>
+
+**Requirements:**
+1. **Test Mode Setup** - Use `ENVIRONMENT=test` and `RESEND_API_KEY=re_test_key_for_local_development` (no real Resend account needed)
+2. **Auto-generate `.dev.vars`** - Run `node scripts/setup-cloud-ide.js` or `pnpm setup:test-secrets` in `serverless/otp-auth-service`
+3. **Wrangler Local Storage** - Works in sandbox environments (uses local filesystem)
+4. **Port Configuration** - All ports are pre-configured and won't conflict
+
+**Recommended Setup Script for Cloud IDEs:**
+```bash
+# Auto-generate all .dev.vars files with dev defaults
+# Use RESEND_API_KEY from environment variable
+node scripts/setup-cloud-ide.js
+```
+
+**What Works:**
+- ✅ All R2 storage → local filesystem
+- ✅ All KV storage → local filesystem  
+- ✅ All workers → run locally via `wrangler dev --local`
+- ✅ All frontend apps → run locally via Vite
+- ✅ Authentication → works with local workers
+- ✅ OTP codes → intercepted and logged to console (no emails sent)
+- ✅ File uploads → stored locally
+- ✅ Database operations → use local KV storage
+
+**External Services Required:**
+- **None for local dev!** Test mode intercepts emails (no Resend account needed)
+- **Resend.com** (only needed for production deployment)
+
+---
+
+### Docker Compose Development (Alternative)
+
+**🐳 Docker Compose provides an isolated, reproducible development environment!**
+
+**Prerequisites:**
+- Docker Desktop installed
+- Docker Compose v2+
+
+**Quick Start:**
+
+1. **Setup environment files:**
+```bash
+pnpm setup:cloud-ide
+```
+
+2. **Start all services:**
+```bash
+# Start all services
+pnpm docker:dev
+
+# Or build and start
+pnpm docker:dev:build
+
+# Stop all services
+pnpm docker:dev:down
+```
+
+**What's Included:**
+- ✅ All frontend apps (Mods Hub, Stream Suite, Control Panel)
+- ✅ All backend workers (OTP Auth, Mods API, Customer API)
+- ✅ Hot reload enabled (code changes reflect immediately)
+- ✅ Wrangler local storage persisted (R2/KV data survives restarts)
+- ✅ Isolated network (services communicate via Docker network)
+- ✅ Pre-configured ports (same as local dev)
+
+**Services:**
+- **Mods Hub**: http://localhost:3001
+- **Stream Suite**: http://localhost:5173
+- **Control Panel**: http://localhost:5175
+- **OTP Auth Service**: http://localhost:8787
+- **Mods API**: http://localhost:8788
+- **Customer API**: http://localhost:8790
+
+**Benefits:**
+- ✅ **Isolated environment** - No conflicts with local Node.js versions
+- ✅ **Reproducible** - Same environment for all developers
+- ✅ **Easy cleanup** - `docker-compose down` removes everything
+- ✅ **Consistent** - Same setup across Windows, Mac, Linux
+- ✅ **No local dependencies** - Only Docker needed
+
+**Volume Mounts:**
+- Source code mounted for hot reload
+- Wrangler state persisted in Docker volumes
+- Node modules excluded (faster startup)
+
+**Note:** This is an **alternative** to local development, not a replacement. Use whichever workflow you prefer!
+
+---
+
+### Port Assignments
+
+| Service | Port | Type |
+|---------|------|------|
+| Stream Suite (Root) | 5173 | Frontend (Vite) |
+| Mods Hub | 3001 | Frontend (Vite) |
+| Control Panel | 5175 | Frontend (Vite) |
+| OTP Auth Worker | 8787 | Backend (Wrangler) |
+| Mods API Worker | 8788 | Backend (Wrangler) |
+| Customer API Worker | 8790 | Backend (Wrangler) |
+| Twitch API Worker | 8789 | Backend (Wrangler) |
+| Game API Worker | 8791 | Backend (Wrangler) |
+| Chat Signaling Worker | 8792 | Backend (Wrangler) |
+| URL Shortener Worker | 8793 | Backend (Wrangler) |
+
+All ports are pre-configured and won't conflict.
+
+---
+
+### Summary
+
+- ❌ **No Cloudflare account needed** for local dev
+- ❌ **No Resend account needed** for local dev (test mode intercepts emails)
+- ✅ **All storage is local** (R2 and KV)
+- ✅ **Works offline**
+- ✅ **Standard dev values documented**
+- ✅ **Auto-setup scripts exist** (`pnpm setup:test-secrets`)
+- ✅ **OTP codes intercepted** - printed to console, no emails sent
+- ✅ **Cloud IDE compatible** with minimum setup
+
+**Email Interception:** When `ENVIRONMENT=test` and `RESEND_API_KEY` starts with `re_test_`, emails are intercepted and OTP codes are printed to the console. No Resend API calls are made, preserving your quota for production use.
+
+</details>
+
+---
+
 ## ★ Manual Installation (Alternative)
 
 If you prefer to install scripts manually:

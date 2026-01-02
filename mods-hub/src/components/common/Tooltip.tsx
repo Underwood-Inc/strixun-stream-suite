@@ -210,13 +210,20 @@ const TooltipElement = styled.div<{
  * Find the first text-containing element in the container
  */
 function findTextElement(container: HTMLElement): HTMLElement | null {
-  if (container.textContent && container.textContent.trim()) {
+  // First, check if container itself has truncation styles and text
+  const containerStyle = window.getComputedStyle(container);
+  const hasContainerTruncation = 
+    (containerStyle.overflow === 'hidden' || containerStyle.overflowX === 'hidden') &&
+    (containerStyle.textOverflow === 'ellipsis' || containerStyle.textOverflow === 'clip');
+  
+  if (hasContainerTruncation && container.textContent && container.textContent.trim()) {
     return container;
   }
   
+  // Otherwise, find the first child element with truncation styles
   const walker = document.createTreeWalker(
     container,
-    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+    NodeFilter.SHOW_ELEMENT,
     null
   );
   
@@ -224,10 +231,20 @@ function findTextElement(container: HTMLElement): HTMLElement | null {
   while ((node = walker.nextNode())) {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as HTMLElement;
-      if (element.textContent && element.textContent.trim()) {
+      const style = window.getComputedStyle(element);
+      const hasTruncation = 
+        (style.overflow === 'hidden' || style.overflowX === 'hidden') &&
+        (style.textOverflow === 'ellipsis' || style.textOverflow === 'clip');
+      
+      if (hasTruncation && element.textContent && element.textContent.trim()) {
         return element;
       }
     }
+  }
+  
+  // Fallback: return first element with text content
+  if (container.textContent && container.textContent.trim()) {
+    return container;
   }
   
   return null;
@@ -518,6 +535,33 @@ export function Tooltip({
   const handleMouseEnter = useCallback(() => {
     if (disabled || (!text && !content)) return;
 
+    // If detectTruncation is enabled, check truncation synchronously on hover
+    if (detectTruncation) {
+      // Perform immediate synchronous truncation check
+      if (wrapperRef.current) {
+        const textElement = findTextElement(wrapperRef.current);
+        if (textElement) {
+          const isCurrentlyTruncated = detectTextTruncation(textElement);
+          if (!isCurrentlyTruncated) {
+            // Not truncated - don't show tooltip
+            return;
+          }
+          // Update state for future checks
+          setIsTruncated(true);
+          const fullText = textElement.textContent || textElement.innerText || '';
+          if (fullText.trim()) {
+            setTruncatedText(fullText);
+          }
+        } else {
+          // Can't find text element - don't show
+          return;
+        }
+      } else {
+        // No wrapper ref - don't show
+        return;
+      }
+    }
+
     if (delay > 0) {
       hoverTimeoutRef.current = setTimeout(() => {
         setShow(true);
@@ -526,7 +570,7 @@ export function Tooltip({
     } else {
       setShow(true);
     }
-  }, [disabled, text, delay]);
+  }, [disabled, text, delay, detectTruncation]);
 
   // Hide tooltip
   const handleMouseLeave = useCallback(() => {
@@ -675,7 +719,9 @@ export function Tooltip({
   
   // Render tooltip ONLY via React createPortal when show is true
   // This ensures tooltip is NEVER in the component tree
-  const tooltipPortal = show && portalRootElement 
+  // If detectTruncation is enabled, only show when text is actually truncated
+  const shouldShowTooltip = show && (!detectTruncation || isTruncated || content);
+  const tooltipPortal = shouldShowTooltip && portalRootElement 
     ? createPortal(
         <TooltipElement
           ref={tooltipRef}

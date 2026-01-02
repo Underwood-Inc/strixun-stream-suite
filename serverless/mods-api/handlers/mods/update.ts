@@ -432,6 +432,15 @@ export async function handleUpdateMod(
                         variant.fileSize = fileSize; // Use decrypted file size
                         variant.updatedAt = now;
                         
+                        // CRITICAL: Reset download counter when variant file is replaced
+                        // This ensures accurate tracking - old downloads don't count for the new file
+                        variant.downloads = 0;
+                        console.log('[UpdateMod] Reset download counter for variant (file replaced):', {
+                            variantId: variant.variantId,
+                            variantName: variant.name,
+                            previousDownloads: variant.downloads
+                        });
+                        
                         console.log('[UpdateMod] Variant file uploaded:', {
                             variantId: variant.variantId,
                             fileName: originalFileName,
