@@ -133,16 +133,17 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
       'RESEND_API_KEY',
       'RESEND_FROM_EMAIL'
     ]);
-    // Optional but recommended for tests
-    if (process.env.E2E_TEST_OTP_CODE) {
-      const devVarsPath = join(rootDir, workerDir, '.dev.vars');
-      const content = `E2E_TEST_OTP_CODE=${process.env.E2E_TEST_OTP_CODE}\nENVIRONMENT=test\n`;
-      writeFileSync(devVarsPath, content, { flag: 'a' });
-    } else {
-      // Still set ENVIRONMENT=test even if E2E_TEST_OTP_CODE is not set
-      const devVarsPath = join(rootDir, workerDir, '.dev.vars');
-      writeFileSync(devVarsPath, 'ENVIRONMENT=test\n', { flag: 'a' });
-    }
+    // Always generate E2E_TEST_OTP_CODE for integration tests (9-digit code)
+    // Use existing value if set, otherwise generate a random one
+    const testOtpCode = process.env.E2E_TEST_OTP_CODE || 
+      Math.floor(100000000 + Math.random() * 900000000).toString();
+    
+    // Also set in process.env so tests can access it
+    process.env.E2E_TEST_OTP_CODE = testOtpCode;
+    
+    const devVarsPath = join(rootDir, workerDir, '.dev.vars');
+    const content = `E2E_TEST_OTP_CODE=${testOtpCode}\nENVIRONMENT=test\n`;
+    writeFileSync(devVarsPath, content, { flag: 'a' });
   } else if (workerDir === 'serverless/customer-api') {
     createDevVarsFile(workerDir, [
       'JWT_SECRET',
