@@ -3,6 +3,14 @@
  * 
  * Tests the complete authentication flow for mods-hub
  * Co-located with LoginPage component
+ * 
+ * Session Restore Behavior:
+ * - restoreSession() is called in App.tsx on app initialization (runs for all pages)
+ * - restoreSession() is also called in LoginPage on mount (ensures it runs even if user lands directly on login)
+ * - restoreSession() is also called in Layout on mount (secondary call for pages that use Layout)
+ * - The Zustand adapter handles deduplication to prevent concurrent restoreSession calls
+ * - Session restore enables cross-application session sharing (same device/IP can restore session from main app)
+ * - Header component uses individual selectors to ensure reactivity when session is restored
  */
 
 import { test, expect } from '@strixun/e2e-helpers/fixtures';
@@ -495,6 +503,8 @@ test.describe('Mods Hub Login', () => {
     });
     
     // Step 3: Reload page - session restore should be called automatically
+    // restoreSession is called in App.tsx on initialization, Layout on mount, and LoginPage on mount
+    // The Zustand adapter handles deduplication to prevent concurrent calls
     // Monitor network requests to verify restore-session is called
     const restoreSessionRequests: any[] = [];
     page.on('request', (request) => {
@@ -552,6 +562,15 @@ test.describe('Mods Hub Login', () => {
     // Verify user is authenticated (not on login page)
     const currentUrl = page.url();
     expect(currentUrl).not.toContain('/login');
+    
+    // Verify header updates dynamically after session restore
+    // Should show logout button instead of login button
+    const logoutButton = page.locator('button:has-text("Logout")').first();
+    await expect(logoutButton).toBeVisible({ timeout: 5000 });
+    
+    // Verify login button is not visible
+    const loginButton = page.locator('button:has-text("Login")').first();
+    await expect(loginButton).not.toBeVisible();
   });
 
   test('should restore session on app initialization when no token exists', async ({ page }) => {
@@ -605,6 +624,7 @@ test.describe('Mods Hub Login', () => {
     });
     
     // Navigate to a new page (simulating app initialization)
+    // restoreSession is called in App.tsx on initialization (runs for all pages)
     // Monitor for restore-session call
     const restoreSessionCalls: any[] = [];
     page.on('response', async (response) => {
@@ -619,7 +639,7 @@ test.describe('Mods Hub Login', () => {
       }
     });
     
-    // Navigate to home page - should trigger session restore
+    // Navigate to home page - should trigger session restore from App.tsx
     // Wait for restore-session call before navigating
     const restoreSessionPromise = page.waitForResponse(
       (response) => response.url().includes('/auth/restore-session') && response.request().method() === 'POST',
@@ -676,6 +696,15 @@ test.describe('Mods Hub Login', () => {
     });
     
     expect(restoredToken).toBeTruthy();
+    
+    // Verify header updates dynamically after session restore
+    // Should show logout button instead of login button
+    const logoutButton = page.locator('button:has-text("Logout")').first();
+    await expect(logoutButton).toBeVisible({ timeout: 5000 });
+    
+    // Verify login button is not visible
+    const loginButton = page.locator('button:has-text("Login")').first();
+    await expect(loginButton).not.toBeVisible();
   });
 
   test('should restore session when token is expired but session exists on backend', async ({ page }) => {
@@ -751,6 +780,8 @@ test.describe('Mods Hub Login', () => {
     });
     
     // Step 3: Reload page - should trigger session restore due to expired token
+    // restoreSession is called in App.tsx on initialization and Layout on mount
+    // The Zustand adapter handles deduplication to prevent concurrent calls
     const restoreSessionCalls: any[] = [];
     page.on('response', async (response) => {
       const url = response.url();
@@ -822,6 +853,164 @@ test.describe('Mods Hub Login', () => {
     // Verify user is still authenticated
     const currentUrl = page.url();
     expect(currentUrl).not.toContain('/login');
+    
+    // Verify header updates dynamically after session restore
+    // Should show logout button instead of login button
+    const logoutButton = page.locator('button:has-text("Logout")').first();
+    await expect(logoutButton).toBeVisible({ timeout: 5000 });
+    
+    // Verify login button is not visible
+    const loginButton = page.locator('button:has-text("Login")').first();
+    await expect(loginButton).not.toBeVisible();
+  });
+
+  test('should restore session when navigating to login page', async ({ page }) => {
+    // First, establish a session by logging in
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    const fancyScreenButton = page.locator('button:has-text("SIGN IN WITH EMAIL"), button:has-text("Sign In"), button:has-text("Sign in")').first();
+    const fancyScreenVisible = await fancyScreenButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (fancyScreenVisible) {
+      await fancyScreenButton.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    await requestOTPCode(page, TEST_EMAIL);
+    await waitForOTPForm(page);
+    
+    const otpCode = process.env.E2E_TEST_OTP_CODE;
+    if (!otpCode) {
+      throw new Error('E2E_TEST_OTP_CODE not set in environment');
+    }
+    
+    const { response, body } = await verifyOTPCode(page, otpCode);
+    
+    if (!response.ok()) {
+      const status = response.status();
+      const errorMessage = typeof body === 'object' && body !== null && 'detail' in body 
+        ? body.detail 
+        : typeof body === 'object' 
+          ? JSON.stringify(body) 
+          : String(body);
+      throw new Error(`OTP verification failed with status ${status}: ${errorMessage}`);
+    }
+    
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Navigate away from login page
+    await page.goto(`${MODS_HUB_URL}/`, { waitUntil: 'networkidle' });
+    
+    // Clear localStorage to simulate a fresh session
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    
+    // Navigate to login page - restoreSession should be called in LoginPage component
+    // Monitor for restore-session call
+    const restoreSessionCalls: any[] = [];
+    page.on('response', async (response) => {
+      const url = response.url();
+      if (url.includes('/auth/restore-session')) {
+        const request = response.request();
+        restoreSessionCalls.push({
+          url,
+          method: request.method(),
+          status: response.status(),
+        });
+      }
+    });
+    
+    // Wait for restore-session call
+    const restoreSessionPromise = page.waitForResponse(
+      (response) => response.url().includes('/auth/restore-session') && response.request().method() === 'POST',
+      { timeout: 10000 }
+    ).catch(() => null);
+    
+    await page.goto(`${MODS_HUB_URL}/login`, { waitUntil: 'networkidle' });
+    
+    // Wait for restore-session call to complete
+    await restoreSessionPromise;
+    await page.waitForTimeout(1000); // Give time for any pending restore-session calls
+    
+    // Verify restore-session was called (either from App.tsx or LoginPage)
+    expect(restoreSessionCalls.length).toBeGreaterThan(0);
+    
+    // Wait for authentication to be restored
+    await page.waitForFunction(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return false;
+    }, { timeout: 15000 });
+    
+    // Verify token was restored
+    const restoredToken = await page.evaluate(() => {
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          if (parsed?.user?.token) {
+            return parsed.user.token;
+          }
+          if (parsed?.state?.user?.token) {
+            return parsed.state.user.token;
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+      return null;
+    });
+    
+    expect(restoredToken).toBeTruthy();
+    
+    // Verify user is redirected away from login page (session restored)
+    await page.waitForURL(
+      (url) => {
+        const path = new URL(url).pathname;
+        return path !== '/login';
+      },
+      { timeout: 10000 }
+    ).catch(() => {
+      // If not redirected, verify header shows logout button (user is authenticated)
+      // This means session was restored but user stayed on login page
+    });
+    
+    // Verify header updates dynamically after session restore
+    // Should show logout button instead of login button (if header is visible)
+    const logoutButton = page.locator('button:has-text("Logout")').first();
+    const logoutButtonVisible = await logoutButton.isVisible({ timeout: 3000 }).catch(() => false);
+    
+    if (logoutButtonVisible) {
+      // Header is visible and shows logout button - session restored successfully
+      await expect(logoutButton).toBeVisible();
+      
+      // Verify login button is not visible
+      const loginButton = page.locator('button:has-text("Login")').first();
+      await expect(loginButton).not.toBeVisible();
+    } else {
+      // User was redirected away from login page - also a valid outcome
+      const currentUrl = page.url();
+      expect(currentUrl).not.toContain('/login');
+    }
   });
 
   test('should handle logout flow', async ({ page }) => {
