@@ -139,7 +139,23 @@ jobs:
           VITE_MODS_API_URL: ${{ secrets.VITE_MODS_API_URL || 'https://mods-api.idling.app' }}
           VITE_AUTH_API_URL: ${{ secrets.VITE_AUTH_API_URL || 'https://auth.idling.app' }}
           VITE_MODS_ENCRYPTION_KEY: ${{ secrets.MODS_ENCRYPTION_KEY }}
-        run: pnpm run build
+        run: |
+          # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
+          if [ -z "$VITE_MODS_ENCRYPTION_KEY" ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "Please add MODS_ENCRYPTION_KEY to your GitHub repository secrets."
+            echo "This key must match the MODS_ENCRYPTION_KEY in the mods-api worker."
+            exit 1
+          fi
+          
+          # Verify key length (should be at least 32 characters)
+          if [ ${#VITE_MODS_ENCRYPTION_KEY} -lt 32 ]; then
+            echo "❌ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            exit 1
+          fi
+          
+          echo "✓ MODS_ENCRYPTION_KEY is configured (length: ${#VITE_MODS_ENCRYPTION_KEY} characters)"
+          pnpm run build
         
       - name: Deploy to Cloudflare Pages
         id: deploy
@@ -174,16 +190,21 @@ jobs:
           echo "- Mods API: \`https://mods-api.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "- Auth API: \`https://auth.idling.app\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ⚠️  Encryption Key Verification:" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 Encryption Key Configuration:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "If keys don't match, mod uploads will fail with 'Decryption Failed' error." >> $GITHUB_STEP_SUMMARY
-          echo "See \`mods-hub/PRODUCTION_ENCRYPTION_KEY_FIX.md\` for troubleshooting." >> $GITHUB_STEP_SUMMARY
+          echo "**CRITICAL:** The \`MODS_ENCRYPTION_KEY\` GitHub secret must:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Exist in GitHub repository secrets" >> $GITHUB_STEP_SUMMARY
+          echo "2. Match the \`MODS_ENCRYPTION_KEY\` secret in the mods-api Cloudflare Worker" >> $GITHUB_STEP_SUMMARY
+          echo "3. Be at least 32 characters long" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "If mod uploads fail with 'MODS_ENCRYPTION_KEY is required', check:" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Secrets: Settings → Secrets and variables → Actions → \`MODS_ENCRYPTION_KEY\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloudflare Worker: Workers & Pages → mods-api → Settings → Secrets → \`MODS_ENCRYPTION_KEY\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Configure custom domain in Cloudflare Dashboard (if not already done)" >> $GITHUB_STEP_SUMMARY
-          echo "2. Verify DNS CNAME record is created" >> $GITHUB_STEP_SUMMARY
-          echo "3. Wait for SSL certificate provisioning (usually 1-5 minutes)" >> $GITHUB_STEP_SUMMARY
-          echo "4. **Test mod upload** to verify encryption keys are synchronized" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify \`MODS_ENCRYPTION_KEY\` exists in GitHub Secrets" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify it matches the mods-api worker secret" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Test mod upload** to verify encryption keys are synchronized" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> 💡 The Mods Hub is deployed to Cloudflare Pages. Access it via your custom domain." >> $GITHUB_STEP_SUMMARY
 
