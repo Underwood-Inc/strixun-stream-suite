@@ -221,6 +221,23 @@ export async function handleUpdateMod(
             const thumbnailFile = formData.get('thumbnail') as File | null;
             if (thumbnailFile) {
                 try {
+                    // CRITICAL: Verify thumbnail is NOT encrypted before processing
+                    // Thumbnails are public images and must be unencrypted
+                    const thumbnailBuffer = new Uint8Array(await thumbnailFile.arrayBuffer());
+                    if (thumbnailBuffer.length >= 4 && (thumbnailBuffer[0] === 4 || thumbnailBuffer[0] === 5)) {
+                        const rfcError = createError(request, 400, 'Invalid Thumbnail', 'Thumbnail file appears to be encrypted. Thumbnails must be unencrypted image files (PNG, JPEG, GIF, or WebP). Please upload the original image file without encryption.');
+                        const corsHeaders = createCORSHeaders(request, {
+                            allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+                        });
+                        return new Response(JSON.stringify(rfcError), {
+                            status: 400,
+                            headers: {
+                                'Content-Type': 'application/problem+json',
+                                ...Object.fromEntries(corsHeaders.entries()),
+                            },
+                        });
+                    }
+                    
                     // Use current slug (may have been updated if title changed)
                     mod.thumbnailUrl = await handleThumbnailBinaryUpload(thumbnailFile, modId, mod.slug, request, env, auth.customerId);
                 } catch (error) {
@@ -759,7 +776,20 @@ async function handleThumbnailBinaryUpload(
             imageType === 'webp' && imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46 && imageBuffer[3] === 0x46;
         
         if (!isValidImage) {
-            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image`);
+            // Log diagnostic information to help debug
+            console.error('[Thumbnail] Invalid image format detected:', {
+                imageType,
+                fileName: thumbnailFile.name,
+                fileType: thumbnailFile.type,
+                fileSize: thumbnailFile.size,
+                bufferLength: imageBuffer.length,
+                firstBytes: Array.from(imageBuffer.slice(0, 8)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' '),
+                expectedPNG: '0x89 0x50 0x4e 0x47',
+                expectedJPEG: '0xff 0xd8 0xff',
+                expectedGIF: '0x47 0x49 0x46 0x38',
+                expectedWebP: '0x52 0x49 0x46 0x46',
+            });
+            throw new Error(`Invalid ${imageType} image format - file may be corrupted or not a valid image. First bytes: ${Array.from(imageBuffer.slice(0, 4)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' ')}`);
         }
         
         // Upload to R2

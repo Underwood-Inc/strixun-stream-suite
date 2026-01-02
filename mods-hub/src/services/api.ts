@@ -299,6 +299,8 @@ export async function uploadMod(
     formData.append('file', encryptedFileObj);
     formData.append('metadata', JSON.stringify(metadata));
     if (thumbnail) {
+        // CRITICAL: Thumbnails must NEVER be encrypted - they are public images
+        // Append thumbnail directly as unencrypted File object
         formData.append('thumbnail', thumbnail);
     }
     
@@ -316,6 +318,8 @@ export async function updateMod(slug: string, updates: ModUpdateRequest, thumbna
         const formData = new FormData();
         formData.append('metadata', JSON.stringify(updates));
         if (thumbnail) {
+            // CRITICAL: Thumbnails must NEVER be encrypted - they are public images
+            // Append thumbnail directly as unencrypted File object
             formData.append('thumbnail', thumbnail);
         }
         // Add variant files to FormData - CRITICAL: Encrypt with shared key (same as uploadMod/uploadVersion)
