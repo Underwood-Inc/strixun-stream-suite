@@ -254,12 +254,26 @@ export async function handleGetModDetail(
 
         // CRITICAL: Ensure mod has customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)
-        if (!mod.customerId && auth?.customerId) {
+        // Only use auth.customerId if the current user is the mod author
+        let modKeyToSave: string | null = null;
+        if (!mod.customerId && auth?.customerId && mod.authorId === auth.userId) {
             console.log('[GetModDetail] Setting missing customerId on legacy mod:', {
                 modId: mod.modId,
-                customerId: auth.customerId
+                customerId: auth.customerId,
+                authorId: mod.authorId,
+                currentUserId: auth.userId
             });
             mod.customerId = auth.customerId;
+            
+            // Determine the correct modKey to save to
+            // Try customer scope first, then global scope
+            modKeyToSave = getCustomerKey(auth.customerId, mod.modId);
+            const globalModKey = mod.modId;
+            const existingMod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+            if (existingMod && existingMod.modId === mod.modId) {
+                // Mod exists in global scope, save to both customer and global
+                modKeyToSave = globalModKey;
+            }
         }
 
         // CRITICAL: Fetch author display name from customer data
@@ -298,6 +312,13 @@ export async function handleGetModDetail(
             console.warn('[GetModDetail] Could not fetch authorDisplayName and no stored value available:', {
                 customerId: mod.customerId,
                 modId: mod.modId
+            });
+        }
+
+        // Persist customerId update to KV if we set it (non-blocking)
+        if (modKeyToSave) {
+            env.MODS_KV.put(modKeyToSave, JSON.stringify(mod)).catch(error => {
+                console.error('[GetModDetail] Failed to persist customerId update:', error);
             });
         }
 

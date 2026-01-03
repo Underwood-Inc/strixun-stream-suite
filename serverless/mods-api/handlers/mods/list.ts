@@ -169,17 +169,41 @@ export async function handleListMods(
 
         // CRITICAL: Ensure all mods have customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)
-        mods.forEach(mod => {
-            if (!mod.customerId && auth?.customerId) {
-                // Only set if we have auth context and mod is missing customerId
+        // Only use auth.customerId if the current user is the mod author
+        const modsToSave: Array<{ mod: ModMetadata; modKey: string }> = [];
+        for (const mod of mods) {
+            if (!mod.customerId && auth?.customerId && mod.authorId === auth.userId) {
+                // Only set if we have auth context, mod is missing customerId, AND current user is the author
                 // This handles legacy mods that were created before customerId was required
                 console.log('[ListMods] Setting missing customerId on legacy mod:', {
                     modId: mod.modId,
-                    customerId: auth.customerId
+                    customerId: auth.customerId,
+                    authorId: mod.authorId,
+                    currentUserId: auth.userId
                 });
                 mod.customerId = auth.customerId;
+                
+                // Determine the correct modKey to save to
+                // Try customer scope first, then global scope
+                const customerModKey = getCustomerKey(auth.customerId, mod.modId);
+                const globalModKey = mod.modId;
+                const existingMod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
+                if (existingMod && existingMod.modId === mod.modId) {
+                    // Mod exists in global scope, save to both customer and global
+                    modsToSave.push({ mod, modKey: globalModKey });
+                }
+                modsToSave.push({ mod, modKey: customerModKey });
             }
-        });
+        }
+        
+        // Persist customerId updates to KV (non-blocking)
+        if (modsToSave.length > 0) {
+            Promise.all(modsToSave.map(({ mod, modKey }) => 
+                env.MODS_KV.put(modKey, JSON.stringify(mod))
+            )).catch(error => {
+                console.error('[ListMods] Failed to persist customerId updates:', error);
+            });
+        }
 
         // CRITICAL: Fetch display names dynamically from customer data
         // Customer is the primary data source for all customizable user info

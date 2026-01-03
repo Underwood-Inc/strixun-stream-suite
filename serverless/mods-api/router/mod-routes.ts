@@ -127,7 +127,21 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetUserPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetUserPermissions(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            const encryptedResult = await wrapWithEncryption(response, auth, request, env);
+            // Ensure CORS headers are preserved after encryption
+            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const finalHeaders = new Headers(encryptedResult.response.headers);
+            for (const [key, value] of corsHeaders.entries()) {
+                finalHeaders.set(key, value);
+            }
+            return {
+                response: new Response(encryptedResult.response.body, {
+                    status: encryptedResult.response.status,
+                    statusText: encryptedResult.response.statusText,
+                    headers: finalHeaders,
+                }),
+                customerId: encryptedResult.customerId,
+            };
         }
 
         // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
@@ -356,13 +370,9 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
 
         // Route: GET /mods/:slug/versions/:versionId/download or GET /:slug/versions/:versionId/download - Download version
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        // CRITICAL SECURITY: JWT binary encryption is MANDATORY for downloads
+        // Downloads use shared key encryption (not JWT), so JWT is not required
         // Normalized pathSegments = [slug, 'versions', versionId, 'download']
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'download' && request.method === 'GET') {
-            // CRITICAL: JWT is required for binary encryption/decryption
-            if (!auth?.jwtToken) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.', null);
-            }
             const slugOrModId = pathSegments[0];
             const versionId = pathSegments[2];
             console.log('[Router] Download request:', { path, pathSegments, slugOrModId, versionId, hasAuth: !!auth });
@@ -386,21 +396,29 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const response = await handleDownloadVersion(request, env, modId, versionId, auth);
             console.log('[Router] Download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
-            // Response is already decrypted by handler (file was encrypted at rest, decrypted on-the-fly)
-            // But we need to re-encrypt it with JWT for transport
-            // Actually, the handler should handle encryption - let's check if it does
-            return { response, customerId: auth?.customerId || null };
+            // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
+            // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
+            // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
+            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const finalHeaders = new Headers(response.headers);
+            for (const [key, value] of corsHeaders.entries()) {
+                finalHeaders.set(key, value);
+            }
+            return {
+                response: new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: finalHeaders,
+                }),
+                customerId: auth?.customerId || null,
+            };
         }
 
         // Route: GET /mods/:slug/variants/:variantId/download or GET /:slug/variants/:variantId/download - Download variant
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
-        // CRITICAL SECURITY: JWT binary encryption is MANDATORY for downloads
+        // Variants use shared key encryption (not JWT), so JWT is not required
         // Normalized pathSegments = [slug, 'variants', variantId, 'download']
         if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'download' && request.method === 'GET') {
-            // CRITICAL: JWT is required for binary encryption/decryption
-            if (!auth?.jwtToken) {
-                return await createErrorResponse(request, env, 401, 'Unauthorized', 'JWT token is required for encryption/decryption. Please provide a valid JWT token in the Authorization header.', null);
-            }
             const slugOrModId = pathSegments[0];
             const variantId = pathSegments[2];
             console.log('[Router] Variant download request:', { path, pathSegments, slugOrModId, variantId, hasAuth: !!auth });
@@ -424,8 +442,22 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             const { handleDownloadVariant } = await import('../handlers/variants/download.js');
             const response = await handleDownloadVariant(request, env, modId, variantId, auth);
             console.log('[Router] Variant download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
-            // Response is already decrypted by handler (file was encrypted at rest, decrypted on-the-fly)
-            return { response, customerId: auth?.customerId || null };
+            // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
+            // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
+            // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
+            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const finalHeaders = new Headers(response.headers);
+            for (const [key, value] of corsHeaders.entries()) {
+                finalHeaders.set(key, value);
+            }
+            return {
+                response: new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: finalHeaders,
+                }),
+                customerId: auth?.customerId || null,
+            };
         }
 
         // Route: GET /mods/:slug/versions/:versionId/verify or GET /:slug/versions/:versionId/verify - Verify file integrity
