@@ -483,6 +483,8 @@ jobs:
           if [ "${{ inputs.environment }}" == "development" ]; then
             pnpm exec wrangler deploy --env development
           else
+            # CRITICAL: mods-api uses default deployment (NOT --env production)
+            # Default deployment IS production for mods-api (unlike url-shortener)
             pnpm exec wrangler deploy
           fi
       

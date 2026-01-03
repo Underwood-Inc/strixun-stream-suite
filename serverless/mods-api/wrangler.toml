@@ -40,11 +40,12 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 binding = "MODS_R2"
 bucket_name = "mods-storage"
 
-# Production routes
-[[env.production.routes]]
-pattern = "mods-api.idling.app"
-zone_name = "idling.app"
-custom_domain = true
+# Production routes (for --env production flag, but we use default deployment instead)
+# NOTE: We don't actually use --env production for mods-api, default deployment IS production
+# [[env.production.routes]]
+# pattern = "mods-api.idling.app"
+# zone_name = "idling.app"
+# custom_domain = true
 
 # Development environment
 [env.development]
@@ -65,6 +66,8 @@ binding = "MODS_R2"
 bucket_name = "mods-storage"
 
 # Default to production for backward compatibility
+# NOTE: Routes should ONLY be defined in [env.production] to avoid duplicate worker deployments
+# The default section is kept for backward compatibility but routes are environment-specific
 [vars]
 ENVIRONMENT = "production"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
@@ -83,10 +86,10 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 binding = "MODS_R2"
 bucket_name = "mods-storage"
 
-# Default routes (production)
-routes = [
-  { pattern = "mods-api.idling.app", zone_name = "idling.app", custom_domain = true },
-]
+# CRITICAL: Default routes are REMOVED to prevent duplicate worker deployments
+# Routes are ONLY defined in [env.production] section above
+# This ensures only ONE worker is deployed for production
+# routes = []  # REMOVED - use [env.production.routes] instead
 
 # Note: The remote also has specific routes in vars.routes (dashboard-managed):
 # - mods-api.idling.app/mods/*
