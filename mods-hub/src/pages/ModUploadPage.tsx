@@ -101,7 +101,6 @@ export function ModUploadPage() {
     const addNotification = useUIStore((state) => state.addNotification);
     // Super admins can check if uploads are enabled
     const { data: adminSettings } = useAdminSettings();
-    const uploadsEnabled = adminSettings?.uploadsEnabled !== false; // Default to true
 
     const handleSubmit = async (data: {
         file: File;
