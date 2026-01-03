@@ -73,7 +73,10 @@ export async function createApiKeyForCustomer(
 ): Promise<ApiKeyResult> {
     // Generate API key
     const apiKey = await generateApiKey('otp_live_sk_');
-    const apiKeyHash = await hashApiKeyUtil(apiKey);
+    // CRITICAL: Trim API key before hashing to ensure consistent hashing
+    // This matches the trimming in verifyApiKey to prevent hash mismatches
+    const trimmedApiKey = apiKey.trim();
+    const apiKeyHash = await hashApiKeyUtil(trimmedApiKey);
     
     // Generate key ID
     const keyId = `key_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -109,6 +112,8 @@ export async function createApiKeyForCustomer(
     });
     await env.OTP_AUTH_KV.put(customerApiKeysKey, JSON.stringify(existingKeys));
     
+    // Return the original (untrimmed) API key to the caller
+    // The hash is based on the trimmed version for consistency
     return { apiKey, keyId };
 }
 
@@ -119,11 +124,27 @@ export async function createApiKeyForCustomer(
  * @returns Customer ID and key ID or null
  */
 export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVerification | null> {
-    const apiKeyHash = await hashApiKeyUtil(apiKey);
+    // CRITICAL: Trim API key to ensure consistent hashing
+    // This prevents hash mismatches due to whitespace differences
+    const trimmedApiKey = apiKey.trim();
+    
+    // Validate API key format before attempting lookup
+    if (!trimmedApiKey.startsWith('otp_live_sk_') && !trimmedApiKey.startsWith('otp_test_sk_')) {
+        console.log(`[ApiKeyService] Invalid API key format: ${trimmedApiKey.substring(0, 20)}...`);
+        return null;
+    }
+    
+    const apiKeyHash = await hashApiKeyUtil(trimmedApiKey);
     const apiKeyKey = `apikey_${apiKeyHash}`;
     const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
     
-    if (!keyData || keyData.status !== 'active') {
+    if (!keyData) {
+        console.log(`[ApiKeyService] API key not found in KV: ${apiKeyKey.substring(0, 30)}...`);
+        return null;
+    }
+    
+    if (keyData.status !== 'active') {
+        console.log(`[ApiKeyService] API key is not active: status=${keyData.status}, keyId=${keyData.keyId}`);
         return null;
     }
     
@@ -148,8 +169,15 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Only allow active customers
     if (customer.status !== 'active') {
+        console.log(`[ApiKeyService] Customer is not active: customerId=${keyData.customerId}, status=${customer.status}`);
         return null;
     }
+    
+    console.log(`[ApiKeyService] API key verification successful:`, {
+        customerId: keyData.customerId,
+        keyId: keyData.keyId,
+        apiKeyPrefix: trimmedApiKey.substring(0, 20) + '...'
+    });
     
     return {
         customerId: keyData.customerId,

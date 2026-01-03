@@ -164,8 +164,8 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
             });
         }
 
-        // Check uniqueness
-        const unique = await isNameUnique(sanitized, auth.customerId, env);
+        // Check uniqueness (global scope - customerId ignored)
+        const unique = await isNameUnique(sanitized, null, env);
         if (!unique) {
             return new Response(JSON.stringify({ 
                 error: 'Display name already taken',
@@ -189,13 +189,14 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
             });
         }
 
-        // Release old display name if it exists
+        // Release old display name if it exists (user-initiated change)
+        // CRITICAL: Only release on user-initiated changes, not during generation
         if (user.displayName && user.displayName !== sanitized) {
-            await releaseDisplayName(user.displayName, auth.customerId, env);
+            await releaseDisplayName(user.displayName, null, env); // Global scope
         }
 
-        // Reserve new display name
-        await reserveDisplayName(sanitized, auth.userId!, auth.customerId, env);
+        // Reserve new display name (global scope)
+        await reserveDisplayName(sanitized, auth.userId!, null, env);
 
         // Update display name using preferences service (tracks history)
         const updateResult = await updateDisplayName(
@@ -285,19 +286,30 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
         // Generate new unique display name
         const { generateUniqueDisplayName } = await import('../../services/nameGenerator.js');
         const newDisplayName = await generateUniqueDisplayName({
-            customerId: auth.customerId,
             maxAttempts: 10,
             pattern: 'random',
             maxWords: DISPLAY_NAME_MAX_WORDS // Support dash-separated names
         }, env);
-
-        // Release old display name if it exists
-        if (user.displayName && user.displayName !== newDisplayName) {
-            await releaseDisplayName(user.displayName, auth.customerId, env);
+        
+        // Handle empty string (generation failed after 50 retries)
+        if (!newDisplayName || newDisplayName.trim() === '') {
+            return new Response(JSON.stringify({
+                error: 'Unable to generate unique display name',
+                detail: 'Display name generation failed after 50 attempts. Please try again or contact support.'
+            }), {
+                status: 500,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
         }
 
-        // Reserve new display name
-        await reserveDisplayName(newDisplayName, auth.userId!, auth.customerId, env);
+        // Release old display name if it exists (user-initiated regeneration)
+        // CRITICAL: Only release when new name is successfully saved
+        if (user.displayName && user.displayName !== newDisplayName) {
+            await releaseDisplayName(user.displayName, null, env); // Global scope
+        }
+
+        // Reserve new display name (global scope)
+        await reserveDisplayName(newDisplayName, auth.userId!, null, env);
 
         // Update display name using preferences service (tracks history)
         const updateResult = await updateDisplayName(

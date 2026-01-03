@@ -19,6 +19,8 @@ export default defineConfig({
     pool: 'forks',
     isolate: true,
     passWithNoTests: true, // Don't fail if no tests are found
+    // Auto-start workers for integration tests (shared setup detects *.integration.test.ts files)
+    globalSetup: '../shared/vitest.setup.integration.ts',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],

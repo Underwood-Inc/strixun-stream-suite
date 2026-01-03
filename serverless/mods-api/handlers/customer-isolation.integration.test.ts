@@ -4,30 +4,52 @@
  * Tests that Customer A cannot access Customer B's data:
  * - Integrity verification includes customerID
  * - Cross-customer data access is prevented
+ * - Real API calls to verify isolation
  * 
- * Uses real integrity verification, mocks KV
+ * ⚠ CRITICAL: These tests require LOCAL workers!
+ * - OTP Auth Service must be running on http://localhost:8787
+ * - Customer API must be running on http://localhost:8790
+ * 
+ * Workers are automatically started by shared setup file.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { calculateRequestIntegrity } from '@strixun/service-client/integrity';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 import { authenticateRequest } from '../utils/auth.js';
 
-// Mock external dependencies
-vi.mock('@strixun/api-framework/enhanced', () => ({
-    createCORSHeaders: vi.fn(() => new Headers()),
-}));
+const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
+const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
+
+// Get secrets from environment (set by shared setup)
+const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+const NETWORK_INTEGRITY_KEYPHRASE = process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase';
+
+const env = {
+    JWT_SECRET,
+    NETWORK_INTEGRITY_KEYPHRASE,
+    ALLOWED_ORIGINS: '*',
+} as any;
 
 describe('Customer Isolation Integration', () => {
-    const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
-        NETWORK_INTEGRITY_KEYPHRASE: 'test-integrity-keyphrase',
-        ALLOWED_ORIGINS: '*',
-    } as any;
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+    beforeAll(async () => {
+        // Verify services are running
+        try {
+            const otpHealth = await fetch(`${OTP_AUTH_SERVICE_URL}/health`, {
+                signal: AbortSignal.timeout(3000)
+            });
+            console.log(`[Customer Isolation Tests] ✓ OTP Auth Service is running (status: ${otpHealth.status})`);
+        } catch (error: any) {
+            throw new Error(
+                `✗ OTP Auth Service is not running!\n` +
+                `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
+                `   Error: ${error.message}\n` +
+                `   \n` +
+                `   Fix: Workers should start automatically via shared setup.\n` +
+                `   If not, check serverless/shared/vitest.setup.integration.ts`
+            );
+        }
+    }, 30000);
 
     describe('Integrity Verification with CustomerID', () => {
         it('should include customerID in integrity hash calculation', async () => {
@@ -42,7 +64,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 undefined,
                 customerIdA
             );
@@ -52,7 +74,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 undefined,
                 customerIdB
             );
@@ -75,7 +97,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 customerId
             );
@@ -84,7 +106,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 customerId
             );
@@ -105,7 +127,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 undefined,
                 correctCustomerId
             );
@@ -116,7 +138,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 undefined,
                 wrongCustomerId
             );
@@ -138,7 +160,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 customerId
             );
@@ -149,7 +171,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 customerId
             );
@@ -172,7 +194,7 @@ describe('Customer Isolation Integration', () => {
                 customerId: customerIdA,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             // Authenticate request from Customer A
             const requestA = new Request('https://example.com/api/mods', {
@@ -182,7 +204,7 @@ describe('Customer Isolation Integration', () => {
                 },
             });
 
-            const authA = await authenticateRequest(requestA, mockEnv);
+            const authA = await authenticateRequest(requestA, env);
 
             // Verify Customer A's customerID is extracted correctly
             expect(authA).not.toBeNull();
@@ -199,7 +221,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 undefined,
                 authA?.customerId || null
             );
@@ -210,7 +232,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 undefined,
                 customerIdB
             );
@@ -229,7 +251,7 @@ describe('Customer Isolation Integration', () => {
                 customerId: customerIdA,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             const requestA = new Request('https://example.com/api/mods', {
                 method: 'GET',
@@ -238,7 +260,7 @@ describe('Customer Isolation Integration', () => {
                 },
             });
 
-            const authA = await authenticateRequest(requestA, mockEnv);
+            const authA = await authenticateRequest(requestA, env);
 
             expect(authA).not.toBeNull();
             expect(authA?.customerId).toBe(customerIdA);
@@ -254,7 +276,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 authA?.customerId || null
             );
@@ -264,7 +286,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 customerIdA
             );
@@ -285,7 +307,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 null
             );
@@ -295,7 +317,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 'cust_abc'
             );
@@ -309,7 +331,7 @@ describe('Customer Isolation Integration', () => {
                 method,
                 path,
                 body,
-                mockEnv.NETWORK_INTEGRITY_KEYPHRASE,
+                env.NETWORK_INTEGRITY_KEYPHRASE,
                 timestamp,
                 null
             );

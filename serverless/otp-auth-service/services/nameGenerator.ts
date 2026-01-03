@@ -353,15 +353,17 @@ function generateNamePattern(
 
 /**
  * Check if display name is unique in KV storage
+ * 
+ * CRITICAL: Display names must be globally unique (not per-customer)
+ * customerId parameter is kept for backward compatibility but is ignored
  */
 export async function isNameUnique(
   name: string,
-  customerId: string | null,
+  customerId: string | null, // Kept for backward compat, but ignored (always global)
   env: CloudflareEnv
 ): Promise<boolean> {
-  const nameKey = customerId 
-    ? `cust_${customerId}_displayname_${name.toLowerCase()}`
-    : `displayname_${name.toLowerCase()}`;
+  // Always use global scope - display names must be globally unique
+  const nameKey = `displayname_${name.toLowerCase()}`;
   
   const existing = await env.OTP_AUTH_KV.get(nameKey);
   return !existing;
@@ -369,16 +371,18 @@ export async function isNameUnique(
 
 /**
  * Reserve a display name in KV storage
+ * 
+ * CRITICAL: Display names must be globally unique (not per-customer)
+ * customerId parameter is kept for backward compatibility but is ignored
  */
 export async function reserveDisplayName(
   name: string,
   userId: string,
-  customerId: string | null,
+  customerId: string | null, // Kept for backward compat, but ignored (always global)
   env: CloudflareEnv
 ): Promise<void> {
-  const nameKey = customerId 
-    ? `cust_${customerId}_displayname_${name.toLowerCase()}`
-    : `displayname_${name.toLowerCase()}`;
+  // Always use global scope - display names must be globally unique
+  const nameKey = `displayname_${name.toLowerCase()}`;
   
   const reservation: NameReservation = {
     userId,
@@ -412,38 +416,48 @@ export async function releaseDisplayName(
  * - With numbers 1-99999: 40,000 × 99,999 = ~4 billion combinations
  * - With three-word patterns: even more combinations
  */
+/**
+ * Generate a unique random display name
+ * 
+ * Supports millions of combinations:
+ * - 200+ adjectives × 200+ nouns = 40,000+ base combinations
+ * - With three-word patterns: even more combinations
+ * 
+ * CRITICAL: Maximum 50 total retries - returns empty string if all fail
+ * CRITICAL: Display names must be globally unique (customerId ignored)
+ */
 export async function generateUniqueDisplayName(
   options: NameGeneratorOptions = {},
   env: CloudflareEnv
 ): Promise<string> {
   const {
-    customerId = null,
-    maxAttempts = 20, // Increased for better success rate
+    customerId = null, // Kept for backward compat, but ignored (always global)
+    maxAttempts = 20, // Primary attempts
     pattern = 'random', // Use random pattern for maximum variety
     maxWords = DISPLAY_NAME_MAX_WORDS // Maximum words (to support dash-separated names)
   } = options;
 
-  let attempts = 0;
+  const MAX_TOTAL_RETRIES = 50; // Maximum total attempts before returning empty string
+  let totalAttempts = 0;
   let name: string;
 
   // Try primary generation patterns
-  while (attempts < maxAttempts) {
+  while (totalAttempts < MAX_TOTAL_RETRIES && totalAttempts < maxAttempts) {
     name = generateNamePattern(pattern, maxWords);
+    totalAttempts++;
     
     // Validate word count before checking uniqueness
     const wordCount = countWords(name);
     if (wordCount > maxWords) {
       // Skip this name and try again
-      attempts++;
       continue;
     }
 
-    const isUnique = await isNameUnique(name, customerId, env);
+    // Always use global uniqueness (customerId ignored)
+    const isUnique = await isNameUnique(name, null, env);
     if (isUnique) {
       return name;
     }
-
-    attempts++;
   }
 
   // Fallback: Try different patterns if primary failed
@@ -455,13 +469,17 @@ export async function generateUniqueDisplayName(
   for (const fallbackPattern of fallbackPatterns) {
     // Skip if this fallback pattern matches the current pattern (already tried)
     if (fallbackPattern === pattern) continue;
+    if (totalAttempts >= MAX_TOTAL_RETRIES) break;
     
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 5 && totalAttempts < MAX_TOTAL_RETRIES; i++) {
       name = generateNamePattern(fallbackPattern, maxWords);
+      totalAttempts++;
+      
       const wordCount = countWords(name);
       if (wordCount > maxWords) continue;
       
-      const isUnique = await isNameUnique(name, customerId, env);
+      // Always use global uniqueness (customerId ignored)
+      const isUnique = await isNameUnique(name, null, env);
       if (isUnique) {
         return name;
       }
@@ -470,7 +488,7 @@ export async function generateUniqueDisplayName(
 
   // Last resort: Use additional adjectives/nouns to ensure uniqueness (no numbers allowed)
   // Try multiple adjective-noun combinations
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 10 && totalAttempts < MAX_TOTAL_RETRIES; i++) {
     const adj1 = randomElement(ADJECTIVES);
     const adj2 = randomElement(ADJECTIVES);
     const noun1 = randomElement(NOUNS);
@@ -485,30 +503,26 @@ export async function generateUniqueDisplayName(
     ];
     
     for (const pattern of patterns) {
+      if (totalAttempts >= MAX_TOTAL_RETRIES) break;
+      
       const words = pattern.split(/\s+/).slice(0, maxWords);
       name = words.join(' ');
+      totalAttempts++;
       
       const wordCount = countWords(name);
       if (wordCount > maxWords) continue;
       
-      const isUnique = await isNameUnique(name, customerId, env);
+      // Always use global uniqueness (customerId ignored)
+      const isUnique = await isNameUnique(name, null, env);
       if (isUnique) {
         return name;
       }
     }
   }
 
-  // Final fallback: Use a longer combination (still letters only)
-  // This should be extremely rare given the large word pools
-  const adj1 = randomElement(ADJECTIVES);
-  const adj2 = randomElement(ADJECTIVES);
-  const adj3 = randomElement(ADJECTIVES);
-  const noun1 = randomElement(NOUNS);
-  name = `${adj1} ${adj2} ${adj3} ${noun1}`;
-  
-  // Ensure it doesn't exceed maxWords
-  const finalWords = name.split(/\s+/).slice(0, maxWords);
-  return finalWords.join(' ');
+  // After 50 attempts, return empty string
+  // Caller must handle empty string case
+  return '';
 }
 
 /**

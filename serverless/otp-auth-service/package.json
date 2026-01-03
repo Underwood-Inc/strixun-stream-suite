@@ -43,6 +43,7 @@
     "test:integration:dev": "node scripts/run-integration-tests.js dev",
     "test:integration:prod": "node scripts/run-integration-tests.js prod",
     "test:integration:otp": "vitest run otp-login-flow.integration.test.ts",
+    "test:integration:apikey": "vitest run api-key.integration.test.ts",
     "tail": "wrangler tail",
     "tail:prod": "wrangler tail --env production",
     "tail:helper": "node scripts/tail-logs-helper.js"

@@ -4,32 +4,48 @@
  * Tests the complete authentication flow:
  * - OTP request  verify  JWT creation  API access
  * 
- * Uses real JWT creation/verification, mocks KV/network
+ * ⚠ CRITICAL: These tests require LOCAL workers!
+ * - OTP Auth Service must be running on http://localhost:8787
+ * - Customer API must be running on http://localhost:8790
+ * 
+ * Workers are automatically started by shared setup file.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { authenticateRequest } from '../../utils/auth.js';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { authenticateRequest } from '../utils/auth.js';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 
-// Mock external dependencies
-vi.mock('../../utils/admin.js', () => ({
-    isSuperAdminEmail: vi.fn(),
-}));
+const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
+const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
 
-vi.mock('@strixun/api-framework/enhanced', () => ({
-    createCORSHeaders: vi.fn(() => new Headers()),
-}));
+// Get secrets from environment (set by shared setup)
+const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+
+const env = {
+    JWT_SECRET,
+    ALLOWED_ORIGINS: '*',
+    AUTH_API_URL: OTP_AUTH_SERVICE_URL,
+} as any;
 
 describe('Authentication Flow Integration', () => {
-    const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
-        ALLOWED_ORIGINS: '*',
-        AUTH_API_URL: 'https://auth.idling.app',
-    } as any;
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+    beforeAll(async () => {
+        // Verify services are running
+        try {
+            const otpHealth = await fetch(`${OTP_AUTH_SERVICE_URL}/health`, {
+                signal: AbortSignal.timeout(3000)
+            });
+            console.log(`[Auth Flow Tests] ✓ OTP Auth Service is running (status: ${otpHealth.status})`);
+        } catch (error: any) {
+            throw new Error(
+                `✗ OTP Auth Service is not running!\n` +
+                `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
+                `   Error: ${error.message}\n` +
+                `   \n` +
+                `   Fix: Workers should start automatically via shared setup.\n` +
+                `   If not, check serverless/shared/vitest.setup.integration.ts`
+            );
+        }
+    }, 30000);
 
     describe('JWT Creation and Verification Flow', () => {
         it('should create JWT token and verify it for API access', async () => {
@@ -45,7 +61,7 @@ describe('Authentication Flow Integration', () => {
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             expect(token).toBeDefined();
             expect(typeof token).toBe('string');
@@ -59,7 +75,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             // Step 3: Verify authentication succeeded
             expect(auth).not.toBeNull();
@@ -77,7 +93,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             expect(auth).toBeNull();
         });
@@ -95,7 +111,7 @@ describe('Authentication Flow Integration', () => {
                 customerId: customerId,
                 exp: expiredExp,
                 iat: Math.floor(Date.now() / 1000) - 7200, // Created 2 hours ago
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
@@ -104,7 +120,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             expect(auth).toBeNull();
         });
@@ -114,7 +130,7 @@ describe('Authentication Flow Integration', () => {
                 method: 'GET',
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             expect(auth).toBeNull();
         });
@@ -131,7 +147,7 @@ describe('Authentication Flow Integration', () => {
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
@@ -140,7 +156,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             // Verify customerID is extracted for integrity verification
             expect(auth?.customerId).toBe(customerId);
@@ -159,7 +175,7 @@ describe('Authentication Flow Integration', () => {
                 customerId: null,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             const mockRequest = new Request('https://example.com/api/mods', {
                 method: 'GET',
@@ -168,7 +184,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             // Should still authenticate, but customerID should be null
             expect(auth).not.toBeNull();
@@ -192,7 +208,7 @@ describe('Authentication Flow Integration', () => {
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             // Step 2: Use JWT to access protected API endpoint
             const mockRequest = new Request('https://example.com/api/mods', {
@@ -202,7 +218,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const auth = await authenticateRequest(mockRequest, mockEnv);
+            const auth = await authenticateRequest(mockRequest, env);
 
             // Step 3: Verify API access is granted
             expect(auth).not.toBeNull();
@@ -218,7 +234,7 @@ describe('Authentication Flow Integration', () => {
                 },
             });
 
-            const secondAuth = await authenticateRequest(secondRequest, mockEnv);
+            const secondAuth = await authenticateRequest(secondRequest, env);
             expect(secondAuth).not.toBeNull();
             expect(secondAuth?.userId).toBe(userId);
         });

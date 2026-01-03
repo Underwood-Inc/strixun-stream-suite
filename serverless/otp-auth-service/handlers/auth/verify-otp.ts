@@ -67,13 +67,12 @@ async function getOrCreateUser(
         // Generate unique display name for new user
         const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
         const displayName = await generateUniqueDisplayName({
-            customerId: customerId,
             maxAttempts: 10,
-            includeNumber: true
+            pattern: 'random'
         }, env);
         
-        // Reserve the display name
-        await reserveDisplayName(displayName, userId, customerId, env);
+        // Reserve the display name (global scope)
+        await reserveDisplayName(displayName, userId, null, env);
         
         // Create new user
         user = {
@@ -108,12 +107,19 @@ async function getOrCreateUser(
         if (!user.displayName) {
             const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
             const displayName = await generateUniqueDisplayName({
-                customerId: customerId,
                 maxAttempts: 10,
-                includeNumber: true
+                pattern: 'random'
             }, env);
-            await reserveDisplayName(displayName, userId, customerId, env);
-            user.displayName = displayName;
+            
+            // Handle empty string (generation failed after 50 retries)
+            if (!displayName || displayName.trim() === '') {
+                console.error(`[Verify OTP] Failed to generate unique displayName after 50 retries for existing user ${userId}`);
+                // Don't throw - log error and continue without displayName (will be fixed on next auth)
+                console.warn(`[Verify OTP] User ${userId} will have null displayName - will be fixed on next authentication`);
+            } else {
+                await reserveDisplayName(displayName, userId, null, env); // Global scope
+                user.displayName = displayName;
+            }
         }
         
         // Ensure customerId is set (for users created before customer isolation)

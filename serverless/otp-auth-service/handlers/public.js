@@ -260,11 +260,54 @@ export async function handleVerifySignup(request, env) {
         }
         
         // Get API key (should already exist from handleVerifyOTP, but get it anyway)
-        const { getApiKeysForCustomer } = await import('../services/api-keys.js');
+        // Read directly from KV (same pattern as admin handler)
+        // NOTE: API key creation is async and non-blocking, so we may need to retry
         const finalCustomerId = customer?.customerId || customerId;
-        const apiKeys = finalCustomerId ? await getApiKeysForCustomer(finalCustomerId, env) : null;
-        const apiKey = apiKeys && apiKeys.length > 0 ? apiKeys[0].apiKey : null;
-        const keyId = apiKeys && apiKeys.length > 0 ? apiKeys[0].keyId : null;
+        let apiKey = null;
+        let keyId = null;
+        
+        if (finalCustomerId) {
+            // Retry logic: API key creation might still be in progress
+            const maxRetries = 5;
+            const retryDelay = 200; // 200ms between retries
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                const customerApiKeysKey = `customer_${finalCustomerId}_apikeys`;
+                const keys = (await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' })) || [];
+                
+                if (keys.length > 0) {
+                    // Get the first active key
+                    const activeKey = keys.find(k => k.status === 'active') || keys[0];
+                    keyId = activeKey.keyId;
+                    
+                    // Decrypt the API key from storage
+                    try {
+                        const { decryptData, getJWTSecret } = await import('../utils/crypto.js');
+                        const jwtSecret = getJWTSecret(env);
+                        if (activeKey.encryptedKey) {
+                            apiKey = await decryptData(activeKey.encryptedKey, jwtSecret);
+                            if (apiKey) {
+                                console.log(`[Signup Verify] Successfully retrieved API key on attempt ${attempt + 1}`);
+                                break; // Success - exit retry loop
+                            }
+                        }
+                    } catch (decryptError) {
+                        console.error(`[Signup Verify] Failed to decrypt API key on attempt ${attempt + 1}:`, decryptError);
+                        // Continue to next retry
+                    }
+                }
+                
+                // If we didn't get the API key and there are more retries, wait and try again
+                if (!apiKey && attempt < maxRetries - 1) {
+                    console.log(`[Signup Verify] API key not found, retrying in ${retryDelay}ms... (attempt ${attempt + 1}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                }
+            }
+            
+            if (!apiKey) {
+                console.warn(`[Signup Verify] API key not found after ${maxRetries} attempts. Customer can retrieve it from dashboard.`);
+            }
+        }
         
         // Clean up signup data
         await env.OTP_AUTH_KV.delete(signupKey);

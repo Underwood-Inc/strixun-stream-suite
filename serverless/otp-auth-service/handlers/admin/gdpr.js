@@ -77,6 +77,12 @@ export async function handleDeleteUserData(request, env, customerId, userId) {
         
         const emailHash = await hashEmail(user.email);
         
+        // CRITICAL: Release display name when user account is deleted
+        if (user.displayName) {
+            const { releaseDisplayName } = await import('../../services/nameGenerator.js');
+            await releaseDisplayName(user.displayName, null, env); // Global scope
+        }
+        
         // Delete all user-related data
         // Note: We can't easily list all OTP keys, but they expire automatically
         // Delete user record

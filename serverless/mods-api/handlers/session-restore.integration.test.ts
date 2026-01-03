@@ -6,20 +6,46 @@
  * - Session restoration from IP
  * - Token expiration handling
  * - Cross-application session sharing
+ * 
+ * ⚠ CRITICAL: These tests require LOCAL workers!
+ * - OTP Auth Service must be running on http://localhost:8787
+ * - Customer API must be running on http://localhost:8790
+ * 
+ * Workers are automatically started by shared setup file.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 
-describe('Session Restore Integration', () => {
-    const mockEnv = {
-        JWT_SECRET: 'test-jwt-secret-for-integration-tests',
-        AUTH_API_URL: 'https://auth.idling.app',
-    } as any;
+const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
 
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+// Get secrets from environment (set by shared setup)
+const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-integration-tests';
+
+const env = {
+    JWT_SECRET,
+    AUTH_API_URL: OTP_AUTH_SERVICE_URL,
+} as any;
+
+describe('Session Restore Integration', () => {
+    beforeAll(async () => {
+        // Verify services are running
+        try {
+            const otpHealth = await fetch(`${OTP_AUTH_SERVICE_URL}/health`, {
+                signal: AbortSignal.timeout(3000)
+            });
+            console.log(`[Session Restore Tests] ✓ OTP Auth Service is running (status: ${otpHealth.status})`);
+        } catch (error: any) {
+            throw new Error(
+                `✗ OTP Auth Service is not running!\n` +
+                `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
+                `   Error: ${error.message}\n` +
+                `   \n` +
+                `   Fix: Workers should start automatically via shared setup.\n` +
+                `   If not, check serverless/shared/vitest.setup.integration.ts`
+            );
+        }
+    }, 30000);
 
     describe('Token Validation', () => {
         it('should validate token with backend before restoring session', async () => {
@@ -34,7 +60,7 @@ describe('Session Restore Integration', () => {
                 customerId: customerId,
                 exp: exp,
                 iat: Math.floor(Date.now() / 1000),
-            }, mockEnv.JWT_SECRET);
+            }, env.JWT_SECRET);
 
             // Token should be valid (not expired, properly signed)
             expect(token).toBeDefined();

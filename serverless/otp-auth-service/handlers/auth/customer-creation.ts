@@ -138,11 +138,10 @@ async function upsertCustomerAccount(
             console.log(`[Customer Creation] Missing displayName for customer ${resolvedCustomerId}, generating one...`);
             const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
             const customerDisplayName = await generateUniqueDisplayName({
-                customerId: resolvedCustomerId,
                 maxAttempts: 10,
-                includeNumber: true
+                pattern: 'random'
             }, env);
-            await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+            await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env); // Global scope
             updates.displayName = customerDisplayName;
             needsUpdate = true;
             console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
@@ -212,13 +211,18 @@ async function upsertCustomerAccount(
     // Generate random display name for customer account
     const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
     const customerDisplayName = await generateUniqueDisplayName({
-        customerId: resolvedCustomerId,
         maxAttempts: 10,
-        includeNumber: true
+        pattern: 'random'
     }, env);
     
-    // Reserve the display name for the customer account
-    await reserveDisplayName(customerDisplayName, resolvedCustomerId, resolvedCustomerId, env);
+    // Handle empty string (generation failed after 50 retries)
+    if (!customerDisplayName || customerDisplayName.trim() === '') {
+        console.error(`[Customer Creation] Failed to generate unique displayName after 50 retries for new customer`);
+        throw new Error('Unable to generate unique display name. Please try again or contact support.');
+    }
+    
+    // Reserve the display name for the customer account (global scope)
+    await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env);
     
     // Initialize default subscription (free tier)
     const defaultSubscription: import('../../services/customer.js').Subscription = {

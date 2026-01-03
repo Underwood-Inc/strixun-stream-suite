@@ -22,6 +22,7 @@
     "test:all": "turbo run test",
     "test:all:verbose": "turbo run test --output-logs=new-only",
     "test:serverless": "turbo run test --filter=./serverless/otp-auth-service --filter=./serverless/mods-api --filter=./serverless/twitch-api",
+    "test:integration": "node scripts/run-all-integration-tests.js",
     "test:audit": "tsx scripts/test-audit.ts",
     "test:all:sequential": "turbo run test --concurrency=1",
     "test:all:totals": "turbo run test 2>&1 | Tee-Object -FilePath test-output.txt && node scripts/generate-test-report.js",

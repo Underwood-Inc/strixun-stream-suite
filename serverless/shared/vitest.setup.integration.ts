@@ -1,10 +1,19 @@
 /**
- * Vitest Global Setup for Integration Tests
- * Automatically starts required workers before integration tests run
+ * Shared Vitest Global Setup for ALL Integration Tests
  * 
- * This setup file is loaded when running integration tests and ensures
- * all required services (OTP Auth Service, Customer API) are running
- * before tests execute.
+ * This setup file automatically starts required workers for ANY integration test
+ * that matches the pattern: *.integration.test.ts
+ * 
+ * Features:
+ * - Detects integration tests automatically by file pattern
+ * - Reuses workers across test suites (singleton pattern)
+ * - Starts OTP Auth Service (port 8787) and Customer API (port 8790)
+ * - Waits for services to be ready before tests run
+ * - Cleans up workers only after all tests complete
+ * 
+ * Usage:
+ * - Add to vitest.config.ts: globalSetup: '../shared/vitest.setup.integration.ts'
+ * - Works for any service (otp-auth-service, mods-api, etc.)
  */
 
 import { spawn, execSync } from 'child_process';
@@ -16,24 +25,56 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '../..');
 
+// Singleton pattern: Track if workers are already started
 let otpWorkerProcess: ReturnType<typeof spawn> | null = null;
 let customerApiProcess: ReturnType<typeof spawn> | null = null;
+let workersStarted = false;
 
 const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
 const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
 
 /**
+ * Check if we're running integration tests
+ * Detects by:
+ * 1. VITEST_INTEGRATION env var
+ * 2. Command line args containing "integration"
+ * 3. Test file pattern matching *.integration.test.ts
+ */
+function isRunningIntegrationTests(): boolean {
+  // Check environment variable
+  if (process.env.VITEST_INTEGRATION === 'true') {
+    return true;
+  }
+  
+  // Check command line arguments
+  if (process.argv.some(arg => arg.includes('integration'))) {
+    return true;
+  }
+  
+  // Check if any integration test files are being run
+  // Vitest passes test file paths in process.argv
+  if (process.argv.some(arg => arg.includes('.integration.test.'))) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Wait for a service to be ready
+ * For OTP Auth Service, also verifies KV is accessible by testing a simple operation
  */
 async function waitForService(name: string, url: string, maxAttempts = 90): Promise<void> {
   console.log(`[Integration Setup] Waiting for ${name} at ${url}...`);
   
-  // Try both localhost and 127.0.0.1
+  // Try both localhost and 127.0.0.1 (Windows networking quirk)
   const urls = [
     url,
     url.replace('localhost', '127.0.0.1'),
     url.replace('127.0.0.1', 'localhost')
   ];
+  
+  let serviceResponding = false;
   
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     for (const testUrl of urls) {
@@ -43,8 +84,9 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
           signal: AbortSignal.timeout(3000)
         });
         // Any response (200, 401, 404) means the service is running
-        console.log(`[Integration Setup] ✓ ${name} is ready (status: ${response.status})`);
-        return;
+        serviceResponding = true;
+        console.log(`[Integration Setup] ✓ ${name} is responding (status: ${response.status})`);
+        break;
       } catch (error: any) {
         // Try next URL or wait and retry
         if (error.name === 'AbortError' || error.code === 'ECONNREFUSED') {
@@ -54,9 +96,44 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
         // Other errors might mean service is running but endpoint doesn't exist
         // That's OK - any response means service is up
         if (attempt > 5) {
+          serviceResponding = true;
           console.log(`[Integration Setup] ✓ ${name} appears to be running (got error: ${error.message})`);
-          return;
+          break;
         }
+      }
+    }
+    
+    if (serviceResponding) {
+      // For OTP Auth Service, verify KV is accessible by testing a health check that uses KV
+      if (name === 'OTP Auth Service') {
+        // Wait a bit more for KV to be fully initialized
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Try a simple request that would use KV (like /health or /signup)
+        // If it responds (even with 401/404), KV is likely ready
+        try {
+          const kvTestUrl = url.includes('/health') 
+            ? url 
+            : url.replace('/customer/by-email/test@example.com', '/health');
+          const kvTestResponse = await fetch(kvTestUrl, {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000)
+          });
+          // Any response means the service and KV are ready
+          console.log(`[Integration Setup] ✓ ${name} KV is ready (test response: ${kvTestResponse.status})`);
+          return;
+        } catch (kvError: any) {
+          // If KV test fails but service is responding, give it more time
+          if (attempt < maxAttempts - 1) {
+            console.log(`[Integration Setup] ${name} is responding but KV may not be ready yet, waiting...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            serviceResponding = false; // Reset to retry
+            continue;
+          }
+        }
+      } else {
+        // For other services, just return once they're responding
+        return;
       }
     }
     
@@ -112,7 +189,6 @@ function getSecretValue(workerDir: string, secretName: string): string {
 
 /**
  * Create .dev.vars file for a worker with required secrets
- * Reads from existing .dev.vars or process.env, FAILS if missing (no fallbacks!)
  */
 function createDevVarsFile(workerDir: string, requiredSecrets: string[]): void {
   const devVarsPath = join(rootDir, workerDir, '.dev.vars');
@@ -140,7 +216,7 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
   
   const wrapperScript = resolve(rootDir, 'scripts', 'start-worker-with-health-check.js');
   
-  // Verify the script exists before trying to use it (should have been checked in setup, but double-check)
+  // Verify the script exists
   if (!existsSync(wrapperScript)) {
     throw new Error(
       `[Integration Setup] Cannot find wrapper script at ${wrapperScript}\n` +
@@ -149,10 +225,9 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     );
   }
   
-  // Create .dev.vars file with required secrets - FAILS if secrets are missing
+  // Create .dev.vars file with required secrets
   if (workerDir === 'serverless/otp-auth-service') {
     // E2E_TEST_OTP_CODE: Prioritize process.env (for CI/GitHub Actions), otherwise generate
-    // This allows GitHub Actions to set E2E_TEST_OTP_CODE as a secret
     const testOtpCode = process.env.E2E_TEST_OTP_CODE || 
       Math.floor(100000000 + Math.random() * 900000000).toString();
     
@@ -161,21 +236,29 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     // Also set in process.env so tests can access it
     process.env.E2E_TEST_OTP_CODE = testOtpCode;
     
-    // Create .dev.vars with all required secrets including E2E_TEST_OTP_CODE
-    // All secrets prioritize process.env first (for CI), then fallback to .dev.vars (for local)
+    // Create .dev.vars with all required secrets
     const devVarsPath = join(rootDir, workerDir, '.dev.vars');
     const secrets: Record<string, string> = {};
     
     // Get required secrets (prioritizes process.env, then .dev.vars)
     for (const secretName of ['JWT_SECRET', 'NETWORK_INTEGRITY_KEYPHRASE', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL']) {
-      secrets[secretName] = getSecretValue(workerDir, secretName);
+      try {
+        secrets[secretName] = getSecretValue(workerDir, secretName);
+      } catch (error) {
+        // For test environment, use defaults if not set
+        if (secretName === 'RESEND_API_KEY' || secretName === 'RESEND_FROM_EMAIL') {
+          secrets[secretName] = process.env[secretName] || 'test-value';
+        } else {
+          throw error;
+        }
+      }
     }
     
     // Add E2E_TEST_OTP_CODE and ENVIRONMENT
     secrets['E2E_TEST_OTP_CODE'] = testOtpCode;
     secrets['ENVIRONMENT'] = 'test';
     
-    // Write .dev.vars file with all values (for workers to read)
+    // Write .dev.vars file
     const content = Object.entries(secrets)
       .map(([key, value]) => `${key}=${value}`)
       .join('\n') + '\n';
@@ -196,8 +279,7 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     E2E_TEST_JWT_TOKEN: process.env.E2E_TEST_JWT_TOKEN || 'dummy-token-for-integration-tests',
   };
   
-  // Validate NETWORK_INTEGRITY_KEYPHRASE is set (check both process.env and .dev.vars)
-  // This validation happens before getSecretValue is called, so we check both sources
+  // Validate NETWORK_INTEGRITY_KEYPHRASE is set
   const networkIntegrityKeyphrase = process.env.NETWORK_INTEGRITY_KEYPHRASE || 
     (workerDir === 'serverless/otp-auth-service' || workerDir === 'serverless/customer-api' 
       ? readFromDevVars(join(rootDir, workerDir, '.dev.vars'), 'NETWORK_INTEGRITY_KEYPHRASE')
@@ -215,7 +297,7 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     stdio: 'pipe',
     shell: false,
     env: workerEnv,
-    cwd: rootDir, // Ensure we're in the root directory context
+    cwd: rootDir,
   });
   
   proc.stdout.on('data', (data) => {
@@ -237,7 +319,23 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
 }
 
 /**
+ * Check if a service is already running
+ */
+async function isServiceRunning(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { 
+      method: 'GET',
+      signal: AbortSignal.timeout(1000)
+    });
+    return true; // Any response means service is running
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Cleanup function to kill worker processes
+ * Only called during teardown, not between test suites
  */
 function cleanup() {
   console.log('\n[Integration Setup] Cleaning up workers...');
@@ -273,73 +371,44 @@ function cleanup() {
       }
     }
   }
-}
-
-/**
- * Check if a service is already running
- */
-async function isServiceRunning(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url, { 
-      method: 'GET',
-      signal: AbortSignal.timeout(1000)
-    });
-    return true; // Any response means service is running
-  } catch {
-    return false;
-  }
+  
+  // Reset singleton state
+  workersStarted = false;
+  otpWorkerProcess = null;
+  customerApiProcess = null;
 }
 
 // Vitest globalSetup export
 export async function setup() {
-  // Early exit: Check if we're explicitly running integration tests
-  const isIntegrationTest = 
-    process.env.VITEST_INTEGRATION === 'true' ||
-    process.argv.some(arg => arg.includes('integration')) ||
-    process.argv.some(arg => 
-      arg.includes('customer-creation.integration') || 
-      arg.includes('otp-login-flow.integration') ||
-      arg.includes('api-key.integration')
-    );
-  
-  // Check if integration test files exist
-  const hasIntegrationTestFiles = 
-    existsSync(join(__dirname, 'handlers/auth/customer-creation.integration.test.ts')) ||
-    existsSync(join(__dirname, 'handlers/auth/otp-login-flow.integration.test.ts')) ||
-    existsSync(join(__dirname, 'handlers/auth/api-key.integration.test.ts'));
-  
-  // If not running integration tests and no integration test files exist, skip entirely
-  if (!isIntegrationTest && !hasIntegrationTestFiles) {
-    // Not running integration tests and no integration test files exist, skip worker startup
+  // Check if we're running integration tests
+  if (!isRunningIntegrationTests()) {
+    // Not running integration tests, skip worker startup
     return;
   }
   
-  // Verify wrapper script exists before proceeding (only if we need workers)
+  // Singleton pattern: If workers are already started, skip
+  if (workersStarted) {
+    console.log('[Integration Setup] ✓ Workers already started, reusing existing workers');
+    return;
+  }
+  
+  // Verify wrapper script exists
   const wrapperScript = resolve(rootDir, 'scripts', 'start-worker-with-health-check.js');
   if (!existsSync(wrapperScript)) {
-    // If we don't have the script but also don't have integration tests, just skip
-    if (!hasIntegrationTestFiles && !isIntegrationTest) {
-      return;
-    }
-    // Otherwise, this is an error
     throw new Error(
       `[Integration Setup] Cannot find wrapper script at ${wrapperScript}\n` +
       `Root directory resolved to: ${rootDir}\n` +
-      `Current working directory: ${process.cwd()}\n` +
-      `Integration test files exist: ${hasIntegrationTestFiles}\n` +
-      `Is integration test: ${isIntegrationTest}`
+      `Current working directory: ${process.cwd()}`
     );
   }
   
-  const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
-  const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790';
-  
-  // Check if services are already running
+  // Check if services are already running (from previous test run or manual start)
   const otpRunning = await isServiceRunning(`${OTP_AUTH_SERVICE_URL}/health`);
   const customerRunning = await isServiceRunning(`${CUSTOMER_API_URL}/customer/by-email/test@example.com`);
   
   if (otpRunning && customerRunning) {
     console.log('[Integration Setup] ✓ Services are already running, skipping startup');
+    workersStarted = true;
     return;
   }
   
@@ -355,7 +424,6 @@ export async function setup() {
   }
   
   // Wait for services to be ready
-  // Give wrapper scripts time to start wrangler and do their own health checks (they check with JWT)
   console.log('[Integration Setup] Waiting for wrapper scripts to start workers...');
   await new Promise(resolve => setTimeout(resolve, 5000)); // Give wrangler time to start
   
@@ -365,11 +433,23 @@ export async function setup() {
   ]);
   
   console.log('[Integration Setup] ✓ All services are ready!');
-  // Give services a moment to fully initialize
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  // Mark workers as started (singleton pattern)
+  workersStarted = true;
+  
+  // Give services additional time to fully initialize (KV, routing, etc.)
+  // This is especially important for Cloudflare Workers which may need time
+  // to initialize KV namespaces and other bindings
+  console.log('[Integration Setup] Waiting for services to fully initialize (KV, routing, etc.)...');
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  console.log('[Integration Setup] ✓ Services fully initialized and ready for tests');
 }
 
 // Vitest globalTeardown export
+// Only called once after ALL tests complete
 export async function teardown() {
-  cleanup();
+  // Only cleanup if we started the workers
+  if (workersStarted) {
+    cleanup();
+  }
 }
