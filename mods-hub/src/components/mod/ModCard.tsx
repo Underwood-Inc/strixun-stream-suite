@@ -113,7 +113,7 @@ const DeleteButton = styled.button`
   ${getButtonStyles('danger')}
   position: absolute;
   top: ${spacing.sm};
-  right: ${spacing.sm};
+  left: ${spacing.sm};
   font-size: 0.75rem;
   padding: ${spacing.xs} ${spacing.sm};
   opacity: 0;

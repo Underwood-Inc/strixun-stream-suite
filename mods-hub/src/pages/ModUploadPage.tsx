@@ -5,7 +5,7 @@
 
 // useState imported but not used - removed
 import { useNavigate } from 'react-router-dom';
-import { useUploadMod } from '../hooks/useMods';
+import { useUploadMod, useAdminSettings } from '../hooks/useMods';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModUploadWizard } from '../components/mod/ModUploadWizard';
 import { useAuthStore } from '../stores/auth';
@@ -95,10 +95,13 @@ function getErrorMessage(error: unknown): { title: string; message: string } | n
 
 export function ModUploadPage() {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, isSuperAdmin } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const uploadMod = useUploadMod();
     const addNotification = useUIStore((state) => state.addNotification);
+    // Super admins can check if uploads are enabled
+    const { data: adminSettings } = useAdminSettings();
+    const uploadsEnabled = adminSettings?.uploadsEnabled !== false; // Default to true
 
     const handleSubmit = async (data: {
         file: File;
@@ -156,6 +159,23 @@ export function ModUploadPage() {
         return (
             <PageContainer>
                 <AuthRequired>Checking permissions...</AuthRequired>
+            </PageContainer>
+        );
+    }
+
+    // Check if uploads are globally disabled (only super admins can see this)
+    if (isSuperAdmin && adminSettings && adminSettings.uploadsEnabled === false) {
+        return (
+            <PageContainer>
+                <ErrorMessage>
+                    <ErrorTitle>Uploads Currently Disabled</ErrorTitle>
+                    <ErrorText>
+                        Mod uploads are currently disabled globally. You can enable them in the Admin Settings page.
+                        <br />
+                        <br />
+                        When uploads are disabled, no users (including super admins) can upload new mods or versions.
+                    </ErrorText>
+            </ErrorMessage>
             </PageContainer>
         );
     }

@@ -116,6 +116,57 @@ const InfoText = styled.p`
   margin-top: ${spacing.xs};
 `;
 
+const ToggleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${spacing.md};
+  margin-bottom: ${spacing.md};
+`;
+
+const ToggleLabel = styled.label`
+  font-weight: 500;
+  color: ${colors.text};
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
+`;
+
+const ToggleSwitch = styled.input`
+  width: 48px;
+  height: 24px;
+  appearance: none;
+  background: ${colors.bgTertiary};
+  border: 1px solid ${colors.border};
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:checked {
+    background: ${colors.accent};
+    border-color: ${colors.accent};
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: ${colors.text};
+    top: 2px;
+    left: 2px;
+    transition: all 0.2s ease;
+  }
+  
+  &:checked::before {
+    left: calc(100% - 20px);
+    background: ${colors.bg};
+  }
+`;
+
 const Loading = styled.div`
   text-align: center;
   padding: ${spacing.xxl};
@@ -127,10 +178,12 @@ export function AdminSettingsPage() {
     const updateSettings = useUpdateAdminSettings();
     const [extensions, setExtensions] = useState<string[]>([]);
     const [newExtension, setNewExtension] = useState('');
+    const [uploadsEnabled, setUploadsEnabled] = useState(true);
 
     useEffect(() => {
         if (settings) {
             setExtensions([...settings.allowedFileExtensions]);
+            setUploadsEnabled(settings.uploadsEnabled !== false); // Default to true if undefined
         }
     }, [settings]);
 
@@ -155,12 +208,16 @@ export function AdminSettingsPage() {
     };
 
     const handleSave = () => {
-        updateSettings.mutate({ allowedFileExtensions: extensions });
+        updateSettings.mutate({ 
+            allowedFileExtensions: extensions,
+            uploadsEnabled: uploadsEnabled 
+        });
     };
 
     const handleReset = () => {
         if (settings) {
             setExtensions([...settings.allowedFileExtensions]);
+            setUploadsEnabled(settings.uploadsEnabled !== false);
         }
     };
 
@@ -177,6 +234,48 @@ export function AdminSettingsPage() {
         <PageContainer>
             <AdminNavigation />
             <Title>Admin Settings</Title>
+
+            <Section>
+                <SectionTitle>Upload Control</SectionTitle>
+                <SectionDescription>
+                    Enable or disable mod uploads globally. When disabled, no users (including super admins) will be able to upload new mods or versions.
+                </SectionDescription>
+
+                <ToggleContainer>
+                    <ToggleSwitch
+                        type="checkbox"
+                        id="uploadsEnabled"
+                        checked={uploadsEnabled}
+                        onChange={(e) => setUploadsEnabled(e.target.checked)}
+                    />
+                    <ToggleLabel htmlFor="uploadsEnabled">
+                        {uploadsEnabled ? 'Uploads Enabled' : 'Uploads Disabled'}
+                    </ToggleLabel>
+                </ToggleContainer>
+
+                <InfoText>
+                    {uploadsEnabled 
+                        ? 'Users with upload permission can upload mods and versions.'
+                        : 'All mod uploads are currently disabled. Users will see an error message when attempting to upload.'}
+                </InfoText>
+
+                <ButtonGroup>
+                    <Button
+                        $variant="primary"
+                        onClick={handleSave}
+                        disabled={updateSettings.isPending}
+                    >
+                        {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button
+                        $variant="secondary"
+                        onClick={handleReset}
+                        disabled={updateSettings.isPending || !settings}
+                    >
+                        Reset
+                    </Button>
+                </ButtonGroup>
+            </Section>
 
             <Section>
                 <SectionTitle>Allowed File Types</SectionTitle>

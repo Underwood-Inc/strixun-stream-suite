@@ -435,7 +435,7 @@ export function useUpdateAdminSettings() {
     const addNotification = useUIStore((state) => state.addNotification);
     
     return useMutation({
-        mutationFn: (settings: { allowedFileExtensions: string[] }) => api.updateAdminSettings(settings),
+        mutationFn: (settings: { allowedFileExtensions?: string[]; uploadsEnabled?: boolean }) => api.updateAdminSettings(settings),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] });
             addNotification({
