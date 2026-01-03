@@ -1012,6 +1012,22 @@ jobs:
           VITE_BASE_PATH: /
         run: pnpm build
       
+      - name: Copy build output to dist root
+        run: |
+          # Build outputs to dist/stream-suite/, but GitHub Pages needs files at dist/ root
+          # Copy all files from dist/stream-suite/ to dist/ to fix the 404 issue
+          if [ -d "dist/stream-suite" ] && [ "$(ls -A dist/stream-suite 2>/dev/null)" ]; then
+            echo "Copying files from dist/stream-suite/ to dist/..."
+            cp -r dist/stream-suite/. dist/ || cp -r dist/stream-suite/* dist/
+            echo "✅ Files copied successfully"
+            # Remove the stream-suite subdirectory after copying
+            rm -rf dist/stream-suite
+            echo "✅ Cleaned up dist/stream-suite/"
+          else
+            echo "⚠️ Warning: dist/stream-suite/ does not exist or is empty"
+            echo "Build may have failed or output directory changed"
+          fi
+      
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
