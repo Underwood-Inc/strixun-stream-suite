@@ -6,8 +6,8 @@ main = "worker.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespaces and R2 buckets are now defined per environment below
-# Default bindings (for backward compatibility) are in [env.production] section
+# KV Namespaces and R2 buckets are defined in default [vars] section (production)
+# Development environment uses [env.development] section
 
 # Environment variables (secrets should be set via wrangler secret put)
 # DO NOT put actual secrets here - use wrangler CLI:
@@ -21,33 +21,7 @@ compatibility_flags = ["nodejs_compat"]
 #   - JWT_SECRET must match the OTP auth service secret for authentication to work
 #   - ALLOWED_EMAILS restricts who can upload/manage mods (leave unset to allow all authenticated users)
 
-# Production environment
-[env.production]
-vars = { ENVIRONMENT = "production" }
-ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
-
-# Production KV Namespaces
-[[env.production.kv_namespaces]]
-binding = "MODS_KV"
-id = "0d3dafe0994046c6a47146c6bd082ad3"
-
-[[env.production.kv_namespaces]]
-binding = "OTP_AUTH_KV"
-id = "680c9dbe86854c369dd23e278abb41f9"
-
-# Production R2 Bucket
-[[env.production.r2_buckets]]
-binding = "MODS_R2"
-bucket_name = "mods-storage"
-
-# Production routes (for --env production flag, but we use default deployment instead)
-# NOTE: We don't actually use --env production for mods-api, default deployment IS production
-# [[env.production.routes]]
-# pattern = "mods-api.idling.app"
-# zone_name = "idling.app"
-# custom_domain = true
-
-# Development environment
+# Development environment (only used with --env development)
 [env.development]
 vars = { ENVIRONMENT = "development" }
 
@@ -65,14 +39,13 @@ id = "680c9dbe86854c369dd23e278abb41f9"
 binding = "MODS_R2"
 bucket_name = "mods-storage"
 
-# Default to production for backward compatibility
-# NOTE: Routes should ONLY be defined in [env.production] to avoid duplicate worker deployments
-# The default section is kept for backward compatibility but routes are environment-specific
+# Default configuration (production) - this is the ONLY production config for mods-api
+# We use default deployment (wrangler deploy) NOT --env production
 [vars]
 ENVIRONMENT = "production"
 ROUTES = '[{"pattern":"mods-api.idling.app/mods/*","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/health","zone_name":"idling.app"},{"pattern":"mods-api.idling.app/api/*","zone_name":"idling.app"}]'
 
-# Default KV Namespaces (required for routes configured in dashboard or when no environment is specified)
+# Default KV Namespaces
 [[kv_namespaces]]
 binding = "MODS_KV"
 id = "0d3dafe0994046c6a47146c6bd082ad3"
@@ -81,15 +54,15 @@ id = "0d3dafe0994046c6a47146c6bd082ad3"
 binding = "OTP_AUTH_KV"
 id = "680c9dbe86854c369dd23e278abb41f9"
 
-# Default R2 Bucket (required for routes configured in dashboard or when no environment is specified)
+# Default R2 Bucket
 [[r2_buckets]]
 binding = "MODS_R2"
 bucket_name = "mods-storage"
 
-# CRITICAL: Default routes are REMOVED to prevent duplicate worker deployments
-# Routes are ONLY defined in [env.production] section above
-# This ensures only ONE worker is deployed for production
-# routes = []  # REMOVED - use [env.production.routes] instead
+# Default routes (production) - this is the ONLY route configuration
+routes = [
+  { pattern = "mods-api.idling.app", zone_name = "idling.app", custom_domain = true },
+]
 
 # Note: The remote also has specific routes in vars.routes (dashboard-managed):
 # - mods-api.idling.app/mods/*
