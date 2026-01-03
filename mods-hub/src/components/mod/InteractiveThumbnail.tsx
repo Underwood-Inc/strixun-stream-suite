@@ -11,6 +11,7 @@ import type { ModMetadata } from '../../types/mod';
 
 const CardContainer = styled.div`
   width: 100%;
+  height: 100%;
   aspect-ratio: 1;
   perspective: 1200px;
   position: relative;
@@ -19,6 +20,7 @@ const CardContainer = styled.div`
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  overflow: visible;
 `;
 
 const CardInner = styled.div`
@@ -31,6 +33,8 @@ const CardInner = styled.div`
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  contain: layout;
+  will-change: transform;
 `;
 
 const CardFace = styled.div.withConfig({

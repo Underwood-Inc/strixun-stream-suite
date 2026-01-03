@@ -68,7 +68,10 @@ const GridContainer = styled.div`
   padding: ${spacing.md};
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  grid-auto-flow: row dense;
   gap: ${spacing.lg};
+  align-items: start;
+  justify-items: stretch;
   background: ${colors.bg};
   border: 1px solid ${colors.border};
   border-radius: 8px;
@@ -324,7 +327,9 @@ export function ModListPage() {
                                 background: colors.bgSecondary,
                                 borderTop: `1px solid ${colors.border}`,
                                 borderRadius: '8px',
-                                marginTop: spacing.md
+                                marginTop: spacing.md,
+                                position: 'relative',
+                                zIndex: 10
                             }}>
                                 End of mods list — no more mods to display
                             </div>

@@ -99,7 +99,7 @@ export async function handleUploadMod(
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
-        const { areUploadsEnabled } = await import('../handlers/admin/settings.js');
+        const { areUploadsEnabled } = await import('../admin/settings.js');
         const uploadsEnabled = await areUploadsEnabled(env);
         if (!uploadsEnabled) {
             const rfcError = createError(request, 503, 'Uploads Disabled', 'Mod uploads are currently disabled globally. Please try again later.');

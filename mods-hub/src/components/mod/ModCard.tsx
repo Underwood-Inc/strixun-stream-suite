@@ -18,17 +18,23 @@ const CardContainer = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  max-width: 320px;
   width: 100%;
+  overflow: visible;
+  contain: layout style;
+  box-sizing: border-box;
+  
+  /* Override hover transform to prevent breaking grid layout */
+  &:hover {
+    transform: translateY(-2px);
+    z-index: 1;
+  }
 `;
 
 const Card = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
-  flex: 1;
-  min-height: 0;
+  width: 100%;
 `;
 
 const ThumbnailWrapper = styled.div`
@@ -38,6 +44,7 @@ const ThumbnailWrapper = styled.div`
   border-radius: 4px;
   flex-shrink: 0;
   position: relative;
+  z-index: 1;
 `;
 
 const CardContent = styled(Link)`
@@ -45,8 +52,8 @@ const CardContent = styled(Link)`
   flex-direction: column;
   gap: ${spacing.sm};
   flex: 1;
-  min-height: calc(1.6em * 4 + 4rem);
-  max-height: calc(1.6em * 4 + 4rem);
+  min-height: 0;
+  max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
   text-decoration: none;
@@ -163,35 +170,26 @@ const ViewModLink = styled.span`
 `;
 
 const ZoomButton = styled.button`
-  position: absolute;
-  top: ${spacing.sm};
-  right: ${spacing.sm};
-  padding: ${spacing.xs} ${spacing.sm};
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid ${colors.border};
-  border-radius: 4px;
-  color: ${colors.text};
-  font-size: 0.7rem;
+  ${getButtonStyles('secondary')}
+  width: 100%;
+  padding: ${spacing.sm};
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: ${spacing.xs};
-  opacity: 0;
-  
-  ${CardContainer}:hover & {
-    opacity: 1;
-  }
+  margin-top: ${spacing.sm};
   
   &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.05);
+    background: ${colors.accentHover};
+    transform: translateY(-1px);
   }
   
   &:active {
-    transform: scale(0.95);
+    transform: translateY(0);
   }
 `;
 
@@ -323,12 +321,6 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                         Delete
                     </DeleteButton>
                 )}
-                <ZoomButton
-                    onClick={handleZoom}
-                    title="View in fullscreen"
-                >
-                    🔍 Zoom
-                </ZoomButton>
                 <Card>
                     <ThumbnailWrapper
                         key="thumbnail"
@@ -345,6 +337,12 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                             }}
                         />
                     </ThumbnailWrapper>
+                    <ZoomButton
+                        onClick={handleZoom}
+                        title="View in fullscreen"
+                    >
+                        🔍 Zoom
+                    </ZoomButton>
                     <CardContent key="content" to={`/${mod.slug}`}>
                         <CardLink>
                             <Title>{mod.title}</Title>
