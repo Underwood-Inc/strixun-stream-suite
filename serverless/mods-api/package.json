@@ -1,6 +1,6 @@
 {
   "name": "strixun-mods-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Dedicated Cloudflare Worker for mod hosting and version control",
   "private": true,
   "packageManager": "pnpm@9.15.1",
@@ -30,4 +30,3 @@
     "vitest": "^4.0.16"
   }
 }
-
