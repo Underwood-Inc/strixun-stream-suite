@@ -127,7 +127,21 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             const { handleGetUserPermissions } = await import('../handlers/mods/permissions.js');
             const response = await handleGetUserPermissions(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
+            const encryptedResult = await wrapWithEncryption(response, auth, request, env);
+            // Ensure CORS headers are preserved after encryption
+            const corsHeaders = createCORSHeadersWithLocalhost(request, env);
+            const finalHeaders = new Headers(encryptedResult.response.headers);
+            for (const [key, value] of corsHeaders.entries()) {
+                finalHeaders.set(key, value);
+            }
+            return {
+                response: new Response(encryptedResult.response.body, {
+                    status: encryptedResult.response.status,
+                    statusText: encryptedResult.response.statusText,
+                    headers: finalHeaders,
+                }),
+                customerId: encryptedResult.customerId,
+            };
         }
 
         // Route: GET /mods/:slug/review or GET /:slug/review - Get mod review page (admin/uploader only)
