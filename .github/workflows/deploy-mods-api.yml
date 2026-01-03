@@ -129,8 +129,12 @@ jobs:
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             echo "${{ secrets.JWT_SECRET }}" | pnpm exec wrangler secret put JWT_SECRET
           fi
+          # CRITICAL: ALLOWED_ORIGINS is required for CORS - use default if secret not set
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS
+          else
+            echo "⚠️  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app" | pnpm exec wrangler secret put ALLOWED_ORIGINS
           fi
           if [ -n "${{ secrets.MODS_PUBLIC_URL }}" ]; then
             echo "${{ secrets.MODS_PUBLIC_URL }}" | pnpm exec wrangler secret put MODS_PUBLIC_URL
