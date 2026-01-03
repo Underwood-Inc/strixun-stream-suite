@@ -76,11 +76,15 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         const requestIP = getClientIP(request);
         
         if (!isValidIP(requestIP)) {
-            // In test environments, gracefully return no session found instead of error
-            // This allows E2E tests to run without IP headers (localhost dev server)
-            const isTestEnv = env.ENVIRONMENT === 'test';
-            if (isTestEnv) {
-                console.log('[Restore Session] Test environment: Unable to determine IP address, returning no session found');
+            // In local dev environments, gracefully return no session found instead of error
+            // This allows local dev and E2E tests to run without IP headers (localhost dev server)
+            // IP headers aren't available when requests come through Vite proxy or wrangler dev
+            const isLocalDev = env.ENVIRONMENT === 'test' || 
+                              env.ENVIRONMENT === 'development' || 
+                              env.ENVIRONMENT === 'dev' || 
+                              !env.ENVIRONMENT;
+            if (isLocalDev) {
+                console.log('[Restore Session] Local dev environment: Unable to determine IP address, returning no session found');
                 return new Response(JSON.stringify({
                     restored: false,
                     message: 'No active session found for this IP address'

@@ -555,7 +555,7 @@ export async function checkUploadPermission(): Promise<{ hasPermission: boolean 
 /**
  * Get admin settings
  */
-export async function getAdminSettings(): Promise<{ allowedFileExtensions: string[]; updatedAt: string; updatedBy: string }> {
+export async function getAdminSettings(): Promise<{ allowedFileExtensions: string[]; uploadsEnabled?: boolean; updatedAt: string; updatedBy: string }> {
     const response = await api.get<{ allowedFileExtensions: string[]; updatedAt: string; updatedBy: string }>('/admin/settings');
     return response.data;
 }
@@ -563,7 +563,7 @@ export async function getAdminSettings(): Promise<{ allowedFileExtensions: strin
 /**
  * Update admin settings
  */
-export async function updateAdminSettings(settings: { allowedFileExtensions: string[] }): Promise<{ allowedFileExtensions: string[]; updatedAt: string; updatedBy: string }> {
+export async function updateAdminSettings(settings: { allowedFileExtensions?: string[]; uploadsEnabled?: boolean }): Promise<{ allowedFileExtensions: string[]; uploadsEnabled?: boolean; updatedAt: string; updatedBy: string }> {
     const response = await api.put<{ allowedFileExtensions: string[]; updatedAt: string; updatedBy: string }>('/admin/settings', settings);
     return response.data;
 }

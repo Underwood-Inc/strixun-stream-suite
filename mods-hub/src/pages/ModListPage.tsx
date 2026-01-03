@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
 import { useModsList } from '../hooks/useMods';
 import { ModListItem } from '../components/mod/ModListItem';
-import { ModBigCard } from '../components/mod/ModBigCard';
+import { ModCard } from '../components/mod/ModCard';
 import { ModFilters } from '../components/mod/ModFilters';
 import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
 import { shouldRedirectToLogin } from '../utils/error-messages';
@@ -67,19 +67,14 @@ const GridContainer = styled.div`
   overflow-y: auto;
   padding: ${spacing.md};
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  grid-auto-flow: row dense;
   gap: ${spacing.lg};
+  align-items: start;
+  justify-items: stretch;
   background: ${colors.bg};
   border: 1px solid ${colors.border};
   border-radius: 8px;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  }
-  
-  @media (min-width: 1200px) {
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  }
 `;
 
 const Loading = styled.div`
@@ -320,7 +315,7 @@ export function ModListPage() {
                     ) : (
                         <GridContainer>
                             {data.mods.map((mod) => (
-                                <ModBigCard key={mod.id} mod={mod} />
+                                <ModCard key={mod.id} mod={mod} />
                             ))}
                             <div style={{ 
                                 gridColumn: '1 / -1', 
@@ -332,7 +327,9 @@ export function ModListPage() {
                                 background: colors.bgSecondary,
                                 borderTop: `1px solid ${colors.border}`,
                                 borderRadius: '8px',
-                                marginTop: spacing.md
+                                marginTop: spacing.md,
+                                position: 'relative',
+                                zIndex: 10
                             }}>
                                 End of mods list — no more mods to display
                             </div>

@@ -44,8 +44,11 @@ const Button = styled.button`
 
 const ModsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  grid-auto-flow: row dense;
   gap: ${spacing.lg};
+  align-items: start;
+  justify-items: stretch;
 `;
 
 const Loading = styled.div`

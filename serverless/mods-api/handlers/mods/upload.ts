@@ -98,6 +98,23 @@ export async function handleUploadMod(
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
+        // Check if uploads are globally enabled
+        const { areUploadsEnabled } = await import('../admin/settings.js');
+        const uploadsEnabled = await areUploadsEnabled(env);
+        if (!uploadsEnabled) {
+            const rfcError = createError(request, 503, 'Uploads Disabled', 'Mod uploads are currently disabled globally. Please try again later.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 503,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
         // Check upload permission (super admins or approved users)
         const hasPermission = await hasUploadPermission(auth.userId, auth.email, env);
         if (!hasPermission) {

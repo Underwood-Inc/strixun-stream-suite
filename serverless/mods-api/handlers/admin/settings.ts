@@ -11,6 +11,7 @@ const DEFAULT_ALLOWED_EXTENSIONS = ['.lua', '.js', '.java', '.jar', '.zip', '.js
 
 interface AdminSettings {
     allowedFileExtensions: string[];
+    uploadsEnabled: boolean;
     updatedAt: string;
     updatedBy: string;
 }
@@ -31,9 +32,15 @@ export async function handleGetSettings(
         // Return default if not set
         const settings: AdminSettings = settingsData || {
             allowedFileExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+            uploadsEnabled: true, // Default to enabled for backward compatibility
             updatedAt: new Date().toISOString(),
             updatedBy: auth.userId,
         };
+        
+        // Ensure uploadsEnabled exists for legacy settings
+        if (settings.uploadsEnabled === undefined) {
+            settings.uploadsEnabled = true;
+        }
 
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -113,16 +120,24 @@ export async function handleUpdateSettings(
         const existingSettings = await env.MODS_KV.get(SETTINGS_KEY, { type: 'json' }) as AdminSettings | null;
         
         // Merge with existing settings
+        const baseSettings = existingSettings || {
+            allowedFileExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+            uploadsEnabled: true,
+            updatedAt: new Date().toISOString(),
+            updatedBy: auth.userId,
+        };
+        
         const updatedSettings: AdminSettings = {
-            ...(existingSettings || {
-                allowedFileExtensions: DEFAULT_ALLOWED_EXTENSIONS,
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.userId,
-            }),
+            ...baseSettings,
             ...updateData,
             updatedAt: new Date().toISOString(),
             updatedBy: auth.userId,
         };
+        
+        // Ensure uploadsEnabled is a boolean
+        if (updateData.uploadsEnabled !== undefined) {
+            updatedSettings.uploadsEnabled = Boolean(updateData.uploadsEnabled);
+        }
 
         // Save to KV
         await env.MODS_KV.put(SETTINGS_KEY, JSON.stringify(updatedSettings));
@@ -160,6 +175,15 @@ export async function handleUpdateSettings(
 export async function getAllowedFileExtensions(env: Env): Promise<string[]> {
     const settingsData = await env.MODS_KV.get(SETTINGS_KEY, { type: 'json' }) as AdminSettings | null;
     return settingsData?.allowedFileExtensions || DEFAULT_ALLOWED_EXTENSIONS;
+}
+
+/**
+ * Check if uploads are globally enabled
+ */
+export async function areUploadsEnabled(env: Env): Promise<boolean> {
+    const settingsData = await env.MODS_KV.get(SETTINGS_KEY, { type: 'json' }) as AdminSettings | null;
+    // Default to enabled for backward compatibility
+    return settingsData?.uploadsEnabled !== false;
 }
 
 interface Env {
