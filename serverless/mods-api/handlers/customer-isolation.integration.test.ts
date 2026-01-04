@@ -13,7 +13,8 @@
  * Workers are automatically started by shared setup file.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { calculateRequestIntegrity } from '@strixun/service-client/integrity';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 import { authenticateRequest } from '../utils/auth.js';
@@ -339,6 +340,14 @@ describe('Customer Isolation Integration', () => {
             // Integrity hashes should match
             expect(integrityNull).toBe(recalculatedIntegrityNull);
         });
+    });
+
+    afterAll(async () => {
+      // Cleanup: Clear local KV storage to ensure test isolation
+      await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
+      await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace
+      await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
+      console.log('[Customer Isolation Integration Tests] ✓ KV cleanup completed');
     });
 });
 

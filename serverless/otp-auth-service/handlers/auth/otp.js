@@ -24,7 +24,8 @@ import { trackUsage } from '../../services/analytics.js';
 import { getCustomerCached } from '../../utils/cache.js';
 import { getCustomer } from '../../services/customer.js';
 import { getPlanLimits } from '../../utils/validation.js';
-import { createApiKeyForCustomer } from '../../services/api-key.js';
+// CRITICAL: API keys are ONLY created manually through the auth dashboard
+// Removed import - we do NOT automatically create API keys
 
 // Wrapper for checkQuota to pass getPlanLimits
 async function checkQuota(customerId, env, email) {
@@ -729,16 +730,9 @@ export async function handleVerifyOTP(request, env, customerId = null) {
                         // Don't throw - continue with OTP verification even if customer creation had issues
                     }
                     
-                    // Generate initial API key for the customer (only for dashboard users, but safe to do for all)
-                    // This allows users to immediately use the API without additional signup steps
-                    // Wrap in try-catch to prevent API key creation failures from blocking OTP verification
-                    try {
-                        await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
-                        console.log(`[OTP Verify] API key created for customer: ${resolvedCustomerId}`);
-                    } catch (apiKeyError) {
-                        console.error(`[OTP Verify] WARNING: Failed to create API key for customer ${resolvedCustomerId}:`, apiKeyError.message);
-                        // Don't throw - continue with OTP verification even if API key creation failed
-                    }
+                    // CRITICAL: API keys are ONLY created manually through the auth dashboard
+                    // We do NOT automatically create API keys during OTP verification
+                    // API keys are optional for multi-tenant identification (subscription tiers, rate limiting, entity separation)
                 }
             } catch (customerError) {
                 console.error(`[OTP Verify] ERROR: Customer account creation/lookup failed:`, customerError);

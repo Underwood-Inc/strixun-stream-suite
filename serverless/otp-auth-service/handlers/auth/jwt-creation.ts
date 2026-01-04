@@ -15,11 +15,16 @@ interface Env {
     [key: string]: any;
 }
 
-interface User {
-    userId: string;
-    email: string;
-    displayName?: string;
-    customerId?: string | null;
+/**
+ * Customer data structure (NOT User - we only use Customer)
+ * CRITICAL: We ONLY use customerId - NO userId derived from email
+ * customerId is MANDATORY - NOT optional
+ * displayName is MANDATORY - NOT optional, globally unique
+ */
+interface Customer {
+    customerId: string; // MANDATORY - Customer ID is the ONLY identifier (globally unique)
+    email: string; // OTP email (used for authentication, NOT returned in responses)
+    displayName: string; // MANDATORY - Display name (globally unique)
     createdAt?: string;
     lastLogin?: string;
 }
@@ -29,18 +34,18 @@ interface TokenResponse {
     token_type: string;
     expires_in: number;
     scope: string;
-    displayName: string | null;
-    sub: string;
-    email: string;
+    displayName: string; // MANDATORY - globally unique display name
+    sub: string; // customerId - the ONLY identifier
+    // CRITICAL: DO NOT include email - it's the OTP email and should not be exposed in response
     email_verified: boolean;
     token: string; // Backward compatibility
-    userId: string;
+    customerId: string; // MANDATORY - the ONLY identifier (globally unique)
     expiresAt: string;
 }
 
 interface SessionData {
-    userId: string;
-    email: string;
+    customerId: string; // MANDATORY - the ONLY identifier
+    email: string; // OTP email - stored for internal use only
     token: string; // hashed
     expiresAt: string;
     createdAt: string;
@@ -73,21 +78,31 @@ function generateJWTId(): string {
 }
 
 /**
- * Create JWT token and session for authenticated user
+ * Create JWT token and session for authenticated customer
  * 
- * @param user - User data
- * @param customerId - Customer ID (optional)
+ * @param customer - Customer data (NOT User - we only use Customer)
+ * @param customerId - Customer ID (MANDATORY)
  * @param env - Worker environment
  * @param request - HTTP request (optional, for IP tracking)
- * @returns OAuth 2.0 token response
+ * @returns OAuth 2.0 token response (DOES NOT include OTP email)
  */
 export async function createAuthToken(
-    user: User,
-    customerId: string | null,
+    customer: Customer,
+    customerId: string,
     env: Env,
     request?: Request
 ): Promise<TokenResponse> {
-    const emailLower = user.email.toLowerCase().trim();
+    // FAIL-FAST: customerId is MANDATORY
+    if (!customerId) {
+        throw new Error('Customer ID is MANDATORY for token creation');
+    }
+    
+    // FAIL-FAST: displayName is MANDATORY - customer cannot exist without it
+    if (!customer.displayName || customer.displayName.trim() === '') {
+        throw new Error(`Display name is MANDATORY for customer ${customerId}. Customer cannot exist without a globally unique display name.`);
+    }
+    
+    const emailLower = customer.email.toLowerCase().trim();
     const expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000); // 7 hours
     const expiresIn = 7 * 60 * 60; // 7 hours in seconds
     const now = Math.floor(Date.now() / 1000);
@@ -108,42 +123,51 @@ export async function createAuthToken(
     const { isSuperAdminEmail } = await import('../../utils/super-admin.js');
     const isSuperAdmin = await isSuperAdminEmail(emailLower, env);
     
+    // FAIL-FAST: Require customerId - MANDATORY
+    if (!customerId) {
+        throw new Error('Customer ID is MANDATORY for JWT creation. Customer account must be created before token generation.');
+    }
+    
+    // FAIL-FAST: Ensure customerId matches
+    if (customer.customerId !== customerId) {
+        throw new Error(`Customer ID mismatch: expected ${customerId}, got ${customer.customerId}`);
+    }
+    
     // JWT Standard Claims (RFC 7519) + OAuth 2.0 + Custom
+    // NOTE: Email is included in JWT payload for internal use, but NOT returned in response body
+    // CRITICAL: sub (subject) is customerId - NO userId
     const tokenPayload = {
         // Standard JWT Claims
-        sub: user.userId, // Subject (user identifier)
+        sub: customerId, // Subject (customer ID - the ONLY identifier)
         iss: 'auth.idling.app', // Issuer
-        aud: customerId || 'default', // Audience (customer/tenant)
+        aud: customerId, // Audience (customer/tenant) - REQUIRED
         exp: Math.floor(expiresAt.getTime() / 1000), // Expiration time
         iat: now, // Issued at
         jti: generateJWTId(), // JWT ID (unique token identifier)
         
         // OAuth 2.0 / OpenID Connect Claims
+        // CRITICAL: Email is in JWT payload for internal use, but NOT exposed in response body
         email: emailLower,
         email_verified: true, // OTP verification confirms email
         
         // Custom Claims
-        userId: user.userId, // Backward compatibility
-        customerId: customerId || null, // Multi-tenant customer ID
+        customerId: customerId, // MANDATORY - the ONLY identifier
         csrf: csrfToken, // CSRF token included in JWT
         isSuperAdmin: isSuperAdmin, // Super admin status
     };
     
     // Log JWT creation for debugging
-    if (customerId) {
-        console.log(`[JWT Creation] Creating JWT with customerId: ${customerId} for user: ${emailLower} from IP: ${clientIP}`);
-    } else {
-        console.log(`[JWT Creation] WARNING: Creating JWT WITHOUT customerId for user: ${emailLower} from IP: ${clientIP}`);
-    }
+    // CRITICAL: Do NOT log OTP email - it's sensitive data
+    console.log(`[JWT Creation] Creating JWT with customerId: ${customerId} from IP: ${clientIP}`);
     
     const jwtSecret = getJWTSecret(env);
     const accessToken = await createJWT(tokenPayload, jwtSecret);
     
     // Store session with customer isolation (including IP address and fingerprint)
-    const sessionKey = getCustomerKey(customerId, `session_${user.userId}`);
+    const sessionKey = getCustomerKey(customerId, `session_${customerId}`);
     const sessionData: SessionData = {
-        userId: user.userId,
-        email: emailLower,
+        customerId: customerId, // MANDATORY - the ONLY identifier
+        email: emailLower, // Stored for internal use only, NOT returned in responses
         token: await hashEmail(accessToken), // Store hash of token
         expiresAt: expiresAt.toISOString(),
         createdAt: new Date().toISOString(),
@@ -160,19 +184,23 @@ export async function createAuthToken(
     if (clientIP !== 'unknown') {
         await storeIPSessionMapping(
             clientIP,
-            user.userId,
+            customerId, // Use customerId, not userId
             customerId,
             sessionKey,
             expiresAt.toISOString(),
-            emailLower,
+            emailLower, // OTP email - used internally only for IP mapping
             env
         );
-        console.log(`[JWT Creation] ✓ Created session and IP mapping for user: ${emailLower} from IP: ${clientIP}`);
+        // CRITICAL: Do NOT log OTP email - it's sensitive data
+        console.log(`[JWT Creation] ✓ Created session and IP mapping for customer: ${customerId} from IP: ${clientIP}`);
     } else {
-        console.warn(`[JWT Creation] ⚠ Created session but could not create IP mapping (IP unknown) for user: ${emailLower}. SSO will not work for this session.`);
+        // CRITICAL: Do NOT log OTP email - it's sensitive data
+        console.warn(`[JWT Creation] ⚠ Created session but could not create IP mapping (IP unknown) for customer: ${customerId}. SSO will not work for this session.`);
     }
     
     // OAuth 2.0 Token Response (RFC 6749 Section 5.1)
+    // CRITICAL: DO NOT return OTP email in response - it's sensitive data
+    // Email is only in the JWT payload for internal use
     return {
         // OAuth 2.0 Standard Fields
         access_token: accessToken,
@@ -182,17 +210,17 @@ export async function createAuthToken(
         // Additional Standard Fields
         scope: 'openid email profile', // OIDC scopes
         
-        // User Information
-        displayName: user.displayName || null, // Anonymized display name
+        // Customer Information (NOT User - we only use Customer)
+        displayName: customer.displayName, // MANDATORY - globally unique display name
         
-        // User Information (OIDC UserInfo)
-        sub: user.userId, // Subject identifier
-        email: emailLower,
+        // Customer Information (OIDC UserInfo)
+        sub: customerId, // Subject identifier (customer ID - the ONLY identifier)
+        // DO NOT include email - it's the OTP email and should not be exposed
         email_verified: true,
         
         // Backward Compatibility (deprecated, use access_token)
         token: accessToken,
-        userId: user.userId,
+        customerId: customerId, // MANDATORY - the ONLY identifier
         expiresAt: expiresAt.toISOString(),
     };
 }

@@ -99,6 +99,24 @@ export async function createApiKeyForCustomer(
     const apiKeyKey = `apikey_${apiKeyHash}`;
     await env.OTP_AUTH_KV.put(apiKeyKey, JSON.stringify(apiKeyData));
     
+    // CRITICAL: Verify the key was stored correctly (for debugging)
+    const verifyStored = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
+    if (!verifyStored) {
+        console.error(`[ApiKeyService] CRITICAL: API key was not stored correctly!`, {
+            apiKeyKey: apiKeyKey.substring(0, 50) + '...',
+            hashPrefix: apiKeyHash.substring(0, 16) + '...',
+            customerId,
+            keyId
+        });
+        throw new Error('Failed to store API key in KV');
+    }
+    console.log(`[ApiKeyService] API key stored successfully:`, {
+        keyId,
+        customerId,
+        hashPrefix: apiKeyHash.substring(0, 16) + '...',
+        lookupKey: apiKeyKey.substring(0, 50) + '...'
+    });
+    
     // Also store key ID to hash mapping for customer (with encrypted key)
     const customerApiKeysKey = `customer_${customerId}_apikeys`;
     const existingKeys = await env.OTP_AUTH_KV.get(customerApiKeysKey, { type: 'json' }) as ApiKeyData[] | null || [];
@@ -136,10 +154,28 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     const apiKeyHash = await hashApiKeyUtil(trimmedApiKey);
     const apiKeyKey = `apikey_${apiKeyHash}`;
+    
+    // DEBUG: Log the lookup attempt
+    console.log(`[ApiKeyService] Verifying API key:`, {
+        apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
+        hashPrefix: apiKeyHash.substring(0, 16) + '...',
+        lookupKey: apiKeyKey.substring(0, 50) + '...',
+        apiKeyLength: trimmedApiKey.length
+    });
+    
     const keyData = await env.OTP_AUTH_KV.get(apiKeyKey, { type: 'json' }) as ApiKeyData | null;
     
     if (!keyData) {
-        console.log(`[ApiKeyService] API key not found in KV: ${apiKeyKey.substring(0, 30)}...`);
+        // Try to list all keys with similar prefix to debug
+        console.log(`[ApiKeyService] API key not found in KV:`, {
+            apiKeyPrefix: trimmedApiKey.substring(0, 30) + '...',
+            hashPrefix: apiKeyHash.substring(0, 16) + '...',
+            lookupKey: apiKeyKey.substring(0, 50) + '...',
+            reason: 'Key may not exist in KV or hash mismatch',
+            apiKeyLength: trimmedApiKey.length,
+            apiKeyFirstChars: trimmedApiKey.substring(0, 20),
+            apiKeyLastChars: trimmedApiKey.substring(Math.max(0, trimmedApiKey.length - 10))
+        });
         return null;
     }
     
@@ -169,7 +205,12 @@ export async function verifyApiKey(apiKey: string, env: Env): Promise<ApiKeyVeri
     
     // Only allow active customers
     if (customer.status !== 'active') {
-        console.log(`[ApiKeyService] Customer is not active: customerId=${keyData.customerId}, status=${customer.status}`);
+        console.log(`[ApiKeyService] Customer is not active:`, {
+            customerId: keyData.customerId,
+            keyId: keyData.keyId,
+            status: customer.status,
+            reason: 'Customer account is not active'
+        });
         return null;
     }
     

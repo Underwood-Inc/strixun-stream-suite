@@ -117,7 +117,22 @@ export async function handleListApiKeys(
             if (k.encryptedKey && jwtToken) {
                 try {
                     // First decrypt from server-side storage
-                    const decryptedKey = await decryptData(k.encryptedKey, jwtSecret);
+                    const decryptedKeyRaw = await decryptData(k.encryptedKey, jwtSecret);
+                    if (!decryptedKeyRaw) {
+                        // Skip double encryption if decryption fails - return key without double encryption
+                        return {
+                            keyId: k.keyId,
+                            name: k.name,
+                            createdAt: k.createdAt,
+                            lastUsed: k.lastUsed,
+                            status: k.status,
+                            apiKey: null
+                        };
+                    }
+                    
+                    // CRITICAL: Trim the decrypted key to ensure consistency
+                    // The key was trimmed before hashing during creation
+                    const decryptedKey = decryptedKeyRaw.trim();
                     
                     // Then encrypt with user's JWT (Stage 1 encryption - only user can decrypt)
                     // Uses shared encryption suite
@@ -182,7 +197,7 @@ export async function handleCreateApiKey(
         const body = await request.json() as CreateApiKeyBody;
         const name = body.name || 'New API Key';
         
-        // Get JWT token from Authorization header
+        // SECURITY: Get JWT token from Authorization header and verify it
         const authHeader = request.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return new Response(JSON.stringify({ error: 'Authorization required' }), {
@@ -192,6 +207,36 @@ export async function handleCreateApiKey(
         }
         // CRITICAL: Trim token to ensure it matches the token used for encryption
         const jwtToken = authHeader.substring(7).trim();
+        
+        // SECURITY: Verify JWT token and extract customerId from it (defense-in-depth)
+        // Router already checks this, but we verify again at handler level for security
+        const { verifyJWT, getJWTSecret } = await import('../../utils/crypto.js');
+        const jwtSecret = getJWTSecret(env);
+        let jwtPayload: any;
+        try {
+            jwtPayload = await verifyJWT(jwtToken, jwtSecret);
+        } catch (error) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        if (!jwtPayload || !jwtPayload.customerId) {
+            return new Response(JSON.stringify({ error: 'Invalid token: missing customer ID' }), {
+                status: 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+        
+        // SECURITY: Verify JWT customerId matches path customerId (authorization check)
+        // This ensures customers can only create API keys for themselves
+        if (jwtPayload.customerId !== customerId) {
+            return new Response(JSON.stringify({ error: 'Forbidden: You can only create API keys for your own account' }), {
+                status: 403,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
         
         // Verify customer exists in customer-api
         const customer = await getCustomer(customerId, jwtToken, env);
@@ -334,7 +379,12 @@ export async function handleRevealApiKey(
         const jwtSecret = getJWTSecret(env);
         let apiKey: string | null = null;
         if (keyData.encryptedKey) {
-            apiKey = await decryptData(keyData.encryptedKey, jwtSecret);
+            const decryptedKey = await decryptData(keyData.encryptedKey, jwtSecret);
+            if (decryptedKey) {
+                // CRITICAL: Trim the decrypted key to ensure it matches the stored hash
+                // The key was trimmed before hashing during creation
+                apiKey = decryptedKey.trim();
+            }
         }
         
         // Log security event

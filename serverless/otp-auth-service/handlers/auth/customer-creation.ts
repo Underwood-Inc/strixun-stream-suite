@@ -5,7 +5,8 @@
  */
 
 import { generateCustomerId } from '../../services/customer.js';
-import { createApiKeyForCustomer } from '../../services/api-key.js';
+// CRITICAL: API keys are ONLY created manually through the auth dashboard
+// Removed import - we do NOT automatically create API keys
 import { 
     getCustomerByEmailService, 
     createCustomerService, 
@@ -132,16 +133,22 @@ async function upsertCustomerAccount(
             needsUpdate = true;
         }
         
-        // Ensure required fields exist - displayName is REQUIRED, not optional
+        // FAIL-FAST: displayName is MANDATORY - customer cannot exist without it
         // Check for undefined, null, empty string, or whitespace-only
         if (!existingCustomer.displayName || existingCustomer.displayName.trim() === '') {
-            console.log(`[Customer Creation] Missing displayName for customer ${resolvedCustomerId}, generating one...`);
+            // FAIL-FAST: Generate globally unique displayName - MANDATORY
             const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
             const customerDisplayName = await generateUniqueDisplayName({
-                maxAttempts: 10,
+                maxAttempts: 50, // More attempts to ensure uniqueness
                 pattern: 'random'
             }, env);
-            await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env); // Global scope
+            
+            // FAIL-FAST: displayName generation must succeed
+            if (!customerDisplayName || customerDisplayName.trim() === '') {
+                throw new Error(`Failed to generate globally unique displayName for customer ${resolvedCustomerId} after 50 retries. Customer cannot exist without a display name.`);
+            }
+            
+            await reserveDisplayName(customerDisplayName, resolvedCustomerId, null, env); // Global scope - ensures uniqueness
             updates.displayName = customerDisplayName;
             needsUpdate = true;
             console.log(`[Customer Creation] Generated displayName "${customerDisplayName}" for customer ${resolvedCustomerId}`);
@@ -208,17 +215,17 @@ async function upsertCustomerAccount(
     console.log(`[Customer Creation] Creating new customer account for: ${emailLower}`);
     const resolvedCustomerId = generateCustomerId();
     
-    // Generate random display name for customer account
+    // FAIL-FAST: Generate globally unique display name for customer account - MANDATORY
+    // Customer cannot exist without a display name
     const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
     const customerDisplayName = await generateUniqueDisplayName({
-        maxAttempts: 10,
+        maxAttempts: 50, // More attempts to ensure global uniqueness
         pattern: 'random'
     }, env);
     
-    // Handle empty string (generation failed after 50 retries)
+    // FAIL-FAST: displayName generation must succeed - customer cannot exist without it
     if (!customerDisplayName || customerDisplayName.trim() === '') {
-        console.error(`[Customer Creation] Failed to generate unique displayName after 50 retries for new customer`);
-        throw new Error('Unable to generate unique display name. Please try again or contact support.');
+        throw new Error('Failed to generate globally unique displayName after 50 retries. Customer cannot exist without a display name.');
     }
     
     // Reserve the display name for the customer account (global scope)
@@ -300,14 +307,9 @@ async function upsertCustomerAccount(
         throw new Error(`Customer account verification failed after retries. Expected ${resolvedCustomerId}, got ${verifyCustomer?.customerId || 'null'}`);
     }
     
-    // Generate initial API key for the customer (non-blocking)
-    try {
-        await createApiKeyForCustomer(resolvedCustomerId, 'Initial API Key', env);
-        console.log(`[Customer Creation] API key created for customer: ${resolvedCustomerId}`);
-    } catch (apiKeyError) {
-        console.error(`[Customer Creation] WARNING: Failed to create API key for customer ${resolvedCustomerId}:`, apiKeyError);
-        // Don't throw - API key creation is not critical for login
-    }
+    // CRITICAL: API keys are ONLY created manually through the auth dashboard
+    // We do NOT automatically create API keys during customer creation
+    // API keys are optional for multi-tenant identification (subscription tiers, rate limiting)
     
     return resolvedCustomerId;
 }

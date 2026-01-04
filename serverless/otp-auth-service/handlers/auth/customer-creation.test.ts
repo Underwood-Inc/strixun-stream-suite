@@ -83,7 +83,7 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
         email: legacyUserEmail,
         status: 'active',
       } as any);
-      vi.mocked(apiKeyService.createApiKeyForCustomer).mockResolvedValue(undefined);
+      // CRITICAL: API keys are NOT automatically created - removed mock
 
       // Execute: Legacy user logs in
       const result = await ensureCustomerAccount(legacyUserEmail, null, mockEnv);
@@ -102,7 +102,8 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
         }),
         mockEnv
       );
-      expect(apiKeyService.createApiKeyForCustomer).toHaveBeenCalledWith(newCustomerId, 'Initial API Key', mockEnv);
+      // CRITICAL: API keys are NOT automatically created - they must be created manually via dashboard
+      expect(apiKeyService.createApiKeyForCustomer).not.toHaveBeenCalled();
     });
 
     it('should link customer account to legacy user email', async () => {
@@ -120,7 +121,7 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
         customerId: newCustomerId,
         email: legacyUserEmail.toLowerCase().trim(),
       } as any);
-      vi.mocked(apiKeyService.createApiKeyForCustomer).mockResolvedValue(undefined);
+      // CRITICAL: API keys are NOT automatically created - removed mock
 
       // Execute
       const result = await ensureCustomerAccount(legacyUserEmail, null, mockEnv);
@@ -145,7 +146,7 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
       vi.mocked(customerApiClient.getCustomerByEmailService).mockResolvedValueOnce(null).mockResolvedValueOnce({
         customerId: newCustomerId,
       } as any);
-      vi.mocked(apiKeyService.createApiKeyForCustomer).mockResolvedValue(undefined);
+      // CRITICAL: API keys are NOT automatically created - removed mock
 
       // Execute
       await ensureCustomerAccount(legacyUserEmail, null, mockEnv);
@@ -291,24 +292,35 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
 
   describe('Retry logic and error handling', () => {
     it('should retry on transient failures when creating customer account', async () => {
-      // Setup: First attempt fails, second succeeds
+      // Setup: First verification attempt fails (eventual consistency), second succeeds
+      // The source code flow:
+      // 1. Initial lookup by email (line 94) - returns null (not found)
+      // 2. Creates customer (line 292-294)
+      // 3. Verifies customer with retry (line 298-304) - first attempt returns null, retry returns customer
       vi.mocked(customerApiClient.getCustomerService).mockResolvedValue(null);
       vi.mocked(customerApiClient.getCustomerByEmailService)
-        .mockResolvedValueOnce(null) // First lookup - not found
-        .mockResolvedValueOnce(null) // After create - not found yet (eventual consistency)
-        .mockResolvedValueOnce({ customerId: newCustomerId } as any); // After retry - found
+        .mockResolvedValueOnce(null) // First call: initial lookup by email (line 94) - not found
+        .mockResolvedValueOnce(null) // Second call: first verification attempt in retry loop (line 299) - eventual consistency, not found yet
+        .mockResolvedValueOnce({ 
+          customerId: newCustomerId, 
+          email: legacyUserEmail.toLowerCase().trim(),
+          status: 'active'
+        } as any); // Third call: retry verification attempt (line 299) - found
       vi.mocked(customerService.generateCustomerId).mockReturnValue(newCustomerId);
       vi.mocked(nameGenerator.generateUniqueDisplayName).mockResolvedValue('RetryUser123');
       vi.mocked(nameGenerator.reserveDisplayName).mockResolvedValue(undefined);
       vi.mocked(customerApiClient.createCustomerService).mockResolvedValue({} as any);
-      vi.mocked(apiKeyService.createApiKeyForCustomer).mockResolvedValue(undefined);
+      // CRITICAL: API keys are NOT automatically created - removed mock
 
       // Execute
       const result = await ensureCustomerAccount(legacyUserEmail, null, mockEnv);
 
       // Verify: Retry logic was used
       expect(result).toBe(newCustomerId);
-      // Should have called getCustomerByEmailService multiple times due to retry
+      // Should have called getCustomerByEmailService 3 times:
+      // 1. Initial lookup (line 94)
+      // 2. First verification attempt in retry (line 299)
+      // 3. Retry verification attempt (line 299)
       expect(customerApiClient.getCustomerByEmailService).toHaveBeenCalledTimes(3);
     });
 
@@ -343,7 +355,7 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
       vi.mocked(customerApiClient.getCustomerByEmailService).mockResolvedValueOnce(null).mockResolvedValueOnce({
         customerId: newCustomerId,
       } as any);
-      vi.mocked(apiKeyService.createApiKeyForCustomer).mockResolvedValue(undefined);
+      // CRITICAL: API keys are NOT automatically created - removed mock
 
       // Execute
       await ensureCustomerAccount(emailWithSpaces, null, mockEnv);
@@ -396,7 +408,7 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
         } as any); // After retry - found
 
       // Step 5: System creates API key
-      vi.mocked(apiKeyService.createApiKeyForCustomer).mockResolvedValue(undefined);
+      // CRITICAL: API keys are NOT automatically created - removed mock
 
       // Execute: Legacy user logs in
       const result = await ensureCustomerAccount(legacyEmail, null, mockEnv);
@@ -413,7 +425,8 @@ describe('ensureCustomerAccount - Legacy User Migration', () => {
         }),
         mockEnv
       );
-      expect(apiKeyService.createApiKeyForCustomer).toHaveBeenCalledWith(newCustomerId, 'Initial API Key', mockEnv);
+      // CRITICAL: API keys are NOT automatically created - they must be created manually via dashboard
+      expect(apiKeyService.createApiKeyForCustomer).not.toHaveBeenCalled();
 
       // Verify: Customer account is properly linked to email
       const createdCustomer = vi.mocked(customerApiClient.createCustomerService).mock.calls[0][0];

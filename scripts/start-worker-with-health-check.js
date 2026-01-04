@@ -91,31 +91,50 @@ const waitForHealth = async () => {
           }
         }
 
-        // Any response (200, 401, 404) means the service is running
-        if (response && (response.ok || response.status === 401 || response.status === 404)) {
-          console.log(`[Worker Start] ✓ ${workerDir} is healthy (status: ${response.status})`);
-          healthCheckPassed = true;
-          return; // Health check passed, proceed
+        // Verify response is actually healthy
+        if (response) {
+          if (response.ok) {
+            // 200 means service is fully healthy
+            console.log(`[Worker Start] ✓ ${workerDir} is healthy (status: ${response.status})`);
+            healthCheckPassed = true;
+            return;
+          } else if (response.status === 401) {
+            // Health endpoint requires JWT, so 401 is expected - verify it's a proper 401 response
+            const responseText = await response.text();
+            if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+              // Proper 401 means service is running and responding correctly
+              console.log(`[Worker Start] ✓ ${workerDir} is healthy (status: ${response.status} - service requires JWT)`);
+              healthCheckPassed = true;
+              return;
+            }
+          } else if (response.status === 404) {
+            // 404 might mean endpoint doesn't exist, but service is running
+            console.log(`[Worker Start] ⚠ ${workerDir} returned 404 - service is running but endpoint may not exist`);
+            healthCheckPassed = true;
+            return;
+          }
         }
       } catch (error) {
-        // Connection errors - try next URL or wait and retry
+        // Connection errors - service is NOT running, wait and retry
+        // Do NOT treat this as "service is running"
         continue;
       }
     }
     
     // If we get here, all URLs failed - wait and retry
-    if (healthCheckAttempts % 5 === 0) {
-      console.log(`[Worker Start] Health check failed, retrying... (attempt ${healthCheckAttempts}/${maxAttempts})`);
-    }
+    console.log(`[Worker Start] Health check failed, retrying... (attempt ${healthCheckAttempts}/${maxAttempts})`);
     
-    await new Promise(resolve => setTimeout(resolve, checkInterval));
+    if (healthCheckAttempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    } else {
+      // Exhausted retries - worker failed to start
+      throw new Error(`[Worker Start] ✗ ${workerDir} failed to start after ${maxAttempts} attempts. Check worker logs for errors.`);
+    }
   }
   
-  // If we get here, health check failed but wrangler is ready - that's OK for integration tests
-  // The vitest setup will do its own health checks
+  // If we get here, health check passed
   if (!healthCheckPassed) {
-    console.warn(`[Worker Start] ⚠ ${workerDir} health check failed, but wrangler is ready. Continuing...`);
-    healthCheckPassed = true; // Allow to proceed - vitest setup will verify
+    throw new Error(`[Worker Start] ✗ ${workerDir} health check failed after ${maxAttempts} attempts`);
   }
 };
 

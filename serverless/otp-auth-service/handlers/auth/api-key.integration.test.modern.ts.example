@@ -1,0 +1,113 @@
+/**
+ * EXAMPLE: Modern Multi-Worker Integration Test
+ * 
+ * This is an example showing how to migrate multi-worker tests
+ * from the old approach (HTTP requests to localhost:8787 and localhost:8790)
+ * to the new approach using Miniflare programmatically.
+ * 
+ * Key changes:
+ * 1. Use Miniflare instead of wrangler dev processes
+ * 2. No health checks needed - Miniflare is ready immediately
+ * 3. Use mf.dispatchFetch() instead of fetch() to localhost
+ * 4. Much faster startup (no process management overhead)
+ * 
+ * To use this pattern:
+ * 1. Copy this file and rename to your test file
+ * 2. Replace the test logic with your actual tests
+ * 3. Update the worker paths and KV namespaces as needed
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
+import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
+
+describe('API Key System - Modern Multi-Worker Integration Tests', () => {
+  let otpAuthService: Awaited<ReturnType<typeof createMultiWorkerSetup>>['otpAuthService'];
+  let customerAPI: Awaited<ReturnType<typeof createMultiWorkerSetup>>['customerAPI'];
+  let cleanup: () => Promise<void>;
+
+  beforeAll(async () => {
+    // OLD WAY (removed):
+    // - Wait for services to start (70-80 seconds)
+    // - Health check polling (30 attempts)
+    // - Process management complexity
+    
+    // NEW WAY (Miniflare):
+    // - Workers start immediately (2-5 seconds)
+    // - No health checks needed
+    // - No process management
+    const setup = await createMultiWorkerSetup();
+    otpAuthService = setup.otpAuthService;
+    customerAPI = setup.customerAPI;
+    cleanup = setup.cleanup;
+  });
+
+  afterAll(async () => {
+    // Clean up workers
+    await cleanup();
+    
+    // Clean up test data if needed
+    await clearLocalKVNamespace('OTP_AUTH_KV');
+    await clearLocalKVNamespace('CUSTOMER_KV');
+  });
+
+  it('should create customer account via signup/verify', async () => {
+    // OLD WAY (removed):
+    // const signupResponse = await fetch(`${OTP_AUTH_SERVICE_URL}/signup`, { ... });
+    
+    // NEW WAY (Miniflare):
+    const signupRequest = new Request('http://example.com/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'test@example.com',
+        companyName: 'Test Company',
+      }),
+    });
+
+    const signupResponse = await otpAuthService.dispatchFetch(signupRequest);
+    expect(signupResponse.status).toBe(200);
+    const signupData = await signupResponse.json();
+    expect(signupData.success).toBe(true);
+
+    // Verify signup
+    const verifyRequest = new Request('http://example.com/signup/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'test@example.com',
+        otp: process.env.E2E_TEST_OTP_CODE || '123456789',
+      }),
+    });
+
+    const verifyResponse = await otpAuthService.dispatchFetch(verifyRequest);
+    expect(verifyResponse.status).toBe(200);
+    const verifyData = await verifyResponse.json();
+    expect(verifyData.success).toBe(true);
+    expect(verifyData.customerId).toBeDefined();
+  });
+
+  it('should create API key for customer', async () => {
+    // First, create customer (using otpAuthService)
+    // Then create API key (using otpAuthService)
+    // Then verify customer exists (using customerAPI)
+    
+    // Example: Create API key
+    const createKeyRequest = new Request('http://example.com/admin/customers/cust_123/api-keys', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.E2E_TEST_JWT_TOKEN || 'test-token'}`,
+      },
+      body: JSON.stringify({
+        name: 'Test API Key',
+      }),
+    });
+
+    const keyResponse = await otpAuthService.dispatchFetch(createKeyRequest);
+    expect(keyResponse.status).toBe(200);
+    const keyData = await keyResponse.json();
+    expect(keyData.success).toBe(true);
+    expect(keyData.apiKey).toBeDefined();
+  });
+});

@@ -25,7 +25,7 @@ const CUSTOMER_API_URL = process.env.CUSTOMER_API_URL || 'http://localhost:8790'
 /**
  * Wait for a service to be ready
  */
-async function waitForService(name: string, url: string, maxAttempts = 90): Promise<void> {
+async function waitForService(name: string, url: string, maxAttempts = 5): Promise<void> {
   console.log(`[Integration Setup] Waiting for ${name} at ${url}...`);
   
   // Try both localhost and 127.0.0.1
@@ -42,9 +42,24 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
           method: 'GET',
           signal: AbortSignal.timeout(3000)
         });
-        // Any response (200, 401, 404) means the service is running
-        console.log(`[Integration Setup] ✓ ${name} is ready (status: ${response.status})`);
-        return;
+        // Health endpoint requires JWT, so 401 is expected - but we need to verify it's a proper 401, not connection refused
+        // A proper 401 means service is running and responding correctly
+        if (response.status === 401) {
+          // Verify it's a proper 401 response (service is running but needs auth)
+          const responseText = await response.text();
+          if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+            console.log(`[Integration Setup] ✓ ${name} is ready (status: ${response.status} - service requires JWT)`);
+            return;
+          }
+        } else if (response.status === 200) {
+          // 200 means service is healthy and responded correctly
+          console.log(`[Integration Setup] ✓ ${name} is ready (status: ${response.status})`);
+          return;
+        } else {
+          // Other status codes - service is responding but may have issues
+          console.log(`[Integration Setup] ⚠ ${name} is responding but returned status ${response.status}`);
+          return;
+        }
       } catch (error: any) {
         // Try next URL or wait and retry
         if (error.name === 'AbortError' || error.code === 'ECONNREFUSED') {
@@ -61,12 +76,10 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
     }
     
     if (attempt < maxAttempts - 1) {
-      if (attempt % 10 === 0) {
-        console.log(`[Integration Setup] Still waiting for ${name}... (attempt ${attempt + 1}/${maxAttempts})`);
-      }
+      console.log(`[Integration Setup] Still waiting for ${name}... (attempt ${attempt + 1}/${maxAttempts})`);
       await new Promise(resolve => setTimeout(resolve, 2000));
     } else {
-      throw new Error(`[Integration Setup] ✗ ${name} failed to start after ${maxAttempts} attempts`);
+      throw new Error(`[Integration Setup] ✗ ${name} failed to start after ${maxAttempts} attempts. URL: ${url}`);
     }
   }
 }

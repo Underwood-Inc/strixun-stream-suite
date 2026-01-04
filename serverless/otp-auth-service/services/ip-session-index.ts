@@ -14,11 +14,10 @@ interface Env {
 }
 
 interface IPSessionMapping {
-    userId: string;
-    customerId: string | null;
+    customerId: string; // MANDATORY - the ONLY identifier (globally unique)
     sessionKey: string;
     expiresAt: string;
-    email: string;
+    email: string; // OTP email - stored for internal use only
     createdAt: string;
 }
 
@@ -146,17 +145,23 @@ export async function getSessionsByIP(
 }
 
 /**
- * Delete IP-to-session mapping for a specific user
+ * Delete IP-to-session mapping for a specific customer
+ * CRITICAL: We ONLY use customerId - NO userId
  * 
  * @param ip - IP address
- * @param userId - User ID
+ * @param customerId - Customer ID (MANDATORY)
  * @param env - Worker environment
  */
 export async function deleteIPSessionMapping(
     ip: string,
-    userId: string,
+    customerId: string, // MANDATORY - the ONLY identifier
     env: Env
 ): Promise<void> {
+    // FAIL-FAST: customerId is MANDATORY
+    if (!customerId) {
+        throw new Error('Customer ID is MANDATORY for deleting IP session mapping');
+    }
+    
     if (!ip || ip === 'unknown') {
         return;
     }
@@ -170,8 +175,8 @@ export async function deleteIPSessionMapping(
         return;
     }
     
-    // Remove session for this user
-    const filtered = sessions.filter(s => s.userId !== userId);
+    // Remove session for this customer
+    const filtered = sessions.filter(s => s.customerId !== customerId);
     
     if (filtered.length === 0) {
         // No more sessions for this IP, delete the index

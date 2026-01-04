@@ -791,6 +791,9 @@ importers:
         specifier: ^5.17.14
         version: 5.31.0
     devDependencies:
+      '@cloudflare/vitest-pool-workers':
+        specifier: ^0.11.1
+        version: 0.11.1(@cloudflare/workers-types@4.20251225.0)(@vitest/runner@4.0.16)(@vitest/snapshot@4.0.16)(vitest@4.0.16)
       '@cloudflare/workers-types':
         specifier: ^4.20251225.0
         version: 4.20251225.0
@@ -818,6 +821,12 @@ importers:
       concurrently:
         specifier: ^9.1.2
         version: 9.2.1
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
+      miniflare:
+        specifier: ^4.20251217.0
+        version: 4.20251217.0
       sass:
         specifier: ^1.97.1
         version: 1.97.1
@@ -1674,6 +1683,13 @@ packages:
     peerDependenciesMeta:
       workerd:
         optional: true
+
+  '@cloudflare/vitest-pool-workers@0.11.1':
+    resolution: {integrity: sha512-2ATtR5pb5Q6R19ByHN/Dbe1JY5JWuqGMz3yI2MusDqPcDvL1o5OPlPKJAXphOMEIilXLeATPYrNamdqLBJu3sg==}
+    peerDependencies:
+      '@vitest/runner': 2.0.x - 3.2.x
+      '@vitest/snapshot': 2.0.x - 3.2.x
+      vitest: 2.0.x - 3.2.x
 
   '@cloudflare/workerd-darwin-64@1.20251217.0':
     resolution: {integrity: sha512-DN6vT+9ho61d/1/YuILW4VS+N1JBLaixWRL1vqNmhgbf8J8VHwWWotrRruEUYigJKx2yZyw6YsasE+yLXgx/Fw==}
@@ -3813,6 +3829,9 @@ packages:
   binary-search-bounds@2.0.5:
     resolution: {integrity: sha512-H0ea4Fd3lS1+sTEB2TgcLoK21lLhwEJzlQv3IN47pJS976Gx4zoWe0ak3q+uYh60ppQxg9F16Ri4tS1sfD4+jA==}
 
+  birpc@0.2.14:
+    resolution: {integrity: sha512-37FHE8rqsYM5JEKCnXFyHpBCzvgHEExwVVTq+nUmloInU7l8ezD1TpOhKpS8oe1DTYFqEK27rFZVKG43oTqXRA==}
+
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
 
@@ -3945,6 +3964,9 @@ packages:
   ci-info@3.9.0:
     resolution: {integrity: sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==}
     engines: {node: '>=8'}
+
+  cjs-module-lexer@1.4.3:
+    resolution: {integrity: sha512-9z8TZaGM1pfswYeXrUpzPrkx8UnWYdhJclsiYMm6x/w5+nN+8Tf/LnAgfLGQCm59qAOxU8WwHEq2vNwF6i4j+Q==}
 
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
@@ -8071,6 +8093,24 @@ snapshots:
     optionalDependencies:
       workerd: 1.20251217.0
 
+  '@cloudflare/vitest-pool-workers@0.11.1(@cloudflare/workers-types@4.20251225.0)(@vitest/runner@4.0.16)(@vitest/snapshot@4.0.16)(vitest@4.0.16)':
+    dependencies:
+      '@vitest/runner': 4.0.16
+      '@vitest/snapshot': 4.0.16
+      birpc: 0.2.14
+      cjs-module-lexer: 1.4.3
+      devalue: 5.6.1
+      esbuild: 0.27.0
+      miniflare: 4.20251217.0
+      semver: 7.7.3
+      vitest: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
+      wrangler: 4.56.0(@cloudflare/workers-types@4.20251225.0)
+      zod: 3.22.3
+    transitivePeerDependencies:
+      - '@cloudflare/workers-types'
+      - bufferutil
+      - utf-8-validate
+
   '@cloudflare/workerd-darwin-64@1.20251217.0':
     optional: true
 
@@ -10073,6 +10113,8 @@ snapshots:
 
   binary-search-bounds@2.0.5: {}
 
+  birpc@0.2.14: {}
+
   blake3-wasm@2.1.5: {}
 
   brace-expansion@1.1.12:
@@ -10251,6 +10293,8 @@ snapshots:
   chromatic@13.3.4: {}
 
   ci-info@3.9.0: {}
+
+  cjs-module-lexer@1.4.3: {}
 
   cliui@8.0.1:
     dependencies:

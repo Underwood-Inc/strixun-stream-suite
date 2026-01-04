@@ -14,7 +14,8 @@
  * Workers are automatically started by shared setup file.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
 import { createJWT } from '@strixun/otp-auth-service/utils/crypto';
 
 const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
@@ -158,6 +159,14 @@ describe('Session Restore Integration', () => {
                 expect(true).toBe(true);
             }
         });
+    });
+
+    afterAll(async () => {
+      // Cleanup: Clear local KV storage to ensure test isolation
+      await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
+      await clearLocalKVNamespace('0d3dafe0994046c6a47146c6bd082ad3'); // MODS_KV namespace
+      await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
+      console.log('[Session Restore Integration Tests] ✓ KV cleanup completed');
     });
 });
 

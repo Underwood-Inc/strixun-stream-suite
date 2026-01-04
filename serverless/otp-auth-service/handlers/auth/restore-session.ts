@@ -26,8 +26,8 @@ interface Env {
 }
 
 interface SessionData {
-    userId: string;
-    email: string;
+    customerId: string; // MANDATORY - the ONLY identifier (globally unique)
+    email: string; // OTP email - stored for internal use only
     token: string; // hashed
     expiresAt: string;
     createdAt: string;
@@ -37,11 +37,16 @@ interface SessionData {
     fingerprint?: string; // SHA-256 hash of device fingerprint
 }
 
-interface User {
-    userId: string;
-    email: string;
-    displayName?: string | null;
-    customerId?: string | null;
+/**
+ * Customer data structure (NOT User - we only use Customer)
+ * CRITICAL: We ONLY use customerId - NO userId derived from email
+ * customerId is MANDATORY - NOT optional
+ * displayName is MANDATORY - NOT optional, globally unique
+ */
+interface Customer {
+    customerId: string; // MANDATORY - Customer ID is the ONLY identifier (globally unique)
+    email: string; // OTP email (used for authentication, NOT returned in responses)
+    displayName: string; // MANDATORY - Display name (globally unique)
     createdAt?: string;
     lastLogin?: string;
 }
@@ -323,33 +328,47 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             });
         }
 
-        // Get user data from KV using email hash (not userId)
+        // Get customer data from KV using email hash
+        // CRITICAL: We ONLY use customerId - NO userId
         const { hashEmail } = await import('../../utils/crypto.js');
         const emailHash = await hashEmail(sessionData.email);
-        let userKey = getCustomerKey(sessionMapping.customerId, `user_${emailHash}`);
-        let userData = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+        let customerKey = getCustomerKey(sessionMapping.customerId, `user_${emailHash}`);
+        let customerData = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as Customer | null;
         
-        // If user not found with customerId, try without customerId (backwards compatibility)
-        if (!userData && sessionMapping.customerId) {
+        // If customer session data not found with customerId, try without customerId (backwards compatibility)
+        if (!customerData && sessionMapping.customerId) {
             const legacyUserKey = `user_${emailHash}`;
-            userData = await env.OTP_AUTH_KV.get(legacyUserKey, { type: 'json' }) as User | null;
-            // If found, migrate user to customer-scoped key and update customerId
-            if (userData) {
-                userData.customerId = sessionMapping.customerId;
-                await env.OTP_AUTH_KV.put(userKey, JSON.stringify(userData), { expirationTtl: 31536000 });
-                // Update userId -> customerId index
-                const { updateUserIndex } = await import('../../utils/user-index.js');
-                await updateUserIndex(userData.userId, sessionMapping.customerId, env);
+            customerData = await env.OTP_AUTH_KV.get(legacyUserKey, { type: 'json' }) as Customer | null;
+            // If found, migrate customer session data to customer-scoped key and update customerId
+            if (customerData) {
+                // FAIL-FAST: Ensure customerId is set
+                if (!customerData.customerId) {
+                    customerData.customerId = sessionMapping.customerId;
+                }
+                // FAIL-FAST: Ensure displayName is set (MANDATORY)
+                if (!customerData.displayName || customerData.displayName.trim() === '') {
+                    const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
+                    const displayName = await generateUniqueDisplayName({
+                        maxAttempts: 50,
+                        pattern: 'random'
+                    }, env);
+                    if (!displayName || displayName.trim() === '') {
+                        throw new Error(`Failed to generate globally unique displayName for customer ${sessionMapping.customerId}`);
+                    }
+                    await reserveDisplayName(displayName, sessionMapping.customerId, null, env);
+                    customerData.displayName = displayName;
+                }
+                await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData), { expirationTtl: 31536000 });
             }
         }
         
-        if (!userData) {
-            // User data not found
+        if (!customerData) {
+            // Customer data not found
             await recordIPRequest(requestIP, null, env, true);
             
             return new Response(JSON.stringify({
                 restored: false,
-                message: 'User data not found'
+                message: 'Customer data not found'
             }), {
                 status: 200,
                 headers: { 
@@ -368,7 +387,8 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         try {
             customerId = await ensureCustomerAccount(sessionData.email, customerId, env);
         } catch (error) {
-            console.error(`[Restore Session] Failed to ensure customer account for ${sessionData.email}:`, error);
+            // CRITICAL: Do NOT log OTP email - it's sensitive data
+            console.error(`[Restore Session] Failed to ensure customer account:`, error);
             await recordIPRequest(requestIP, null, env, true);
             
             return new Response(JSON.stringify({ 
@@ -380,18 +400,38 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
             });
         }
 
+        // FAIL-FAST: Ensure customerId matches
+        if (customerData.customerId !== customerId) {
+            throw new Error(`Customer ID mismatch: expected ${customerId}, got ${customerData.customerId}`);
+        }
+
+        // FAIL-FAST: Ensure displayName exists (MANDATORY)
+        if (!customerData.displayName || customerData.displayName.trim() === '') {
+            const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
+            const displayName = await generateUniqueDisplayName({
+                maxAttempts: 50,
+                pattern: 'random'
+            }, env);
+            if (!displayName || displayName.trim() === '') {
+                throw new Error(`Failed to generate globally unique displayName for customer ${customerId}`);
+            }
+            await reserveDisplayName(displayName, customerId, null, env);
+            customerData.displayName = displayName;
+            await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customerData), { expirationTtl: 31536000 });
+        }
+
         // Create a new JWT token for the restored session
         // This is more secure than returning the stored token hash
         // NOTE: This will create a new session and update the IP mapping
-        console.log(`[Restore Session] Creating new token for user: ${userData.email} (${userData.userId})`);
+        // CRITICAL: Do NOT log or return OTP email - it's sensitive data
+        console.log(`[Restore Session] Creating new token for customer: ${customerId}`);
         const tokenResponse = await createAuthToken(
             {
-                userId: userData.userId,
-                email: userData.email,
-                displayName: userData.displayName || null,
-                customerId: customerId,
-                createdAt: userData.createdAt,
-                lastLogin: userData.lastLogin,
+                customerId: customerId, // MANDATORY - the ONLY identifier
+                email: customerData.email, // OTP email - used internally only, NOT returned in response
+                displayName: customerData.displayName, // MANDATORY - globally unique
+                createdAt: customerData.createdAt,
+                lastLogin: customerData.lastLogin,
             },
             customerId,
             env,
@@ -401,7 +441,8 @@ export async function handleRestoreSession(request: Request, env: Env): Promise<
         // Record successful request
         await recordIPRequest(requestIP, customerId, env, true);
 
-        console.log(`[Restore Session] Successfully restored session for user: ${userData.email} from IP: ${requestIP}`);
+        // CRITICAL: Do NOT log OTP email - it's sensitive data
+        console.log(`[Restore Session] Successfully restored session for customer: ${customerData.customerId} from IP: ${requestIP}`);
 
         // Return token response
         return new Response(JSON.stringify({

@@ -282,12 +282,24 @@ export async function handleVerifySignup(request, env) {
                     
                     // Decrypt the API key from storage
                     try {
-                        const { decryptData, getJWTSecret } = await import('../utils/crypto.js');
+                        const { decryptData, getJWTSecret, hashApiKey } = await import('../utils/crypto.js');
                         const jwtSecret = getJWTSecret(env);
                         if (activeKey.encryptedKey) {
-                            apiKey = await decryptData(activeKey.encryptedKey, jwtSecret);
-                            if (apiKey) {
-                                console.log(`[Signup Verify] Successfully retrieved API key on attempt ${attempt + 1}`);
+                            const decryptedKey = await decryptData(activeKey.encryptedKey, jwtSecret);
+                            if (decryptedKey) {
+                                // CRITICAL: Trim the decrypted key to ensure it matches the stored hash
+                                // The key was trimmed before hashing during creation
+                                apiKey = decryptedKey.trim();
+                                
+                                // Verify the decrypted key matches the stored hash (debugging)
+                                const decryptedHash = await hashApiKey(apiKey);
+                                const storedHash = activeKey.keyId ? null : 'N/A'; // We don't store hash in customer list
+                                console.log(`[Signup Verify] Successfully retrieved API key on attempt ${attempt + 1}`, {
+                                    keyId: activeKey.keyId,
+                                    apiKeyPrefix: apiKey.substring(0, 30) + '...',
+                                    apiKeyLength: apiKey.length,
+                                    hashPrefix: decryptedHash.substring(0, 16) + '...'
+                                });
                                 break; // Success - exit retry loop
                             }
                         }

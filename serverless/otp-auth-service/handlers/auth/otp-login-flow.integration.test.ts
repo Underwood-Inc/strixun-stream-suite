@@ -26,6 +26,7 @@ import { loadTestConfig } from '../../utils/test-config-loader.js';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -109,10 +110,26 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
     for (let attempt = 0; attempt < 10; attempt++) {
       try {
         const otpHealthCheck = await fetch(`${OTP_AUTH_SERVICE_URL}/health`);
-        // Any response (200, 401, etc.) means the service is running
-        otpReady = true;
-        console.log('[Integration Tests] ✓ OTP Auth Service is running');
-        break;
+        // Health endpoint requires JWT, so 401 is expected - verify it's a proper 401 response
+        if (otpHealthCheck.status === 401) {
+          const responseText = await otpHealthCheck.text();
+          if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+            // Proper 401 means service is running and responding correctly
+            otpReady = true;
+            console.log('[Integration Tests] ✓ OTP Auth Service is running (status: 401 - service requires JWT)');
+            break;
+          }
+        } else if (otpHealthCheck.status === 200) {
+          // 200 means service is fully healthy
+          otpReady = true;
+          console.log('[Integration Tests] ✓ OTP Auth Service is healthy (status: 200)');
+          break;
+        } else {
+          // Other status - service is responding but may have issues
+          otpReady = true;
+          console.log(`[Integration Tests] ⚠ OTP Auth Service is responding but returned status ${otpHealthCheck.status}`);
+          break;
+        }
       } catch (error: any) {
         if (attempt < 9) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -147,8 +164,10 @@ describe(`OTP Login Flow - Integration Tests (Local Workers Only) [${testEnv}]`,
   });
 
   afterAll(async () => {
-    // Cleanup: Optionally delete test customer if needed
-    // (In production, you might want to keep test data for debugging)
+    // Cleanup: Clear local KV storage to ensure test isolation
+    await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
+    await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
+    console.log('[OTP Login Flow Tests] ✓ KV cleanup completed');
   });
 
   describe('Step 1: Request OTP', () => {

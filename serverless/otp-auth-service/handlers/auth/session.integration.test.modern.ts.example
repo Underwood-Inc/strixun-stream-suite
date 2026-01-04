@@ -1,0 +1,83 @@
+/**
+ * EXAMPLE: Modern Single-Worker Integration Test
+ * 
+ * This is an example showing how to migrate from the old approach
+ * (HTTP requests to localhost) to the new official Cloudflare solution
+ * (@cloudflare/vitest-pool-workers with SELF.fetch).
+ * 
+ * Key changes:
+ * 1. No beforeAll health checks needed
+ * 2. Use SELF.fetch() instead of fetch() to localhost
+ * 3. Use createExecutionContext() and waitOnExecutionContext()
+ * 4. No service URL constants needed
+ * 
+ * To use this pattern:
+ * 1. Copy this file and rename to your test file
+ * 2. Replace the test logic with your actual tests
+ * 3. Remove all HTTP URL constants and health checks
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { SELF, env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
+import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
+
+describe('Session Management - Modern Integration Tests', () => {
+  // No beforeAll needed! Runtime is always ready.
+  // No health checks needed!
+  // No service URL constants needed!
+
+  afterAll(async () => {
+    // Clean up test data if needed
+    await clearLocalKVNamespace('OTP_AUTH_KV');
+  });
+
+  it('should create a session', async () => {
+    // OLD WAY (removed):
+    // const response = await fetch(`${OTP_AUTH_SERVICE_URL}/session`, { ... });
+    
+    // NEW WAY (official solution):
+    const request = new Request('http://example.com/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'test@example.com',
+        // ... other data
+      }),
+    });
+
+    const ctx = createExecutionContext();
+    const response = await SELF.fetch(request, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+  });
+
+  it('should retrieve a session', async () => {
+    // Create session first
+    const createRequest = new Request('http://example.com/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'test@example.com' }),
+    });
+
+    const createCtx = createExecutionContext();
+    const createResponse = await SELF.fetch(createRequest, env, createCtx);
+    await waitOnExecutionContext(createCtx);
+    const { sessionId } = await createResponse.json();
+
+    // Retrieve session
+    const getRequest = new Request(`http://example.com/session/${sessionId}`, {
+      method: 'GET',
+    });
+
+    const getCtx = createExecutionContext();
+    const getResponse = await SELF.fetch(getRequest, env, getCtx);
+    await waitOnExecutionContext(getCtx);
+
+    expect(getResponse.status).toBe(200);
+    const session = await getResponse.json();
+    expect(session.sessionId).toBe(sessionId);
+  });
+});

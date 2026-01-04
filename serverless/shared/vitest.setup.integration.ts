@@ -28,6 +28,8 @@ const rootDir = resolve(__dirname, '../..');
 // Singleton pattern: Track if workers are already started
 let otpWorkerProcess: ReturnType<typeof spawn> | null = null;
 let customerApiProcess: ReturnType<typeof spawn> | null = null;
+let otpBuildErrorPromise: Promise<void> | null = null;
+let customerBuildErrorPromise: Promise<void> | null = null;
 let workersStarted = false;
 
 const OTP_AUTH_SERVICE_URL = process.env.OTP_AUTH_SERVICE_URL || 'http://localhost:8787';
@@ -64,7 +66,7 @@ function isRunningIntegrationTests(): boolean {
  * Wait for a service to be ready
  * For OTP Auth Service, also verifies KV is accessible by testing a simple operation
  */
-async function waitForService(name: string, url: string, maxAttempts = 90): Promise<void> {
+async function waitForService(name: string, url: string, maxAttempts = 5): Promise<void> {
   console.log(`[Integration Setup] Waiting for ${name} at ${url}...`);
   
   // Try both localhost and 127.0.0.1 (Windows networking quirk)
@@ -83,23 +85,39 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
           method: 'GET',
           signal: AbortSignal.timeout(3000)
         });
-        // Any response (200, 401, 404) means the service is running
-        serviceResponding = true;
-        console.log(`[Integration Setup] ✓ ${name} is responding (status: ${response.status})`);
-        break;
-      } catch (error: any) {
-        // Try next URL or wait and retry
-        if (error.name === 'AbortError' || error.code === 'ECONNREFUSED') {
-          // Connection refused or timeout - service not ready yet
-          continue;
-        }
-        // Other errors might mean service is running but endpoint doesn't exist
-        // That's OK - any response means service is up
-        if (attempt > 5) {
+        // Health endpoint requires JWT, so 401 is expected - but we need to verify it's a proper 401, not connection refused
+        // A proper 401 means service is running and responding correctly
+        // Connection refused would throw an error, not return 401
+        if (response.status === 401) {
+          // Verify it's a proper 401 response (service is running but needs auth)
+          const responseText = await response.text();
+          if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+            serviceResponding = true;
+            console.log(`[Integration Setup] ✓ ${name} is responding (status: ${response.status} - service requires JWT)`);
+            break;
+          }
+        } else if (response.status === 200) {
+          // 200 means service is healthy and responded correctly
           serviceResponding = true;
-          console.log(`[Integration Setup] ✓ ${name} appears to be running (got error: ${error.message})`);
+          console.log(`[Integration Setup] ✓ ${name} is healthy (status: ${response.status})`);
+          break;
+        } else {
+          // Other status codes - service is responding but may have issues
+          serviceResponding = true;
+          console.log(`[Integration Setup] ⚠ ${name} is responding but returned status ${response.status}`);
           break;
         }
+      } catch (error: any) {
+        // Fetch failed - service is NOT running
+        // Do NOT treat this as "service is running" - it's a connection failure
+        if (error.name === 'AbortError' || error.code === 'ECONNREFUSED' || error.message?.includes('fetch failed')) {
+          // Connection refused or timeout - service not ready yet
+          // Continue to next URL or wait and retry
+          continue;
+        }
+        // Other unexpected errors - log but don't treat as "running"
+        console.log(`[Integration Setup] ${name} connection error: ${error.message}`);
+        continue;
       }
     }
     
@@ -107,10 +125,10 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
       // For OTP Auth Service, verify KV is accessible by testing a health check that uses KV
       if (name === 'OTP Auth Service') {
         // Wait a bit more for KV to be fully initialized
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Try a simple request that would use KV (like /health or /signup)
-        // If it responds (even with 401/404), KV is likely ready
+        // Health endpoint requires JWT, so 401 is expected - verify it's a proper 401 response
         try {
           const kvTestUrl = url.includes('/health') 
             ? url 
@@ -119,31 +137,40 @@ async function waitForService(name: string, url: string, maxAttempts = 90): Prom
             method: 'GET',
             signal: AbortSignal.timeout(5000)
           });
-          // Any response means the service and KV are ready
-          console.log(`[Integration Setup] ✓ ${name} KV is ready (test response: ${kvTestResponse.status})`);
+          // Health endpoint requires JWT, so 401 is expected - verify it's a proper 401 (not connection refused)
+          if (kvTestResponse.status === 401) {
+            const responseText = await kvTestResponse.text();
+            if (responseText.includes('JWT token') || responseText.includes('Unauthorized')) {
+              // Proper 401 means service is running and KV is accessible
+              console.log(`[Integration Setup] ✓ ${name} KV is ready (health check returned 401 - service requires JWT)`);
+              return;
+            }
+          } else if (kvTestResponse.status === 200) {
+            // 200 means service is fully healthy
+            console.log(`[Integration Setup] ✓ ${name} KV is ready (health check returned 200)`);
+            return;
+          }
+          // If we get here, KV test didn't pass - service might not be fully ready
+          console.log(`[Integration Setup] ⚠ ${name} responded but KV test returned unexpected status: ${kvTestResponse.status}`);
+          // Still consider it ready if we got a response (even if unexpected)
           return;
         } catch (kvError: any) {
-          // If KV test fails but service is responding, give it more time
-          if (attempt < maxAttempts - 1) {
-            console.log(`[Integration Setup] ${name} is responding but KV may not be ready yet, waiting...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            serviceResponding = false; // Reset to retry
-            continue;
-          }
+          // KV test failed - service might not be fully ready
+          console.log(`[Integration Setup] ⚠ ${name} KV test failed: ${kvError.message}`);
+          // If we got a response earlier, consider it ready (KV might just need more time)
+          // But log the warning
+          return;
         }
       } else {
-        // For other services, just return once they're responding
+        // For other services, if we got a response, we're done
         return;
       }
     }
     
-    if (attempt < maxAttempts - 1) {
-      if (attempt % 10 === 0) {
-        console.log(`[Integration Setup] Still waiting for ${name}... (attempt ${attempt + 1}/${maxAttempts})`);
-      }
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } else {
-      throw new Error(`[Integration Setup] ✗ ${name} failed to start after ${maxAttempts} attempts`);
+    // Wait before next attempt
+    if (!serviceResponding) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(`[Integration Setup] Still waiting for ${name}... (attempt ${attempt + 1}/${maxAttempts})`);
     }
   }
 }
@@ -210,8 +237,12 @@ function createDevVarsFile(workerDir: string, requiredSecrets: string[]): void {
 
 /**
  * Start a worker process using CI-compatible wrapper script
+ * Returns process and a promise that rejects if build fails
  */
-function startWorker(name: string, workerDir: string, port: number): ReturnType<typeof spawn> {
+function startWorker(name: string, workerDir: string, port: number): {
+  proc: ReturnType<typeof spawn>;
+  buildErrorPromise: Promise<void>;
+} {
   console.log(`[Integration Setup] Starting ${name} on port ${port}...`);
   
   const wrapperScript = resolve(rootDir, 'scripts', 'start-worker-with-health-check.js');
@@ -300,22 +331,106 @@ function startWorker(name: string, workerDir: string, port: number): ReturnType<
     cwd: rootDir,
   });
   
+  // Track build errors and process exit
+  let buildError: Error | null = null;
+  let buildErrorResolve: (() => void) | null = null;
+  let buildErrorReject: ((error: Error) => void) | null = null;
+  const buildErrorPromise = new Promise<void>((resolve, reject) => {
+    buildErrorResolve = resolve;
+    buildErrorReject = reject;
+  });
+  
+  // Collect output to detect build errors
+  let stdoutBuffer = '';
+  let stderrBuffer = '';
+  
   proc.stdout.on('data', (data) => {
     const output = data.toString();
-    if (output.includes('Ready') || output.includes('healthy') || output.includes('error') || output.includes('Error')) {
+    stdoutBuffer += output;
+    
+    // Check for build errors in output
+    if (output.includes('[ERROR]') || 
+        output.includes('Build failed') || 
+        output.includes('X [ERROR]') ||
+        output.match(/Cannot use ["']continue["']/i) ||
+        output.match(/SyntaxError/i) ||
+        output.match(/TypeError/i)) {
+      buildError = new Error(
+        `[Integration Setup] ✗ ${name} build failed!\n` +
+        `Build error detected in output:\n${output}\n` +
+        `Full stdout:\n${stdoutBuffer}\n` +
+        `Full stderr:\n${stderrBuffer}`
+      );
+      if (buildErrorReject) {
+        buildErrorReject(buildError);
+      }
+      return; // Don't process further if build error detected
+    }
+    
+    // If we see "Ready", the build succeeded - resolve the promise
+    if (output.includes('Ready on http://') && buildErrorResolve && !buildError) {
+      buildErrorResolve();
+    }
+    
+    // Always show important output
+    if (output.includes('Ready') || output.includes('healthy') || output.includes('error') || output.includes('Error') || output.includes('[ERROR]')) {
       process.stdout.write(`[${name}] ${output}`);
     }
   });
   
   proc.stderr.on('data', (data) => {
-    process.stderr.write(`[${name}] ${data}`);
+    const output = data.toString();
+    stderrBuffer += output;
+    process.stderr.write(`[${name}] ${output}`);
+    
+    // Check for build errors in stderr
+    if (output.includes('[ERROR]') || 
+        output.includes('Build failed') || 
+        output.includes('X [ERROR]') ||
+        output.match(/Cannot use ["']continue["']/i) ||
+        output.match(/SyntaxError/i) ||
+        output.match(/TypeError/i)) {
+      buildError = new Error(
+        `[Integration Setup] ✗ ${name} build failed!\n` +
+        `Build error detected in stderr:\n${output}\n` +
+        `Full stdout:\n${stdoutBuffer}\n` +
+        `Full stderr:\n${stderrBuffer}`
+      );
+      if (buildErrorReject) {
+        buildErrorReject(buildError);
+      }
+    }
   });
   
   proc.on('error', (error) => {
-    console.error(`[Integration Setup] Failed to start ${name}:`, error);
+    const procError = new Error(
+      `[Integration Setup] ✗ Failed to start ${name} process: ${error.message}\n` +
+      `Full stdout:\n${stdoutBuffer}\n` +
+      `Full stderr:\n${stderrBuffer}`
+    );
+    if (buildErrorReject) {
+      buildErrorReject(procError);
+    }
   });
   
-  return proc;
+  // Monitor process exit - if it exits with non-zero code, it's a failure
+  proc.on('exit', (code, signal) => {
+    // Only fail if process exits early (before health check completes)
+    // If code is non-zero and we haven't seen a "Ready" message, it's a build failure
+    if (code !== 0 && code !== null && !stdoutBuffer.includes('Ready')) {
+      const exitError = new Error(
+        `[Integration Setup] ✗ ${name} process exited with code ${code}${signal ? ` (signal: ${signal})` : ''}\n` +
+        `This usually indicates a build failure.\n` +
+        `Full stdout:\n${stdoutBuffer}\n` +
+        `Full stderr:\n${stderrBuffer}`
+      );
+      if (buildErrorReject && !buildError) {
+        buildErrorReject(exitError);
+      }
+    }
+  });
+  
+  return { proc, buildErrorPromise };
 }
 
 /**
@@ -376,6 +491,8 @@ function cleanup() {
   workersStarted = false;
   otpWorkerProcess = null;
   customerApiProcess = null;
+  otpBuildErrorPromise = null;
+  customerBuildErrorPromise = null;
 }
 
 // Vitest globalSetup export
@@ -416,21 +533,98 @@ export async function setup() {
   
   // Start workers that aren't running
   if (!otpRunning) {
-    otpWorkerProcess = startWorker('OTP Auth Service', 'serverless/otp-auth-service', 8787);
+    const otpWorker = startWorker('OTP Auth Service', 'serverless/otp-auth-service', 8787);
+    otpWorkerProcess = otpWorker.proc;
+    otpBuildErrorPromise = otpWorker.buildErrorPromise;
   }
   
   if (!customerRunning) {
-    customerApiProcess = startWorker('Customer API', 'serverless/customer-api', 8790);
+    const customerWorker = startWorker('Customer API', 'serverless/customer-api', 8790);
+    customerApiProcess = customerWorker.proc;
+    customerBuildErrorPromise = customerWorker.buildErrorPromise;
   }
   
-  // Wait for services to be ready
+  // Monitor for build errors - if build fails, we want to fail fast
   console.log('[Integration Setup] Waiting for wrapper scripts to start workers...');
-  await new Promise(resolve => setTimeout(resolve, 5000)); // Give wrangler time to start
   
-  await Promise.all([
-    otpRunning ? Promise.resolve() : waitForService('OTP Auth Service', `${OTP_AUTH_SERVICE_URL}/health`),
-    customerRunning ? Promise.resolve() : waitForService('Customer API', `${CUSTOMER_API_URL}/customer/by-email/test@example.com`),
-  ]);
+  // Give wrangler time to start (5 seconds), but monitor for build errors during this time
+  // If a build error is detected, it will throw immediately via the promise rejection
+  const startupDelay = new Promise(resolve => setTimeout(resolve, 5000));
+  
+  // Race startup delay against build error promises
+  // If build error occurs, it will reject and throw immediately
+  const buildErrorChecks: Promise<any>[] = [];
+  
+  if (otpBuildErrorPromise) {
+    buildErrorChecks.push(
+      otpBuildErrorPromise.catch((error) => {
+        throw new Error(
+          `[Integration Setup] ✗ OTP Auth Service build failed - tests cannot continue!\n` +
+          `${error.message}\n` +
+          `\nFix the build error before running tests.`
+        );
+      })
+    );
+  }
+  
+  if (customerBuildErrorPromise) {
+    buildErrorChecks.push(
+      customerBuildErrorPromise.catch((error) => {
+        throw new Error(
+          `[Integration Setup] ✗ Customer API build failed - tests cannot continue!\n` +
+          `${error.message}\n` +
+          `\nFix the build error before running tests.`
+        );
+      })
+    );
+  }
+  
+  // Race: if build error occurs, it will reject and throw immediately
+  // Otherwise, wait for startup delay
+  await Promise.race([
+    startupDelay,
+    ...buildErrorChecks
+  ]).catch((error) => {
+    // Build error detected - fail fast
+    throw error;
+  });
+  
+  // Now wait for health checks, but continue monitoring for build errors
+  // If build error occurs during health check, it will still fail fast
+  const healthCheckPromises: Promise<void>[] = [];
+  
+  if (!otpRunning) {
+    healthCheckPromises.push(
+      Promise.race([
+        waitForService('OTP Auth Service', `${OTP_AUTH_SERVICE_URL}/health`),
+        otpBuildErrorPromise?.catch((error) => {
+          throw new Error(
+            `[Integration Setup] ✗ OTP Auth Service build failed during health check!\n` +
+            `${error.message}`
+          );
+        }) || Promise.resolve()
+      ])
+    );
+  }
+  
+  if (!customerRunning) {
+    healthCheckPromises.push(
+      Promise.race([
+        waitForService('Customer API', `${CUSTOMER_API_URL}/customer/by-email/test@example.com`),
+        customerBuildErrorPromise?.catch((error) => {
+          throw new Error(
+            `[Integration Setup] ✗ Customer API build failed during health check!\n` +
+            `${error.message}`
+          );
+        }) || Promise.resolve()
+      ])
+    );
+  }
+  
+  await Promise.all(healthCheckPromises).catch((error) => {
+    // Build error or health check failure - fail fast
+    throw error;
+  });
   
   console.log('[Integration Setup] ✓ All services are ready!');
   

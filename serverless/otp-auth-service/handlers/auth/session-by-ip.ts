@@ -22,10 +22,9 @@ interface Env {
 }
 
 interface JWTPayload {
-    userId?: string;
-    sub?: string;
-    email?: string;
-    customerId?: string | null;
+    sub?: string; // customerId - the ONLY identifier
+    email?: string; // OTP email - used internally only, NOT returned in responses
+    customerId?: string; // MANDATORY - the ONLY identifier
     [key: string]: any;
 }
 
@@ -62,17 +61,18 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
         const jwtSecret = getJWTSecret(env);
         const payload = await verifyJWT(token, jwtSecret) as JWTPayload | null;
         
-        if (!payload || !payload.email) {
+        if (!payload || !payload.customerId) {
             return new Response(JSON.stringify({ 
-                error: 'Invalid or expired token'
+                error: 'Invalid or expired token: missing customer ID'
             }), {
                 status: 401,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
         
-        const customerId = payload.customerId || null;
-        const email = payload.email;
+        // FAIL-FAST: customerId is MANDATORY
+        const customerId = payload.customerId;
+        const email = payload.email; // OTP email - used internally only for admin check
         
         // Check IP rate limit for session lookup endpoint using existing rate limiting service
         const getCustomerFn: GetCustomerFn = (cid: string) => getCustomer(cid, env);
@@ -136,15 +136,15 @@ export async function handleSessionByIP(request: Request, env: Env): Promise<Res
         // Record successful request for usage statistics (FULL SERVICE - same as OTP rate limiting)
         await recordIPRequest(requestIP, customerId, env, true);
         
-        // Format response (exclude sensitive data like tokens)
+        // Format response (exclude sensitive data like tokens and email)
+        // CRITICAL: Do NOT return email - it's the OTP email and is sensitive
         const sessionList = sessions.map(session => ({
-            userId: session.userId,
-            email: session.email,
-            customerId: session.customerId,
+            customerId: session.customerId, // MANDATORY - the ONLY identifier
             expiresAt: session.expiresAt,
             createdAt: session.createdAt,
             // Note: IP address is not included in response for privacy
             // Applications can infer it from the request
+            // CRITICAL: email is NOT included - it's sensitive OTP email data
         }));
         
         return new Response(JSON.stringify({

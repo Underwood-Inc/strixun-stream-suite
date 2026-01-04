@@ -1,6 +1,7 @@
 /**
- * User Preferences Service
- * Manages user privacy preferences, email visibility, and display name settings
+ * Customer Preferences Service
+ * Manages customer privacy preferences, email visibility, and display name settings
+ * CRITICAL: We ONLY use customerId - NO userId
  */
 
 import { getCustomerKey } from './customer.js';
@@ -29,13 +30,13 @@ export interface Env {
 }
 
 /**
- * Default user preferences
+ * Default customer preferences
  */
 export function getDefaultPreferences(): UserPreferences {
   return {
     emailVisibility: 'private', // Default: email is private
     displayName: {
-      current: '',
+      current: '', // Will be set when customer is created
       previousNames: [],
       lastChangedAt: null,
       changeCount: 0,
@@ -48,14 +49,20 @@ export function getDefaultPreferences(): UserPreferences {
 }
 
 /**
- * Get user preferences
+ * Get customer preferences
+ * CRITICAL: We ONLY use customerId - NO userId
  */
 export async function getUserPreferences(
-  userId: string,
-  customerId: string | null,
+  customerId: string, // MANDATORY - use customerId, not userId
+  customerIdForScope: string | null, // For multi-tenant scoping
   env: Env
 ): Promise<UserPreferences> {
-  const preferencesKey = getCustomerKey(customerId, `user_preferences_${userId}`);
+  // FAIL-FAST: customerId is MANDATORY
+  if (!customerId) {
+    throw new Error('Customer ID is MANDATORY for preferences lookup');
+  }
+  
+  const preferencesKey = getCustomerKey(customerIdForScope, `customer_preferences_${customerId}`);
   const stored = await env.OTP_AUTH_KV.get(preferencesKey, { type: 'json' });
 
   if (stored) {
@@ -67,30 +74,37 @@ export async function getUserPreferences(
 }
 
 /**
- * Store user preferences
- * Uses same TTL as user data (1 year) to ensure consistency
+ * Store customer preferences
+ * Uses same TTL as customer data (1 year) to ensure consistency
+ * CRITICAL: We ONLY use customerId - NO userId
  */
 export async function storeUserPreferences(
-  userId: string,
-  customerId: string | null,
+  customerId: string, // MANDATORY - use customerId, not userId
+  customerIdForScope: string | null, // For multi-tenant scoping
   preferences: UserPreferences,
   env: Env
 ): Promise<void> {
-  const preferencesKey = getCustomerKey(customerId, `user_preferences_${userId}`);
-  // Use same TTL as user data (1 year / 31536000 seconds) for consistency
+  // FAIL-FAST: customerId is MANDATORY
+  if (!customerId) {
+    throw new Error('Customer ID is MANDATORY for storing preferences');
+  }
+  
+  const preferencesKey = getCustomerKey(customerIdForScope, `customer_preferences_${customerId}`);
+  // Use same TTL as customer data (1 year / 31536000 seconds) for consistency
   await env.OTP_AUTH_KV.put(preferencesKey, JSON.stringify(preferences), { expirationTtl: 31536000 });
 }
 
 /**
- * Update user preferences (partial update)
+ * Update customer preferences (partial update)
+ * CRITICAL: We ONLY use customerId - NO userId
  */
 export async function updateUserPreferences(
-  userId: string,
-  customerId: string | null,
+  customerId: string, // MANDATORY - use customerId, not userId
+  customerIdForScope: string | null, // For multi-tenant scoping
   updates: Partial<UserPreferences>,
   env: Env
 ): Promise<UserPreferences> {
-  const current = await getUserPreferences(userId, customerId, env);
+  const current = await getUserPreferences(customerId, customerIdForScope, env);
   const updated: UserPreferences = {
     ...current,
     ...updates,
@@ -104,21 +118,22 @@ export async function updateUserPreferences(
     },
   };
 
-  await storeUserPreferences(userId, customerId, updated, env);
+  await storeUserPreferences(customerId, customerIdForScope, updated, env);
   return updated;
 }
 
 /**
  * Add display name to history
+ * CRITICAL: We ONLY use customerId - NO userId
  */
 export async function addDisplayNameToHistory(
-  userId: string,
-  customerId: string | null,
+  customerId: string, // MANDATORY - use customerId, not userId
+  customerIdForScope: string | null, // For multi-tenant scoping
   previousName: string,
   reason: 'auto-generated' | 'user-changed' | 'regenerated',
   env: Env
 ): Promise<void> {
-  const preferences = await getUserPreferences(userId, customerId, env);
+  const preferences = await getUserPreferences(customerId, customerIdForScope, env);
   
   preferences.displayName.previousNames.push({
     name: previousName,
@@ -129,39 +144,40 @@ export async function addDisplayNameToHistory(
   preferences.displayName.changeCount += 1;
   preferences.displayName.lastChangedAt = new Date().toISOString();
 
-  await storeUserPreferences(userId, customerId, preferences, env);
+  await storeUserPreferences(customerId, customerIdForScope, preferences, env);
 }
 
 /**
- * Check if user can change display name (monthly limit)
+ * Check if customer can change display name (monthly limit)
+ * CRITICAL: We ONLY use customerId - NO userId
  * 
  * CRITICAL: Auto-generated names should NOT count toward the monthly limit.
  * If lastChangedAt is set but the only change was auto-generated, allow the change.
  */
 export async function canChangeDisplayName(
-  userId: string,
-  customerId: string | null,
+  customerId: string, // MANDATORY - use customerId, not userId
+  customerIdForScope: string | null, // For multi-tenant scoping
   env: Env
 ): Promise<{ allowed: boolean; reason?: string; nextChangeDate?: string }> {
-  const preferences = await getUserPreferences(userId, customerId, env);
+  const preferences = await getUserPreferences(customerId, customerIdForScope, env);
 
-  // If lastChangedAt is null, user can always change (new account or never changed)
+  // If lastChangedAt is null, customer can always change (new account or never changed)
   if (!preferences.displayName.lastChangedAt) {
     return { allowed: true };
   }
 
   // Check if the only name change was auto-generated
-  // If all previous names are 'auto-generated', this shouldn't count as a user change
-  const userChanges = preferences.displayName.previousNames.filter(
+  // If all previous names are 'auto-generated', this shouldn't count as a customer change
+  const customerChanges = preferences.displayName.previousNames.filter(
     entry => entry.reason !== 'auto-generated'
   );
   
-  // If there are no user-initiated changes, allow the change
+  // If there are no customer-initiated changes, allow the change
   // This handles the case where lastChangedAt was incorrectly set during account creation
-  if (userChanges.length === 0) {
+  if (customerChanges.length === 0) {
     // Reset lastChangedAt to null since it was incorrectly set
     preferences.displayName.lastChangedAt = null;
-    await storeUserPreferences(userId, customerId, preferences, env);
+    await storeUserPreferences(customerId, customerIdForScope, preferences, env);
     return { allowed: true };
   }
 
@@ -184,15 +200,16 @@ export async function canChangeDisplayName(
 
 /**
  * Update display name with history tracking
+ * CRITICAL: We ONLY use customerId - NO userId
  */
 export async function updateDisplayName(
-  userId: string,
-  customerId: string | null,
+  customerId: string, // MANDATORY - use customerId, not userId
+  customerIdForScope: string | null, // For multi-tenant scoping
   newDisplayName: string,
   reason: 'user-changed' | 'regenerated',
   env: Env
 ): Promise<{ success: boolean; error?: string }> {
-  const canChange = await canChangeDisplayName(userId, customerId, env);
+  const canChange = await canChangeDisplayName(customerId, customerIdForScope, env);
   if (!canChange.allowed) {
     return {
       success: false,
@@ -200,19 +217,19 @@ export async function updateDisplayName(
     };
   }
 
-  const preferences = await getUserPreferences(userId, customerId, env);
+  const preferences = await getUserPreferences(customerId, customerIdForScope, env);
   const previousName = preferences.displayName.current;
 
   // Add previous name to history if it exists
   if (previousName) {
-    await addDisplayNameToHistory(userId, customerId, previousName, reason, env);
+    await addDisplayNameToHistory(customerId, customerIdForScope, previousName, reason, env);
   }
 
   // Update current display name
   preferences.displayName.current = newDisplayName;
   preferences.displayName.lastChangedAt = new Date().toISOString();
 
-  await storeUserPreferences(userId, customerId, preferences, env);
+  await storeUserPreferences(customerId, customerIdForScope, preferences, env);
 
   return { success: true };
 }

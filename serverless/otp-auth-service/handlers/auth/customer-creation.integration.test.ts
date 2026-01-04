@@ -12,9 +12,10 @@
  *   2. Run tests: pnpm test:integration
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ensureCustomerAccount } from './customer-creation.js';
 import { loadTestConfig } from '../../utils/test-config-loader.js';
+import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
 
 // Determine environment from NODE_ENV or TEST_ENV
 const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev' | 'prod';
@@ -190,6 +191,13 @@ describe(`ensureCustomerAccount - Integration Tests (Local Workers Only) [${test
         ensureCustomerAccount('test@example.com', null, invalidEnv)
       ).rejects.toThrow();
     }, 30000); // Allow time for retry logic (3 attempts with backoff)
+  });
+
+  afterAll(async () => {
+    // Cleanup: Clear local KV storage to ensure test isolation
+    await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
+    await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace
+    console.log('[Customer Creation Integration Tests] ✓ KV cleanup completed');
   });
 });
 
