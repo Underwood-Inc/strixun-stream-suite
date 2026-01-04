@@ -357,7 +357,7 @@ function animateHoverReset(
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
     
-    // Ease-out for smooth deceleration
+    // Ease-out for smooth deceleration (cubic ease-out)
     const eased = 1 - Math.pow(1 - progress, 3);
     
     const currentHoverX = startHoverX * (1 - eased);
@@ -381,6 +381,12 @@ function animateHoverReset(
   };
 }
 
+// Smooth interpolation function using the same easing curve
+// Returns a value between start and target based on progress (0-1)
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef }: InteractiveThumbnailProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -396,6 +402,9 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
   const animationCancelRef = useRef<(() => void) | null>(null);
   const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hoverResetCancelRef = useRef<(() => void) | null>(null);
+  const hoverTrackingCancelRef = useRef<(() => void) | null>(null);
+  const targetHoverXRef = useRef(0);
+  const targetHoverYRef = useRef(0);
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
   const hasMovedRef = useRef(false);
   
@@ -591,9 +600,65 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
       if (hoverResetCancelRef.current) {
         hoverResetCancelRef.current();
       }
+      if (hoverTrackingCancelRef.current) {
+        hoverTrackingCancelRef.current();
+      }
     };
   }, []);
 
+
+  // Smooth hover tracking animation loop
+  const startHoverTracking = useCallback(() => {
+    // Cancel any existing tracking animation
+    if (hoverTrackingCancelRef.current) {
+      hoverTrackingCancelRef.current();
+      hoverTrackingCancelRef.current = null;
+    }
+
+    let isRunning = true;
+    let animationFrameId: number;
+    // Interpolation factor - creates smooth exponential easing (similar to ease-out cubic)
+    // Lower values = slower/smoother, higher values = faster/snappier
+    const lerpFactor = 0.15;
+
+    const animate = () => {
+      if (!isRunning || isFlippedRef.current || isAnimating || isDragging || !cardRef.current) {
+        hoverTrackingCancelRef.current = null;
+        return;
+      }
+
+      // Calculate difference from current to target
+      const diffX = targetHoverXRef.current - hoverRotateXRef.current;
+      const diffY = targetHoverYRef.current - hoverRotateYRef.current;
+
+      // Check if we're close enough to target
+      if (Math.abs(diffX) < 0.1 && Math.abs(diffY) < 0.1) {
+        // Close enough, snap to target
+        hoverRotateXRef.current = targetHoverXRef.current;
+        hoverRotateYRef.current = targetHoverYRef.current;
+        updateTransform(rotateXRef.current, rotateYRef.current, 0, targetHoverXRef.current, targetHoverYRef.current);
+        hoverTrackingCancelRef.current = null;
+        return;
+      }
+
+      // Smoothly interpolate towards target using exponential interpolation
+      // This creates a smooth following effect that matches the reset animation feel
+      hoverRotateXRef.current += diffX * lerpFactor;
+      hoverRotateYRef.current += diffY * lerpFactor;
+      
+      updateTransform(rotateXRef.current, rotateYRef.current, 0, hoverRotateXRef.current, hoverRotateYRef.current);
+      
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+    hoverTrackingCancelRef.current = () => {
+      isRunning = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isAnimating, isDragging, updateTransform]);
 
   const handleThumbnailMouseMove = useCallback((e: MouseEvent | React.MouseEvent) => {
     // Only apply hover tilt when NOT flipped, NOT animating, NOT dragging
@@ -625,11 +690,18 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
     const y = ((clientY - rect.top) / rect.height) * 2 - 1; // -1 to 1
     
     const maxRot = 28;
-    const hoverX = y * maxRot * -1;
-    const hoverY = x * maxRot;
+    const targetHoverX = y * maxRot * -1;
+    const targetHoverY = x * maxRot;
     
-    updateTransform(rotateXRef.current, rotateYRef.current, 0, hoverX, hoverY);
-  }, [isAnimating, isDragging, updateTransform, getWatchedElement]);
+    // Update target values
+    targetHoverXRef.current = targetHoverX;
+    targetHoverYRef.current = targetHoverY;
+    
+    // Start smooth tracking animation if not already running
+    if (!hoverTrackingCancelRef.current) {
+      startHoverTracking();
+    }
+  }, [isAnimating, isDragging, getWatchedElement, startHoverTracking]);
 
   const handleThumbnailMouseLeave = useCallback(() => {
     // Only reset hover tilt when NOT flipped

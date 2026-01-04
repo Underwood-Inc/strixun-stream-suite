@@ -404,7 +404,7 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
                 if (createData.apiKey && typeof createData.apiKey === 'string') {
                   apiKey1 = createData.apiKey;
                   keyId1 = createData.keyId;
-                  console.log(`[API Key Tests] Created new API key for testing: ${apiKey1.substring(0, 20)}...`);
+                  console.log('[API Key Tests] Created new API key for testing: ' + apiKey1.substring(0, 20) + '...');
                 }
               } else {
                 const errorText = await createResponse.text();
