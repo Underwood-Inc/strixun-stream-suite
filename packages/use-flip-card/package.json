@@ -1,0 +1,38 @@
+{
+  "name": "@strixun/use-flip-card",
+  "version": "1.0.0",
+  "description": "React hook combining 3D transforms, cursor tracking, and flip animations for interactive cards",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "files": [
+    "*.ts",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "@strixun/animation-utils": "workspace:*",
+    "@strixun/use-3d-transform": "workspace:*",
+    "@strixun/use-cursor-tracking": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
+  }
+}

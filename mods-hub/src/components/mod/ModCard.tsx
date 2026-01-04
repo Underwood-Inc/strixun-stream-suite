@@ -178,13 +178,17 @@ const ZoomButton = styled.button`
   justify-content: center;
   gap: ${spacing.xs};
   
-  &:hover {
+  &:hover:not(:disabled) {
     background: ${colors.accentHover};
-    transform: translateY(-1px);
+    border-color: ${colors.accentActive};
+    box-shadow: 0 6px 0 ${colors.accentActive};
+    color: #000;
+    transform: translateY(-2px);
   }
   
-  &:active {
-    transform: translateY(0);
+  &:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 ${colors.accentActive};
   }
 `;
 

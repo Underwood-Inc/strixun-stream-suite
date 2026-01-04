@@ -689,7 +689,7 @@ export function R2ManagementPage() {
             : null;
 
         return (
-            <FileItem key={file.key}>
+            <FileItem>
                 {showCheckbox && (
                     <Checkbox
                         type="checkbox"
@@ -878,7 +878,11 @@ export function R2ManagementPage() {
                     </div>
                 </SelectionBar>
                 <FileList>
-                    {files.map((file) => renderFileItem(file, true, false))}
+                    {files.map((file) => (
+                        <div key={file.key}>
+                            {renderFileItem(file, true, false)}
+                        </div>
+                    ))}
                 </FileList>
             </>
         );
@@ -1048,7 +1052,11 @@ export function R2ManagementPage() {
                     </div>
                 </SelectionBar>
                 <FileList>
-                    {files.map((file) => renderFileItem(file, true, false))}
+                    {files.map((file) => (
+                        <div key={file.key}>
+                            {renderFileItem(file, true, false)}
+                        </div>
+                    ))}
                 </FileList>
             </>
         );

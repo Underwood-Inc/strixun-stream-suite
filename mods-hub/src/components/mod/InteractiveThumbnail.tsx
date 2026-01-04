@@ -633,10 +633,11 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
 
       // Check if we're close enough to target
       if (Math.abs(diffX) < 0.1 && Math.abs(diffY) < 0.1) {
-        // Close enough, snap to target
+        // Close enough, snap to target and ensure final state
         hoverRotateXRef.current = targetHoverXRef.current;
         hoverRotateYRef.current = targetHoverYRef.current;
         updateTransform(rotateXRef.current, rotateYRef.current, 0, targetHoverXRef.current, targetHoverYRef.current);
+        // Clean up the cancel ref to indicate animation is complete
         hoverTrackingCancelRef.current = null;
         return;
       }
@@ -719,7 +720,18 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
       // Cancel any existing hover reset animation
       if (hoverResetCancelRef.current) {
         hoverResetCancelRef.current();
+        hoverResetCancelRef.current = null;
       }
+      
+      // CRITICAL: Cancel hover tracking animation to prevent it from interfering
+      if (hoverTrackingCancelRef.current) {
+        hoverTrackingCancelRef.current();
+        hoverTrackingCancelRef.current = null;
+      }
+      
+      // CRITICAL: Reset target values to 0 to prevent tracking from resuming with old values
+      targetHoverXRef.current = 0;
+      targetHoverYRef.current = 0;
       
       // Get current hover values to animate from
       const startHoverX = hoverRotateXRef.current;
@@ -729,6 +741,8 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
       if (Math.abs(startHoverX) < 0.1 && Math.abs(startHoverY) < 0.1) {
         hoverRotateXRef.current = 0;
         hoverRotateYRef.current = 0;
+        // Ensure final transform is applied
+        updateTransform(rotateXRef.current, rotateYRef.current, 0, 0, 0);
         leaveTimeoutRef.current = null;
         return;
       }
@@ -748,8 +762,13 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
           updateTransform(rotateXRef.current, rotateYRef.current, 0, currentHoverX, currentHoverY);
         },
         () => {
+          // CRITICAL: Ensure final state is properly set and refs are cleaned up
           hoverRotateXRef.current = 0;
           hoverRotateYRef.current = 0;
+          targetHoverXRef.current = 0;
+          targetHoverYRef.current = 0;
+          // Apply final transform to ensure we're at rest position
+          updateTransform(rotateXRef.current, rotateYRef.current, 0, 0, 0);
           hoverResetCancelRef.current = null;
         }
       );
