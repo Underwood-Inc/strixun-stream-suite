@@ -4,7 +4,7 @@
  * Reusable component used in both "My Mods" and "Browse Mods" pages
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
@@ -32,13 +32,15 @@ const CardContainer = styled.div`
 
 const Card = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: ${spacing.md};
   width: 100%;
+  align-items: flex-start;
 `;
 
 const ThumbnailWrapper = styled.div`
-  width: 100%;
+  width: 150px;
+  min-width: 150px;
   aspect-ratio: 1;
   overflow: visible;
   border-radius: 4px;
@@ -47,31 +49,23 @@ const ThumbnailWrapper = styled.div`
   z-index: 1;
 `;
 
+const ThumbnailSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${spacing.sm};
+  flex-shrink: 0;
+`;
+
 const CardContent = styled(Link)`
   display: flex;
   flex-direction: column;
   gap: ${spacing.sm};
   flex: 1;
   min-height: 0;
-  max-height: 200px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-width: 0;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${colors.border};
-    border-radius: 2px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
   
   &:hover {
     text-decoration: none;
@@ -97,6 +91,8 @@ const Description = styled.p`
   font-size: 0.875rem;
   line-height: 1.6;
   margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 `;
 
 const Meta = styled.div`
@@ -181,7 +177,6 @@ const ZoomButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: ${spacing.xs};
-  margin-top: ${spacing.sm};
   
   &:hover {
     background: ${colors.accentHover};
@@ -267,6 +262,7 @@ interface ModCardProps {
 
 export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
     const [isZoomed, setIsZoomed] = useState(false);
+    const cardContainerRef = useRef<HTMLDivElement>(null);
 
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -315,34 +311,37 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
 
     return (
         <>
-            <CardContainer>
+            <CardContainer ref={cardContainerRef}>
                 {showDelete && onDelete && (
                     <DeleteButton onClick={handleDeleteClick} title="Delete mod">
                         Delete
                     </DeleteButton>
                 )}
                 <Card>
-                    <ThumbnailWrapper
-                        key="thumbnail"
-                        onClick={(e) => {
-                            // Stop click propagation so thumbnail clicks don't trigger card navigation
-                            e.stopPropagation();
-                        }}
-                    >
-                        <InteractiveThumbnail 
-                            mod={mod}
-                            onError={handleThumbnailError}
-                            onNavigate={() => {
-                                // Navigation disabled - use View Mod link instead
+                    <ThumbnailSection>
+                        <ThumbnailWrapper
+                            key="thumbnail"
+                            onClick={(e) => {
+                                // Stop click propagation so thumbnail clicks don't trigger card navigation
+                                e.stopPropagation();
                             }}
-                        />
-                    </ThumbnailWrapper>
-                    <ZoomButton
-                        onClick={handleZoom}
-                        title="View in fullscreen"
-                    >
-                        🔍 Zoom
-                    </ZoomButton>
+                        >
+                            <InteractiveThumbnail 
+                                mod={mod}
+                                onError={handleThumbnailError}
+                                onNavigate={() => {
+                                    // Navigation disabled - use View Mod link instead
+                                }}
+                                watchElementRef={cardContainerRef}
+                            />
+                        </ThumbnailWrapper>
+                        <ZoomButton
+                            onClick={handleZoom}
+                            title="View in fullscreen"
+                        >
+                            • ZOOM
+                        </ZoomButton>
+                    </ThumbnailSection>
                     <CardContent key="content" to={`/${mod.slug}`}>
                         <CardLink>
                             <Title>{mod.title}</Title>

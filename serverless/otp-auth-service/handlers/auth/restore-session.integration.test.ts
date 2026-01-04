@@ -22,7 +22,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
-import { loadTestConfig } from '../../utils/test-config-loader.js';
+import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
+import type { UnstableDevWorker } from 'wrangler';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -69,54 +70,31 @@ function loadE2ETestOTPCode(): string | null {
   return null;
 }
 
-const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev' | 'prod';
-const config = loadTestConfig(testEnv);
-
-const CUSTOMER_API_URL = config.customerApiUrl;
-const OTP_AUTH_SERVICE_URL = config.otpAuthServiceUrl;
 const otpCode = loadE2ETestOTPCode();
 
 const testEmail = `restore-test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 
-describe(`Session Restoration - Integration Tests (Local Workers Only) [${testEnv}]`, () => {
+describe('Session Restoration - Integration Tests (Miniflare)', () => {
+  let otpAuthService: UnstableDevWorker;
+  let customerAPI: UnstableDevWorker;
+  let cleanup: () => Promise<void>;
   let jwtToken: string | null = null;
   let customerId: string | null = null;
 
   beforeAll(async () => {
-    // Verify services are running
-    let otpReady = false;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      try {
-        const healthCheck = await fetch(`${OTP_AUTH_SERVICE_URL}/health`);
-        otpReady = true;
-        break;
-      } catch (error) {
-        if (attempt < 29) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    }
+    // OLD WAY (removed):
+    // - Health check polling
+    // - Process management complexity
     
-    if (!otpReady) {
-      throw new Error('OTP Auth Service is not running at ' + OTP_AUTH_SERVICE_URL);
-    }
-
-    let customerApiReady = false;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      try {
-        const healthCheck = await fetch(`${CUSTOMER_API_URL}/customer/by-email/test@example.com`);
-        customerApiReady = true;
-        break;
-      } catch (error) {
-        if (attempt < 29) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    }
+    // NEW WAY (Miniflare):
+    // - Workers start immediately (2-5 seconds)
+    // - No health checks needed
+    // - No process management
     
-    if (!customerApiReady) {
-      throw new Error('Customer API is not running at ' + CUSTOMER_API_URL);
-    }
+    const setup = await createMultiWorkerSetup();
+    otpAuthService = setup.otpAuthService;
+    customerAPI = setup.customerAPI;
+    cleanup = setup.cleanup;
 
     // Setup: Create account and get JWT token
     if (!otpCode) {
@@ -124,7 +102,7 @@ describe(`Session Restoration - Integration Tests (Local Workers Only) [${testEn
     }
 
     // Request OTP
-    const requestResponse = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/request-otp`, {
+    const requestResponse = await otpAuthService.fetch('http://example.com/auth/request-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: testEmail }),
@@ -132,7 +110,7 @@ describe(`Session Restoration - Integration Tests (Local Workers Only) [${testEn
     expect(requestResponse.status).toBe(200);
 
     // Verify OTP
-    const verifyResponse = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/verify-otp`, {
+    const verifyResponse = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: testEmail, otp: otpCode }),
@@ -149,7 +127,7 @@ describe(`Session Restoration - Integration Tests (Local Workers Only) [${testEn
 
   describe('POST /auth/restore-session - IP-based restoration', () => {
     it('should restore session from IP address', async () => {
-      const response = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/restore-session`, {
+      const response = await otpAuthService.fetch('http://example.com/auth/restore-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -199,9 +177,9 @@ describe(`Session Restoration - Integration Tests (Local Workers Only) [${testEn
 
       const { getCustomerService } = await import('../../utils/customer-api-service-client.js');
       const mockEnv = {
-        CUSTOMER_API_URL,
+        CUSTOMER_API_URL: 'http://localhost:8790', // Miniflare worker URL
         NETWORK_INTEGRITY_KEYPHRASE: process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests',
-        SUPER_ADMIN_API_KEY: config.superAdminApiKey,
+        SUPER_ADMIN_API_KEY: process.env.SUPER_ADMIN_API_KEY || 'test-super-admin-key',
       };
       
       const customer = await getCustomerService(customerId, mockEnv);
@@ -213,6 +191,9 @@ describe(`Session Restoration - Integration Tests (Local Workers Only) [${testEn
   });
 
   afterAll(async () => {
+    if (cleanup) {
+      await cleanup();
+    }
     // Cleanup: Clear local KV storage to ensure test isolation
     await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
     await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace

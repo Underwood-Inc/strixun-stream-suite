@@ -280,6 +280,12 @@ interface InteractiveThumbnailProps {
   mod: ModMetadata;
   onError?: () => void;
   onNavigate?: () => void;
+  /**
+   * Optional ref to an element that should be watched for cursor tracking.
+   * If provided, the thumbnail will react to mouse movement over this element.
+   * If not provided, it will default to watching the thumbnail wrapper itself.
+   */
+  watchElementRef?: React.RefObject<HTMLElement>;
 }
 
 // JavaScript animation using requestAnimationFrame
@@ -325,7 +331,57 @@ function animateFlip(
   };
 }
 
-export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveThumbnailProps) {
+// JavaScript animation for smoothly returning hover tilt to resting position
+function animateHoverReset(
+  cardRef: React.RefObject<HTMLDivElement>,
+  startHoverX: number,
+  startHoverY: number,
+  rotateX: number,
+  rotateY: number,
+  flipY: number,
+  duration: number,
+  onUpdate: (hoverX: number, hoverY: number) => void,
+  onComplete?: () => void
+) {
+  const startTime = performance.now();
+  let animationFrameId: number;
+
+  const animate = (currentTime: number) => {
+    if (!cardRef.current) {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      return;
+    }
+
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Ease-out for smooth deceleration
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    const currentHoverX = startHoverX * (1 - eased);
+    const currentHoverY = startHoverY * (1 - eased);
+    
+    onUpdate(currentHoverX, currentHoverY);
+    
+    if (progress < 1) {
+      animationFrameId = requestAnimationFrame(animate);
+    } else {
+      if (onComplete) onComplete();
+    }
+  };
+  
+  animationFrameId = requestAnimationFrame(animate);
+  
+  return () => {
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+    }
+  };
+}
+
+export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef }: InteractiveThumbnailProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -339,8 +395,14 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
   const dragStartRef = useRef<{ x: number; y: number; rotateX: number; rotateY: number } | null>(null);
   const animationCancelRef = useRef<(() => void) | null>(null);
   const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverResetCancelRef = useRef<(() => void) | null>(null);
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
   const hasMovedRef = useRef(false);
+  
+  // Use the watched element ref if provided, otherwise fall back to wrapperRef
+  const getWatchedElement = useCallback((): HTMLElement | null => {
+    return watchElementRef?.current || wrapperRef.current;
+  }, [watchElementRef]);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -526,14 +588,18 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
       if (animationCancelRef.current) {
         animationCancelRef.current();
       }
+      if (hoverResetCancelRef.current) {
+        hoverResetCancelRef.current();
+      }
     };
   }, []);
 
 
-  const handleThumbnailMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleThumbnailMouseMove = useCallback((e: MouseEvent | React.MouseEvent) => {
     // Only apply hover tilt when NOT flipped, NOT animating, NOT dragging
     // Use ref to check current state to avoid stale closures
-    if (isFlippedRef.current || isAnimating || isDragging || !wrapperRef.current) return;
+    const watchedElement = getWatchedElement();
+    if (isFlippedRef.current || isAnimating || isDragging || !watchedElement) return;
     
     // Double-check animation state - if animation is running, don't update
     if (animationCancelRef.current) return;
@@ -544,16 +610,26 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
       leaveTimeoutRef.current = null;
     }
     
-    const rect = wrapperRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1; // -1 to 1
-    const y = ((e.clientY - rect.top) / rect.height) * 2 - 1; // -1 to 1
+    // Cancel any ongoing hover reset animation
+    if (hoverResetCancelRef.current) {
+      hoverResetCancelRef.current();
+      hoverResetCancelRef.current = null;
+    }
+    
+    // Get clientX/clientY - both MouseEvent and React.MouseEvent have these properties
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    
+    const rect = watchedElement.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1; // -1 to 1
+    const y = ((clientY - rect.top) / rect.height) * 2 - 1; // -1 to 1
     
     const maxRot = 28;
     const hoverX = y * maxRot * -1;
     const hoverY = x * maxRot;
     
     updateTransform(rotateXRef.current, rotateYRef.current, 0, hoverX, hoverY);
-  }, [isAnimating, isDragging, updateTransform]);
+  }, [isAnimating, isDragging, updateTransform, getWatchedElement]);
 
   const handleThumbnailMouseLeave = useCallback(() => {
     // Only reset hover tilt when NOT flipped
@@ -563,16 +639,74 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
     // Clear any existing timeout
     if (leaveTimeoutRef.current) {
       clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
     }
     
-    // Debounce the reset - wait before reverting to default state
+    // Debounce before starting animation - wait a bit to see if mouse comes back
     leaveTimeoutRef.current = setTimeout(() => {
-      hoverRotateXRef.current = 0;
-      hoverRotateYRef.current = 0;
-      updateTransform(rotateXRef.current, rotateYRef.current, 0, 0, 0);
+      // Cancel any existing hover reset animation
+      if (hoverResetCancelRef.current) {
+        hoverResetCancelRef.current();
+      }
+      
+      // Get current hover values to animate from
+      const startHoverX = hoverRotateXRef.current;
+      const startHoverY = hoverRotateYRef.current;
+      
+      // If already at rest, no need to animate
+      if (Math.abs(startHoverX) < 0.1 && Math.abs(startHoverY) < 0.1) {
+        hoverRotateXRef.current = 0;
+        hoverRotateYRef.current = 0;
+        leaveTimeoutRef.current = null;
+        return;
+      }
+      
+      // Animate smoothly back to resting position
+      hoverResetCancelRef.current = animateHoverReset(
+        cardRef,
+        startHoverX,
+        startHoverY,
+        rotateXRef.current,
+        rotateYRef.current,
+        0,
+        400, // 400ms animation duration
+        (currentHoverX, currentHoverY) => {
+          hoverRotateXRef.current = currentHoverX;
+          hoverRotateYRef.current = currentHoverY;
+          updateTransform(rotateXRef.current, rotateYRef.current, 0, currentHoverX, currentHoverY);
+        },
+        () => {
+          hoverRotateXRef.current = 0;
+          hoverRotateYRef.current = 0;
+          hoverResetCancelRef.current = null;
+        }
+      );
+      
       leaveTimeoutRef.current = null;
-    }, 250);
+    }, 100); // 100ms debounce before starting animation
   }, [updateTransform]);
+  
+  // Attach mouse event listeners to the watched element if provided
+  useEffect(() => {
+    const watchedElement = watchElementRef?.current;
+    if (!watchedElement) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      handleThumbnailMouseMove(e);
+    };
+    
+    const handleMouseLeave = () => {
+      handleThumbnailMouseLeave();
+    };
+    
+    watchedElement.addEventListener('mousemove', handleMouseMove);
+    watchedElement.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      watchedElement.removeEventListener('mousemove', handleMouseMove);
+      watchedElement.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [watchElementRef, handleThumbnailMouseMove, handleThumbnailMouseLeave]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -601,8 +735,8 @@ export function InteractiveThumbnail({ mod, onError, onNavigate }: InteractiveTh
           <CardFace>
             <ThumbnailWrapper
               ref={wrapperRef}
-              onMouseMove={handleThumbnailMouseMove}
-              onMouseLeave={handleThumbnailMouseLeave}
+              onMouseMove={watchElementRef ? undefined : handleThumbnailMouseMove}
+              onMouseLeave={watchElementRef ? undefined : handleThumbnailMouseLeave}
             >
               {!isFlipped && <ShimmerContainer />}
               {mod.thumbnailUrl ? (

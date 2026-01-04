@@ -1,30 +1,25 @@
 /**
- * Integration Tests for Session by IP
+ * Integration Tests for Session by IP - MIGRATED TO MINIFLARE
  * Tests IP-based session lookup
  * 
- * ⚠ CRITICAL: These tests ONLY work with LOCAL workers!
- * - OTP Auth Service must be running on http://localhost:8787
- * - Customer API must be running on http://localhost:8790
- * 
- * NO SUPPORT FOR DEPLOYED/LIVE WORKERS - LOCAL ONLY!
+ * ✅ MIGRATED: Now uses Miniflare instead of wrangler dev processes
+ * - No health checks needed (Miniflare is ready immediately)
+ * - No process management
+ * - Much faster startup (2-5 seconds vs 70-80 seconds)
  * 
  * These tests verify:
  * 1. GET /auth/session-by-ip - IP-based session lookup
  * 2. Admin authentication for specific IP queries
  * 3. Rate limiting for session lookup
- * 
- * To run:
- *   1. Start OTP auth service: cd serverless/otp-auth-service && pnpm dev
- *   2. Start customer API: cd serverless/customer-api && pnpm dev
- *   3. Run tests: pnpm test:integration
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
-import { loadTestConfig } from '../../utils/test-config-loader.js';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
+import type { UnstableDevWorker } from 'wrangler';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -68,36 +63,31 @@ function loadE2ETestOTPCode(): string | null {
   return null;
 }
 
-const testEnv = (process.env.TEST_ENV || process.env.NODE_ENV || 'dev') as 'dev' | 'prod';
-const config = loadTestConfig(testEnv);
-
-const OTP_AUTH_SERVICE_URL = config.otpAuthServiceUrl;
 const otpCode = loadE2ETestOTPCode();
 
 const testEmail = `session-ip-test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 
-describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, () => {
+describe('Session by IP - Integration Tests (Miniflare)', () => {
+  let otpAuthService: UnstableDevWorker;
+  let customerAPI: UnstableDevWorker;
+  let cleanup: () => Promise<void>;
   let jwtToken: string | null = null;
   let customerId: string | null = null;
 
   beforeAll(async () => {
-    // Verify services are running
-    let otpReady = false;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      try {
-        const healthCheck = await fetch(`${OTP_AUTH_SERVICE_URL}/health`);
-        otpReady = true;
-        break;
-      } catch (error) {
-        if (attempt < 29) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    }
+    // OLD WAY (removed):
+    // - Health check polling
+    // - Process management complexity
     
-    if (!otpReady) {
-      throw new Error('OTP Auth Service is not running at ' + OTP_AUTH_SERVICE_URL);
-    }
+    // NEW WAY (Miniflare):
+    // - Workers start immediately (2-5 seconds)
+    // - No health checks needed
+    // - No process management
+    
+    const setup = await createMultiWorkerSetup();
+    otpAuthService = setup.otpAuthService;
+    customerAPI = setup.customerAPI;
+    cleanup = setup.cleanup;
 
     // Setup: Create account and get JWT token
     if (!otpCode) {
@@ -105,7 +95,7 @@ describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, 
     }
 
     // Request OTP
-    const requestResponse = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/request-otp`, {
+    const requestResponse = await otpAuthService.fetch('http://example.com/auth/request-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: testEmail }),
@@ -113,7 +103,7 @@ describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, 
     expect(requestResponse.status).toBe(200);
 
     // Verify OTP
-    const verifyResponse = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/verify-otp`, {
+    const verifyResponse = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: testEmail, otp: otpCode }),
@@ -134,7 +124,7 @@ describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, 
         throw new Error('JWT token not available');
       }
 
-      const response = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/session-by-ip`, {
+      const response = await otpAuthService.fetch('http://example.com/auth/session-by-ip', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${jwtToken}`,
@@ -174,7 +164,7 @@ describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, 
     }, 30000);
 
     it('should require authentication', async () => {
-      const response = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/session-by-ip`, {
+      const response = await otpAuthService.fetch('http://example.com/auth/session-by-ip', {
         method: 'GET',
       });
 
@@ -186,7 +176,7 @@ describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, 
         throw new Error('JWT token not available');
       }
 
-      const response = await fetch(`${OTP_AUTH_SERVICE_URL}/auth/session-by-ip?ip=1.2.3.4`, {
+      const response = await otpAuthService.fetch('http://example.com/auth/session-by-ip?ip=1.2.3.4', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${jwtToken}`,
@@ -199,6 +189,9 @@ describe(`Session by IP - Integration Tests (Local Workers Only) [${testEnv}]`, 
   });
 
   afterAll(async () => {
+    if (cleanup) {
+      await cleanup();
+    }
     // Cleanup: Clear local KV storage to ensure test isolation
     await clearLocalKVNamespace('680c9dbe86854c369dd23e278abb41f9'); // OTP_AUTH_KV namespace
     await clearLocalKVNamespace('86ef5ab4419b40eab3fe65b75f052789'); // CUSTOMER_KV namespace

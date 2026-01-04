@@ -37,6 +37,7 @@ export default defineConfig({
     environment: 'node', // Use node environment - Miniflare tests run in Node.js
     include: [
       '**/*.test.{js,ts}',
+      '**/*.integration.test.{js,ts}', // Explicitly include integration tests
       '../shared/**/*.test.{js,ts}', // Include shared encryption tests
     ],
     exclude: [

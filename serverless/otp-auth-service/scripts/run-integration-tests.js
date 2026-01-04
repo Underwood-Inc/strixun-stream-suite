@@ -106,10 +106,11 @@ async function waitForService(name, url, maxAttempts = 5, delay = 1000) {
         console.log(`[Integration Tests] ⚠ ${name} is responding but returned status ${response.status}`);
         return true;
       }
-    } catch (error: any) {
+    } catch (error) {
       // Fetch failed - service is NOT running
       // Do NOT treat this as "service is running" - it's a connection failure
-      if (error.name === 'AbortError' || error.code === 'ECONNREFUSED' || error.message?.includes('fetch failed')) {
+      const errorMessage = error?.message || String(error);
+      if (error?.name === 'AbortError' || error?.code === 'ECONNREFUSED' || errorMessage.includes('fetch failed')) {
         // Connection refused or timeout - service not ready yet
         // Wait and retry
         if (i < maxAttempts - 1) {
@@ -119,13 +120,14 @@ async function waitForService(name, url, maxAttempts = 5, delay = 1000) {
         }
       }
       // Other unexpected errors - log but don't treat as "running"
-      console.log(`[Integration Tests] ${name} connection error: ${error.message}`);
+      const errorMsg = error?.message || String(error);
+      console.log(`[Integration Tests] ${name} connection error: ${errorMsg}`);
       if (i < maxAttempts - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
       // If we get here, we've exhausted retries
-      throw new Error(`Failed to connect to ${name} at ${url} after ${maxAttempts} attempts: ${error.message}`);
+      throw new Error(`Failed to connect to ${name} at ${url} after ${maxAttempts} attempts: ${errorMsg}`);
     }
   }
   return false;
