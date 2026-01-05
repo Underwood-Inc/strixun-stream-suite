@@ -20,7 +20,7 @@ import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
 import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
 import type { UnstableDevWorker } from 'wrangler';
 
-import { assertE2ETestOTPCode } from '../../../shared/test-helpers/otp-code-loader.js';
+import { assertE2ETestOTPCode, loadE2ETestOTPCode } from '../../shared/test-helpers/otp-code-loader.js';
 
 // ⚠ Check for required E2E_TEST_OTP_CODE before any tests run (skip if missing)
 const E2E_OTP_CODE = assertE2ETestOTPCode();
