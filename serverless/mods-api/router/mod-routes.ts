@@ -330,7 +330,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         // CRITICAL: URL contains slug, but we must resolve to modId before calling handler
         if (pathSegments.length === 2 && pathSegments[1] === 'thumbnail' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
-            console.log('[Router] Thumbnail request:', { path, pathSegments, slugOrModId, hasAuth: !!auth });
+            // console.log('[Router] Thumbnail request:', { path, pathSegments, slugOrModId, hasAuth: !!auth });
             
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
@@ -340,14 +340,14 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
                     modId = resolvedModId;
-                    console.log('[Router] Resolved slug to modId for thumbnail:', { slug: slugOrModId, modId });
+                    // console.log('[Router] Resolved slug to modId for thumbnail:', { slug: slugOrModId, modId });
                 } else {
                     return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
                 }
             }
             
             const response = await handleThumbnail(request, env, modId, auth);
-            console.log('[Router] Thumbnail response:', { status: response.status, contentType: response.headers.get('content-type') });
+            // console.log('[Router] Thumbnail response:', { status: response.status, contentType: response.headers.get('content-type') });
             // Thumbnails are binary images - handler returns unencrypted for public access
             // No JWT encryption required for public browsing
             return { response, customerId: auth?.customerId || null };
@@ -375,7 +375,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 4 && pathSegments[1] === 'versions' && pathSegments[3] === 'download' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
             const versionId = pathSegments[2];
-            console.log('[Router] Download request:', { path, pathSegments, slugOrModId, versionId, hasAuth: !!auth });
+            // console.log('[Router] Download request:', { path, pathSegments, slugOrModId, versionId, hasAuth: !!auth });
             
             // Resolve slug to modId (slug is for URL only, modId is for data lookup)
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
@@ -395,7 +395,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             }
             
             const response = await handleDownloadVersion(request, env, modId, versionId, auth);
-            console.log('[Router] Download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
+            // console.log('[Router] Download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
             // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
             // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
             // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)
@@ -421,7 +421,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
         if (pathSegments.length === 4 && pathSegments[1] === 'variants' && pathSegments[3] === 'download' && request.method === 'GET') {
             const slugOrModId = pathSegments[0];
             const variantId = pathSegments[2];
-            console.log('[Router] Variant download request:', { path, pathSegments, slugOrModId, variantId, hasAuth: !!auth });
+            // console.log('[Router] Variant download request:', { path, pathSegments, slugOrModId, variantId, hasAuth: !!auth });
             
             // Resolve slug to modId
             const { resolveSlugToModId } = await import('../utils/slug-resolver.js');
@@ -432,7 +432,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
                 const resolvedModId = await resolveSlugToModId(slugOrModId, env, auth);
                 if (resolvedModId) {
                     modId = resolvedModId;
-                    console.log('[Router] Resolved slug to modId for variant download:', { slug: slugOrModId, modId });
+                    // console.log('[Router] Resolved slug to modId for variant download:', { slug: slugOrModId, modId });
                 } else {
                     console.error('[Router] Failed to resolve slug to modId for variant download:', { slug: slugOrModId });
                     return await createErrorResponse(request, env, 404, 'Mod Not Found', 'The requested mod was not found', auth);
@@ -441,7 +441,7 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             
             const { handleDownloadVariant } = await import('../handlers/variants/download.js');
             const response = await handleDownloadVariant(request, env, modId, variantId, auth);
-            console.log('[Router] Variant download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
+            // console.log('[Router] Variant download response:', { status: response.status, contentType: response.headers.get('content-type'), contentLength: response.headers.get('content-length') });
             // Response is already decrypted by handler (file was encrypted at rest with shared key, decrypted on-the-fly)
             // Downloads use shared key encryption, not JWT encryption, so we don't wrap with JWT encryption
             // Ensure CORS headers are preserved (handler already sets them, but ensure they're present)

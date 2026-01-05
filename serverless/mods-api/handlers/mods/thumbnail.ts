@@ -18,31 +18,31 @@ export async function handleThumbnail(
     modId: string,
     auth: { userId: string; customerId: string | null } | null
 ): Promise<Response> {
-    console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
+    // console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
         let mod: ModMetadata | null = null;
         const normalizedModId = normalizeModId(modId);
-        console.log('[Thumbnail] Looking up mod by modId:', { normalizedModId, original: modId });
+        // console.log('[Thumbnail] Looking up mod by modId:', { normalizedModId, original: modId });
         
         // Check authenticated user's customer scope first
         if (auth?.customerId) {
             const customerModKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
-            console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
+            // console.log('[Thumbnail] Checking authenticated customer scope:', { customerModKey });
             mod = await env.MODS_KV.get(customerModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // Fall back to global scope if not found
         if (!mod) {
             const globalModKey = `mod_${normalizedModId}`;
-            console.log('[Thumbnail] Checking global scope:', { globalModKey });
+            // console.log('[Thumbnail] Checking global scope:', { globalModKey });
             mod = await env.MODS_KV.get(globalModKey, { type: 'json' }) as ModMetadata | null;
         }
         
         // If still not found, search all customer scopes by modId (for cross-customer access)
         // Use direct key pattern matching for efficiency (like admin list handler)
         if (!mod) {
-            console.log('[Thumbnail] Searching all customer scopes by modId:', { normalizedModId });
+            // console.log('[Thumbnail] Searching all customer scopes by modId:', { normalizedModId });
             const customerModPrefix = 'customer_';
             let cursor: string | undefined;
             let found = false;
@@ -58,7 +58,7 @@ export async function handleThumbnail(
                             // Extract customerId from key name - match everything between "customer_" and "_mod_"
                             const match = key.name.match(/^customer_(.+)_mod_/);
                             const customerId = match ? match[1] : null;
-                            console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
+                            // console.log('[Thumbnail] Found mod by modId in customer scope:', { customerId, modId: mod.modId, key: key.name });
                             found = true;
                             break;
                         }
@@ -69,7 +69,7 @@ export async function handleThumbnail(
             } while (cursor && !found);
         }
         
-        if (mod) console.log('[Thumbnail] Found mod by modId:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
+        // if (mod) console.log('[Thumbnail] Found mod by modId:', { modId: mod.modId, slug: mod.slug, hasThumbnailUrl: !!mod.thumbnailUrl });
 
         if (!mod) {
             console.error('[Thumbnail] Mod not found:', { modId });
@@ -163,19 +163,19 @@ export async function handleThumbnail(
             });
         }
 
-        console.log('[Thumbnail] Mod has thumbnailUrl:', { thumbnailUrl: mod.thumbnailUrl, modId: mod.modId, slug: mod.slug });
+        // console.log('[Thumbnail] Mod has thumbnailUrl:', { thumbnailUrl: mod.thumbnailUrl, modId: mod.modId, slug: mod.slug });
 
         // Reconstruct R2 key from mod metadata
         // Thumbnails are stored as: customer_xxx/thumbnails/normalizedModId.ext
         // CRITICAL FIX: Use stored extension first, then fall back to trying all extensions
         // This improves performance by avoiding unnecessary R2 lookups
         const normalizedStoredModId = normalizeModId(mod.modId);
-        console.log('[Thumbnail] Looking up R2 file:', { 
-            modCustomerId: mod.customerId, 
-            normalizedStoredModId, 
-            originalModId: mod.modId,
-            storedExtension: mod.thumbnailExtension
-        });
+        // console.log('[Thumbnail] Looking up R2 file:', { 
+        //     modCustomerId: mod.customerId, 
+        //     normalizedStoredModId, 
+        //     originalModId: mod.modId,
+        //     storedExtension: mod.thumbnailExtension
+        // });
         
         // CRITICAL FIX: Use stored extension first if available
         const extensions = mod.thumbnailExtension 
@@ -188,12 +188,12 @@ export async function handleThumbnail(
         if (mod.customerId) {
             for (const ext of extensions) {
                 const testKey = getCustomerR2Key(mod.customerId, `thumbnails/${normalizedStoredModId}.${ext}`);
-                console.log('[Thumbnail] Trying R2 key (mod customer scope):', { testKey, ext, customerId: mod.customerId });
+                // console.log('[Thumbnail] Trying R2 key (mod customer scope):', { testKey, ext, customerId: mod.customerId });
                 const testFile = await env.MODS_R2.get(testKey);
                 if (testFile) {
                     r2Key = testKey;
                     thumbnail = testFile;
-                    console.log('[Thumbnail] Found thumbnail in R2 (mod customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                    // console.log('[Thumbnail] Found thumbnail in R2 (mod customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
                     break;
                 }
             }
@@ -203,12 +203,12 @@ export async function handleThumbnail(
         if (!thumbnail && auth?.customerId && auth.customerId !== mod.customerId) {
             for (const ext of extensions) {
                 const testKey = getCustomerR2Key(auth.customerId, `thumbnails/${normalizedStoredModId}.${ext}`);
-                console.log('[Thumbnail] Trying R2 key (auth customer scope):', { testKey, ext, customerId: auth.customerId });
+                // console.log('[Thumbnail] Trying R2 key (auth customer scope):', { testKey, ext, customerId: auth.customerId });
                 const testFile = await env.MODS_R2.get(testKey);
                 if (testFile) {
                     r2Key = testKey;
                     thumbnail = testFile;
-                    console.log('[Thumbnail] Found thumbnail in R2 (auth customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                    // console.log('[Thumbnail] Found thumbnail in R2 (auth customer scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
                     break;
                 }
             }
@@ -218,12 +218,12 @@ export async function handleThumbnail(
         if (!thumbnail) {
             for (const ext of extensions) {
                 const testKey = `thumbnails/${normalizedStoredModId}.${ext}`;
-                console.log('[Thumbnail] Trying R2 key (global scope):', { testKey, ext });
+                // console.log('[Thumbnail] Trying R2 key (global scope):', { testKey, ext });
                 const testFile = await env.MODS_R2.get(testKey);
                 if (testFile) {
                     r2Key = testKey;
                     thumbnail = testFile;
-                    console.log('[Thumbnail] Found thumbnail in R2 (global scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+                    // console.log('[Thumbnail] Found thumbnail in R2 (global scope):', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
                     break;
                 }
             }
@@ -233,11 +233,11 @@ export async function handleThumbnail(
         // This is more reliable than guessing extensions - R2 stores modId in customMetadata
         // Also try searching with original modId (with mod_ prefix) in case it was stored differently
         if (!thumbnail) {
-            console.log('[Thumbnail] Searching R2 by customMetadata (modId):', { 
-                modId: mod.modId, 
-                normalizedStoredModId,
-                originalModId: mod.modId 
-            });
+            // console.log('[Thumbnail] Searching R2 by customMetadata (modId):', { 
+            //     modId: mod.modId, 
+            //     normalizedStoredModId,
+            //     originalModId: mod.modId 
+            // });
             
             try {
                 // Search all customer scopes for thumbnails with matching modId in customMetadata
@@ -254,7 +254,7 @@ export async function handleThumbnail(
                     normalizeModId(mod.modId), // Ensure normalized
                 ];
                 
-                console.log('[Thumbnail] Starting R2 list search with prefix:', { customerPrefix, modIdVariants });
+                // console.log('[Thumbnail] Starting R2 list search with prefix:', { customerPrefix, modIdVariants });
                 
                 do {
                     const listResult = await env.MODS_R2.list({ 
@@ -263,11 +263,11 @@ export async function handleThumbnail(
                         limit: 1000 
                     });
                     
-                    console.log('[Thumbnail] R2 list returned:', { 
-                        objectsCount: listResult.objects.length, 
-                        truncated: listResult.truncated,
-                        hasCursor: !!cursor
-                    });
+                    // console.log('[Thumbnail] R2 list returned:', { 
+                    //     objectsCount: listResult.objects.length, 
+                    //     truncated: listResult.truncated,
+                    //     hasCursor: !!cursor
+                    // });
                     
                     for (const obj of listResult.objects) {
                         totalChecked++;
@@ -275,11 +275,11 @@ export async function handleThumbnail(
                         // Only check thumbnail files
                         if (obj.key.includes('/thumbnails/')) {
                             thumbnailFilesChecked++;
-                            console.log('[Thumbnail] Checking thumbnail file:', { 
-                                key: obj.key, 
-                                size: obj.size,
-                                checked: thumbnailFilesChecked
-                            });
+                            // console.log('[Thumbnail] Checking thumbnail file:', { 
+                            //     key: obj.key, 
+                            //     size: obj.size,
+                            //     checked: thumbnailFilesChecked
+                            // });
                             
                             // Get the object to check customMetadata
                             const testFile = await env.MODS_R2.get(obj.key);
@@ -287,18 +287,18 @@ export async function handleThumbnail(
                                 // Check if modId matches (handle both normalized and non-normalized)
                                 const metadataModId = testFile.customMetadata.modId;
                                 if (!metadataModId) {
-                                    console.log('[Thumbnail] File has no modId in customMetadata:', { key: obj.key });
+                                    // console.log('[Thumbnail] File has no modId in customMetadata:', { key: obj.key });
                                     continue;
                                 }
                                 
                                 const normalizedMetadataModId = normalizeModId(metadataModId);
                                 
-                                console.log('[Thumbnail] Comparing modIds:', {
-                                    key: obj.key,
-                                    metadataModId,
-                                    normalizedMetadataModId,
-                                    searchingFor: modIdVariants
-                                });
+                                // console.log('[Thumbnail] Comparing modIds:', {
+                                //     key: obj.key,
+                                //     metadataModId,
+                                //     normalizedMetadataModId,
+                                //     searchingFor: modIdVariants
+                                // });
                                 
                                 // Check against all modId variants
                                 const matches = modIdVariants.some(variant => {
@@ -310,48 +310,48 @@ export async function handleThumbnail(
                                 if (matches) {
                                     r2Key = obj.key;
                                     thumbnail = testFile;
-                                    console.log('[Thumbnail] Found thumbnail in R2 by customMetadata:', { 
-                                        r2Key, 
-                                        size: thumbnail.size, 
-                                        contentType: thumbnail.httpMetadata?.contentType,
-                                        metadataModId,
-                                        matchedModId: mod.modId,
-                                        normalizedMetadataModId,
-                                        normalizedStoredModId
-                                    });
+                                    // console.log('[Thumbnail] Found thumbnail in R2 by customMetadata:', { 
+                                    //     r2Key, 
+                                    //     size: thumbnail.size, 
+                                    //     contentType: thumbnail.httpMetadata?.contentType,
+                                    //     metadataModId,
+                                    //     matchedModId: mod.modId,
+                                    //     normalizedMetadataModId,
+                                    //     normalizedStoredModId
+                                    // });
                                     found = true;
                                     break;
                                 } else {
-                                    console.log('[Thumbnail] ModId mismatch:', {
-                                        key: obj.key,
-                                        metadataModId,
-                                        normalizedMetadataModId,
-                                        searchingFor: modIdVariants
-                                    });
+                                    // console.log('[Thumbnail] ModId mismatch:', {
+                                    //     key: obj.key,
+                                    //     metadataModId,
+                                    //     normalizedMetadataModId,
+                                    //     searchingFor: modIdVariants
+                                    // });
                                 }
                             } else {
-                                console.log('[Thumbnail] File has no customMetadata:', { key: obj.key, hasFile: !!testFile });
+                                // console.log('[Thumbnail] File has no customMetadata:', { key: obj.key, hasFile: !!testFile });
                             }
                         }
                     }
                     
-                    console.log('[Thumbnail] Search iteration complete:', {
-                        totalChecked,
-                        thumbnailFilesChecked,
-                        found,
-                        truncated: listResult.truncated
-                    });
+                    // console.log('[Thumbnail] Search iteration complete:', {
+                    //     totalChecked,
+                    //     thumbnailFilesChecked,
+                    //     found,
+                    //     truncated: listResult.truncated
+                    // });
                     
                     if (found) break;
                     cursor = listResult.truncated ? listResult.cursor : undefined;
                 } while (cursor && !found);
                 
-                console.log('[Thumbnail] R2 customMetadata search complete:', {
-                    found,
-                    totalChecked,
-                    thumbnailFilesChecked,
-                    finalCursor: cursor
-                });
+                // console.log('[Thumbnail] R2 customMetadata search complete:', {
+                //     found,
+                //     totalChecked,
+                //     thumbnailFilesChecked,
+                //     finalCursor: cursor
+                // });
             } catch (error) {
                 console.error('[Thumbnail] Error searching R2 by customMetadata:', { 
                     error: error instanceof Error ? error.message : String(error),
@@ -400,7 +400,7 @@ export async function handleThumbnail(
             const imageArray = new Uint8Array(imageBytes);
             const { encryptBinaryWithJWT } = await import('@strixun/api-framework');
             const encryptedImage = await encryptBinaryWithJWT(imageArray, jwtToken);
-            console.log('[Thumbnail] Encrypted image binary:', { originalSize: imageArray.length, encryptedSize: encryptedImage.length });
+            // console.log('[Thumbnail] Encrypted image binary:', { originalSize: imageArray.length, encryptedSize: encryptedImage.length });
             
             headers.set('Content-Type', 'application/octet-stream'); // Binary encrypted data
             headers.set('X-Encrypted', 'true'); // Flag to indicate encrypted response
@@ -414,7 +414,7 @@ export async function handleThumbnail(
         } else {
             // Return unencrypted for public browsing
             // CRITICAL: Use thumbnail.body directly without reading it first (stream can only be read once)
-            console.log('[Thumbnail] Serving unencrypted thumbnail for public browsing:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
+            // console.log('[Thumbnail] Serving unencrypted thumbnail for public browsing:', { r2Key, size: thumbnail.size, contentType: thumbnail.httpMetadata?.contentType });
             headers.set('Content-Type', thumbnail.httpMetadata?.contentType || 'image/png');
             headers.set('X-Encrypted', 'false'); // Flag to indicate unencrypted response
             headers.set('Content-Length', thumbnail.size.toString());
