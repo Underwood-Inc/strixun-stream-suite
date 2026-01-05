@@ -48,6 +48,8 @@ jobs:
           USE_LIVE_API: 'true'
           CUSTOMER_API_URL: ${{ secrets.CUSTOMER_API_URL || 'https://strixun-customer-api.strixuns-script-suite.workers.dev' }}
           SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}
+          E2E_TEST_OTP_CODE: ${{ secrets.E2E_TEST_OTP_CODE }}
+          E2E_TEST_JWT_TOKEN: ${{ secrets.E2E_TEST_JWT_TOKEN }}
         run: pnpm test customer-creation.integration.test.ts
         continue-on-error: false
       
