@@ -106,7 +106,7 @@ describe('OTP Login Flow - Integration Tests (Miniflare)', () => {
     cleanup = setup.cleanup;
     
     console.log(`[Integration Tests] Test email: ${testEmail}`);
-  }, 90000); // Wrangler unstable_dev takes ~30-60 seconds to start workers
+  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
 
   afterAll(async () => {
     if (cleanup) {

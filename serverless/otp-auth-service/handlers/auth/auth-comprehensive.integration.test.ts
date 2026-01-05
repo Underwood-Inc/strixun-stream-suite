@@ -445,7 +445,7 @@ describe('Comprehensive Authentication & Customer-API Integration Tests (Minifla
         console.warn('[Comprehensive Auth Tests] Failed to provision API key 2:', error);
       }
     }
-  }, 90000); // Wrangler unstable_dev takes ~30-60 seconds to start workers
+  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
 
   afterAll(async () => {
     if (cleanup) {

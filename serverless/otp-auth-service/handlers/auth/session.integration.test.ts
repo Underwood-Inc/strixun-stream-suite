@@ -122,7 +122,7 @@ describe('Session Management - Integration Tests (Miniflare)', () => {
     expect(jwtToken).toBeDefined();
     expect(customerId).toBeDefined();
     expect(customerId).toMatch(/^cust_/);
-  }, 90000); // Wrangler unstable_dev takes ~30-60 seconds to start workers
+  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
 
   describe('GET /auth/me - JWT-only endpoint', () => {
     it('should return customer data from JWT only (no customer-api calls)', async () => {

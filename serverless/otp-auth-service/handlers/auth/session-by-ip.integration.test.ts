@@ -116,7 +116,7 @@ describe('Session by IP - Integration Tests (Miniflare)', () => {
 
     expect(jwtToken).toBeDefined();
     expect(customerId).toBeDefined();
-  }, 60000);
+  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
 
   describe('GET /auth/session-by-ip - IP session lookup', () => {
     it('should return sessions for request IP when authenticated', async () => {

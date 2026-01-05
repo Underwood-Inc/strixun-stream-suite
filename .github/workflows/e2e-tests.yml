@@ -7,6 +7,10 @@
 #   - Wrangler CLI must be available (installed via pnpm)
 #   - Test secrets are automatically generated via setup:test-secrets scripts
 #   - Local workers start automatically via playwright.config.ts webServer config
+#
+# Required GitHub Secrets (Settings > Secrets and variables > Actions):
+#   - E2E_TEST_JWT_TOKEN: A valid JWT token for OTP auth service (ask maintainer)
+#   - E2E_TEST_OTP_CODE: A 9-digit OTP code for testing (e.g., 123456789)
 
 name: E2E Tests
 
@@ -66,6 +70,12 @@ jobs:
           echo "[INFO] Local workers will start automatically via playwright.config.ts"
           if [ -z "$E2E_TEST_JWT_TOKEN" ]; then
             echo "[ERROR] E2E_TEST_JWT_TOKEN secret is not set in GitHub repository secrets"
+            exit 1
+          fi
+          if [ -z "$E2E_TEST_OTP_CODE" ]; then
+            echo "[ERROR] E2E_TEST_OTP_CODE secret is not set in GitHub repository secrets"
+            echo "[ERROR] Please set E2E_TEST_OTP_CODE in GitHub repository secrets (Settings > Secrets and variables > Actions)"
+            echo "[ERROR] Example value: 123456789 (9-digit OTP code for testing)"
             exit 1
           fi
           pnpm test:e2e

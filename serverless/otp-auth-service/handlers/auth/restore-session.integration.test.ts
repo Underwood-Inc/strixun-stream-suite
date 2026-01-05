@@ -123,7 +123,7 @@ describe('Session Restoration - Integration Tests (Miniflare)', () => {
 
     expect(jwtToken).toBeDefined();
     expect(customerId).toBeDefined();
-  }, 60000);
+  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
 
   describe('POST /auth/restore-session - IP-based restoration', () => {
     it('should restore session from IP address', async () => {
