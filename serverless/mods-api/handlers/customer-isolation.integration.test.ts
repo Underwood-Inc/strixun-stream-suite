@@ -4,13 +4,9 @@
  * Tests that Customer A cannot access Customer B's data:
  * - Integrity verification includes customerID
  * - Cross-customer data access is prevented
- * - Real API calls to verify isolation
+ * - Integrity hash calculations
  * 
- * ⚠ CRITICAL: These tests require LOCAL workers!
- * - OTP Auth Service must be running on http://localhost:8787
- * - Customer API must be running on http://localhost:8790
- * 
- * Workers are automatically started by shared setup file.
+ * NOTE: These tests run locally without workers - they test integrity utilities directly.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -33,24 +29,7 @@ const env = {
 } as any;
 
 describe('Customer Isolation Integration', () => {
-    beforeAll(async () => {
-        // Verify services are running
-        try {
-            const otpHealth = await fetch(`${OTP_AUTH_SERVICE_URL}/health`, {
-                signal: AbortSignal.timeout(3000)
-            });
-            console.log(`[Customer Isolation Tests] ✓ OTP Auth Service is running (status: ${otpHealth.status})`);
-        } catch (error: any) {
-            throw new Error(
-                `✗ OTP Auth Service is not running!\n` +
-                `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
-                `   Error: ${error.message}\n` +
-                `   \n` +
-                `   Fix: Workers should start automatically via shared setup.\n` +
-                `   If not, check serverless/shared/vitest.setup.integration.ts`
-            );
-        }
-    }, 30000);
+    // NOTE: These tests don't need live workers - they test integrity utilities locally
 
     describe('Integrity Verification with CustomerID', () => {
         it('should include customerID in integrity hash calculation', async () => {

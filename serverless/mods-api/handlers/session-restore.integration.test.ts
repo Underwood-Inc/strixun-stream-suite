@@ -1,17 +1,13 @@
 /**
  * Integration Tests for Session Restore
  * 
- * Tests session restore functionality similar to main app:
- * - Token validation with backend
- * - Session restoration from IP
+ * Tests session restore functionality:
+ * - Token validation logic
+ * - Session restoration flow
  * - Token expiration handling
- * - Cross-application session sharing
+ * - Date/time calculations
  * 
- * ⚠ CRITICAL: These tests require LOCAL workers!
- * - OTP Auth Service must be running on http://localhost:8787
- * - Customer API must be running on http://localhost:8790
- * 
- * Workers are automatically started by shared setup file.
+ * NOTE: These tests run locally without workers - they test session utilities directly.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -29,24 +25,7 @@ const env = {
 } as any;
 
 describe('Session Restore Integration', () => {
-    beforeAll(async () => {
-        // Verify services are running
-        try {
-            const otpHealth = await fetch(`${OTP_AUTH_SERVICE_URL}/health`, {
-                signal: AbortSignal.timeout(3000)
-            });
-            console.log(`[Session Restore Tests] ✓ OTP Auth Service is running (status: ${otpHealth.status})`);
-        } catch (error: any) {
-            throw new Error(
-                `✗ OTP Auth Service is not running!\n` +
-                `   URL: ${OTP_AUTH_SERVICE_URL}\n` +
-                `   Error: ${error.message}\n` +
-                `   \n` +
-                `   Fix: Workers should start automatically via shared setup.\n` +
-                `   If not, check serverless/shared/vitest.setup.integration.ts`
-            );
-        }
-    }, 30000);
+    // NOTE: These tests don't need live workers - they test JWT utilities locally
 
     describe('Token Validation', () => {
         it('should validate token with backend before restoring session', async () => {

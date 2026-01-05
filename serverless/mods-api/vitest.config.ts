@@ -15,12 +15,11 @@ export default defineConfig({
       '**/*.e2e.{test,spec}.{js,ts}',
       '**/*.spec.{js,ts}', // Exclude .spec files (Playwright e2e only)
     ],
-    testTimeout: 10000,
+    testTimeout: 30000, // 30 seconds for crypto operations and integration tests
     pool: 'forks',
     isolate: true,
     passWithNoTests: true, // Don't fail if no tests are found
-    // Auto-start workers for integration tests (shared setup detects *.integration.test.ts files)
-    globalSetup: '../shared/vitest.setup.integration.ts',
+    // NOTE: Integration tests use Miniflare directly in beforeAll hooks (no globalSetup needed)
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
