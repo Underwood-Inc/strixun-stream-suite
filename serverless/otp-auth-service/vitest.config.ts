@@ -31,6 +31,8 @@ export default defineConfig({
         replacement: resolve(__dirname, '../../packages/api-framework/index.ts'),
       },
     ],
+    // Allow .js imports to resolve to .ts files (ES module TypeScript pattern)
+    extensions: ['.ts', '.js', '.tsx', '.jsx', '.mjs', '.cjs', '.json'],
   },
   test: {
     globals: true,

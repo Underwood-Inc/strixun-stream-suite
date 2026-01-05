@@ -41,6 +41,8 @@ jobs:
           NETWORK_INTEGRITY_KEYPHRASE: ${{ secrets.NETWORK_INTEGRITY_KEYPHRASE }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          E2E_TEST_OTP_CODE: ${{ secrets.E2E_TEST_OTP_CODE }}
+          E2E_TEST_JWT_TOKEN: ${{ secrets.E2E_TEST_JWT_TOKEN }}
         run: pnpm test
       
       - name: Generate coverage report

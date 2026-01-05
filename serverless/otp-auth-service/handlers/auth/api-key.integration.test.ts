@@ -17,61 +17,19 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
-import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
+import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
+import { createMultiWorkerSetup } from '../../shared/test-helpers/miniflare-workers.js';
+import { assertE2ETestOTPCode } from '../../shared/test-helpers/otp-code-loader.js';
 import type { UnstableDevWorker } from 'wrangler';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load E2E_TEST_OTP_CODE - prioritizes process.env (for CI/GitHub Actions), then .dev.vars (for local)
-function loadE2ETestOTPCode(): string | null {
-  if (process.env.E2E_TEST_OTP_CODE) {
-    return process.env.E2E_TEST_OTP_CODE;
-  }
-  
-  const possiblePaths = [
-    join(__dirname, '../../.dev.vars'),
-    join(process.cwd(), 'serverless/otp-auth-service/.dev.vars'),
-    join(__dirname, '../../../serverless/otp-auth-service/.dev.vars'),
-  ];
-  
-  for (const devVarsPath of possiblePaths) {
-    if (existsSync(devVarsPath)) {
-      try {
-        const content = readFileSync(devVarsPath, 'utf-8');
-        const patterns = [
-          /^E2E_TEST_OTP_CODE\s*=\s*(.+?)(?:\s*$|\s*#|\s*\n)/m,
-          /^E2E_TEST_OTP_CODE\s*=\s*(.+)$/m,
-          /E2E_TEST_OTP_CODE\s*=\s*([^\s#\n]+)/,
-        ];
-        
-        for (const pattern of patterns) {
-          const match = content.match(pattern);
-          if (match) {
-            const value = match[1].trim();
-            if (value) {
-              return value;
-            }
-          }
-        }
-      } catch (error) {
-        console.warn(`[API Key Tests] Failed to read ${devVarsPath}:`, error);
-      }
-    }
-  }
-  
-  return null;
-}
+// ⚠ Check for required E2E_TEST_OTP_CODE before any tests run (skip if missing)
+const E2E_OTP_CODE = assertE2ETestOTPCode();
 
 // Generate unique test emails to avoid conflicts
 const testEmail1 = `apikey-test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 const testEmail2 = `apikey-test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 
-describe('API Key System - Integration Tests (Miniflare)', () => {
+describe.skipIf(!E2E_OTP_CODE)('API Key System - Integration Tests (Miniflare)', () => {
   let otpAuthService: UnstableDevWorker;
   let customerAPI: UnstableDevWorker;
   let cleanup: () => Promise<void>;
@@ -99,7 +57,7 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
     otpAuthService = setup.otpAuthService;
     customerAPI = setup.customerAPI;
     cleanup = setup.cleanup;
-  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
+  }, 30000); // Miniflare starts in 2-5 seconds, 30s allows for CI overhead
 
   afterAll(async () => {
     if (cleanup) {
@@ -109,11 +67,6 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
 
   describe('Step 1: Signup and API Key Generation', () => {
     it('should create customer account and return API key via signup/verify', async () => {
-      const otpCode = loadE2ETestOTPCode();
-      if (!otpCode) {
-        throw new Error('E2E_TEST_OTP_CODE not available. Check .dev.vars or environment variables.');
-      }
-
       // Step 1: Signup
       const signupResponse = await otpAuthService.fetch('http://example.com/signup', {
         method: 'POST',
@@ -134,7 +87,7 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: testEmail1,
-          otp: otpCode,
+          otp: E2E_OTP_CODE,
         }),
       });
 
@@ -466,11 +419,6 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
     }, 60000);
 
     it('should create second customer account for isolation testing (NO API key - API keys are manual)', async () => {
-      const otpCode = loadE2ETestOTPCode();
-      if (!otpCode) {
-        throw new Error('E2E_TEST_OTP_CODE not available.');
-      }
-
       // Signup second customer
       const signupResponse = await otpAuthService.fetch('http://example.com/signup', {
         method: 'POST',
@@ -489,7 +437,7 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: testEmail2,
-          otp: otpCode,
+          otp: E2E_OTP_CODE,
         }),
       });
 
@@ -1409,11 +1357,6 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
 
   describe('Step 7: Real-World API Key + OTP Service Integration (Third-Party Developer Integration)', () => {
     it('should handle complete real-world flow: OTP login → create API key via dashboard → use API key with JWT', async () => {
-      const otpCode = loadE2ETestOTPCode();
-      if (!otpCode) {
-        throw new Error('E2E_TEST_OTP_CODE not available. Check .dev.vars or environment variables.');
-      }
-
       // Step 1: Real-world OTP login flow (no API key yet)
       const realWorldEmail = `realworld-test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
       
@@ -1430,7 +1373,7 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
       const verifyOTPResponse = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: realWorldEmail, otp: otpCode }),
+        body: JSON.stringify({ email: realWorldEmail, otp: E2E_OTP_CODE }),
       });
       
       expect(verifyOTPResponse.status).toBe(200);
@@ -1543,7 +1486,7 @@ describe('API Key System - Integration Tests (Miniflare)', () => {
           'X-OTP-API-Key': realWorldApiKey, // API key identifies developer, bypasses CORS for allowed origins
           // No JWT needed - API key is for third-party developer integration
         },
-        body: JSON.stringify({ email: testEmailForOTP, otp: otpCode }),
+        body: JSON.stringify({ email: testEmailForOTP, otp: E2E_OTP_CODE }),
       });
       
       expect(verifyOTPWithApiKey.status).toBe(200);

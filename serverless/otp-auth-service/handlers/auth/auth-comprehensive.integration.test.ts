@@ -15,62 +15,19 @@
  * 5. customerId validation failures
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
-import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
-import type { UnstableDevWorker } from 'wrangler';
+import { describe, it, expect, beforeAll} from 'vitest';
+import { clearLocalKVNamespace } from '../../shared/test-kv-cleanup.js';
+import { createMultiWorkerSetup } from '../../shared/test-helpers/miniflare-workers.js';
+import { assertE2ETestOTPCode } from '../../shared/test-helpers/otp-code-loader.js';
+import type { UnstableDevWorker} from 'wrangler';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-function loadE2ETestOTPCode(): string | null {
-  if (process.env.E2E_TEST_OTP_CODE) {
-    return process.env.E2E_TEST_OTP_CODE;
-  }
-  
-  const possiblePaths = [
-    join(__dirname, '../../.dev.vars'),
-    join(process.cwd(), 'serverless/otp-auth-service/.dev.vars'),
-    join(__dirname, '../../../serverless/otp-auth-service/.dev.vars'),
-  ];
-  
-  for (const devVarsPath of possiblePaths) {
-    if (existsSync(devVarsPath)) {
-      try {
-        const content = readFileSync(devVarsPath, 'utf-8');
-        const patterns = [
-          /^E2E_TEST_OTP_CODE\s*=\s*(.+?)(?:\s*$|\s*#|\s*\n)/m,
-          /^E2E_TEST_OTP_CODE\s*=\s*(.+)$/m,
-          /E2E_TEST_OTP_CODE\s*=\s*([^\s#\n]+)/,
-        ];
-        
-        for (const pattern of patterns) {
-          const match = content.match(pattern);
-          if (match) {
-            const value = match[1].trim();
-            if (value) {
-              return value;
-            }
-          }
-        }
-      } catch (error) {
-        console.warn(`[Comprehensive Auth Tests] Failed to read ${devVarsPath}:`, error);
-      }
-    }
-  }
-  
-  return null;
-}
-
-const otpCode = loadE2ETestOTPCode();
+// ⚠ Check for required E2E_TEST_OTP_CODE before any tests run (skip if missing)
+const E2E_OTP_CODE = assertE2ETestOTPCode();
 
 const testEmail1 = `comprehensive-test-1-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 const testEmail2 = `comprehensive-test-2-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 
-describe('Comprehensive Authentication & Customer-API Integration Tests (Miniflare)', () => {
+describe.skipIf(!E2E_OTP_CODE)('Comprehensive Authentication & Customer-API Integration Tests (Miniflare)', () => {
   let otpAuthService: UnstableDevWorker;
   let customerAPI: UnstableDevWorker;
   let cleanup: () => Promise<void>;
@@ -96,10 +53,6 @@ describe('Comprehensive Authentication & Customer-API Integration Tests (Minifla
     otpAuthService = setup.otpAuthService;
     customerAPI = setup.customerAPI;
     cleanup = setup.cleanup;
-    
-    if (!otpCode) {
-      throw new Error('E2E_TEST_OTP_CODE is required for integration tests');
-    }
 
     // Setup: Create first customer account
     const requestResponse1 = await otpAuthService.fetch('http://example.com/auth/request-otp', {
@@ -112,7 +65,7 @@ describe('Comprehensive Authentication & Customer-API Integration Tests (Minifla
     const verifyResponse1 = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: testEmail1, otp: otpCode }),
+      body: JSON.stringify({ email: testEmail1, otp: E2E_OTP_CODE }),
     });
     expect(verifyResponse1.status).toBe(200);
     
@@ -132,7 +85,7 @@ describe('Comprehensive Authentication & Customer-API Integration Tests (Minifla
     const verifyResponse2 = await otpAuthService.fetch('http://example.com/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: testEmail2, otp: otpCode }),
+      body: JSON.stringify({ email: testEmail2, otp: E2E_OTP_CODE }),
     });
     expect(verifyResponse2.status).toBe(200);
     

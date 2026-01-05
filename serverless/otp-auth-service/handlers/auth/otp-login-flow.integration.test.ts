@@ -16,76 +16,23 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { clearLocalKVNamespace } from '../../../shared/test-kv-cleanup.js';
 import { createMultiWorkerSetup } from '../../../shared/test-helpers/miniflare-workers.js';
 import type { UnstableDevWorker } from 'wrangler';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { assertE2ETestOTPCode } from '../../../shared/test-helpers/otp-code-loader.js';
 
-// Load E2E_TEST_OTP_CODE - prioritizes process.env (for CI/GitHub Actions), then .dev.vars (for local)
-function loadE2ETestOTPCode(): string | null {
-  // PRIORITIZE process.env first (for CI environments like GitHub Actions)
-  // GitHub Actions can set E2E_TEST_OTP_CODE as a secret
-  if (process.env.E2E_TEST_OTP_CODE) {
-    return process.env.E2E_TEST_OTP_CODE;
-  }
-  
-  // Try loading from .dev.vars (multiple possible paths)
-  const possiblePaths = [
-    join(__dirname, '../../.dev.vars'), // Relative to test file
-    join(process.cwd(), 'serverless/otp-auth-service/.dev.vars'), // From project root
-    join(__dirname, '../../../serverless/otp-auth-service/.dev.vars'), // Alternative relative path
-  ];
-  
-  for (const devVarsPath of possiblePaths) {
-    if (existsSync(devVarsPath)) {
-      try {
-        const content = readFileSync(devVarsPath, 'utf-8');
-        // Match E2E_TEST_OTP_CODE=value (handle potential whitespace and comments)
-        // Try multiple patterns to be more robust
-        const patterns = [
-          /^E2E_TEST_OTP_CODE\s*=\s*(.+?)(?:\s*$|\s*#|\s*\n)/m,  // With newline or comment
-          /^E2E_TEST_OTP_CODE\s*=\s*(.+)$/m,  // Simple pattern
-          /E2E_TEST_OTP_CODE\s*=\s*([^\s#\n]+)/,  // Most permissive
-        ];
-        
-        for (const pattern of patterns) {
-          const match = content.match(pattern);
-          if (match) {
-            const value = match[1].trim();
-            if (value) {
-              console.log(`[Integration Tests] Found E2E_TEST_OTP_CODE in ${devVarsPath}: ${value.substring(0, 3)}...`);
-              return value;
-            }
-          }
-        }
-        
-        // Debug: log file content if no match found
-        console.warn(`[Integration Tests] E2E_TEST_OTP_CODE not found in ${devVarsPath}. File content preview:`, content.substring(0, 200));
-      } catch (error) {
-        // Continue to next path if this one fails
-        console.warn(`[Integration Tests] Failed to read ${devVarsPath}:`, error);
-      }
-    } else {
-      console.log(`[Integration Tests] .dev.vars file not found at ${devVarsPath}`);
-    }
-  }
-  
-  return null;
-}
+// ⚠ Check for required E2E_TEST_OTP_CODE before any tests run (skip if missing)
+const E2E_OTP_CODE = assertE2ETestOTPCode();
 
 // Generate unique test email to avoid conflicts
 const testEmail = `test-${Date.now()}-${Math.random().toString(36).substring(7)}@integration-test.example.com`;
 
-describe('OTP Login Flow - Integration Tests (Miniflare)', () => {
+describe.skipIf(!E2E_OTP_CODE)('OTP Login Flow - Integration Tests (Miniflare)', () => {
   let otpAuthService: UnstableDevWorker;
   let customerAPI: UnstableDevWorker;
   let cleanup: () => Promise<void>;
-  let otpCode: string | null = null;
+  let E2E_OTP_CODE: string | null = null;
   let jwtToken: string | null = null;
   let customerId: string | null = null;
 
@@ -106,7 +53,7 @@ describe('OTP Login Flow - Integration Tests (Miniflare)', () => {
     cleanup = setup.cleanup;
     
     console.log(`[Integration Tests] Test email: ${testEmail}`);
-  }, 180000); // Wrangler unstable_dev can take 60-120 seconds in CI environments
+  }, 30000); // Miniflare starts in 2-5 seconds, 30s allows for CI overhead
 
   afterAll(async () => {
     if (cleanup) {
@@ -159,8 +106,8 @@ describe('OTP Login Flow - Integration Tests (Miniflare)', () => {
       }
       
       if (testOTPCode) {
-        otpCode = testOTPCode;
-        console.log(`[Integration Tests] Using E2E_TEST_OTP_CODE: ${otpCode}`);
+        E2E_OTP_CODE = testOTPCode;
+        console.log(`[Integration Tests] Using E2E_TEST_OTP_CODE: ${E2E_OTP_CODE}`);
       } else {
         // Provide helpful error message with debugging info
         const devVarsPath = join(__dirname, '../../.dev.vars');
@@ -193,7 +140,7 @@ describe('OTP Login Flow - Integration Tests (Miniflare)', () => {
 
   describe('Step 2: Verify OTP and Create Customer', () => {
     it('should verify OTP and return JWT token', async () => {
-      if (!otpCode) {
+      if (!E2E_OTP_CODE) {
         throw new Error('OTP code not available from previous test');
       }
 
@@ -204,7 +151,7 @@ describe('OTP Login Flow - Integration Tests (Miniflare)', () => {
         },
         body: JSON.stringify({
           email: testEmail,
-          otp: otpCode,
+          otp: E2E_OTP_CODE,
         }),
       });
 
