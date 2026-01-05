@@ -285,7 +285,7 @@ interface InteractiveThumbnailProps {
    * If provided, the thumbnail will react to mouse movement over this element.
    * If not provided, it will default to watching the thumbnail wrapper itself.
    */
-  watchElementRef?: React.RefObject<HTMLElement>;
+  watchElementRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 // JavaScript animation using requestAnimationFrame
@@ -333,12 +333,9 @@ function animateFlip(
 
 // JavaScript animation for smoothly returning hover tilt to resting position
 function animateHoverReset(
-  cardRef: React.RefObject<HTMLDivElement>,
+  cardRef: React.RefObject<HTMLDivElement | null>,
   startHoverX: number,
   startHoverY: number,
-  rotateX: number,
-  rotateY: number,
-  flipY: number,
   duration: number,
   onUpdate: (hoverX: number, hoverY: number) => void,
   onComplete?: () => void
@@ -379,12 +376,6 @@ function animateHoverReset(
       cancelAnimationFrame(animationFrameId);
     }
   };
-}
-
-// Smooth interpolation function using the same easing curve
-// Returns a value between start and target based on progress (0-1)
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
 }
 
 export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef }: InteractiveThumbnailProps) {
@@ -752,9 +743,6 @@ export function InteractiveThumbnail({ mod, onError, onNavigate, watchElementRef
         cardRef,
         startHoverX,
         startHoverY,
-        rotateXRef.current,
-        rotateYRef.current,
-        0,
         400, // 400ms animation duration
         (currentHoverX, currentHoverY) => {
           hoverRotateXRef.current = currentHoverX;
