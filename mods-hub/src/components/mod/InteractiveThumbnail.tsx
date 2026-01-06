@@ -56,12 +56,36 @@ const BackDescription = styled.p`
   flex: 1;
   margin: 0;
   min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   user-select: text;
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  padding-right: ${spacing.xs};
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${colors.border};
+    border-radius: 2px;
+    
+    &:hover {
+      background: ${colors.textMuted};
+    }
+  }
+  
+  scrollbar-width: thin;
+  scrollbar-color: ${colors.border} transparent;
 `;
 
 const BackMeta = styled.div`

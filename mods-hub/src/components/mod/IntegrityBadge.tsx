@@ -46,6 +46,7 @@ const BadgeImage = styled.img`
   height: 20px;
   width: auto;
   display: block;
+  cursor: help;
 `;
 
 const BadgeLoadingPlaceholder = styled.div`
@@ -368,16 +369,18 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
             <Tooltip 
                 content={tooltipContent}
                 position="auto" 
-                delay={200}
+                delay={0}
                 maxWidth="450px"
                 interactive={true}
                 theme={tooltipTheme}
             >
-                <BadgeImage 
-                    src={badgeUrl} 
-                    alt="Strixun Verified" 
-                    onError={handleImageError}
-                />
+                <span style={{ display: 'inline-flex', cursor: 'help' }}>
+                    <BadgeImage 
+                        src={badgeUrl} 
+                        alt="Strixun Verified" 
+                        onError={handleImageError}
+                    />
+                </span>
             </Tooltip>
         </BadgeContainer>
     );

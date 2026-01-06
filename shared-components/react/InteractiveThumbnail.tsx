@@ -409,6 +409,8 @@ export function InteractiveThumbnail({
   const hoverRotateXRef = useRef(0);
   const hoverRotateYRef = useRef(0);
   const isFlippedRef = useRef(false);
+  const isAnimatingRef = useRef(false);
+  const isDraggingRef = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number; y: number; rotateX: number; rotateY: number } | null>(null);
@@ -426,10 +428,18 @@ export function InteractiveThumbnail({
     return watchElementRef?.current || wrapperRef.current;
   }, [watchElementRef]);
 
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => {
     isFlippedRef.current = isFlipped;
   }, [isFlipped]);
+
+  useEffect(() => {
+    isAnimatingRef.current = isAnimating;
+  }, [isAnimating]);
+
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+  }, [isDragging]);
 
   // Update transform directly via JavaScript
   const updateTransform = useCallback((rotateX: number, rotateY: number, flipY: number = 0, hoverX: number = 0, hoverY: number = 0) => {
@@ -480,12 +490,24 @@ export function InteractiveThumbnail({
       window.getSelection()?.removeAllRanges();
     }
     
+    // Cancel any ongoing hover tracking or reset animations
     if (leaveTimeoutRef.current) {
       clearTimeout(leaveTimeoutRef.current);
       leaveTimeoutRef.current = null;
     }
+    if (hoverTrackingCancelRef.current) {
+      hoverTrackingCancelRef.current();
+      hoverTrackingCancelRef.current = null;
+    }
+    if (hoverResetCancelRef.current) {
+      hoverResetCancelRef.current();
+      hoverResetCancelRef.current = null;
+    }
+    
     hoverRotateXRef.current = 0;
     hoverRotateYRef.current = 0;
+    targetHoverXRef.current = 0;
+    targetHoverYRef.current = 0;
     
     setIsAnimating(true);
     const newFlipped = !isFlipped;
@@ -614,7 +636,7 @@ export function InteractiveThumbnail({
     const lerpFactor = 0.15;
 
     const animate = () => {
-      if (!isRunning || isFlippedRef.current || isAnimating || isDragging || !cardRef.current) {
+      if (!isRunning || isFlippedRef.current || isAnimatingRef.current || isDraggingRef.current || !cardRef.current) {
         hoverTrackingCancelRef.current = null;
         return;
       }
@@ -645,7 +667,7 @@ export function InteractiveThumbnail({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isAnimating, isDragging, updateTransform]);
+  }, [updateTransform]);
 
   const handleThumbnailMouseMove = useCallback((e: MouseEvent | React.MouseEvent) => {
     const watchedElement = getWatchedElement();

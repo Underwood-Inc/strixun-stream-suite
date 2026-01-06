@@ -192,7 +192,7 @@ const ZoomButton = styled.button`
   }
 `;
 
-const ZoomModal = styled.div<{ isOpen: boolean }>`
+const ZoomModal = styled.div<{ $isVisible: boolean }>`
   position: fixed;
   top: 0;
   left: 0;
@@ -200,14 +200,17 @@ const ZoomModal = styled.div<{ isOpen: boolean }>`
   bottom: 0;
   background: rgba(0, 0, 0, 0.9);
   z-index: 10000;
-  display: ${props => props.isOpen ? 'flex' : 'none'};
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: ${spacing.xl};
   cursor: pointer;
+  opacity: ${props => props.$isVisible ? 1 : 0};
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: ${props => props.$isVisible ? 'auto' : 'none'};
 `;
 
-const ZoomContent = styled.div`
+const ZoomContent = styled.div<{ $isVisible: boolean }>`
   width: min(85vw, calc(85vh - 100px));
   height: min(85vw, calc(85vh - 100px));
   max-width: 700px;
@@ -218,6 +221,9 @@ const ZoomContent = styled.div`
   align-items: center;
   justify-content: center;
   margin-top: 60px; /* Account for header */
+  transform: ${props => props.$isVisible ? 'scale(1)' : 'scale(0.9)'};
+  opacity: ${props => props.$isVisible ? 1 : 0};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 `;
 
 const ZoomCardContainer = styled.div`
@@ -231,6 +237,7 @@ const ZoomCardContainer = styled.div`
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  will-change: transform;
 `;
 
 const CloseButton = styled.button`
@@ -266,7 +273,9 @@ interface ModCardProps {
 
 export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
     const [isZoomed, setIsZoomed] = useState(false);
+    const [shouldRenderModal, setShouldRenderModal] = useState(false);
     const cardContainerRef = useRef<HTMLDivElement>(null);
+    const zoomModalRef = useRef<HTMLDivElement>(null);
 
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -283,7 +292,11 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
     const handleZoom = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsZoomed(true);
+        setShouldRenderModal(true);
+        // Trigger animation after render
+        requestAnimationFrame(() => {
+            setIsZoomed(true);
+        });
     }, []);
 
     const handleCloseZoom = useCallback((e: React.MouseEvent) => {
@@ -291,6 +304,10 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
         e.stopPropagation();
         if (e.target === e.currentTarget) {
             setIsZoomed(false);
+            // Remove from DOM after animation completes
+            setTimeout(() => {
+                setShouldRenderModal(false);
+            }, 300); // Match transition duration
         }
     }, []);
 
@@ -299,10 +316,14 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isZoomed) {
                 setIsZoomed(false);
+                // Remove from DOM after animation completes
+                setTimeout(() => {
+                    setShouldRenderModal(false);
+                }, 300); // Match transition duration
             }
         };
         
-        if (isZoomed) {
+        if (shouldRenderModal) {
             document.addEventListener('keydown', handleEscape);
             document.body.style.overflow = 'hidden';
         }
@@ -311,7 +332,7 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
             document.removeEventListener('keydown', handleEscape);
             document.body.style.overflow = '';
         };
-    }, [isZoomed]);
+    }, [isZoomed, shouldRenderModal]);
 
     return (
         <>
@@ -359,14 +380,26 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                 </Card>
             </CardContainer>
             
-            {isZoomed && (
-                <ZoomModal isOpen={isZoomed} onClick={handleCloseZoom}>
-                    <ZoomContent onClick={(e) => e.stopPropagation()}>
-                        <CloseButton onClick={handleCloseZoom}>✕ Close</CloseButton>
+            {shouldRenderModal && (
+                <ZoomModal 
+                    ref={zoomModalRef} 
+                    $isVisible={isZoomed} 
+                    onClick={handleCloseZoom}
+                >
+                    <ZoomContent $isVisible={isZoomed} onClick={(e) => e.stopPropagation()}>
+                        <CloseButton onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsZoomed(false);
+                            setTimeout(() => {
+                                setShouldRenderModal(false);
+                            }, 300);
+                        }}>✕ Close</CloseButton>
                         <ZoomCardContainer>
                             <InteractiveThumbnail
                                 mod={mod}
                                 onError={handleThumbnailError}
+                                watchElementRef={zoomModalRef}
                             />
                         </ZoomCardContainer>
                     </ZoomContent>
