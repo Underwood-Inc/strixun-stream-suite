@@ -149,37 +149,6 @@ export async function handleAdminRoutes(request: Request, path: string, env: Env
             return await wrapWithEncryption(response, auth, request, env);
         }
 
-        // Route: GET /admin/customers - List all customers
-        if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'GET') {
-            const { handleListCustomers } = await import('../handlers/admin/customers.js');
-            const response = await handleListCustomers(request, env, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
-        // Route: GET /admin/customers/:customerId - Get customer details
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'GET') {
-            const customerId = pathSegments[2];
-            const { handleGetCustomerDetails } = await import('../handlers/admin/customers.js');
-            const response = await handleGetCustomerDetails(request, env, customerId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
-        // Route: PUT /admin/customers/:customerId - Update customer
-        if (pathSegments.length === 3 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && request.method === 'PUT') {
-            const customerId = pathSegments[2];
-            const { handleUpdateCustomer } = await import('../handlers/admin/customers.js');
-            const response = await handleUpdateCustomer(request, env, customerId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
-        // Route: GET /admin/customers/:customerId/mods - Get customer's mods
-        if (pathSegments.length === 4 && pathSegments[0] === 'admin' && pathSegments[1] === 'customers' && pathSegments[3] === 'mods' && request.method === 'GET') {
-            const customerId = pathSegments[2];
-            const { handleGetCustomerMods } = await import('../handlers/admin/customers.js');
-            const response = await handleGetCustomerMods(request, env, customerId, auth);
-            return await wrapWithEncryption(response, auth, request, env);
-        }
-
         // Route: GET /admin/settings - Get admin settings
         if (pathSegments.length === 2 && pathSegments[0] === 'admin' && pathSegments[1] === 'settings' && request.method === 'GET') {
             const { handleGetSettings } = await import('../handlers/admin/settings.js');

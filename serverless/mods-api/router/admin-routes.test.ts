@@ -293,42 +293,6 @@ describe('Mods API Admin Routes', () => {
             expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
         });
 
-        it('should allow GET /admin/users for super admin', async () => {
-            const request = new Request('https://api.example.com/admin/users', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer admin-token',
-                },
-            });
-
-            vi.mocked(verifyJWT).mockResolvedValue(superAdminJWT);
-
-            const result = await handleAdminRoutes(request, '/admin/users', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(200);
-            // Verify customer lookup was called to get email from customer record
-            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
-        });
-
-        it('should allow GET /admin/users/:userId for super admin', async () => {
-            const request = new Request('https://api.example.com/admin/users/user-123', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer admin-token',
-                },
-            });
-
-            vi.mocked(verifyJWT).mockResolvedValue(superAdminJWT);
-
-            const result = await handleAdminRoutes(request, '/admin/users/user-123', mockEnv);
-
-            expect(result).not.toBeNull();
-            expect(result?.response.status).toBe(200);
-            // Verify customer lookup was called to get email from customer record
-            expect(mockFetchCustomerByCustomerId).toHaveBeenCalledWith('cust_123', expect.any(Object));
-        });
-
         it('should allow GET /admin/r2/files for super admin', async () => {
             const request = new Request('https://api.example.com/admin/r2/files', {
                 method: 'GET',

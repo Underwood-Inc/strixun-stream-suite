@@ -116,10 +116,7 @@ export async function encryptWithJWT(
   // );
   
   // CRITICAL: Trim token to ensure consistency with backend
-  const rawToken = token;
-  const trimmedToken = token?.trim() || token;
-  const wasTrimmed = rawToken !== trimmedToken;
-  const tokenToUse = trimmedToken;
+  const tokenToUse = token?.trim() || token;
   
   // if (shouldLog) {
   //   console.log('[encryptWithJWT] Encrypting data with token:', {

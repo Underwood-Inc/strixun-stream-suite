@@ -21,8 +21,8 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Types */
-    // Include React types and Cloudflare Workers types
-    "types": ["@types/react", "@types/react-dom", "@cloudflare/workers-types"],
+    // Include React types, Cloudflare Workers types, and testing types
+    "types": ["@types/react", "@types/react-dom", "@cloudflare/workers-types", "vitest/globals", "@testing-library/jest-dom"],
 
     /* Path aliases */
     "baseUrl": ".",
