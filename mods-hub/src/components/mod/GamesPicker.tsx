@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { allGames, searchGames } from '../../data/games';
-import { PortalSelect, type PortalSelectOption } from '../common/PortalSelect';
+import { PortalSelect, type PortalSelectOption, type PortalSelectTheme } from '@strixun/shared-components/react';
 
 const GameName = styled.div`
   font-weight: 500;
@@ -27,6 +27,26 @@ interface GamesPickerProps {
 }
 
 export function GamesPicker({ value, onChange, placeholder = 'Select a game...' }: GamesPickerProps) {
+    // Theme configuration for PortalSelect
+    const theme = useMemo<PortalSelectTheme>(() => ({
+        colors: {
+            bg: colors.bg,
+            bgSecondary: colors.bgSecondary,
+            bgTertiary: colors.bgTertiary,
+            text: colors.text,
+            textSecondary: colors.textSecondary,
+            textMuted: colors.textMuted,
+            border: colors.border,
+            accent: colors.accent,
+        },
+        spacing: {
+            xs: spacing.xs,
+            sm: spacing.sm,
+            md: spacing.md,
+            lg: spacing.lg,
+        },
+    }), []);
+
     // Convert games to PortalSelectOption format
     const options = useMemo<PortalSelectOption[]>(() => {
         return allGames.map(game => ({
@@ -71,6 +91,7 @@ export function GamesPicker({ value, onChange, placeholder = 'Select a game...' 
             clearable={true}
             filterOptions={filterGames}
             renderOption={renderGameOption}
+            theme={theme}
         />
     );
 }

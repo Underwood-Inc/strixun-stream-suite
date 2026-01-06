@@ -31,11 +31,11 @@ const Title = styled.h2`
   margin-bottom: ${spacing.md};
 `;
 
-const VersionCard = styled.div<{ isExpanded: boolean }>`
+const VersionCard = styled.div<{ $isExpanded: boolean }>`
   ${getCardStyles('default')}
   display: flex;
   flex-direction: column;
-  gap: ${props => props.isExpanded ? spacing.md : '0'};
+  gap: ${props => props.$isExpanded ? spacing.md : '0'};
   transition: all 0.2s ease;
 `;
 
@@ -107,12 +107,12 @@ const DownloadButton = styled.button`
   ${candyShopAnimation}
 `;
 
-const ExpandedContent = styled.div<{ isExpanded: boolean }>`
-  max-height: ${props => props.isExpanded ? '2000px' : '0'};
+const ExpandedContent = styled.div<{ $isExpanded: boolean }>`
+  max-height: ${props => props.$isExpanded ? '2000px' : '0'};
   overflow: hidden;
   transition: max-height 0.3s ease;
-  border-top: ${props => props.isExpanded ? `1px solid ${colors.border}` : 'none'};
-  padding-top: ${props => props.isExpanded ? spacing.md : '0'};
+  border-top: ${props => props.$isExpanded ? `1px solid ${colors.border}` : 'none'};
+  padding-top: ${props => props.$isExpanded ? spacing.md : '0'};
 `;
 
 const VariantsSection = styled.div`
@@ -323,7 +323,7 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                 const cumulativeDownloads = version.downloads + variantDownloads;
                 
                 return (
-                    <VersionCard key={version.versionId} isExpanded={isExpanded}>
+                    <VersionCard key={version.versionId} $isExpanded={isExpanded}>
                         <VersionCardHeader onClick={() => toggleVersion(version.versionId)}>
                             <VersionInfo>
                                 <VersionHeader>
@@ -379,7 +379,7 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
                                 </ExpandButton>
                             </div>
                         </VersionCardHeader>
-                        <ExpandedContent isExpanded={isExpanded}>
+                        <ExpandedContent $isExpanded={isExpanded}>
                             {versionVariants.length > 0 ? (
                                 <VariantsSection>
                                     <VariantsTitle>Variants ({versionVariants.length})</VariantsTitle>

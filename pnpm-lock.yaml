@@ -287,6 +287,9 @@ importers:
       '@strixun/search-query-parser':
         specifier: workspace:*
         version: link:../packages/search-query-parser
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../shared-components
       '@strixun/virtualized-table':
         specifier: workspace:*
         version: link:../packages/virtualized-table

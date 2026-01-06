@@ -317,7 +317,7 @@ export function ModListPage() {
                             {data.mods.map((mod) => (
                                 <ModCard key={mod.id} mod={mod} />
                             ))}
-                            <div style={{ 
+                            <div key="end-of-list" style={{ 
                                 gridColumn: '1 / -1', 
                                 padding: `${spacing.xl} ${spacing.lg}`,
                                 textAlign: 'center',

@@ -4,6 +4,16 @@
   "description": "Shared component library for Strixun Stream Suite with Storybook documentation",
   "private": true,
   "type": "module",
+  "exports": {
+    "./react": {
+      "types": "./react/index.ts",
+      "default": "./react/index.ts"
+    },
+    "./react/*": {
+      "types": "./react/*.tsx",
+      "default": "./react/*.tsx"
+    }
+  },
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
