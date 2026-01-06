@@ -6,12 +6,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
-import type { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
+import { ModUploadRequest, ModCategory, ModVisibility, ModVariant, ModStatus } from '../../types/mod';
 import { GamesPicker } from './GamesPicker';
 import { useAdminSettings } from '../../hooks/useMods';
 import { formatFileSize, validateFileSize, DEFAULT_UPLOAD_LIMITS } from '@strixun/api-framework';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
+
+// UI-only type that extends ModVariant with file upload fields
+type ModVariantWithFile = ModVariant & {
+    file?: File;
+};
 
 // File size limits (must match server-side limits in serverless/mods-api/utils/upload-limits.ts)
 const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
@@ -404,7 +409,7 @@ export function ModUploadWizard({
     const [changelog, setChangelog] = useState(initialData?.changelog || '');
     const [gameVersions, setGameVersions] = useState(initialData?.gameVersions?.join(', ') || '');
     const [visibility, setVisibility] = useState<ModVisibility>(initialData?.visibility || 'public');
-    const [variants, setVariants] = useState<ModVariant[]>(initialData?.variants || []);
+    const [variants, setVariants] = useState<ModVariantWithFile[]>(initialData?.variants || []);
     const [gameId, setGameId] = useState<string | undefined>(initialData?.gameId);
     const [isDragging, setIsDragging] = useState(false);
     const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
@@ -531,10 +536,16 @@ export function ModUploadWizard({
 
     // Variant management
     const handleAddVariant = () => {
-        const newVariant: ModVariant = {
+        const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
+            modId: '', // Will be set when mod is created
             name: '',
             description: '',
+            createdAt: '',
+            updatedAt: '',
+            currentVersionId: '',
+            versionCount: 0,
+            totalDownloads: 0,
         };
         setVariants([...variants, newVariant]);
     };
@@ -543,7 +554,7 @@ export function ModUploadWizard({
         setVariants(variants.filter(v => v.variantId !== variantId));
     };
 
-    const handleVariantChange = (variantId: string, field: keyof ModVariant, value: string | File) => {
+    const handleVariantChange = (variantId: string, field: keyof ModVariantWithFile, value: string | File) => {
         setVariants(variants.map(v => 
             v.variantId === variantId 
                 ? { ...v, [field]: value }

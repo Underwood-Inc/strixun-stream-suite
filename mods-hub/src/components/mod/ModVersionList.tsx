@@ -276,7 +276,8 @@ export function ModVersionList({ modSlug, versions, variants = [] }: ModVersionL
 
         try {
             // PESSIMISTIC UPDATE: Wait for download to complete before updating UI
-            const fileName = variant.fileName || `${variant.name || 'variant'}.zip`;
+            // Note: Variants don't store fileName anymore, use variant name as fallback
+            const fileName = `${variant.name || 'variant'}.zip`;
             await downloadVariant(modSlug, variant.variantId, fileName);
             
             // Download successful - refetch mod data to get updated download counts

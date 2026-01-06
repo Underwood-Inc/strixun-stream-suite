@@ -22,12 +22,13 @@ const mockMod: ModMetadata = {
   customerId: 'customer-123',
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-06T00:00:00Z',
+  latestVersion: '1.0.0',
   downloadCount: 1234,
   visibility: 'public' as const,
+  featured: false,
   status: 'published' as const,
   tags: ['test', 'mod'],
-  category: 'gameplay',
-  versions: [],
+  category: 'script',
 };
 
 describe('InteractiveThumbnail Integration (Mods Hub)', () => {
@@ -92,7 +93,7 @@ describe('InteractiveThumbnail Integration (Mods Hub)', () => {
     });
 
     it('should show "No description available" for missing description', () => {
-      const modWithoutDescription = { ...mockMod, description: undefined };
+      const modWithoutDescription = { ...mockMod, description: '' };
       
       render(<InteractiveThumbnail mod={modWithoutDescription} />);
 

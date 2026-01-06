@@ -16,6 +16,15 @@ import { getBadgeStyles } from '../../utils/sharedStyles';
 import { getStatusBadgeType } from '../../utils/badgeHelpers';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
+// UI-only type that extends ModVariant with file upload fields
+// These fields are used for creating new versions, not for persisted data
+type ModVariantWithFile = ModVariant & {
+    file?: File;
+    fileName?: string;
+    fileSize?: number;
+    fileUrl?: string;
+};
+
 const MAX_MOD_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
 const MAX_THUMBNAIL_SIZE = DEFAULT_UPLOAD_LIMITS.maxThumbnailSize; // 1 MB (from shared framework)
 
@@ -309,7 +318,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     const [tags, setTags] = useState(mod.tags.join(', '));
     const [visibility, setVisibility] = useState<ModVisibility>(mod.visibility);
     const [gameId, setGameId] = useState<string | undefined>(mod.gameId);
-    const [variants, setVariants] = useState<ModVariant[]>(mod.variants || []);
+    const [variants, setVariants] = useState<ModVariantWithFile[]>(mod.variants || []);
     const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(mod.thumbnailUrl || null);
     const [variantFileErrors, setVariantFileErrors] = useState<Record<string, string | null>>({});
@@ -348,13 +357,13 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     // Check if a variant is pre-existing (loaded from the mod, not a new draft)
-    const isPreExistingVariant = (variant: ModVariant): boolean => {
-        // Pre-existing variants have persisted data
-        return !!(variant.fileUrl || (variant.fileName && variant.fileSize !== undefined));
+    const isPreExistingVariant = (variant: ModVariantWithFile): boolean => {
+        // Pre-existing variants have persisted data (createdAt indicates it's saved)
+        return !!variant.createdAt;
     };
 
     // Check if a variant is empty (no dirty changes from default state)
-    const isEmptyVariant = (variant: ModVariant): boolean => {
+    const isEmptyVariant = (variant: ModVariantWithFile): boolean => {
         const hasName = variant.name && variant.name.trim().length > 0;
         const hasDescription = variant.description && variant.description.trim().length > 0;
         const hasFile = !!variant.file;
@@ -372,10 +381,16 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     const handleAddVariant = () => {
-        const newVariant: ModVariant = {
+        const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
+            modId: mod.modId,
             name: '',
             description: '',
+            createdAt: '',
+            updatedAt: '',
+            currentVersionId: '',
+            versionCount: 0,
+            totalDownloads: 0,
         };
         setVariants([...variants, newVariant]);
     };
@@ -384,7 +399,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         setVariants(variants.filter(v => v.variantId !== variantId));
     };
 
-    const handleVariantChange = (variantId: string, field: keyof ModVariant, value: string | File | null) => {
+    const handleVariantChange = (variantId: string, field: keyof ModVariantWithFile, value: string | File | null) => {
         setVariants(variants.map(v => 
             v.variantId === variantId 
                 ? { ...v, [field]: value }

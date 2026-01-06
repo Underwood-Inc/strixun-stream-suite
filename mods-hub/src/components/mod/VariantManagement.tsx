@@ -245,7 +245,6 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
                             <ExpandedContent $isExpanded={isExpanded}>
                                 <VariantVersionsLoader
                                     modSlug={modSlug}
-                                    modId={modId}
                                     variantId={variant.variantId}
                                     variantName={variant.name}
                                     onDeleteVersion={(version) => handleDeleteVersion(variant.variantId, version)}
@@ -264,13 +263,11 @@ export function VariantManagement({ modSlug, modId, variants }: VariantManagemen
  */
 function VariantVersionsLoader({ 
     modSlug, 
-    modId,
     variantId, 
     variantName,
     onDeleteVersion
 }: { 
     modSlug: string;
-    modId: string;
     variantId: string; 
     variantName: string;
     onDeleteVersion: (version: VariantVersion) => void;
