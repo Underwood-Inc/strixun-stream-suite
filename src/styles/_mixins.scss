@@ -384,4 +384,25 @@
   }
 }
 
+// ============ Text Selection ============
+// Global text selection styling - Strixun brand orange (#edae49) with pure black text
+// Uses #000000 for maximum contrast and legibility on the bright orange highlight
+// This mixin ensures consistent text selection across all Strixun apps
+// Usage: @include text-selection; in global/body styles
+@mixin text-selection {
+  ::selection {
+    background: var(--accent);
+    color: #000000;
+  }
+
+  ::-moz-selection {
+    background: var(--accent);
+    color: #000000;
+  }
+
+  ::-webkit-selection {
+    background: var(--accent);
+    color: #000000;
+  }
+}
 

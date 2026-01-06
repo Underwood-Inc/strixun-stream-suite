@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient, type ShortUrl } from '../lib/api-client';
-import { Tooltip } from '@mods-hub/components/common/Tooltip';
+import { Tooltip } from '@shared-components/react/Tooltip';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 
 interface UrlManagerProps {
@@ -290,7 +290,7 @@ export default function UrlManager({ userDisplayName, onLogout }: UrlManagerProp
                     </div>
                     <button 
                       className="btn btn-danger" 
-                      onClick={() => deleteUrl(url.shortCode)}
+                      onClick={() => handleDeleteClick(url.shortCode)}
                       title="Delete"
                     >
                       ✗ Delete
