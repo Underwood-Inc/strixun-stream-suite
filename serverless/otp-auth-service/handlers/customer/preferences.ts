@@ -1,13 +1,13 @@
 /**
- * User Preferences Handlers
- * Handles user preferences endpoints
+ * Customer Preferences Handlers
+ * Handles customer preferences endpoints
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
 import { verifyJWT, getJWTSecret } from '../../utils/crypto.js';
 import {
-  getUserPreferences,
-  updateUserPreferences,
+  getCustomerPreferences,
+  updateCustomerPreferences,
   getDefaultPreferences,
   type UserPreferences,
 } from '../../services/user-preferences.js';
@@ -20,8 +20,8 @@ interface Env {
 }
 
 /**
- * Get current user preferences
- * GET /user/me/preferences
+ * Get current customer preferences
+ * GET /customer/me/preferences
  */
 export async function handleGetPreferences(request: Request, env: Env): Promise<Response> {
   try {
@@ -72,7 +72,7 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
       }
     }
 
-    const preferences = await getUserPreferences(userId, customerId, env);
+    const preferences = await getCustomerPreferences(userId, customerId, env);
 
     // Generate request ID for root config
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -103,7 +103,7 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
 
 /**
  * Update user preferences
- * PUT /user/me/preferences
+ * PUT /customer/me/preferences
  */
 export async function handleUpdatePreferences(request: Request, env: Env): Promise<Response> {
   try {
@@ -185,7 +185,7 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
     // Note: displayName updates should go through the display name endpoint
     // to handle history tracking and monthly limits
 
-    const updated = await updateUserPreferences(userId, customerId, updates, env);
+    const updated = await updateCustomerPreferences(userId, customerId, updates, env);
 
     // Generate request ID for root config
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

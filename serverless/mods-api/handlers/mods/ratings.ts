@@ -123,13 +123,15 @@ export async function handleGetModRatings(
         
         // Fetch missing display names for ratings that don't have userDisplayName
         // Similar to how mod detail handler fetches missing authorDisplayName
-        const { fetchDisplayNameByUserId } = await import('../../utils/displayName.js');
-        const ratingsNeedingDisplayName = ratings.filter(r => !r.userDisplayName && r.userId);
+        const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+        // Use customerId if available, fallback to userId for backward compatibility
+        const ratingsNeedingDisplayName = ratings.filter(r => !r.userDisplayName && (r.customerId || r.userId));
         
         if (ratingsNeedingDisplayName.length > 0) {
             // Fetch all missing display names in parallel for better performance
             const displayNamePromises = ratingsNeedingDisplayName.map(async (rating) => {
-                const fetchedDisplayName = await fetchDisplayNameByUserId(rating.userId, env);
+                const customerIdToFetch = rating.customerId || rating.userId; // Prefer customerId, fallback to userId
+                const fetchedDisplayName = await fetchDisplayNameByCustomerId(customerIdToFetch, env);
                 return { rating, fetchedDisplayName };
             });
             

@@ -127,10 +127,10 @@ async function upsertCustomerAccount(
             needsUpdate = true;
         }
         
-        // Ensure email matches (in case of email change)
+        // CRITICAL: Email is IMMUTABLE - it's the authentication identifier
+        // If email doesn't match, log a warning but DO NOT change it
         if (existingCustomer.email !== emailLower) {
-            updates.email = emailLower;
-            needsUpdate = true;
+            console.warn(`[Customer Creation] Email mismatch for customer ${resolvedCustomerId}: stored="${existingCustomer.email}", login="${emailLower}". Email is immutable - keeping stored value.`);
         }
         
         // FAIL-FAST: displayName is MANDATORY - customer cannot exist without it
@@ -329,6 +329,10 @@ export async function ensureCustomerAccount(
             throw new Error(`Failed to create or retrieve customer account for ${emailLower}`);
         }
         
+        // CRITICAL: Clean up any customer data from OTP_AUTH_KV
+        // This runs on every login to gradually migrate all users
+        await cleanupOTPAuthKV(resolvedCustomerId, emailLower, env);
+        
         return resolvedCustomerId;
     } catch (error) {
         console.error(`[Customer Creation] CRITICAL ERROR: Customer account creation/lookup failed after retries for ${emailLower}:`, error);
@@ -346,3 +350,58 @@ export async function ensureCustomerAccount(
     }
 }
 
+/**
+ * Clean up customer data from OTP_AUTH_KV
+ * Removes customer data that should only exist in CUSTOMER_KV
+ * Runs on every login to gradually migrate all users
+ */
+export async function cleanupOTPAuthKV(
+    customerId: string,
+    email: string,
+    env: Env
+): Promise<void> {
+    try {
+        // Guard: Skip if OTP_AUTH_KV not available (e.g., in unit tests)
+        if (!env.OTP_AUTH_KV || typeof env.OTP_AUTH_KV.get !== 'function') {
+            return;
+        }
+        
+        const { hashEmail } = await import('../../utils/crypto.js');
+        const emailHash = await hashEmail(email);
+        const { getCustomerKey } = await import('../../services/customer.js');
+        
+        // Get customer session from OTP_AUTH_KV
+        const sessionKey = getCustomerKey(customerId, `user_${emailHash}`);
+        const session = await env.OTP_AUTH_KV.get(sessionKey, { type: 'json' }) as any;
+        
+        if (session) {
+            // Keep only authentication-related fields
+            const cleanSession = {
+                customerId: session.customerId,
+                email: session.email,
+                createdAt: session.createdAt,
+                lastLogin: session.lastLogin,
+                // Remove: displayName (customer data)
+                // Remove: preferences (customer data)
+                // Remove: any other customer data
+            };
+            
+            // Update session with cleaned data
+            await env.OTP_AUTH_KV.put(sessionKey, JSON.stringify(cleanSession), { expirationTtl: 31536000 });
+            console.log(`[Cleanup] Removed customer data from OTP_AUTH_KV session for customer ${customerId}`);
+        }
+        
+        // Remove preferences from OTP_AUTH_KV (now in CUSTOMER_KV)
+        const prefsKey = getCustomerKey(customerId, `customer_preferences_${customerId}`);
+        const oldPrefs = await env.OTP_AUTH_KV.get(prefsKey);
+        if (oldPrefs) {
+            await env.OTP_AUTH_KV.delete(prefsKey);
+            console.log(`[Cleanup] Removed preferences from OTP_AUTH_KV for customer ${customerId}`);
+        }
+        
+        console.log(`[Cleanup] Successfully cleaned OTP_AUTH_KV for customer ${customerId}`);
+    } catch (error) {
+        // Don't fail login if cleanup fails - just log the error
+        console.error(`[Cleanup] Error cleaning OTP_AUTH_KV for customer ${customerId}:`, error);
+    }
+}

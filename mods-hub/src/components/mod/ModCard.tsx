@@ -333,9 +333,6 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                             <InteractiveThumbnail 
                                 mod={mod}
                                 onError={handleThumbnailError}
-                                onNavigate={() => {
-                                    // Navigation disabled - use View Mod link instead
-                                }}
                                 watchElementRef={cardContainerRef}
                             />
                         </ThumbnailWrapper>
@@ -370,9 +367,6 @@ export function ModCard({ mod, onDelete, showDelete = false }: ModCardProps) {
                             <InteractiveThumbnail
                                 mod={mod}
                                 onError={handleThumbnailError}
-                                onNavigate={() => {
-                                    // Navigation disabled in zoom view
-                                }}
                             />
                         </ZoomCardContainer>
                     </ZoomContent>

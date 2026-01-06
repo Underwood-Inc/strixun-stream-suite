@@ -4,7 +4,7 @@
  * Handles profile picture upload, retrieval, and deletion.
  * Stores images in Cloudflare R2 with WebP conversion.
  * 
- * @module handlers/user/profilePicture
+ * @module handlers/customer/profilePicture
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
@@ -28,19 +28,6 @@ interface AuthResult {
   customerId?: string | null;
 }
 
-interface User {
-  userId: string;
-  email: string;
-  displayName?: string;
-  customerId?: string;
-  profilePicture?: {
-    url: string;
-    r2Key: string;
-    uploadedAt: string;
-    fileSize: number;
-  };
-  [key: string]: any;
-}
 
 /**
  * Authenticate request using JWT token
@@ -73,7 +60,7 @@ async function authenticateRequest(
 
 /**
  * Upload profile picture
- * POST /user/profile-picture
+ * POST /customer/profile-picture
  * 
  * Accepts multipart/form-data with 'image' field
  * Converts to WebP and stores in R2
@@ -153,7 +140,7 @@ export async function handleUploadProfilePicture(
 
     const emailHash = await hashEmail(auth.email!);
     const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
 
     if (user) {
       if (user.profilePicture?.r2Key) {
@@ -205,7 +192,7 @@ export async function handleUploadProfilePicture(
 
 /**
  * Get profile picture URL
- * GET /user/profile-picture/:userId
+ * GET /customer/profile-picture/:customerId
  */
 export async function handleGetProfilePicture(
   request: Request,
@@ -226,7 +213,7 @@ export async function handleGetProfilePicture(
     if (auth.authenticated && auth.userId === userId) {
       const emailHash = await hashEmail(auth.email!);
       const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-      const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+      const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
 
       if (user && user.profilePicture) {
         return new Response(JSON.stringify({
@@ -255,7 +242,7 @@ export async function handleGetProfilePicture(
 
 /**
  * Delete profile picture
- * DELETE /user/profile-picture
+ * DELETE /customer/profile-picture
  */
 export async function handleDeleteProfilePicture(
   request: Request,
@@ -272,7 +259,7 @@ export async function handleDeleteProfilePicture(
 
     const emailHash = await hashEmail(auth.email!);
     const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
 
     if (!user || !user.profilePicture) {
       return new Response(JSON.stringify({ error: 'Profile picture not found' }), {

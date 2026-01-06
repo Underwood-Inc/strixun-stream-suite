@@ -14,6 +14,7 @@ import { MAX_THUMBNAIL_SIZE, validateFileSize } from '../../utils/upload-limits.
 import { createModSnapshot } from '../../utils/snapshot.js';
 import { addR2SourceMetadata, getR2SourceInfo } from '../../utils/r2-source.js';
 import { calculateStrixunHash } from '../../utils/hash.js';
+import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 // handleThumbnailUpload is defined locally in this file
 import type { ModMetadata, ModUpdateRequest } from '../../types/mod.js';
 
@@ -99,6 +100,9 @@ export async function handleUpdateMod(
                 },
             });
         }
+
+        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
+        mod = await migrateModVariantsIfNeeded(mod, env);
 
         // Check authorization
         if (mod.authorId !== auth.userId) {

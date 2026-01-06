@@ -17,7 +17,7 @@ import { trackUsage } from '../../services/analytics.js';
 import { retrieveOTP, deleteOTP, incrementOTPAttempts } from './otp-storage.js';
 import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
-import { storeUserPreferences, getDefaultPreferences, getUserPreferences } from '../../services/user-preferences.js';
+import { storeUserPreferences, getDefaultPreferences, getCustomerPreferences } from '../../services/user-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
 // decryptWithServiceKey removed - service key encryption was obfuscation only
 
@@ -28,15 +28,18 @@ interface Env {
 }
 
 /**
- * Customer data structure (NOT User - we only use Customer)
+ * Customer session data structure (authentication only - stored in OTP_AUTH_KV)
  * CRITICAL: We ONLY use customerId - NO userId derived from email
+ * CRITICAL: NO customer data (displayName, preferences) - only auth session data
+ * Customer data belongs in CUSTOMER_KV and is managed by customer-api
  */
-interface Customer {
+interface CustomerSession {
     customerId: string; // MANDATORY - Customer ID is the ONLY identifier (globally unique)
     email: string; // OTP email (used for authentication, NOT returned in responses)
-    displayName: string; // MANDATORY - Display name (globally unique)
-    createdAt?: string;
-    lastLogin?: string;
+    createdAt: string;
+    lastLogin: string;
+    // NO displayName - that's in CUSTOMER_KV
+    // NO preferences - those are in CUSTOMER_KV
 }
 
 /**
@@ -51,11 +54,11 @@ interface Customer {
  * - This allows retaining customer information indefinitely while still
  *   having automated cleanup of session data
  */
-async function getOrCreateCustomer(
+async function getOrCreateCustomerSession(
     email: string,
     customerId: string, // MANDATORY - no null
     env: Env
-): Promise<Customer> {
+): Promise<CustomerSession> {
     // FAIL-FAST: customerId is MANDATORY
     if (!customerId) {
         throw new Error('Customer ID is MANDATORY. Customer account must be created first via ensureCustomerAccount.');
@@ -66,83 +69,31 @@ async function getOrCreateCustomer(
     // Keep key as `user_` for backward compatibility with existing data
     const customerKey = getCustomerKey(customerId, `user_${emailHash}`);
     
-    let customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as Customer | null;
+    let session = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
     
-    if (!customer) {
-        // FAIL-FAST: Generate globally unique display name for new customer - MANDATORY
-        const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
-        const displayName = await generateUniqueDisplayName({
-            maxAttempts: 50, // More attempts to ensure uniqueness
-            pattern: 'random'
-        }, env);
-        
-        // FAIL-FAST: displayName is MANDATORY - throw if generation fails
-        if (!displayName || displayName.trim() === '') {
-            throw new Error(`Failed to generate globally unique displayName for customer ${customerId} after 50 retries`);
-        }
-        
-        // Reserve the display name (global scope) - use customerId as identifier
-        // This ensures displayName is globally unique
-        await reserveDisplayName(displayName, customerId, null, env);
-        
-        // Create new customer session data - ONLY customerId, NO userId
-        customer = {
+    if (!session) {
+        // Create new customer session data - ONLY authentication data
+        // NO displayName - that's managed by CUSTOMER_KV via customer-api
+        // NO preferences - those are managed by CUSTOMER_KV via customer-api
+        session = {
             customerId: customerId, // MANDATORY - the ONLY identifier (globally unique)
             email: emailLower, // OTP email - stored for internal use only
-            displayName: displayName, // MANDATORY - globally unique
             createdAt: new Date().toISOString(),
             lastLogin: new Date().toISOString(),
         };
-        await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 }); // 1 year
-        
-        // Initialize customer preferences with default values and display name
-        const preferences = getDefaultPreferences();
-        preferences.displayName.current = displayName;
-        preferences.displayName.previousNames.push({
-            name: displayName,
-            changedAt: new Date().toISOString(),
-            reason: 'auto-generated',
-        });
-        // CRITICAL: Do NOT set lastChangedAt for auto-generated names
-        // This allows customers to change their name immediately after account creation
-        // lastChangedAt should remain null until the customer actually changes it themselves
-        preferences.displayName.lastChangedAt = null;
-        await storeUserPreferences(customerId, customerId, preferences, env);
+        await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(session), { expirationTtl: 31536000 }); // 1 year
     } else {
-        // FAIL-FAST: displayName is MANDATORY - generate if missing
-        if (!customer.displayName || customer.displayName.trim() === '') {
-            const { generateUniqueDisplayName, reserveDisplayName } = await import('../../services/nameGenerator.js');
-            const displayName = await generateUniqueDisplayName({
-                maxAttempts: 50, // More attempts to ensure uniqueness
-                pattern: 'random'
-            }, env);
-            
-            // FAIL-FAST: displayName is MANDATORY - throw if generation fails
-            if (!displayName || displayName.trim() === '') {
-                throw new Error(`Failed to generate globally unique displayName for existing customer ${customerId} after 50 retries`);
-            }
-            
-            await reserveDisplayName(displayName, customerId, null, env); // Global scope - ensures uniqueness
-            customer.displayName = displayName;
-            // Update stored customer data
-            await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
-        }
-        
         // FAIL-FAST: Ensure customerId matches - no fallback
-        if (customer.customerId !== customerId) {
-            throw new Error(`Customer ID mismatch: expected ${customerId}, got ${customer.customerId}`);
+        if (session.customerId !== customerId) {
+            throw new Error(`Customer ID mismatch: expected ${customerId}, got ${session.customerId}`);
         }
         
         // Update last login
-        customer.lastLogin = new Date().toISOString();
-        await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
-        
-        // Reset preferences TTL on login to keep it in sync with customer data
-        const preferences = await getUserPreferences(customerId, customerId, env);
-        await storeUserPreferences(customerId, customerId, preferences, env);
+        session.lastLogin = new Date().toISOString();
+        await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(session), { expirationTtl: 31536000 });
     }
     
-    return customer;
+    return session;
 }
 
 /**
@@ -350,7 +301,9 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
         await recordOTPRequestService(emailHash, clientIP, resolvedCustomerId, env);
         
         // Get or create customer session data (NOT user - we only use Customer)
-        const customer = await getOrCreateCustomer(emailLower, resolvedCustomerId, env);
+        // CRITICAL: This only stores authentication session data in OTP_AUTH_KV
+        // Customer data (displayName, preferences) is managed by CUSTOMER_KV via customer-api
+        const session = await getOrCreateCustomerSession(emailLower, resolvedCustomerId, env);
         
         // Track usage
         if (resolvedCustomerId) {
@@ -359,30 +312,51 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             
             // Send webhooks (internal use - email is okay for webhooks)
             await sendWebhook(resolvedCustomerId, 'otp.verified', {
-                customerId: customer.customerId,
+                customerId: session.customerId,
                 email: emailLower // Internal webhook - email is acceptable
             }, env);
             
             // Check if new customer
-            const wasNewCustomer = !customer.createdAt || 
-                new Date(customer.createdAt).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+            const wasNewCustomer = !session.createdAt || 
+                new Date(session.createdAt).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
             
             if (wasNewCustomer) {
                 await sendWebhook(resolvedCustomerId, 'customer.created', {
-                    customerId: customer.customerId,
+                    customerId: session.customerId,
                     email: emailLower // Internal webhook - email is acceptable
                 }, env);
             }
             
             await sendWebhook(resolvedCustomerId, 'customer.logged_in', {
-                customerId: customer.customerId,
+                customerId: session.customerId,
                 email: emailLower // Internal webhook - email is acceptable
             }, env);
         }
         
         // Create JWT token and session (with IP tracking)
+        // Fetch customer display name from CUSTOMER_KV via customer-api
+        // CRITICAL: Display name is NOT stored in OTP_AUTH_KV - it's in CUSTOMER_KV
+        const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
+        let displayName: string | null = null;
+        try {
+            displayName = await fetchDisplayNameByCustomerId(session.customerId, env);
+        } catch (error) {
+            console.error('[OTP Verify] Failed to fetch display name:', error);
+            // Continue without display name - not critical for login
+        }
+        
+        // CRITICAL: createAuthToken expects Customer object with displayName
+        // Create a temporary object for token creation (displayName is required for token payload)
+        const customerForToken = {
+            customerId: session.customerId,
+            email: session.email,
+            displayName: displayName || 'Unknown', // Fallback if fetch failed
+            createdAt: session.createdAt,
+            lastLogin: session.lastLogin,
+        };
+        
         // CRITICAL: This will NOT return OTP email in response body
-        const tokenResponse = await createAuthToken(customer, resolvedCustomerId, env, request);
+        const tokenResponse = await createAuthToken(customerForToken, session.customerId, env, request);
         
         return new Response(JSON.stringify(tokenResponse), {
             headers: { 

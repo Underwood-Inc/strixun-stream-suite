@@ -59,7 +59,9 @@ export async function handleUpdateCustomerById(
         const body = await request.json() as Partial<CustomerData>;
         
         // Update allowed fields
+        if (body.displayName !== undefined) customer.displayName = body.displayName;
         if (body.companyName !== undefined) customer.companyName = body.companyName;
+        // NOTE: Email is NOT updateable - it's the authentication identifier and must remain immutable
         if (body.tier !== undefined) customer.tier = body.tier;
         if (body.status !== undefined) customer.status = body.status;
         if (body.subscriptions !== undefined) customer.subscriptions = body.subscriptions;
@@ -121,6 +123,13 @@ export async function handleGetCustomer(
     try {
         // Determine which customer to get - ONLY use customerId (no email fallback)
         const targetCustomerId = customerId || auth.customerId;
+        
+        // Debug logging
+        console.log(`[Customer API] GET /customer/me - Auth: {
+  userId: '${auth.userId}',
+  customerId: '${auth.customerId}',
+  hasJWT: ${!!auth.jwtToken}
+}, targetCustomerId: '${targetCustomerId}'`);
 
         if (!targetCustomerId) {
             const rfcError = createError(request, 404, 'Not Found', 'Customer not found. Customer ID is required.');

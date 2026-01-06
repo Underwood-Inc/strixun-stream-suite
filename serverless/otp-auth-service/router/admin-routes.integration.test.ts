@@ -33,7 +33,7 @@ vi.mock('../handlers/admin.js', () => ({
     handleGetOnboarding: vi.fn().mockResolvedValue(new Response(JSON.stringify({ onboarding: {} }), { status: 200 })),
     handleUpdateOnboarding: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleTestOTP: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
-    handleListUsers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ users: [] }), { status: 200 })),
+    handleListCustomers: vi.fn().mockResolvedValue(new Response(JSON.stringify({ customers: [] }), { status: 200 })),
     handleExportUserData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 })),
     handleDeleteUserData: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 })),
     handleGetAuditLogs: vi.fn().mockResolvedValue(new Response(JSON.stringify({ logs: [] }), { status: 200 })),

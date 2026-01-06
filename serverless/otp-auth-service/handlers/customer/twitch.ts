@@ -1,9 +1,9 @@
 /**
  * Twitch Account Attachment Handlers
  * 
- * Handles attaching/detaching Twitch accounts to OTP-authenticated users
+ * Handles attaching/detaching Twitch accounts to OTP-authenticated customers
  * 
- * @module handlers/user/twitch
+ * @module handlers/customer/twitch
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
@@ -45,17 +45,9 @@ interface TwitchAccount {
   attachedAt: string;
 }
 
-interface User {
-  userId: string;
-  email: string;
-  displayName?: string;
-  customerId?: string;
-  twitchAccount?: TwitchAccount;
-  [key: string]: any;
-}
 
 /**
- * Verify JWT token and extract user info
+ * Verify JWT token and extract customer info
  */
 async function authenticateRequest(
   request: Request,
@@ -216,8 +208,8 @@ async function validateTwitchToken(
 }
 
 /**
- * Attach Twitch account to user
- * POST /user/twitch/attach
+ * Attach Twitch account to customer
+ * POST /customer/twitch/attach
  */
 export async function handleAttachTwitchAccount(
   request: Request,
@@ -281,7 +273,7 @@ export async function handleAttachTwitchAccount(
 
     const emailHash = await hashEmail(auth.email!);
     const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
 
     if (!user) {
       return new Response(JSON.stringify({ error: 'User not found' }), {
@@ -342,7 +334,7 @@ export async function handleAttachTwitchAccount(
 
 /**
  * Get attached Twitch account
- * GET /user/twitch
+ * GET /customer/twitch
  */
 export async function handleGetTwitchAccount(
   request: Request,
@@ -359,7 +351,7 @@ export async function handleGetTwitchAccount(
 
     const emailHash = await hashEmail(auth.email!);
     const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
 
     if (!user || !user.twitchAccount) {
       return new Response(JSON.stringify({ error: 'Twitch account not attached' }), {
@@ -392,8 +384,8 @@ export async function handleGetTwitchAccount(
 }
 
 /**
- * Detach Twitch account from user
- * DELETE /user/twitch/detach
+ * Detach Twitch account from customer
+ * DELETE /customer/twitch/detach
  */
 export async function handleDetachTwitchAccount(
   request: Request,
@@ -410,7 +402,7 @@ export async function handleDetachTwitchAccount(
 
     const emailHash = await hashEmail(auth.email!);
     const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
 
     if (!user || !user.twitchAccount) {
       return new Response(JSON.stringify({ error: 'Twitch account not attached' }), {

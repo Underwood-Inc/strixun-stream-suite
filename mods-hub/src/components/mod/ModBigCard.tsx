@@ -147,9 +147,6 @@ export function ModBigCard({ mod }: ModBigCardProps) {
                         <InteractiveThumbnail 
                             mod={mod}
                             onError={handleThumbnailError}
-                            onNavigate={() => {
-                                window.location.href = `/${mod.slug}`;
-                            }}
                         />
                     ) : (
                         <div style={{

@@ -4,7 +4,14 @@
  */
 
 import { createAPIClient } from '@strixun/api-framework/client';
-import type { ModStatus, ModUpdateRequest, ModUploadRequest, VersionUploadRequest } from '../types/mod';
+import type { 
+    ModStatus, 
+    ModUpdateRequest, 
+    ModUploadRequest, 
+    VersionUploadRequest,
+    VariantVersion,
+    VariantVersionUploadRequest
+} from '../types/mod';
 import type { UpdateUserRequest } from '../types/user';
 import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
@@ -587,7 +594,7 @@ export async function downloadVersion(modSlug: string, versionId: string, fileNa
 }
 
 /**
- * Download mod variant
+ * Download mod variant (latest version)
  * Uses API framework for authentication and proper error handling
  * The response handler automatically converts binary responses to ArrayBuffer
  * Files are decrypted server-side before being sent to the client
@@ -602,6 +609,111 @@ export async function downloadVariant(modSlug: string, variantId: string, fileNa
 
     // Use shared utility to handle download (files are already decrypted server-side)
     downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+}
+
+/**
+ * Upload variant version (requires authentication and ownership/admin)
+ */
+export async function uploadVariantVersion(
+    modId: string,
+    variantId: string,
+    file: File,
+    metadata: VariantVersionUploadRequest
+): Promise<any> {
+    // Encrypt file using shared utility (handles compression automatically)
+    const encryptedFileObj = await encryptFileForUpload(file);
+
+    const formData = new FormData();
+    formData.append('file', encryptedFileObj);
+    formData.append('metadata', JSON.stringify(metadata));
+    
+    // API framework automatically handles FormData - don't set Content-Type header
+    const response = await api.post<any>(`/mods/${modId}/variants/${variantId}/versions`, formData);
+    return response.data;
+}
+
+/**
+ * List all versions of a variant
+ */
+export async function listVariantVersions(
+    modSlug: string,
+    variantId: string
+): Promise<{ versions: VariantVersion[] }> {
+    const response = await api.get<{ versions: VariantVersion[] }>(
+        `/mods/${modSlug}/variants/${variantId}/versions`
+    );
+    return response.data;
+}
+
+/**
+ * Download specific variant version
+ * Uses API framework for authentication and proper error handling
+ * The response handler automatically converts binary responses to ArrayBuffer
+ * Files are decrypted server-side before being sent to the client
+ */
+export async function downloadVariantVersion(
+    modSlug: string,
+    variantId: string,
+    variantVersionId: string,
+    fileName: string
+): Promise<void> {
+    // Use API framework's get method - response handler converts binary to ArrayBuffer
+    const response = await api.get<ArrayBuffer>(
+        `/mods/${modSlug}/variants/${variantId}/versions/${variantVersionId}/download`
+    );
+
+    if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to download variant version: ${response.statusText || 'Unknown error'}`);
+    }
+
+    // Use shared utility to handle download (files are already decrypted server-side)
+    downloadFileFromArrayBuffer(response.data as ArrayBuffer, fileName);
+}
+
+/**
+ * Delete mod version (requires authentication and ownership/admin)
+ */
+export async function deleteModVersion(modId: string, versionId: string): Promise<void> {
+    await api.delete(`/mods/${modId}/versions/${versionId}`);
+}
+
+/**
+ * Delete variant version (requires authentication and ownership/admin)
+ */
+export async function deleteVariantVersion(
+    modId: string,
+    variantId: string,
+    variantVersionId: string
+): Promise<void> {
+    await api.delete(`/mods/${modId}/variants/${variantId}/versions/${variantVersionId}`);
+}
+
+/**
+ * Update mod version metadata (requires authentication and ownership/admin)
+ */
+export async function updateModVersion(
+    modId: string,
+    versionId: string,
+    updates: Partial<VersionUploadRequest>
+): Promise<any> {
+    const response = await api.put<any>(`/mods/${modId}/versions/${versionId}`, updates);
+    return response.data;
+}
+
+/**
+ * Update variant version metadata (requires authentication and ownership/admin)
+ */
+export async function updateVariantVersion(
+    modId: string,
+    variantId: string,
+    variantVersionId: string,
+    updates: Partial<VariantVersionUploadRequest>
+): Promise<any> {
+    const response = await api.put<any>(
+        `/mods/${modId}/variants/${variantId}/versions/${variantVersionId}`,
+        updates
+    );
+    return response.data;
 }
 
 /**

@@ -8,6 +8,7 @@ import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { decryptBinaryWithSharedKey } from '@strixun/api-framework';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey, normalizeModId, getCustomerR2Key } from '../../utils/customer.js';
+import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 import type { ModMetadata, ModVariant, ModVersion } from '../../types/mod.js';
 
 /**
@@ -78,6 +79,9 @@ export async function handleDownloadVariant(
                 },
             });
         }
+
+        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
+        mod = await migrateModVariantsIfNeeded(mod, env);
 
         // Find the variant
         const variant = mod.variants?.find(v => v.variantId === variantId);

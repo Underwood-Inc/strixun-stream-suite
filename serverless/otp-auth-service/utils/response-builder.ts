@@ -11,7 +11,7 @@
  * 3. NEVER includes email in responses (OTP email is sensitive)
  */
 
-import { getUserPreferences } from '../services/user-preferences.js';
+import { getCustomerPreferences } from '../services/user-preferences.js';
 import type { Env } from '../services/user-preferences.js';
 
 export interface ResponseData {

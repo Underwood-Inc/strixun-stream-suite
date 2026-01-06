@@ -1,19 +1,40 @@
 /**
- * Tooltip Component
+ * Tooltip Component - React
  * 
- * Portal-enabled tooltip component that prevents content shift and ensures
- * tooltip stays within viewport bounds. Matches main app's smart tooltip behavior.
+ * Full-featured tooltip with portal rendering, auto-positioning, and visual level indicators.
+ * Combines all features from Svelte tooltips with React-specific enhancements.
+ * 
+ * Features:
+ * - Portal rendering (prevents clipping)
+ * - Auto-positioning with viewport detection
+ * - Interactive mode (hoverable tooltip)
+ * - Truncation detection (auto-show only when text is truncated)
+ * - Level/flair system (log/info/warning/error)
+ * - Mouse-tracking notch (arrow follows cursor)
+ * - Scrollable content (when maxHeight set)
+ * - Rich content support (ReactNode)
+ * - Flicker prevention (opacity-based rendering)
+ * - Custom dimensions (width/height/maxWidth/maxHeight)
  * 
  * @example
- * <Tooltip text="Click to copy">
- *   <button>Copy</button>
+ * <Tooltip text="Simple tooltip">
+ *   <button>Hover me</button>
+ * </Tooltip>
+ * 
+ * @example
+ * <Tooltip content={<div>Rich content</div>} position="bottom" interactive>
+ *   <span>Hover target</span>
+ * </Tooltip>
+ * 
+ * @example
+ * <Tooltip text="Connection required" level="warning">
+ *   <button disabled>Disabled button</button>
  * </Tooltip>
  */
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import styled, { css } from 'styled-components';
-import { colors } from '../../theme';
 
 // Shared portal root - created once and reused by all tooltips
 let portalRoot: HTMLElement | null = null;
@@ -54,17 +75,44 @@ function getPortalRoot(): HTMLElement {
 }
 
 type TooltipPosition = 'top' | 'bottom' | 'left' | 'right' | 'auto';
+type TooltipLevel = 'log' | 'info' | 'warning' | 'error';
 
-interface TooltipProps {
+export interface TooltipTheme {
+  colors: {
+    bg: string;
+    card: string;
+    bgTertiary: string;
+    text: string;
+    textSecondary: string;
+    textMuted: string;
+    border: string;
+    accent: string;
+    info: string;
+    warning: string;
+    danger: string;
+  };
+  spacing: {
+    xs: string;
+    sm: string;
+    md: string;
+    lg: string;
+  };
+}
+
+export interface TooltipProps {
   text?: string;
   content?: ReactNode;
   position?: TooltipPosition;
   delay?: number;
   disabled?: boolean;
   maxWidth?: string | null;
+  maxHeight?: string | null;
+  width?: string | null;
+  height?: string | null;
   interactive?: boolean;
-  noBackground?: boolean; // If true, tooltip has no background/padding - content is the tooltip
-  detectTruncation?: boolean; // If true, only show tooltip when text is actually truncated
+  level?: TooltipLevel;
+  detectTruncation?: boolean;
+  theme?: TooltipTheme;
   children: ReactNode;
 }
 
@@ -77,43 +125,86 @@ const TooltipWrapper = styled.div`
 const TooltipElement = styled.div<{ 
   $position: 'top' | 'bottom' | 'left' | 'right';
   $maxWidth?: string;
+  $maxHeight?: string;
+  $width?: string;
+  $height?: string;
   $interactive?: boolean;
-  $noBackground?: boolean;
+  $level: TooltipLevel;
+  $theme: TooltipTheme;
 }>`
   position: fixed;
-  z-index: 100002; /* Highest - above modals and toasts */
-  padding: ${props => props.$noBackground ? '0' : '6px 10px'};
-  background: ${props => props.$noBackground ? 'transparent' : 'var(--card, ' + colors.bgSecondary + ')'};
-  border: ${props => props.$noBackground ? 'none' : '1px solid var(--border, ' + colors.border + ')'};
-  color: var(--text, ${colors.text});
-  font-size: 0.85em;
-  line-height: 1.4;
+  z-index: 100002;
+  padding: ${props => props.$level === 'log' ? '6px 10px' : '16px 20px'};
+  background: ${props => props.$theme.colors.card};
+  border: 1px solid ${props => props.$theme.colors.border};
+  color: ${props => props.$theme.colors.text};
+  font-size: ${props => props.$level === 'log' ? '0.85em' : '0.875rem'};
+  line-height: ${props => props.$level === 'log' ? '1.4' : '1.6'};
   pointer-events: ${props => props.$interactive ? 'auto' : 'none'};
-  box-shadow: ${props => props.$noBackground ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.3)'};
-  border-radius: ${props => props.$noBackground ? '0' : '4px'};
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-radius: ${props => props.$level === 'log' ? '4px' : '8px'};
   white-space: normal;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  text-align: center;
+  text-align: ${props => props.$level === 'log' ? 'center' : 'left'};
   display: inline-block;
-  max-width: ${props => props.$maxWidth || '300px'};
-  min-width: ${props => props.$noBackground ? 'auto' : '200px'};
-  width: ${props => props.$noBackground ? 'auto' : 'auto'};
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  width: ${props => props.$width || 'auto'};
+  height: ${props => props.$height || 'auto'};
+  min-width: ${props => props.$level === 'log' ? '200px' : '280px'};
+  max-width: ${props => props.$maxWidth || (props.$level === 'log' ? '300px' : '500px')};
+  max-height: ${props => props.$maxHeight || 'none'};
+  transition: opacity 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: ${props => props.$maxHeight ? 'hidden' : 'visible'};
   
-  /* When noBackground, ensure content determines width consistently */
-  ${props => props.$noBackground && css`
-    width: fit-content;
-    min-width: fit-content;
+  /* Level-based styling */
+  ${props => props.$level === 'info' && css`
+    border-color: ${props.$theme.colors.info};
+    border-width: 2px;
+    background-image: repeating-linear-gradient(
+      45deg,
+      ${props.$theme.colors.card},
+      ${props.$theme.colors.card} 8px,
+      rgba(100, 149, 237, 0.08) 8px,
+      rgba(100, 149, 237, 0.08) 16px
+    );
   `}
   
-  /* Arrow styles */
+  ${props => props.$level === 'warning' && css`
+    border-color: #ff8c00;
+    border-width: 2px;
+    background: ${props.$theme.colors.card};
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 140, 0, 0.1),
+      rgba(255, 140, 0, 0.1) 4px,
+      rgba(255, 140, 0, 0.15) 4px,
+      rgba(255, 140, 0, 0.15) 8px
+    );
+  `}
+  
+  ${props => props.$level === 'error' && css`
+    border-color: ${props.$theme.colors.danger};
+    border-width: 2px;
+    background: ${props.$theme.colors.card};
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(234, 43, 31, 0.1),
+      rgba(234, 43, 31, 0.1) 6px,
+      rgba(234, 43, 31, 0.15) 6px,
+      rgba(234, 43, 31, 0.15) 12px
+    );
+  `}
+  
+  /* Arrow styles - positioned by CSS variable --notch-offset */
   &::after {
     content: '';
     position: absolute;
     width: 0;
     height: 0;
     border-style: solid;
+    z-index: 2;
   }
   
   &::before {
@@ -122,25 +213,30 @@ const TooltipElement = styled.div<{
     width: 0;
     height: 0;
     border-style: solid;
-    z-index: -1;
+    z-index: 1;
   }
   
   /* Top position - arrow points down */
   ${props => props.$position === 'top' && css`
     &::after {
       top: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border-width: 5px 5px 0 5px;
-      border-color: var(--card, ${colors.bgSecondary}) transparent transparent transparent;
+      border-color: ${props.$theme.colors.card} transparent transparent transparent;
     }
     
     &::before {
       top: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border-width: 6px 6px 0 6px;
-      border-color: var(--border, ${colors.border}) transparent transparent transparent;
+      border-color: ${
+        props.$level === 'info' ? props.$theme.colors.info :
+        props.$level === 'warning' ? '#ff8c00' :
+        props.$level === 'error' ? props.$theme.colors.danger :
+        props.$theme.colors.border
+      } transparent transparent transparent;
       margin-top: -1px;
     }
   `}
@@ -149,18 +245,23 @@ const TooltipElement = styled.div<{
   ${props => props.$position === 'bottom' && css`
     &::after {
       bottom: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border-width: 0 5px 5px 5px;
-      border-color: transparent transparent var(--card, ${colors.bgSecondary}) transparent;
+      border-color: transparent transparent ${props.$theme.colors.card} transparent;
     }
     
     &::before {
       bottom: 100%;
-      left: 50%;
+      left: var(--notch-offset, 50%);
       transform: translateX(-50%);
       border-width: 0 6px 6px 6px;
-      border-color: transparent transparent var(--border, ${colors.border}) transparent;
+      border-color: transparent transparent ${
+        props.$level === 'info' ? props.$theme.colors.info :
+        props.$level === 'warning' ? '#ff8c00' :
+        props.$level === 'error' ? props.$theme.colors.danger :
+        props.$theme.colors.border
+      } transparent;
       margin-bottom: -1px;
     }
   `}
@@ -169,18 +270,23 @@ const TooltipElement = styled.div<{
   ${props => props.$position === 'left' && css`
     &::after {
       left: 100%;
-      top: 50%;
+      top: var(--notch-offset, 50%);
       transform: translateY(-50%);
       border-width: 5px 0 5px 5px;
-      border-color: transparent transparent transparent var(--card, ${colors.bgSecondary});
+      border-color: transparent transparent transparent ${props.$theme.colors.card};
     }
     
     &::before {
       left: 100%;
-      top: 50%;
+      top: var(--notch-offset, 50%);
       transform: translateY(-50%);
       border-width: 6px 0 6px 6px;
-      border-color: transparent transparent transparent var(--border, ${colors.border});
+      border-color: transparent transparent transparent ${
+        props.$level === 'info' ? props.$theme.colors.info :
+        props.$level === 'warning' ? '#ff8c00' :
+        props.$level === 'error' ? props.$theme.colors.danger :
+        props.$theme.colors.border
+      };
       margin-left: -1px;
     }
   `}
@@ -189,28 +295,94 @@ const TooltipElement = styled.div<{
   ${props => props.$position === 'right' && css`
     &::after {
       right: 100%;
-      top: 50%;
+      top: var(--notch-offset, 50%);
       transform: translateY(-50%);
       border-width: 5px 5px 5px 0;
-      border-color: transparent var(--card, ${colors.bgSecondary}) transparent transparent;
+      border-color: transparent ${props.$theme.colors.card} transparent transparent;
     }
     
     &::before {
       right: 100%;
-      top: 50%;
+      top: var(--notch-offset, 50%);
       transform: translateY(-50%);
       border-width: 6px 6px 6px 0;
-      border-color: transparent var(--border, ${colors.border}) transparent transparent;
+      border-color: transparent ${
+        props.$level === 'info' ? props.$theme.colors.info :
+        props.$level === 'warning' ? '#ff8c00' :
+        props.$level === 'error' ? props.$theme.colors.danger :
+        props.$theme.colors.border
+      } transparent transparent;
       margin-right: -1px;
     }
   `}
 `;
 
+const TooltipContent = styled.div<{ $scrollable: boolean; $theme: TooltipTheme }>`
+  position: relative;
+  z-index: 1;
+  ${props => props.$scrollable && css`
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    padding-right: 4px;
+    margin-right: -4px;
+    
+    /* Custom scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 4px;
+      margin: 4px 0;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+      background-clip: padding-box;
+    }
+  `}
+`;
+
+// Default theme
+const defaultTheme: TooltipTheme = {
+  colors: {
+    bg: '#1a1a1a',
+    card: '#2a2a2a',
+    bgTertiary: '#333333',
+    text: '#f9f9f9',
+    textSecondary: '#b0b0b0',
+    textMuted: '#808080',
+    border: 'rgba(255, 255, 255, 0.2)',
+    accent: '#6495ed',
+    info: '#6495ed',
+    warning: '#ff8c00',
+    danger: '#ea2b1f',
+  },
+  spacing: {
+    xs: '4px',
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+  },
+};
+
 /**
  * Find the first text-containing element in the container
  */
 function findTextElement(container: HTMLElement): HTMLElement | null {
-  // First, check if container itself has truncation styles and text
   const containerStyle = window.getComputedStyle(container);
   const hasContainerTruncation = 
     (containerStyle.overflow === 'hidden' || containerStyle.overflowX === 'hidden') &&
@@ -220,7 +392,6 @@ function findTextElement(container: HTMLElement): HTMLElement | null {
     return container;
   }
   
-  // Otherwise, find the first child element with truncation styles
   const walker = document.createTreeWalker(
     container,
     NodeFilter.SHOW_ELEMENT,
@@ -242,7 +413,6 @@ function findTextElement(container: HTMLElement): HTMLElement | null {
     }
   }
   
-  // Fallback: return first element with text content
   if (container.textContent && container.textContent.trim()) {
     return container;
   }
@@ -278,31 +448,7 @@ function detectTextTruncation(element: HTMLElement): boolean {
   const clientHeight = element.clientHeight;
   const isVerticallyTruncated = scrollHeight > clientHeight + threshold;
   
-  let isTruncatedByMeasurement = false;
-  
-  try {
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.style.cssText = `
-      position: absolute;
-      visibility: hidden;
-      white-space: ${computedStyle.whiteSpace};
-      font: ${computedStyle.font};
-      width: auto;
-      max-width: none;
-      overflow: visible;
-    `;
-    
-    document.body.appendChild(clone);
-    const cloneWidth = clone.offsetWidth;
-    const originalWidth = element.offsetWidth;
-    document.body.removeChild(clone);
-    
-    isTruncatedByMeasurement = cloneWidth > originalWidth + threshold;
-  } catch (e) {
-    // Fall back to scrollWidth method
-  }
-  
-  return isHorizontallyTruncated || isVerticallyTruncated || isTruncatedByMeasurement;
+  return isHorizontallyTruncated || isVerticallyTruncated;
 }
 
 export function Tooltip({ 
@@ -312,16 +458,21 @@ export function Tooltip({
   delay = 0, 
   disabled = false,
   maxWidth = null,
+  maxHeight = null,
+  width = null,
+  height = null,
   interactive = false,
-  noBackground = false,
+  level = 'log',
   detectTruncation = false,
+  theme = defaultTheme,
   children 
 }: TooltipProps) {
   const [show, setShow] = useState(false);
   const [actualPosition, setActualPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({ opacity: 0 });
   const [isTruncated, setIsTruncated] = useState(false);
   const [truncatedText, setTruncatedText] = useState<string>('');
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const wrapperRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -432,11 +583,11 @@ export function Tooltip({
     if (maxWidth !== null) {
       return maxWidth;
     }
-    if (typeof window === 'undefined') return '300px';
+    if (typeof window === 'undefined') return level === 'log' ? '300px' : '500px';
     const viewportWidth = window.innerWidth;
-    const calculated = Math.max(200, Math.min(500, Math.floor(viewportWidth * 0.4)));
+    const calculated = Math.max(level === 'log' ? 200 : 250, Math.min(level === 'log' ? 300 : 500, Math.floor(viewportWidth * 0.4)));
     return `${calculated}px`;
-  }, [maxWidth]);
+  }, [maxWidth, level]);
 
   // Calculate best position based on available space
   const calculatePosition = useCallback((): 'top' | 'bottom' | 'left' | 'right' => {
@@ -473,7 +624,7 @@ export function Tooltip({
     }
   }, [position]);
 
-  // Update tooltip position using fixed positioning
+  // Update tooltip position and notch
   const updateTooltipPosition = useCallback(() => {
     if (!wrapperRef.current || !tooltipRef.current) return;
 
@@ -515,12 +666,30 @@ export function Tooltip({
       top = viewportHeight - tooltipRect.height - padding;
     }
 
+    // Update notch position based on mouse
+    const minOffsetPercent = 5;
+    let notchOffset = '50%';
+    
+    if (actualPosition === 'top' || actualPosition === 'bottom') {
+      const mouseRelativeX = mousePos.x - left;
+      const mousePercentX = (mouseRelativeX / tooltipRect.width) * 100;
+      const clampedPercent = Math.max(minOffsetPercent, Math.min(100 - minOffsetPercent, mousePercentX));
+      notchOffset = `${clampedPercent}%`;
+    } else if (actualPosition === 'left' || actualPosition === 'right') {
+      const mouseRelativeY = mousePos.y - top;
+      const mousePercentY = (mouseRelativeY / tooltipRect.height) * 100;
+      const clampedPercent = Math.max(minOffsetPercent, Math.min(100 - minOffsetPercent, mousePercentY));
+      notchOffset = `${clampedPercent}%`;
+    }
+
     setTooltipStyle({
       top: `${top}px`,
       left: `${left}px`,
       maxWidth: calculateMaxWidth(),
+      opacity: 1,
+      ['--notch-offset' as any]: notchOffset,
     });
-  }, [actualPosition, calculateMaxWidth]);
+  }, [actualPosition, calculateMaxWidth, mousePos]);
 
   // Handle resize and scroll events
   const handleResize = useCallback(() => {
@@ -531,33 +700,36 @@ export function Tooltip({
     }
   }, [show, calculatePosition, updateTooltipPosition]);
 
+  // Track mouse position for notch
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+    if (show && tooltipRef.current) {
+      updateTooltipPosition();
+    }
+  }, [show, updateTooltipPosition]);
+
   // Show tooltip
   const handleMouseEnter = useCallback(() => {
     if (disabled || (!text && !content)) return;
 
     // If detectTruncation is enabled, check truncation synchronously on hover
     if (detectTruncation) {
-      // Perform immediate synchronous truncation check
       if (wrapperRef.current) {
         const textElement = findTextElement(wrapperRef.current);
         if (textElement) {
           const isCurrentlyTruncated = detectTextTruncation(textElement);
           if (!isCurrentlyTruncated) {
-            // Not truncated - don't show tooltip
             return;
           }
-          // Update state for future checks
           setIsTruncated(true);
           const fullText = textElement.textContent || textElement.innerText || '';
           if (fullText.trim()) {
             setTruncatedText(fullText);
           }
         } else {
-          // Can't find text element - don't show
           return;
         }
       } else {
-        // No wrapper ref - don't show
         return;
       }
     }
@@ -570,7 +742,7 @@ export function Tooltip({
     } else {
       setShow(true);
     }
-  }, [disabled, text, delay, detectTruncation]);
+  }, [disabled, text, content, delay, detectTruncation]);
 
   // Hide tooltip
   const handleMouseLeave = useCallback(() => {
@@ -580,28 +752,26 @@ export function Tooltip({
     }
     
     if (!isInteractive) {
-      // Non-interactive: hide immediately
       setShow(false);
+      setTooltipStyle({ opacity: 0 });
       return;
     }
     
-    // Interactive: delay hiding to allow moving to tooltip
-    // Use much longer delay to prevent flicker during content changes
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
     }
     hideTimeoutRef.current = setTimeout(() => {
       if (!isHoveringTooltipRef.current) {
         setShow(false);
+        setTooltipStyle({ opacity: 0 });
       }
       hideTimeoutRef.current = null;
-    }, 500); // Much longer delay to allow content changes without hiding
+    }, 500);
   }, [isInteractive]);
   
   // Handle tooltip mouse enter (for interactive tooltips)
   const handleTooltipMouseEnter = useCallback(() => {
     if (isInteractive) {
-      // Cancel any pending hide
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
         hideTimeoutRef.current = null;
@@ -614,25 +784,24 @@ export function Tooltip({
   const handleTooltipMouseLeave = useCallback(() => {
     if (isInteractive) {
       isHoveringTooltipRef.current = false;
-      // Small delay to allow moving mouse from tooltip back to trigger
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
       hideTimeoutRef.current = setTimeout(() => {
         if (!isHoveringTooltipRef.current) {
           setShow(false);
+          setTooltipStyle({ opacity: 0 });
         }
         hideTimeoutRef.current = null;
       }, 100);
     }
   }, [isInteractive]);
 
-  // Ensure portal root exists on mount - MUST be ready before any render
+  // Ensure portal root exists on mount
   useEffect(() => {
     if (typeof document !== 'undefined') {
       try {
         const root = getPortalRoot();
-        // Verify it's actually in the DOM
         if (!document.body.contains(root)) {
           console.error('Portal root not in DOM!');
         }
@@ -645,7 +814,6 @@ export function Tooltip({
   // Update position when tooltip becomes visible
   useEffect(() => {
     if (show && tooltipRef.current && wrapperRef.current) {
-      // Wait for tooltip to render, then calculate position
       requestAnimationFrame(() => {
         if (!tooltipRef.current || !wrapperRef.current) return;
         
@@ -653,7 +821,6 @@ export function Tooltip({
         setActualPosition(newPosition);
         updateTooltipPosition();
 
-        // Add event listeners if not already active
         if (!listenersActiveRef.current) {
           window.addEventListener('resize', handleResize);
           window.addEventListener('scroll', handleResize, true);
@@ -671,10 +838,9 @@ export function Tooltip({
     };
   }, [show, calculatePosition, updateTooltipPosition, handleResize]);
   
-  // Update position when content changes (but keep tooltip visible)
+  // Update position when content changes
   useEffect(() => {
     if (show && tooltipRef.current && wrapperRef.current) {
-      // Recalculate position when content changes to prevent flicker
       requestAnimationFrame(() => {
         if (!tooltipRef.current || !wrapperRef.current) return;
         updateTooltipPosition();
@@ -682,15 +848,13 @@ export function Tooltip({
     }
   }, [content, show, updateTooltipPosition]);
   
-  // Keep tooltip visible when content changes - cancel any pending hide
+  // Keep tooltip visible when content changes
   useEffect(() => {
     if (show && isInteractive && content) {
-      // When content changes, cancel any pending hide to keep tooltip visible
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
         hideTimeoutRef.current = null;
       }
-      // Keep tooltip visible during content transitions
       isHoveringTooltipRef.current = true;
     }
   }, [content, show, isInteractive]);
@@ -700,6 +864,9 @@ export function Tooltip({
     return () => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
+      }
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
       }
       if (listenersActiveRef.current) {
         window.removeEventListener('resize', handleResize);
@@ -712,30 +879,32 @@ export function Tooltip({
     return <>{children}</>;
   }
 
-  // Get portal root element - MUST exist in DOM before using createPortal
   const portalRootElement = typeof document !== 'undefined' && typeof window !== 'undefined' 
     ? getPortalRoot() 
     : null;
   
-  // Render tooltip ONLY via React createPortal when show is true
-  // This ensures tooltip is NEVER in the component tree
-  // If detectTruncation is enabled, only show when text is actually truncated
   const shouldShowTooltip = show && (!detectTruncation || isTruncated || content);
   const tooltipPortal = shouldShowTooltip && portalRootElement 
     ? createPortal(
         <TooltipElement
           ref={tooltipRef}
           $position={actualPosition}
-          $maxWidth={calculateMaxWidth()}
+          $maxWidth={maxWidth || calculateMaxWidth()}
+          $maxHeight={maxHeight || undefined}
+          $width={width || undefined}
+          $height={height || undefined}
           $interactive={isInteractive}
-          $noBackground={noBackground}
+          $level={level}
+          $theme={theme}
           style={tooltipStyle}
           role="tooltip"
           aria-live="polite"
           onMouseEnter={handleTooltipMouseEnter}
           onMouseLeave={handleTooltipMouseLeave}
         >
-          {content || (detectTruncation && isTruncated ? truncatedText : text)}
+          <TooltipContent $scrollable={!!maxHeight || !!height} $theme={theme}>
+            {content || (detectTruncation && isTruncated ? truncatedText : text)}
+          </TooltipContent>
         </TooltipElement>,
         portalRootElement
       )
@@ -747,10 +916,10 @@ export function Tooltip({
         ref={wrapperRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onMouseMove={handleMouseMove}
       >
         {children}
       </TooltipWrapper>
-      {/* CRITICAL: Tooltip renders ONLY via React createPortal to body - NEVER in this tree */}
       {tooltipPortal}
     </>
   );

@@ -9,6 +9,7 @@ import { createError } from '../utils/errors.js';
 import { authenticateRequest } from '../utils/auth.js';
 import { wrapWithEncryption } from '@strixun/api-framework';
 import { handleGetCustomer, handleGetCustomerByEmail, handleCreateCustomer, handleUpdateCustomer } from '../handlers/customer.js';
+import { handleGetPreferences, handleUpdatePreferences, handleUpdateDisplayName } from '../handlers/preferences.js';
 
 interface Env {
     CUSTOMER_KV: KVNamespace;
@@ -129,6 +130,41 @@ export async function handleCustomerRoutes(request: Request, path: string, env: 
                     auth
                 );
             }
+        }
+
+        // Get customer preferences
+        const preferencesMatch = normalizedPath.match(/^\/customer\/([^\/]+)\/preferences$/);
+        if (preferencesMatch && request.method === 'GET') {
+            const customerId = preferencesMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleGetPreferences(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
+        }
+
+        // Update customer preferences
+        if (preferencesMatch && request.method === 'PUT') {
+            const customerId = preferencesMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleUpdatePreferences(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
+        }
+
+        // Update customer display name
+        const displayNameMatch = normalizedPath.match(/^\/customer\/([^\/]+)\/display-name$/);
+        if (displayNameMatch && request.method === 'PUT') {
+            const customerId = displayNameMatch[1];
+            return await handleCustomerRoute(
+                (req, e, a) => handleUpdateDisplayName(req, e, a, customerId),
+                request,
+                env,
+                auth
+            );
         }
 
         return null; // Route not matched

@@ -31,36 +31,75 @@ const PageContainer = styled.div`
 const Header = styled.div`
   display: flex;
   gap: ${spacing.lg};
+  
+  /* Responsive: Stack vertically on mobile */
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+  }
 `;
 
 const ThumbnailContainer = styled.div`
   width: 200px;
+  height: 200px; /* Explicit height to match 1:1 aspect ratio */
   flex-shrink: 0;
-  /* InteractiveThumbnail has aspect-ratio: 16/9, so height will be calculated */
+  /* Fixed size - InteractiveThumbnail has aspect-ratio: 1, making it square */
+  
+  /* Responsive: Larger on tablets, smaller on mobile */
+  @media (max-width: 1024px) and (min-width: 769px) {
+    width: 180px;
+    height: 180px;
+  }
+  
+  @media (max-width: 768px) {
+    width: 280px;
+    height: 280px;
+    max-width: 90vw;
+    max-height: 90vw;
+  }
+  
+  @media (max-width: 480px) {
+    width: 240px;
+    height: 240px;
+  }
 `;
 
 const Info = styled.div`
   ${getCardStyles('default')}
   flex: 1;
+  min-width: 0; /* Allow flex shrinking and prevent overflow */
   display: flex;
   flex-direction: column;
   gap: ${spacing.md};
+  min-height: 200px; /* Minimum height to prevent collapsing */
+  align-self: stretch; /* Match height of container */
+  
+  /* Responsive: Full width on mobile */
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: auto;
+  }
 `;
 
 const Title = styled.h1`
   font-size: 2rem;
   font-weight: 700;
   color: ${colors.text};
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 `;
 
 const Description = styled.p`
   color: ${colors.textSecondary};
   line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 `;
 
 const Meta = styled.div`
   display: flex;
   gap: ${spacing.lg};
+  flex-wrap: wrap;
   color: ${colors.textMuted};
   font-size: 0.875rem;
 `;
@@ -196,9 +235,6 @@ export function ModDetailPage() {
                     <ThumbnailContainer>
                         <InteractiveThumbnail 
                             mod={mod}
-                            onNavigate={() => {
-                                // Already on detail page, no navigation needed
-                            }}
                         />
                     </ThumbnailContainer>
                 )}

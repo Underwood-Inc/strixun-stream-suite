@@ -1,8 +1,8 @@
 /**
- * Data Request Handlers (User)
+ * Data Request Handlers (Customer)
  * 
- * Handles user endpoints for approving/rejecting sensitive data requests.
- * Users can view and manage requests for their own data.
+ * Handles customer endpoints for approving/rejecting sensitive data requests.
+ * Customers can view and manage requests for their own data.
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
@@ -11,7 +11,7 @@ import { hashEmail } from '../../utils/crypto.js';
 import { getCustomerKey } from '../../services/customer.js';
 import {
     getDataRequest,
-    getUserDataRequests,
+    getCustomerDataRequests,
     approveDataRequest,
     rejectDataRequest,
     getDecryptedRequestKey,
@@ -24,12 +24,6 @@ interface Env {
     [key: string]: any;
 }
 
-interface User {
-    userId: string;
-    email: string;
-    customerId?: string | null;
-    [key: string]: any;
-}
 
 /**
  * Authenticate user request
@@ -68,7 +62,7 @@ async function authenticateUser(request: Request, env: Env): Promise<{
 
 /**
  * Get user's data requests (requests for this user's data)
- * GET /user/data-requests
+ * GET /customer/data-requests
  */
 export async function handleGetUserDataRequests(request: Request, env: Env): Promise<Response> {
     try {
@@ -93,7 +87,7 @@ export async function handleGetUserDataRequests(request: Request, env: Env): Pro
         }
 
         // Get all requests for this user
-        const requests = await getUserDataRequests(auth.email!, auth.customerId, env);
+        const requests = await getCustomerDataRequests(auth.email!, auth.customerId, env);
 
         // Filter out sensitive data
         const responseData = {
@@ -128,7 +122,7 @@ export async function handleGetUserDataRequests(request: Request, env: Env): Pro
 
 /**
  * Get specific data request
- * GET /user/data-requests/:id
+ * GET /customer/data-requests/:id
  */
 export async function handleGetUserDataRequest(
     request: Request,
@@ -209,7 +203,7 @@ export async function handleGetUserDataRequest(
 
 /**
  * Approve a data request
- * POST /user/data-requests/:id/approve
+ * POST /customer/data-requests/:id/approve
  */
 export async function handleApproveDataRequest(
     request: Request,
@@ -292,7 +286,7 @@ export async function handleApproveDataRequest(
 
 /**
  * Reject a data request
- * POST /user/data-requests/:id/reject
+ * POST /customer/data-requests/:id/reject
  */
 export async function handleRejectDataRequest(
     request: Request,
@@ -371,7 +365,7 @@ export async function handleRejectDataRequest(
 
 /**
  * Decrypt double-encrypted data using approved request
- * POST /user/data-requests/:id/decrypt
+ * POST /customer/data-requests/:id/decrypt
  * 
  * This endpoint allows the requester to decrypt double-encrypted data
  * after the request has been approved.

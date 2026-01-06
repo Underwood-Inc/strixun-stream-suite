@@ -10,7 +10,31 @@ import { useUploadPermission } from '../../hooks/useUploadPermission';
 import { useDrafts } from '../../hooks/useMods';
 import { colors, spacing } from '../../theme';
 import { getButtonStyles } from '../../utils/buttonStyles';
-import { Tooltip } from '../common/Tooltip';
+import { Tooltip } from '@strixun/shared-components/react';
+import type { TooltipTheme } from '@strixun/shared-components/react';
+
+// Theme configuration for shared Tooltip component
+const tooltipTheme: TooltipTheme = {
+  colors: {
+    bg: colors.bg,
+    card: colors.card,
+    bgTertiary: colors.bgTertiary,
+    text: colors.text,
+    textSecondary: colors.textSecondary,
+    textMuted: colors.textMuted,
+    border: colors.border,
+    accent: colors.accent,
+    info: colors.info,
+    warning: colors.warning,
+    danger: colors.danger,
+  },
+  spacing: {
+    xs: spacing.xs,
+    sm: spacing.sm,
+    md: spacing.md,
+    lg: spacing.lg,
+  },
+};
 
 const HeaderContainer = styled.header`
   background: ${colors.bgSecondary};
@@ -121,6 +145,7 @@ export function Header() {
                             text={`Logout (${user?.displayName || 'User'})`} 
                             detectTruncation 
                             position="bottom"
+                            theme={tooltipTheme}
                         >
                             <LogoutButton $variant="secondary" onClick={handleLogout}>
                                 <span style={{ 

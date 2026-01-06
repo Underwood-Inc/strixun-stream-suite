@@ -8,6 +8,8 @@ import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateMo
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
+import { ModVersionManagement } from '../components/mod/ModVersionManagement';
+import { VariantManagement } from '../components/mod/VariantManagement';
 import { useAuthStore } from '../stores/auth';
 import styled from 'styled-components';
 import { colors, spacing } from '../theme';
@@ -170,6 +172,7 @@ export function ModManagePage() {
             <div style={{ color: colors.textSecondary, fontSize: '0.875rem', marginBottom: spacing.md }}>
                 Last updated: {new Date(data.mod.updatedAt).toLocaleString()}
             </div>
+            
             <ModManageForm
                 mod={data.mod}
                 onUpdate={handleUpdate}
@@ -177,11 +180,26 @@ export function ModManagePage() {
                 onStatusChange={handleStatusChange}
                 isLoading={updateMod.isPending || deleteMod.isPending || updateStatus.isPending}
             />
+            
             <VersionUploadForm
-                modId={data.mod.modId} // Still use modId for version upload
+                modId={data.mod.modId}
                 onSubmit={handleVersionUpload}
                 isLoading={uploadVersion.isPending}
             />
+            
+            <ModVersionManagement
+                modSlug={slug!}
+                modId={data.mod.modId}
+                versions={data.versions}
+            />
+            
+            {data.mod.variants && data.mod.variants.length > 0 && (
+                <VariantManagement
+                    modSlug={slug!}
+                    modId={data.mod.modId}
+                    variants={data.mod.variants}
+                />
+            )}
         </PageContainer>
     );
 }

@@ -10,8 +10,32 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import { API_BASE_URL } from '../../services/api';
-import { Tooltip } from '../common/Tooltip';
+import { Tooltip } from '@strixun/shared-components/react';
+import type { TooltipTheme } from '@strixun/shared-components/react';
 import { getAuthToken } from '../../services/api';
+
+// Theme configuration for shared Tooltip component
+const tooltipTheme: TooltipTheme = {
+  colors: {
+    bg: colors.bg,
+    card: colors.card,
+    bgTertiary: colors.bgTertiary,
+    text: colors.text,
+    textSecondary: colors.textSecondary,
+    textMuted: colors.textMuted,
+    border: colors.border,
+    accent: colors.accent,
+    info: colors.info,
+    warning: colors.warning,
+    danger: colors.danger,
+  },
+  spacing: {
+    xs: spacing.xs,
+    sm: spacing.sm,
+    md: spacing.md,
+    lg: spacing.lg,
+  },
+};
 
 const BadgeContainer = styled.div`
   display: inline-flex;
@@ -347,6 +371,7 @@ export function IntegrityBadge({ modId, slug, versionId, style = 'flat' }: Integ
                 delay={200}
                 maxWidth="450px"
                 interactive={true}
+                theme={tooltipTheme}
             >
                 <BadgeImage 
                     src={badgeUrl} 

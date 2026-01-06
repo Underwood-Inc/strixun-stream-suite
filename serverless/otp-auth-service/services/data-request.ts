@@ -174,7 +174,7 @@ export async function getDataRequest(
 /**
  * Get all requests for a user (target)
  */
-export async function getUserDataRequests(
+export async function getCustomerDataRequests(
     targetUserId: string,
     targetCustomerId: string | null,
     env: Env

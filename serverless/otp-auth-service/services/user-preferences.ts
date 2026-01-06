@@ -52,7 +52,7 @@ export function getDefaultPreferences(): UserPreferences {
  * Get customer preferences
  * CRITICAL: We ONLY use customerId - NO userId
  */
-export async function getUserPreferences(
+export async function getCustomerPreferences(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
   env: Env
@@ -98,13 +98,13 @@ export async function storeUserPreferences(
  * Update customer preferences (partial update)
  * CRITICAL: We ONLY use customerId - NO userId
  */
-export async function updateUserPreferences(
+export async function updateCustomerPreferences(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
   updates: Partial<UserPreferences>,
   env: Env
 ): Promise<UserPreferences> {
-  const current = await getUserPreferences(customerId, customerIdForScope, env);
+  const current = await getCustomerPreferences(customerId, customerIdForScope, env);
   const updated: UserPreferences = {
     ...current,
     ...updates,
@@ -133,7 +133,7 @@ export async function addDisplayNameToHistory(
   reason: 'auto-generated' | 'user-changed' | 'regenerated',
   env: Env
 ): Promise<void> {
-  const preferences = await getUserPreferences(customerId, customerIdForScope, env);
+  const preferences = await getCustomerPreferences(customerId, customerIdForScope, env);
   
   preferences.displayName.previousNames.push({
     name: previousName,
@@ -159,7 +159,7 @@ export async function canChangeDisplayName(
   customerIdForScope: string | null, // For multi-tenant scoping
   env: Env
 ): Promise<{ allowed: boolean; reason?: string; nextChangeDate?: string }> {
-  const preferences = await getUserPreferences(customerId, customerIdForScope, env);
+  const preferences = await getCustomerPreferences(customerId, customerIdForScope, env);
 
   // If lastChangedAt is null, customer can always change (new account or never changed)
   if (!preferences.displayName.lastChangedAt) {
@@ -217,7 +217,7 @@ export async function updateDisplayName(
     };
   }
 
-  const preferences = await getUserPreferences(customerId, customerIdForScope, env);
+  const preferences = await getCustomerPreferences(customerId, customerIdForScope, env);
   const previousName = preferences.displayName.current;
 
   // Add previous name to history if it exists

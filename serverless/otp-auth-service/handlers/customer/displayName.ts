@@ -2,10 +2,10 @@
  * Display Name Management Handlers
  * 
  * Handles display name changes with uniqueness validation
+ * CRITICAL: Updates CUSTOMER_KV via customer-api (NOT OTP_AUTH_KV)
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
-import { getCustomerKey } from '../../services/customer.js';
 import { 
     validateDisplayName, 
     sanitizeDisplayName,
@@ -13,11 +13,13 @@ import {
     reserveDisplayName,
     releaseDisplayName
 } from '../../services/nameGenerator.js';
-import { updateDisplayName, canChangeDisplayName } from '../../services/user-preferences.js';
+import { updateCustomer } from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
     JWT_SECRET?: string;
+    CUSTOMER_API_URL?: string;
+    NETWORK_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }
 
@@ -28,14 +30,6 @@ interface AuthResult {
     userId?: string;
     email?: string;
     customerId?: string | null;
-}
-
-interface User {
-    userId: string;
-    email: string;
-    displayName?: string | null;
-    customerId?: string | null;
-    [key: string]: any;
 }
 
 /**
@@ -68,8 +62,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
 }
 
 /**
- * Get current user's display name
- * GET /user/display-name
+ * Get current customer's display name from customer-api
+ * GET /customer/display-name
  */
 export async function handleGetDisplayName(request: Request, env: Env): Promise<Response> {
     try {
@@ -81,14 +75,19 @@ export async function handleGetDisplayName(request: Request, env: Env): Promise<
             });
         }
 
-        // Get user from KV
-        const { hashEmail } = await import('../../utils/crypto.js');
-        const emailHash = await hashEmail(auth.email!);
-        const userKey = getCustomerKey(auth.customerId, `user_${emailHash}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+        if (!auth.customerId) {
+            return new Response(JSON.stringify({ error: 'Customer ID required' }), {
+                status: 400,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
 
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
+        // Fetch customer data from customer-api
+        const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+        const customer = await fetchCustomerByCustomerId(auth.customerId, env);
+
+        if (!customer) {
+            return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
@@ -96,8 +95,8 @@ export async function handleGetDisplayName(request: Request, env: Env): Promise<
 
         return new Response(JSON.stringify({
             success: true,
-            displayName: user.displayName || null,
-            userId: user.userId,
+            displayName: customer.displayName || null,
+            customerId: customer.customerId,
         }), {
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
@@ -113,8 +112,8 @@ export async function handleGetDisplayName(request: Request, env: Env): Promise<
 }
 
 /**
- * Update user's display name
- * PUT /user/display-name
+ * Update customer's display name via customer-api
+ * PUT /customer/display-name
  */
 export async function handleUpdateDisplayName(request: Request, env: Env): Promise<Response> {
     try {
@@ -122,6 +121,16 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
         if (!auth.authenticated) {
             return new Response(JSON.stringify({ error: auth.error }), {
                 status: auth.status || 401,
+                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+            });
+        }
+
+        if (!auth.customerId) {
+            return new Response(JSON.stringify({ 
+                error: 'Customer ID required',
+                detail: 'Customer ID must be present in JWT token'
+            }), {
+                status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
@@ -144,27 +153,14 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
         if (!validateDisplayName(sanitized)) {
             return new Response(JSON.stringify({ 
                 error: 'Invalid display name format',
-                detail: `Display name must be ${DISPLAY_NAME_MIN_LENGTH}-${DISPLAY_NAME_MAX_LENGTH} characters, start with a letter, contain only letters, spaces, and dashes (e.g., "Swift-Bold"), and have a maximum of ${DISPLAY_NAME_MAX_WORDS} words`
+                detail: 'Display name must be 3-32 characters, start with a letter, contain only letters, spaces, and dashes'
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
-        // Check monthly change limit
-        const canChange = await canChangeDisplayName(auth.userId!, auth.customerId, env);
-        if (!canChange.allowed) {
-            return new Response(JSON.stringify({ 
-                error: 'Display name change limit exceeded',
-                detail: canChange.reason,
-                nextChangeDate: canChange.nextChangeDate
-            }), {
-                status: 429, // Too Many Requests
-                headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
-            });
-        }
-
-        // Check uniqueness (global scope - customerId ignored)
+        // Check uniqueness (global scope)
         const unique = await isNameUnique(sanitized, null, env);
         if (!unique) {
             return new Response(JSON.stringify({ 
@@ -176,54 +172,47 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
             });
         }
 
-        // Get user from KV
-        const { hashEmail } = await import('../../utils/crypto.js');
-        const emailHash = await hashEmail(auth.email!);
-        const userKey = getCustomerKey(auth.customerId, `user_${emailHash}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+        // Get current customer data to check for existing display name
+        const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+        const customer = await fetchCustomerByCustomerId(auth.customerId, env);
 
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
+        if (!customer) {
+            return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
         // Release old display name if it exists (user-initiated change)
-        // CRITICAL: Only release on user-initiated changes, not during generation
-        if (user.displayName && user.displayName !== sanitized) {
-            await releaseDisplayName(user.displayName, null, env); // Global scope
+        if (customer.displayName && customer.displayName !== sanitized) {
+            await releaseDisplayName(customer.displayName, null, env); // Global scope
         }
 
         // Reserve new display name (global scope)
-        await reserveDisplayName(sanitized, auth.userId!, null, env);
+        await reserveDisplayName(sanitized, auth.customerId, null, env);
 
-        // Update display name using preferences service (tracks history)
-        const updateResult = await updateDisplayName(
-            auth.userId!,
-            auth.customerId,
-            sanitized,
-            'user-changed',
-            env
-        );
+        // Update display name via customer-api
+        // This updates both customer record and preferences in CUSTOMER_KV
+        const customerApiUrl = env.CUSTOMER_API_URL || 'http://localhost:8790';
+        const updateResponse = await fetch(`${customerApiUrl}/customer/${auth.customerId}/display-name`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': request.headers.get('Authorization') || '',
+            },
+            body: JSON.stringify({ displayName: sanitized }),
+        });
 
-        if (!updateResult.success) {
+        if (!updateResponse.ok) {
+            const errorData = await updateResponse.json().catch(() => ({}));
             return new Response(JSON.stringify({ 
                 error: 'Failed to update display name',
-                detail: updateResult.error
+                detail: errorData.detail || 'Customer API update failed'
             }), {
-                status: 400,
+                status: updateResponse.status,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
-
-        // Update user object
-        user.displayName = sanitized;
-        await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
-        
-        // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
-        const { updateUserIndex } = await import('../../utils/user-index.js');
-        await updateUserIndex(user.userId, user.customerId || null, env);
 
         return new Response(JSON.stringify({
             success: true,
@@ -244,8 +233,8 @@ export async function handleUpdateDisplayName(request: Request, env: Env): Promi
 }
 
 /**
- * Regenerate user's display name
- * POST /user/display-name/regenerate
+ * Regenerate customer's display name via customer-api
+ * POST /customer/display-name/regenerate
  */
 export async function handleRegenerateDisplayName(request: Request, env: Env): Promise<Response> {
     try {
@@ -257,27 +246,22 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
             });
         }
 
-        // Check monthly change limit
-        const canChange = await canChangeDisplayName(auth.userId!, auth.customerId, env);
-        if (!canChange.allowed) {
+        if (!auth.customerId) {
             return new Response(JSON.stringify({ 
-                error: 'Display name change limit exceeded',
-                detail: canChange.reason,
-                nextChangeDate: canChange.nextChangeDate
+                error: 'Customer ID required',
+                detail: 'Customer ID must be present in JWT token'
             }), {
-                status: 429, // Too Many Requests
+                status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
 
-        // Get user from KV
-        const { hashEmail } = await import('../../utils/crypto.js');
-        const emailHash = await hashEmail(auth.email!);
-        const userKey = getCustomerKey(auth.customerId, `user_${emailHash}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+        // Get current customer data
+        const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+        const customer = await fetchCustomerByCustomerId(auth.customerId, env);
 
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
+        if (!customer) {
+            return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
@@ -288,14 +272,14 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
         const newDisplayName = await generateUniqueDisplayName({
             maxAttempts: 10,
             pattern: 'random',
-            maxWords: DISPLAY_NAME_MAX_WORDS // Support dash-separated names
+            maxWords: 2 // Support dash-separated names
         }, env);
         
-        // Handle empty string (generation failed after 50 retries)
+        // Handle empty string (generation failed after retries)
         if (!newDisplayName || newDisplayName.trim() === '') {
             return new Response(JSON.stringify({
                 error: 'Unable to generate unique display name',
-                detail: 'Display name generation failed after 50 attempts. Please try again or contact support.'
+                detail: 'Display name generation failed. Please try again or contact support.'
             }), {
                 status: 500,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -303,40 +287,34 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
         }
 
         // Release old display name if it exists (user-initiated regeneration)
-        // CRITICAL: Only release when new name is successfully saved
-        if (user.displayName && user.displayName !== newDisplayName) {
-            await releaseDisplayName(user.displayName, null, env); // Global scope
+        if (customer.displayName && customer.displayName !== newDisplayName) {
+            await releaseDisplayName(customer.displayName, null, env); // Global scope
         }
 
         // Reserve new display name (global scope)
-        await reserveDisplayName(newDisplayName, auth.userId!, null, env);
+        await reserveDisplayName(newDisplayName, auth.customerId, null, env);
 
-        // Update display name using preferences service (tracks history)
-        const updateResult = await updateDisplayName(
-            auth.userId!,
-            auth.customerId,
-            newDisplayName,
-            'regenerated',
-            env
-        );
+        // Update display name via customer-api
+        const customerApiUrl = env.CUSTOMER_API_URL || 'http://localhost:8790';
+        const updateResponse = await fetch(`${customerApiUrl}/customer/${auth.customerId}/display-name`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': request.headers.get('Authorization') || '',
+            },
+            body: JSON.stringify({ displayName: newDisplayName }),
+        });
 
-        if (!updateResult.success) {
+        if (!updateResponse.ok) {
+            const errorData = await updateResponse.json().catch(() => ({}));
             return new Response(JSON.stringify({ 
                 error: 'Failed to regenerate display name',
-                detail: updateResult.error
+                detail: errorData.detail || 'Customer API update failed'
             }), {
-                status: 400,
+                status: updateResponse.status,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });
         }
-
-        // Update user object
-        user.displayName = newDisplayName;
-        await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
-        
-        // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
-        const { updateUserIndex } = await import('../../utils/user-index.js');
-        await updateUserIndex(user.userId, user.customerId || null, env);
 
         return new Response(JSON.stringify({
             success: true,
@@ -355,4 +333,3 @@ export async function handleRegenerateDisplayName(request: Request, env: Env): P
         });
     }
 }
-

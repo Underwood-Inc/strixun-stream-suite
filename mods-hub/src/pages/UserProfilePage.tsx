@@ -168,7 +168,7 @@ export function UserProfilePage() {
                                 // Refresh user info to get latest from server
                                 await useAuthStore.getState().fetchUserInfo();
                             }}
-                            apiEndpoint="/user/display-name"
+                            apiEndpoint="/customer/display-name"
                             authToken={user.token}
                         />
                     </InfoItem>

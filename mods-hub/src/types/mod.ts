@@ -69,7 +69,7 @@ export interface ModMetadata {
     variants?: ModVariant[]; // Variants for the mod
     gameId?: string; // Associated game ID (sub-category)
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
-    // CRITICAL: authorDisplayName is fetched dynamically from /auth/user/:userId on every API call
+    // CRITICAL: authorDisplayName is fetched dynamically from the Customer API on every API call
     // This ensures display names stay current when users change them
     // The stored value is a fallback only if the fetch fails
     // CRITICAL: customerId is required for proper data scoping and is set automatically if missing
@@ -103,21 +103,65 @@ export interface ModDetailResponse {
     versions: ModVersion[];
 }
 
+/**
+ * Mod variant (metadata only - files are in VariantVersion)
+ * ARCHITECTURAL IMPROVEMENT: Variants now support full version control
+ */
 export interface ModVariant {
     variantId: string;
+    modId: string; // Parent mod ID
+    name: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+    currentVersionId: string; // Points to latest VariantVersion
+    versionCount: number; // Total number of versions
+    totalDownloads: number; // Cumulative downloads across all versions
+    // These fields now live in VariantVersion for proper version control
+}
+
+/**
+ * Variant version metadata (for version control of variant files)
+ * ARCHITECTURAL IMPROVEMENT: Each variant can now have multiple versions
+ */
+export interface VariantVersion {
+    variantVersionId: string;
+    variantId: string; // Parent variant ID
+    modId: string; // Parent mod ID
+    version: string; // Semantic version: "1.0.0"
+    changelog: string;
+    fileSize: number;
+    fileName: string;
+    r2Key: string; // R2 storage key
+    downloadUrl: string;
+    sha256: string; // SHA-256 hash of file (Strixun verified)
+    createdAt: string;
+    downloads: number;
+    gameVersions?: string[];
+    dependencies?: ModDependency[];
+}
+
+/**
+ * Variant version upload request
+ */
+export interface VariantVersionUploadRequest {
+    version: string;
+    changelog: string;
+    gameVersions?: string[];
+    dependencies?: ModDependency[];
+}
+
+/**
+ * Legacy variant format for uploads (will be converted to proper VariantVersion)
+ */
+export interface ModVariantUpload {
     name: string;
     description?: string;
     file?: File; // For uploads
-    fileUrl?: string; // For existing variants
-    fileName?: string;
-    fileSize?: number;
     version?: string;
     changelog?: string;
     gameVersions?: string[];
     dependencies?: ModDependency[];
-    createdAt?: string;
-    updatedAt?: string;
-    downloads?: number; // Individual download count for this variant
 }
 
 export interface ModUploadRequest {

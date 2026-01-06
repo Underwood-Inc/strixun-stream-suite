@@ -7,6 +7,7 @@
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
 import { getCustomerKey } from '../../utils/customer.js';
+import { migrateModVariantsIfNeeded } from '../../utils/lazy-variant-migration.js';
 import type { ModMetadata, ModVersion, ModDetailResponse } from '../../types/mod.js';
 
 /**
@@ -106,6 +107,9 @@ export async function handleGetModDetail(
                 },
             });
         }
+        
+        // ✨ LAZY MIGRATION: Automatically migrate variants if needed
+        mod = await migrateModVariantsIfNeeded(mod, env);
         
         // Use mod.modId directly - no normalization needed
         const storedModId = mod.modId;

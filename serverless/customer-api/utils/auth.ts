@@ -56,6 +56,15 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
             return null;
         }
 
+        // Debug logging
+        console.log(`[Customer API Auth] JWT payload extracted: {
+  sub: '${payload.sub}',
+  email: '${payload.email}',
+  customerId: '${payload.customerId || 'null'}',
+  iss: '${payload.iss}',
+  aud: '${payload.aud}'
+}`);
+
         return {
             userId: payload.sub,
             email: payload.email,
