@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Tooltip from '@strixun/tooltip/Tooltip.svelte';
-  import { StatusFlair } from '@strixun/status-flair';
+  import Tooltip from '@shared-components/svelte/Tooltip.svelte';
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import InTestingTooltip from './InTestingTooltip.svelte';
   
   export let dashboardLink: string = '/dashboard';

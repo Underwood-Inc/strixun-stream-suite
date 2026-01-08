@@ -9,8 +9,8 @@ import {
   getCustomerPreferences,
   updateCustomerPreferences,
   getDefaultPreferences,
-  type UserPreferences,
-} from '../../services/user-preferences.js';
+  type CustomerPreferences,
+} from '../../services/customer-preferences.js';
 import { ensureCustomerAccount } from '../auth/customer-creation.js';
 
 interface Env {
@@ -155,7 +155,7 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
     }
 
     const body = await request.json();
-    const updates: Partial<UserPreferences> = {};
+    const updates: Partial<CustomerPreferences> = {};
 
     // Validate and update emailVisibility
     if (body.emailVisibility !== undefined) {

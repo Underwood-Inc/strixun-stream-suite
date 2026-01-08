@@ -78,7 +78,7 @@ describe('ensureCustomerAccount - Integration Tests (Miniflare)', () => {
       expect(customerId.length).toBeGreaterThan(10);
 
       // Verify: Can retrieve customer by email
-      const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerByEmailService } = await import('@strixun/api-framework');
       const customer = await getCustomerByEmailService(testEmail, mockEnv);
       
       expect(customer).toBeDefined();
@@ -104,7 +104,7 @@ describe('ensureCustomerAccount - Integration Tests (Miniflare)', () => {
       expect(secondCustomerId).toBe(firstCustomerId);
 
       // Verify: Customer still exists and is active
-      const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerByEmailService } = await import('@strixun/api-framework');
       const customer = await getCustomerByEmailService(testEmail, mockEnv);
       
       expect(customer).toBeDefined();
@@ -114,7 +114,7 @@ describe('ensureCustomerAccount - Integration Tests (Miniflare)', () => {
 
     it('should verify customer-api URL is correct and reachable', async () => {
       // This test verifies the URL configuration is correct
-      const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerByEmailService } = await import('@strixun/api-framework');
       
       // Try to call the API - should not throw network/404 errors
       try {
@@ -150,7 +150,7 @@ describe('ensureCustomerAccount - Integration Tests (Miniflare)', () => {
     it('should verify internal call authentication works', async () => {
       // This test verifies service-to-service authentication
       // Internal calls don't require authentication - customer-api accepts unauthenticated internal calls
-      const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerByEmailService } = await import('@strixun/api-framework');
       
       try {
         // Should not throw authentication errors

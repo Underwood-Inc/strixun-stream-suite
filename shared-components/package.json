@@ -20,6 +20,18 @@
     "./react/InteractiveThumbnail": {
       "types": "./react/InteractiveThumbnail.tsx",
       "default": "./react/InteractiveThumbnail.tsx"
+    },
+    "./svelte/Tooltip": {
+      "types": "./svelte/Tooltip.svelte",
+      "default": "./svelte/Tooltip.svelte"
+    },
+    "./svelte/TruncatedText": {
+      "types": "./svelte/TruncatedText.svelte",
+      "default": "./svelte/TruncatedText.svelte"
+    },
+    "./svelte/StatusFlair": {
+      "types": "./svelte/StatusFlair.svelte",
+      "default": "./svelte/StatusFlair.svelte"
     }
   },
   "scripts": {

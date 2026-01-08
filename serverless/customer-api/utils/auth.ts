@@ -13,9 +13,8 @@ interface Env {
 }
 
 interface AuthResult {
-    userId: string;
+    customerId: string; // PRIMARY IDENTITY - we ONLY use customerId
     email?: string;
-    customerId: string | null;
     jwtToken: string;
 }
 
@@ -36,9 +35,9 @@ export async function verifyJWT(token: string, secret: string): Promise<any | nu
 }
 
 /**
- * Authenticate request and extract user info
+ * Authenticate request and extract customer info
  * Uses JWT tokens only - all requests must be authenticated with JWT
- * Returns auth object with userId, customerId, and jwtToken
+ * Returns auth object with customerId and jwtToken
  */
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthResult | null> {
     // JWT authentication only
@@ -65,10 +64,17 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
   aud: '${payload.aud}'
 }`);
 
+        // CRITICAL: payload.sub IS the customerId (not userId - we don't have users)
+        const customerId = payload.customerId || payload.sub;
+        
+        if (!customerId) {
+            console.error('[Customer API Auth] No customerId found in JWT payload');
+            return null;
+        }
+        
         return {
-            userId: payload.sub,
+            customerId,
             email: payload.email,
-            customerId: payload.customerId || null,
             jwtToken: token // Include JWT token for encryption
         };
     } catch (error) {

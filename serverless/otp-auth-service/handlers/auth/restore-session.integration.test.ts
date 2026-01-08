@@ -128,7 +128,7 @@ describe.skipIf(!E2E_OTP_CODE)('Session Restoration - Integration Tests (Minifla
         throw new Error('CustomerId not available');
       }
 
-      const { getCustomerService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerService } = await import('@strixun/api-framework');
       const mockEnv = {
         CUSTOMER_API_URL: 'http://localhost:8790', // Miniflare worker URL
         NETWORK_INTEGRITY_KEYPHRASE: process.env.NETWORK_INTEGRITY_KEYPHRASE || 'test-integrity-keyphrase-for-integration-tests',

@@ -9,10 +9,10 @@ import { generateCustomerId } from '../../services/customer.js';
 // Removed import - we do NOT automatically create API keys
 import { 
     getCustomerByEmailService, 
-    createCustomerService, 
+    createCustomer, 
     getCustomerService,
-    updateCustomerService 
-} from '../../utils/customer-api-service-client.js';
+    updateCustomer 
+} from '@strixun/api-framework';
 
 interface Env {
     OTP_AUTH_KV: KVNamespace;
@@ -204,7 +204,7 @@ async function upsertCustomerAccount(
             updates.updatedAt = new Date().toISOString();
             console.log(`[Customer Creation] Updating customer account: ${resolvedCustomerId}`);
             await retryWithBackoff(async () => {
-                await updateCustomerService(resolvedCustomerId, { ...existingCustomer, ...updates }, env);
+                await updateCustomer(resolvedCustomerId, { ...existingCustomer, ...updates }, env);
             });
         }
         
@@ -290,7 +290,7 @@ async function upsertCustomerAccount(
     
     // Create customer via customer-api with retry
     await retryWithBackoff(async () => {
-        await createCustomerService(customerData, env);
+        await createCustomer(customerData, env);
     });
     console.log(`[Customer Creation] Customer account created via customer-api: ${resolvedCustomerId} for ${emailLower}`);
     

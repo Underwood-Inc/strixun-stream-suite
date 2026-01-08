@@ -6,14 +6,14 @@
 
 import { getCustomerKey } from './customer.js';
 
-export interface UserPreferences {
+export interface CustomerPreferences {
   emailVisibility: 'private' | 'public';
   displayName: {
     current: string;
     previousNames: Array<{
       name: string;
       changedAt: string;
-      reason: 'auto-generated' | 'user-changed' | 'regenerated';
+      reason: 'auto-generated' | 'customer-changed' | 'regenerated';
     }>;
     lastChangedAt: string | null;
     changeCount: number;
@@ -32,7 +32,7 @@ export interface Env {
 /**
  * Default customer preferences
  */
-export function getDefaultPreferences(): UserPreferences {
+export function getDefaultPreferences(): CustomerPreferences {
   return {
     emailVisibility: 'private', // Default: email is private
     displayName: {
@@ -56,7 +56,7 @@ export async function getCustomerPreferences(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
   env: Env
-): Promise<UserPreferences> {
+): Promise<CustomerPreferences> {
   // FAIL-FAST: customerId is MANDATORY
   if (!customerId) {
     throw new Error('Customer ID is MANDATORY for preferences lookup');
@@ -66,7 +66,7 @@ export async function getCustomerPreferences(
   const stored = await env.OTP_AUTH_KV.get(preferencesKey, { type: 'json' });
 
   if (stored) {
-    return stored as UserPreferences;
+    return stored as CustomerPreferences;
   }
 
   // Return default preferences if not found
@@ -78,10 +78,10 @@ export async function getCustomerPreferences(
  * Uses same TTL as customer data (1 year) to ensure consistency
  * CRITICAL: We ONLY use customerId - NO userId
  */
-export async function storeUserPreferences(
+export async function storeCustomerPreferences(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
-  preferences: UserPreferences,
+  preferences: CustomerPreferences,
   env: Env
 ): Promise<void> {
   // FAIL-FAST: customerId is MANDATORY
@@ -101,11 +101,11 @@ export async function storeUserPreferences(
 export async function updateCustomerPreferences(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
-  updates: Partial<UserPreferences>,
+  updates: Partial<CustomerPreferences>,
   env: Env
-): Promise<UserPreferences> {
+): Promise<CustomerPreferences> {
   const current = await getCustomerPreferences(customerId, customerIdForScope, env);
-  const updated: UserPreferences = {
+  const updated: CustomerPreferences = {
     ...current,
     ...updates,
     displayName: {
@@ -118,7 +118,7 @@ export async function updateCustomerPreferences(
     },
   };
 
-  await storeUserPreferences(customerId, customerIdForScope, updated, env);
+  await storeCustomerPreferences(customerId, customerIdForScope, updated, env);
   return updated;
 }
 
@@ -130,7 +130,7 @@ export async function addDisplayNameToHistory(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
   previousName: string,
-  reason: 'auto-generated' | 'user-changed' | 'regenerated',
+  reason: 'auto-generated' | 'customer-changed' | 'regenerated',
   env: Env
 ): Promise<void> {
   const preferences = await getCustomerPreferences(customerId, customerIdForScope, env);

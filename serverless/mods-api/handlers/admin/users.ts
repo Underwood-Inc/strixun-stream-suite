@@ -1,6 +1,9 @@
 /**
- * Admin user management handlers
- * Handles user listing, details, updates, and user mods
+ * Admin customer management handlers
+ * Handles customer listing, details, updates, and customer mods
+ * 
+ * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
+ * Legacy endpoint URLs (/admin/users) maintained for compatibility
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
@@ -9,50 +12,50 @@ import { getApprovedUploaders, getUserUploadPermissionInfo, isSuperAdminEmail } 
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 
-interface User {
-    userId: string;
+interface Customer {
+    customerId: string; // PRIMARY IDENTITY - REQUIRED
     email: string; // Internal only - never returned to frontend
     displayName?: string | null;
-    customerId?: string | null;
     createdAt?: string;
     lastLogin?: string;
     [key: string]: any;
 }
 
-interface UserListItem {
-    userId: string;
+interface CustomerListItem {
+    customerId: string; // PRIMARY IDENTITY
     displayName: string | null;
-    customerId: string | null;
     createdAt: string | null;
     lastLogin: string | null;
     hasUploadPermission: boolean;
     modCount: number;
 }
 
-interface UserDetail extends UserListItem {
+interface CustomerDetail extends CustomerListItem {
     emailHash?: string; // For admin reference only, not the actual email
     approvedAt?: string | null; // Only set if permissionSource is 'kv'
 }
 
-interface UserListResponse {
-    users: UserListItem[];
+interface CustomerListResponse {
+    customers: CustomerListItem[];
     total: number;
     page: number;
     pageSize: number;
 }
 
 /**
- * List all users from OTP auth service
- * Always uses service-to-service call to ensure we get ALL users system-wide
- * (not just users scoped to mods hub)
+ * List all customers from OTP auth service
+ * Always uses service-to-service call to ensure we get ALL customers system-wide
+ * (not just customers scoped to mods hub)
+ * 
+ * NOTE: OTP auth service still returns userId in legacy responses, we map it to customerId
  */
-async function listAllUsers(env: Env): Promise<User[]> {
-    const users: User[] = [];
+async function listAllCustomers(env: Env): Promise<Customer[]> {
+    const customers: Customer[] = [];
     
     // Always use service-to-service call to OTP auth service
-    // This ensures we get ALL users across the entire system, not just mods-hub users
+    // This ensures we get ALL customers across the entire system, not just mods-hub customers
     // NOTE: Admin endpoints require SUPER_ADMIN_API_KEY
-    console.log('[UserManagement] Fetching all users from OTP auth service (system-wide)');
+    console.log('[CustomerManagement] Fetching all customers from OTP auth service (system-wide)');
     try {
         const { createServiceClient } = await import('@strixun/service-client');
         const { getAuthApiUrl } = await import('@strixun/api-framework');
@@ -72,24 +75,23 @@ async function listAllUsers(env: Env): Promise<User[]> {
         }>; total: number }>('/admin/users');
         
         if (response.status === 200 && response.data) {
-            // Convert to User format
+            // Convert to Customer format (map userId → customerId)
             if (response.data.users && Array.isArray(response.data.users)) {
-                users.push(...response.data.users.map(u => ({
-                    userId: u.userId,
+                customers.push(...response.data.users.map(u => ({
+                    customerId: u.customerId || u.userId, // PRIMARY: Use customerId, fallback to userId for legacy
                     email: '', // Not returned by admin endpoint for security
                     displayName: u.displayName,
-                    customerId: u.customerId,
                     createdAt: u.createdAt,
                     lastLogin: u.lastLogin,
                 })));
-                console.log('[UserManagement] Loaded all users via service call:', {
-                    total: users.length,
+                console.log('[CustomerManagement] Loaded all customers via service call:', {
+                    total: customers.length,
                     authApiUrl,
                     responseUserCount: response.data.users.length,
                     responseTotal: response.data.total
                 });
             } else {
-                console.warn('[UserManagement] Service response missing users array:', {
+                console.warn('[CustomerManagement] Service response missing users array:', {
                     dataKeys: response.data ? Object.keys(response.data) : null,
                     hasUsers: 'users' in (response.data || {}),
                     usersIsArray: response.data?.users ? Array.isArray(response.data.users) : false
@@ -104,7 +106,7 @@ async function listAllUsers(env: Env): Promise<User[]> {
             });
             // If service call fails, try direct KV access as fallback
             if (env.OTP_AUTH_KV) {
-                console.log('[UserManagement] Falling back to direct KV access');
+                console.log('[CustomerManagement] Falling back to direct KV access');
                 const customerPrefix = 'customer_';
                 let cursor: string | undefined;
                 
@@ -112,22 +114,24 @@ async function listAllUsers(env: Env): Promise<User[]> {
                     const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
                     
                     for (const key of listResult.keys) {
-                        // Look for user keys: customer_{id}_user_{emailHash}
+                        // Look for legacy user keys: customer_{id}_user_{emailHash}
                         if (key.name.includes('_user_')) {
                             try {
-                                const user = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as User | null;
-                                if (user && user.userId) {
-                                    // Extract customerId from key name if not in user object
-                                    if (!user.customerId) {
-                                        const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
-                                        if (match) {
-                                            user.customerId = match[1];
-                                        }
-                                    }
-                                    users.push(user);
+                                const customerData = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as any;
+                                if (customerData) {
+                                    // Extract customerId from key name (ALWAYS - this is the source of truth)
+                                    const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
+                                    const customer: Customer = {
+                                        customerId: match ? match[1] : (customerData.customerId || customerData.userId || ''),
+                                        email: customerData.email || '',
+                                        displayName: customerData.displayName,
+                                        createdAt: customerData.createdAt,
+                                        lastLogin: customerData.lastLogin,
+                                    };
+                                    customers.push(customer);
                                 }
                             } catch (error) {
-                                console.warn('[UserManagement] Failed to parse user:', key.name, error);
+                                console.warn('[CustomerManagement] Failed to parse customer:', key.name, error);
                                 continue;
                             }
                         }
@@ -136,14 +140,14 @@ async function listAllUsers(env: Env): Promise<User[]> {
                     cursor = listResult.listComplete ? undefined : listResult.cursor;
                 } while (cursor);
                 
-                console.log('[UserManagement] Fallback KV access loaded:', users.length, 'users');
+                console.log('[CustomerManagement] Fallback KV access loaded:', customers.length, 'customers');
             }
         }
     } catch (error) {
         console.error('[UserManagement] Service-to-service call error:', error);
         // If service call fails completely, try direct KV access as fallback
         if (env.OTP_AUTH_KV) {
-            console.log('[UserManagement] Falling back to direct KV access due to error');
+            console.log('[CustomerManagement] Falling back to direct KV access due to error');
             const customerPrefix = 'customer_';
             let cursor: string | undefined;
             
@@ -153,18 +157,20 @@ async function listAllUsers(env: Env): Promise<User[]> {
                 for (const key of listResult.keys) {
                     if (key.name.includes('_user_')) {
                         try {
-                            const user = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as User | null;
-                            if (user && user.userId) {
-                                if (!user.customerId) {
-                                    const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
-                                    if (match) {
-                                        user.customerId = match[1];
-                                    }
-                                }
-                                users.push(user);
+                            const customerData = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as any;
+                            if (customerData) {
+                                const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
+                                const customer: Customer = {
+                                    customerId: match ? match[1] : (customerData.customerId || customerData.userId || ''),
+                                    email: customerData.email || '',
+                                    displayName: customerData.displayName,
+                                    createdAt: customerData.createdAt,
+                                    lastLogin: customerData.lastLogin,
+                                };
+                                customers.push(customer);
                             }
                         } catch (error) {
-                            console.warn('[UserManagement] Failed to parse user:', key.name, error);
+                            console.warn('[CustomerManagement] Failed to parse customer:', key.name, error);
                             continue;
                         }
                     }
@@ -173,17 +179,17 @@ async function listAllUsers(env: Env): Promise<User[]> {
                 cursor = listResult.listComplete ? undefined : listResult.cursor;
             } while (cursor);
             
-            console.log('[UserManagement] Fallback KV access loaded:', users.length, 'users');
+            console.log('[CustomerManagement] Fallback KV access loaded:', customers.length, 'customers');
         }
     }
     
-    return users;
+    return customers;
 }
 
 /**
- * Get user's mod count
+ * Get customer's mod count
  */
-async function getUserModCount(userId: string, env: Env): Promise<number> {
+async function getCustomerModCount(customerId: string, env: Env): Promise<number> {
     let count = 0;
     
     // Search through all mod lists to find mods by this user
@@ -243,7 +249,7 @@ async function getUserModCount(userId: string, env: Env): Promise<number> {
             } while (modCursor && !found);
         }
         
-        if (mod && mod.authorId === userId) {
+        if (mod && mod.authorId === customerId) {
             count++;
         }
     }
@@ -252,8 +258,8 @@ async function getUserModCount(userId: string, env: Env): Promise<number> {
 }
 
 /**
- * Handle list all users request (admin only)
- * GET /admin/users
+ * Handle list all customers request (admin only)
+ * GET /admin/users (legacy endpoint)
  */
 export async function handleListUsers(
     request: Request,
@@ -266,23 +272,22 @@ export async function handleListUsers(
         const pageSize = Math.min(parseInt(url.searchParams.get('pageSize') || '50', 10), 200);
         const search = url.searchParams.get('search'); // For filtering
         
-        // Get all users from OTP auth service
-        const allUsers = await listAllUsers(env);
+        // Get all customers from OTP auth service
+        const allCustomers = await listAllCustomers(env);
         
-        // Aggregate user data
-        const userItems: UserListItem[] = [];
+        // Aggregate customer data
+        const customerItems: CustomerListItem[] = [];
         
-        for (const user of allUsers) {
+        for (const customer of allCustomers) {
             // Get mod count (this is expensive, so we'll do it in batches or optimize later)
-            const modCount = await getUserModCount(user.userId, env);
+            const modCount = await getCustomerModCount(customer.customerId, env);
             
             // Apply search filter if provided
             if (search) {
                 const searchLower = search.toLowerCase();
                 const matchesSearch = 
-                    user.userId.toLowerCase().includes(searchLower) ||
-                    (user.displayName || '').toLowerCase().includes(searchLower) ||
-                    (user.customerId || '').toLowerCase().includes(searchLower);
+                    customer.customerId.toLowerCase().includes(searchLower) ||
+                    (customer.displayName || '').toLowerCase().includes(searchLower);
                 
                 if (!matchesSearch) {
                     continue;
@@ -290,15 +295,14 @@ export async function handleListUsers(
             }
             
             // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
-            // Note: user.email may be empty string from listAllUsers (privacy), but we can get it from KV metadata
-            const permissionInfo = await getUserUploadPermissionInfo(user.userId, user.email || undefined, env);
+            // Note: customer.email may be empty string from listAllCustomers (privacy), but we can get it from KV metadata
+            const permissionInfo = await getUserUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
             
-            userItems.push({
-                userId: user.userId,
-                displayName: user.displayName || null,
-                customerId: user.customerId || null,
-                createdAt: user.createdAt || null,
-                lastLogin: user.lastLogin || null,
+            customerItems.push({
+                customerId: customer.customerId,
+                displayName: customer.displayName || null,
+                createdAt: customer.createdAt || null,
+                lastLogin: customer.lastLogin || null,
                 hasUploadPermission: permissionInfo.hasPermission,
                 permissionSource: permissionInfo.permissionSource,
                 isSuperAdmin: permissionInfo.isSuperAdmin,
@@ -307,20 +311,20 @@ export async function handleListUsers(
         }
         
         // Sort by createdAt (newest first)
-        userItems.sort((a, b) => {
+        customerItems.sort((a, b) => {
             const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return bTime - aTime;
         });
         
         // Paginate
-        const total = userItems.length;
+        const total = customerItems.length;
         const start = (page - 1) * pageSize;
         const end = start + pageSize;
-        const paginatedUsers = userItems.slice(start, end);
+        const paginatedCustomers = customerItems.slice(start, end);
         
-        const response: UserListResponse = {
-            users: paginatedUsers,
+        const response: CustomerListResponse = {
+            customers: paginatedCustomers,
             total,
             page,
             pageSize,
@@ -338,12 +342,12 @@ export async function handleListUsers(
             },
         });
     } catch (error: any) {
-        console.error('Admin list users error:', error);
+        console.error('Admin list customers error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to List Users',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing users'
+            'Failed to List Customers',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while listing customers'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -359,22 +363,22 @@ export async function handleListUsers(
 }
 
 /**
- * Handle get user details request (admin only)
- * GET /admin/users/:userId
+ * Handle get customer details request (admin only)
+ * GET /admin/users/:customerId (legacy endpoint)
  */
 export async function handleGetUserDetails(
     request: Request,
     env: Env,
-    userId: string,
+    customerId: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Find user
-        const allUsers = await listAllUsers(env);
-        const user = allUsers.find(u => u.userId === userId);
+        // Find customer
+        const allCustomers = await listAllCustomers(env);
+        const customer = allCustomers.find(c => c.customerId === customerId);
         
-        if (!user) {
-            const rfcError = createError(request, 404, 'User Not Found', `User with userId ${userId} not found`);
+        if (!customer) {
+            const rfcError = createError(request, 404, 'Customer Not Found', `Customer with customerId ${customerId} not found`);
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -388,19 +392,19 @@ export async function handleGetUserDetails(
         }
         
         // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
-        const permissionInfo = await getUserUploadPermissionInfo(user.userId, user.email || undefined, env);
+        const permissionInfo = await getUserUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
         const hasUploadPermission = permissionInfo.hasPermission;
         
         // Get approval metadata if approved via KV
         let approvedAt: string | null = null;
         if (permissionInfo.permissionSource === 'kv' && env.MODS_KV) {
-            const approvalKey = `upload_approval_${userId}`;
+            const approvalKey = `upload_approval_${customerId}`;
             const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { metadata?: { approvedAt?: string } } | null;
             approvedAt = approvalData?.metadata?.approvedAt || null;
         }
         
         // Get mod count
-        const modCount = await getUserModCount(userId, env);
+        const modCount = await getCustomerModCount(customerId, env);
         
         // Get email hash for admin reference (not the actual email)
         let emailHash: string | undefined;
@@ -411,7 +415,7 @@ export async function handleGetUserDetails(
             do {
                 const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
                 for (const key of listResult.keys) {
-                    if (key.name.includes('_user_') && key.name.includes(userId)) {
+                    if (key.name.includes('_user_') && key.name.includes(customerId)) {
                         const match = key.name.match(/_user_(.+)$/);
                         if (match) {
                             emailHash = match[1];
@@ -424,12 +428,11 @@ export async function handleGetUserDetails(
             } while (cursor);
         }
         
-        const userDetail: UserDetail = {
-            userId: user.userId,
-            displayName: user.displayName || null,
-            customerId: user.customerId || null,
-            createdAt: user.createdAt || null,
-            lastLogin: user.lastLogin || null,
+        const customerDetail: CustomerDetail = {
+            customerId: customer.customerId,
+            displayName: customer.displayName || null,
+            createdAt: customer.createdAt || null,
+            lastLogin: customer.lastLogin || null,
             hasUploadPermission,
             modCount,
             emailHash, // For admin reference only
@@ -440,7 +443,7 @@ export async function handleGetUserDetails(
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         
-        return new Response(JSON.stringify(userDetail), {
+        return new Response(JSON.stringify(customerDetail), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -448,12 +451,12 @@ export async function handleGetUserDetails(
             },
         });
     } catch (error: any) {
-        console.error('Admin get user details error:', error);
+        console.error('Admin get customer details error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Get User Details',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while getting user details'
+            'Failed to Get Customer Details',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while getting customer details'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -469,13 +472,13 @@ export async function handleGetUserDetails(
 }
 
 /**
- * Handle update user request (admin only)
- * PUT /admin/users/:userId
+ * Handle update customer request (admin only)
+ * PUT /admin/users/:customerId (legacy endpoint)
  */
 export async function handleUpdateUser(
     request: Request,
     env: Env,
-    userId: string,
+    customerId: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
@@ -489,25 +492,25 @@ export async function handleUpdateUser(
             const { approveUserUpload, revokeUserUpload, getUserUploadPermissionInfo } = await import('../../utils/admin.js');
             
             // Check current permission source
-            const allUsers = await listAllUsers(env);
-            const user = allUsers.find(u => u.userId === userId);
-            const currentPermissionInfo = await getUserUploadPermissionInfo(userId, user?.email || undefined, env);
+            const allCustomers = await listAllCustomers(env);
+            const customer = allCustomers.find(c => c.customerId === customerId);
+            const currentPermissionInfo = await getUserUploadPermissionInfo(customerId, customer?.email || undefined, env);
             
-            // If user has env-var or super-admin permission, warn that revoking KV won't remove their permission
+            // If customer has env-var or super-admin permission, warn that revoking KV won't remove their permission
             // (They'll still have permission from env var)
             if (!requestData.hasUploadPermission && 
                 (currentPermissionInfo.permissionSource === 'env-var' || currentPermissionInfo.permissionSource === 'super-admin')) {
-                // User has env-based permission - revoking KV won't actually remove their upload permission
+                // Customer has env-based permission - revoking KV won't actually remove their upload permission
                 // But we'll still remove the KV entry for consistency
-                await revokeUserUpload(userId, env);
-                // Note: User will still have permission from APPROVED_UPLOADER_EMAILS or SUPER_ADMIN_EMAILS
+                await revokeUserUpload(customerId, env);
+                // Note: Customer will still have permission from APPROVED_UPLOADER_EMAILS or SUPER_ADMIN_EMAILS
             } else if (requestData.hasUploadPermission) {
-                // Approve user (adds to KV)
-                const email = user?.email || '';
-                await approveUserUpload(userId, email, env);
+                // Approve customer (adds to KV)
+                const email = customer?.email || '';
+                await approveUserUpload(customerId, email, env);
             } else {
                 // Revoke KV approval
-                await revokeUserUpload(userId, env);
+                await revokeUserUpload(customerId, env);
             }
         }
         
@@ -515,7 +518,7 @@ export async function handleUpdateUser(
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
         });
         
-        return new Response(JSON.stringify({ success: true, userId }), {
+        return new Response(JSON.stringify({ success: true, customerId }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -523,12 +526,12 @@ export async function handleUpdateUser(
             },
         });
     } catch (error: any) {
-        console.error('Admin update user error:', error);
+        console.error('Admin update customer error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Update User',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while updating user'
+            'Failed to Update Customer',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while updating customer'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -544,13 +547,13 @@ export async function handleUpdateUser(
 }
 
 /**
- * Handle get user's mods request (admin only)
- * GET /admin/users/:userId/mods
+ * Handle get customer's mods request (admin only)
+ * GET /admin/users/:customerId/mods (legacy endpoint)
  */
 export async function handleGetUserMods(
     request: Request,
     env: Env,
-    userId: string,
+    customerId: string,
     auth: { userId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
@@ -599,8 +602,8 @@ export async function handleGetUserMods(
             cursor = listResult.listComplete ? undefined : listResult.cursor;
         } while (cursor);
         
-        // Find mods by this user
-        const userMods: ModMetadata[] = [];
+        // Find mods by this customer
+        const customerMods: ModMetadata[] = [];
         const { normalizeModId } = await import('../../utils/customer.js');
         
         for (const modId of allModIds) {
@@ -620,19 +623,19 @@ export async function handleGetUserMods(
                 }
             }
             
-            if (mod && mod.authorId === userId) {
-                userMods.push(mod);
+            if (mod && mod.authorId === customerId) {
+                customerMods.push(mod);
             }
         }
         
         // Sort by updatedAt (newest first)
-        userMods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        customerMods.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         
         // Paginate
-        const total = userMods.length;
+        const total = customerMods.length;
         const start = (page - 1) * pageSize;
         const end = start + pageSize;
-        const paginatedMods = userMods.slice(start, end);
+        const paginatedMods = customerMods.slice(start, end);
         
         const response = {
             mods: paginatedMods,
@@ -653,12 +656,12 @@ export async function handleGetUserMods(
             },
         });
     } catch (error: any) {
-        console.error('Admin get user mods error:', error);
+        console.error('Admin get customer mods error:', error);
         const rfcError = createError(
             request,
             500,
-            'Failed to Get User Mods',
-            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while getting user mods'
+            'Failed to Get Customer Mods',
+            env.ENVIRONMENT === 'development' ? error.message : 'An error occurred while getting customer mods'
         );
         const corsHeaders = createCORSHeaders(request, {
             allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

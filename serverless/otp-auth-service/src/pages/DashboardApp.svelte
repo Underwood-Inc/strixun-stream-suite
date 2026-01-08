@@ -1,18 +1,17 @@
 <script lang="ts">
-  import { apiClient } from '$lib/api-client';
-  import type { Customer, User } from '$lib/types';
+  import { apiClient } from '$dashboard/lib/api-client';
+  import type { Customer } from '$dashboard/lib/types';
   import { onMount, tick } from 'svelte';
-  import DashboardHeader from '$components/Header.svelte';
-  import Login from '../dashboard/components/Login.svelte';
-  import Signup from '../dashboard/components/Signup.svelte';
-  import Navigation from '$components/Navigation.svelte';
-  import Analytics from '../dashboard/pages/Analytics.svelte';
-  import ApiKeys from '../dashboard/pages/ApiKeys.svelte';
-  import AuditLogs from '../dashboard/pages/AuditLogs.svelte';
-  import Dashboard from '../dashboard/pages/Dashboard.svelte';
+  import DashboardHeader from '$dashboard/components/Header.svelte';
+  import Login from '$dashboard/components/Login.svelte';
+  import Signup from '$dashboard/components/Signup.svelte';
+  import Navigation from '$dashboard/components/Navigation.svelte';
+  import Analytics from '$dashboard/pages/Analytics.svelte';
+  import ApiKeys from '$dashboard/pages/ApiKeys.svelte';
+  import AuditLogs from '$dashboard/pages/AuditLogs.svelte';
+  import Dashboard from '$dashboard/pages/Dashboard.svelte';
   import TwitchAdCarousel from '@strixun/ad-carousel/TwitchAdCarousel.svelte';
 
-  let user: User | null = null;
   let customer: Customer | null = null;
   let isAuthenticated = false;
   let currentPage: 'dashboard' | 'api-keys' | 'audit-logs' | 'analytics' = 'dashboard';
@@ -31,7 +30,7 @@
     const authCheck = async () => {
       try {
         if (apiClient.getToken()) {
-          user = await apiClient.getMe();
+          // Token exists, load customer data
           isAuthenticated = true;
           await loadCustomer();
         }
@@ -74,13 +73,13 @@
         // No customer account - show signup prompt
         window.dispatchEvent(new CustomEvent('auth:no-customer-account', {
           detail: { 
-            email: user?.email,
+            email: customer?.email,
             message: 'You need to create a customer account to access the dashboard.'
           }
         }));
         // Log them out so they can sign up
         isAuthenticated = false;
-        user = null;
+        customer = null;
         apiClient.setToken(null);
       }
     }
@@ -101,21 +100,12 @@
     
     // Clear any auth state
     isAuthenticated = false;
-    user = null;
+    customer = null;
     apiClient.setToken(null);
   }
 
   async function handleLogin(event: Event) {
-    const customEvent = event as CustomEvent;
-    const eventUser = customEvent.detail?.user;
-    if (eventUser) {
-      // Map the event user data to User type
-      user = {
-        sub: eventUser.userId || eventUser.sub || '',
-        email: eventUser.email || '',
-        email_verified: true
-      };
-    }
+    // User logged in successfully via OTP
     // Update state synchronously to trigger reactive update
     isAuthenticated = true;
     loading = false;
@@ -129,7 +119,6 @@
 
   function handleLogout(_event: Event) {
     isAuthenticated = false;
-    user = null;
     customer = null;
     currentPage = 'dashboard';
   }
@@ -157,7 +146,7 @@
       <Signup />
     {/if}
   {:else}
-    <DashboardHeader {user} on:logout={handleLogoutClick} />
+    <DashboardHeader {customer} on:logout={handleLogoutClick} />
     <main class="app-main">
       <Navigation {currentPage} on:navigate={e => navigateToPage(e.detail)} />
       <div class="page-container">

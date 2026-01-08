@@ -1,11 +1,13 @@
 /**
  * Authentication Store
  * 
- * Manages user authentication state and token
+ * Manages customer authentication state and token
+ * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
  */
 
 import type { Readable, Writable } from 'svelte/store';
 import { derived, get, writable } from 'svelte/store';
+import type { AuthenticatedCustomer } from '@strixun/auth-store';
 import { secureFetch } from '../core/services/encryption';
 import { storage } from '../modules/storage';
 
@@ -16,20 +18,12 @@ export interface TwitchAccount {
   attachedAt: string;
 }
 
-export interface User {
-  userId: string;
-  email: string;
-  displayName?: string; // Anonymized display name
-  customerId?: string; // Customer ID for subscription tiers
-  twitchAccount?: TwitchAccount; // Attached Twitch account
-  token: string;
-  expiresAt: string;
-  isSuperAdmin?: boolean; // Super admin status
-}
+// Re-export AuthenticatedCustomer for backward compatibility
+export type { AuthenticatedCustomer };
 
 // Store for authentication state
 export const isAuthenticated: Writable<boolean> = writable(false);
-export const user: Writable<User | null> = writable(null);
+export const customer: Writable<AuthenticatedCustomer | null> = writable(null);
 export const token: Writable<string | null> = writable(null);
 export const csrfToken: Writable<string | null> = writable(null);
 
@@ -43,10 +37,10 @@ export const authCheckComplete: Writable<boolean> = writable(false);
 
 // Derived store for checking if token is expired
 export const isTokenExpired: Readable<boolean> = derived(
-  user,
-  ($user) => {
-    if (!$user) return true;
-    return new Date($user.expiresAt) < new Date();
+  customer,
+  ($customer) => {
+    if (!$customer) return true;
+    return new Date($customer.expiresAt) < new Date();
   }
 );
 
@@ -72,29 +66,32 @@ export const authRequired: Readable<boolean> = derived(
  * Save authentication state to storage
  * Stores everything in regular storage for persistence across reloads
  */
-function saveAuthState(userData: User | null): void {
-  if (userData) {
-    // Store user data in regular storage (for persistence across reloads)
-    // Token is included in userData, so no need for separate token storage
-    storage.set('auth_user', userData);
+function saveAuthState(customerData: AuthenticatedCustomer | null): void {
+  if (customerData) {
+    // Store customer data in regular storage (for persistence across reloads)
+    // Token is included in customerData, so no need for separate token storage
+    storage.set('auth_customer', customerData);
+    // Clean up old auth_user storage key
+    storage.remove('auth_user');
     
     // Extract CSRF token and isSuperAdmin from JWT payload
-    const payload = decodeJWTPayload(userData.token);
+    const payload = decodeJWTPayload(customerData.token);
     const csrf = payload?.csrf as string | undefined;
     const isSuperAdmin = payload?.isSuperAdmin === true;
     
-    // Update userData with isSuperAdmin from JWT if not already set
-    const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
+    // Update customerData with isSuperAdmin from JWT if not already set
+    const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdmin || customerData.isSuperAdmin };
     
     isAuthenticated.set(true);
-    user.set(updatedUserData);
-    token.set(userData.token);
+    customer.set(updatedCustomerData);
+    token.set(customerData.token);
     csrfToken.set(csrf || null);
   } else {
-    storage.remove('auth_user');
+    storage.remove('auth_customer');
+    storage.remove('auth_user'); // Clean up any old user storage
     storage.remove('auth_token'); // Clean up any old token storage
     isAuthenticated.set(false);
-    user.set(null);
+    customer.set(null);
     token.set(null);
     csrfToken.set(null);
   }
@@ -207,18 +204,17 @@ async function restoreSessionFromBackend(): Promise<boolean> {
     
     if (data.restored && data.access_token) {
       // Session restored! Save the token
-      const userData: User = {
-        userId: data.userId || data.sub || '',
+      const customerData: AuthenticatedCustomer = {
+        customerId: data.customerId || data.userId || data.sub || '',
         email: data.email || '',
         displayName: data.displayName || undefined,
-        customerId: data.customerId || undefined,
         token: data.access_token || data.token || '',
         expiresAt: data.expiresAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
         isSuperAdmin: data.isSuperAdmin || false,
       };
       
-      saveAuthState(userData);
-      console.log('[Auth] ✓ Session restored from backend for user:', userData.email);
+      saveAuthState(customerData);
+      console.log('[Auth] ✓ Session restored from backend for customer:', customerData.email);
       return true;
     }
 
@@ -312,16 +308,34 @@ async function validateTokenWithBackend(token: string): Promise<boolean> {
  */
 export async function loadAuthState(): Promise<void> {
   try {
-    const userData = storage.get('auth_user') as User | null;
+    // Try new storage key first, fallback to old key for migration
+    let customerData = storage.get('auth_customer') as AuthenticatedCustomer | null;
+    if (!customerData) {
+      // Migrate from old auth_user storage key
+      const oldUserData = storage.get('auth_user') as any;
+      if (oldUserData) {
+        customerData = {
+          customerId: oldUserData.customerId || oldUserData.userId || oldUserData.sub || '',
+          email: oldUserData.email,
+          displayName: oldUserData.displayName,
+          token: oldUserData.token,
+          expiresAt: oldUserData.expiresAt,
+          isSuperAdmin: oldUserData.isSuperAdmin,
+        };
+        // Save under new key and remove old key
+        storage.set('auth_customer', customerData);
+        storage.remove('auth_user');
+      }
+    }
     
-    // Token is stored in userData, no need to check separate token storage
-    if (userData && userData.token && 'expiresAt' in userData && typeof userData.expiresAt === 'string') {
+    // Token is stored in customerData, no need to check separate token storage
+    if (customerData && customerData.token && 'expiresAt' in customerData && typeof customerData.expiresAt === 'string') {
       // Check if token is expired locally first (fast check)
-      if (new Date(userData.expiresAt) > new Date()) {
+      if (new Date(customerData.expiresAt) > new Date()) {
         // Token not expired locally - validate with backend to check if blacklisted
         // This ensures we detect tokens that were blacklisted on other domains
         // BUT: Don't clear auth on network errors - only clear if explicitly invalid
-        const isValid = await validateTokenWithBackend(userData.token);
+        const isValid = await validateTokenWithBackend(customerData.token);
         
         if (!isValid) {
           // Token is blacklisted or invalid - clear auth state
@@ -334,16 +348,16 @@ export async function loadAuthState(): Promise<void> {
 
         // Token is valid - restore auth state
         // Extract CSRF token and isSuperAdmin from JWT payload before saving
-        const payload = decodeJWTPayload(userData.token);
+        const payload = decodeJWTPayload(customerData.token);
         const csrf = payload?.csrf as string | undefined;
         const isSuperAdmin = payload?.isSuperAdmin === true;
         if (csrf) {
           csrfToken.set(csrf);
         }
-        // Update userData with isSuperAdmin from JWT if not already set
-        const updatedUserData = { ...userData, isSuperAdmin: isSuperAdmin || userData.isSuperAdmin };
-        saveAuthState(updatedUserData as User);
-        console.log('[Auth] ✓ User authenticated from storage, token valid until:', userData.expiresAt);
+        // Update customerData with isSuperAdmin from JWT if not already set
+        const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdmin || customerData.isSuperAdmin };
+        saveAuthState(updatedCustomerData);
+        console.log('[Auth] ✓ Customer authenticated from storage, token valid until:', customerData.expiresAt);
         return;
       } else {
         // Token expired, try to restore from backend before clearing
@@ -357,17 +371,17 @@ export async function loadAuthState(): Promise<void> {
       }
     }
 
-    // No userData found - try to restore session from backend
+    // No customerData found - try to restore session from backend
     // This enables cross-application session sharing for the same device/IP
-    if (!userData) {
+    if (!customerData) {
       await restoreSessionFromBackend();
     }
   } catch (error) {
     console.error('[Auth] Failed to load auth state:', error);
     // Don't clear auth on error - might be a temporary network issue
-    // Only clear if we truly have no userData
-    const userData = storage.get('auth_user') as User | null;
-    if (!userData) {
+    // Only clear if we truly have no customerData
+    const customerData = storage.get('auth_customer') as AuthenticatedCustomer | null;
+    if (!customerData) {
       saveAuthState(null);
     }
   }
@@ -376,8 +390,8 @@ export async function loadAuthState(): Promise<void> {
 /**
  * Set authentication state (after login)
  */
-export function setAuth(userData: User): void {
-  saveAuthState(userData);
+export function setAuth(customerData: AuthenticatedCustomer): void {
+  saveAuthState(customerData);
 }
 
 /**

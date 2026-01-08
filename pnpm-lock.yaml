@@ -794,9 +794,15 @@ importers:
       '@strixun/service-client':
         specifier: workspace:*
         version: link:../../packages/service-client
+      '@strixun/shared-components':
+        specifier: workspace:*
+        version: link:../../shared-components
       '@strixun/status-flair':
         specifier: workspace:*
         version: link:../../packages/status-flair
+      '@strixun/tooltip':
+        specifier: workspace:*
+        version: link:../../packages/tooltip
       '@strixun/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -864,49 +870,6 @@ importers:
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@types/node@25.0.3)(@vitest/browser-playwright@4.0.16)(jsdom@25.0.1)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
-
-  serverless/otp-auth-service/dashboard:
-    dependencies:
-      '@observablehq/plot':
-        specifier: ^0.6.15
-        version: 0.6.17
-      '@strixun/api-framework':
-        specifier: workspace:*
-        version: link:../../../packages/api-framework
-      '@strixun/otp-login':
-        specifier: workspace:*
-        version: link:../../../packages/otp-login
-      '@strixun/tooltip':
-        specifier: workspace:*
-        version: link:../../../packages/tooltip
-      svelte:
-        specifier: ^5.46.0
-        version: 5.46.0
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20251225.0
-        version: 4.20251225.0
-      '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.1
-        version: 6.2.1(svelte@5.46.0)(vite@7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0))
-      '@tsconfig/svelte':
-        specifier: ^5.0.6
-        version: 5.0.6
-      '@types/node':
-        specifier: ^25.0.3
-        version: 25.0.3
-      sass:
-        specifier: ^1.97.1
-        version: 1.97.1
-      svelte-check:
-        specifier: ^4.3.5
-        version: 4.3.5(picomatch@4.0.3)(svelte@5.46.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vite:
-        specifier: ^7.3.0
-        version: 7.3.0(@types/node@25.0.3)(sass@1.97.1)(terser@5.44.1)(tsx@4.21.0)
 
   serverless/twitch-api:
     dependencies:
@@ -2813,10 +2776,6 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@observablehq/plot@0.6.17':
-    resolution: {integrity: sha512-/qaXP/7mc4MUS0s4cPPFASDRjtsWp85/TbfsciqDgU1HwYixbSbbytNuInD8AcTYC3xaxACgVX06agdfQy9W+g==}
-    engines: {node: '>=12'}
-
   '@parcel/watcher-android-arm64@2.5.1':
     resolution: {integrity: sha512-KF8+j9nNbUN8vzOFDpRMsaKBHZ/mcjEjMToVMJOhTozkDonQFFrRcfdLWn6yWKCmJKmdVxSgHiYvTCef4/qcBA==}
     engines: {node: '>= 10.0.0'}
@@ -3871,9 +3830,6 @@ packages:
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
-
-  binary-search-bounds@2.0.5:
-    resolution: {integrity: sha512-H0ea4Fd3lS1+sTEB2TgcLoK21lLhwEJzlQv3IN47pJS976Gx4zoWe0ak3q+uYh60ppQxg9F16Ri4tS1sfD4+jA==}
 
   birpc@0.2.14:
     resolution: {integrity: sha512-37FHE8rqsYM5JEKCnXFyHpBCzvgHEExwVVTq+nUmloInU7l8ezD1TpOhKpS8oe1DTYFqEK27rFZVKG43oTqXRA==}
@@ -5117,9 +5073,6 @@ packages:
     resolution: {integrity: sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==}
     engines: {node: '>=12'}
 
-  interval-tree-1d@1.0.4:
-    resolution: {integrity: sha512-wY8QJH+6wNI0uh4pDQzMvl+478Qh7Rl4qLmqiluxALlNvl+I+o5x38Pw3/z7mDPTPS1dQalZJXsmbvxx5gclhQ==}
-
   invariant@2.2.4:
     resolution: {integrity: sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==}
 
@@ -5291,9 +5244,6 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
-
-  isoformat@0.2.1:
-    resolution: {integrity: sha512-tFLRAygk9NqrRPhJSnNGh7g7oaVWDwR0wKh/GM2LgmPa50Eg4UfyaCO4I8k6EqJHl1/uh2RAD6g06n5ygEnrjQ==}
 
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
@@ -8879,12 +8829,6 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@observablehq/plot@0.6.17':
-    dependencies:
-      d3: 7.9.0
-      interval-tree-1d: 1.0.4
-      isoformat: 0.2.1
-
   '@parcel/watcher-android-arm64@2.5.1':
     optional: true
 
@@ -10164,8 +10108,6 @@ snapshots:
       require-from-string: 2.0.2
 
   binary-extensions@2.3.0: {}
-
-  binary-search-bounds@2.0.5: {}
 
   birpc@0.2.14: {}
 
@@ -11729,10 +11671,6 @@ snapshots:
 
   internmap@2.0.3: {}
 
-  interval-tree-1d@1.0.4:
-    dependencies:
-      binary-search-bounds: 2.0.5
-
   invariant@2.2.4:
     dependencies:
       loose-envify: 1.4.0
@@ -11895,8 +11833,6 @@ snapshots:
   isarray@2.0.5: {}
 
   isexe@2.0.0: {}
-
-  isoformat@0.2.1: {}
 
   istanbul-lib-coverage@3.2.2: {}
 

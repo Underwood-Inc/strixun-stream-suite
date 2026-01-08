@@ -210,7 +210,7 @@ describe.skipIf(!E2E_OTP_CODE)('OTP Login Flow - Integration Tests (Miniflare)',
     it('should have created customer account in customer-api', async () => {
       if (!customerId) {
         // Try to get customer by email
-        const { getCustomerByEmailService } = await import('../../utils/customer-api-service-client.js');
+        const { getCustomerByEmailService } = await import('@strixun/api-framework');
         const mockEnv = {
           CUSTOMER_API_URL: 'http://localhost:8790', // Miniflare worker URL
           ENVIRONMENT: 'dev', // Always dev for local testing
@@ -232,7 +232,7 @@ describe.skipIf(!E2E_OTP_CODE)('OTP Login Flow - Integration Tests (Miniflare)',
       console.log(`[Integration Tests] Customer ID: ${customerId}`);
       
       // Verify customer exists in customer-api with retry for eventual consistency
-      const { getCustomerService } = await import('../../utils/customer-api-service-client.js');
+      const { getCustomerService } = await import('@strixun/api-framework');
       const mockEnv = {
         CUSTOMER_API_URL: 'http://localhost:8790', // Miniflare worker URL
         ENVIRONMENT: 'dev', // Always dev for local testing

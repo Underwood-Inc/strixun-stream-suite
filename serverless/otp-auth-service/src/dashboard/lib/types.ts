@@ -1,18 +1,13 @@
 /**
  * TypeScript Types for OTP Auth API
+ * 
+ * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
  */
-
-export interface User {
-  sub: string;
-  email: string;
-  email_verified: boolean;
-  iss?: string;
-  aud?: string;
-}
 
 export interface Customer {
   customerId: string;
   email: string;
+  displayName?: string | null;
   name?: string;
   status: 'active' | 'suspended' | 'pending';
   plan: string;

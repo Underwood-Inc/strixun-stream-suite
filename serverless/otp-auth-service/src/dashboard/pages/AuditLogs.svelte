@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '$lib/api-client';
-  import type { Customer, AuditLog } from '$lib/types';
-  import Card from '$components/Card.svelte';
-  import StatusFlair from '@strixun/status-flair/StatusFlair.svelte';
+  import { apiClient } from '$dashboard/lib/api-client';
+  import type { Customer, AuditLog } from '$dashboard/lib/types';
+  import Card from '$dashboard/components/Card.svelte';
+  import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
 
   export let customer: Customer | null = null;
 

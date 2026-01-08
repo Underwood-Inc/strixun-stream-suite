@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { apiClient } from '$lib/api-client';
+  import { apiClient } from '$dashboard/lib/api-client';
   import type { LoginSuccessData } from '@strixun/otp-login';
   import OtpLogin from '@strixun/otp-login/svelte/OtpLogin.svelte';
 

@@ -6,7 +6,6 @@
 
 import { createAPIClient } from '@strixun/api-framework/client';
 import type {
-  User,
   Customer,
   ApiKey,
   ApiKeyResponse,
@@ -94,15 +93,6 @@ export class ApiClient {
     return response.data;
   }
 
-  async getMe(): Promise<User> {
-    const response = await this.api.get<User>('/auth/me');
-    if (response.status !== 200 || !response.data) {
-      const error = response.data as { detail?: string } | undefined;
-      throw new Error(error?.detail || 'Failed to get user');
-    }
-    return response.data;
-  }
-
   async logout(): Promise<void> {
     try {
       await this.api.post('/auth/logout', {});
@@ -112,46 +102,9 @@ export class ApiClient {
     this.setToken(null);
   }
 
-  // Customer endpoints (using customer-api - consolidated from /admin/customers/me)
+  // Customer endpoints (using customer-api via Vite proxy)
   async getCustomer(): Promise<Customer> {
-    // Use customer-api endpoint - customer-api handles all customer data
-    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
-    const isLocalhost = typeof window !== 'undefined' && (
-      window.location.hostname === 'localhost' || 
-      window.location.hostname === '127.0.0.1' ||
-      import.meta.env?.DEV ||
-      import.meta.env?.MODE === 'development'
-    );
-    
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
-      (isLocalhost ? 'http://localhost:8790' : 'https://customer-api.idling.app');
-    const customerApi = createAPIClient({
-      baseURL: customerApiUrl,
-      defaultHeaders: {
-        'Content-Type': 'application/json',
-      },
-      auth: {
-        tokenGetter: () => {
-          if (typeof window !== 'undefined') {
-            return localStorage.getItem('auth_token');
-          }
-          return null;
-        },
-        onTokenExpired: () => {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-          }
-        },
-      },
-      timeout: 30000,
-      retry: {
-        maxAttempts: 3,
-        backoff: 'exponential',
-        retryableErrors: [408, 429, 500, 502, 503, 504],
-      },
-    });
-    const response = await customerApi.get<Customer>('/customer/me');
+    const response = await this.api.get<Customer>('/customer/me');
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to get customer');
@@ -160,44 +113,7 @@ export class ApiClient {
   }
 
   async updateCustomer(data: Partial<Customer>): Promise<Customer> {
-    // Use customer-api endpoint - customer-api handles all customer data
-    // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
-    const isLocalhost = typeof window !== 'undefined' && (
-      window.location.hostname === 'localhost' || 
-      window.location.hostname === '127.0.0.1' ||
-      import.meta.env?.DEV ||
-      import.meta.env?.MODE === 'development'
-    );
-    
-    const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL || 
-      (isLocalhost ? 'http://localhost:8790' : 'https://customer-api.idling.app');
-    const customerApi = createAPIClient({
-      baseURL: customerApiUrl,
-      defaultHeaders: {
-        'Content-Type': 'application/json',
-      },
-      auth: {
-        tokenGetter: () => {
-          if (typeof window !== 'undefined') {
-            return localStorage.getItem('auth_token');
-          }
-          return null;
-        },
-        onTokenExpired: () => {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-          }
-        },
-      },
-      timeout: 30000,
-      retry: {
-        maxAttempts: 3,
-        backoff: 'exponential',
-        retryableErrors: [408, 429, 500, 502, 503, 504],
-      },
-    });
-    const response = await customerApi.put<Customer>('/customer/me', data);
+    const response = await this.api.put<Customer>('/customer/me', data);
     if (response.status !== 200 || !response.data) {
       const error = response.data as { detail?: string } | undefined;
       throw new Error(error?.detail || 'Failed to update customer');

@@ -3,7 +3,7 @@
  * Framework-agnostic API calls that work across all implementations
  */
 
-import type { User, AuthStoreConfig } from './types.js';
+import type { AuthenticatedCustomer, AuthStoreConfig } from './types.js';
 
 /**
  * Get OTP Auth API URL from config or environment
@@ -56,7 +56,7 @@ export function getAuthApiUrl(config?: AuthStoreConfig): string {
  * Restore session from backend based on IP address
  * This enables cross-application session sharing for the same device
  */
-export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promise<User | null> {
+export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promise<AuthenticatedCustomer | null> {
     try {
         const apiUrl = getAuthApiUrl(config);
         if (!apiUrl) {
@@ -107,18 +107,17 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
                 return null;
             }
 
-            const user: User = {
-                userId,
+            const customer: AuthenticatedCustomer = {
+                customerId: data.customerId || userId || '',
                 email,
                 displayName: data.displayName || null,
-                customerId: data.customerId || null,
                 token,
                 expiresAt,
                 isSuperAdmin: data.isSuperAdmin || false,
             };
             
-            console.log('[Auth] ✓ Session restored from backend for user:', user.email);
-            return user;
+            console.log('[Auth] ✓ Session restored from backend for customer:', customer.email);
+            return customer;
         }
 
         if (data.restored === false) {
@@ -231,13 +230,13 @@ export async function validateTokenWithBackend(
  * If token mismatch occurs (token was refreshed/changed), this function will return null
  * and the caller should restore the session to get a fresh token.
  */
-export async function fetchUserInfo(
+export async function fetchCustomerInfo(
     token: string,
     config?: AuthStoreConfig
 ): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId?: string | null } | null> {
     // CRITICAL: Validate token exists before making request
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
-        console.error('[Auth] fetchUserInfo called with invalid token:', { 
+        console.error('[Auth] fetchCustomerInfo called with invalid token:', { 
             hasToken: !!token, 
             tokenType: typeof token, 
             tokenLength: token?.length 

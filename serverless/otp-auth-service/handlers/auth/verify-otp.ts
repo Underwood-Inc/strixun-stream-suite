@@ -17,7 +17,7 @@ import { trackUsage } from '../../services/analytics.js';
 import { retrieveOTP, deleteOTP, incrementOTPAttempts } from './otp-storage.js';
 import { ensureCustomerAccount } from './customer-creation.js';
 import { createAuthToken } from './jwt-creation.js';
-import { storeUserPreferences, getDefaultPreferences, getCustomerPreferences } from '../../services/user-preferences.js';
+import { storeCustomerPreferences, getDefaultPreferences, getCustomerPreferences } from '../../services/customer-preferences.js';
 import { createGenericOTPError, createInternalErrorResponse } from './otp-errors.js';
 // decryptWithServiceKey removed - service key encryption was obfuscation only
 

@@ -1,14 +1,16 @@
 /**
  * Svelte adapter for auth store
  * Use this in Svelte projects
+ * 
+ * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
  */
 
 import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
-import type { User, AuthStoreConfig } from '../core/types.js';
+import type { AuthenticatedCustomer, AuthStoreConfig } from '../core/types.js';
 import { 
     restoreSessionFromBackend, 
     validateTokenWithBackend, 
-    fetchUserInfo,
+    fetchCustomerInfo,
     decodeJWTPayload 
 } from '../core/api.js';
 
@@ -16,64 +18,67 @@ import {
  * Create Svelte auth stores
  */
 export function createAuthStore(config?: AuthStoreConfig) {
-    const storageKey = config?.storageKey || 'auth_user';
+    const storageKey = config?.storageKey || 'auth_customer';
     const storage = config?.storage || (typeof window !== 'undefined' ? window.localStorage : null);
     
     // Core stores
-    const user: Writable<User | null> = writable(null);
+    const customer: Writable<AuthenticatedCustomer | null> = writable(null);
     const isAuthenticated: Writable<boolean> = writable(false);
     const isSuperAdmin: Writable<boolean> = writable(false);
     const csrfToken: Writable<string | null> = writable(null);
     
     // Derived stores
     const isTokenExpired: Readable<boolean> = derived(
-        user,
-        ($user) => {
-            if (!$user) return true;
-            return new Date($user.expiresAt) < new Date();
+        customer,
+        ($customer) => {
+            if (!$customer) return true;
+            return new Date($customer.expiresAt) < new Date();
         }
     );
     
     /**
      * Save authentication state to storage
      */
-    function saveAuthState(userData: User | null): void {
-        if (userData) {
-            // Store user data in storage
+    function saveAuthState(customerData: AuthenticatedCustomer | null): void {
+        if (customerData) {
+            // Store customer data in storage
             if (storage) {
-                storage.setItem(storageKey, JSON.stringify(userData));
+                storage.setItem(storageKey, JSON.stringify(customerData));
+                // Clean up old storage keys
+                storage.removeItem('auth_user');
             }
             
             // Extract CSRF token and isSuperAdmin from JWT payload
-            const payload = decodeJWTPayload(userData.token);
+            const payload = decodeJWTPayload(customerData.token);
             const csrf = payload?.csrf as string | undefined;
-            const isSuperAdminValue = payload?.isSuperAdmin === true || userData.isSuperAdmin || false;
+            const isSuperAdminValue = payload?.isSuperAdmin === true || customerData.isSuperAdmin || false;
             
-            // Update userData with isSuperAdmin from JWT if not already set
-            const updatedUserData = { ...userData, isSuperAdmin: isSuperAdminValue };
+            // Update customerData with isSuperAdmin from JWT if not already set
+            const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdminValue };
             
             isAuthenticated.set(true);
-            user.set(updatedUserData);
+            customer.set(updatedCustomerData);
             csrfToken.set(csrf || null);
             isSuperAdmin.set(isSuperAdminValue);
         } else {
             // Clear storage
             if (storage) {
                 storage.removeItem(storageKey);
+                storage.removeItem('auth_user'); // Clean up old storage
                 storage.removeItem('auth_token'); // Clean up any old token storage
             }
             isAuthenticated.set(false);
-            user.set(null);
+            customer.set(null);
             csrfToken.set(null);
             isSuperAdmin.set(false);
         }
     }
     
     /**
-     * Set user authentication state
+     * Set customer authentication state
      */
-    function setUser(userData: User | null): void {
-        saveAuthState(userData);
+    function setCustomer(customerData: AuthenticatedCustomer | null): void {
+        saveAuthState(customerData);
     }
     
     /**
@@ -82,8 +87,8 @@ export function createAuthStore(config?: AuthStoreConfig) {
     async function logout(): Promise<void> {
         try {
             // Try to call logout endpoint to invalidate token on server
-            const currentUser = get(user);
-            if (currentUser?.token) {
+            const currentCustomer = get(customer);
+            if (currentCustomer?.token) {
                 // CRITICAL: NO FALLBACKS ON LOCAL - Always use localhost in development
                 let apiUrl = config?.authApiUrl;
                 if (!apiUrl && typeof window !== 'undefined') {
@@ -118,27 +123,27 @@ export function createAuthStore(config?: AuthStoreConfig) {
     }
     
     /**
-     * Fetch fresh user info from /auth/me endpoint
+     * Fetch fresh customer info from /auth/me endpoint
      */
-    async function fetchUserInfoFromAPI(): Promise<void> {
-        const currentUser = get(user);
-        if (!currentUser || !currentUser.token) {
+    async function fetchCustomerInfoFromAPI(): Promise<void> {
+        const currentCustomer = get(customer);
+        if (!currentCustomer || !currentCustomer.token) {
             return;
         }
         
-        // CRITICAL: Don't clear user if fetchUserInfo fails - only update if it succeeds
-        const userInfo = await fetchUserInfo(currentUser.token, config);
-        if (userInfo) {
-            const updatedUser: User = { 
-                ...currentUser, 
-                isSuperAdmin: userInfo.isSuperAdmin, 
-                displayName: userInfo.displayName || currentUser.displayName,
-                customerId: userInfo.customerId || currentUser.customerId,
+        // CRITICAL: Don't clear customer if fetchCustomerInfo fails - only update if it succeeds
+        const customerInfo = await fetchCustomerInfo(currentCustomer.token, config);
+        if (customerInfo) {
+            const updatedCustomer: AuthenticatedCustomer = { 
+                ...currentCustomer, 
+                isSuperAdmin: customerInfo.isSuperAdmin, 
+                displayName: customerInfo.displayName || currentCustomer.displayName,
+                customerId: currentCustomer.customerId, // Don't override
             };
-            saveAuthState(updatedUser);
+            saveAuthState(updatedCustomer);
         } else {
-            // If fetchUserInfo fails, log but don't clear the user - they're still authenticated
-            console.warn('[Auth] Failed to fetch user info, but keeping existing auth state');
+            // If fetchCustomerInfo fails, log but don't clear the customer - they're still authenticated
+            console.warn('[Auth] Failed to fetch customer info, but keeping existing auth state');
         }
     }
     
@@ -146,21 +151,21 @@ export function createAuthStore(config?: AuthStoreConfig) {
      * Restore session from backend (IP-based session sharing)
      */
     async function restoreSession(): Promise<boolean> {
-        const currentUser = get(user);
+        const currentCustomer = get(customer);
         
-        // If we already have a user with a valid (non-expired) token, don't clear them
+        // If we already have a customer with a valid (non-expired) token, don't clear them
         // Just refresh admin status in background
-        if (currentUser && currentUser.token && currentUser.expiresAt) {
-            const isExpired = new Date(currentUser.expiresAt) <= new Date();
+        if (currentCustomer && currentCustomer.token && currentCustomer.expiresAt) {
+            const isExpired = new Date(currentCustomer.expiresAt) <= new Date();
             
             if (!isExpired) {
                 // Token is valid, just refresh admin status in background
-                fetchUserInfoFromAPI().catch(err => {
+                fetchCustomerInfoFromAPI().catch(err => {
                     console.debug('[Auth] Background admin status refresh failed (non-critical):', err);
                 });
                 return true; // Already authenticated with valid token - don't clear!
             }
-            // Token is expired - try to restore from backend, but don't clear user yet
+            // Token is expired - try to restore from backend, but don't clear customer yet
             // Only clear if backend restore fails
         }
         
@@ -169,32 +174,32 @@ export function createAuthStore(config?: AuthStoreConfig) {
             return false;
         }
         
-        const restoredUser = await restoreSessionFromBackend(config);
-        if (restoredUser) {
-            saveAuthState(restoredUser);
+        const restoredCustomer = await restoreSessionFromBackend(config);
+        if (restoredCustomer) {
+            saveAuthState(restoredCustomer);
             // Fetch admin status after restoring session (don't clear if it fails)
-            const userInfo = await fetchUserInfo(restoredUser.token, config);
-            if (userInfo) {
-                const updatedUser: User = { 
-                    ...restoredUser, 
-                    isSuperAdmin: userInfo.isSuperAdmin, 
-                    displayName: userInfo.displayName || restoredUser.displayName,
-                    customerId: userInfo.customerId || restoredUser.customerId,
+            const customerInfo = await fetchCustomerInfo(restoredCustomer.token, config);
+            if (customerInfo) {
+                const updatedCustomer: AuthenticatedCustomer = { 
+                    ...restoredCustomer, 
+                    isSuperAdmin: customerInfo.isSuperAdmin, 
+                    displayName: customerInfo.displayName || restoredCustomer.displayName,
+                    customerId: restoredCustomer.customerId, // Don't override
                 };
-                saveAuthState(updatedUser);
+                saveAuthState(updatedCustomer);
             } else {
-                // If fetchUserInfo fails, keep the user but log the issue
-                console.warn('[Auth] Failed to fetch admin status after restore, but keeping user authenticated');
+                // If fetchCustomerInfo fails, keep the customer but log the issue
+                console.warn('[Auth] Failed to fetch admin status after restore, but keeping customer authenticated');
             }
             return true; // Successfully restored
-        } else if (currentUser && currentUser.expiresAt && new Date(currentUser.expiresAt) <= new Date()) {
-            // Backend restore failed AND token is expired - only now clear the user
+        } else if (currentCustomer && currentCustomer.expiresAt && new Date(currentCustomer.expiresAt) <= new Date()) {
+            // Backend restore failed AND token is expired - only now clear the customer
             console.log('[Auth] Token expired and backend restore failed, clearing auth state');
             saveAuthState(null);
             return false; // Failed to restore
         }
-        // If backend restore failed but we have a valid user, keep them logged in
-        return false; // No user to restore or restore failed
+        // If backend restore failed but we have a valid customer, keep them logged in
+        return false; // No customer to restore or restore failed
     }
     
     /**
@@ -203,26 +208,48 @@ export function createAuthStore(config?: AuthStoreConfig) {
      */
     async function loadAuthState(): Promise<void> {
         try {
-            let userData: User | null = null;
+            let customerData: AuthenticatedCustomer | null = null;
             
-            // Try to load from storage
+            // Try to load from storage (try new key first, fallback to old key for migration)
             if (storage) {
-                const stored = storage.getItem(storageKey);
-                if (stored) {
+                let stored = storage.getItem(storageKey);
+                if (!stored) {
+                    // Try old key for migration
+                    stored = storage.getItem('auth_user');
+                    if (stored) {
+                        // Migrate from old key
+                        try {
+                            const oldData = JSON.parse(stored) as any;
+                            customerData = {
+                                customerId: oldData.customerId || oldData.userId || oldData.sub || '',
+                                email: oldData.email,
+                                displayName: oldData.displayName,
+                                token: oldData.token,
+                                expiresAt: oldData.expiresAt,
+                                isSuperAdmin: oldData.isSuperAdmin,
+                            };
+                            // Save under new key and remove old key
+                            storage.setItem(storageKey, JSON.stringify(customerData));
+                            storage.removeItem('auth_user');
+                        } catch (e) {
+                            console.warn('[Auth] Failed to migrate old user data');
+                        }
+                    }
+                } else {
                     try {
-                        userData = JSON.parse(stored) as User;
+                        customerData = JSON.parse(stored) as AuthenticatedCustomer;
                     } catch (e) {
-                        console.warn('[Auth] Failed to parse stored user data');
+                        console.warn('[Auth] Failed to parse stored customer data');
                     }
                 }
             }
             
-            // Token is stored in userData
-            if (userData && userData.token && 'expiresAt' in userData && typeof userData.expiresAt === 'string') {
+            // Token is stored in customerData
+            if (customerData && customerData.token && 'expiresAt' in customerData && typeof customerData.expiresAt === 'string') {
                 // Check if token is expired locally first (fast check)
-                if (new Date(userData.expiresAt) > new Date()) {
+                if (new Date(customerData.expiresAt) > new Date()) {
                     // Token not expired locally - validate with backend to check if blacklisted
-                    const isValid = await validateTokenWithBackend(userData.token, config);
+                    const isValid = await validateTokenWithBackend(customerData.token, config);
                     
                     if (!isValid) {
                         // Token is blacklisted or invalid - clear auth state
@@ -237,16 +264,16 @@ export function createAuthStore(config?: AuthStoreConfig) {
 
                     // Token is valid - restore auth state
                     // Extract CSRF token and isSuperAdmin from JWT payload before saving
-                    const payload = decodeJWTPayload(userData.token);
+                    const payload = decodeJWTPayload(customerData.token);
                     const csrf = payload?.csrf as string | undefined;
-                    const isSuperAdminValue = payload?.isSuperAdmin === true || userData.isSuperAdmin || false;
+                    const isSuperAdminValue = payload?.isSuperAdmin === true || customerData.isSuperAdmin || false;
                     if (csrf) {
                         csrfToken.set(csrf);
                     }
-                    // Update userData with isSuperAdmin from JWT if not already set
-                    const updatedUserData = { ...userData, isSuperAdmin: isSuperAdminValue };
-                    saveAuthState(updatedUserData);
-                    console.log('[Auth] ✓ User authenticated from storage, token valid until:', userData.expiresAt);
+                    // Update customerData with isSuperAdmin from JWT if not already set
+                    const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdminValue };
+                    saveAuthState(updatedCustomerData);
+                    console.log('[Auth] ✓ Customer authenticated from storage, token valid until:', customerData.expiresAt);
                     return;
                 } else {
                     // Token expired, try to restore from backend before clearing
@@ -264,15 +291,15 @@ export function createAuthStore(config?: AuthStoreConfig) {
                 }
             }
 
-            // No userData found - try to restore session from backend
+            // No customerData found - try to restore session from backend
             // This enables cross-application session sharing for the same device/IP
-            if (!userData && config?.enableSessionRestore) {
+            if (!customerData && config?.enableSessionRestore) {
                 await restoreSession();
             }
         } catch (error) {
             console.error('[Auth] Failed to load auth state:', error);
             // Don't clear auth on error - might be a temporary network issue
-            // Only clear if we truly have no userData
+            // Only clear if we truly have no customerData
             if (storage) {
                 const stored = storage.getItem(storageKey);
                 if (!stored) {
@@ -286,14 +313,14 @@ export function createAuthStore(config?: AuthStoreConfig) {
      * Get current auth token
      */
     function getAuthToken(): string | null {
-        const currentUser = get(user);
-        return currentUser?.token || null;
+        const currentCustomer = get(customer);
+        return currentCustomer?.token || null;
     }
     
     /**
      * Get current CSRF token from JWT payload
      */
-    function getCsrfToken(): string | null {
+    function getCsrfTokenValue(): string | null {
         return get(csrfToken);
     }
     
@@ -306,19 +333,19 @@ export function createAuthStore(config?: AuthStoreConfig) {
     
     return {
         // Stores
-        user,
+        customer,
         isAuthenticated,
         isSuperAdmin,
         csrfToken,
         isTokenExpired,
         
         // Methods
-        setUser,
+        setCustomer,
         logout,
         restoreSession,
-        fetchUserInfo: fetchUserInfoFromAPI,
+        fetchCustomerInfo: fetchCustomerInfoFromAPI,
         loadAuthState,
         getAuthToken,
-        getCsrfToken,
+        getCsrfToken: getCsrfTokenValue,
     };
 }

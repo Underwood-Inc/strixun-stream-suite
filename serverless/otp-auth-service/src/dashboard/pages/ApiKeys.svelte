@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '$lib/api-client';
-  import type { Customer, ApiKey, ApiKeyResponse } from '$lib/types';
-  import Card from '$components/Card.svelte';
+  import { apiClient } from '$dashboard/lib/api-client';
+  import type { Customer, ApiKey, ApiKeyResponse } from '$dashboard/lib/types';
+  import Card from '$dashboard/components/Card.svelte';
 
   export let customer: Customer | null = null;
 
