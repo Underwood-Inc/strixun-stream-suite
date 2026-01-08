@@ -1,6 +1,7 @@
 <script lang="ts">
   import StatusFlair from '@shared-components/svelte/StatusFlair.svelte';
   import Tooltip from '@shared-components/svelte/Tooltip.svelte';
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
   import InDevelopmentTooltip from './InDevelopmentTooltip.svelte';
 </script>
 
@@ -44,7 +45,7 @@
         featureName: "Starter Plan",
         icon: "▹",
         description: "Subscription billing is currently in development and not yet available. This tier will include automatic billing through Stripe.",
-        additionalInfo: "Expected release: Q2 2025"
+        additionalInfo: "Expected release: Q3/Q4 2026"
       }}
       level="warning"
       position="top"
@@ -55,18 +56,18 @@
           <div class="pricing-header">
             <h3>Starter</h3>
             <div class="price">
-              <span class="amount">$29</span>
+              <span class="amount">$<ObfuscatedText text="29" length={2} /></span>
               <span class="period">/month</span>
             </div>
           </div>
           <div class="pricing-body">
             <ul class="features">
-              <li>✓ 10,000 OTP requests/month</li>
-              <li>✓ 500 requests/day</li>
+              <li>✓ <ObfuscatedText text="10,000" length={6} /> OTP requests/month</li>
+              <li>✓ <ObfuscatedText text="500" length={3} /> requests/day</li>
               <li>✓ Custom email templates</li>
               <li>✓ Webhooks</li>
               <li>✓ Email support</li>
-              <li>✓ 1,000 max users</li>
+              <li>✓ <ObfuscatedText text="1,000" length={5} /> max users</li>
               <li>✓ Custom domain</li>
             </ul>
             <button class="btn btn-secondary" disabled>Coming Soon</button>
@@ -82,7 +83,7 @@
         featureName: "Pro Plan",
         icon: "★",
         description: "Subscription billing is currently in development and not yet available. This tier will include automatic billing through Stripe.",
-        additionalInfo: "Expected release: Q2 2025"
+        additionalInfo: "Expected release: Q3/Q4 2026"
       }}
       level="warning"
       position="top"
@@ -93,20 +94,20 @@
           <div class="pricing-header">
             <h3>Pro</h3>
             <div class="price">
-              <span class="amount">$99</span>
+              <span class="amount">$<ObfuscatedText text="99" length={2} /></span>
               <span class="period">/month</span>
             </div>
           </div>
           <div class="pricing-body">
             <ul class="features">
-              <li>✓ 100,000 OTP requests/month</li>
-              <li>✓ 5,000 requests/day</li>
+              <li>✓ <ObfuscatedText text="100,000" length={7} /> OTP requests/month</li>
+              <li>✓ <ObfuscatedText text="5,000" length={5} /> requests/day</li>
               <li>✓ All Starter features</li>
               <li>✓ Analytics dashboard</li>
               <li>✓ Priority support</li>
-              <li>✓ 10,000 max users</li>
+              <li>✓ <ObfuscatedText text="10,000" length={6} /> max users</li>
               <li>✓ SSO support</li>
-              <li>✓ SLA 99.9%</li>
+              <li>✓ SLA <ObfuscatedText text="99.9" length={4} />%</li>
             </ul>
             <button class="btn btn-primary" disabled>Coming Soon</button>
           </div>
@@ -131,7 +132,7 @@
             <li>✓ Custom SLA</li>
             <li>✓ On-premise option</li>
             <li>✓ Custom integrations</li>
-            <li>✓ SLA 99.99%</li>
+            <li>✓ SLA <ObfuscatedText text="99.99" length={5} />%</li>
           </ul>
         <a href="mailto:support@idling.app" class="btn btn-secondary">Contact Sales</a>
       </div>
@@ -140,7 +141,7 @@
 
   <div class="pricing-note">
     <p>
-      <strong>▹ Usage-Based Add-Ons:</strong> Need more? Pay $0.001 per additional OTP request above your plan limit. No surprises.
+      <strong>▹ Usage-Based Add-Ons:</strong> Need more? Pay $<ObfuscatedText text="0.001" length={5} /> per additional OTP request above your plan limit. No surprises.
     </p>
   </div>
 </section>

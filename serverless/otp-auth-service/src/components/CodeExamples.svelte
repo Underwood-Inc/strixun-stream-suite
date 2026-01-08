@@ -1,5 +1,6 @@
 <script lang="ts">
   import CodeBlock from '../lib/CodeBlock.svelte';
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
   import { 
     vanillaJsExample, 
     reactExample, 
@@ -23,7 +24,7 @@
   </p>
   
   <div class="info-box">
-    <strong>◆ API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with 1,000 OTP requests/month.
+    <strong>◆ API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with <ObfuscatedText text="1,000" length={5} /> OTP requests/month.
   </div>
   
   <div class="code-tabs">

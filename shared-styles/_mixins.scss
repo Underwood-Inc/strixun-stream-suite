@@ -896,3 +896,60 @@
     color: #000000;
   }
 }
+
+// ============ Text Obfuscation Effect ============
+// Minecraft enchantment table style character scrambling effect
+// Creates animated scrambled text that appears encrypted/redacted
+// Usage: @include text-obfuscate; or @include text-obfuscate(0.5s);
+// Parameters:
+//   $duration: Animation duration (default: 0.8s)
+//   $color: Text color (default: inherit)
+@mixin text-obfuscate($duration: 0.8s, $color: inherit) {
+  position: relative;
+  color: $color;
+  font-feature-settings: normal;
+  
+  // Animated scrambling effect
+  animation: text-obfuscate-scramble $duration infinite;
+  
+  // Use enchantment table character set for scrambling
+  // This is handled by JavaScript for actual character replacement
+  // But the CSS creates the visual style
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+// Obfuscation animation - subtle opacity shifting effect
+@keyframes text-obfuscate-scramble {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+// Static obfuscated text (no animation, just styling)
+@mixin text-obfuscate-static($color: inherit) {
+  color: $color;
+  font-feature-settings: normal;
+  opacity: 0.9;
+}
+
+// Redacted/censored bar effect (alternative to character scrambling)
+@mixin text-redacted($color: currentColor) {
+  position: relative;
+  color: transparent;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 0.6em;
+    background: $color;
+    transform: translateY(-50%);
+    opacity: 0.8;
+  }
+}
