@@ -233,6 +233,20 @@
     .app-main {
       padding: var(--spacing-md);
     }
+
+    .page-container {
+      margin-top: var(--spacing-md);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .app-main {
+      padding: var(--spacing-sm);
+    }
+
+    .page-container {
+      margin-top: var(--spacing-sm);
+    }
   }
 </style>
 

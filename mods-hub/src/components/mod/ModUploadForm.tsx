@@ -478,7 +478,7 @@ export function ModUploadForm({
                         </FileInfo>
                     ) : (
                         <>
-                            <div>📷 Drop thumbnail image here or click to browse</div>
+                            <div>◇ Drop thumbnail image here or click to browse</div>
                             <DragDropText>Supports .png, .jpg, .webp</DragDropText>
                         </>
                     )}

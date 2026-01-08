@@ -11,7 +11,7 @@
   </p>
   
   <div class="dev-notice">
-    <strong>💡 Note:</strong> Paid subscription tiers are currently in development. The <strong>Free tier is fully functional</strong> and ready to use now!
+    <strong>▸ Note:</strong> Paid subscription tiers are currently in development. The <strong>Free tier is fully functional</strong> and ready to use now!
   </div>
 
   <div class="pricing-grid">
@@ -42,7 +42,7 @@
       component={InDevelopmentTooltip}
       componentProps={{
         featureName: "Starter Plan",
-        icon: "💳",
+        icon: "▹",
         description: "Subscription billing is currently in development and not yet available. This tier will include automatic billing through Stripe.",
         additionalInfo: "Expected release: Q2 2025"
       }}
@@ -80,7 +80,7 @@
       component={InDevelopmentTooltip}
       componentProps={{
         featureName: "Pro Plan",
-        icon: "⭐",
+        icon: "★",
         description: "Subscription billing is currently in development and not yet available. This tier will include automatic billing through Stripe.",
         additionalInfo: "Expected release: Q2 2025"
       }}
@@ -140,7 +140,7 @@
 
   <div class="pricing-note">
     <p>
-      <strong>💡 Usage-Based Add-Ons:</strong> Need more? Pay $0.001 per additional OTP request above your plan limit. No surprises.
+      <strong>▹ Usage-Based Add-Ons:</strong> Need more? Pay $0.001 per additional OTP request above your plan limit. No surprises.
     </p>
   </div>
 </section>
@@ -169,20 +169,34 @@
 
   .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--spacing-lg);
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    gap: var(--spacing-md);
     margin-bottom: var(--spacing-xl);
+  }
+
+  @media (min-width: 1200px) {
+    .pricing-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (max-width: 1199px) and (min-width: 769px) {
+    .pricing-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 
   .pricing-card {
     background: var(--card);
     border: 2px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-lg);
     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     position: relative;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    width: 100%;
   }
 
   .pricing-card:hover {
@@ -290,9 +304,9 @@
   }
 
   .features li {
-    padding: var(--spacing-sm) 0;
+    padding: var(--spacing-xs) 0;
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: 0.875rem;
   }
 
   .btn {
@@ -359,6 +373,11 @@
 
     .pricing-grid {
       grid-template-columns: 1fr;
+      gap: var(--spacing-lg);
+    }
+
+    .pricing-card {
+      padding: var(--spacing-lg);
     }
 
     .pricing-card.featured {
@@ -367,6 +386,83 @@
 
     .pricing-card.featured:hover {
       transform: translateY(-4px);
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .amount {
+      font-size: 2rem;
+    }
+
+    .features li {
+      font-size: 0.8rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .pricing {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .pricing h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .dev-notice {
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 0.875rem;
+    }
+
+    .pricing-grid {
+      gap: var(--spacing-md);
+    }
+
+    .pricing-card {
+      padding: var(--spacing-md);
+    }
+
+    .pricing-card:hover {
+      transform: none;
+    }
+
+    .pricing-header h3 {
+      font-size: 1.25rem;
+    }
+
+    .amount {
+      font-size: 1.75rem;
+    }
+
+    .period {
+      font-size: 0.875rem;
+    }
+
+    .features li {
+      font-size: 0.75rem;
+      padding: var(--spacing-xs) 0;
+    }
+
+    .btn {
+      padding: var(--spacing-xs) var(--spacing-md);
+      font-size: 0.75rem;
+    }
+
+    .pricing-note {
+      padding: var(--spacing-md);
+      font-size: 0.875rem;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: var(--spacing-xs) var(--spacing-sm);
     }
   }
 </style>

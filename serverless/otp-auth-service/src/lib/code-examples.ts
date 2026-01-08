@@ -345,9 +345,9 @@ export const vanillaJsApiKeyExample = `<!DOCTYPE html>
 </head>
 <body>
   <div class="container">
-    <h1>🔑 API Key Authentication Example</h1>
+    <h1>◆ API Key Authentication Example</h1>
     <div class="info">
-      <strong>💡 Getting Your API Key:</strong><br>
+      <strong>▸ Getting Your API Key:</strong><br>
       After signing up at <code>/signup</code> and verifying your email, you'll receive an API key.
       You can also manage API keys in your dashboard at <code>/dashboard</code>.
     </div>
@@ -415,14 +415,14 @@ export const vanillaJsApiKeyExample = `<!DOCTYPE html>
         
         if (response.ok) {
           responseDiv.className = 'response success';
-          responseDiv.textContent = \`✅ Success!\\n\\n\${JSON.stringify(data, null, 2)}\`;
+          responseDiv.textContent = \`✓ Success!\\n\\n\${JSON.stringify(data, null, 2)}\`;
         } else {
           responseDiv.className = 'response error';
-          responseDiv.textContent = \`❌ Error (\${response.status}):\\n\\n\${JSON.stringify(data, null, 2)}\`;
+          responseDiv.textContent = \`✗ Error (\${response.status}):\\n\\n\${JSON.stringify(data, null, 2)}\`;
         }
       } catch (error) {
         responseDiv.className = 'response error';
-        responseDiv.textContent = \`❌ Network Error:\\n\\n\${error.message}\`;
+        responseDiv.textContent = \`✗ Network Error:\\n\\n\${error.message}\`;
       }
     }
 
@@ -453,14 +453,14 @@ export const vanillaJsApiKeyExample = `<!DOCTYPE html>
         
         if (response.ok) {
           responseDiv.className = 'response success';
-          responseDiv.textContent = \`✅ Quota Information:\\n\\n\${JSON.stringify(data, null, 2)}\`;
+          responseDiv.textContent = \`✓ Quota Information:\\n\\n\${JSON.stringify(data, null, 2)}\`;
         } else {
           responseDiv.className = 'response error';
-          responseDiv.textContent = \`❌ Error (\${response.status}):\\n\\n\${JSON.stringify(data, null, 2)}\`;
+          responseDiv.textContent = \`✗ Error (\${response.status}):\\n\\n\${JSON.stringify(data, null, 2)}\`;
         }
       } catch (error) {
         responseDiv.className = 'response error';
-        responseDiv.textContent = \`❌ Network Error:\\n\\n\${error.message}\`;
+        responseDiv.textContent = \`✗ Network Error:\\n\\n\${error.message}\`;
       }
     }
   </script>
@@ -1113,10 +1113,10 @@ function ApiKeyExample() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>🔑 API Key Authentication Example</h1>
+        <h1 style={styles.title}>◆ API Key Authentication Example</h1>
         
         <div style={styles.info}>
-          <strong>💡 Getting Your API Key:</strong><br />
+          <strong>▸ Getting Your API Key:</strong><br />
           After signing up at <code>/signup</code> and verifying your email, you'll receive an API key.
           You can also manage API keys in your dashboard at <code>/dashboard</code>.
         </div>
@@ -1163,7 +1163,7 @@ function ApiKeyExample() {
         
         {error && (
           <div style={styles.error}>
-            ❌ {error}
+            ✗ {error}
           </div>
         )}
         
@@ -1172,7 +1172,7 @@ function ApiKeyExample() {
             ...styles.response,
             ...(response.success ? styles.success : styles.errorResponse)
           }}>
-            <strong>{response.success ? '✅ Success!' : '❌ Error'}</strong>
+            <strong>{response.success ? '✓ Success!' : '✗ Error'}</strong>
             <pre style={styles.pre}>
               {JSON.stringify(response.data || response, null, 2)}
             </pre>
@@ -1381,10 +1381,10 @@ export const svelteApiKeyExample = `<!-- ApiKeyExample.svelte -->
 
 <div class="container">
   <div class="card">
-    <h1>🔑 API Key Authentication Example</h1>
+    <h1>◆ API Key Authentication Example</h1>
     
     <div class="info">
-      <strong>💡 Getting Your API Key:</strong><br />
+      <strong>▸ Getting Your API Key:</strong><br />
       After signing up at <code>/signup</code> and verifying your email, you'll receive an API key.
       You can also manage API keys in your dashboard at <code>/dashboard</code>.
     </div>
@@ -1429,13 +1429,13 @@ export const svelteApiKeyExample = `<!-- ApiKeyExample.svelte -->
     
     {#if error}
       <div class="error">
-        ❌ {error}
+        ✗ {error}
       </div>
     {/if}
     
     {#if response}
       <div class="response" class:success={response.success} class:error={!response.success}>
-        <strong>{response.success ? '✅ Success!' : '❌ Error'}</strong>
+        <strong>{response.success ? '✓ Success!' : '✗ Error'}</strong>
         <pre>{JSON.stringify(response.data || response, null, 2)}</pre>
       </div>
     {/if}

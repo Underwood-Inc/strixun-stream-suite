@@ -162,7 +162,7 @@ export function ModListItem({ mod }: ModListItemProps) {
                     )
                 ) : (
                     <ThumbnailError>
-                        <ErrorIcon>📦</ErrorIcon>
+                        <ErrorIcon>▣</ErrorIcon>
                         <div>No thumbnail</div>
                     </ThumbnailError>
                 )}

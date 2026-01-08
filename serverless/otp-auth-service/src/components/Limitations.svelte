@@ -85,6 +85,49 @@
     .limitations {
       padding: var(--spacing-2xl) var(--spacing-md);
     }
+
+    .limitations-list {
+      padding: var(--spacing-md);
+    }
+
+    .limitations-list li {
+      padding: var(--spacing-sm);
+    }
+
+    .limitations-list li strong {
+      font-size: 0.95rem;
+    }
+
+    .limitations-list li p {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .limitations {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .limitations h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .limitations-list {
+      padding: var(--spacing-sm);
+    }
+
+    .limitations-list li {
+      padding: var(--spacing-xs);
+    }
+
+    .limitations-list li strong {
+      font-size: 0.9rem;
+    }
+
+    .limitations-list li p {
+      font-size: 0.8rem;
+    }
   }
 </style>
 

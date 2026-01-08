@@ -84,6 +84,51 @@
     .security {
       padding: var(--spacing-2xl) var(--spacing-md);
     }
+
+    .security-grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-md);
+    }
+
+    .security-item {
+      padding: var(--spacing-md);
+    }
+
+    .security-item h3 {
+      font-size: 1rem;
+    }
+
+    .security-item p {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .security {
+      padding: var(--spacing-xl) var(--spacing-sm);
+      margin: var(--spacing-2xl) 0;
+    }
+
+    .security h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .security-grid {
+      gap: var(--spacing-sm);
+    }
+
+    .security-item {
+      padding: var(--spacing-sm);
+    }
+
+    .security-item h3 {
+      font-size: 0.9rem;
+    }
+
+    .security-item p {
+      font-size: 0.8rem;
+    }
   }
 </style>
 

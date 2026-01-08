@@ -220,6 +220,7 @@
   @media (max-width: 768px) {
     .api-usage-bar {
       margin: var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-md);
     }
 
     .api-usage-header {
@@ -228,15 +229,69 @@
       gap: var(--spacing-sm);
     }
 
+    .api-usage-title {
+      font-size: 0.8rem;
+    }
+
     .api-usage-stats {
-      flex-direction: column;
-      gap: var(--spacing-xs);
+      flex-direction: row;
+      gap: var(--spacing-md);
       width: 100%;
+      font-size: 0.8rem;
     }
 
     .api-usage-periods {
       flex-direction: column;
       gap: var(--spacing-sm);
+    }
+
+    .api-usage-progress-container {
+      height: 20px;
+    }
+
+    .api-usage-progress-text {
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .api-usage-bar {
+      margin: var(--spacing-sm);
+      padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .api-usage-title {
+      font-size: 0.75rem;
+    }
+
+    .api-usage-stats {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+      font-size: 0.75rem;
+    }
+
+    .api-usage-stat {
+      gap: 4px;
+    }
+
+    .api-usage-stat-label {
+      font-size: 0.7rem;
+    }
+
+    .api-usage-stat-value {
+      font-size: 0.75rem;
+    }
+
+    .api-usage-progress-container {
+      height: 18px;
+    }
+
+    .api-usage-period-label {
+      font-size: 0.7rem;
+    }
+
+    .api-usage-progress-text {
+      font-size: 0.65rem;
     }
   }
 </style>

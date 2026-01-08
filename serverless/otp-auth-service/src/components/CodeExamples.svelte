@@ -23,7 +23,7 @@
   </p>
   
   <div class="info-box">
-    <strong>🔑 API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with 1,000 OTP requests/month.
+    <strong>◆ API Key Required:</strong> All integrations require an API key. <strong>Free tier available!</strong> Get your API key from the <a href="/dashboard">dashboard</a> after signing up. Includes free tier with 1,000 OTP requests/month.
   </div>
   
   <div class="code-tabs">
@@ -116,7 +116,48 @@
 
     .code-tabs {
       overflow-x: auto;
+      scrollbar-width: thin;
     }
 
+    .code-tab {
+      flex-shrink: 0;
+    }
+
+    .info-box {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .code-examples {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .code-examples h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .code-tabs {
+      gap: var(--spacing-xs);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .code-tab {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.75rem;
+      letter-spacing: 0px;
+    }
+
+    .info-box {
+      padding: var(--spacing-sm);
+      font-size: 0.8rem;
+      margin-bottom: var(--spacing-md);
+    }
   }
 </style>

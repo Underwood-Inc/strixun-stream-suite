@@ -92,6 +92,36 @@
     background: var(--border);
     border-color: var(--border-light);
   }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding: var(--spacing-2xl) var(--spacing-md);
+    }
+
+    .hero-cta {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .btn {
+      width: 100%;
+      text-align: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .hero p {
+      font-size: 1rem;
+    }
+
+    .btn {
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+  }
 </style>
 
 

@@ -83,5 +83,37 @@
     border-color: var(--accent);
     background: var(--bg-dark);
   }
+
+  @media (max-width: 768px) {
+    .app-nav {
+      padding: var(--spacing-sm);
+    }
+
+    .app-nav__list {
+      gap: var(--spacing-xs);
+    }
+
+    .app-nav__link {
+      padding: var(--spacing-xs) var(--spacing-md);
+      font-size: 0.8rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .app-nav {
+      padding: var(--spacing-xs);
+    }
+
+    .app-nav__list {
+      gap: 4px;
+    }
+
+    .app-nav__link {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.7rem;
+      letter-spacing: 0px;
+      white-space: nowrap;
+    }
+  }
 </style>
 

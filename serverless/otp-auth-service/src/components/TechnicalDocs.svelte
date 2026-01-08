@@ -101,5 +101,25 @@
     .code-examples {
       padding: var(--spacing-2xl) var(--spacing-md);
     }
+
+    .subtitle {
+      font-size: 0.9rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .code-examples {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .code-examples h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      margin-bottom: var(--spacing-md);
+    }
   }
 </style>

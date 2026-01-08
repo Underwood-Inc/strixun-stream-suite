@@ -162,7 +162,7 @@ export function ModBigCard({ mod }: ModBigCardProps) {
                             padding: spacing.md,
                             border: `2px dashed ${colors.border}`,
                         }}>
-                            <div style={{ fontSize: '2rem', marginBottom: spacing.xs, opacity: 0.7 }}>📦</div>
+                            <div style={{ fontSize: '2rem', marginBottom: spacing.xs, opacity: 0.7 }}>▣</div>
                             <div>No thumbnail</div>
                         </div>
                     )}

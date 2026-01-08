@@ -129,5 +129,55 @@
     font-size: 0.875rem;
     color: var(--accent);
   }
+
+  @media (max-width: 768px) {
+    .accordion-header {
+      padding: var(--spacing-md);
+    }
+
+    .accordion-header h3 {
+      font-size: 1rem;
+    }
+
+    .accordion-icon {
+      font-size: 1rem;
+    }
+
+    .accordion-body {
+      padding: var(--spacing-md);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .accordion-header {
+      padding: var(--spacing-sm);
+    }
+
+    .accordion-header h3 {
+      font-size: 0.9rem;
+    }
+
+    .accordion-icon {
+      font-size: 0.9rem;
+    }
+
+    .accordion-body {
+      padding: var(--spacing-sm);
+      font-size: 0.875rem;
+    }
+
+    .accordion-body :global(h4) {
+      font-size: 1rem;
+    }
+
+    .accordion-body :global(h5) {
+      font-size: 0.9rem;
+    }
+
+    .accordion-body :global(code) {
+      font-size: 0.8rem;
+      padding: 1px 4px;
+    }
+  }
 </style>
 

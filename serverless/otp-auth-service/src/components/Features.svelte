@@ -10,22 +10,22 @@
   <h2>Why Choose OTP Auth?</h2>
   <div class="features-grid">
     <div class="feature-card">
-      <h3><span class="feature-icon">⚡</span> Lightning Fast</h3>
+      <h3><span class="feature-icon">▸</span> Lightning Fast</h3>
       <p>Built on Cloudflare Workers for global edge deployment. Sub-100ms response times worldwide.</p>
     </div>
     <div class="feature-card">
-      <h3><span class="feature-icon">🔒</span> Enterprise Security</h3>
+      <h3><span class="feature-icon">◆</span> Enterprise Security</h3>
       <p>Cryptographically secure OTP codes, JWT tokens, rate limiting, and comprehensive audit logging.</p>
     </div>
     <div class="feature-card">
-      <h3><span class="feature-icon">🔌</span> Easy Integration</h3>
+      <h3><span class="feature-icon">◉</span> Easy Integration</h3>
       <p>Simple REST API that works with any framework. React, Svelte, Vue, or vanilla JavaScript—we've got you covered.</p>
     </div>
     <Tooltip 
       component={InTestingTooltip} 
       componentProps={{
         featureName: "Multi-Tenant Ready",
-        icon: "🏢",
+        icon: "▣",
         description: "This feature is currently being tested and refined. Some functionality may be limited or subject to change.",
         additionalInfo: "Expected stable release: Q2 2026"
       }}
@@ -34,28 +34,28 @@
     >
       <StatusFlair status="in-testing">
         <div class="feature-card">
-          <h3><span class="feature-icon">🏢</span> Multi-Tenant Ready</h3>
+          <h3><span class="feature-icon">▣</span> Multi-Tenant Ready</h3>
           <p>Built for SaaS applications. Complete customer isolation, per-tenant rate limiting, and usage analytics.</p>
         </div>
       </StatusFlair>
     </Tooltip>
     <div class="feature-card">
-      <h3><span class="feature-icon">💰</span> Cost Effective</h3>
+      <h3><span class="feature-icon">$</span> Cost Effective</h3>
       <p>Pay only for what you use. No infrastructure to manage, no servers to maintain.</p>
     </div>
     <div class="feature-card">
-      <h3><span class="feature-icon">🌍</span> Global Scale</h3>
+      <h3><span class="feature-icon">◎</span> Global Scale</h3>
       <p>Deployed on Cloudflare's edge network. Your users get the same fast experience anywhere in the world.</p>
     </div>
     <div class="feature-card">
-      <h3><span class="feature-icon">📦</span> Open Source & Self-Hostable</h3>
+      <h3><span class="feature-icon">▣</span> Open Source & Self-Hostable</h3>
       <p>Completely open-source on GitHub. Self-host with unlimited rate limits or wait for subscription tiers. </p>
     </div>
     <Tooltip 
       component={InTestingTooltip} 
       componentProps={{
         featureName: "Developer Dashboard",
-        icon: "📊",
+        icon: "◈",
         description: "The dashboard is functional but still being refined. Advanced analytics and custom reporting features coming soon.",
         additionalInfo: "Current features: API keys, audit logs, basic analytics"
       }}
@@ -64,7 +64,7 @@
     >
       <StatusFlair status="in-testing">
         <div class="feature-card">
-          <h3><span class="feature-icon">📊</span> Developer Dashboard</h3>
+          <h3><span class="feature-icon">◈</span> Developer Dashboard</h3>
           <p>Manage API keys, view audit logs, monitor analytics, and track usage—all from a beautiful, intuitive dashboard.</p>
           <div class="feature-cta">
             <a href={dashboardLink} class="btn btn-secondary">Open Dashboard </a>
@@ -102,6 +102,8 @@
     border-radius: var(--radius-md);
     padding: var(--spacing-xl);
     transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    min-width: 0;
   }
 
   .feature-card:hover {
@@ -162,6 +164,55 @@
   @media (max-width: 768px) {
     .features {
       padding: var(--spacing-2xl) var(--spacing-md);
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-md);
+    }
+
+    .feature-card {
+      padding: var(--spacing-md);
+    }
+
+    .feature-card h3 {
+      font-size: 1.1rem;
+    }
+
+    .feature-icon {
+      font-size: 1.25rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .features {
+      padding: var(--spacing-xl) var(--spacing-sm);
+    }
+
+    .features h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .features-grid {
+      gap: var(--spacing-sm);
+    }
+
+    .feature-card {
+      padding: var(--spacing-sm);
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+    }
+
+    .btn {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.75rem;
     }
   }
 </style>

@@ -725,7 +725,7 @@ export function R2ManagementPage() {
                     {associated?.mod ? (
                         <>
                             <FileTitle>
-                                {isThumbnail ? '🖼️ Thumbnail for: ' : isModFile ? '📦 Mod File for: ' : ''}
+                                {isThumbnail ? '◇ Thumbnail for: ' : isModFile ? '▣ Mod File for: ' : ''}
                                 <ModNameLink to={`/${associated.mod.slug}`} onClick={(e) => e.stopPropagation()}>
                                     {associated.mod.title}
                                 </ModNameLink>
@@ -771,7 +771,7 @@ export function R2ManagementPage() {
                     ) : (
                         <>
                             <FileTitle>
-                                {isThumbnail ? '🖼️ Thumbnail' : isModFile ? '📦 Mod File' : '❓ Unknown File'}
+                                {isThumbnail ? '◇ Thumbnail' : isModFile ? '▣ Mod File' : '? Unknown File'}
                                 {customerId && ` (Customer: ${customerId})`}
                             </FileTitle>
                             <FileDetails>

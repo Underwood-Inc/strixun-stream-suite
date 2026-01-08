@@ -28,7 +28,7 @@
       </div>
 
       <div class="self-hosting-card">
-        <h3>[PERF] Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
+        <h3>★ Subscription Tiers <span class="coming-soon-badge">Coming Soon</span></h3>
         <p>
           Don't want to manage infrastructure? Subscription tiers with enhanced rate limits are on the way. 
           Get notified when they launch and keep using our managed service.
@@ -128,6 +128,8 @@
     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     position: relative;
     overflow: hidden;
+    width: 100%;
+    min-width: 0;
   }
 
   .self-hosting-card::before {
@@ -285,9 +287,91 @@
       padding: var(--spacing-2xl) var(--spacing-md);
     }
 
-    .self-hosting-periods {
+    .self-hosting-grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-md);
+    }
+
+    .self-hosting-card {
+      padding: var(--spacing-md);
+    }
+
+    .self-hosting-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .self-hosting-card h3 {
+      font-size: 1.25rem;
+    }
+
+    .self-hosting-cta {
       flex-direction: column;
+      align-items: stretch;
+    }
+
+    .btn {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .self-hosting {
+      padding: var(--spacing-xl) var(--spacing-sm);
+      margin: var(--spacing-2xl) 0;
+    }
+
+    .self-hosting h2 {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .self-hosting-subtitle {
+      font-size: 0.95rem;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .self-hosting-grid {
       gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .self-hosting-card {
+      padding: var(--spacing-sm);
+    }
+
+    .self-hosting-card:hover {
+      transform: none;
+    }
+
+    .self-hosting-card h3 {
+      font-size: 1.1rem;
+      flex-wrap: wrap;
+    }
+
+    .self-hosting-card p {
+      font-size: 0.875rem;
+    }
+
+    .self-hosting-card li {
+      font-size: 0.875rem;
+    }
+
+    .coming-soon-badge {
+      font-size: 0.65rem;
+      padding: 2px var(--spacing-xs);
+      margin-left: var(--spacing-xs);
+    }
+
+    .btn {
+      padding: var(--spacing-xs) var(--spacing-md);
+      font-size: 0.75rem;
+    }
+
+    .star-icon {
+      width: 14px;
+      height: 14px;
     }
   }
 </style>

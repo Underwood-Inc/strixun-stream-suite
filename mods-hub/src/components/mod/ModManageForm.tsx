@@ -692,7 +692,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                             
                             <WarningSection>
                                 <WarningTitle>
-                                    <span>⚠️</span>
+                                    <span>⚠</span>
                                     <span>WARNING</span>
                                 </WarningTitle>
                                 <WarningText>
@@ -702,7 +702,7 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                             
                             <RecommendationSection>
                                 <RecommendationTitle>
-                                    <span>💡</span>
+                                    <span>▸</span>
                                     <span>RECOMMENDATION</span>
                                 </RecommendationTitle>
                                 <RecommendationText>
