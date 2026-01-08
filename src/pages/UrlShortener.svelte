@@ -280,7 +280,7 @@
       <div class="header">
         <div>
           <h1> ★ URL Shortener</h1>
-          <p class="user-info">Signed in as {$user?.displayName || $user?.email}</p>
+          <p class="user-info">Signed in as {$user?.displayName || 'Customer'}</p>
         </div>
         <div class="header-actions">
           <button 

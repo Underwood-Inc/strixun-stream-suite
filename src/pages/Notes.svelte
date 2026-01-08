@@ -341,7 +341,7 @@
       <div class="notebook-list-header">
         <div>
           <h1>⚠ Notes & Notebooks</h1>
-          <p class="user-info">Signed in as {$user?.displayName || $user?.email}</p>
+          <p class="user-info">Signed in as {$user?.displayName || 'Customer'}</p>
         </div>
         <div class="header-actions">
           <button 

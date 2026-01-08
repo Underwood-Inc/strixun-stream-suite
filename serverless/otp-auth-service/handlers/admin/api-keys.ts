@@ -50,7 +50,7 @@ interface ApiKeyResponse {
     createdAt: string;
     lastUsed: string | null;
     status: string;
-    apiKey: EncryptedKeyData | null;
+    apiKey: EncryptedKeyData | null; // Double-encrypted (only customer can decrypt with their JWT)
 }
 
 interface CreateApiKeyBody {

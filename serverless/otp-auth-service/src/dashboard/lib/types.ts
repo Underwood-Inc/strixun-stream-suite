@@ -30,6 +30,7 @@ export interface RateLimits {
 export interface ApiKey {
   keyId: string;
   name: string;
+  apiKey?: any; // Double-encrypted data (not displayed in UI - for security)
   createdAt: string;
   lastUsed: string | null;
   status: 'active' | 'revoked';

@@ -155,19 +155,7 @@
                 <tr>
                   <td>{key.name || 'Unnamed'}</td>
                   <td class="api-keys__key-value">
-                    {#if key.apiKey}
-                      <code class="api-keys__key-code">{key.apiKey}</code>
-                      <button 
-                        class="api-keys__copy-btn" 
-                        onclick={() => {
-                          navigator.clipboard.writeText(key.apiKey);
-                          alert('API key copied to clipboard!');
-                        }}
-                        title="Copy API key"
-                      > ★ </button>
-                    {:else}
-                      <span class="api-keys__key-missing">N/A</span>
-                    {/if}
+                    <code class="api-keys__key-code">sk_****{key.keyId.substring(key.keyId.length - 8)}</code>
                   </td>
                   <td>
                     <span class="api-keys__status" class:status-active={key.status === 'active'} class:status-revoked={key.status === 'revoked'}>
@@ -376,6 +364,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    font-family: monospace;
   }
 
   .api-keys__key-code {

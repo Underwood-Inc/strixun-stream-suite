@@ -19,7 +19,7 @@
       <div class="app-header__user">
         <TruncatedText position="bottom">
           <span class="app-header__email" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            {customer.displayName || customer.email || 'Customer'}
+            {customer.displayName || 'Customer'}
           </span>
         </TruncatedText>
         <button class="app-header__logout" onclick={handleLogout}>Logout</button>

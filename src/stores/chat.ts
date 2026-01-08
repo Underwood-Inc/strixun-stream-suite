@@ -197,7 +197,7 @@ export function getCurrentUserId(): string | null {
 // Get current user name from auth store
 export function getCurrentUserName(): string | null {
   const currentUser = get(user);
-  // Prefer displayName, fallback to email for backward compatibility
-  return currentUser?.displayName || currentUser?.email || null;
+  // NEVER return email - only displayName
+  return currentUser?.displayName || null;
 }
 

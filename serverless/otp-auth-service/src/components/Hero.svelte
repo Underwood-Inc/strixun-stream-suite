@@ -1,10 +1,10 @@
 <script lang="ts">
   export let title: string = 'Passwordless Authentication Made Simple';
   export let description: string = 'Secure, scalable OTP authentication API built for modern applications. No passwords, no complexity—just email verification that works.';
-  export let highlightText: string = 'Open-source and self-hostable.';
+  export let highlightText: string = 'Free tier available. Start with 1,000 OTP requests/month.';
   export let dashboardLink: string = '/dashboard';
   export let getStartedLink: string = '#code-examples';
-  export let selfHostLink: string = '#self-hosting';
+  export let pricingLink: string = '#pricing';
 </script>
 
 <section class="hero">
@@ -14,9 +14,9 @@
     <strong style="color: var(--accent);">{highlightText}</strong> 
   </p>
   <div class="hero-cta">
-    <a href={dashboardLink} class="btn btn-primary">Developer Dashboard</a>
+    <a href={dashboardLink} class="btn btn-primary">Get Started Free</a>
+    <a href={pricingLink} class="btn btn-secondary">View Pricing</a>
     <a href={getStartedLink} class="btn btn-secondary">Start Integrating</a>
-    <a href={selfHostLink} class="btn btn-secondary">Self-Host Option</a>
   </div>
 </section>
 
