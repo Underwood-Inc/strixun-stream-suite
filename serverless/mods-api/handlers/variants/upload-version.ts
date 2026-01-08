@@ -68,7 +68,7 @@ export async function handleUploadVariantVersion(
 
         // CRITICAL: Validate customerId is present
         if (!auth.customerId) {
-            console.error('[UploadVariantVersion] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
+            console.error('[UploadVariantVersion] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting variant version upload - customerId is required'
             });

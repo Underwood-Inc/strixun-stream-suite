@@ -255,7 +255,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
         ? ratings.find(r => r.customerId === customer.customerId)
         : null;
     
-    // Initialize form with user's existing rating when entering edit mode
+    // Initialize form with customer's existing rating when entering edit mode
     const handleEditClick = () => {
         if (userRating) {
             setSelectedRating(userRating.rating);

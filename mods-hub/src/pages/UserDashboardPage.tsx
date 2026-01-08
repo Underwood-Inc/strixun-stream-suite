@@ -1,6 +1,6 @@
 /**
- * User Dashboard Page
- * Shows user's mods with management options
+ * Customer Dashboard Page
+ * Shows customer's mods with management options
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -190,7 +190,7 @@ export function UserDashboardPage() {
             setIsModalOpen(false);
         } catch {
             // Error is handled by the mutation
-            // Don't close modal on error so user can retry
+            // Don't close modal on error so customer can retry
         }
     };
 

@@ -1,6 +1,6 @@
 /**
  * Public User Profile Page
- * Shows public user information and their mods
+ * Shows public customer information and their mods
  */
 
 import { useParams } from 'react-router-dom';

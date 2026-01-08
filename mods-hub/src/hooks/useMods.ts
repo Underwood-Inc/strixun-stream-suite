@@ -360,8 +360,8 @@ export function useModRatings(modId: string) {
 }
 
 /**
- * List drafts query (authenticated users only)
- * Filters mods by authorId (current user) and status='draft'
+ * List drafts query (authenticated customers only)
+ * Filters mods by authorId (current customer) and status='draft'
  */
 export function useDrafts(params?: {
     page?: number;

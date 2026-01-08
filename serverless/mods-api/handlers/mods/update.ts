@@ -121,7 +121,7 @@ export async function handleUpdateMod(
 
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
-            console.error('[Update] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
+            console.error('[Update] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting mod update - customerId is required for data scoping and display name lookups'
             });

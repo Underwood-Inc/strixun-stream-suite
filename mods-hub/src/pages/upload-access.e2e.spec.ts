@@ -72,7 +72,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         return false;
@@ -115,7 +115,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const customer = parsed?.customer || parsed?.state?.user;
+          const customer = parsed?.customer;
           return {
             hasUser: !!customer,
             hasToken: !!customer?.token,
@@ -198,7 +198,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         return false;
@@ -212,7 +212,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const customer = parsed?.customer || parsed?.state?.user;
+          const customer = parsed?.customer;
           const token = customer?.token;
           
           if (token) {
@@ -253,7 +253,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const customer = parsed?.customer || parsed?.state?.user;
+          const customer = parsed?.customer;
           return {
             hasCustomerId: !!customer?.customerId,
             customerId: customer?.customerId || null

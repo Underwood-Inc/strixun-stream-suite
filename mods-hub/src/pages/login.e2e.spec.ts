@@ -234,7 +234,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -252,9 +252,6 @@ test.describe('Mods Hub Login', () => {
           const parsed = JSON.parse(authStorage);
           if (parsed?.customer?.token) {
             return parsed.customer.token;
-          }
-          if (parsed?.state?.user?.token) {
-            return parsed.state.user.token;
           }
         }
       } catch {
@@ -361,7 +358,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -387,9 +384,6 @@ test.describe('Mods Hub Login', () => {
           const parsed = JSON.parse(authStorage);
           if (parsed?.customer?.token) {
             return parsed.customer.token;
-          }
-          if (parsed?.state?.user?.token) {
-            return parsed.state.user.token;
           }
         }
       } catch {
@@ -417,9 +411,6 @@ test.describe('Mods Hub Login', () => {
           const parsed = JSON.parse(authStorage);
           if (parsed?.customer?.token) {
             return parsed.customer.token;
-          }
-          if (parsed?.state?.user?.token) {
-            return parsed.state.user.token;
           }
         }
       } catch {
@@ -479,7 +470,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -567,7 +558,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+            return !!(parsed?.customer?.token);
           }
         } catch {
           // Ignore parse errors
@@ -591,9 +582,6 @@ test.describe('Mods Hub Login', () => {
             const parsed = JSON.parse(authStorage);
             if (parsed?.customer?.token) {
               return parsed.customer.token;
-            }
-            if (parsed?.state?.user?.token) {
-              return parsed.state.user.token;
             }
           }
         } catch {
@@ -663,7 +651,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -725,7 +713,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+            return !!(parsed?.customer?.token);
           }
         } catch {
           // Ignore parse errors
@@ -747,9 +735,6 @@ test.describe('Mods Hub Login', () => {
             const parsed = JSON.parse(authStorage);
             if (parsed?.customer?.token) {
               return parsed.customer.token;
-            }
-            if (parsed?.state?.user?.token) {
-              return parsed.state.user.token;
             }
           }
         } catch {
@@ -809,7 +794,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -835,9 +820,6 @@ test.describe('Mods Hub Login', () => {
           const expiredDate = new Date(Date.now() - 3600000).toISOString();
           if (parsed?.customer) {
             parsed.customer.expiresAt = expiredDate;
-          } else if (parsed?.state?.user) {
-            parsed.state.user.expiresAt = expiredDate;
-          }
           localStorage.setItem('auth-storage', JSON.stringify(parsed));
         }
       } catch {
@@ -875,7 +857,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            const customer = parsed?.customer || parsed?.state?.user;
+            const customer = parsed?.customer;
             if (customer?.token) {
               // Check if expiresAt is in the future (token was refreshed)
               const expiresAt = user.expiresAt;
@@ -904,7 +886,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            const customer = parsed?.customer || parsed?.state?.user;
+            const customer = parsed?.customer;
             if (customer?.token) {
               return {
                 token: customer.token,
@@ -980,7 +962,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -1057,7 +1039,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+            return !!(parsed?.customer?.token);
           }
         } catch {
           // Ignore parse errors
@@ -1079,9 +1061,6 @@ test.describe('Mods Hub Login', () => {
             const parsed = JSON.parse(authStorage);
             if (parsed?.customer?.token) {
               return parsed.customer.token;
-            }
-            if (parsed?.state?.user?.token) {
-              return parsed.state.user.token;
             }
           }
         } catch {
@@ -1116,7 +1095,7 @@ test.describe('Mods Hub Login', () => {
             const authStorage = localStorage.getItem('auth-storage');
             if (authStorage) {
               const parsed = JSON.parse(authStorage);
-              return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+              return !!(parsed?.customer?.token);
             }
           } catch {
             // Ignore parse errors
@@ -1162,7 +1141,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token);
         }
       } catch {
         // Ignore parse errors
@@ -1206,9 +1185,6 @@ test.describe('Mods Hub Login', () => {
             const parsed = JSON.parse(authStorage);
             if (parsed?.customer?.token) {
               return parsed.customer.token;
-            }
-            if (parsed?.state?.user?.token) {
-              return parsed.state.user.token;
             }
           }
         } catch {

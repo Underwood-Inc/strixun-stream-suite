@@ -66,7 +66,7 @@ export async function handleUploadVersion(
 
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
-            console.error('[UploadVersion] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
+            console.error('[UploadVersion] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting version upload - customerId is required for data scoping and display name lookups'
             });

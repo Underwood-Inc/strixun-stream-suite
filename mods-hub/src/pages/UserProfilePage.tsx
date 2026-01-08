@@ -1,6 +1,6 @@
 /**
  * User Profile Page
- * Shows user information, stats, and account details
+ * Shows customer information, stats, and account details
  */
 
 import { useModsList } from '../hooks/useMods';

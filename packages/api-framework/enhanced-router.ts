@@ -4,11 +4,11 @@
  * Wraps existing router functions with enhanced framework features
  */
 
-import { createErrorResponse, createEnhancedResponse, extractUserFromRequest } from './enhanced-wrapper.js';
+import { createErrorResponse, createEnhancedResponse, extractCustomerFromRequest } from './enhanced-wrapper.js';
 import type { ExecutionContext } from '@strixun/types';
 
 interface EnhancedContext {
-  user?: {
+  customer?: {
     id: string;
     customerId: string;
     email?: string;
@@ -24,10 +24,10 @@ export async function enhanceRouterResponse(response: Response, request: Request
     return response as any;
   }
 
-  // Extract user from request if not provided
-  if (!context.user) {
-    const extractedUser = await extractUserFromRequest(request, env);
-    context.user = extractedUser || undefined;
+  // Extract customer from request if not provided
+  if (!context.customer) {
+    const extractedCustomer = await extractCustomerFromRequest(request, env);
+    context.customer = extractedCustomer || undefined;
   }
 
   // For JSON responses, add root config

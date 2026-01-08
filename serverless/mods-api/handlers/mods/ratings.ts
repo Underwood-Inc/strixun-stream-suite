@@ -233,7 +233,7 @@ export async function handleSubmitModRating(
 
         // CRITICAL: Validate customerId is present - required for display name lookups
         if (!auth.customerId) {
-            console.error('[Ratings] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
+            console.error('[Ratings] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting rating submission - customerId is required for display name lookups'
             });

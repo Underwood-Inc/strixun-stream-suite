@@ -742,7 +742,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
   let step = 'email';
   let loading = false;
   let error = '';
-  let user = null;
+  let customer = null;
 
   const API_URL = 'https://auth.idling.app';
 
@@ -763,7 +763,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
         headers: { 'Authorization': \`Bearer \${token}\` }
       });
       if (response.ok) {
-        user = await response.json();
+        customer = await response.json();
       } else {
         localStorage.removeItem('auth_token');
       }
@@ -819,7 +819,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
-        user = data;
+        customer = data;
         error = '';
       } else {
         error = data.detail || 'Invalid OTP';
@@ -833,7 +833,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
 
   function logout() {
     localStorage.removeItem('auth_token');
-    user = null;
+    customer = null;
     email = '';
     otp = '';
     step = 'email';

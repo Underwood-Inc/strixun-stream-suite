@@ -110,14 +110,14 @@ export async function initializeApp(): Promise<void> {
       console.warn('[Bootstrap] User must authenticate via email OTP to access the application');
       
       // Continue initialization anyway - app will show AuthScreen instead of main app
-      // Once user authenticates, everything will be ready
+      // Once customer authenticates, everything will be ready
     } else if (!encryptionEnabled) {
       addLogEntry('Encryption disabled - authentication not required', 'info', 'AUTH');
     } else if (authToken) {
       addLogEntry('User authenticated - encryption enabled', 'success', 'AUTH');
     }
     
-    // Initialize modules in order (even if auth is required, so app is ready when user logs in)
+    // Initialize modules in order (even if auth is required, so app is ready when customer logs in)
     await initializeModules();
     
     // Only complete app initialization if auth is not required
@@ -424,7 +424,7 @@ export async function completeAppInitialization(): Promise<void> {
 
 /**
  * Complete app initialization after authentication
- * This is called when user successfully authenticates
+ * This is called when customer successfully authenticates
  */
 export async function completeInitializationAfterAuth(): Promise<void> {
   const { addLogEntry } = await import('../stores/activity-log');

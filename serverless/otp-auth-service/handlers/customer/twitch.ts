@@ -270,11 +270,11 @@ export async function handleAttachTwitchAccount(
     const encryptedToken = await encryptToken(accessToken, authToken, env);
 
     const emailHash = await hashEmail(auth.email!);
-    const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
+    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
 
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
+    if (!customer) {
+      return new Response(JSON.stringify({ error: 'Customer not found' }), {
         status: 404,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
@@ -293,16 +293,12 @@ export async function handleAttachTwitchAccount(
       attachedAt: new Date().toISOString(),
     };
 
-    user.twitchAccount = twitchAccount;
-    await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
-    
-    // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
-    const { updateUserIndex } = await import('../../utils/user-index.js');
-    await updateUserIndex(user.userId, user.customerId || auth.customerId || null, env);
+    customer.twitchAccount = twitchAccount;
+    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
 
     const twitchKey = getCustomerKey(auth.customerId || null, `twitch_${finalTwitchUserId}`);
     await env.OTP_AUTH_KV.put(twitchKey, JSON.stringify({
-      userId: auth.userId,
+      customerId: auth.customerId,
       email: auth.email,
       twitchAccount,
     }), { expirationTtl: 31536000 });
@@ -348,10 +344,10 @@ export async function handleGetTwitchAccount(
     }
 
     const emailHash = await hashEmail(auth.email!);
-    const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
+    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
 
-    if (!user || !user.twitchAccount) {
+    if (!customer || !customer.twitchAccount) {
       return new Response(JSON.stringify({ error: 'Twitch account not attached' }), {
         status: 404,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -361,11 +357,11 @@ export async function handleGetTwitchAccount(
     return new Response(JSON.stringify({
       success: true,
       account: {
-        twitchUserId: user.twitchAccount.twitchUserId,
-        twitchUsername: user.twitchAccount.twitchUsername,
-        displayName: user.twitchAccount.displayName,
-        attachedAt: user.twitchAccount.attachedAt,
-        scopes: user.twitchAccount.scopes,
+        twitchUserId: customer.twitchAccount.twitchUserId,
+        twitchUsername: customer.twitchAccount.twitchUsername,
+        displayName: customer.twitchAccount.displayName,
+        attachedAt: customer.twitchAccount.attachedAt,
+        scopes: customer.twitchAccount.scopes,
       },
     }), {
       headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -399,23 +395,19 @@ export async function handleDetachTwitchAccount(
     }
 
     const emailHash = await hashEmail(auth.email!);
-    const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
+    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
 
-    if (!user || !user.twitchAccount) {
+    if (!customer || !customer.twitchAccount) {
       return new Response(JSON.stringify({ error: 'Twitch account not attached' }), {
         status: 404,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
 
-    const twitchUserId = user.twitchAccount.twitchUserId;
-    delete user.twitchAccount;
-    await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
-    
-    // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
-    const { updateUserIndex } = await import('../../utils/user-index.js');
-    await updateUserIndex(user.userId, user.customerId || auth.customerId || null, env);
+    const twitchUserId = customer.twitchAccount.twitchUserId;
+    delete customer.twitchAccount;
+    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
 
     const twitchKey = getCustomerKey(auth.customerId || null, `twitch_${twitchUserId}`);
     await env.OTP_AUTH_KV.delete(twitchKey);

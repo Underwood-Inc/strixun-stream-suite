@@ -546,7 +546,7 @@ export async function handleUploadMod(
         // This ensures proper data scoping and display name lookups
         // customerId is REQUIRED - reject uploads without it
         if (!auth.customerId) {
-            console.error('[Upload] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
+            console.error('[Upload] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
             });

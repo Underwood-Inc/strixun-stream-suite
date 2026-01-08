@@ -123,7 +123,7 @@ export function App() {
                             </AdminRoute>
                         } 
                     />
-                    {/* Support both /customers/:username and /:username for user profiles (for subdomain and non-subdomain) */}
+                    {/* Support both /customers/:username and /:username for customer profiles (for subdomain and non-subdomain) */}
                     <Route path="/customers/:username" element={<PublicUserProfilePage />} />
                     {/* Support both /mods/:slug (for non-subdomain deployments) and /:slug (for mods. subdomain) */}
                     <Route 

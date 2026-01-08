@@ -436,7 +436,7 @@ export async function handleAddReviewComment(
 
         // CRITICAL: For non-admin users (uploaders), customerId is required for display name lookup
         if (!isAdmin && !auth.customerId) {
-            console.error('[Triage] CRITICAL: customerId is null for non-admin user:', { customerId: auth.customerId,
+            console.error('[Triage] CRITICAL: customerId is null for non-admin customer:', { customerId: auth.customerId,
                 email: auth.email,
                 isUploader,
                 note: 'Rejecting comment - customerId is required for display name lookups'

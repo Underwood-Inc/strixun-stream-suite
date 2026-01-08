@@ -37,7 +37,7 @@ export async function handleDeleteMod(
 
         // CRITICAL: Validate customerId is present - required for data scoping
         if (!auth.customerId) {
-            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
+            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting mod deletion - customerId is required for data scoping'
             });

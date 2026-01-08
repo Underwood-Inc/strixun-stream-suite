@@ -3,7 +3,7 @@
  * Admin-only page for managing R2 storage, detecting duplicates, and cleaning up orphaned files
  * 
  * Enhanced with:
- * - Human-readable mod/version/customer/user information
+ * - Human-readable mod/version/customer information
  * - Bulk selection and operations on all tabs
  * - Filtering and sorting capabilities
  * - Clickable links to mod detail pages
