@@ -12,7 +12,22 @@
   </p>
   
   <div class="dev-notice">
-    <strong>▸ Note:</strong> Paid subscription tiers are currently in development. The <strong>Free tier is fully functional</strong> and ready to use now!
+    <strong>▸ Note:</strong> Paid subscription tiers are currently in development. 
+    <Tooltip 
+      component={InDevelopmentTooltip}
+      componentProps={{
+        featureName: "Free Tier Status",
+        icon: "⚠",
+        description: "The free tier is currently under active development and testing. Full functionality is not yet available.",
+        additionalInfo: "Expected to be production-ready: Q3 2026"
+      }}
+      level="warning"
+      position="top"
+    >
+      <StatusFlair status="in-testing">
+        <span class="testing-text">The <strong>Free tier is fully functional</strong> and ready to use now!</span>
+      </StatusFlair>
+    </Tooltip>
   </div>
 
   <div class="pricing-grid">
@@ -248,6 +263,14 @@
 
   .dev-notice strong {
     color: #000;
+  }
+
+  .dev-notice .testing-text {
+    display: inline-block;
+    text-decoration: underline orange 2px;
+    border: dashed solid orange;
+    border-radius: var(--radius-sm);
+    background: transparent;
   }
 
   .pricing-card.disabled {
