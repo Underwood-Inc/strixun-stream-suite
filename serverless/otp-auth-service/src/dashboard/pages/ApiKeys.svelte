@@ -3,6 +3,7 @@
   import { apiClient } from '$dashboard/lib/api-client';
   import type { Customer, ApiKey, ApiKeyResponse } from '$dashboard/lib/types';
   import Card from '$dashboard/components/Card.svelte';
+  import ObfuscatedText from '@shared-components/svelte/ObfuscatedText.svelte';
 
   export let customer: Customer | null = null;
 
@@ -155,7 +156,9 @@
                 <tr>
                   <td>{key.name || 'Unnamed'}</td>
                   <td class="api-keys__key-value">
-                    <code class="api-keys__key-code">sk_****{key.keyId.substring(key.keyId.length - 8)}</code>
+                    <code class="api-keys__key-code">
+                      sk_<ObfuscatedText text="****" length={12} charset="hex" color="warning" revealOnHover ariaLabel={`API Key ending in ${key.keyId.substring(key.keyId.length - 8)}`} />{key.keyId.substring(key.keyId.length - 8)}
+                    </code>
                   </td>
                   <td>
                     <span class="api-keys__status" class:status-active={key.status === 'active'} class:status-revoked={key.status === 'revoked'}>

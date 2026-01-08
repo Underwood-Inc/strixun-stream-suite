@@ -1,0 +1,69 @@
+@use '../../shared-styles/mixins' as *;
+
+.measure-text {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+.obfuscated-text {
+  @include text-obfuscate-static;
+  display: inline-block;
+  font-variant: normal;
+  font-feature-settings: normal;
+  user-select: none;
+  pointer-events: none;
+  text-align: center;
+  vertical-align: baseline;
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+  position: relative;
+  top: 0;
+}
+
+.obfuscated-text.animated {
+  @include text-obfuscate(1.6s);
+}
+
+// Blur effect
+.obfuscated-text.blur {
+  filter: blur(1px);
+}
+
+// Color variants
+.obfuscated-text.color-info {
+  color: var(--info);
+}
+
+.obfuscated-text.color-warning {
+  color: var(--warning);
+}
+
+.obfuscated-text.color-danger {
+  color: var(--danger);
+}
+
+.obfuscated-text.color-success {
+  color: var(--success);
+}
+
+// Reveal on hover
+.obfuscated-text.reveal-hover {
+  cursor: help;
+  transition: opacity 0.3s ease;
+}
+
+.obfuscated-text.reveal-hover:hover {
+  opacity: 1;
+}
