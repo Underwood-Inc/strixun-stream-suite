@@ -23,7 +23,7 @@ Tests:
 
 **Critical Assertions:**
 - `expect(data).not.toHaveProperty('email')` - Email must NEVER be in response
-- Verifies only `userId`, `hasUploadPermission`, and `isSuperAdmin` are returned
+- Verifies only `customerId`, `hasUploadPermission`, and `isSuperAdmin` are returned
 
 ---
 

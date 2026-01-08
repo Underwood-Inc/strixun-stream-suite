@@ -73,10 +73,10 @@ graph LR
 ```mermaid
 graph TB
     R["API Handler<br/>GET /auth/me"] --> S{"User Preferences<br/>emailVisibility?"}
-    S -->|"private"| T["encryptTwoStage<br/>userId, ownerToken, requestKey"]
-    S -->|"public"| U["Return Plain userId<br/>(no double-encryption)"]
-    T --> V["Response with<br/>doubleEncrypted userId"]
-    U --> V1["Response with<br/>plain userId"]
+    S -->|"private"| T["encryptTwoStage<br/>customerId, ownerToken, requestKey"]
+    S -->|"public"| U["Return Plain customerId<br/>(no double-encryption)"]
+    T --> V["Response with<br/>doubleEncrypted customerId"]
+    U --> V1["Response with<br/>plain customerId"]
     V --> W["Router Encrypts<br/>Entire Response<br/>with Requester's JWT"]
     V1 --> W
     W -->|"private path"| X["Client Receives<br/>Triple-Layer Protection<br/>Router + Stage 2 + Stage 1"]
@@ -119,7 +119,7 @@ graph TB
 
 ### Overview
 
-Two-stage encryption is a specialized case of multi-stage encryption designed for protecting user-sensitive information (like email/userId) where the data owner controls access.
+Two-stage encryption is a specialized case of multi-stage encryption designed for protecting user-sensitive information (like email/customerId) where the data owner controls access.
 
 ### Encryption Process
 
@@ -306,10 +306,10 @@ interface TwoStageEncryptedData {
    
 2. Check User Preferences (emailVisibility)
    
-3a. If 'private': encryptTwoStage(userId, ownerToken, requestKey)
-3b. If 'public': Return plain userId (router will encrypt)
+3a. If 'private': encryptTwoStage(customerId, ownerToken, requestKey)
+3b. If 'public': Return plain customerId (router will encrypt)
    
-4. Response includes doubleEncrypted userId field
+4. Response includes doubleEncrypted customerId field
    
 5. Router automatically encrypts ENTIRE response with requester's JWT
    
@@ -321,12 +321,12 @@ interface TwoStageEncryptedData {
 
 ### Example Response Structure
 
-**With Double-Encrypted userId:**
+**With Double-Encrypted customerId:**
 ```json
 {
   "id": "req_123...",
   "customerId": "cust_abc...",
-  "userId": {
+  "customerId": {
     "doubleEncrypted": true,
     "stage1": {
       "encrypted": true,
@@ -366,13 +366,13 @@ interface TwoStageEncryptedData {
 2. ** ★ Stage 2 Encryption (Request Key)**
    - **Key:** Approved request key
    - **Protection:** Requires owner approval to access
-   - **Scope:** Sensitive fields (userId/email)
+   - **Scope:** Sensitive fields (customerId/email)
    - **Control:** Owner must approve request to get request key
 
 3. ** ★ Stage 1 Encryption (Owner's JWT)**
    - **Key:** Data owner's JWT token
    - **Protection:** Only the data owner can decrypt
-   - **Scope:** Sensitive fields (userId/email)
+   - **Scope:** Sensitive fields (customerId/email)
    - **Control:** Owner always has access to their own data
 
 ### Key Security Features
@@ -413,7 +413,7 @@ const encrypted = await encryptTwoStage(userEmail, ownerToken, requestKey);
 import { decryptTwoStage } from '@strixun/api-framework';
 
 // Encrypted data from API response
-const encryptedData = response.userId; // TwoStageEncryptedData
+const encryptedData = response.customerId; // TwoStageEncryptedData
 
 // Owner's JWT token (MUST be the data owner's token)
 const ownerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
@@ -434,16 +434,16 @@ import { buildResponseWithEncryption } from '../utils/response-builder';
 
 export async function handleGetMe(request: Request, env: Env): Promise<Response> {
   // Get user data
-  const userData = await getUserData(userId);
+  const userData = await getUserData(customerId);
   
   // Build response with encryption based on preferences
   const response = await buildResponseWithEncryption(
     {
       id: userData.id,
       customerId: userData.customerId,
-      userId: userData.email, // Will be double-encrypted if private
+      customerId: userData.email, // Will be double-encrypted if private
     },
-    userId,           // Owner's user ID
+    customerId,           // Owner's user ID
     ownerToken,       // Owner's JWT token
     customerId,       // Customer ID for preferences lookup
     env

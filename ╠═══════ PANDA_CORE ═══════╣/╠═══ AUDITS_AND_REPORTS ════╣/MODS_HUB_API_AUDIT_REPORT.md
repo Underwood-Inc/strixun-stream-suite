@@ -53,8 +53,8 @@ After auditing the mods-hub codebase, I've identified:
 | `POST` | `/admin/mods/:modId/comments` | `handlers/admin/triage.ts` | ✓ | ✓ | Add review comment |
 | **`DELETE`** | **`/admin/mods/:modId`** | **`handlers/admin/delete.ts`** | ✓ | ✗ **MISSING** | **Delete mod (admin only, bypasses author check)** |
 | `GET` | `/admin/approvals` | `handlers/admin/approvals.ts` | ✓ | ✓ | List approved uploaders |
-| `POST` | `/admin/approvals/:userId` | `handlers/admin/approvals.ts` | ✓ | ✓ | Approve user for uploads |
-| `DELETE` | `/admin/approvals/:userId` | `handlers/admin/approvals.ts` | ✓ | ✓ | Revoke user upload permission |
+| `POST` | `/admin/approvals/:customerId` | `handlers/admin/approvals.ts` | ✓ | ✓ | Approve user for uploads |
+| `DELETE` | `/admin/approvals/:customerId` | `handlers/admin/approvals.ts` | ✓ | ✓ | Revoke user upload permission |
 
 ---
 
@@ -112,8 +112,8 @@ Route order (lines 57-109):
 2. `POST /admin/mods/:modId/status` (length === 4)
 3. `POST /admin/mods/:modId/comments` (length === 4)
 4. `GET /admin/approvals` (length === 2)
-5. `POST /admin/approvals/:userId` (length === 3)
-6. `DELETE /admin/approvals/:userId` (length === 3) ⚠ **Before mods DELETE**
+5. `POST /admin/approvals/:customerId` (length === 3)
+6. `DELETE /admin/approvals/:customerId` (length === 3) ⚠ **Before mods DELETE**
 7. `DELETE /admin/mods/:modId` (length === 3) ✓ **Should match**
 
 **Route Matching Logic**:

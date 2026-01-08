@@ -160,9 +160,9 @@ All game API responses are automatically encrypted using JWT token-based encrypt
 ### KV Namespace: GAME_KV
 
 **Data Keys:**
-- Save states: `cust_{customerId}_game_save_{userId}_{characterId}`
-- Loot box streaks: `cust_{customerId}_loot_box_streak_{userId}`
-- Idle activities: `cust_{customerId}_idle_activities_{userId}`
+- Save states: `cust_{customerId}_game_save_{customerId}_{characterId}`
+- Loot box streaks: `cust_{customerId}_loot_box_streak_{customerId}`
+- Idle activities: `cust_{customerId}_idle_activities_{customerId}`
 - Crafting sessions: `cust_{customerId}_crafting_session_{sessionId}`
 - Dungeon instances: `cust_{customerId}_dungeon_instance_{instanceId}`
 - Inventory: `cust_{customerId}_inventory_{characterId}`

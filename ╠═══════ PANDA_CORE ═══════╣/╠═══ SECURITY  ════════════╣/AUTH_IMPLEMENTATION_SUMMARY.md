@@ -18,13 +18,13 @@
 2. **POST `/auth/verify-otp`** - Verify OTP and get JWT token
    - Validates OTP code
    - Checks expiration and attempts
-   - Creates/updates user account
-   - Generates JWT token (30-day expiration)
+   - Creates/updates customer account
+   - Generates JWT token (7-hour expiration)
    - Returns token for authenticated requests
 
-3. **GET `/auth/me`** - Get current user info
+3. **GET `/auth/me`** - Get current customer info
    - Validates JWT token
-   - Returns user information
+   - Returns customer information
    - Protected endpoint (requires authentication)
 
 4. **POST `/auth/logout`** - Logout and revoke token
@@ -73,8 +73,9 @@
 
 ```bash
 curl -X POST https://your-worker.workers.dev/auth/request-otp \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com"}'
+  -H "Content-Type": "application/json" \
+  -H "X-OTP-API-Key": "otp_live_sk_..." \
+  -d '{"email": "alice@example.com"}'
 ```
 
 **Response:**
