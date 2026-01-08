@@ -162,8 +162,21 @@ export function useUpdateMod() {
             thumbnail?: File;
             variantFiles?: Record<string, File>;
         }) => api.updateMod(slug, updates, thumbnail, variantFiles),
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.slug) });
+        onSuccess: (data, variables) => {
+            // Check if slug changed in the update
+            const newSlug = data?.mod?.slug || data?.slug;
+            const oldSlug = variables.slug;
+            
+            if (newSlug && newSlug !== oldSlug) {
+                // Slug changed - invalidate both old and new slug queries
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(oldSlug) });
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(newSlug) });
+                console.log('[useUpdateMod] Slug changed:', { oldSlug, newSlug });
+            } else {
+                // Slug didn't change - invalidate current slug query
+                queryClient.invalidateQueries({ queryKey: modKeys.detail(oldSlug) });
+            }
+            
             queryClient.invalidateQueries({ queryKey: modKeys.lists() });
             addNotification({
                 message: 'Mod updated successfully!',

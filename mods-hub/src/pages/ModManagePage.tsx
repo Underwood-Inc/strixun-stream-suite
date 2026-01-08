@@ -122,7 +122,15 @@ export function ModManagePage() {
 
     const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>) => {
         try {
-            await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
+            const result = await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
+            
+            // Check if slug changed in the update
+            const newSlug = result?.mod?.slug || result?.slug;
+            if (newSlug && newSlug !== slug) {
+                // Slug changed - navigate to new slug
+                console.log('[ModManagePage] Navigating to new slug:', { oldSlug: slug, newSlug });
+                navigate(`/mods/${newSlug}/manage`, { replace: true });
+            }
         } catch {
             // Error handled by mutation
         }
