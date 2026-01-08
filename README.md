@@ -20,7 +20,7 @@
 
 ## 📋 Overview
 
-**Strixun's Stream Suite** is a comprehensive monorepo containing a professional streaming toolkit and a full ecosystem of applications, services, and reusable packages. This repository includes everything from OBS Studio control panels to mod hosting platforms, authentication services, game components, and shared libraries.
+**Strixun's Stream Suite** is a comprehensive monorepo containing a professional streaming toolkit and a full ecosystem of applications, services, and reusable packages. This repository includes everything from [OBS Studio control panels](https://streamkit.idling.app) to [mod hosting platforms](https://mods.idling.app), [authentication services](https://auth.idling.app), game components, and shared libraries.
 
 ---
 
