@@ -214,7 +214,7 @@ export class ProfilePictureService {
     formData.append('image', webpBlob, 'profile.webp');
 
     // Upload to server
-    const response = await fetch(`${this.config.apiUrl}/user/profile-picture`, {
+    const response = await fetch(`${this.config.apiUrl}/customer/profile-picture`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -239,9 +239,9 @@ export class ProfilePictureService {
    * @param userId - User ID
    * @returns Profile picture URL or null
    */
-  async getProfilePictureUrl(userId: string, token: string): Promise<string | null> {
+  async getProfilePictureUrl(customerId: string, token: string): Promise<string | null> {
     try {
-      const response = await fetch(`${this.config.apiUrl}/user/profile-picture/${userId}`, {
+      const response = await fetch(`${this.config.apiUrl}/customer/profile-picture/${customerId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -271,7 +271,7 @@ export class ProfilePictureService {
    * @param token - Authentication token
    */
   async deleteProfilePicture(token: string): Promise<void> {
-    const response = await fetch(`${this.config.apiUrl}/user/profile-picture`, {
+    const response = await fetch(`${this.config.apiUrl}/customer/profile-picture`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,

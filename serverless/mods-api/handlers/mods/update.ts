@@ -525,7 +525,7 @@ export async function handleUpdateMod(
         }
 
         // CRITICAL: Fetch and update author display name from customer data
-        // Customer is the primary data source for all customizable user info
+        // Customer is the primary data source for all customizable customer info
         // Look up customer by mod.customerId to get displayName
         const storedDisplayName = mod.authorDisplayName; // Preserve as fallback only
         let fetchedDisplayName: string | null = null;

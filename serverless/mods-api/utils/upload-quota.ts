@@ -1,12 +1,12 @@
 /**
  * Upload quota tracking and enforcement
- * Prevents abuse by limiting uploads per user per day
+ * Prevents abuse by limiting uploads per customer per day
  */
 
 interface UploadQuotaConfig {
-    /** Maximum uploads per day per user (default: 10) */
+    /** Maximum uploads per day per customer (default: 10) */
     maxUploadsPerDay: number;
-    /** Maximum uploads per month per user (default: 100) */
+    /** Maximum uploads per month per customer (default: 100) */
     maxUploadsPerMonth: number;
 }
 
@@ -60,11 +60,11 @@ function getCurrentMonth(): string {
 }
 
 /**
- * Get daily upload usage for a user
+ * Get daily upload usage for a customer
  */
 async function getDailyUploadUsage(customerId: string, env: Env): Promise<UploadUsage> {
     const today = getTodayDate();
-    const usageKey = `upload_usage_${userId}_${today}`;
+    const usageKey = `upload_usage_${customerId}_${today}`;
     
     const existing = await env.MODS_KV.get(usageKey, { type: 'json' }) as UploadUsage | null;
     
@@ -73,7 +73,7 @@ async function getDailyUploadUsage(customerId: string, env: Env): Promise<Upload
     }
     
     return {
-        userId,
+        customerId,
         date: today,
         uploadCount: 0,
         lastUpdated: new Date().toISOString(),
@@ -81,11 +81,11 @@ async function getDailyUploadUsage(customerId: string, env: Env): Promise<Upload
 }
 
 /**
- * Get monthly upload usage for a user
+ * Get monthly upload usage for a customer
  */
 async function getMonthlyUploadUsage(customerId: string, env: Env): Promise<number> {
     const month = getCurrentMonth();
-    const monthKey = `upload_usage_${userId}_month_${month}`;
+    const monthKey = `upload_usage_${customerId}_month_${month}`;
     
     const existing = await env.MODS_KV.get(monthKey, { type: 'json' }) as { count: number } | null;
     
@@ -93,23 +93,23 @@ async function getMonthlyUploadUsage(customerId: string, env: Env): Promise<numb
 }
 
 /**
- * Increment upload count for a user
+ * Increment upload count for a customer
  */
 async function incrementUploadCount(customerId: string, env: Env): Promise<void> {
     const today = getTodayDate();
     const month = getCurrentMonth();
     
     // Increment daily count
-    const dailyUsage = await getDailyUploadUsage(userId, env);
+    const dailyUsage = await getDailyUploadUsage(customerId, env);
     dailyUsage.uploadCount += 1;
     dailyUsage.lastUpdated = new Date().toISOString();
     
-    const dailyKey = `upload_usage_${userId}_${today}`;
+    const dailyKey = `upload_usage_${customerId}_${today}`;
     // Store with 2-day TTL (to handle timezone edge cases)
     await env.MODS_KV.put(dailyKey, JSON.stringify(dailyUsage), { expirationTtl: 172800 });
     
     // Increment monthly count
-    const monthKey = `upload_usage_${userId}_month_${month}`;
+    const monthKey = `upload_usage_${customerId}_month_${month}`;
     const monthlyData = await env.MODS_KV.get(monthKey, { type: 'json' }) as { count: number } | null;
     const newMonthlyCount = (monthlyData?.count || 0) + 1;
     
@@ -118,7 +118,7 @@ async function incrementUploadCount(customerId: string, env: Env): Promise<void>
 }
 
 /**
- * Check if user has exceeded upload quota
+ * Check if customer has exceeded upload quota
  * Returns result with quota information
  */
 export async function checkUploadQuota(
@@ -128,8 +128,8 @@ export async function checkUploadQuota(
     const quota = getUploadQuotaConfig(env);
     
     // Get current usage
-    const dailyUsage = await getDailyUploadUsage(userId, env);
-    const monthlyUsage = await getMonthlyUploadUsage(userId, env);
+    const dailyUsage = await getDailyUploadUsage(customerId, env);
+    const monthlyUsage = await getMonthlyUploadUsage(customerId, env);
     
     // Check daily quota
     if (dailyUsage.uploadCount >= quota.maxUploadsPerDay) {
@@ -173,7 +173,7 @@ export async function checkUploadQuota(
  */
 export async function trackUpload(customerId: string, env: Env): Promise<void> {
     try {
-        await incrementUploadCount(userId, env);
+        await incrementUploadCount(customerId, env);
     } catch (error) {
         console.error('Error tracking upload:', error);
         // Don't throw - tracking shouldn't break the upload

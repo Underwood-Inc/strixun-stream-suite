@@ -503,7 +503,7 @@ export async function handleUploadMod(
         }
 
         // CRITICAL: Fetch author display name from customer data
-        // Customer is the primary data source for all customizable user info
+        // Customer is the primary data source for all customizable customer info
         // Look up customer by auth.customerId to get displayName
         let authorDisplayName: string | null = null;
         
@@ -566,7 +566,7 @@ export async function handleUploadMod(
         // Create mod metadata with initial status
         // CRITICAL: Never store email - email is ONLY for OTP authentication
         // CRITICAL: authorDisplayName is fetched dynamically - stored value is fallback only
-        // Display names are always fetched fresh from auth API to support user name changes
+        // Display names are always fetched fresh from auth API to support customer name changes
         const mod: ModMetadata = {
             modId,
             slug,

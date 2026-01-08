@@ -21,7 +21,7 @@ export async function handleUpdateModStatus(
     auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
-        // Route-level protection ensures user is super admin
+        // Route-level protection ensures customer is super admin
         // Get mod metadata
         // CRITICAL: Admin can approve mods from ANY customer, so we must search all scopes
         // Do NOT use auth.customerId - use mod.customerId (where the mod was uploaded)

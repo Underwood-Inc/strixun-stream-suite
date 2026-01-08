@@ -51,11 +51,11 @@ export class TypingIndicatorService {
   }
 
   /**
-   * Handle user input (call on every keystroke)
+   * Handle customer input (call on every keystroke)
    * 
-   * @param userName - Current user's display name
+   * @param customerName - Current customer's display name
    */
-  handleInput(userName: string): void {
+  handleInput(customerName: string): void {
     // Clear stop timer
     if (this.stopTimer !== null) {
       clearTimeout(this.stopTimer);

@@ -42,7 +42,7 @@ export interface ModMetadata {
     gameId?: string; // Associated game ID (sub-category)
     // CRITICAL: authorEmail is NOT stored - email is ONLY for OTP authentication
     // CRITICAL: authorDisplayName is fetched dynamically from the Customer API on every API call
-    // This ensures display names stay current when users change them
+    // This ensures display names stay current when customers change them
     // The stored value is a fallback only if the fetch fails
     // CRITICAL: customerId is required for proper data scoping and is set automatically if missing
 }

@@ -49,7 +49,7 @@ export const isTokenExpired: Readable<boolean> = derived(
 // This prevents flash of app content before auth state is determined
 // Auth is required if:
 // 1. Auth check hasn't completed yet (default to showing auth screen), OR
-// 2. Encryption is enabled but user is not authenticated
+// 2. Encryption is enabled but customer is not authenticated
 export const authRequired: Readable<boolean> = derived(
   [encryptionEnabled, isAuthenticated, authCheckComplete],
   ([$encryptionEnabled, $isAuthenticated, $authCheckComplete]) => {
@@ -88,7 +88,7 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     csrfToken.set(csrf || null);
   } else {
     storage.remove('auth_customer');
-    storage.remove('auth_user'); // Clean up any old user storage
+    storage.remove('auth_user'); // Clean up any old storage key (legacy)
     storage.remove('auth_token'); // Clean up any old token storage
     isAuthenticated.set(false);
     customer.set(null);
@@ -401,7 +401,7 @@ export function clearAuth(): void {
 }
 
 /**
- * Logout user - calls API endpoint and clears local auth state
+ * Logout customer - calls API endpoint and clears local auth state
  * Continues with logout even if API call fails (graceful degradation)
  */
 export async function logout(): Promise<void> {
@@ -412,7 +412,7 @@ export async function logout(): Promise<void> {
     });
   } catch (error) {
     // Continue with logout even if API call fails
-    // This ensures user can always logout locally
+    // This ensures customer can always logout locally
     console.warn('[Auth] Logout API call failed, continuing with local logout:', error);
   } finally {
     // Always clear local auth state

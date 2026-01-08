@@ -28,7 +28,7 @@ export async function handleListMods(
         const featured = url.searchParams.get('featured') === 'true';
         const visibility = url.searchParams.get('visibility') || 'public'; // Default to public
 
-        // Check if user is super admin (once, not in loop)
+        // Check if customer is super admin (once, not in loop)
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
 
         // Get all mod IDs from global public list
@@ -169,17 +169,17 @@ export async function handleListMods(
 
         // CRITICAL: Ensure all mods have customerId (for data scoping)
         // Set customerId from auth context if missing (for legacy mods)
-        // Only use auth.customerId if the current user is the mod author
+        // Only use auth.customerId if the current customer is the mod author
         const modsToSave: Array<{ mod: ModMetadata; modKey: string }> = [];
         for (const mod of mods) {
             if (!mod.customerId && auth?.customerId && mod.authorId === auth.customerId) {
-                // Only set if we have auth context, mod is missing customerId, AND current user is the author
+                // Only set if we have auth context, mod is missing customerId, AND current customer is the author
                 // This handles legacy mods that were created before customerId was required
                 console.log('[ListMods] Setting missing customerId on legacy mod:', {
                     modId: mod.modId,
                     customerId: auth.customerId,
                     authorId: mod.authorId,
-                    currentUserId: auth.customerId
+                    currentCustomerId: auth.customerId
                 });
                 mod.customerId = auth.customerId;
                 
@@ -206,8 +206,8 @@ export async function handleListMods(
         }
 
         // CRITICAL: Fetch display names dynamically from customer data
-        // Customer is the primary data source for all customizable user info
-        // Fetch by customerIds (not userIds) - customer is the source of truth
+        // Customer is the primary data source for all customizable customer info
+        // Fetch by customerIds - customer is the source of truth
         // IMPORTANT: This fetch is non-blocking - if customer-api is unavailable, we use stored values
         const uniqueCustomerIds = [...new Set(mods.map(mod => mod.customerId).filter((id): id is string => !!id))];
         let displayNames = new Map<string, string | null>();

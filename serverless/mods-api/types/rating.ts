@@ -5,14 +5,13 @@
 export interface ModRating {
     ratingId: string;
     modId: string;
-    customerId: string; // DEPRECATED: Use customerId instead (kept for backward compatibility with existing data)
-    customerId?: string; // Customer ID from OTP auth service (preferred)
-    userDisplayName?: string | null; // Display name (never use email)
+    customerId: string; // Customer ID from OTP auth service (REQUIRED)
+    customerDisplayName?: string | null; // Display name (never use email)
     rating: number; // 1-5
     comment?: string;
     createdAt: string;
     updatedAt?: string;
-    // CRITICAL: userEmail is NOT stored - email is ONLY for OTP authentication
+    // CRITICAL: customerEmail is NOT stored - email is ONLY for OTP authentication
 }
 
 export interface ModRatingRequest {

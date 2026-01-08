@@ -66,9 +66,9 @@ const Empty = styled.div`
 export function PublicUserProfilePage() {
     const { username } = useParams<{ username: string }>();
     
-    // TODO: Look up user by displayName/username to get userId
+    // TODO: Look up customer by displayName/customerName to get customerId
     // For now, we'll show a message that this feature is coming soon
-    // Once we have an API endpoint to get user by displayName, we can fetch their mods
+    // Once we have an API endpoint to get customer by displayName, we can fetch their mods
     
     if (!username) {
         return (
@@ -86,7 +86,7 @@ export function PublicUserProfilePage() {
             </Header>
 
             <ProfileSection>
-                <SectionTitle>Mods by this user</SectionTitle>
+                <SectionTitle>Mods by this customer</SectionTitle>
                 <Empty>
                     User profile lookup by username is coming soon. 
                     We need to add an API endpoint to look up users by displayName.

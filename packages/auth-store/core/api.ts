@@ -95,7 +95,7 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
 
         const data = response.data;
         if (data.restored && data.access_token) {
-            // Session restored! Return user data
+            // Session restored! Return customer data
             const userId = data.customerId || data.sub;
             const email = data.email;
             const token = data.access_token || data.token;
@@ -220,8 +220,8 @@ export async function validateTokenWithBackend(
 }
 
 /**
- * Fetch user info from /auth/me to get admin status, displayName, and customerId
- * CRITICAL: Disable caching for this endpoint - we always need fresh user data
+ * Fetch customer info from /auth/me to get admin status, displayName, and customerId
+ * CRITICAL: Disable caching for this endpoint - we always need fresh customer data
  * Also handles undefined cached values gracefully
  * 
  * NOTE: /auth/me returns encrypted responses that need to be decrypted with the JWT token
@@ -357,7 +357,7 @@ export async function fetchCustomerInfo(
             (mismatchError as any).originalError = error;
             throw mismatchError;
         } else {
-            console.error('[Auth] Failed to fetch user info:', errorMessage);
+            console.error('[Auth] Failed to fetch customer info:', errorMessage);
             if (error instanceof Error && error.stack) {
                 console.debug('[Auth] fetchUserInfo error stack:', error.stack);
             }

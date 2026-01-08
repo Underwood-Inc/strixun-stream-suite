@@ -84,7 +84,7 @@ export async function handleGetCustomerDataRequests(request: Request, env: Env):
             });
         }
 
-        // Get all requests for this user
+        // Get all requests for this customer
         const requests = await getCustomerDataRequests(auth.email!, auth.customerId, env);
 
         // Filter out sensitive data
@@ -109,7 +109,7 @@ export async function handleGetCustomerDataRequests(request: Request, env: Env):
         });
     } catch (error: any) {
         return new Response(JSON.stringify({
-            error: 'Failed to get user data requests',
+            error: 'Failed to get customer data requests',
             message: error.message,
         }), {
             status: 500,
@@ -157,7 +157,7 @@ export async function handleGetUserDataRequest(
             });
         }
 
-        // Verify this is the user's request
+        // Verify this is the customer's request
         if (dataRequest.targetUserId !== auth.email) {
             return new Response(JSON.stringify({ 
                 error: 'Access denied',
@@ -226,7 +226,7 @@ export async function handleApproveDataRequest(
             });
         }
 
-        // Get request to verify it's for this user
+        // Get request to verify it's for this customer
         const dataRequest = await getDataRequest(requestId, auth.customerId, env);
 
         if (!dataRequest) {
@@ -309,7 +309,7 @@ export async function handleRejectDataRequest(
             });
         }
 
-        // Get request to verify it's for this user
+        // Get request to verify it's for this customer
         const dataRequest = await getDataRequest(requestId, auth.customerId, env);
 
         if (!dataRequest) {

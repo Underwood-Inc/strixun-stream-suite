@@ -230,10 +230,10 @@ export function createAuthStore(config?: AuthStoreConfig) {
                             };
                             // Save under new key and remove old key
                             storage.setItem(storageKey, JSON.stringify(customerData));
-                            storage.removeItem('auth_user');
-                        } catch (e) {
-                            console.warn('[Auth] Failed to migrate old user data');
-                        }
+                        storage.removeItem('auth_user');
+                    } catch (e) {
+                        console.warn('[Auth] Failed to migrate old storage data');
+                    }
                     }
                 } else {
                     try {

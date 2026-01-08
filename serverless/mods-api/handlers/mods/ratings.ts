@@ -80,7 +80,7 @@ export async function handleGetModRatings(
             });
         }
         
-        // Check visibility and status - only show ratings for public/approved mods or if user owns the mod
+        // Check visibility and status - only show ratings for public/approved mods or if customer owns the mod
         // Legacy mods without status field are treated as published
         const modVisibility = mod.visibility || 'public';
         const modStatus = mod.status || 'published';
@@ -88,7 +88,7 @@ export async function handleGetModRatings(
         const isPublic = modVisibility === 'public';
         const isAuthor = auth && mod.authorId === auth.customerId;
         
-        // Allow if: (public AND approved/published) OR user is the author
+        // Allow if: (public AND approved/published) OR customer is the author
         if (!isPublic || !isAllowedStatus) {
             if (!isAuthor) {
                 const rfcError = createError(request, 403, 'Forbidden', 'Ratings are only available for published or approved public mods');
@@ -121,16 +121,16 @@ export async function handleGetModRatings(
             }
         }
         
-        // Fetch missing display names for ratings that don't have userDisplayName
+        // Fetch missing display names for ratings that don't have customerDisplayName
         // Similar to how mod detail handler fetches missing authorDisplayName
         const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-        // Use customerId if available, fallback to userId for backward compatibility
-        const ratingsNeedingDisplayName = ratings.filter(r => !r.userDisplayName && (r.customerId || r.customerId));
+        // Use customerId from rating
+        const ratingsNeedingDisplayName = ratings.filter(r => !r.customerDisplayName && r.customerId);
         
         if (ratingsNeedingDisplayName.length > 0) {
             // Fetch all missing display names in parallel for better performance
             const displayNamePromises = ratingsNeedingDisplayName.map(async (rating) => {
-                const customerIdToFetch = rating.customerId || rating.customerId; // Prefer customerId, fallback to userId
+                const customerIdToFetch = rating.customerId;
                 const fetchedDisplayName = await fetchDisplayNameByCustomerId(customerIdToFetch, env);
                 return { rating, fetchedDisplayName };
             });
@@ -141,7 +141,7 @@ export async function handleGetModRatings(
             const ratingsToUpdate: ModRating[] = [];
             for (const { rating, fetchedDisplayName } of displayNameResults) {
                 if (fetchedDisplayName) {
-                    rating.userDisplayName = fetchedDisplayName;
+                    rating.customerDisplayName = fetchedDisplayName;
                     ratingsToUpdate.push(rating);
                 }
             }
@@ -308,7 +308,7 @@ export async function handleSubmitModRating(
         const modStatus = mod.status || 'published';
         const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
         if (!isAllowedStatus) {
-            // Only allow rating if user is the author (authors can rate their own mods even if not published/approved)
+            // Only allow rating if customer is the author (authors can rate their own mods even if not published/approved)
             const isAuthor = mod.authorId === auth.customerId;
             if (!isAuthor) {
                 const rfcError = createError(request, 403, 'Forbidden', 'Only published or approved mods can be rated');
@@ -325,15 +325,15 @@ export async function handleSubmitModRating(
             }
         }
         
-        // CRITICAL: Get user displayName from customer data - customer is the source of truth
-        let userDisplayName: string | null = null;
+        // CRITICAL: Get customer displayName from customer data - customer is the source of truth
+        let customerDisplayName: string | null = null;
         
         if (auth.customerId) {
             const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
-            userDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
-            if (!userDisplayName) {
+            customerDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
+            if (!customerDisplayName) {
                 console.warn('[Ratings] Could not fetch displayName from customer data:', {
-                    customerId: auth.customerId, customerId: auth.customerId
+                    customerId: auth.customerId
                 });
             }
         } else {
@@ -341,18 +341,18 @@ export async function handleSubmitModRating(
             });
         }
         
-        // Check if user has already rated this mod (use normalized modId from the found mod)
+        // Check if customer has already rated this mod (use normalized modId from the found mod)
         const normalizedStoredModId = normalizeModId(mod.modId);
         const ratingsListKey = getCustomerKey(null, `mod_${normalizedStoredModId}_ratings`);
         const ratingsListJson = await env.MODS_KV.get(ratingsListKey, { type: 'json' }) as string[] | null;
         const ratingIds = ratingsListJson || [];
         
-        // Check existing ratings for this user
+        // Check existing ratings for this customer
         for (const ratingId of ratingIds) {
             const ratingKey = getCustomerKey(null, `rating_${ratingId}`);
             const existingRating = await env.MODS_KV.get(ratingKey, { type: 'json' }) as ModRating | null;
             if (existingRating && existingRating.customerId === auth.customerId) {
-                // User has already rated - update existing rating
+                // Customer has already rated - update existing rating
                 // Allow comment to be cleared (empty string) or updated
                 const updatedComment = body.comment !== undefined 
                     ? (body.comment || null) // Allow empty string to clear comment
@@ -360,7 +360,7 @@ export async function handleSubmitModRating(
                 
                 const updatedRating: ModRating = {
                     ...existingRating,
-                    userDisplayName: userDisplayName || existingRating.userDisplayName || null,
+                    customerDisplayName: customerDisplayName || existingRating.customerDisplayName || null,
                     rating: body.rating,
                     comment: updatedComment,
                     updatedAt: new Date().toISOString(),
@@ -390,8 +390,8 @@ export async function handleSubmitModRating(
         const rating: ModRating = {
             ratingId,
             modId: normalizedStoredModId, // Use normalized modId from the found mod
-            userId: auth.customerId, // userId from OTP auth service
-            userDisplayName, // Display name fetched from /auth/me (never use email)
+            customerId: auth.customerId, // customerId from OTP auth service
+            customerDisplayName, // Display name fetched from /auth/me (never use email)
             rating: body.rating,
             comment: body.comment,
             createdAt: now,
