@@ -3,7 +3,7 @@
  * Handles API key CRUD operations
  * 
  * SECURITY: API keys are double-encrypted:
- * - Stage 1: Encrypted with user's JWT (only the developer can decrypt)
+ * - Stage 1: Encrypted with customer's JWT (only the developer can decrypt)
  * - Stage 2: Router automatically encrypts entire response (data in transit)
  * - API keys are only revealed on-demand via reveal endpoint
  */
@@ -95,7 +95,7 @@ interface RevokeApiKeyResponse {
  * List customer API keys
  * GET /admin/customers/{customerId}/api-keys
  * 
- * Returns API keys with double-encrypted values (encrypted with user's JWT)
+ * Returns API keys with double-encrypted values (encrypted with customer's JWT)
  * Router will encrypt the entire response again (data in transit)
  */
 export async function handleListApiKeys(

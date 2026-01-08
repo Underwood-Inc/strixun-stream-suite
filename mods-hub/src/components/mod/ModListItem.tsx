@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, media } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
 
 const ListItemContainer = styled(Link)`
@@ -27,6 +27,13 @@ const ListItemContainer = styled(Link)`
   &:last-child {
     border-bottom: none;
   }
+  
+  ${media.mobile} {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: ${spacing.sm};
+    padding: ${spacing.md};
+  }
 `;
 
 const ThumbnailContainer = styled.div`
@@ -38,6 +45,13 @@ const ThumbnailContainer = styled.div`
   overflow: hidden;
   background: ${colors.bgTertiary};
   border: 1px solid ${colors.border};
+  
+  ${media.mobile} {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    max-width: 200px;
+  }
 `;
 
 const Thumbnail = styled.img`
@@ -73,10 +87,14 @@ const Content = styled.div`
   flex-direction: column;
   gap: ${spacing.xs};
   min-width: 0;
+  
+  ${media.mobile} {
+    width: 100%;
+  }
 `;
 
 const Title = styled.h3`
-  font-size: 1.125rem;
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
   font-weight: 600;
   color: ${colors.text};
   margin: 0;
@@ -92,6 +110,10 @@ const Author = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing.xs};
+  
+  ${media.mobile} {
+    font-size: 0.75rem;
+  }
 `;
 
 const AuthorLabel = styled.span`
@@ -108,6 +130,11 @@ const Description = styled.p`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  
+  ${media.mobile} {
+    font-size: 0.8125rem;
+    -webkit-line-clamp: 3;
+  }
 `;
 
 const Meta = styled.div`
@@ -117,6 +144,15 @@ const Meta = styled.div`
   align-items: flex-end;
   gap: ${spacing.xs};
   min-width: 120px;
+  
+  ${media.mobile} {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    margin-top: ${spacing.xs};
+  }
 `;
 
 const Category = styled.span`
@@ -126,11 +162,16 @@ const Category = styled.span`
   border-radius: 4px;
   font-weight: 500;
   font-size: 0.75rem;
+  white-space: nowrap;
 `;
 
 const DownloadCount = styled.span`
   font-size: 0.875rem;
   color: ${colors.textMuted};
+  
+  ${media.mobile} {
+    font-size: 0.75rem;
+  }
 `;
 
 interface ModListItemProps {

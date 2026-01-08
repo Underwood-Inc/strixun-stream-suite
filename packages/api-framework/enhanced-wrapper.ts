@@ -111,9 +111,8 @@ export function wrapWithEnhanced(originalHandler: (request: Request, env: any, c
 }
 
 interface EnhancedResponseContext {
-  user?: {
-    id?: string;
-    customerId?: string;
+  customer?: {
+    customerId: string;
   };
 }
 
@@ -128,8 +127,8 @@ export function createEnhancedResponse(data: any, context: EnhancedResponseConte
   
   // Ensure root config is present
   const rootConfig = {
-    id: data.id || context.user?.id || generateId(),
-    customerId: data.customerId || context.user?.customerId || '',
+    id: data.id || context.customer?.id || generateId(),
+    customerId: data.customerId || context.customer?.customerId || '',
   };
   
   return {
@@ -197,7 +196,7 @@ export async function extractUserFromRequest(request: Request, env: any): Promis
     const payload = JSON.parse(atob(parts[1]));
     
     return {
-      id: payload.sub || payload.userId || '',
+      id: payload.sub || payload.customerId || '',
       customerId: payload.customerId || payload.aud || '',
       email: payload.email || '',
     };

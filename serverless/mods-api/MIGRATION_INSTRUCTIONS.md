@@ -57,7 +57,7 @@ wrangler dev --local --test-scheduled
 
 ### Option 3: Via Wrangler Remote (Production)
 
-⚠️ **USE WITH EXTREME CAUTION - THIS RUNS ON PRODUCTION DATA**
+⚠ **USE WITH EXTREME CAUTION - THIS RUNS ON PRODUCTION DATA**
 
 ```bash
 cd serverless/mods-api
@@ -151,11 +151,11 @@ If migration fails or causes issues:
 
 ## Migration Safety Features
 
-- ✅ **No data deletion** - Old R2 files are copied, not moved
-- ✅ **Idempotent** - Running twice won't duplicate data
-- ✅ **Skip already migrated** - Detects and skips migrated variants
-- ✅ **Error handling** - Continues on errors, reports them at end
-- ✅ **Detailed logging** - Tracks every step
+- ✓ **No data deletion** - Old R2 files are copied, not moved
+- ✓ **Idempotent** - Running twice won't duplicate data
+- ✓ **Skip already migrated** - Detects and skips migrated variants
+- ✓ **Error handling** - Continues on errors, reports them at end
+- ✓ **Detailed logging** - Tracks every step
 
 ## Expected Duration
 

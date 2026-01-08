@@ -7,7 +7,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, media } from '../../theme';
 import type { ModMetadata } from '../../types/mod';
 import { getButtonStyles } from '../../utils/buttonStyles';
 import { getCardStyles } from '../../utils/sharedStyles';
@@ -36,6 +36,11 @@ const Card = styled.div`
   gap: ${spacing.md};
   width: 100%;
   align-items: flex-start;
+  
+  ${media.mobile} {
+    flex-direction: column;
+    gap: ${spacing.sm};
+  }
 `;
 
 const ThumbnailWrapper = styled.div`
@@ -47,6 +52,13 @@ const ThumbnailWrapper = styled.div`
   flex-shrink: 0;
   position: relative;
   z-index: 1;
+  
+  ${media.mobile} {
+    width: 100%;
+    min-width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
 `;
 
 const ThumbnailSection = styled.div`
@@ -54,6 +66,11 @@ const ThumbnailSection = styled.div`
   flex-direction: column;
   gap: ${spacing.sm};
   flex-shrink: 0;
+  
+  ${media.mobile} {
+    width: 100%;
+    align-items: center;
+  }
 `;
 
 const CardContent = styled(Link)`
@@ -80,7 +97,7 @@ const CardLink = styled.div`
 `;
 
 const Title = styled.h3`
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 3vw, 1.25rem);
   font-weight: 600;
   color: ${colors.text};
   margin: 0;
@@ -93,6 +110,10 @@ const Description = styled.p`
   margin: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  
+  ${media.mobile} {
+    font-size: 0.8125rem;
+  }
 `;
 
 const Meta = styled.div`
@@ -102,6 +123,8 @@ const Meta = styled.div`
   font-size: 0.75rem;
   color: ${colors.textMuted};
   margin-top: ${spacing.xs};
+  gap: ${spacing.sm};
+  flex-wrap: wrap;
 `;
 
 const Category = styled.span`
@@ -110,6 +133,7 @@ const Category = styled.span`
   padding: ${spacing.xs} ${spacing.sm};
   border-radius: 4px;
   font-weight: 500;
+  white-space: nowrap;
 `;
 
 const DeleteButton = styled.button`
@@ -122,9 +146,14 @@ const DeleteButton = styled.button`
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 10;
+  min-height: 36px;
   
   ${CardContainer}:hover & {
     opacity: 1;
+  }
+  
+  ${media.mobile} {
+    opacity: 0.9;
   }
 `;
 
@@ -177,6 +206,7 @@ const ZoomButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: ${spacing.xs};
+  min-height: 44px;
   
   &:hover:not(:disabled) {
     background: ${colors.accentHover};
@@ -189,6 +219,11 @@ const ZoomButton = styled.button`
   &:active:not(:disabled) {
     transform: translateY(2px);
     box-shadow: 0 2px 0 ${colors.accentActive};
+  }
+  
+  ${media.mobile} {
+    max-width: 300px;
+    font-size: 0.8125rem;
   }
 `;
 

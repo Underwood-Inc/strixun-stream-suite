@@ -22,7 +22,7 @@ import type { ExecutionContext } from '@strixun/types';
  */
 const NO_JWT_REQUIRED_PATHS = [
     '/auth/request-otp',
-    '/auth/verify-otp',      // ⚠️ CRITICAL - Returns JWT token
+    '/auth/verify-otp',      // ⚠ CRITICAL - Returns JWT token
     '/auth/restore-session',
     '/signup',
     '/signup/verify',

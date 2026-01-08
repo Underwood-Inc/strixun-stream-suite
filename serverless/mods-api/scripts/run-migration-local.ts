@@ -26,12 +26,12 @@ async function main() {
     if (isDryRun) {
         console.log('🔍 Running DRY RUN (no changes will be made)...\n');
         const stats = await dryRunVariantMigration(env);
-        console.log('\n✅ Dry run complete!');
+        console.log('\n✓ Dry run complete!');
         console.log(JSON.stringify(stats, null, 2));
     } else {
         console.log('🚀 Running ACTUAL MIGRATION...\n');
         const stats = await migrateAllVariantsToVersions(env);
-        console.log('\n✅ Migration complete!');
+        console.log('\n✓ Migration complete!');
         console.log(JSON.stringify(stats, null, 2));
     }
 }

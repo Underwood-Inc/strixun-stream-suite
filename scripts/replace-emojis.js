@@ -18,11 +18,11 @@ const projectRoot = join(__dirname, '..');
 // The values are their ASCII-compatible replacements
 const emojiReplacements = {
   // Common status emojis
-  '\u2705': '✓',      // ✅
-  '\u274C': '✗',        // ❌
-  '\u26A0\uFE0F': '⚠', // ⚠️
+  '\u2705': '✓',      // ✓
+  '\u274C': '✗',        // ✗
+  '\u26A0\uFE0F': '⚠', // ⚠
   '\u1F512': '[SECURITY]',    // 🔒
-  '\u2139\uFE0F': 'ℹ',   // ℹ️
+  '\u2139\uFE0F': 'ℹ',   // ℹ
   '\u1F4DD': '[NOTE]',        // 📝
   '\u1F680': '[DEPLOY]',       // 🚀
   '\u1F527': '[CONFIG]',      // 🔧

@@ -1,7 +1,7 @@
 /**
  * TypeScript Types for OTP Auth API
  * 
- * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
+ * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
  */
 
 export interface Customer {
@@ -24,7 +24,7 @@ export interface CustomerConfig {
 export interface RateLimits {
   otpRequestsPerDay?: number;
   otpRequestsPerMonth?: number;
-  maxUsers?: number;
+  maxCustomers?: number;
 }
 
 export interface ApiKey {
@@ -78,7 +78,7 @@ export interface Analytics {
 }
 
 export interface RealtimeAnalytics {
-  activeUsers?: number;
+  activeCustomers?: number;
   requestsPerMinute?: number;
 }
 

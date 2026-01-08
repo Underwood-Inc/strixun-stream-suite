@@ -16,7 +16,7 @@ import { calculateResponseIntegrity } from './integrity.js';
  */
 export function isServiceToServiceCall(
     request: Request,
-    auth: { userId?: string; jwtToken?: string; customerId?: string | null } | null
+    auth: { customerId: string; jwtToken?: string } | null
 ): boolean {
     // CRITICAL: Check for X-Strixun-Request-Integrity header first
     // This is the most reliable indicator of a service-to-service call from service-client
@@ -49,7 +49,7 @@ export function isServiceToServiceCall(
     }
     
     // If userId is 'service', it's a service-to-service call
-    if (auth.userId === 'service') {
+    if (auth.customerId === 'service') {
         return true;
     }
     
@@ -128,7 +128,7 @@ export function getNetworkIntegrityKeyphrase(env: { NETWORK_INTEGRITY_KEYPHRASE?
 export async function wrapResponseWithIntegrity(
     response: Response,
     request: Request,
-    auth: { userId?: string; jwtToken?: string } | null,
+    auth: { customerId: string; jwtToken?: string } | null,
     env: { NETWORK_INTEGRITY_KEYPHRASE?: string }
 ): Promise<Response> {
     // Check if this is a service-to-service call

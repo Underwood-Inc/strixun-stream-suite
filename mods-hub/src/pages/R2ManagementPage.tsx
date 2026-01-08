@@ -753,7 +753,7 @@ export function R2ManagementPage() {
                                 {associated.uploadedBy && (
                                     <FileDetailItem>
                                         <FileDetailLabel>Uploaded By:</FileDetailLabel>
-                                        <span>{associated.uploadedBy.displayName || associated.uploadedBy.userId}</span>
+                                        <span>{associated.uploadedBy.displayName || associated.uploadedBy.customerId}</span>
                                     </FileDetailItem>
                                 )}
                                 <FileDetailItem>

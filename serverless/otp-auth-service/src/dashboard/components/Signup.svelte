@@ -126,11 +126,11 @@
         const token = data.access_token || data.token;
         apiClient.setToken(token);
         
-        // Dispatch login event to auto-login the user
+        // Dispatch login event to auto-login the customer
         window.dispatchEvent(new CustomEvent('auth:login', {
           detail: { 
-            user: {
-              userId: data.userId || data.sub,
+            customer: {
+              userId: data.customerId || data.sub,
               email: data.email || email.toLowerCase().trim(),
               token: token,
             }

@@ -82,21 +82,21 @@ const modId = generateModId();
   - Creates mod with title "Duplicate Slug Test"
   - Tries to create second mod with same title
   - **Expected**: 409 error with "Slug Already Exists"
-  - **Result**: ✅ Test expects 409 (correct behavior)
+  - **Result**: ✓ Test expects 409 (correct behavior)
 
 - Test: "should reject duplicate slug when updating to existing slug"
   - Creates two mods with different titles
   - Tries to update second mod to have same slug as first
   - **Expected**: 409 error
-  - **Result**: ✅ Test expects 409 (correct behavior)
+  - **Result**: ✓ Test expects 409 (correct behavior)
 
 ## Implementation Status
 
-✅ **No auto-slug manipulation** - Removed `generateUniqueSlug` function
-✅ **Slug uniqueness enforced** - API returns 409 for duplicates
-✅ **ModId auto-generated** - Always unique via timestamp + random
-✅ **UI must handle errors** - API provides clear 409 error messages
-✅ **E2E tests co-located** - Moved to `mods-hub/src/pages/` (frontend codebase)
+✓ **No auto-slug manipulation** - Removed `generateUniqueSlug` function
+✓ **Slug uniqueness enforced** - API returns 409 for duplicates
+✓ **ModId auto-generated** - Always unique via timestamp + random
+✓ **UI must handle errors** - API provides clear 409 error messages
+✓ **E2E tests co-located** - Moved to `mods-hub/src/pages/` (frontend codebase)
 
 ## API Behavior
 

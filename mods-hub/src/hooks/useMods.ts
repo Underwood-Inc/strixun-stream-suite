@@ -65,10 +65,10 @@ export function useModsList(filters: {
                 }
                 
                 // CRITICAL: Frontend safety filter - only return approved mods for public browsing
-                // BUT: If filtering by authorId (user viewing their own mods), show ALL statuses
+                // BUT: If filtering by authorId (customer viewing their own mods), show ALL statuses
                 // This is a defense-in-depth measure in case backend filtering fails
                 // The browse page should NEVER show denied/pending/archived mods
-                // But users should see their own pending mods in their dashboard
+                // But customers should see their own pending mods in their dashboard
                 const shouldFilterByStatus = !filters.authorId; // Only filter if NOT viewing own mods
                 const filteredMods = shouldFilterByStatus 
                     ? result.mods.filter(mod => mod.status === 'approved')
@@ -367,18 +367,18 @@ export function useDrafts(params?: {
     page?: number;
     pageSize?: number;
 }) {
-    const { user } = useAuthStore();
+    const { customer } = useAuthStore();
     
     return useQuery({
-        queryKey: [...modKeys.all, 'drafts', user?.userId || '', params || {}],
+        queryKey: [...modKeys.all, 'drafts', customer?.customerId || '', params || {}],
         queryFn: async () => {
-            if (!user?.userId) {
+            if (!customer?.customerId) {
                 return { mods: [], total: 0, page: 1, pageSize: 20 };
             }
             // Use listMods with authorId filter - this returns all statuses for the author
             const result = await api.listMods({
                 ...params,
-                authorId: user.userId,
+                authorId: customer.customerId,
             });
             // Filter to only show drafts
             return {
@@ -387,7 +387,7 @@ export function useDrafts(params?: {
                 total: result.mods.filter(mod => mod.status === 'draft').length,
             };
         },
-        enabled: !!user?.userId,
+        enabled: !!customer?.customerId,
         staleTime: 0,
         gcTime: 0,
         refetchOnMount: 'always',

@@ -6,10 +6,10 @@
 
 This shared setup file provides **automatic worker startup** for ALL integration tests across all services. It replaces the previous per-service setup files and ensures:
 
-1. ✅ **All integration tests use real local workers** (no mocks)
-2. ✅ **Workers are reused across test suites** (singleton pattern)
-3. ✅ **Automatic detection** of integration tests by file pattern
-4. ✅ **Works for any service** (otp-auth-service, mods-api, etc.)
+1. ✓ **All integration tests use real local workers** (no mocks)
+2. ✓ **Workers are reused across test suites** (singleton pattern)
+3. ✓ **Automatic detection** of integration tests by file pattern
+4. ✓ **Works for any service** (otp-auth-service, mods-api, etc.)
 
 ## How It Works
 
@@ -77,16 +77,16 @@ export default defineConfig({
 ## Benefits
 
 ### Before (Problems)
-- ❌ Each test suite restarted workers (~8-9s overhead per suite)
-- ❌ Some tests used mocks instead of real workers
-- ❌ Inconsistent setup across services
-- ❌ Total time: ~30-35 seconds wasted on worker startup
+- ✗ Each test suite restarted workers (~8-9s overhead per suite)
+- ✗ Some tests used mocks instead of real workers
+- ✗ Inconsistent setup across services
+- ✗ Total time: ~30-35 seconds wasted on worker startup
 
 ### After (Solutions)
-- ✅ Workers start once and are reused
-- ✅ ALL integration tests use real workers
-- ✅ Consistent setup across all services
-- ✅ Time saved: ~27-30 seconds per test run
+- ✓ Workers start once and are reused
+- ✓ ALL integration tests use real workers
+- ✓ Consistent setup across all services
+- ✓ Time saved: ~27-30 seconds per test run
 
 ## Requirements
 
@@ -149,7 +149,7 @@ const response = await fetch('http://localhost:8787/auth/me', {
 
 ### "Workers already started, reusing existing workers"
 
-✅ **This is normal!** The singleton pattern prevents restarting workers between test suites.
+✓ **This is normal!** The singleton pattern prevents restarting workers between test suites.
 
 ### "Cannot find wrapper script"
 

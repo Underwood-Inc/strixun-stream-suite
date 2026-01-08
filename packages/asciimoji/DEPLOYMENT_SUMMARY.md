@@ -21,11 +21,11 @@ Replace `{username}`, `{repo}`, `{owner}` with your actual repository values.
 **File:** `.github/workflows/deploy-asciimoji-cdn.yml`
 
 **What it does:**
-1. ✅ Runs unit tests
-2. ✅ Runs E2E tests (17 tests covering mixin + CDN usage)
-3. ✅ Builds the package (creates 3 bundles: dev, prod, ESM)
-4. ✅ Deploys to GitHub Pages as CDN
-5. ✅ Uploads test reports as artifacts
+1. ✓ Runs unit tests
+2. ✓ Runs E2E tests (17 tests covering mixin + CDN usage)
+3. ✓ Builds the package (creates 3 bundles: dev, prod, ESM)
+4. ✓ Deploys to GitHub Pages as CDN
+5. ✓ Uploads test reports as artifacts
 
 **Triggers:**
 - Push to `main`/`master` when `packages/asciimoji/**` changes

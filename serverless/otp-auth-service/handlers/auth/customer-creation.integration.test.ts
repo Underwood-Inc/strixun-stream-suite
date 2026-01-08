@@ -2,7 +2,7 @@
  * Integration Tests for Customer Account Creation - MIGRATED TO MINIFLARE
  * Tests ensureCustomerAccount function against LOCAL customer-api
  * 
- * ✅ MIGRATED: Now uses Miniflare instead of wrangler dev processes
+ * ✓ MIGRATED: Now uses Miniflare instead of wrangler dev processes
  * - No health checks needed (Miniflare is ready immediately)
  * - No process management
  * - Much faster startup (2-5 seconds vs 70-80 seconds)
@@ -66,9 +66,9 @@ describe('ensureCustomerAccount - Integration Tests (Miniflare)', () => {
     console.log('[Customer Creation Integration Tests] ✓ KV cleanup completed');
   });
 
-  describe('Legacy user migration with live customer-api', () => {
+  describe('Legacy customer migration with live customer-api', () => {
     it('should create customer account via live customer-api', async () => {
-      // Execute: Create customer account for legacy user
+      // Execute: Create customer account for legacy customer
       const customerId = await ensureCustomerAccount(testEmail, null, mockEnv);
 
       // Verify: Customer account was created

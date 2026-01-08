@@ -82,14 +82,14 @@ export async function isApprovedUploaderEmail(email: string | undefined, env: En
 }
 
 /**
- * Check if user has upload permission
+ * Check if customer has upload permission
  * 
  * Three sources checked in order:
  * 1. Super admins (SUPER_ADMIN_EMAILS) - always have permission + admin access
  * 2. Approved uploaders from env (APPROVED_UPLOADER_EMAILS) - upload permission ONLY, NO admin access
  * 3. Approved uploaders from KV (managed via admin dashboard) - upload permission ONLY, NO admin access
  */
-export async function hasUploadPermission(userId: string, email: string | undefined, env: Env): Promise<boolean> {
+export async function hasUploadPermission(customerId: string, email: string | undefined, env: Env): Promise<boolean> {
     // Tier 1: Super admins always have permission (also have admin dashboard access)
     if (email && await isSuperAdminEmail(email, env)) {
         return true;
@@ -103,7 +103,7 @@ export async function hasUploadPermission(userId: string, email: string | undefi
     // Tier 3: Check if user has explicit approval stored in KV (upload permission ONLY, NO admin access)
     if (env.MODS_KV) {
         try {
-            const approvalKey = `upload_approval_${userId}`;
+            const approvalKey = `upload_approval_${customerId}`;
             const approval = await env.MODS_KV.get(approvalKey);
             return approval === 'approved';
         } catch (e) {
@@ -116,18 +116,18 @@ export async function hasUploadPermission(userId: string, email: string | undefi
 }
 
 /**
- * Approve user for uploads (adds to approved uploaders list)
- * Only super admins can approve users (via admin dashboard or API)
+ * Approve customer for uploads (adds to approved uploaders list)
+ * Only super admins can approve customers (via admin dashboard or API)
  * 
- * This grants upload permission to regular users (not super admins).
+ * This grants upload permission to regular customers (not super admins).
  * Super admins don't need approval - they get permission automatically from SUPER_ADMIN_EMAILS.
  */
-export async function approveUserUpload(userId: string, email: string, env: Env): Promise<void> {
+export async function approveCustomerUpload(customerId: string, email: string, env: Env): Promise<void> {
     if (!env.MODS_KV) {
         throw new Error('MODS_KV not available');
     }
     
-    const approvalKey = `upload_approval_${userId}`;
+    const approvalKey = `upload_approval_${customerId}`;
     await env.MODS_KV.put(approvalKey, 'approved', {
         metadata: {
             approvedAt: new Date().toISOString(),
@@ -135,38 +135,38 @@ export async function approveUserUpload(userId: string, email: string, env: Env)
         }
     });
     
-    // Also add to approved users list for easy lookup
+    // Also add to approved customers list for easy lookup
     const approvedListKey = 'approved_uploaders';
     const existingList = await env.MODS_KV.get(approvedListKey, { type: 'json' }) as string[] | null;
-    const updatedList = [...(existingList || []), userId].filter((id, index, arr) => arr.indexOf(id) === index);
+    const updatedList = [...(existingList || []), customerId].filter((id, index, arr) => arr.indexOf(id) === index);
     await env.MODS_KV.put(approvedListKey, JSON.stringify(updatedList));
 }
 
 /**
- * Revoke user upload permission
+ * Revoke customer upload permission
  * Only super admins can revoke permissions
  */
-export async function revokeUserUpload(userId: string, env: Env): Promise<void> {
+export async function revokeCustomerUpload(customerId: string, env: Env): Promise<void> {
     if (!env.MODS_KV) {
         throw new Error('MODS_KV not available');
     }
     
-    const approvalKey = `upload_approval_${userId}`;
+    const approvalKey = `upload_approval_${customerId}`;
     await env.MODS_KV.delete(approvalKey);
     
-    // Remove from approved users list
+    // Remove from approved customers list
     const approvedListKey = 'approved_uploaders';
     const existingList = await env.MODS_KV.get(approvedListKey, { type: 'json' }) as string[] | null;
     if (existingList) {
-        const updatedList = existingList.filter(id => id !== userId);
+        const updatedList = existingList.filter(id => id !== customerId);
         await env.MODS_KV.put(approvedListKey, JSON.stringify(updatedList));
     }
 }
 
 /**
  * Get list of approved uploaders (from KV only)
- * Note: This doesn't include users from APPROVED_UPLOADER_EMAILS env var
- * Use getUserUploadPermissionInfo() for complete permission checking
+ * Note: This doesn't include customers from APPROVED_UPLOADER_EMAILS env var
+ * Use getCustomerUploadPermissionInfo() for complete permission checking
  */
 export async function getApprovedUploaders(env: Env): Promise<string[]> {
     if (!env.MODS_KV) {
@@ -188,8 +188,8 @@ export async function getApprovedUploaders(env: Env): Promise<string[]> {
  * 
  * This is useful for admin dashboard UI to show accurate permission status
  */
-export async function getUserUploadPermissionInfo(
-    userId: string,
+export async function getCustomerUploadPermissionInfo(
+    customerId: string,
     email: string | undefined,
     env: Env
 ): Promise<{
@@ -203,7 +203,7 @@ export async function getUserUploadPermissionInfo(
     let userEmail = email;
     if (!userEmail && env.MODS_KV) {
         try {
-            const approvalKey = `upload_approval_${userId}`;
+            const approvalKey = `upload_approval_${customerId}`;
             const approvalData = await env.MODS_KV.get(approvalKey, { type: 'json' }) as { 
                 metadata?: { email?: string } 
             } | null;
@@ -240,7 +240,7 @@ export async function getUserUploadPermissionInfo(
     // Check KV approval (Tier 3)
     if (env.MODS_KV) {
         try {
-            const approvalKey = `upload_approval_${userId}`;
+            const approvalKey = `upload_approval_${customerId}`;
             const approval = await env.MODS_KV.get(approvalKey);
             if (approval === 'approved') {
                 // Get email from metadata if available

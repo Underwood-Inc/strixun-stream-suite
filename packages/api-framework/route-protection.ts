@@ -22,9 +22,8 @@ export type AdminLevel = 'admin' | 'super-admin';
  * Authentication result from request
  */
 export interface AuthResult {
-    userId: string;
+    customerId: string;
     email?: string;
-    customerId: string | null;
     jwtToken?: string;
 }
 
@@ -132,9 +131,8 @@ export async function authenticateJWT(
         }
         
         return {
-            userId: payload.sub,
+            customerId: payload.customerId,
             email: payload.email,
-            customerId: payload.customerId || null,
             jwtToken: token,
         };
     } catch (error) {

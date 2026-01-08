@@ -14,7 +14,7 @@ import { ModFilters } from '../components/mod/ModFilters';
 import { ViewToggle, type ViewType } from '../components/mod/ViewToggle';
 import { shouldRedirectToLogin } from '../utils/error-messages';
 import styled from 'styled-components';
-import { colors, spacing } from '../theme';
+import { colors, spacing, media } from '../theme';
 
 const PageContainer = styled.div`
   display: flex;
@@ -23,6 +23,12 @@ const PageContainer = styled.div`
   width: 100%;
   height: calc(100vh - 200px);
   min-height: 600px;
+  
+  ${media.mobile} {
+    gap: ${spacing.md};
+    height: auto;
+    min-height: 400px;
+  }
 `;
 
 const Header = styled.div`
@@ -30,12 +36,17 @@ const Header = styled.div`
   flex-direction: column;
   gap: ${spacing.md};
   flex-shrink: 0;
+  
+  ${media.mobile} {
+    gap: ${spacing.sm};
+  }
 `;
 
 const Title = styled.h1`
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 700;
   color: ${colors.text};
+  margin: 0;
 `;
 
 const FiltersContainer = styled.div`
@@ -44,12 +55,23 @@ const FiltersContainer = styled.div`
   align-items: center;
   flex-wrap: wrap;
   justify-content: space-between;
+  
+  ${media.mobile} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: ${spacing.sm};
+  }
 `;
 
 const HeaderActions = styled.div`
   display: flex;
   gap: ${spacing.md};
   align-items: center;
+  
+  ${media.mobile} {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 const ListContainer = styled.div`
@@ -67,7 +89,7 @@ const GridContainer = styled.div`
   overflow-y: auto;
   padding: ${spacing.md};
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 500px), 1fr));
   grid-auto-flow: row dense;
   gap: ${spacing.lg};
   align-items: start;
@@ -75,6 +97,17 @@ const GridContainer = styled.div`
   background: ${colors.bg};
   border: 1px solid ${colors.border};
   border-radius: 8px;
+  
+  ${media.mobile} {
+    grid-template-columns: 1fr;
+    gap: ${spacing.md};
+    padding: ${spacing.sm};
+  }
+  
+  ${media.tablet} {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+    gap: ${spacing.md};
+  }
 `;
 
 const Loading = styled.div`

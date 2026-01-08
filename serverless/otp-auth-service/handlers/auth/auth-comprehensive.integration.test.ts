@@ -2,7 +2,7 @@
  * Comprehensive Integration Tests for Authentication & Customer-API - MIGRATED TO MINIFLARE
  * Tests all authentication flows, edge cases, and customer-api integration
  * 
- * ✅ MIGRATED: Now uses Miniflare instead of wrangler dev processes
+ * ✓ MIGRATED: Now uses Miniflare instead of wrangler dev processes
  * - No health checks needed (Miniflare is ready immediately)
  * - No process management
  * - Much faster startup (2-5 seconds vs 70-80 seconds)

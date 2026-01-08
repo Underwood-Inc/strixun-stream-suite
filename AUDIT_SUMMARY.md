@@ -17,25 +17,25 @@
 ## 🔥 Critical Issues (Must Fix First)
 
 ### Text Rotator
-- ❌ Local serving broken (`file://` URLs)
-- ❌ OBS communication fragile
-- ❌ No JWT security
+- ✗ Local serving broken (`file://` URLs)
+- ✗ OBS communication fragile
+- ✗ No JWT security
 
 ### WebSocket
-- ❌ No exponential backoff reconnection
-- ❌ Request timeouts not cleared
-- ❌ Pending requests leak on disconnect
+- ✗ No exponential backoff reconnection
+- ✗ Request timeouts not cleared
+- ✗ Pending requests leak on disconnect
 
 ### Memory Leaks
-- ❌ Animation timers never cleaned up (Source Swaps, Layouts)
-- ❌ Auto-backup timer never cleared
-- ❌ Text cycler intervals not cleared on delete
-- ❌ BroadcastChannels never closed
+- ✗ Animation timers never cleaned up (Source Swaps, Layouts)
+- ✗ Auto-backup timer never cleared
+- ✗ Text cycler intervals not cleared on delete
+- ✗ BroadcastChannels never closed
 
 ### Race Conditions
-- ❌ Concurrent swaps possible
-- ❌ Source refresh race conditions
-- ❌ Initialization race condition
+- ✗ Concurrent swaps possible
+- ✗ Source refresh race conditions
+- ✗ Initialization race condition
 
 ---
 
@@ -117,10 +117,10 @@
 - **12+ locations** need API framework migration
 
 ### Benefits
-- ✅ Unit testable logic (cheaper tests)
-- ✅ Reusable across projects
-- ✅ Better separation of concerns
-- ✅ Improved maintainability
+- ✓ Unit testable logic (cheaper tests)
+- ✓ Reusable across projects
+- ✓ Better separation of concerns
+- ✓ Improved maintainability
 
 **See `MASTER_WORK_PLAN.md` for complete extraction plan and all work items.**
 

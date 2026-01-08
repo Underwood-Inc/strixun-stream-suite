@@ -14,7 +14,7 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 export async function handleListAllMods(
     request: Request,
     env: Env,
-    auth: { userId: string; customerId: string | null }
+    auth: { customerId: string; customerId: string | null }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);

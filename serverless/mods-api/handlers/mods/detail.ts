@@ -19,7 +19,7 @@ export async function handleGetModDetail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
         // Check if user is super admin (needed for filtering)
@@ -83,7 +83,7 @@ export async function handleGetModDetail(
             const isAllowedStatus = modStatus === 'published' || modStatus === 'approved';
             if (modVisibility !== 'public' || !isAllowedStatus) {
                 // Only allow if user is the author
-                if (mod.authorId !== auth?.userId) {
+                if (mod.authorId !== auth?.customerId) {
                     mod = null; // Filter out - don't show to non-authors
                 }
             }
@@ -115,7 +115,7 @@ export async function handleGetModDetail(
         const storedModId = mod.modId;
 
         // isAdmin already checked above
-        const isAuthor = mod.authorId === auth?.userId;
+        const isAuthor = mod.authorId === auth?.customerId;
         
         // CRITICAL: Enforce strict visibility and status filtering
         // Only super admins can bypass these checks
@@ -128,7 +128,7 @@ export async function handleGetModDetail(
             const modVisibility = mod.visibility || 'public';
             if (modVisibility !== 'public') {
                 // Only show private/unlisted mods to their author
-                if (mod.authorId !== auth?.userId) {
+                if (mod.authorId !== auth?.customerId) {
                     const rfcError = createError(
                         request,
                         404,
@@ -175,7 +175,7 @@ export async function handleGetModDetail(
             }
         } else {
             // Super admins: check visibility but allow all statuses
-            if (mod.visibility === 'private' && mod.authorId !== auth?.userId) {
+            if (mod.visibility === 'private' && mod.authorId !== auth?.customerId) {
                 const rfcError = createError(
                     request,
                     404,
@@ -260,12 +260,12 @@ export async function handleGetModDetail(
         // Set customerId from auth context if missing (for legacy mods)
         // Only use auth.customerId if the current user is the mod author
         let modKeyToSave: string | null = null;
-        if (!mod.customerId && auth?.customerId && mod.authorId === auth.userId) {
+        if (!mod.customerId && auth?.customerId && mod.authorId === auth.customerId) {
             console.log('[GetModDetail] Setting missing customerId on legacy mod:', {
                 modId: mod.modId,
                 customerId: auth.customerId,
                 authorId: mod.authorId,
-                currentUserId: auth.userId
+                currentUserId: auth.customerId
             });
             mod.customerId = auth.customerId;
             

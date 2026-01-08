@@ -71,11 +71,11 @@ describe('API Key Tests', () => {
 ```
 
 **Problems:**
-- ❌ 640+ lines of setup code
-- ❌ 70-80 second startup time
-- ❌ Flaky (startup timing issues)
-- ❌ Complex process management
-- ❌ Platform-specific code
+- ✗ 640+ lines of setup code
+- ✗ 70-80 second startup time
+- ✗ Flaky (startup timing issues)
+- ✗ Complex process management
+- ✗ Platform-specific code
 
 ---
 
@@ -140,11 +140,11 @@ describe('API Key Tests', () => {
 ```
 
 **Benefits:**
-- ✅ ~20 lines of config (vs 640+ lines)
-- ✅ 2-5 second startup time (vs 70-80 seconds)
-- ✅ No flakiness (runtime always ready)
-- ✅ No process management
-- ✅ Cross-platform (no Windows/Unix code)
+- ✓ ~20 lines of config (vs 640+ lines)
+- ✓ 2-5 second startup time (vs 70-80 seconds)
+- ✓ No flakiness (runtime always ready)
+- ✓ No process management
+- ✓ Cross-platform (no Windows/Unix code)
 
 ---
 
@@ -262,7 +262,7 @@ describe('API Key System', () => {
 
 ---
 
-## ⚠️ Multi-Worker Tests
+## ⚠ Multi-Worker Tests
 
 If you need to test **multiple workers communicating**, you have options:
 

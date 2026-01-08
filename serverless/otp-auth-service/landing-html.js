@@ -1173,8 +1173,8 @@ async function login() {
   const otp = prompt('Enter 9-digit OTP:');
   
   // Verify OTP
-  const user = await verifyOTP(email, otp);
-  console.log('Logged in as:', user.email);
+  const customer = await verifyOTP(email, otp);
+  console.log('Logged in as:', customer.email);
 }</code></pre>
         </div>
 

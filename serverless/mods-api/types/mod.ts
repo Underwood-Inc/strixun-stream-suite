@@ -20,7 +20,7 @@ export type ModStatus =
 export interface ModMetadata {
     modId: string;
     slug: string; // URL-friendly slug derived from title
-    authorId: string; // userId from OTP auth service (used for display name lookups)
+    authorId: string; // customerId from OTP auth service (used for display name lookups) - CRITICAL: This is customerId, not userId!
     authorDisplayName?: string | null; // Display name fetched dynamically from auth API (always fresh, fallback only)
     title: string;
     description: string;
@@ -146,7 +146,7 @@ export interface ModListResponse {
  */
 export interface ModStatusHistory {
     status: ModStatus;
-    changedBy: string; // User ID who changed the status
+    changedBy: string; // customer ID who changed the status
     changedByDisplayName?: string | null; // Display name (never use email)
     changedAt: string;
     reason?: string; // Optional reason for status change
@@ -158,7 +158,7 @@ export interface ModStatusHistory {
  */
 export interface ModReviewComment {
     commentId: string;
-    authorId: string; // User ID from OTP auth service
+    authorId: string; // Customer ID from OTP auth service
     authorDisplayName?: string | null; // Display name (never use email)
     content: string;
     createdAt: string;

@@ -31,7 +31,7 @@ import type {
 // Character type from inventory (since GameCharacter might not exist yet)
 interface GameCharacter {
   id: string;
-  userId: string;
+  customerId: string;
   name: string;
   level: number;
   experience: number;

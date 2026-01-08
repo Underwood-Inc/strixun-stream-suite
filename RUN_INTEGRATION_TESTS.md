@@ -7,10 +7,10 @@ pnpm test:integration
 ```
 
 This will:
-1. ✅ Automatically start workers (OTP Auth Service + Customer API)
-2. ✅ Run ALL integration tests across all services
-3. ✅ Reuse workers across test suites (no restart overhead)
-4. ✅ Clean up workers after all tests complete
+1. ✓ Automatically start workers (OTP Auth Service + Customer API)
+2. ✓ Run ALL integration tests across all services
+3. ✓ Reuse workers across test suites (no restart overhead)
+4. ✓ Clean up workers after all tests complete
 
 **What it does:**
 - Finds all services with integration tests
@@ -70,7 +70,7 @@ Workers still start automatically via shared setup!
 ## Troubleshooting
 
 ### "Workers already started, reusing existing workers"
-✅ **This is normal!** Workers are reused across test suites.
+✓ **This is normal!** Workers are reused across test suites.
 
 ### "Cannot find wrapper script"
 Make sure `scripts/start-worker-with-health-check.js` exists.

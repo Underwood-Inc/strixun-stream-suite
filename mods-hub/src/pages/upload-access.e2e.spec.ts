@@ -115,7 +115,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const user = parsed?.user || parsed?.state?.user;
+          const customer = parsed?.user || parsed?.state?.user;
           return {
             hasUser: !!user,
             hasToken: !!user?.token,
@@ -212,7 +212,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const user = parsed?.user || parsed?.state?.user;
+          const customer = parsed?.user || parsed?.state?.user;
           const token = user?.token;
           
           if (token) {
@@ -253,7 +253,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const user = parsed?.user || parsed?.state?.user;
+          const customer = parsed?.user || parsed?.state?.user;
           return {
             hasCustomerId: !!user?.customerId,
             customerId: user?.customerId || null

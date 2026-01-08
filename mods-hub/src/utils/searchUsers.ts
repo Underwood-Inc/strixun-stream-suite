@@ -1,33 +1,33 @@
 /**
- * Search utility for filtering users using the human-friendly search query parser
+ * Search utility for filtering customers using the human-friendly search query parser
  */
 
 import { matchesSearchQueryFields } from '@strixun/search-query-parser';
-import type { UserListItem } from '../types/user';
+import type { CustomerListItem } from '../types/user';
 
 /**
- * Filter users based on a search query
+ * Filter customers based on a search query
  * 
  * Searches across:
- * - userId
- * - displayName
  * - customerId
+ * - displayName
+ * - customerIdExternal
  * 
- * @param users - Array of users to filter
+ * @param customers - Array of customers to filter
  * @param query - Search query string (supports quotes, AND, OR, wildcards)
- * @returns Filtered array of users
+ * @returns Filtered array of customers
  */
-export function filterUsersBySearchQuery(users: UserListItem[], query: string): UserListItem[] {
+export function filterCustomersBySearchQuery(customers: CustomerListItem[], query: string): CustomerListItem[] {
   if (!query.trim()) {
-    return users;
+    return customers;
   }
   
-  return users.filter(user => {
+  return customers.filter(customer => {
     return matchesSearchQueryFields(
       {
-        userId: user.userId,
-        displayName: user.displayName || '',
-        customerId: user.customerId || '',
+        customerId: customer.customerId,
+        displayName: customer.displayName || '',
+        customerIdExternal: customer.customerIdExternal || '',
       },
       query
     );

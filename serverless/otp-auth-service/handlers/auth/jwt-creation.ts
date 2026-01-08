@@ -1,7 +1,7 @@
 /**
  * JWT Token Creation Utilities
  * 
- * Handles JWT token generation and session management for authenticated users
+ * Handles JWT token generation and session management for authenticated customers
  */
 
 import { createJWT, getJWTSecret, hashEmail } from '../../utils/crypto.js';

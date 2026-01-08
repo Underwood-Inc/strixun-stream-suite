@@ -95,7 +95,7 @@ function generateVersionId(): string {
 export async function handleUploadMod(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string }
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -116,7 +116,7 @@ export async function handleUploadMod(
         }
         
         // Check upload permission (super admins or approved users)
-        const hasPermission = await hasUploadPermission(auth.userId, auth.email, env);
+        const hasPermission = await hasUploadPermission(auth.customerId, auth.email, env);
         if (!hasPermission) {
             const rfcError = createError(request, 403, 'Upload Permission Required', 'You do not have permission to upload mods. Please request approval from an administrator.');
             const corsHeaders = createCORSHeaders(request, {
@@ -134,7 +134,7 @@ export async function handleUploadMod(
         // Check upload quota (skip for super admins)
         const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
         if (!isSuperAdmin) {
-            const quotaCheck = await checkUploadQuota(auth.userId, env);
+            const quotaCheck = await checkUploadQuota(auth.customerId, env);
             if (!quotaCheck.allowed) {
                 const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
                     ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
@@ -429,7 +429,7 @@ export async function handleUploadMod(
             customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
-                uploadedBy: auth.userId,
+                uploadedBy: auth.customerId,
                 uploadedAt: now,
                 encrypted: 'true', // Mark as encrypted
                 encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
@@ -510,34 +510,29 @@ export async function handleUploadMod(
         if (auth.customerId) {
             const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
             console.log('[Upload] Fetching authorDisplayName from customer data:', { 
-                customerId: auth.customerId,
-                userId: auth.userId
+                customerId: auth.customerId, customerId: auth.customerId
             });
             authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             
             if (authorDisplayName) {
                 console.log('[Upload] Successfully fetched authorDisplayName from customer data:', { 
                     authorDisplayName, 
-                    customerId: auth.customerId,
-                    userId: auth.userId
+                    customerId: auth.customerId, customerId: auth.customerId
                 });
             } else {
                 console.warn('[Upload] Could not fetch displayName from customer data:', {
-                    customerId: auth.customerId,
-                    userId: auth.userId
+                    customerId: auth.customerId, customerId: auth.customerId
                 });
             }
         } else {
-            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', {
-                userId: auth.userId,
+            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', { customerId: auth.customerId,
                 customerId: auth.customerId,
                 note: 'UI will show "Unknown User" - customerId should be set during authentication'
             });
         }
         
         if (!authorDisplayName) {
-            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', {
-                userId: auth.userId,
+            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', { customerId: auth.customerId,
                 customerId: auth.customerId,
                 note: 'UI will show "Unknown User" - detail handler will attempt to fetch again on next load'
             });
@@ -551,8 +546,7 @@ export async function handleUploadMod(
         // This ensures proper data scoping and display name lookups
         // customerId is REQUIRED - reject uploads without it
         if (!auth.customerId) {
-            console.error('[Upload] CRITICAL: customerId is null for authenticated user:', {
-                userId: auth.userId,
+            console.error('[Upload] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting upload - customerId is required for data scoping and display name lookups'
             });
@@ -576,7 +570,7 @@ export async function handleUploadMod(
         const mod: ModMetadata = {
             modId,
             slug,
-            authorId: auth.userId, // userId from OTP auth service (used for display name lookups)
+            authorId: auth.customerId, // userId from OTP auth service (used for display name lookups)
             authorDisplayName, // Display name fetched dynamically (fallback only - always fetch fresh)
             title: metadata.title,
             description: metadata.description || '',
@@ -594,7 +588,7 @@ export async function handleUploadMod(
             status: 'pending', // New mods start as pending review
             statusHistory: [{
                 status: 'pending',
-                changedBy: auth.userId,
+                changedBy: auth.customerId,
                 changedByDisplayName: authorDisplayName, // Use displayName, never email
                 changedAt: now,
             }],
@@ -616,7 +610,7 @@ export async function handleUploadMod(
             versionKey,
             versionsListKey,
             modsListKey,
-            authorId: auth.userId,
+            authorId: auth.customerId,
             authorDisplayName
         });
 
@@ -664,7 +658,7 @@ export async function handleUploadMod(
 
         // Track successful upload (skip for super admins)
         if (!isSuperAdmin) {
-            await trackUpload(auth.userId, env);
+            await trackUpload(auth.customerId, env);
         }
 
         const corsHeaders = createCORSHeaders(request, {

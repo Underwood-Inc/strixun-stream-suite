@@ -66,8 +66,8 @@ async function getOrCreateCustomerSession(
     
     const emailHash = await hashEmail(email);
     const emailLower = email.toLowerCase().trim();
-    // Keep key as `user_` for backward compatibility with existing data
-    const customerKey = getCustomerKey(customerId, `user_${emailHash}`);
+    // Keep key as `customer_` for proper naming (changed from legacy `user_`)
+    const customerKey = getCustomerKey(customerId, `customer_${emailHash}`);
     
     let session = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as CustomerSession | null;
     
@@ -274,7 +274,7 @@ export async function handleVerifyOTP(request: Request, env: Env, customerId: st
             await deleteOTP(otpKey, latestOtpKey, env);
         }
         
-        // BUSINESS RULE: Customer account MUST ALWAYS be created for users on login
+        // BUSINESS RULE: Customer account MUST ALWAYS be created for customers on login
         // ensureCustomerAccount will throw if it cannot create the account after retries
         let resolvedCustomerId: string;
         try {

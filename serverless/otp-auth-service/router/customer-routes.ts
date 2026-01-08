@@ -24,9 +24,8 @@ interface AuthResult {
     authenticated: boolean;
     status?: number;
     error?: string;
-    userId?: string;
+    customerId?: string;
     email?: string;
-    customerId?: string | null;
 }
 
 interface RouteResult {
@@ -54,9 +53,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
 
     return {
         authenticated: true,
-        userId: payload.userId || payload.sub,
+        customerId: payload.customerId || payload.userId || payload.sub,
         email: payload.email,
-        customerId: payload.customerId || null,
     };
 }
 

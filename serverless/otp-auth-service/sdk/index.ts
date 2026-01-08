@@ -19,14 +19,14 @@ export interface OTPResponse {
 export interface AuthResponse {
   success: boolean;
   token: string;
-  userId: string;
+  customerId: string;
   email: string;
   expiresAt: string;
 }
 
-export interface UserResponse {
+export interface CustomerResponse {
   success: boolean;
-  userId: string;
+  customerId: string;
   email: string;
   createdAt: string;
   lastLogin: string;
@@ -49,7 +49,7 @@ export class OTPAuth {
 
   /**
    * Request OTP code
-   * API key is used for tenant identification, NOT user authorization
+   * API key is used for tenant identification, NOT customer authorization
    */
   async requestOTP(email: string): Promise<OTPResponse> {
     const response = await fetch(`${this.baseUrl}/auth/request-otp`, {
@@ -71,7 +71,7 @@ export class OTPAuth {
 
   /**
    * Verify OTP code and get JWT token
-   * API key is used for tenant identification, NOT user authorization
+   * API key is used for tenant identification, NOT customer authorization
    */
   async verifyOTP(email: string, otp: string): Promise<AuthResponse> {
     const response = await fetch(`${this.baseUrl}/auth/verify-otp`, {
@@ -92,10 +92,10 @@ export class OTPAuth {
   }
 
   /**
-   * Get current user information
+   * Get current customer information
    * Requires JWT token from verifyOTP (NOT API key)
    */
-  async getMe(token: string): Promise<UserResponse> {
+  async getMe(token: string): Promise<CustomerResponse> {
     const response = await fetch(`${this.baseUrl}/auth/me`, {
       method: 'GET',
       headers: {

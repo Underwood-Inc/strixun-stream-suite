@@ -153,7 +153,7 @@ function formatTable(data) {
   });
 
   console.log('\n' + '='.repeat(80));
-  console.log(`✅  Total: ${frontends.length} frontend(s) + ${backends.length} backend worker(s) = ${data.length} service(s)`);
+  console.log(`✓  Total: ${frontends.length} frontend(s) + ${backends.length} backend worker(s) = ${data.length} service(s)`);
   console.log('='.repeat(80) + '\n');
 }
 

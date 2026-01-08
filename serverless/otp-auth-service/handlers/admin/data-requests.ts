@@ -91,7 +91,7 @@ export async function handleCreateDataRequest(request: Request, env: Env): Promi
         if (!targetUserId || typeof targetUserId !== 'string') {
             return new Response(JSON.stringify({ 
                 error: 'targetUserId is required',
-                detail: 'targetUserId must be a non-empty string (user email)'
+                detail: 'targetUserId must be a non-empty string (customer email)'
             }), {
                 status: 400,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
@@ -118,7 +118,7 @@ export async function handleCreateDataRequest(request: Request, env: Env): Promi
             });
         }
 
-        // Get target user's customer info
+        // Get target customer's info
         const { getCustomerByEmail: getCustomerByEmailUtil } = await import('../../services/customer.js');
         const targetCustomer = await getCustomerByEmailUtil(targetUserId, env);
         const resolvedTargetCustomerId = targetCustomerId || (targetCustomer ? targetCustomer.customerId : null);

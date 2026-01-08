@@ -1,6 +1,6 @@
 # R2 Management E2E Test Coverage
 
-**Status:** ✅ 100% Coverage  
+**Status:** ✓ 100% Coverage  
 **Last Updated:** 2025-01-01  
 **Test File:** `r2-management.e2e.spec.ts`
 
@@ -10,48 +10,48 @@ Comprehensive end-to-end tests for the R2 soft-delete and cleanup system. These 
 
 ## Test Coverage Matrix
 
-### ✅ Soft Delete Operations
+### ✓ Soft Delete Operations
 
 | Test | Status | Description |
 |------|--------|-------------|
-| Single file soft-delete | ✅ | Verifies file is marked (not deleted) with correct metadata |
-| Bulk file soft-delete | ✅ | Verifies multiple files can be marked in one operation |
-| Metadata preservation | ✅ | Verifies existing metadata is preserved when marking |
-| Timestamp format | ✅ | Verifies `marked_for_deletion_on` is valid Unix timestamp |
+| Single file soft-delete | ✓ | Verifies file is marked (not deleted) with correct metadata |
+| Bulk file soft-delete | ✓ | Verifies multiple files can be marked in one operation |
+| Metadata preservation | ✓ | Verifies existing metadata is preserved when marking |
+| Timestamp format | ✓ | Verifies `marked_for_deletion_on` is valid Unix timestamp |
 
-### ✅ Protected Files
-
-| Test | Status | Description |
-|------|--------|-------------|
-| Thumbnail protection (single) | ✅ | Verifies thumbnails associated with mods cannot be deleted |
-| Thumbnail protection (bulk) | ✅ | Verifies protected thumbnails are filtered from bulk deletes |
-| Protection error messages | ✅ | Verifies clear error messages for protected files |
-
-### ✅ Cleanup Job
+### ✓ Protected Files
 
 | Test | Status | Description |
 |------|--------|-------------|
-| Manual cleanup trigger | ✅ | Verifies cleanup can be triggered manually for testing |
-| Grace period enforcement | ✅ | Verifies files < 5 days old are NOT deleted |
-| Old file deletion | ✅ | Verifies files 6+ days old ARE deleted |
-| Statistics accuracy | ✅ | Verifies scanned/marked/deleted/errors counts are correct |
-| Mixed scenarios | ✅ | Verifies cleanup handles old + recent files correctly |
+| Thumbnail protection (single) | ✓ | Verifies thumbnails associated with mods cannot be deleted |
+| Thumbnail protection (bulk) | ✓ | Verifies protected thumbnails are filtered from bulk deletes |
+| Protection error messages | ✓ | Verifies clear error messages for protected files |
 
-### ✅ Edge Cases
+### ✓ Cleanup Job
 
 | Test | Status | Description |
 |------|--------|-------------|
-| Non-existent file | ✅ | Verifies 404 for missing files |
-| Empty bulk delete | ✅ | Verifies graceful handling of empty arrays |
-| Invalid file keys | ✅ | Verifies error reporting for invalid keys |
-| Authentication required | ✅ | Verifies admin auth is required |
+| Manual cleanup trigger | ✓ | Verifies cleanup can be triggered manually for testing |
+| Grace period enforcement | ✓ | Verifies files < 5 days old are NOT deleted |
+| Old file deletion | ✓ | Verifies files 6+ days old ARE deleted |
+| Statistics accuracy | ✓ | Verifies scanned/marked/deleted/errors counts are correct |
+| Mixed scenarios | ✓ | Verifies cleanup handles old + recent files correctly |
 
-### ✅ Full Lifecycle
+### ✓ Edge Cases
 
 | Test | Status | Description |
 |------|--------|-------------|
-| Create → Mark → Cleanup → Verify | ✅ | Complete end-to-end flow verification |
-| Mixed scenarios | ✅ | Protected + old + recent files together |
+| Non-existent file | ✓ | Verifies 404 for missing files |
+| Empty bulk delete | ✓ | Verifies graceful handling of empty arrays |
+| Invalid file keys | ✓ | Verifies error reporting for invalid keys |
+| Authentication required | ✓ | Verifies admin auth is required |
+
+### ✓ Full Lifecycle
+
+| Test | Status | Description |
+|------|--------|-------------|
+| Create → Mark → Cleanup → Verify | ✓ | Complete end-to-end flow verification |
+| Mixed scenarios | ✓ | Protected + old + recent files together |
 
 ## Test Execution
 
@@ -84,22 +84,22 @@ pnpm test:e2e --grep "Protected Thumbnails"
 ## Critical Test Scenarios
 
 ### 1. Soft-Delete Verification
-- ✅ File marked with `marked_for_deletion: 'true'`
-- ✅ Timestamp stored in `marked_for_deletion_on`
-- ✅ File still exists in R2 (not deleted immediately)
-- ✅ Existing metadata preserved
+- ✓ File marked with `marked_for_deletion: 'true'`
+- ✓ Timestamp stored in `marked_for_deletion_on`
+- ✓ File still exists in R2 (not deleted immediately)
+- ✓ Existing metadata preserved
 
 ### 2. Cleanup Job Verification
-- ✅ Files < 5 days old: NOT deleted
-- ✅ Files 6+ days old: DELETED
-- ✅ Statistics accurately reported
-- ✅ Errors logged but don't stop job
+- ✓ Files < 5 days old: NOT deleted
+- ✓ Files 6+ days old: DELETED
+- ✓ Statistics accurately reported
+- ✓ Errors logged but don't stop job
 
 ### 3. Protected File Verification
-- ✅ Thumbnails with associated mods: Cannot be deleted
-- ✅ Clear error messages returned
-- ✅ Bulk operations filter out protected files
-- ✅ Protected count reported separately
+- ✓ Thumbnails with associated mods: Cannot be deleted
+- ✓ Clear error messages returned
+- ✓ Bulk operations filter out protected files
+- ✓ Protected count reported separately
 
 ## Coverage Verification
 

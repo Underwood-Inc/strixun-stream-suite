@@ -87,7 +87,7 @@ interface AdminTab {
 
 const adminTabs: AdminTab[] = [
   { path: '/admin', label: 'Mod Triage', icon: '◇' },
-  { path: '/admin/users', label: 'User Management', icon: '◉' },
+  { path: '/admin/customers', label: 'Customer Management', icon: '◉' },
   { path: '/admin/r2', label: 'R2 Management', icon: '◈' },
   { path: '/admin/settings', label: 'Settings', icon: '◎' },
 ];
@@ -105,7 +105,7 @@ export function AdminNavigation() {
       {adminTabs.map((tab) => {
         const isActive = location.pathname === tab.path || 
           (tab.path === '/admin' && location.pathname.startsWith('/admin') && 
-           location.pathname !== '/admin/users' && location.pathname !== '/admin/r2');
+           location.pathname !== '/admin/customers' && location.pathname !== '/admin/r2');
         
         return (
           <Tab

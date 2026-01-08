@@ -144,7 +144,7 @@ export async function addDisplayNameToHistory(
   preferences.displayName.changeCount += 1;
   preferences.displayName.lastChangedAt = new Date().toISOString();
 
-  await storeUserPreferences(customerId, customerIdForScope, preferences, env);
+  await storeCustomerPreferences(customerId, customerIdForScope, preferences, env);
 }
 
 /**
@@ -206,7 +206,7 @@ export async function updateDisplayName(
   customerId: string, // MANDATORY - use customerId, not userId
   customerIdForScope: string | null, // For multi-tenant scoping
   newDisplayName: string,
-  reason: 'user-changed' | 'regenerated',
+  reason: 'customer-changed' | 'regenerated',
   env: Env
 ): Promise<{ success: boolean; error?: string }> {
   const canChange = await canChangeDisplayName(customerId, customerIdForScope, env);

@@ -14,7 +14,7 @@ import { IntegrityBadge } from './IntegrityBadge';
 global.fetch = vi.fn();
 
 describe('IntegrityBadge Integration', () => {
-  let user: ReturnType<typeof userEvent.setup>;
+  let customer: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
     user = userEvent.setup();

@@ -21,7 +21,7 @@ export async function handleDownloadVersion(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { userId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; email?: string } | null
 ): Promise<Response> {
     console.log('[Download] handleDownloadVersion called:', { modId, versionId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
@@ -111,7 +111,7 @@ export async function handleDownloadVersion(
         // Check if user is admin (for admin access to private mods)
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
-        const isAuthor = mod.authorId === auth?.userId;
+        const isAuthor = mod.authorId === auth?.customerId;
         
         // Private mods: only author or admin can download
         if (modVisibility === 'private' && !isAuthor && !isAdmin) {

@@ -6,7 +6,7 @@
 
 ---
 
-## ⚠️ CRITICAL SECURITY REQUIREMENT
+## ⚠ CRITICAL SECURITY REQUIREMENT
 
 **JWT ENCRYPTION/DECRYPTION IS NOW MANDATORY FOR ALL ENDPOINTS ACROSS ALL SERVICES**
 
@@ -21,27 +21,27 @@ By default, the API framework **MUST** require JWT encryption/decryption as a ba
 │ Layer 4: Authorization (Author checks, Admin checks)    │
 │ Layer 3: Authentication (JWT verification)                │
 │ Layer 2: CORS (Origin restrictions)                     │
-│ Layer 1: JWT ENCRYPTION/DECRYPTION (MANDATORY BASE) ⚠️ │
+│ Layer 1: JWT ENCRYPTION/DECRYPTION (MANDATORY BASE) ⚠ │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Principles:**
-1. ✅ **ALL endpoints require JWT for encryption/decryption** (even `/health`)
-2. ✅ **Binary files (images, downloads, scripts) must use JWT encryption/decryption**
-3. ✅ **No service key fallback** - JWT is mandatory
-4. ✅ **CORS and auth checks are layered on top** - they don't replace encryption
+1. ✓ **ALL endpoints require JWT for encryption/decryption** (even `/health`)
+2. ✓ **Binary files (images, downloads, scripts) must use JWT encryption/decryption**
+3. ✓ **No service key fallback** - JWT is mandatory
+4. ✓ **CORS and auth checks are layered on top** - they don't replace encryption
 
 ---
 
 ## Services Audited
 
-1. ✅ **mods-api** - Mod hosting and version control
-2. ✅ **otp-auth-service** - OTP authentication and user management
-3. ✅ **customer-api** - Customer data management
-4. ✅ **game-api** - Game-related operations
-5. ✅ **chat-signaling** - WebRTC signaling
-6. ✅ **twitch-api** - Twitch API proxy and utilities
-7. ✅ **url-shortener** - URL shortening service
+1. ✓ **mods-api** - Mod hosting and version control
+2. ✓ **otp-auth-service** - OTP authentication and user management
+3. ✓ **customer-api** - Customer data management
+4. ✓ **game-api** - Game-related operations
+5. ✓ **chat-signaling** - WebRTC signaling
+6. ✓ **twitch-api** - Twitch API proxy and utilities
+7. ✓ **url-shortener** - URL shortening service
 
 ---
 
@@ -49,26 +49,26 @@ By default, the API framework **MUST** require JWT encryption/decryption as a ba
 
 ### 1. mods-api (`mods-api.idling.app`)
 
-**Status:** ✅ **UPDATED** - All endpoints now require JWT encryption
+**Status:** ✓ **UPDATED** - All endpoints now require JWT encryption
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ✅ Updated | ✅ JWT encryption required | ✅ **COMPLETE** |
+| `/health` | GET | ✓ Updated | ✓ JWT encryption required | ✓ **COMPLETE** |
 
 #### Public Endpoints (JWT Encryption Required, Subject to CORS)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/mods` | GET | ✅ Updated | ✅ JWT encryption required | ✅ **COMPLETE** |
-| `/mods/:slug` | GET | ✅ Updated | ✅ JWT encryption required | ✅ **COMPLETE** |
-| `/mods/:slug/ratings` | GET | ✅ Updated | ✅ JWT encryption required | ✅ **COMPLETE** |
-| `/mods/:slug/thumbnail` | GET | ✅ Updated | ✅ JWT binary encryption required | ✅ **COMPLETE** |
-| `/mods/:slug/og-image` | GET | ✅ Updated | ✅ JWT binary encryption required | ✅ **COMPLETE** |
-| `/mods/:slug/versions/:versionId/badge` | GET | ✅ Updated | ✅ JWT binary encryption required | ✅ **COMPLETE** |
-| `/mods/:slug/versions/:versionId/download` | GET | ✅ Updated | ✅ JWT binary encryption required | ✅ **COMPLETE** |
-| `/mods/:slug/variants/:variantId/download` | GET | ✅ Updated | ✅ JWT binary encryption required | ✅ **COMPLETE** |
+| `/mods` | GET | ✓ Updated | ✓ JWT encryption required | ✓ **COMPLETE** |
+| `/mods/:slug` | GET | ✓ Updated | ✓ JWT encryption required | ✓ **COMPLETE** |
+| `/mods/:slug/ratings` | GET | ✓ Updated | ✓ JWT encryption required | ✓ **COMPLETE** |
+| `/mods/:slug/thumbnail` | GET | ✓ Updated | ✓ JWT binary encryption required | ✓ **COMPLETE** |
+| `/mods/:slug/og-image` | GET | ✓ Updated | ✓ JWT binary encryption required | ✓ **COMPLETE** |
+| `/mods/:slug/versions/:versionId/badge` | GET | ✓ Updated | ✓ JWT binary encryption required | ✓ **COMPLETE** |
+| `/mods/:slug/versions/:versionId/download` | GET | ✓ Updated | ✓ JWT binary encryption required | ✓ **COMPLETE** |
+| `/mods/:slug/variants/:variantId/download` | GET | ✓ Updated | ✓ JWT binary encryption required | ✓ **COMPLETE** |
 
 **Notes:**
 - All endpoints updated to require JWT encryption
@@ -79,27 +79,27 @@ By default, the API framework **MUST** require JWT encryption/decryption as a ba
 
 ### 2. otp-auth-service (`auth.idling.app`)
 
-**Status:** ✅ **UPDATED** - All endpoints updated with appropriate JWT encryption requirements
+**Status:** ✓ **UPDATED** - All endpoints updated with appropriate JWT encryption requirements
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/health/ready` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/health/live` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/openapi.json` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/` (landing page) | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/dashboard` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/assets/**` | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
+| `/health` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/health/ready` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/health/live` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/openapi.json` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/` (landing page) | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/dashboard` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/assets/**` | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
 
 #### Public Endpoints (JWT Encryption Required, Subject to CORS)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/signup` | POST | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/signup/verify` | POST | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/track/email-open` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
+| `/signup` | POST | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/signup/verify` | POST | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/track/email-open` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
 
 **Notes:**
 - Uses `applyEncryptionMiddleware()` but it may not enforce JWT requirement
@@ -110,22 +110,22 @@ By default, the API framework **MUST** require JWT encryption/decryption as a ba
 
 ### 3. customer-api (`customer.idling.app`)
 
-**Status:** ⚠️ **NEEDS UPDATE** - Health endpoint doesn't require JWT encryption
+**Status:** ⚠ **NEEDS UPDATE** - Health endpoint doesn't require JWT encryption
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
+| `/health` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
 
 #### Customer Routes (JWT Encryption Required)
 
 All customer routes already require authentication, but need to verify JWT encryption is enforced:
-- `GET /customer/me` - ✅ Already requires auth
-- `POST /customer/` - ✅ Already requires auth
-- `PUT /customer/me` - ✅ Already requires auth
-- `GET /customer/by-email/:email` - ✅ Already requires auth
+- `GET /customer/me` - ✓ Already requires auth
+- `POST /customer/` - ✓ Already requires auth
+- `PUT /customer/me` - ✓ Already requires auth
+- `GET /customer/by-email/:email` - ✓ Already requires auth
 
 **Notes:**
 - Uses `wrapWithEncryption()` but may not enforce JWT requirement
@@ -135,14 +135,14 @@ All customer routes already require authentication, but need to verify JWT encry
 
 ### 4. game-api (`game.idling.app`)
 
-**Status:** ⚠️ **NEEDS UPDATE** - Health endpoint doesn't require JWT encryption
+**Status:** ⚠ **NEEDS UPDATE** - Health endpoint doesn't require JWT encryption
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
+| `/health` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
 
 **Notes:**
 - Health endpoint needs update
@@ -152,27 +152,27 @@ All customer routes already require authentication, but need to verify JWT encry
 
 ### 5. chat-signaling (`chat.idling.app`)
 
-**Status:** ⚠️ **NEEDS UPDATE** - Health endpoint doesn't require JWT encryption
+**Status:** ⚠ **NEEDS UPDATE** - Health endpoint doesn't require JWT encryption
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
+| `/health` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
 
 #### Signaling Endpoints (JWT Encryption Required)
 
 All signaling endpoints use `wrapWithEncryption()` but need to verify JWT requirement is enforced:
-- `POST /signaling/create-room` - ⚠️ Needs verification
-- `POST /signaling/join-room` - ⚠️ Needs verification
-- `POST /signaling/offer` - ⚠️ Needs verification
-- `GET /signaling/offer/:roomId` - ⚠️ Needs verification
-- `POST /signaling/answer` - ⚠️ Needs verification
-- `GET /signaling/answer/:roomId` - ⚠️ Needs verification
-- `POST /signaling/heartbeat` - ⚠️ Needs verification
-- `GET /signaling/rooms` - ⚠️ Needs verification
-- `POST /signaling/leave` - ⚠️ Needs verification
+- `POST /signaling/create-room` - ⚠ Needs verification
+- `POST /signaling/join-room` - ⚠ Needs verification
+- `POST /signaling/offer` - ⚠ Needs verification
+- `GET /signaling/offer/:roomId` - ⚠ Needs verification
+- `POST /signaling/answer` - ⚠ Needs verification
+- `GET /signaling/answer/:roomId` - ⚠ Needs verification
+- `POST /signaling/heartbeat` - ⚠ Needs verification
+- `GET /signaling/rooms` - ⚠ Needs verification
+- `POST /signaling/leave` - ⚠ Needs verification
 
 **Notes:**
 - Uses custom `wrapWithEncryption()` that only encrypts if JWT present
@@ -182,32 +182,32 @@ All signaling endpoints use `wrapWithEncryption()` but need to verify JWT requir
 
 ### 6. twitch-api (`api.idling.app`)
 
-**Status:** ⚠️ **NEEDS UPDATE** - Multiple public endpoints don't require JWT encryption
+**Status:** ⚠ **NEEDS UPDATE** - Multiple public endpoints don't require JWT encryption
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
+| `/health` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
 
 #### CDN Endpoints (JWT Binary Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/cdn/scrollbar.js` | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `/cdn/scrollbar-customizer.js` | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `/cdn/scrollbar-compensation.js` | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
+| `/cdn/scrollbar.js` | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `/cdn/scrollbar-customizer.js` | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `/cdn/scrollbar-compensation.js` | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
 
 #### Legacy Auth Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/auth/request-otp` | POST | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/auth/verify-otp` | POST | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/auth/me` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/auth/logout` | POST | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/auth/refresh` | POST | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
+| `/auth/request-otp` | POST | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/auth/verify-otp` | POST | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/auth/me` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/auth/logout` | POST | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/auth/refresh` | POST | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
 
 **Notes:**
 - CDN scripts need JWT binary encryption
@@ -217,18 +217,18 @@ All signaling endpoints use `wrapWithEncryption()` but need to verify JWT requir
 
 ### 7. url-shortener (`s.idling.app`)
 
-**Status:** ⚠️ **NEEDS UPDATE** - Multiple public endpoints don't require JWT encryption
+**Status:** ⚠ **NEEDS UPDATE** - Multiple public endpoints don't require JWT encryption
 
 #### Truly Public Endpoints (JWT Encryption Required)
 
 | Endpoint | Method | Current State | Required State | Status |
 |----------|--------|---------------|----------------|--------|
-| `/health` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/decrypt.js` | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `/otp-core.js` | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `/api/stats` | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/:code` (redirect) | GET | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `/` (React app) | GET | ❌ No JWT required | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
+| `/health` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/decrypt.js` | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `/otp-core.js` | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `/api/stats` | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/:code` (redirect) | GET | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `/` (React app) | GET | ✗ No JWT required | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
 
 **Notes:**
 - Script endpoints (`/decrypt.js`, `/otp-core.js`) need JWT binary encryption
@@ -243,13 +243,13 @@ All signaling endpoints use `wrapWithEncryption()` but need to verify JWT requir
 
 | Service | Endpoints Needing Update | Priority |
 |---------|-------------------------|----------|
-| **mods-api** | ✅ All updated | ✅ **COMPLETE** |
-| **otp-auth-service** | ✅ All updated | ✅ **COMPLETE** |
-| **customer-api** | ✅ All updated | ✅ **COMPLETE** |
-| **game-api** | ✅ All updated | ✅ **COMPLETE** |
-| **chat-signaling** | ✅ All updated | ✅ **COMPLETE** |
-| **twitch-api** | ✅ All updated | ✅ **COMPLETE** |
-| **url-shortener** | ✅ All updated | ✅ **COMPLETE** |
+| **mods-api** | ✓ All updated | ✓ **COMPLETE** |
+| **otp-auth-service** | ✓ All updated | ✓ **COMPLETE** |
+| **customer-api** | ✓ All updated | ✓ **COMPLETE** |
+| **game-api** | ✓ All updated | ✓ **COMPLETE** |
+| **chat-signaling** | ✓ All updated | ✓ **COMPLETE** |
+| **twitch-api** | ✓ All updated | ✓ **COMPLETE** |
+| **url-shortener** | ✓ All updated | ✓ **COMPLETE** |
 
 ---
 
@@ -348,18 +348,18 @@ All signaling endpoints use `wrapWithEncryption()` but need to verify JWT requir
 
 ## Implementation Checklist
 
-### Phase 1: API Framework (✅ COMPLETE)
+### Phase 1: API Framework (✓ COMPLETE)
 - [x] Update `wrapWithEncryption()` to require JWT by default
 - [x] Add `WrapWithEncryptionOptions` interface
 - [x] Make JWT requirement the default behavior
 
-### Phase 2: mods-api (✅ COMPLETE)
+### Phase 2: mods-api (✓ COMPLETE)
 - [x] Update `/health` endpoint
 - [x] Update all public GET endpoints
 - [x] Update image endpoints (binary encryption)
 - [x] Update download endpoints (remove service key fallback)
 
-### Phase 3: Other Services (⚠️ PENDING)
+### Phase 3: Other Services (⚠ PENDING)
 - [ ] Update otp-auth-service public endpoints
 - [ ] Update customer-api health endpoint
 - [ ] Update game-api health endpoint
@@ -367,7 +367,7 @@ All signaling endpoints use `wrapWithEncryption()` but need to verify JWT requir
 - [ ] Update twitch-api health, CDN, and auth endpoints
 - [ ] Update url-shortener all public endpoints
 
-### Phase 4: Client-Side Updates (⚠️ PENDING)
+### Phase 4: Client-Side Updates (⚠ PENDING)
 - [ ] Update mods-hub client to decrypt all encrypted responses
 - [ ] Update other frontend clients to handle mandatory JWT encryption
 - [ ] Update script consumers to decrypt binary responses
@@ -388,19 +388,19 @@ For each service, test:
 ## Conclusion
 
 **Current State:**
-- ✅ **ALL SERVICES COMPLETE**: All 7 services updated to require JWT encryption
-- ✅ mods-api: All endpoints updated
-- ✅ otp-auth-service: All endpoints updated (with exceptions for auth flow)
-- ✅ customer-api: Health endpoint updated
-- ✅ game-api: Health endpoint updated
-- ✅ chat-signaling: All endpoints updated
-- ✅ twitch-api: All endpoints updated
-- ✅ url-shortener: All endpoints updated
+- ✓ **ALL SERVICES COMPLETE**: All 7 services updated to require JWT encryption
+- ✓ mods-api: All endpoints updated
+- ✓ otp-auth-service: All endpoints updated (with exceptions for auth flow)
+- ✓ customer-api: Health endpoint updated
+- ✓ game-api: Health endpoint updated
+- ✓ chat-signaling: All endpoints updated
+- ✓ twitch-api: All endpoints updated
+- ✓ url-shortener: All endpoints updated
 
 **Required State:**
-- ✅ ALL services: JWT encryption is MANDATORY for ALL endpoints (with documented exceptions)
-- ✅ ALL binary responses: Use JWT binary encryption
-- ✅ NO service key fallback: JWT is the only encryption method
-- ✅ Authentication endpoints: Use `requireJWT: false` (chicken-and-egg problem)
+- ✓ ALL services: JWT encryption is MANDATORY for ALL endpoints (with documented exceptions)
+- ✓ ALL binary responses: Use JWT binary encryption
+- ✓ NO service key fallback: JWT is the only encryption method
+- ✓ Authentication endpoints: Use `requireJWT: false` (chicken-and-egg problem)
 
 **Security Principle**: JWT encryption/decryption is the foundation. All other security layers (CORS, authentication, authorization) are built on top of this mandatory requirement.

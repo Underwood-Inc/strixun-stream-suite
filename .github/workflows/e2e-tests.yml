@@ -65,17 +65,17 @@ jobs:
           E2E_TEST_JWT_TOKEN: ${{ secrets.E2E_TEST_JWT_TOKEN }}
           E2E_TEST_OTP_CODE: ${{ secrets.E2E_TEST_OTP_CODE }}
         run: |
-          echo "[INFO] Running E2E tests against local workers..."
-          echo "[INFO] Using GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE"
-          echo "[INFO] Local workers will start automatically via playwright.config.ts"
+          echo "ℹ Running E2E tests against local workers..."
+          echo "ℹ Using GitHub secrets for E2E_TEST_JWT_TOKEN and E2E_TEST_OTP_CODE"
+          echo "ℹ Local workers will start automatically via playwright.config.ts"
           if [ -z "$E2E_TEST_JWT_TOKEN" ]; then
-            echo "[ERROR] E2E_TEST_JWT_TOKEN secret is not set in GitHub repository secrets"
+            echo "✗ E2E_TEST_JWT_TOKEN secret is not set in GitHub repository secrets"
             exit 1
           fi
           if [ -z "$E2E_TEST_OTP_CODE" ]; then
-            echo "[ERROR] E2E_TEST_OTP_CODE secret is not set in GitHub repository secrets"
-            echo "[ERROR] Please set E2E_TEST_OTP_CODE in GitHub repository secrets (Settings > Secrets and variables > Actions)"
-            echo "[ERROR] Example value: 123456789 (9-digit OTP code for testing)"
+            echo "✗ E2E_TEST_OTP_CODE secret is not set in GitHub repository secrets"
+            echo "✗ Please set E2E_TEST_OTP_CODE in GitHub repository secrets (Settings > Secrets and variables > Actions)"
+            echo "✗ Example value: 123456789 (9-digit OTP code for testing)"
             exit 1
           fi
           pnpm test:e2e
@@ -104,7 +104,7 @@ jobs:
           echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" == "success" ]; then
-            echo "[SUCCESS] All E2E tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "✓ All E2E tests passed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Tests ran against local workers (wrangler dev):" >> $GITHUB_STEP_SUMMARY
             echo "- OTP Auth Service (localhost:8787)" >> $GITHUB_STEP_SUMMARY
@@ -115,7 +115,7 @@ jobs:
             echo "- Chat Signaling (localhost:8792)" >> $GITHUB_STEP_SUMMARY
             echo "- URL Shortener (localhost:8793)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "[ERROR] E2E tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "✗ E2E tests failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Check the uploaded artifacts for:" >> $GITHUB_STEP_SUMMARY
             echo "- Test report: playwright-report/" >> $GITHUB_STEP_SUMMARY

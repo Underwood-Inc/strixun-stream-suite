@@ -399,8 +399,8 @@ export async function handleAuthRoutes(
             request,
             env,
             { 
-                requireJWT: false, // ⚠️ Exception - part of auth flow (OTP endpoints don't require JWT)
-                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+                requireJWT: false, // ⚠ Exception - part of auth flow (OTP endpoints don't require JWT)
+                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
             }
         );
         return { response: encryptedResult.response, customerId };
@@ -429,8 +429,8 @@ export async function handleAuthRoutes(
             request,
             env,
             { 
-                requireJWT: false, // ⚠️ CRITICAL - Returns JWT token (chicken-and-egg problem)
-                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+                requireJWT: false, // ⚠ CRITICAL - Returns JWT token (chicken-and-egg problem)
+                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
             }
         );
         return { response: encryptedResult.response, customerId };
@@ -524,8 +524,8 @@ export async function handleAuthRoutes(
             request,
             env,
             { 
-                requireJWT: false, // ⚠️ Exception - may return JWT
-                allowServiceCallsWithoutJWT: true // ⚠️ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
+                requireJWT: false, // ⚠ Exception - may return JWT
+                allowServiceCallsWithoutJWT: true // ⚠ CRITICAL - Allow service-to-service calls (OTP is exception to always-encrypted rule)
             }
         );
         return { response: encryptedResult.response, customerId };

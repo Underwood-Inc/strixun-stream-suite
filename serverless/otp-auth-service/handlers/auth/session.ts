@@ -1,6 +1,6 @@
 /**
  * Session Management Handlers
- * Handles user session endpoints: me, logout, refresh
+ * Handles customer session endpoints: me, logout, refresh
  */
 
 import { getCustomerKey } from '../../services/customer.js';
@@ -142,7 +142,7 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
         
         // Build response with ONLY JWT payload data
         // DO NOT include email - it's sensitive OTP email data
-        // CRITICAL: Use customerId as the ONLY identifier - NO userId
+        // CRITICAL: Use customerId as the ONLY identifier - NO customerId
         const responseData: any = {
             id: customerId, // customerId is the ONLY identifier
             customerId: customerId, // MANDATORY
@@ -373,7 +373,7 @@ export async function handleRefresh(request: Request, env: Env): Promise<Respons
         if (sessionIP !== 'unknown') {
             await storeIPSessionMapping(
                 sessionIP,
-                customerId, // Use customerId, not userId
+                customerId, // Use customerId, not customerId
                 customerId,
                 sessionKey,
                 expiresAt.toISOString(),

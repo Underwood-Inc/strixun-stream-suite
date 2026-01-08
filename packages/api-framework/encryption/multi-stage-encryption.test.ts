@@ -529,7 +529,7 @@ describe('Multi-Stage Encryption System', () => {
   });
 
   describe('Multi-Stage Encryption - Real-World Scenarios', () => {
-    it('should handle user email encryption scenario', async () => {
+    it('should handle Customer email encryption scenario', async () => {
       const userEmail = 'user@example.com';
       const ownerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImV4cCI6OTk5OTk5OTk5OX0.token';
       const requestKey = generateRequestKey();

@@ -31,7 +31,7 @@ export async function handleUploadVariantVersion(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -68,8 +68,7 @@ export async function handleUploadVariantVersion(
 
         // CRITICAL: Validate customerId is present
         if (!auth.customerId) {
-            console.error('[UploadVariantVersion] CRITICAL: customerId is null for authenticated user:', {
-                userId: auth.userId,
+            console.error('[UploadVariantVersion] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting variant version upload - customerId is required'
             });
@@ -106,7 +105,7 @@ export async function handleUploadVariantVersion(
         }
 
         // Check authorization (must be mod author)
-        if (mod.authorId !== auth.userId) {
+        if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to upload versions for this variant');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -343,7 +342,7 @@ export async function handleUploadVariantVersion(
                 modId,
                 variantId,
                 variantVersionId,
-                uploadedBy: auth.userId,
+                uploadedBy: auth.customerId,
                 uploadedAt: now,
                 encrypted: 'true',
                 encryptionFormat: encryptionFormat,

@@ -62,7 +62,7 @@ describe('Authentication Flow Integration', () => {
 
             // Step 3: Verify authentication succeeded
             expect(auth).not.toBeNull();
-            expect(auth?.userId).toBe(userId);
+            expect(auth?.customerId).toBe(userId);
             expect(auth?.email).toBe(email);
             expect(auth?.customerId).toBe(customerId);
             expect(auth?.jwtToken).toBe(token);
@@ -171,7 +171,7 @@ describe('Authentication Flow Integration', () => {
 
             // Should still authenticate, but customerID should be null
             expect(auth).not.toBeNull();
-            expect(auth?.userId).toBe(userId);
+            expect(auth?.customerId).toBe(userId);
             expect(auth?.customerId).toBeNull();
         });
     });
@@ -205,7 +205,7 @@ describe('Authentication Flow Integration', () => {
 
             // Step 3: Verify API access is granted
             expect(auth).not.toBeNull();
-            expect(auth?.userId).toBe(userId);
+            expect(auth?.customerId).toBe(userId);
             expect(auth?.email).toBe(email);
             expect(auth?.customerId).toBe(customerId);
 
@@ -219,7 +219,7 @@ describe('Authentication Flow Integration', () => {
 
             const secondAuth = await authenticateRequest(secondRequest, env);
             expect(secondAuth).not.toBeNull();
-            expect(secondAuth?.userId).toBe(userId);
+            expect(secondAuth?.customerId).toBe(userId);
         });
     });
 

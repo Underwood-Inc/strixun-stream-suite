@@ -75,11 +75,10 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
             restored: boolean; 
             access_token?: string; 
             token?: string; 
-            userId?: string; 
+            customerId: string; 
             sub?: string; 
             email?: string; 
             displayName?: string | null; 
-            customerId?: string | null; 
             expiresAt?: string;
             isSuperAdmin?: boolean;
         }>('/auth/restore-session', {});
@@ -97,7 +96,7 @@ export async function restoreSessionFromBackend(config?: AuthStoreConfig): Promi
         const data = response.data;
         if (data.restored && data.access_token) {
             // Session restored! Return user data
-            const userId = data.userId || data.sub;
+            const userId = data.customerId || data.sub;
             const email = data.email;
             const token = data.access_token || data.token;
             const expiresAt = data.expiresAt;
@@ -233,7 +232,7 @@ export async function validateTokenWithBackend(
 export async function fetchCustomerInfo(
     token: string,
     config?: AuthStoreConfig
-): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId?: string | null } | null> {
+): Promise<{ isSuperAdmin: boolean; displayName?: string | null; customerId: string } | null> {
     // CRITICAL: Validate token exists before making request
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
         console.error('[Auth] fetchCustomerInfo called with invalid token:', { 
@@ -285,7 +284,7 @@ export async function fetchCustomerInfo(
         const response = await authClient.get<{ 
             isSuperAdmin?: boolean; 
             displayName?: string | null; 
-            customerId?: string | null; 
+            customerId: string; 
             [key: string]: any;
         }>('/auth/me', undefined, {
             metadata: {

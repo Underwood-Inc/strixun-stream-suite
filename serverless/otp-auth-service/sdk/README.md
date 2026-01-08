@@ -29,7 +29,7 @@ const auth = await client.verifyOTP('user@example.com', '123456');
 console.log('Token:', auth.token);  // This is a JWT token, NOT the API key
 
 // Get user info (uses JWT token for authentication)
-const user = await client.getMe(auth.token);
+const customer = await client.getMe(auth.token);
 console.log('User:', user);
 
 // Logout (uses JWT token for authentication)

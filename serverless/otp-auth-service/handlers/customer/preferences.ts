@@ -55,11 +55,10 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
 
     // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
     const emailLower = payload.email?.toLowerCase().trim();
-    let customerId = payload.customerId || null;
+    let resolvedCustomerId = payload.customerId || customerId || null;
     if (emailLower) {
       try {
-        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-        customerId = resolvedCustomerId;
+        resolvedCustomerId = await ensureCustomerAccount(emailLower, resolvedCustomerId, env);
       } catch (error) {
         console.error(`[Preferences] Failed to ensure customer account for ${emailLower}:`, error);
         return new Response(JSON.stringify({ 
@@ -72,7 +71,7 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
       }
     }
 
-    const preferences = await getCustomerPreferences(userId, customerId, env);
+    const preferences = await getCustomerPreferences(resolvedCustomerId, resolvedCustomerId, env);
 
     // Generate request ID for root config
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -80,7 +79,7 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
     return new Response(
       JSON.stringify({
         id: requestId,
-        customerId: customerId,
+        customerId: resolvedCustomerId,
         ...preferences,
       }),
       {
@@ -102,7 +101,7 @@ export async function handleGetPreferences(request: Request, env: Env): Promise<
 }
 
 /**
- * Update user preferences
+ * Update customer preferences
  * PUT /customer/me/preferences
  */
 export async function handleUpdatePreferences(request: Request, env: Env): Promise<Response> {
@@ -127,9 +126,9 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
       });
     }
 
-    const userId = payload.userId || payload.sub;
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'User ID not found in token' }), {
+    const customerId = payload.customerId || payload.userId || payload.sub;
+    if (!customerId) {
+      return new Response(JSON.stringify({ error: 'Customer ID not found in token' }), {
         status: 401,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
@@ -137,11 +136,10 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
 
     // BUSINESS RULE: Customer account MUST ALWAYS be created - ensureCustomerAccount throws if it fails
     const emailLower = payload.email?.toLowerCase().trim();
-    let customerId = payload.customerId || null;
+    let resolvedCustomerId = payload.customerId || customerId || null;
     if (emailLower) {
       try {
-        const resolvedCustomerId = await ensureCustomerAccount(emailLower, customerId, env);
-        customerId = resolvedCustomerId;
+        resolvedCustomerId = await ensureCustomerAccount(emailLower, resolvedCustomerId, env);
       } catch (error) {
         console.error(`[Preferences] Failed to ensure customer account for ${emailLower}:`, error);
         return new Response(JSON.stringify({ 
@@ -185,7 +183,7 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
     // Note: displayName updates should go through the display name endpoint
     // to handle history tracking and monthly limits
 
-    const updated = await updateCustomerPreferences(userId, customerId, updates, env);
+    const updated = await updateCustomerPreferences(resolvedCustomerId, resolvedCustomerId, updates, env);
 
     // Generate request ID for root config
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -193,7 +191,7 @@ export async function handleUpdatePreferences(request: Request, env: Env): Promi
     return new Response(
       JSON.stringify({
         id: requestId,
-        customerId: customerId,
+        customerId: resolvedCustomerId,
         ...updated,
       }),
       {

@@ -2,7 +2,7 @@
  * Svelte adapter for auth store
  * Use this in Svelte projects
  * 
- * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
+ * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
  */
 
 import { writable, derived, get, type Writable, type Readable } from 'svelte/store';
@@ -221,7 +221,7 @@ export function createAuthStore(config?: AuthStoreConfig) {
                         try {
                             const oldData = JSON.parse(stored) as any;
                             customerData = {
-                                customerId: oldData.customerId || oldData.userId || oldData.sub || '',
+                                customerId: oldData.customerId || oldData.customerId || oldData.sub || '',
                                 email: oldData.email,
                                 displayName: oldData.displayName,
                                 token: oldData.token,

@@ -59,14 +59,14 @@ jobs:
           echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" == "success" ]; then
-            echo "[SUCCESS] All integration tests passed!" >> $GITHUB_STEP_SUMMARY
+            echo "✓ All integration tests passed!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Customer API URL:** \`${{ secrets.CUSTOMER_API_URL || 'https://strixun-customer-api.strixuns-script-suite.workers.dev' }}\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Integration between otp-auth-service and customer-api is working correctly." >> $GITHUB_STEP_SUMMARY
             echo "::notice::Integration tests passed - OTP Auth Service and Customer API integration is working"
           else
-            echo "[ERROR] Integration tests failed!" >> $GITHUB_STEP_SUMMARY
+            echo "✗ Integration tests failed!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Possible issues:**" >> $GITHUB_STEP_SUMMARY
             echo "- Customer API URL may be incorrect" >> $GITHUB_STEP_SUMMARY

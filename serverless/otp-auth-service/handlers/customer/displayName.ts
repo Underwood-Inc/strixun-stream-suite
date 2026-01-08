@@ -27,13 +27,12 @@ interface AuthResult {
     authenticated: boolean;
     status?: number;
     error?: string;
-    userId?: string;
+    customerId?: string;
     email?: string;
-    customerId?: string | null;
 }
 
 /**
- * Verify JWT token and extract user info
+ * Verify JWT token and extract customer info
  */
 async function authenticateRequest(request: Request, env: Env): Promise<AuthResult> {
     const authHeader = request.headers.get('Authorization');
@@ -55,9 +54,8 @@ async function authenticateRequest(request: Request, env: Env): Promise<AuthResu
 
     return {
         authenticated: true,
-        userId: payload.userId || payload.sub,
+        customerId: payload.customerId || payload.userId || payload.sub,
         email: payload.email,
-        customerId: payload.customerId || null,
     };
 }
 

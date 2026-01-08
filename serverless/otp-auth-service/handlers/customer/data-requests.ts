@@ -26,15 +26,14 @@ interface Env {
 
 
 /**
- * Authenticate user request
+ * Authenticate customer request
  */
-async function authenticateUser(request: Request, env: Env): Promise<{
+async function authenticateCustomer(request: Request, env: Env): Promise<{
     authenticated: boolean;
     status?: number;
     error?: string;
-    userId?: string;
+    customerId?: string;
     email?: string;
-    customerId?: string | null;
     token?: string;
 }> {
     const authHeader = request.headers.get('Authorization');
@@ -53,20 +52,19 @@ async function authenticateUser(request: Request, env: Env): Promise<{
 
     return {
         authenticated: true,
-        userId: payload.userId || payload.sub,
+        customerId: payload.customerId || payload.userId || payload.sub,
         email: payload.email,
-        customerId: payload.customerId || null,
         token,
     };
 }
 
 /**
- * Get user's data requests (requests for this user's data)
+ * Get customer's data requests (requests for this customer's data)
  * GET /customer/data-requests
  */
-export async function handleGetUserDataRequests(request: Request, env: Env): Promise<Response> {
+export async function handleGetCustomerDataRequests(request: Request, env: Env): Promise<Response> {
     try {
-        const auth = await authenticateUser(request, env);
+        const auth = await authenticateCustomer(request, env);
         if (!auth.authenticated) {
             return new Response(JSON.stringify({ error: auth.error }), {
                 status: auth.status || 401,
@@ -74,10 +72,10 @@ export async function handleGetUserDataRequests(request: Request, env: Env): Pro
             });
         }
 
-        // Get user from KV to ensure they exist
+        // Get customer from KV to ensure they exist
         const emailHash = await hashEmail(auth.email!);
-        const userKey = getCustomerKey(auth.customerId, `user_${emailHash}`);
-        const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as User | null;
+        const customerKey = getCustomerKey(auth.customerId, `customer_${emailHash}`);
+        const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as Customer | null;
 
         if (!user) {
             return new Response(JSON.stringify({ error: 'User not found' }), {

@@ -831,8 +831,8 @@ export class APIClient {
     if (response.status < 400 && response.data) {
       const data = response.data as Partial<T>;
       const rootConfig = {
-        id: data.id || this.requestContext.user?.id || this.generateId(),
-        customerId: data.customerId || this.requestContext.user?.customerId || '',
+        id: data.id || this.requestContext.customer?.id || this.generateId(),
+        customerId: data.customerId || this.requestContext.customer?.customerId || '',
       };
 
       // Ensure root fields are present
@@ -861,7 +861,7 @@ export class APIClient {
   /**
    * Get user context
    */
-  getUser(): RequestContext['user'] {
+  getUser(): RequestContext['customer'] {
     return this.requestContext.user;
   }
 

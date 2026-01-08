@@ -58,7 +58,7 @@ const Loading = styled.div`
 export function ModManagePage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuthStore();
+    const { customer, isAuthenticated } = useAuthStore();
     const { hasPermission, isLoading: permissionLoading } = useUploadPermission();
     const { data, isLoading } = useModDetail(slug || '');
     const updateMod = useUpdateMod();
@@ -96,7 +96,7 @@ export function ModManagePage() {
             </Unauthorized>
         );
     }
-    if (data.mod.authorId !== user?.userId) {
+    if (data.mod.authorId !== customer?.customerId) {
         return (
             <Unauthorized>
                 <UnauthorizedTitle>Permission Denied</UnauthorizedTitle>
@@ -106,7 +106,7 @@ export function ModManagePage() {
     }
 
     // CRITICAL: Check for customerId - required for mod operations
-    if (!user?.customerId) {
+    if (!customer?.customerId) {
         return (
             <Unauthorized>
                 <UnauthorizedTitle>Customer Account Required</UnauthorizedTitle>

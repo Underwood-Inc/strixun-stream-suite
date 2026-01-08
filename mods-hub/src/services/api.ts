@@ -12,7 +12,7 @@ import type {
     VariantVersion,
     VariantVersionUploadRequest
 } from '../types/mod';
-import type { UpdateUserRequest } from '../types/user';
+import type { UpdateCustomerRequest } from '../types/user';
 import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
 /**
@@ -47,8 +47,8 @@ const createClient = () => {
                 try {
                     const { useAuthStore } = await import('../stores/auth');
                     const store = useAuthStore.getState();
-                    if (store.user?.token) {
-                        const rawToken = store.user.token;
+                    if (store.customer?.token) {
+                        const rawToken = store.customer.token;
                         const token = rawToken.trim();
                         const wasTrimmed = rawToken !== token;
                         
@@ -74,13 +74,13 @@ const createClient = () => {
                     const authStorage = localStorage.getItem('auth-storage');
                     if (authStorage) {
                         const parsed = JSON.parse(authStorage);
-                        // Zustand persist with partialize stores as { user: { token: '...' } }
+                        // Zustand persist with partialize stores as { customer: { token: '...' } }
                         let token: string | null = null;
-                        if (parsed?.user?.token) {
-                            token = parsed.user.token;
-                        } else if (parsed?.state?.user?.token) {
+                        if (parsed?.customer?.token) {
+                            token = parsed.customer.token;
+                        } else if (parsed?.state?.customer?.token) {
                             // Some Zustand versions might wrap in state
-                            token = parsed.state.user.token;
+                            token = parsed.state.customer.token;
                         }
                         
                         if (token) {
@@ -196,8 +196,8 @@ export async function getAuthToken(): Promise<string | null> {
     try {
         const { useAuthStore } = await import('../stores/auth');
         const store = useAuthStore.getState();
-        if (store.user?.token) {
-            const token = store.user.token.trim();
+        if (store.customer?.token) {
+            const token = store.customer.token.trim();
             if (token && token.length > 0) {
                 return token;
             }
@@ -212,10 +212,10 @@ export async function getAuthToken(): Promise<string | null> {
         if (authStorage) {
             const parsed = JSON.parse(authStorage);
             let token: string | null = null;
-            if (parsed?.user?.token) {
-                token = parsed.user.token;
-            } else if (parsed?.state?.user?.token) {
-                token = parsed.state.user.token;
+            if (parsed?.customer?.token) {
+                token = parsed.customer.token;
+            } else if (parsed?.state?.customer?.token) {
+                token = parsed.state.customer.token;
             }
             
             if (token) {
@@ -478,14 +478,14 @@ export async function submitModRating(
 }
 
 /**
- * List users (admin only)
+ * List customers (admin only)
  */
-export async function listUsers(filters: {
+export async function listCustomers(filters: {
     page?: number;
     pageSize?: number;
     search?: string;
 }): Promise<{
-    users: any[];
+    customers: any[];
     total: number;
     page: number;
     pageSize: number;
@@ -497,34 +497,34 @@ export async function listUsers(filters: {
     
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const response = await api.get<{
-        users: any[];
+        customers: any[];
         total: number;
         page: number;
         pageSize: number;
-    }>(`/admin/users${queryString}`);
+    }>(`/admin/customers${queryString}`);
     return response.data;
 }
 
 /**
- * Get user details (admin only)
+ * Get customer details (admin only)
  */
-export async function getUserDetails(userId: string): Promise<any> {
-    const response = await api.get<any>(`/admin/users/${userId}`);
+export async function getCustomerDetails(customerId: string): Promise<any> {
+    const response = await api.get<any>(`/admin/customers/${customerId}`);
     return response.data;
 }
 
 /**
- * Update user (admin only)
+ * Update customer (admin only)
  */
-export async function updateUser(userId: string, updates: UpdateUserRequest): Promise<any> {
-    const response = await api.put<any>(`/admin/users/${userId}`, updates);
+export async function updateCustomer(customerId: string, updates: UpdateCustomerRequest): Promise<any> {
+    const response = await api.put<any>(`/admin/customers/${customerId}`, updates);
     return response.data;
 }
 
 /**
- * Get user's mods (admin only)
+ * Get customer's mods (admin only)
  */
-export async function getUserMods(userId: string, params: {
+export async function getCustomerMods(customerId: string, params: {
     page?: number;
     pageSize?: number;
 }): Promise<{
@@ -543,12 +543,12 @@ export async function getUserMods(userId: string, params: {
         total: number;
         page: number;
         pageSize: number;
-    }>(`/admin/users/${userId}/mods${queryString}`);
+    }>(`/admin/customers/${customerId}/mods${queryString}`);
     return response.data;
 }
 
 /**
- * Check upload permission (authenticated users)
+ * Check upload permission (authenticated customers)
  */
 export async function checkUploadPermission(): Promise<{ hasPermission: boolean }> {
     const response = await api.get<{ hasPermission: boolean }>('/mods/permissions/me');
@@ -751,15 +751,15 @@ export interface R2FileAssociatedVersion {
     dependencies?: Array<{ modId: string; version?: string; required: boolean }>;
 }
 
-export interface R2FileAssociatedUser {
-    userId: string;
+export interface R2FileAssociatedCustomer {
+    customerId: string;
     displayName?: string | null;
 }
 
 export interface R2FileAssociatedData {
     mod?: R2FileAssociatedMod;
     version?: R2FileAssociatedVersion;
-    uploadedBy?: R2FileAssociatedUser;
+    uploadedBy?: R2FileAssociatedCustomer;
     isThumbnail?: boolean;
     isModFile?: boolean;
 }

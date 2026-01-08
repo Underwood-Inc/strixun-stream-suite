@@ -17,7 +17,7 @@ export async function handleGetModReview(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
         // Must be authenticated
@@ -95,7 +95,7 @@ export async function handleGetModReview(
         
         // Check access: only admin or uploader can access review page
         const isAdmin = auth.email && await isSuperAdminEmail(auth.email, env);
-        const isUploader = mod.authorId === auth.userId;
+        const isUploader = mod.authorId === auth.customerId;
 
         if (!isAdmin && !isUploader) {
             const rfcError = createError(

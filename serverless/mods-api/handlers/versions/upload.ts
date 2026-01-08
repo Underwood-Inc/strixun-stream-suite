@@ -30,7 +30,7 @@ export async function handleUploadVersion(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Check if uploads are globally enabled
@@ -66,8 +66,7 @@ export async function handleUploadVersion(
 
         // CRITICAL: Validate customerId is present - required for data scoping and display name lookups
         if (!auth.customerId) {
-            console.error('[UploadVersion] CRITICAL: customerId is null for authenticated user:', {
-                userId: auth.userId,
+            console.error('[UploadVersion] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting version upload - customerId is required for data scoping and display name lookups'
             });
@@ -105,7 +104,7 @@ export async function handleUploadVersion(
         }
 
         // Check authorization
-        if (mod.authorId !== auth.userId) {
+        if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to upload versions for this mod');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
@@ -122,7 +121,7 @@ export async function handleUploadVersion(
         // Check upload quota (skip for super admins)
         const isSuperAdmin = await isSuperAdminEmail(auth.email, env);
         if (!isSuperAdmin) {
-            const quotaCheck = await checkUploadQuota(auth.userId, env);
+            const quotaCheck = await checkUploadQuota(auth.customerId, env);
             if (!quotaCheck.allowed) {
                 const quotaMessage = quotaCheck.reason === 'daily_quota_exceeded'
                     ? `Daily upload limit exceeded. You have uploaded ${quotaCheck.usage.daily} of ${quotaCheck.quota.maxUploadsPerDay} allowed uploads today.`
@@ -379,7 +378,7 @@ export async function handleUploadVersion(
             customMetadata: addR2SourceMetadata({
                 modId,
                 versionId,
-                uploadedBy: auth.userId,
+                uploadedBy: auth.customerId,
                 uploadedAt: now,
                 encrypted: 'true', // Mark as encrypted
                 encryptionFormat: encryptionFormat, // 'binary-v4' or 'json-v3'
@@ -444,7 +443,7 @@ export async function handleUploadVersion(
 
         // Track successful upload (skip for super admins)
         if (!isSuperAdmin) {
-            await trackUpload(auth.userId, env);
+            await trackUpload(auth.customerId, env);
         }
 
         const corsHeaders = createCORSHeaders(request, {

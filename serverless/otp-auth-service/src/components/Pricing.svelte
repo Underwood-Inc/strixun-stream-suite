@@ -47,7 +47,7 @@
           <li>✓ Basic email templates</li>
           <li>✓ API key access</li>
           <li>✓ Community support</li>
-          <li>✓ 100 max users</li>
+          <li>✓ 100 max customers</li>
         </ul>
         <a href="/dashboard" class="btn btn-secondary">Get Started Free</a>
       </div>
@@ -82,7 +82,7 @@
               <li>✓ Custom email templates</li>
               <li>✓ Webhooks</li>
               <li>✓ Email support</li>
-              <li>✓ <ObfuscatedText text="1,000" length={5} /> max users</li>
+              <li>✓ <ObfuscatedText text="1,000" length={5} /> max customers</li>
               <li>✓ Custom domain</li>
             </ul>
             <button class="btn btn-secondary" disabled>Coming Soon</button>
@@ -120,7 +120,7 @@
               <li>✓ All Starter features</li>
               <li>✓ Analytics dashboard</li>
               <li>✓ Priority support</li>
-              <li>✓ <ObfuscatedText text="10,000" length={6} /> max users</li>
+              <li>✓ <ObfuscatedText text="10,000" length={6} /> max customers</li>
               <li>✓ SSO support</li>
               <li>✓ SLA <ObfuscatedText text="99.9" length={4} />%</li>
             </ul>
@@ -141,7 +141,7 @@
         <div class="pricing-body">
           <ul class="features">
             <li>✓ Unlimited OTP requests</li>
-            <li>✓ Unlimited users</li>
+            <li>✓ Unlimited customers</li>
             <li>✓ All Pro features</li>
             <li>✓ Dedicated support</li>
             <li>✓ Custom SLA</li>

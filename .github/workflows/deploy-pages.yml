@@ -96,12 +96,12 @@ jobs:
           if [ -d "dist/stream-suite" ] && [ "$(ls -A dist/stream-suite 2>/dev/null)" ]; then
             echo "Copying files from dist/stream-suite/ to dist/..."
             cp -r dist/stream-suite/. dist/ || cp -r dist/stream-suite/* dist/
-            echo "✅ Files copied successfully"
+            echo "✓ Files copied successfully"
             # Remove the stream-suite subdirectory after copying
             rm -rf dist/stream-suite
-            echo "✅ Cleaned up dist/stream-suite/"
+            echo "✓ Cleaned up dist/stream-suite/"
           else
-            echo "⚠️ Warning: dist/stream-suite/ does not exist or is empty"
+            echo "⚠ Warning: dist/stream-suite/ does not exist or is empty"
             echo "Build may have failed or output directory changed"
           fi
         
@@ -135,7 +135,7 @@ jobs:
           
           # Validate WORKER_NAME - if empty or invalid, use fallback
           if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "" ]; then
-            echo "⚠️ Warning: Could not read worker name from wrangler.toml, using fallback"
+            echo "⚠ Warning: Could not read worker name from wrangler.toml, using fallback"
             WORKER_NAME="strixun-twitch-api"
           fi
           
@@ -147,7 +147,7 @@ jobs:
           
           # CRITICAL: Validate SUBDOMAIN to prevent malformed URLs
           if [ -z "$SUBDOMAIN" ] || [ "$SUBDOMAIN" = "" ]; then
-            echo "⚠️ Warning: CF_WORKERS_SUBDOMAIN is empty, using fallback"
+            echo "⚠ Warning: CF_WORKERS_SUBDOMAIN is empty, using fallback"
             SUBDOMAIN="strixuns-script-suite"
           fi
           
@@ -156,8 +156,8 @@ jobs:
           
           # CRITICAL: Validate final URL format before injection
           if [[ "$WORKER_URL" =~ ^https://\..*\.workers\.dev$ ]] || [[ "$WORKER_URL" =~ ^https://.*\.\..*\.workers\.dev$ ]]; then
-            echo "❌ ERROR: Malformed WORKER_URL detected: $WORKER_URL"
-            echo "❌ This would cause browser lockup. Aborting deployment."
+            echo "✗ ERROR: Malformed WORKER_URL detected: $WORKER_URL"
+            echo "✗ This would cause browser lockup. Aborting deployment."
             exit 1
           fi
           
@@ -191,17 +191,17 @@ jobs:
           # CRITICAL: Validate all URLs before injection to prevent malformed URLs
           # Check for malformed patterns: starts with dot, double dots, etc.
           if [[ "$WORKER_URL" =~ ^https?://\. ]] || [[ "$WORKER_URL" =~ \.\. ]] || [[ -z "$WORKER_URL" ]]; then
-            echo "❌ ERROR: Invalid WORKER_URL format: $WORKER_URL"
+            echo "✗ ERROR: Invalid WORKER_URL format: $WORKER_URL"
             exit 1
           fi
           
           if [[ "$OTP_AUTH_URL" =~ ^https?://\. ]] || [[ "$OTP_AUTH_URL" =~ \.\. ]] || [[ -z "$OTP_AUTH_URL" ]]; then
-            echo "❌ ERROR: Invalid OTP_AUTH_URL format: $OTP_AUTH_URL"
+            echo "✗ ERROR: Invalid OTP_AUTH_URL format: $OTP_AUTH_URL"
             exit 1
           fi
           
           if [[ "$PAGES_URL" =~ ^https?://\. ]] || [[ "$PAGES_URL" =~ \.\. ]] || [[ -z "$PAGES_URL" ]]; then
-            echo "❌ ERROR: Invalid PAGES_URL format: $PAGES_URL"
+            echo "✗ ERROR: Invalid PAGES_URL format: $PAGES_URL"
             exit 1
           fi
           
@@ -217,11 +217,11 @@ jobs:
           
           # Verify injection succeeded by checking for remaining placeholders
           if grep -q "%%WORKER_API_URL%%" dist/config.js; then
-            echo "❌ ERROR: Failed to inject WORKER_API_URL - placeholder still present"
+            echo "✗ ERROR: Failed to inject WORKER_API_URL - placeholder still present"
             exit 1
           fi
           
-          echo "✅ Configuration injected into dist/config.js"
+          echo "✓ Configuration injected into dist/config.js"
           echo "Worker API URL: $WORKER_URL"
           echo "OTP Auth Service URL: $OTP_AUTH_URL"
           echo "GitHub Pages URL: $PAGES_URL"
@@ -236,7 +236,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Build failed - deployment prevented"
+          echo "✗ Build failed - deployment prevented"
           exit 1
 
   deploy:
@@ -253,7 +253,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check GitHub Pages settings and rollback if needed"
           exit 1
         
@@ -277,7 +277,7 @@ jobs:
           
           # Validate URL format
           if [[ "$WORKER_URL" =~ ^https://\..*\.workers\.dev$ ]] || [[ "$WORKER_URL" =~ ^https://.*\.\..*\.workers\.dev$ ]]; then
-            echo "⚠️ Warning: Malformed WORKER_URL in summary: $WORKER_URL"
+            echo "⚠ Warning: Malformed WORKER_URL in summary: $WORKER_URL"
             WORKER_URL="https://strixun-twitch-api.strixuns-script-suite.workers.dev"
           fi
           

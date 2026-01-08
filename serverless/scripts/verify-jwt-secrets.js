@@ -66,10 +66,10 @@ function main() {
     
     if (!result.found) {
       allExist = false;
-      console.log(`❌ ${service.name}: ${result.error}`);
+      console.log(`✗ ${service.name}: ${result.error}`);
     } else {
       const matches = result.value === EXPECTED_SECRET;
-      const status = matches ? '✅' : '⚠️';
+      const status = matches ? '✓' : '⚠';
       console.log(`${status} ${service.name}: ${matches ? 'MATCHES' : 'MISMATCH'}`);
       
       if (!matches) {
@@ -83,7 +83,7 @@ function main() {
   console.log('\n' + '='.repeat(60));
   
   if (!allExist) {
-    console.log('\n⚠️  Some services are missing JWT_SECRET in .dev.vars');
+    console.log('\n⚠  Some services are missing JWT_SECRET in .dev.vars');
     console.log('   Run the setup scripts to create them:');
     console.log('   - cd serverless/otp-auth-service && node scripts/setup-test-secrets.js');
     console.log('   - cd serverless/mods-api && node scripts/setup-test-secrets.js');
@@ -92,7 +92,7 @@ function main() {
   }
   
   if (!allMatch) {
-    console.log('\n❌ JWT_SECRET values do not match across services!');
+    console.log('\n✗ JWT_SECRET values do not match across services!');
     console.log('   This will cause authentication failures.');
     console.log('\n   To fix:');
     console.log('   1. Update all .dev.vars files to use the same JWT_SECRET');
@@ -103,7 +103,7 @@ function main() {
     process.exit(1);
   }
   
-  console.log('\n✅ All services are using matching JWT_SECRET values!');
+  console.log('\n✓ All services are using matching JWT_SECRET values!');
   console.log('   Authentication should work correctly.');
   process.exit(0);
 }

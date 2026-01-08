@@ -21,7 +21,7 @@ export async function handleDownloadVariant(
     env: Env,
     modId: string,
     variantId: string,
-    auth: { userId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
     console.log('[VariantDownload] handleDownloadVariant called:', { modId, variantId, hasAuth: !!auth, customerId: auth?.customerId });
     try {

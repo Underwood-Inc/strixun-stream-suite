@@ -44,24 +44,24 @@ function getIPSessionKey(ipHash: string): string {
  * Store IP-to-session mapping
  * 
  * @param ip - IP address
- * @param userId - User ID
- * @param customerId - Customer ID (optional)
+ * @param customerId - Customer ID (MANDATORY)
+ * @param customerIdForScope - Customer ID for scoping (optional)
  * @param sessionKey - Session storage key
  * @param expiresAt - Session expiration time
- * @param email - User email
+ * @param email - Customer email
  * @param env - Worker environment
  */
 export async function storeIPSessionMapping(
     ip: string,
-    userId: string,
-    customerId: string | null,
+    customerId: string,
+    customerIdForScope: string | null,
     sessionKey: string,
     expiresAt: string,
     email: string,
     env: Env
 ): Promise<void> {
     if (!ip || ip === 'unknown') {
-        console.warn(`[IP Session Index] Skipping IP mapping for unknown IP - userId: ${userId}, email: ${email}`);
+        console.warn(`[IP Session Index] Skipping IP mapping for unknown IP - customerId: ${customerId}, email: ${email}`);
         return; // Don't store unknown IPs
     }
     
@@ -72,14 +72,13 @@ export async function storeIPSessionMapping(
     const existing = await env.OTP_AUTH_KV.get(indexKey, { type: 'json' }) as IPSessionMapping[] | null;
     const sessions = existing || [];
     
-    // Remove existing session for this user (if any) to avoid duplicates
-    // This ensures that if a user logs in from the same IP multiple times,
+    // Remove existing session for this customer (if any) to avoid duplicates
+    // This ensures that if a customer logs in from the same IP multiple times,
     // we only keep the most recent session
-    const filtered = sessions.filter(s => s.userId !== userId);
+    const filtered = sessions.filter(s => s.customerId !== customerId);
     
     // Add new session
     const mapping: IPSessionMapping = {
-        userId,
         customerId,
         sessionKey,
         expiresAt,
@@ -97,7 +96,7 @@ export async function storeIPSessionMapping(
     // Store with TTL matching session expiration
     await env.OTP_AUTH_KV.put(indexKey, JSON.stringify(filtered), { expirationTtl: ttl });
     
-    console.log(`[IP Session Index] Stored IP mapping for IP: ${ip}, userId: ${userId}, email: ${email}, sessionKey: ${sessionKey}`);
+    console.log(`[IP Session Index] Stored IP mapping for IP: ${ip}, customerId: ${customerId}, email: ${email}, sessionKey: ${sessionKey}`);
 }
 
 /**

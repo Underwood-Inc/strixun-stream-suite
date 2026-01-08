@@ -110,5 +110,5 @@ const outputPath = path.join(__dirname, '..', 'landing-page-assets.js');
 console.log('💾 Writing assets module to disk...');
 fs.writeFileSync(outputPath, output);
 
-console.log(`✅ Generated landing-page-assets.js (${Object.keys(files).length} files)`);
+console.log(`✓ Generated landing-page-assets.js (${Object.keys(files).length} files)`);
 console.log('🎉 Build complete!');

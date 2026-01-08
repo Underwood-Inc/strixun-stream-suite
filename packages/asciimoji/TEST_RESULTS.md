@@ -1,8 +1,8 @@
 # ASCIImoji Test Results
 
-## Unit Tests - ✅ PASSING
+## Unit Tests - ✓ PASSING
 
-**Status:** ✅ All 14 unit tests passing
+**Status:** ✓ All 14 unit tests passing
 
 **Run Command:**
 ```bash
@@ -18,15 +18,15 @@ Test Files  1 passed (1)
      Tests  14 passed (14)
 ```
 
-## E2E Tests - ⚠️ IN PROGRESS
+## E2E Tests - ⚠ IN PROGRESS
 
-**Status:** ⚠️ Tests created but need build step for full execution
+**Status:** ⚠ Tests created but need build step for full execution
 
 **Current Status:**
-- ✅ Test suite structure complete (17 tests)
-- ✅ Unit tests passing (14/14)
-- ⚠️ E2E tests require build step (dist files needed for CDN tests)
-- ⚠️ E2E tests need TypeScript compilation fix for mixin tests
+- ✓ Test suite structure complete (17 tests)
+- ✓ Unit tests passing (14/14)
+- ⚠ E2E tests require build step (dist files needed for CDN tests)
+- ⚠ E2E tests need TypeScript compilation fix for mixin tests
 
 **Test Coverage:**
 - **Mixin Usage:** 8 tests
@@ -41,7 +41,7 @@ Test Files  1 passed (1)
 
 ## Pattern Count Verification
 
-**Total Patterns:** 153 ✅ Verified
+**Total Patterns:** 153 ✓ Verified
 
 All patterns are defined in `patterns.ts` and accessible via:
 - `getAsciimoji(pattern)` - Get ASCII art for a pattern
@@ -51,7 +51,7 @@ All patterns are defined in `patterns.ts` and accessible via:
 
 ## Build Status
 
-**Current:** ⚠️ Build script needs esbuild from workspace
+**Current:** ⚠ Build script needs esbuild from workspace
 
 **Fix Required:**
 - Option 1: Use workspace esbuild in build script
@@ -59,7 +59,7 @@ All patterns are defined in `patterns.ts` and accessible via:
 
 ## Summary
 
-✅ **Unit Tests:** 14/14 passing  
-⚠️ **E2E Tests:** Structure complete, needs build step  
-✅ **Pattern Count:** 153 verified  
-⚠️ **Build:** Needs esbuild configuration fix
+✓ **Unit Tests:** 14/14 passing  
+⚠ **E2E Tests:** Structure complete, needs build step  
+✓ **Pattern Count:** 153 verified  
+⚠ **Build:** Needs esbuild configuration fix

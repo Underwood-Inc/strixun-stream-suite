@@ -184,8 +184,7 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -255,8 +254,7 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -292,8 +290,7 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -322,8 +319,7 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ description: 'New description' }),
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -343,8 +339,7 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -376,8 +371,7 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -399,8 +393,7 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ title: 'New Mod Title' }),
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -441,8 +434,7 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -482,8 +474,7 @@ describe('Slug Release Integration', () => {
                 method: 'DELETE',
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };
@@ -505,8 +496,7 @@ describe('Slug Release Integration', () => {
                 body: JSON.stringify({ visibility: 'private' }),
             });
 
-            const auth = {
-                userId: mockUserId,
+            const auth = { customerId: mockUserId,
                 email: mockEmail,
                 customerId: mockCustomerId,
             };

@@ -68,7 +68,7 @@ export function LoginPage() {
 
         // Store customer data - ensure all required fields are present (matching main app)
         // CRITICAL: OTP Auth returns customerId, not userId
-        const customerId = data.customerId || data.userId; // Support both field names for backwards compatibility
+        const customerId = data.customerId || data.customerId; // Support both field names for backwards compatibility
         if (!customerId || !data.email || !data.token) {
             console.error('[Login] Missing required customer data:', data);
             handleLoginError('Invalid login response: missing required fields');
@@ -89,9 +89,9 @@ export function LoginPage() {
 
         console.log('[Login] ✓ Customer authenticated:', customerData.email, 'Token expires at:', expiresAt);
 
-        // Don't call fetchUserInfo immediately after login - let the Layout component handle it
+        // Don't call fetchCustomerInfo immediately after login - let the Layout component handle it
         // This avoids token mismatch issues that can occur when calling it too quickly after login
-        // The Layout component's restoreSession will fetch user info when it mounts, which gives
+        // The Layout component's restoreSession will fetch customer info when it mounts, which gives
         // the store time to fully update and ensures the token is properly set
 
         navigate('/');

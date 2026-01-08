@@ -21,12 +21,12 @@ const emojiReplacements = {
   '\u2049': '[!?]',  // ⁉️
   
   // Status indicators
-  '\u2705': '✓',        // ✅
-  '\u274C': '✗',     // ❌
-  '\u26A0\uFE0F': '⚠', // ⚠️
+  '\u2705': '✓',        // ✓
+  '\u274C': '✗',     // ✗
+  '\u26A0\uFE0F': '⚠', // ⚠
   '\u26A0': '⚠',    // ⚠ (without variation selector)
   '\u1F512': '[SECURITY]', // 🔒
-  '\u2139\uFE0F': 'ℹ', // ℹ️
+  '\u2139\uFE0F': 'ℹ', // ℹ
   '\u2139': 'ℹ',      // ℹ (without variation selector)
   '\u1F4DD': '[NOTE]',      // 📝
   '\u1F680': '[DEPLOY]',   // 🚀

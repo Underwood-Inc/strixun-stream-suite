@@ -124,14 +124,14 @@ jobs:
           echo "🔨 Building workspace dependencies required for mods-hub..."
           # Build OTP Login (required for mods-hub login page)
           echo "  → Building @strixun/otp-login..."
-          pnpm --filter "@strixun/otp-login" run build:react || (echo "⚠️  OTP Login build failed or skipped" && exit 1)
+          pnpm --filter "@strixun/otp-login" run build:react || (echo "⚠  OTP Login build failed or skipped" && exit 1)
           # Build Dice Board Game (required for mods-hub admin panel)
           echo "  → Building @strixun/dice-board-game..."
-          pnpm --filter "@strixun/dice-board-game" run build || (echo "⚠️  Dice Board Game build failed or skipped" && exit 1)
+          pnpm --filter "@strixun/dice-board-game" run build || (echo "⚠  Dice Board Game build failed or skipped" && exit 1)
           # Build API Framework (if it has a build script)
           echo "  → Building @strixun/api-framework (if needed)..."
-          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ️  API Framework has no build script (skipped)"
-          echo "✅ All workspace dependencies built successfully"
+          pnpm --filter "@strixun/api-framework" run build || echo "  ℹ  API Framework has no build script (skipped)"
+          echo "✓ All workspace dependencies built successfully"
       
       - name: Build Mods Hub
         working-directory: mods-hub
@@ -142,7 +142,7 @@ jobs:
         run: |
           # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
           if [ -z "$VITE_MODS_ENCRYPTION_KEY" ]; then
-            echo "❌ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "✗ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
             echo "Please add MODS_ENCRYPTION_KEY to your GitHub repository secrets."
             echo "This key must match the MODS_ENCRYPTION_KEY in the mods-api worker."
             exit 1
@@ -150,7 +150,7 @@ jobs:
           
           # Verify key length (should be at least 32 characters)
           if [ ${#VITE_MODS_ENCRYPTION_KEY} -lt 32 ]; then
-            echo "❌ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            echo "✗ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
             exit 1
           fi
           
@@ -163,7 +163,7 @@ jobs:
           if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
             echo "✓ Encryption key reference found in build output"
           else
-            echo "⚠️  WARNING: Encryption key reference not found in build - key may not be embedded"
+            echo "⚠  WARNING: Encryption key reference not found in build - key may not be embedded"
             echo "This could indicate the build didn't include the environment variable"
           fi
         
@@ -184,7 +184,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
         

@@ -235,7 +235,7 @@ function calculateRatingBreakdown(ratings: ModRating[]): number[] {
 }
 
 export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatingSubmit }: ModRatingsProps) {
-    const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, customer } = useAuthStore();
     const [selectedRating, setSelectedRating] = useState(0);
     const [hoveredRating, setHoveredRating] = useState(0);
     const [comment, setComment] = useState('');
@@ -250,9 +250,9 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
     const breakdown = calculateRatingBreakdown(ratings);
     const totalRatings = ratings.length;
     
-    // Check if user has already rated
-    const userRating = isAuthenticated && user 
-        ? ratings.find(r => r.userId === user.userId)
+    // Check if customer has already rated
+    const userRating = isAuthenticated && customer 
+        ? ratings.find(r => r.customerId === customer.customerId)
         : null;
     
     // Initialize form with user's existing rating when entering edit mode
@@ -275,7 +275,7 @@ export function ModRatings({ modId: _modId, ratings = [], averageRating, onRatin
         if (!selectedRating || !onRatingSubmit) return;
         
         // CRITICAL: Check for customerId - required for rating submission
-        if (!user?.customerId) {
+        if (!customer?.customerId) {
             alert('Your account is missing a customer association. This is required for rating submissions. Please contact support or try logging out and back in.');
             return;
         }

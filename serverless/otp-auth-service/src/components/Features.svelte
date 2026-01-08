@@ -45,7 +45,7 @@
     </div>
     <div class="feature-card">
       <h3><span class="feature-icon">◎</span> Global Scale</h3>
-      <p>Deployed on Cloudflare's edge network. Your users get the same fast experience anywhere in the world.</p>
+      <p>Deployed on Cloudflare's edge network. Your customers get the same fast experience anywhere in the world.</p>
     </div>
     <div class="feature-card">
       <h3><span class="feature-icon">▣</span> Open Source & Self-Hostable</h3>

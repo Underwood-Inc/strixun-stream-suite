@@ -1029,7 +1029,7 @@
         </div>
     </header>
 
-    <!-- API Usage Bar (shown for authenticated users) -->
+    <!-- API Usage Bar (shown for authenticated customers) -->
     <div id="api-usage-bar" class="api-usage-bar">
         <div class="api-usage-header">
             <div class="api-usage-title">ℹ API Usage</div>
@@ -1115,7 +1115,7 @@
             <div class="feature-card">
                 <div class="feature-icon">→</div>
                 <h3>Global Scale</h3>
-                <p>Deployed on Cloudflare's edge network. Your users get the same fast experience anywhere in the world.</p>
+                <p>Deployed on Cloudflare's edge network. Your customers get the same fast experience anywhere in the world.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">⊕</div>
@@ -1168,7 +1168,7 @@
                 </div>
                 <div class="security-item">
                     <h3>✓ GDPR Compliant</h3>
-                    <p>Data export and deletion endpoints. Complete user data portability and right to be forgotten.</p>
+                    <p>Data export and deletion endpoints. Complete customer data portability and right to be forgotten.</p>
                 </div>
             </div>
         </div>
@@ -1300,7 +1300,7 @@
     &lt;div id="welcome" style="display: none;" class="welcome"&gt;
       &lt;h1&gt;Welcome!&lt;/h1&gt;
       &lt;p&gt;You're successfully logged in.&lt;/p&gt;
-      &lt;p id="user-email"&gt;&lt;/p&gt;
+      &lt;p id="customer-email"&gt;&lt;/p&gt;
       &lt;button onclick="logout()" style="margin-top: 1rem;"&gt;Logout&lt;/button&gt;
     &lt;/div&gt;
   &lt;/div&gt;
@@ -1398,10 +1398,10 @@
       errorDiv.textContent = '';
       
       try {
-        const user = await verifyOTP(currentEmail, otp);
+        const customer = await verifyOTP(currentEmail, otp);
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('welcome').style.display = 'block';
-        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('customer-email').textContent = customer.email;
       } catch (error) {
         errorDiv.textContent = error.message;
       } finally {
@@ -1434,11 +1434,11 @@
     });
 
     window.addEventListener('DOMContentLoaded', async () => {
-      const user = await getCurrentUser();
-      if (user) {
+      const customer = await getCurrentUser();
+      if (customer) {
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('welcome').style.display = 'block';
-        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('customer-email').textContent = customer.email;
       }
     });
   &lt;/script&gt;
@@ -1464,7 +1464,7 @@ function LoginForm() {
   const [step, setStep] = useState('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [user, setUser] = useState(null);
+  const [customer, setUser] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -1482,8 +1482,8 @@ function LoginForm() {
         headers: { 'Authorization': \`Bearer \${token}\` }
       });
       if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+        const customerData = await response.json();
+        setUser(customerData);
       } else {
         localStorage.removeItem('auth_token');
       }
@@ -1562,13 +1562,13 @@ function LoginForm() {
     setError('');
   };
 
-  if (user) {
+  if (customer) {
     return (
       &lt;div style={styles.container}&gt;
         &lt;div style={styles.card}&gt;
           &lt;h1 style={styles.title}&gt;Welcome!&lt;/h1&gt;
           &lt;p style={styles.text}&gt;You're successfully logged in.&lt;/p&gt;
-          &lt;p style={styles.email}&gt;{user.email}&lt;/p&gt;
+          &lt;p style={styles.email}&gt;{customer.email}&lt;/p&gt;
           &lt;button onClick={logout} style={styles.button}&gt;
             Logout
           &lt;/button&gt;
@@ -1737,7 +1737,7 @@ export default LoginForm;</code></pre>
   let step = 'email';
   let loading = false;
   let error = '';
-  let user = null;
+  let customer = null;
 
   const API_URL = 'https://auth.idling.app';
 
@@ -1757,7 +1757,7 @@ export default LoginForm;</code></pre>
         headers: { 'Authorization': \`Bearer \${token}\` }
       });
       if (response.ok) {
-        user = await response.json();
+        customer = await response.json();
       } else {
         localStorage.removeItem('auth_token');
       }
@@ -1813,7 +1813,7 @@ export default LoginForm;</code></pre>
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
-        user = data;
+        customer = data;
         error = '';
       } else {
         error = data.detail || 'Invalid OTP';
@@ -1827,7 +1827,7 @@ export default LoginForm;</code></pre>
 
   function logout() {
     localStorage.removeItem('auth_token');
-    user = null;
+    customer = null;
     email = '';
     otp = '';
     step = 'email';
@@ -1847,10 +1847,10 @@ export default LoginForm;</code></pre>
 
 &lt;div class="container"&gt;
   &lt;div class="card"&gt;
-    {#if user}
+    {#if customer}
       &lt;h1&gt;Welcome!&lt;/h1&gt;
       &lt;p class="text"&gt;You're successfully logged in.&lt;/p&gt;
-      &lt;p class="email"&gt;{user.email}&lt;/p&gt;
+      &lt;p class="email"&gt;{customer.email}&lt;/p&gt;
       &lt;button on:click={logout} class="button"&gt;Logout&lt;/button&gt;
     {:else if step === 'email'}
       &lt;h1&gt;Login&lt;/h1&gt;
@@ -2167,7 +2167,7 @@ export default LoginForm;</code></pre>
                     <ul>
                         <li><strong>POST /auth/request-otp</strong> - Request OTP code via email</li>
                         <li><strong>POST /auth/verify-otp</strong> - Verify OTP and receive JWT token</li>
-                        <li><strong>GET /auth/me</strong> - Get current user info (requires Bearer token)</li>
+                        <li><strong>GET /auth/me</strong> - Get current customer info (requires Bearer token)</li>
                         <li><strong>POST /auth/logout</strong> - Logout and revoke token</li>
                         <li><strong>POST /auth/refresh</strong> - Refresh expiring JWT token</li>
                     </ul>
@@ -2358,12 +2358,12 @@ graph LR
                     <p>All data is completely isolated per customer using KV key prefixes:</p>
                     <ul>
                         <li>OTP codes: <code>cust_{customerId}_otp_{emailHash}</code></li>
-                        <li>User data: <code>cust_{customerId}_user_{userId}</code></li>
+                        <li>User data: <code>cust_{customerId}_customer_{customerId}</code></li>
                         <li>Rate limits: <code>cust_{customerId}_ratelimit_{email}</code></li>
                     </ul>
 
                     <h4>API Key Authentication</h4>
-                    <p>Multi-tenant features require API key authentication. API keys are for tenant identification and configuration, NOT for user authorization (JWT handles that):</p>
+                    <p>Multi-tenant features require API key authentication. API keys are for tenant identification and configuration, NOT for customer authorization (JWT handles that):</p>
                     <pre><code class="language-http">X-OTP-API-Key: otp_live_sk_...</code></pre>
                     <p><strong>IMPORTANT:</strong> API keys use the <code>X-OTP-API-Key</code> header. The <code>Authorization</code> header is reserved for JWT tokens only.</p>
 
@@ -2403,7 +2403,7 @@ graph LR
                     <p>For additional security, configure IP allowlists in customer settings.</p>
 
                     <h4>Token Refresh</h4>
-                    <p>Implement automatic token refresh before expiration to maintain seamless user experience.</p>
+                    <p>Implement automatic token refresh before expiration to maintain seamless customer experience.</p>
                 </div>
             </div>
         </div>
@@ -2647,7 +2647,7 @@ graph LR
         // Load usage on page load
         loadApiUsage();
 
-        // Refresh usage every 30 seconds if user is authenticated
+        // Refresh usage every 30 seconds if customer is authenticated
         setInterval(() => {
             if (localStorage.getItem('auth_token')) {
                 loadApiUsage();

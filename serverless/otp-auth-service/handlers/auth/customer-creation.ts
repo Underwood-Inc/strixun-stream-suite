@@ -1,7 +1,7 @@
 /**
  * Customer Account Creation Utilities
  * 
- * Handles automatic customer account creation for OTP-verified users
+ * Handles automatic customer account creation for OTP-verified customers
  */
 
 import { generateCustomerId } from '../../services/customer.js';
@@ -21,15 +21,15 @@ interface Env {
 }
 
 /**
- * Ensure customer account exists for a verified user
+ * Ensure customer account exists for a verified customer
  * Creates account if it doesn't exist, returns existing customerId if it does
  * 
- * BUSINESS RULE: Customer account MUST ALWAYS be created for users on login.
+ * BUSINESS RULE: Customer account MUST ALWAYS be created for customers on login.
  * This function will retry on failures and throw an error if it cannot create
  * the account after retries, rather than returning null.
  * 
  * This function implements smart account recovery:
- * - If user account was deleted (expired TTL), customer account is recovered by email
+ * - If customer session was deleted (expired TTL), customer account is recovered by email
  * - Customer accounts persist indefinitely to allow recovery
  * - When recovered, customer account status is reactivated if it was inactive
  * 

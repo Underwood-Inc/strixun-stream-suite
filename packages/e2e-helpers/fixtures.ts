@@ -6,7 +6,7 @@
  */
 
 import { test as base, Page } from '@playwright/test';
-import { authenticateUser, TEST_USERS } from './helpers';
+import { authenticateCustomer, TEST_CUSTOMERS } from './helpers';
 
 type AuthFixtures = {
   authenticatedPage: Page;
@@ -15,14 +15,14 @@ type AuthFixtures = {
 
 export const test = base.extend<AuthFixtures>({
   authenticatedPage: async ({ page }, use) => {
-    // Authenticate as regular user
-    await authenticateUser(page, TEST_USERS.regular.email);
+    // Authenticate as regular customer
+    await authenticateCustomer(page, TEST_CUSTOMERS.regular.email);
     await use(page);
   },
   
   adminPage: async ({ page }, use) => {
-    // Authenticate as admin user
-    await authenticateUser(page, TEST_USERS.admin.email);
+    // Authenticate as admin customer
+    await authenticateCustomer(page, TEST_CUSTOMERS.admin.email);
     await use(page);
   },
 });

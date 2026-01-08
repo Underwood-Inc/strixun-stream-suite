@@ -11,7 +11,7 @@ interface UploadQuotaConfig {
 }
 
 interface UploadUsage {
-    userId: string;
+    customerId: string;
     date: string; // YYYY-MM-DD
     uploadCount: number;
     lastUpdated: string;
@@ -62,7 +62,7 @@ function getCurrentMonth(): string {
 /**
  * Get daily upload usage for a user
  */
-async function getDailyUploadUsage(userId: string, env: Env): Promise<UploadUsage> {
+async function getDailyUploadUsage(customerId: string, env: Env): Promise<UploadUsage> {
     const today = getTodayDate();
     const usageKey = `upload_usage_${userId}_${today}`;
     
@@ -83,7 +83,7 @@ async function getDailyUploadUsage(userId: string, env: Env): Promise<UploadUsag
 /**
  * Get monthly upload usage for a user
  */
-async function getMonthlyUploadUsage(userId: string, env: Env): Promise<number> {
+async function getMonthlyUploadUsage(customerId: string, env: Env): Promise<number> {
     const month = getCurrentMonth();
     const monthKey = `upload_usage_${userId}_month_${month}`;
     
@@ -95,7 +95,7 @@ async function getMonthlyUploadUsage(userId: string, env: Env): Promise<number> 
 /**
  * Increment upload count for a user
  */
-async function incrementUploadCount(userId: string, env: Env): Promise<void> {
+async function incrementUploadCount(customerId: string, env: Env): Promise<void> {
     const today = getTodayDate();
     const month = getCurrentMonth();
     
@@ -122,7 +122,7 @@ async function incrementUploadCount(userId: string, env: Env): Promise<void> {
  * Returns result with quota information
  */
 export async function checkUploadQuota(
-    userId: string,
+    customerId: string,
     env: Env
 ): Promise<QuotaCheckResult> {
     const quota = getUploadQuotaConfig(env);
@@ -171,7 +171,7 @@ export async function checkUploadQuota(
  * Track an upload (increment counters)
  * Should be called after a successful upload
  */
-export async function trackUpload(userId: string, env: Env): Promise<void> {
+export async function trackUpload(customerId: string, env: Env): Promise<void> {
     try {
         await incrementUploadCount(userId, env);
     } catch (error) {

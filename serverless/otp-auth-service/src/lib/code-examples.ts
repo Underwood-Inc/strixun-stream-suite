@@ -113,7 +113,7 @@ export const vanillaJsExample = `<!DOCTYPE html>
     <div id="welcome" style="display: none;" class="welcome">
       <h1>Welcome!</h1>
       <p>You're successfully logged in.</p>
-      <p id="user-email"></p>
+      <p id="customer-email"></p>
       <button onclick="logout()" style="margin-top: 1rem;">Logout</button>
     </div>
   </div>
@@ -154,7 +154,7 @@ export const vanillaJsExample = `<!DOCTYPE html>
       return data;
     }
 
-    async function getCurrentUser() {
+    async function getCurrentCustomer() {
       const token = localStorage.getItem('auth_token');
       if (!token) return null;
       
@@ -211,10 +211,10 @@ export const vanillaJsExample = `<!DOCTYPE html>
       errorDiv.textContent = '';
       
       try {
-        const user = await verifyOTP(currentEmail, otp);
+        const customer = await verifyOTP(currentEmail, otp);
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('welcome').style.display = 'block';
-        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('customer-email').textContent = customer.email;
       } catch (error) {
         errorDiv.textContent = error.message;
       } finally {
@@ -249,11 +249,11 @@ export const vanillaJsExample = `<!DOCTYPE html>
 
     // Check if already logged in
     window.addEventListener('DOMContentLoaded', async () => {
-      const user = await getCurrentUser();
-      if (user) {
+      const customer = await getCurrentCustomer();
+      if (customer) {
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('welcome').style.display = 'block';
-        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('customer-email').textContent = customer.email;
       }
     });
   </script>
@@ -483,11 +483,11 @@ function LoginForm() {
     // Check if already logged in
     const token = localStorage.getItem('auth_token');
     if (token) {
-      getCurrentUser();
+      getCurrentCustomer();
     }
   }, []);
 
-  async function getCurrentUser() {
+  async function getCurrentCustomer() {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
     
@@ -582,7 +582,7 @@ function LoginForm() {
         <div style={styles.card}>
           <h1 style={styles.title}>Welcome!</h1>
           <p style={styles.text}>You're successfully logged in.</p>
-          <p style={styles.email}>{user.email}</p>
+          <p style={styles.email}>{customer.email}</p>
           <button onClick={logout} style={styles.button}>
             Logout
           </button>
@@ -750,11 +750,11 @@ export const svelteExample = `<!-- LoginForm.svelte -->
     // Check if already logged in
     const token = localStorage.getItem('auth_token');
     if (token) {
-      await getCurrentUser();
+      await getCurrentCustomer();
     }
   });
 
-  async function getCurrentUser() {
+  async function getCurrentCustomer() {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
     
@@ -856,7 +856,7 @@ export const svelteExample = `<!-- LoginForm.svelte -->
     {#if user}
       <h1>Welcome!</h1>
       <p class="text">You're successfully logged in.</p>
-      <p class="email">{user.email}</p>
+      <p class="email">{customer.email}</p>
       <button on:click={logout} class="button">Logout</button>
     {:else if step === 'email'}
       <h1>Login</h1>
@@ -1139,7 +1139,7 @@ function ApiKeyExample() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="user@example.com"
+            placeholder="customer@example.com"
             style={styles.input}
           />
         </div>
@@ -1406,7 +1406,7 @@ export const svelteApiKeyExample = `<!-- ApiKeyExample.svelte -->
         id="email"
         type="email"
         bind:value={email}
-        placeholder="user@example.com"
+        placeholder="customer@example.com"
       />
     </div>
     

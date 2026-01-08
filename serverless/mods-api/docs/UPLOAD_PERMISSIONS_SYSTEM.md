@@ -22,12 +22,12 @@ The mods-api implements a two-tier upload permission system:
 - **Example:** `SUPER_ADMIN_EMAILS=admin@example.com,backup@example.com`
 
 ### Approved Uploaders
-- **Source:** Stored in Cloudflare KV as `upload_approval_{userId}`
+- **Source:** Stored in Cloudflare KV as `upload_approval_{customerId}`
 - **Access:**
   - Upload and manage their own mods
   - Cannot access admin dashboard
   - Subject to upload quotas
-- **Management:** Via admin dashboard UI at `/admin/users` (super admin only)
+- **Management:** Via admin dashboard UI at `/admin/customers` (super admin only)
 
 ## Permission Check Flow
 
@@ -38,7 +38,7 @@ if (isSuperAdminEmail(email, env)) {
 }
 
 // 2. Check if user has explicit approval in KV
-const approval = await env.MODS_KV.get(`upload_approval_${userId}`);
+const approval = await env.MODS_KV.get(`upload_approval_${customerId}`);
 return approval === 'approved';
 ```
 
@@ -51,28 +51,28 @@ return approval === 'approved';
 - **Response:** `{ approvedUsers: string[] }` (array of userIds)
 
 #### Approve User for Upload
-- **POST** `/admin/approvals/:userId`
+- **POST** `/admin/approvals/:customerId`
 - **Body:** `{ email?: string }` (optional, for metadata)
-- **Response:** `{ success: true, userId: string }`
+- **Response:** `{ success: true, customerId: string }`
 
 #### Revoke User Upload Permission
-- **DELETE** `/admin/approvals/:userId`
-- **Response:** `{ success: true, userId: string }`
+- **DELETE** `/admin/approvals/:customerId`
+- **Response:** `{ success: true, customerId: string }`
 
 #### Update User (includes upload permission)
-- **PUT** `/admin/users/:userId`
+- **PUT** `/admin/customers/:customerId`
 - **Body:** `{ hasUploadPermission: boolean }`
-- **Response:** `{ success: true, userId: string }`
+- **Response:** `{ success: true, customerId: string }`
 
-### User Endpoints (Authenticated Users)
+### User Endpoints (authenticated customers)
 
 #### Check Own Upload Permission
 - **GET** `/mods/permissions/me`
-- **Response:** `{ hasPermission: boolean, isSuperAdmin: boolean, userId: string }`
+- **Response:** `{ hasPermission: boolean, isSuperAdmin: boolean, customerId: string }`
 
 ## Admin Dashboard UI
 
-The admin dashboard at `/admin/users` provides:
+The admin dashboard at `/admin/customers` provides:
 
 - **User List:** Virtualized table showing all users
 - **Permission Status:** Visual badges showing approved/not approved
@@ -86,7 +86,7 @@ The admin dashboard at `/admin/users` provides:
 ### KV Keys
 
 ```
-upload_approval_{userId}          # Value: "approved" (with metadata)
+upload_approval_{customerId}          # Value: "approved" (with metadata)
 approved_uploaders                # Value: JSON array of userIds
 ```
 
@@ -145,7 +145,7 @@ Set via Cloudflare Workers dashboard:
 ### User Can't Upload
 1. Check if email is in `SUPER_ADMIN_EMAILS` (grants admin + upload)
 2. Check if email is in `APPROVED_UPLOADER_EMAILS` (grants upload only)
-3. Check KV for `upload_approval_{userId}` key
+3. Check KV for `upload_approval_{customerId}` key
 4. Verify user is authenticated (JWT token valid)
 5. Check admin dashboard to see permission status
 
@@ -157,5 +157,5 @@ Set via Cloudflare Workers dashboard:
 ### Admin Dashboard Not Working
 - Use `SUPER_ADMIN_EMAILS` env var as backup for admin access
 - Use `APPROVED_UPLOADER_EMAILS` env var as backup for upload permissions (no admin access)
-- Can manually set KV keys: `upload_approval_{userId} = "approved"`
+- Can manually set KV keys: `upload_approval_{customerId} = "approved"`
 - Can use API endpoints directly with super admin authentication

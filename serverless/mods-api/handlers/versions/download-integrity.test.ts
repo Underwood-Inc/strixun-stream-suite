@@ -93,8 +93,7 @@ describe('File Download Integrity', () => {
                 },
             });
 
-            const auth = {
-                userId: 'user-123',
+            const auth = { customerId: 'user-123',
                 customerId: 'cust-123',
                 email: 'user@example.com',
             };
@@ -148,8 +147,7 @@ describe('File Download Integrity', () => {
                 },
             });
 
-            const auth = {
-                userId: 'user-123',
+            const auth = { customerId: 'user-123',
                 customerId: 'cust-123',
                 email: 'user@example.com',
             };
@@ -191,8 +189,7 @@ describe('File Download Integrity', () => {
                 },
             });
 
-            const auth = {
-                userId: 'user-123',
+            const auth = { customerId: 'user-123',
                 customerId: 'cust-123',
                 email: 'user@example.com',
             };

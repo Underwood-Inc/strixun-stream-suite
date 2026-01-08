@@ -125,7 +125,7 @@ Tests are co-located with the package following the project's E2E test structure
 
 ## Test Scenarios Covered
 
-### ✅ Mixin Usage
+### ✓ Mixin Usage
 - [x] Basic text transformation
 - [x] Multiple patterns in same text
 - [x] Element exclusion
@@ -135,17 +135,17 @@ Tests are co-located with the package following the project's E2E test structure
 - [x] Utility function usage
 - [x] Case-insensitive matching
 
-### ✅ CDN Usage
+### ✓ CDN Usage
 - [x] Script tag loading
 - [x] Global function exposure
 - [x] Auto-initialization
 - [x] Custom selector via data attributes
 
-### ✅ Pattern Coverage
+### ✓ Pattern Coverage
 - [x] Common patterns (15 test patterns)
 - [x] Pattern count verification (153 total)
 
-### ✅ Edge Cases
+### ✓ Edge Cases
 - [x] Empty content
 - [x] Nested elements
 - [x] Rapid DOM changes

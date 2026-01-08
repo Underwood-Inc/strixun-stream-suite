@@ -16,7 +16,7 @@ import type { ModMetadata, ModListResponse } from '../../types/mod.js';
 export async function handleListMods(
     request: Request,
     env: Env,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -124,7 +124,7 @@ export async function handleListMods(
                 const modVisibility = mod.visibility || 'public';
                 if (modVisibility !== 'public') {
                     // Only show private/unlisted mods to their author
-                    if (mod.authorId !== auth?.userId) {
+                    if (mod.authorId !== auth?.customerId) {
                         continue;
                     }
                 }
@@ -135,7 +135,7 @@ export async function handleListMods(
                 // Legacy mods without status field are excluded (must be explicitly approved)
                 if (!mod.status || mod.status !== 'approved') {
                     // Only show non-approved mods to their author (for profile pages)
-                    if (mod.authorId !== auth?.userId) {
+                    if (mod.authorId !== auth?.customerId) {
                         continue;
                     }
                 }
@@ -145,13 +145,13 @@ export async function handleListMods(
                     // For non-super users: apply visibility filter
                     // Legacy mods without visibility field are treated as public
                     const modVisibility = mod.visibility || 'public';
-                    if (modVisibility !== 'public' && mod.authorId !== auth?.userId) {
+                    if (modVisibility !== 'public' && mod.authorId !== auth?.customerId) {
                         continue;
                     }
                     // Non-admins can only see approved mods or their own mods
                     // Legacy mods without status field are excluded (must be explicitly approved)
                     if (!mod.status || mod.status !== 'approved') {
-                        if (mod.authorId !== auth?.userId) {
+                        if (mod.authorId !== auth?.customerId) {
                             continue;
                         }
                     }
@@ -172,14 +172,14 @@ export async function handleListMods(
         // Only use auth.customerId if the current user is the mod author
         const modsToSave: Array<{ mod: ModMetadata; modKey: string }> = [];
         for (const mod of mods) {
-            if (!mod.customerId && auth?.customerId && mod.authorId === auth.userId) {
+            if (!mod.customerId && auth?.customerId && mod.authorId === auth.customerId) {
                 // Only set if we have auth context, mod is missing customerId, AND current user is the author
                 // This handles legacy mods that were created before customerId was required
                 console.log('[ListMods] Setting missing customerId on legacy mod:', {
                     modId: mod.modId,
                     customerId: auth.customerId,
                     authorId: mod.authorId,
-                    currentUserId: auth.userId
+                    currentUserId: auth.customerId
                 });
                 mod.customerId = auth.customerId;
                 

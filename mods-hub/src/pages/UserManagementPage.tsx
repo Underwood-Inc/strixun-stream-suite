@@ -1,7 +1,7 @@
 /**
- * User Management Page - Admin Interface for Managing Users
+ * Customer Management Page - Admin Interface for Managing Customers
  * 
- * This page allows super admins to manage upload permissions for regular users.
+ * This page allows super admins to manage upload permissions for regular customers.
  * 
  * Permission System:
  * - Super Admins: From SUPER_ADMIN_EMAILS env var (hardcoded backup - always have permission)
@@ -13,7 +13,7 @@
  * - Advanced search with human-friendly query parser
  * - Bulk selection and actions
  * - Upload permission management (approve/revoke)
- * - View user details and mods
+ * - View customer details and mods
  * - Optimized for performance
  * 
  * Access: Super admin only (via AdminRoute protection)
@@ -25,10 +25,10 @@ import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
 import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
-import { useUpdateUser, useUsersList } from '../hooks/useUsers';
+import { useUpdateCustomer, useCustomersList } from '../hooks/useUsers';
 import { colors, spacing } from '../theme/index';
-import type { UserListItem } from '../types/user';
-import { filterUsersBySearchQuery } from '../utils/searchUsers';
+import type { CustomerListItem } from '../types/user';
+import { filterCustomersBySearchQuery } from '../utils/searchUsers';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles } from '../utils/sharedStyles';
 
@@ -200,42 +200,42 @@ const StatValue = styled.div`
   color: ${colors.text};
 `;
 
-export function UserManagementPage() {
+export function CustomerManagementPage() {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkActionModalOpen, setBulkActionModalOpen] = useState(false);
     const [bulkAction, setBulkAction] = useState<'approve' | 'revoke' | null>(null);
     
-    const { data, isLoading, error } = useUsersList({
+    const { data, isLoading, error } = useCustomersList({
         page: 1,
         pageSize: 1000, // Load more for admin panel
     });
 
-    const updateUser = useUpdateUser();
+    const updateCustomer = useUpdateCustomer();
 
-    // Filter and sort users - MEMOIZED for performance
-    const sortedUsers = useMemo(() => {
+    // Filter and sort customers - MEMOIZED for performance
+    const sortedCustomers = useMemo(() => {
         if (isLoading || error || !data) return [];
         
-        let users = data.users;
+        let customers = data.customers;
         
         // Filter by search query
         if (searchQuery.trim()) {
-            users = filterUsersBySearchQuery(users, searchQuery);
+            customers = filterCustomersBySearchQuery(customers, searchQuery);
         }
         
-        // Sort users
-        const sorted = [...users];
+        // Sort customers
+        const sorted = [...customers];
         if (sortConfig) {
             sorted.sort((a, b) => {
-                let aVal: any = a[sortConfig.key as keyof UserListItem];
-                let bVal: any = b[sortConfig.key as keyof UserListItem];
+                let aVal: any = a[sortConfig.key as keyof CustomerListItem];
+                let bVal: any = b[sortConfig.key as keyof CustomerListItem];
                 
                 // Handle computed accountType column
                 if (sortConfig.key === 'accountType') {
-                    aVal = a.customerId ? 'subscription' : 'free';
-                    bVal = b.customerId ? 'subscription' : 'free';
+                    aVal = a.customerIdExternal ? 'subscription' : 'free';
+                    bVal = b.customerIdExternal ? 'subscription' : 'free';
                 }
                 
                 // Handle null/undefined values
@@ -260,33 +260,33 @@ export function UserManagementPage() {
     }, []);
 
     // Handle permission toggle
-    const handleTogglePermission = useCallback(async (userId: string, hasPermission: boolean) => {
-        await updateUser.mutateAsync({
-            userId,
+    const handleTogglePermission = useCallback(async (customerId: string, hasPermission: boolean) => {
+        await updateCustomer.mutateAsync({
+            customerId,
             updates: { hasUploadPermission: !hasPermission },
         });
-    }, [updateUser]);
+    }, [updateCustomer]);
 
     // Bulk actions
     const handleBulkAction = useCallback(async (action: 'approve' | 'revoke') => {
         if (selectedIds.size === 0) return;
         
-        // Filter to only users whose permissions can be managed via UI (KV-based or none)
+        // Filter to only customers whose permissions can be managed via UI (KV-based or none)
         // Skip super admins and env-var approved uploaders (they're hardcoded)
-        const usersToUpdate = sortedUsers.filter(user => 
-            selectedIds.has(user.userId) && 
-            (user.permissionSource === 'kv' || user.permissionSource === 'none')
+        const customersToUpdate = sortedCustomers.filter(customer => 
+            selectedIds.has(customer.customerId) && 
+            (customer.permissionSource === 'kv' || customer.permissionSource === 'none')
         );
         
-        if (usersToUpdate.length === 0) {
-            // All selected users have env-based permissions that can't be managed via UI
+        if (customersToUpdate.length === 0) {
+            // All selected customers have env-based permissions that can't be managed via UI
             return;
         }
         
         try {
-            for (const user of usersToUpdate) {
-                await updateUser.mutateAsync({
-                    userId: user.userId,
+            for (const customer of customersToUpdate) {
+                await updateCustomer.mutateAsync({
+                    customerId: customer.customerId,
                     updates: { hasUploadPermission: action === 'approve' },
                 });
             }
@@ -295,53 +295,53 @@ export function UserManagementPage() {
         } catch {
             // Error handled by mutations
         }
-    }, [selectedIds, sortedUsers, updateUser]);
+    }, [selectedIds, sortedCustomers, updateCustomer]);
 
     // Table columns definition
-    const columns: Column<UserListItem>[] = useMemo(() => [
+    const columns: Column<CustomerListItem>[] = useMemo(() => [
         {
             key: 'displayName',
             label: 'Display Name',
             width: '250px',
             sortable: true,
-            render: (user) => user.displayName || 'Unknown User',
+            render: (customer) => customer.displayName || 'Unknown Customer',
         },
         {
             key: 'accountType',
             label: 'Account Type',
             width: '150px',
             sortable: true,
-            render: (user) => (
-                <AccountTypeBadge type={user.customerId ? 'subscription' : 'free'}>
-                    {user.customerId ? 'Subscription' : 'Free'}
+            render: (customer) => (
+                <AccountTypeBadge type={customer.customerIdExternal ? 'subscription' : 'free'}>
+                    {customer.customerIdExternal ? 'Subscription' : 'Free'}
                 </AccountTypeBadge>
-            ),
-        },
-        {
-            key: 'userId',
-            label: 'User ID',
-            width: '300px',
-            sortable: true,
-            render: (user) => (
-                <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                    {user.userId}
-                </span>
             ),
         },
         {
             key: 'customerId',
             label: 'Customer ID',
+            width: '300px',
+            sortable: true,
+            render: (customer) => (
+                <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                    {customer.customerId}
+                </span>
+            ),
+        },
+        {
+            key: 'customerIdExternal',
+            label: 'External ID',
             width: '200px',
             sortable: true,
-            render: (user) => user.customerId || 'N/A',
+            render: (customer) => customer.customerIdExternal || 'N/A',
         },
         {
             key: 'hasUploadPermission',
             label: 'Upload Permission',
             width: '200px',
             sortable: true,
-            render: (user) => {
-                if (!user.hasUploadPermission) {
+            render: (customer) => {
+                if (!customer.hasUploadPermission) {
                     return (
                         <PermissionBadge hasPermission={false}>
                             Not Approved
@@ -350,16 +350,16 @@ export function UserManagementPage() {
                 }
                 
                 // Show permission source
-                const sourceLabel = user.permissionSource === 'super-admin' 
+                const sourceLabel = customer.permissionSource === 'super-admin' 
                     ? 'Super Admin' 
-                    : user.permissionSource === 'env-var'
+                    : customer.permissionSource === 'env-var'
                     ? 'Env Var'
-                    : user.permissionSource === 'kv'
+                    : customer.permissionSource === 'kv'
                     ? 'KV Approved'
                     : 'Approved';
                 
                 return (
-                    <PermissionBadge hasPermission={true} source={user.permissionSource === 'none' ? undefined : user.permissionSource}>
+                    <PermissionBadge hasPermission={true} source={customer.permissionSource === 'none' ? undefined : customer.permissionSource}>
                         {sourceLabel}
                     </PermissionBadge>
                 );
@@ -370,15 +370,15 @@ export function UserManagementPage() {
             label: 'Mods',
             width: '100px',
             sortable: true,
-            render: (user) => user.modCount.toLocaleString(),
+            render: (customer) => customer.modCount.toLocaleString(),
         },
         {
             key: 'createdAt',
             label: 'Created',
             width: '120px',
             sortable: true,
-            render: (user) => user.createdAt 
-                ? new Date(user.createdAt).toLocaleDateString()
+            render: (customer) => customer.createdAt 
+                ? new Date(customer.createdAt).toLocaleDateString()
                 : 'N/A',
         },
         {
@@ -386,31 +386,31 @@ export function UserManagementPage() {
             label: 'Last Login',
             width: '120px',
             sortable: true,
-            render: (user) => user.lastLogin 
-                ? new Date(user.lastLogin).toLocaleDateString()
+            render: (customer) => customer.lastLogin 
+                ? new Date(customer.lastLogin).toLocaleDateString()
                 : 'Never',
         },
         {
             key: 'actions',
             label: 'Actions',
             width: '300px',
-            render: (user) => {
+            render: (customer) => {
                 // Can't revoke permissions from env var or super admin (they're hardcoded)
-                const canManagePermission = user.permissionSource === 'kv' || user.permissionSource === 'none';
-                const isEnvBased = user.permissionSource === 'env-var' || user.permissionSource === 'super-admin';
+                const canManagePermission = customer.permissionSource === 'kv' || customer.permissionSource === 'none';
+                const isEnvBased = customer.permissionSource === 'env-var' || customer.permissionSource === 'super-admin';
                 
                 return (
                     <ActionGroup>
                         {canManagePermission ? (
                             <Button
-                                $variant={user.hasUploadPermission ? 'danger' : 'primary'}
+                                $variant={customer.hasUploadPermission ? 'danger' : 'primary'}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleTogglePermission(user.userId, user.hasUploadPermission);
+                                    handleTogglePermission(customer.customerId, customer.hasUploadPermission);
                                 }}
-                                disabled={updateUser.isPending}
+                                disabled={updateCustomer.isPending}
                             >
-                                {user.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload'}
+                                {customer.hasUploadPermission ? 'Revoke Permission' : 'Approve Upload'}
                             </Button>
                         ) : (
                             <Button
@@ -418,15 +418,15 @@ export function UserManagementPage() {
                                 disabled
                                 title={isEnvBased ? 'Permission is set via environment variable and cannot be revoked via UI' : 'Cannot manage this permission'}
                             >
-                                {user.hasUploadPermission ? 'Env Managed' : 'No Permission'}
+                                {customer.hasUploadPermission ? 'Env Managed' : 'No Permission'}
                             </Button>
                         )}
                         <Button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                // Navigate to user detail view (could be a modal or separate page)
+                                // Navigate to customer detail view (could be a modal or separate page)
                                 // For now, just log
-                                console.log('View user details:', user.userId);
+                                console.log('View customer details:', customer.customerId);
                             }}
                         >
                             View Details
@@ -435,30 +435,30 @@ export function UserManagementPage() {
                 );
             },
         },
-    ], [handleTogglePermission, updateUser]);
+    ], [handleTogglePermission, updateCustomer]);
 
     const selectedCount = selectedIds.size;
     const hasSelection = selectedCount > 0;
     
     // Calculate stats
-    const totalUsers = data?.users.length || 0;
-    const filteredUsersCount = sortedUsers.length;
-    const approvedUsers = sortedUsers.filter(u => u.hasUploadPermission).length;
-    const totalMods = sortedUsers.reduce((sum, u) => sum + u.modCount, 0);
+    const totalCustomers = data?.customers.length || 0;
+    const filteredCustomersCount = sortedCustomers.length;
+    const approvedCustomers = sortedCustomers.filter(c => c.hasUploadPermission).length;
+    const totalMods = sortedCustomers.reduce((sum, c) => sum + c.modCount, 0);
 
     // Determine API status
     const apiStatus = isLoading ? 'loading' : error ? 'error' : 'success';
     const apiStatusText = isLoading 
-        ? 'Loading users...' 
+        ? 'Loading customers...' 
         : error 
         ? `Error: ${(error as Error).message}` 
-        : `Loaded ${totalUsers} user${totalUsers !== 1 ? 's' : ''}`;
+        : `Loaded ${totalCustomers} customer${totalCustomers !== 1 ? 's' : ''}`;
 
     return (
         <PageContainer>
             <AdminNavigation />
             <PageHeader>
-                <Title>User Management</Title>
+                <Title>Customer Management</Title>
                 <ApiStatusBar>
                     <StatusIndicator status={apiStatus}>
                         API Status: {apiStatusText}
@@ -469,7 +469,7 @@ export function UserManagementPage() {
                         <AdvancedSearchInput
                             value={searchQuery}
                             onChange={setSearchQuery}
-                            placeholder='Search users... (use "quotes" for exact, space for AND, | for OR)'
+                            placeholder='Search customers... (use "quotes" for exact, space for AND, | for OR)'
                         />
                     </SearchContainer>
                 </FiltersSection>
@@ -477,16 +477,16 @@ export function UserManagementPage() {
 
             <StatsContainer>
                 <StatItem>
-                    <StatLabel>Total Users</StatLabel>
-                    <StatValue>{isLoading ? '...' : totalUsers.toLocaleString()}</StatValue>
+                    <StatLabel>Total Customers</StatLabel>
+                    <StatValue>{isLoading ? '...' : totalCustomers.toLocaleString()}</StatValue>
                 </StatItem>
                 <StatItem>
                     <StatLabel>Filtered Results</StatLabel>
-                    <StatValue>{isLoading ? '...' : filteredUsersCount.toLocaleString()}</StatValue>
+                    <StatValue>{isLoading ? '...' : filteredCustomersCount.toLocaleString()}</StatValue>
                 </StatItem>
                 <StatItem>
                     <StatLabel>Approved Uploaders</StatLabel>
-                    <StatValue>{isLoading ? '...' : approvedUsers.toLocaleString()}</StatValue>
+                    <StatValue>{isLoading ? '...' : approvedCustomers.toLocaleString()}</StatValue>
                 </StatItem>
                 <StatItem>
                     <StatLabel>Total Mods</StatLabel>
@@ -508,7 +508,7 @@ export function UserManagementPage() {
                                 setBulkAction('approve');
                                 setBulkActionModalOpen(true);
                             }}
-                            disabled={updateUser.isPending}
+                            disabled={updateCustomer.isPending}
                         >
                             Bulk Approve
                         </Button>
@@ -518,7 +518,7 @@ export function UserManagementPage() {
                                 setBulkAction('revoke');
                                 setBulkActionModalOpen(true);
                             }}
-                            disabled={updateUser.isPending}
+                            disabled={updateCustomer.isPending}
                         >
                             Bulk Revoke
                         </Button>
@@ -533,26 +533,26 @@ export function UserManagementPage() {
                 {isLoading ? (
                     <EmptyState>
                         <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⏳</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>Loading users...</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>Loading customers...</div>
                         <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>Fetching data from API</div>
                     </EmptyState>
                 ) : error ? (
                     <EmptyState>
                         <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}>⚠</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs, color: colors.danger }}>
-                            Failed to load users
+                        <div style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: spacing.xs, color: colors.danger }}>
+                            Failed to load customers
                         </div>
                         <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
-                            {(error as Error).message || 'An error occurred while fetching users'}
+                            {(error as Error).message || 'An error occurred while fetching customers'}
                         </div>
                     </EmptyState>
-                ) : sortedUsers.length > 0 ? (
+                ) : sortedCustomers.length > 0 ? (
                     <VirtualizedTable
-                        data={sortedUsers}
+                        data={sortedCustomers}
                         columns={columns}
                         height={600}
                         rowHeight={56}
-                        getItemId={(user) => user.userId}
+                        getItemId={(customer) => customer.customerId}
                         sortConfig={sortConfig}
                         onSort={handleSort}
                         selectedIds={selectedIds}
@@ -564,14 +564,14 @@ export function UserManagementPage() {
                         <div style={{ fontSize: '1.5rem', marginBottom: spacing.md }}> ★ </div>
                         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: spacing.xs }}>
                             {searchQuery.trim() 
-                                ? `No users found matching "${searchQuery}"`
-                                : 'No users found'
+                                ? `No customers found matching "${searchQuery}"`
+                                : 'No customers found'
                             }
                         </div>
                         <div style={{ fontSize: '0.875rem', color: colors.textSecondary }}>
                             {searchQuery.trim() 
                                 ? 'Try adjusting your search query'
-                                : 'No user data available'
+                                : 'No customer data available'
                             }
                         </div>
                     </EmptyState>
@@ -589,21 +589,21 @@ export function UserManagementPage() {
                         void handleBulkAction(bulkAction);
                     }
                 }}
-                title={bulkAction === 'approve' ? 'Bulk Approve Users' : 'Bulk Revoke Users'}
+                title={bulkAction === 'approve' ? 'Bulk Approve Customers' : 'Bulk Revoke Customers'}
                 message={
                     (() => {
-                        const envManagedCount = sortedUsers.filter(u => 
-                            selectedIds.has(u.userId) && 
-                            (u.permissionSource === 'env-var' || u.permissionSource === 'super-admin')
+                        const envManagedCount = sortedCustomers.filter(c => 
+                            selectedIds.has(c.customerId) && 
+                            (c.permissionSource === 'env-var' || c.permissionSource === 'super-admin')
                         ).length;
                         const manageableCount = selectedCount - envManagedCount;
                         
                         let baseMessage = bulkAction === 'approve'
-                            ? `Are you sure you want to approve ${manageableCount} user(s) for upload permissions?`
-                            : `Are you sure you want to revoke upload permissions from ${manageableCount} user(s)?`;
+                            ? `Are you sure you want to approve ${manageableCount} customer(s) for upload permissions?`
+                            : `Are you sure you want to revoke upload permissions from ${manageableCount} customer(s)?`;
                         
                         if (envManagedCount > 0) {
-                            baseMessage += `\n\nNote: ${envManagedCount} selected user(s) have permissions set via environment variables and cannot be modified via the UI.`;
+                            baseMessage += `\n\nNote: ${envManagedCount} selected customer(s) have permissions set via environment variables and cannot be modified via the UI.`;
                         }
                         
                         return baseMessage;
@@ -611,7 +611,7 @@ export function UserManagementPage() {
                 }
                 confirmText={bulkAction === 'approve' ? 'Approve All' : 'Revoke All'}
                 cancelText="Cancel"
-                isLoading={updateUser.isPending}
+                isLoading={updateCustomer.isPending}
             />
         </PageContainer>
     );

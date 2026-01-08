@@ -1,3 +1,3 @@
 export { GlobalStyle } from './GlobalStyle';
-export { colors, spacing, typography } from './tokens';
+export { colors, spacing, typography, breakpoints, media, responsiveSpacing } from './tokens';
 

@@ -196,8 +196,8 @@ export function ModUploadPage() {
     }
 
     // CRITICAL: Check for customerId - required for mod operations
-    const { user } = useAuthStore();
-    if (!user?.customerId) {
+    const { customer } = useAuthStore();
+    if (!customer?.customerId) {
         return (
             <PageContainer>
                 <ErrorMessage>

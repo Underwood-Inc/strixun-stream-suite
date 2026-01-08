@@ -349,9 +349,9 @@ function startWorker(name: string, workerDir: string, port: number): {
     stdoutBuffer += output;
     
     // Check for build errors in output
-    if (output.includes('[ERROR]') || 
+    if (output.includes('✗') || 
         output.includes('Build failed') || 
-        output.includes('X [ERROR]') ||
+        output.includes('X ✗') ||
         output.match(/Cannot use ["']continue["']/i) ||
         output.match(/SyntaxError/i) ||
         output.match(/TypeError/i)) {
@@ -373,7 +373,7 @@ function startWorker(name: string, workerDir: string, port: number): {
     }
     
     // Always show important output
-    if (output.includes('Ready') || output.includes('healthy') || output.includes('error') || output.includes('Error') || output.includes('[ERROR]')) {
+    if (output.includes('Ready') || output.includes('healthy') || output.includes('error') || output.includes('Error') || output.includes('✗')) {
       process.stdout.write(`[${name}] ${output}`);
     }
   });
@@ -384,9 +384,9 @@ function startWorker(name: string, workerDir: string, port: number): {
     process.stderr.write(`[${name}] ${output}`);
     
     // Check for build errors in stderr
-    if (output.includes('[ERROR]') || 
+    if (output.includes('✗') || 
         output.includes('Build failed') || 
-        output.includes('X [ERROR]') ||
+        output.includes('X ✗') ||
         output.match(/Cannot use ["']continue["']/i) ||
         output.match(/SyntaxError/i) ||
         output.match(/TypeError/i)) {

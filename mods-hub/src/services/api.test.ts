@@ -39,10 +39,10 @@ import {
     adminDeleteMod,
     getModRatings,
     submitModRating,
-    listUsers,
-    getUserDetails,
-    updateUser,
-    getUserMods,
+    listCustomers,
+    getCustomerDetails,
+    updateCustomer,
+    getCustomerMods,
     checkUploadPermission,
     getAdminSettings,
     updateAdminSettings,
@@ -426,25 +426,25 @@ describe('Mods Hub API Service - Unit Tests', () => {
         });
     });
 
-    describe('listUsers', () => {
+    describe('listCustomers', () => {
         it('should call admin users endpoint with filters', async () => {
             const mockResponse = {
-                data: { users: [], total: 0, page: 1, pageSize: 20 },
+                data: { customers: [], total: 0, page: 1, pageSize: 20 },
                 status: 200,
                 statusText: 'OK',
             };
             mockApiClient.get.mockResolvedValue(mockResponse);
 
-            await listUsers({ page: 1, search: 'test' });
+            await listCustomers({ page: 1, search: 'test' });
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/admin/users?page=1&search=test'
+                '/admin/customers?page=1&search=test'
             );
         });
     });
 
-    describe('getUserDetails', () => {
-        it('should call API with user ID', async () => {
+    describe('getCustomerDetails', () => {
+        it('should call API with Customer ID', async () => {
             const mockResponse = {
                 data: { id: 'user_123', email: 'test@example.com' },
                 status: 200,
@@ -452,14 +452,14 @@ describe('Mods Hub API Service - Unit Tests', () => {
             };
             mockApiClient.get.mockResolvedValue(mockResponse);
 
-            const result = await getUserDetails('user_123');
+            const result = await getCustomerDetails('user_123');
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/admin/users/user_123');
+            expect(mockApiClient.get).toHaveBeenCalledWith('/admin/customers/user_123');
             expect(result).toEqual(mockResponse.data);
         });
     });
 
-    describe('updateUser', () => {
+    describe('updateCustomer', () => {
         it('should call API with user updates', async () => {
             const mockUpdates = { displayName: 'New Name' };
             const mockResponse = {
@@ -469,18 +469,18 @@ describe('Mods Hub API Service - Unit Tests', () => {
             };
             mockApiClient.put.mockResolvedValue(mockResponse);
 
-            const result = await updateUser('user_123', mockUpdates);
+            const result = await updateCustomer('user_123', mockUpdates);
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
-                '/admin/users/user_123',
+                '/admin/customers/user_123',
                 mockUpdates
             );
             expect(result).toEqual(mockResponse.data);
         });
     });
 
-    describe('getUserMods', () => {
-        it('should call API with user ID and pagination', async () => {
+    describe('getCustomerMods', () => {
+        it('should call API with Customer ID and pagination', async () => {
             const mockResponse = {
                 data: { mods: [], total: 0, page: 1, pageSize: 20 },
                 status: 200,
@@ -488,10 +488,10 @@ describe('Mods Hub API Service - Unit Tests', () => {
             };
             mockApiClient.get.mockResolvedValue(mockResponse);
 
-            await getUserMods('user_123', { page: 1, pageSize: 10 });
+            await getCustomerMods('user_123', { page: 1, pageSize: 10 });
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/admin/users/user_123/mods?page=1&pageSize=10'
+                '/admin/customers/user_123/mods?page=1&pageSize=10'
             );
         });
     });

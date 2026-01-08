@@ -15,17 +15,17 @@ All authentication stores have been consolidated into a single shared package: `
 
 ### Key Features
 
-✅ **Framework-agnostic core** - All auth logic in one place
-✅ **Session restoration** - IP-based cross-application session sharing
-✅ **Token validation** - Detects blacklisted tokens from logout on other domains
-✅ **User info fetching** - Automatic updates for displayName, customerId, isSuperAdmin
-✅ **JWT decoding** - CSRF token extraction
-✅ **Persistent storage** - Configurable storage keys
-✅ **TypeScript support** - Full type safety
+✓ **Framework-agnostic core** - All auth logic in one place
+✓ **Session restoration** - IP-based cross-application session sharing
+✓ **Token validation** - Detects blacklisted tokens from logout on other domains
+✓ **User info fetching** - Automatic updates for displayName, customerId, isSuperAdmin
+✓ **JWT decoding** - CSRF token extraction
+✓ **Persistent storage** - Configurable storage keys
+✓ **TypeScript support** - Full type safety
 
 ## Migration Status
 
-### ✅ Completed
+### ✓ Completed
 
 1. **mods-hub** - Migrated to use `@strixun/auth-store/zustand`
    - File: `mods-hub/src/stores/auth.ts`
@@ -95,12 +95,12 @@ No changes needed! The store now uses the shared package internally.
 
 Before fully migrating `src/`, test:
 
-1. ✅ Login/logout flow
-2. ✅ Session restoration
-3. ✅ Token validation
-4. ✅ User info fetching
-5. ✅ Storage persistence
-6. ✅ Cross-domain session sharing
+1. ✓ Login/logout flow
+2. ✓ Session restoration
+3. ✓ Token validation
+4. ✓ User info fetching
+5. ✓ Storage persistence
+6. ✓ Cross-domain session sharing
 
 ## Rollback Plan
 

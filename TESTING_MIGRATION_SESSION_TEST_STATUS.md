@@ -1,11 +1,11 @@
 # Session Integration Test Migration Status
 
 **Date:** 2025-01-04  
-**Status:** ⚠️ **PARTIALLY COMPLETE** - Test file migrated, but Miniflare configuration needs fixing
+**Status:** ⚠ **PARTIALLY COMPLETE** - Test file migrated, but Miniflare configuration needs fixing
 
 ---
 
-## ✅ What's Done
+## ✓ What's Done
 
 1. **Test file migrated** (`session.integration.test.ts`):
    - Removed all health check polling (100+ lines)
@@ -25,7 +25,7 @@
 
 ---
 
-## ❌ Current Issue
+## ✗ Current Issue
 
 **Miniflare can't parse TypeScript files directly.**
 
@@ -112,11 +112,11 @@ Downgrade Vitest to 3.2.x to use `@cloudflare/vitest-pool-workers`, which handle
 
 ## 🎯 Progress
 
-- ✅ Test file structure migrated
-- ✅ Removed old setup code
-- ✅ Created Miniflare helper
-- ⚠️ Miniflare configuration (needs bundler)
-- ❌ Inter-worker communication (needs fetch mock or service bindings)
-- ❌ Test execution (blocked by Miniflare config)
+- ✓ Test file structure migrated
+- ✓ Removed old setup code
+- ✓ Created Miniflare helper
+- ⚠ Miniflare configuration (needs bundler)
+- ✗ Inter-worker communication (needs fetch mock or service bindings)
+- ✗ Test execution (blocked by Miniflare config)
 
 **Overall:** ~60% complete - test file is ready, but Miniflare setup needs work.

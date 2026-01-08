@@ -32,7 +32,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
 
     it('should extract customerId from JWT when setUser is called without customerId', () => {
         const customerId = 'cust_0ab4c4434c48';
-        const userId = 'user_123';
+        const customerId = 'user_123';
         const email = 'test@example.com';
         
         // Create JWT with customerId
@@ -45,7 +45,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
         });
 
         // Call setUser without customerId in user object
-        const userWithoutCustomerId: User = {
+        const customerWithoutCustomerId: User = {
             userId: userId,
             email: email,
             token: token,
@@ -56,16 +56,16 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
 
         // Verify customerId was extracted from JWT
         const state = store.getState();
-        expect(state.user).not.toBeNull();
-        expect(state.user?.customerId).toBe(customerId);
-        expect(state.user?.userId).toBe(userId);
-        expect(state.user?.email).toBe(email);
+        expect(state.customer).not.toBeNull();
+        expect(state.customer?.customerId).toBe(customerId);
+        expect(state.customer?.customerId).toBe(userId);
+        expect(state.customer?.email).toBe(email);
     });
 
     it('should preserve existing customerId if already set in user object', () => {
         const existingCustomerId = 'cust_existing';
         const jwtCustomerId = 'cust_jwt';
-        const userId = 'user_123';
+        const customerId = 'user_123';
         const email = 'test@example.com';
         
         // Create JWT with different customerId
@@ -78,7 +78,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
         });
 
         // Call setUser WITH customerId already set
-        const userWithCustomerId: User = {
+        const customerWithCustomerId: User = {
             userId: userId,
             email: email,
             token: token,
@@ -90,14 +90,14 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
 
         // Verify existing customerId is preserved (not overwritten by JWT)
         const state = store.getState();
-        expect(state.user).not.toBeNull();
-        expect(state.user?.customerId).toBe(existingCustomerId);
-        expect(state.user?.customerId).not.toBe(jwtCustomerId);
+        expect(state.customer).not.toBeNull();
+        expect(state.customer?.customerId).toBe(existingCustomerId);
+        expect(state.customer?.customerId).not.toBe(jwtCustomerId);
     });
 
     it('should extract customerId from JWT even if user object has null customerId', () => {
         const customerId = 'cust_0ab4c4434c48';
-        const userId = 'user_123';
+        const customerId = 'user_123';
         const email = 'test@example.com';
         
         // Create JWT with customerId
@@ -110,7 +110,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
         });
 
         // Call setUser with explicit null customerId
-        const userWithNullCustomerId: User = {
+        const customerWithNullCustomerId: User = {
             userId: userId,
             email: email,
             token: token,
@@ -122,12 +122,12 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
 
         // Verify customerId was extracted from JWT (null should be replaced)
         const state = store.getState();
-        expect(state.user).not.toBeNull();
-        expect(state.user?.customerId).toBe(customerId);
+        expect(state.customer).not.toBeNull();
+        expect(state.customer?.customerId).toBe(customerId);
     });
 
     it('should handle JWT without customerId gracefully', () => {
-        const userId = 'user_123';
+        const customerId = 'user_123';
         const email = 'test@example.com';
         
         // Create JWT WITHOUT customerId
@@ -139,7 +139,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
         });
 
         // Call setUser without customerId
-        const userWithoutCustomerId: User = {
+        const customerWithoutCustomerId: User = {
             userId: userId,
             email: email,
             token: token,
@@ -150,12 +150,12 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
 
         // Verify customerId remains null/undefined (not set)
         const state = store.getState();
-        expect(state.user).not.toBeNull();
-        expect(state.user?.customerId).toBeFalsy(); // Can be null or undefined
+        expect(state.customer).not.toBeNull();
+        expect(state.customer?.customerId).toBeFalsy(); // Can be null or undefined
     });
 
     it('should also extract isSuperAdmin from JWT (existing behavior)', () => {
-        const userId = 'user_123';
+        const customerId = 'user_123';
         const email = 'test@example.com';
         
         // Create JWT with isSuperAdmin
@@ -167,7 +167,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
             iat: Math.floor(Date.now() / 1000),
         });
 
-        const user: User = {
+        const customer: User = {
             userId: userId,
             email: email,
             token: token,
@@ -178,7 +178,7 @@ describe('Zustand Auth Store - setUser customerId extraction', () => {
 
         // Verify isSuperAdmin was extracted
         const state = store.getState();
-        expect(state.user).not.toBeNull();
+        expect(state.customer).not.toBeNull();
         expect(state.isSuperAdmin).toBe(true);
     });
 });

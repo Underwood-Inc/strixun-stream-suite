@@ -8,7 +8,7 @@
 - **This is a compile-time error** - the code will NOT build if you use nested BEM in Svelte components
 - **Solution**: Always use explicit descendant selectors
 
-### ❌ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
+### ✗ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
 ```scss
 <style lang="scss">
 .component {
@@ -33,7 +33,7 @@
 </style>
 ```
 
-### ✅ CORRECT - Explicit Selectors (ALWAYS USE):
+### ✓ CORRECT - Explicit Selectors (ALWAYS USE):
 ```scss
 <style lang="scss">
 .component {
@@ -97,7 +97,7 @@
 - **Solution**: Always use explicit descendant selectors
 - **CRITICAL**: This is a compile-time error - the code will NOT build if you use nested BEM in Svelte components
 
-### ❌ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
+### ✗ WRONG - Nested BEM (DO NOT USE - WILL NOT COMPILE):
 ```scss
 <style lang="scss">
 .component {
@@ -122,7 +122,7 @@
 </style>
 ```
 
-### ✅ CORRECT - Explicit Selectors (ALWAYS USE):
+### ✓ CORRECT - Explicit Selectors (ALWAYS USE):
 ```scss
 <style lang="scss">
 .component {
@@ -209,7 +209,7 @@
 - **NEVER** use `:has()` selector for width transitions - CSS transitions don't work on selector matching changes
 - **Problem**: When using `:has()` on a parent, the transition is scoped incorrectly and won't animate
   ```scss
-  // ❌ WRONG - transition won't work because selector matching doesn't trigger transitions
+  // ✗ WRONG - transition won't work because selector matching doesn't trigger transitions
   .parent:has(.child.expanded) .content {
     transition: margin-right 0.3s ease;
     margin-right: 280px;
@@ -217,7 +217,7 @@
   ```
 - **Solution**: Use CSS variables on the element that needs to transition
   ```scss
-  // ✅ CORRECT - transition is on the element that changes
+  // ✓ CORRECT - transition is on the element that changes
   .content {
     transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-right: var(--filter-aside-width, 0px);
@@ -293,62 +293,62 @@
 ## Text and Symbol Rules - CRITICAL
 
 ### NEVER Use Emojis or Unicode Symbols
-- **ABSOLUTE PROHIBITION**: Never use emojis (✅, ⚠️, ❌, 🔒, etc.) or Unicode symbols in code, scripts, or console output
+- **ABSOLUTE PROHIBITION**: Never use emojis (✓, ⚠, ✗, 🔒, etc.) or Unicode symbols in code, scripts, or console output
 - **Why**: Emojis cause character encoding issues in terminals, PowerShell, older systems, and many development environments
 - **Solution**: Always use ASCII-compatible text symbols or plain text
 - **Exception**: None. This rule applies to all code, scripts, documentation, and console output
 
-### ✅ CORRECT - ASCII-Compatible Symbols (ALWAYS USE):
+### ✓ CORRECT - ASCII-Compatible Symbols (ALWAYS USE):
 ```powershell
 # PowerShell scripts
-Write-Host "[SUCCESS] Operation completed" -ForegroundColor Green
-Write-Host "[WARNING] This is a warning" -ForegroundColor Yellow
-Write-Host "[ERROR] Operation failed" -ForegroundColor Red
-Write-Host "[INFO] Processing..." -ForegroundColor Cyan
+Write-Host "✓ Operation completed" -ForegroundColor Green
+Write-Host "⚠ This is a warning" -ForegroundColor Yellow
+Write-Host "✗ Operation failed" -ForegroundColor Red
+Write-Host "ℹ Processing..." -ForegroundColor Cyan
 ```
 
 ```typescript
 // TypeScript/JavaScript
-console.log('[SUCCESS] All services configured successfully!');
-console.warn('[WARNING] Some services failed');
-console.error('[ERROR] Invalid input');
+console.log('✓ All services configured successfully!');
+console.warn('⚠ Some services failed');
+console.error('✗ Invalid input');
 ```
 
 ```markdown
 # Documentation
-- [SUCCESS] Feature implemented
-- [WARNING] Deprecated feature
-- [ERROR] Known issue
-- [INFO] Additional information
+- ✓ Feature implemented
+- ⚠ Deprecated feature
+- ✗ Known issue
+- ℹ Additional information
 ```
 
-### ❌ WRONG - Emojis/Unicode (DO NOT USE):
+### ✗ WRONG - Emojis/Unicode (DO NOT USE):
 ```powershell
 # WRONG - Emojis cause encoding issues
-Write-Host "✅ All services configured successfully!"
-Write-Host "⚠️ Some services failed"
+Write-Host "✓ All services configured successfully!"
+Write-Host "⚠ Some services failed"
 ```
 
 ```typescript
 // WRONG - Emojis may not display correctly
-console.log('✅ All services configured successfully!');
-console.warn('⚠️ Some services failed');
+console.log('✓ All services configured successfully!');
+console.warn('⚠ Some services failed');
 ```
 
 ### ASCII Symbol Alternatives
-- Success: `[SUCCESS]`, `[OK]`, `[PASS]`, `+`, `*`
-- Warning: `[WARNING]`, `[WARN]`, `!`, `*`
-- Error: `[ERROR]`, `[FAIL]`, `[FAILED]`, `X`, `-`
-- Info: `[INFO]`, `[NOTE]`, `i`, `>`
+- Success: `✓`, `[OK]`, `[PASS]`, `+`, `*`
+- Warning: `⚠`, `[WARN]`, `!`, `*`
+- Error: `✗`, `[FAIL]`, `[FAILED]`, `X`, `-`
+- Info: `ℹ`, `[NOTE]`, `i`, `>`
 - Checkmark: `[OK]`, `[PASS]`, `+`, `*`
-- Cross/X: `[FAIL]`, `[ERROR]`, `X`, `-`
+- Cross/X: `[FAIL]`, `✗`, `X`, `-`
 
 ### Preferred Format
 Always use bracketed text labels for status indicators:
-- `[SUCCESS]` instead of ✅
-- `[WARNING]` instead of ⚠️
-- `[ERROR]` instead of ❌
-- `[INFO]` instead of ℹ️
+- `✓` instead of ✓
+- `⚠` instead of ⚠
+- `✗` instead of ✗
+- `ℹ` instead of ℹ
 - `[SECURITY]` instead of 🔒
 
 ## General Code Quality

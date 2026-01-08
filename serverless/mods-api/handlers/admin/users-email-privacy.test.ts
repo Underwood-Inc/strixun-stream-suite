@@ -40,8 +40,7 @@ vi.mock('@strixun/service-client', () => ({
             status: 200,
             data: {
                 users: [
-                    {
-                        userId: 'user_123',
+                    { customerId: 'user_123',
                         displayName: 'CoolUser123',
                         customerId: 'cust_abc',
                         createdAt: '2024-01-01T00:00:00Z',
@@ -80,8 +79,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                 status: 200,
                 data: {
                     users: [
-                        {
-                            userId: 'user_123',
+                        { customerId: 'user_123',
                             displayName: 'CoolUser123',
                             customerId: 'cust_abc',
                             createdAt: '2024-01-01T00:00:00Z',
@@ -123,8 +121,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                 method: 'GET',
             });
 
-            const auth = {
-                userId: 'admin_123',
+            const auth = { customerId: 'admin_123',
                 email: 'admin@example.com',
                 customerId: 'cust_admin',
             };
@@ -136,7 +133,7 @@ describe('Email Privacy in Admin User Handlers', () => {
             expect(data.users).toBeDefined();
             expect(data.users.length).toBeGreaterThan(0);
             
-            data.users.forEach((user: any) => {
+            data.users.forEach((customer: any) => {
                 expect(user).not.toHaveProperty('email');
                 expect(user).toHaveProperty('displayName');
                 expect(user).toHaveProperty('userId');
@@ -151,8 +148,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                 method: 'GET',
             });
 
-            const auth = {
-                userId: 'admin_123',
+            const auth = { customerId: 'admin_123',
                 email: 'admin@example.com',
                 customerId: 'cust_admin',
             };
@@ -173,8 +169,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                     status: 200,
                     data: {
                         users: [
-                            {
-                                userId: 'user_123',
+                            { customerId: 'user_123',
                                 displayName: null,
                                 customerId: 'cust_abc',
                             },
@@ -190,8 +185,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                 method: 'GET',
             });
 
-            const auth = {
-                userId: 'admin_123',
+            const auth = { customerId: 'admin_123',
                 email: 'admin@example.com',
                 customerId: 'cust_admin',
             };
@@ -221,8 +215,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                     status: 200,
                     data: {
                         users: [
-                            {
-                                userId: 'user_123',
+                            { customerId: 'user_123',
                                 displayName: 'CoolUser123',
                                 customerId: 'cust_abc',
                             },
@@ -236,8 +229,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                 method: 'GET',
             });
 
-            const auth = {
-                userId: 'admin_123',
+            const auth = { customerId: 'admin_123',
                 email: 'admin@example.com',
                 customerId: 'cust_admin',
             };
@@ -276,8 +268,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                     status: 200,
                     data: {
                         users: [
-                            {
-                                userId: 'user_123',
+                            { customerId: 'user_123',
                                 displayName: 'CoolUser123',
                                 customerId: 'cust_abc',
                             },
@@ -291,8 +282,7 @@ describe('Email Privacy in Admin User Handlers', () => {
                 method: 'GET',
             });
 
-            const auth = {
-                userId: 'admin_123',
+            const auth = { customerId: 'admin_123',
                 email: 'admin@example.com',
                 customerId: 'cust_admin',
             };

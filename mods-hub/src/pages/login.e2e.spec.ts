@@ -6,7 +6,7 @@
  * 
  * Session Restore Behavior:
  * - restoreSession() is called in App.tsx on app initialization (runs for all pages)
- * - restoreSession() is also called in LoginPage on mount (ensures it runs even if user lands directly on login)
+ * - restoreSession() is also called in LoginPage on mount (ensures it runs even if customer lands directly on login)
  * - restoreSession() is also called in Layout on mount (secondary call for pages that use Layout)
  * - The Zustand adapter handles deduplication to prevent concurrent restoreSession calls
  * - Session restore enables cross-application session sharing (same device/IP can restore session from main app)
@@ -234,7 +234,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -250,8 +250,8 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          if (parsed?.user?.token) {
-            return parsed.user.token;
+          if (parsed?.customer?.token) {
+            return parsed.customer.token;
           }
           if (parsed?.state?.user?.token) {
             return parsed.state.user.token;
@@ -270,15 +270,15 @@ test.describe('Mods Hub Login', () => {
     expect(authToken).toBeTruthy();
     expect(authToken?.length).toBeGreaterThan(10);
     
-    // Step 5: Verify user info is displayed (if available)
+    // Step 5: Verify customer info is displayed (if available)
     // Look for user email or display name in header/nav
     const userInfo = page.locator(
-      '[data-testid="user-email"], [data-testid="user-name"], .user-info, .auth-user'
+      '[data-testid="customer-email"], [data-testid="customer-name"], .customer-info, .auth-customer'
     );
     const userInfoCount = await userInfo.count();
     
     // User info might not always be visible, but if it is, it should be present
-    if (userInfoCount > 0) {
+    if (customerInfoCount > 0) {
       await expect(userInfo.first()).toBeVisible();
     }
   });
@@ -361,7 +361,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -385,8 +385,8 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          if (parsed?.user?.token) {
-            return parsed.user.token;
+          if (parsed?.customer?.token) {
+            return parsed.customer.token;
           }
           if (parsed?.state?.user?.token) {
             return parsed.state.user.token;
@@ -415,8 +415,8 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          if (parsed?.user?.token) {
-            return parsed.user.token;
+          if (parsed?.customer?.token) {
+            return parsed.customer.token;
           }
           if (parsed?.state?.user?.token) {
             return parsed.state.user.token;
@@ -435,7 +435,7 @@ test.describe('Mods Hub Login', () => {
     expect(authTokenAfter).toBeTruthy();
     expect(authTokenAfter).toBe(authTokenBefore);
     
-    // Verify user is still authenticated (not redirected to login)
+    // Verify customer is still authenticated (not redirected to login)
     const currentUrl = page.url();
     expect(currentUrl).not.toContain('/login');
   });
@@ -479,7 +479,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -567,7 +567,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            return !!(parsed?.user?.token || parsed?.state?.user?.token);
+            return !!(parsed?.customer?.token || parsed?.state?.user?.token);
           }
         } catch {
           // Ignore parse errors
@@ -589,8 +589,8 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            if (parsed?.user?.token) {
-              return parsed.user.token;
+            if (parsed?.customer?.token) {
+              return parsed.customer.token;
             }
             if (parsed?.state?.user?.token) {
               return parsed.state.user.token;
@@ -605,7 +605,7 @@ test.describe('Mods Hub Login', () => {
       expect(restoredToken).toBeTruthy();
       expect(restoredToken?.length).toBeGreaterThan(10);
       
-      // Verify user is authenticated (not on login page)
+      // Verify customer is authenticated (not on login page)
       const currentUrl = page.url();
       expect(currentUrl).not.toContain('/login');
       
@@ -663,7 +663,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -725,7 +725,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            return !!(parsed?.user?.token || parsed?.state?.user?.token);
+            return !!(parsed?.customer?.token || parsed?.state?.user?.token);
           }
         } catch {
           // Ignore parse errors
@@ -745,8 +745,8 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            if (parsed?.user?.token) {
-              return parsed.user.token;
+            if (parsed?.customer?.token) {
+              return parsed.customer.token;
             }
             if (parsed?.state?.user?.token) {
               return parsed.state.user.token;
@@ -809,7 +809,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -833,8 +833,8 @@ test.describe('Mods Hub Login', () => {
           const parsed = JSON.parse(authStorage);
           // Set expiresAt to 1 hour ago to simulate expired token
           const expiredDate = new Date(Date.now() - 3600000).toISOString();
-          if (parsed?.user) {
-            parsed.user.expiresAt = expiredDate;
+          if (parsed?.customer) {
+            parsed.customer.expiresAt = expiredDate;
           } else if (parsed?.state?.user) {
             parsed.state.user.expiresAt = expiredDate;
           }
@@ -875,8 +875,8 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            const user = parsed?.user || parsed?.state?.user;
-            if (user?.token) {
+            const customer = parsed?.customer || parsed?.state?.user;
+            if (customer?.token) {
               // Check if expiresAt is in the future (token was refreshed)
               const expiresAt = user.expiresAt;
               if (expiresAt) {
@@ -904,11 +904,11 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            const user = parsed?.user || parsed?.state?.user;
-            if (user?.token) {
+            const customer = parsed?.customer || parsed?.state?.user;
+            if (customer?.token) {
               return {
-                token: user.token,
-                expiresAt: user.expiresAt,
+                token: customer.token,
+                expiresAt: customer.expiresAt,
               };
             }
           }
@@ -926,7 +926,7 @@ test.describe('Mods Hub Login', () => {
       const expiresAtDate = new Date(restoredToken!.expiresAt);
       expect(expiresAtDate.getTime()).toBeGreaterThan(Date.now());
       
-      // Verify user is still authenticated
+      // Verify customer is still authenticated
       const currentUrl = page.url();
       expect(currentUrl).not.toContain('/login');
       
@@ -980,7 +980,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -1057,7 +1057,7 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            return !!(parsed?.user?.token || parsed?.state?.user?.token);
+            return !!(parsed?.customer?.token || parsed?.state?.user?.token);
           }
         } catch {
           // Ignore parse errors
@@ -1077,8 +1077,8 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            if (parsed?.user?.token) {
-              return parsed.user.token;
+            if (parsed?.customer?.token) {
+              return parsed.customer.token;
             }
             if (parsed?.state?.user?.token) {
               return parsed.state.user.token;
@@ -1095,7 +1095,7 @@ test.describe('Mods Hub Login', () => {
       // Wait a bit for potential redirect or header update
       await page.waitForTimeout(2000);
       
-      // Check if user was redirected away from login page (session restored)
+      // Check if customer was redirected away from login page (session restored)
       const currentUrl = page.url();
       const isOnLoginPage = currentUrl.includes('/login');
       
@@ -1116,7 +1116,7 @@ test.describe('Mods Hub Login', () => {
             const authStorage = localStorage.getItem('auth-storage');
             if (authStorage) {
               const parsed = JSON.parse(authStorage);
-              return !!(parsed?.user?.token || parsed?.state?.user?.token);
+              return !!(parsed?.customer?.token || parsed?.state?.user?.token);
             }
           } catch {
             // Ignore parse errors
@@ -1162,7 +1162,7 @@ test.describe('Mods Hub Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         // Ignore parse errors
@@ -1204,8 +1204,8 @@ test.describe('Mods Hub Login', () => {
           const authStorage = localStorage.getItem('auth-storage');
           if (authStorage) {
             const parsed = JSON.parse(authStorage);
-            if (parsed?.user?.token) {
-              return parsed.user.token;
+            if (parsed?.customer?.token) {
+              return parsed.customer.token;
             }
             if (parsed?.state?.user?.token) {
               return parsed.state.user.token;

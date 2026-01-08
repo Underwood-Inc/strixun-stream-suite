@@ -25,7 +25,7 @@ export async function handleDownloadVariantVersion(
     modId: string,
     variantId: string,
     variantVersionId: string,
-    auth: { userId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata
@@ -82,7 +82,7 @@ export async function handleDownloadVariantVersion(
         }
 
         // Check visibility
-        if (mod.visibility === 'private' && (!auth || mod.authorId !== auth.userId)) {
+        if (mod.visibility === 'private' && (!auth || mod.authorId !== auth.customerId)) {
             const rfcError = createError(request, 403, 'Forbidden', 'This mod is private');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

@@ -107,8 +107,8 @@ Workers will still start automatically via the shared setup!
 ## Verification
 
 All tests verified to pass:
-- ✅ `customer-isolation.integration.test.ts` - 7 tests passed
-- ✅ `auth-flow.integration.test.ts` - 7 tests passed
-- ✅ `session-restore.integration.test.ts` - 8 tests passed
+- ✓ `customer-isolation.integration.test.ts` - 7 tests passed
+- ✓ `auth-flow.integration.test.ts` - 7 tests passed
+- ✓ `session-restore.integration.test.ts` - 8 tests passed
 
 **Total:** 22 tests passing with real workers (no mocks!)

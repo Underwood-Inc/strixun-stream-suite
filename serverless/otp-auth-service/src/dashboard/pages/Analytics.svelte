@@ -116,7 +116,7 @@
         <div class="analytics__realtime">
           {#if realtime.activeUsers !== undefined}
             <div class="analytics__realtime-item">
-              <div class="analytics__realtime-label">Active Users</div>
+              <div class="analytics__realtime-label">active customers</div>
               <div class="analytics__realtime-value">{realtime.activeUsers || 0}</div>
             </div>
           {/if}

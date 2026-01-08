@@ -200,7 +200,7 @@ jobs:
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
-        run: echo "⚠️ No test script found in Twitch API - skipping tests"
+        run: echo "⚠ No test script found in Twitch API - skipping tests"
 
   test_mods_api:
     needs: setup
@@ -246,7 +246,7 @@ jobs:
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
-        run: echo "⚠️ No test script found in Mods API - skipping tests"
+        run: echo "⚠ No test script found in Mods API - skipping tests"
 
   test_customer_api:
     needs: setup
@@ -292,7 +292,7 @@ jobs:
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
-        run: echo "⚠️ No test script found in Customer API - skipping tests"
+        run: echo "⚠ No test script found in Customer API - skipping tests"
 
   test_game_api:
     needs: setup
@@ -338,7 +338,7 @@ jobs:
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
-        run: echo "⚠️ No test script found in Game API - skipping tests"
+        run: echo "⚠ No test script found in Game API - skipping tests"
 
   test_url_shortener:
     needs: setup
@@ -384,7 +384,7 @@ jobs:
       
       - name: Skip Tests (No test script)
         if: steps.check_test.outputs.has_tests == 'false'
-        run: echo "⚠️ No test script found in URL Shortener - skipping tests"
+        run: echo "⚠ No test script found in URL Shortener - skipping tests"
 
   # Twitch API Deployment
   deploy_twitch_api:
@@ -427,7 +427,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -491,7 +491,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -512,7 +512,7 @@ jobs:
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠️  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
               echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
@@ -533,7 +533,7 @@ jobs:
           if [ -n "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" ]; then
             echo "${{ secrets.FILE_INTEGRITY_KEYPHRASE }}" | pnpm exec wrangler secret put FILE_INTEGRITY_KEYPHRASE $ENV_FLAG || true
           else
-            echo "⚠️  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
+            echo "⚠  WARNING: FILE_INTEGRITY_KEYPHRASE secret is not set!"
             echo "File integrity verification will use fallback keyphrase (development only)"
             echo "Please add FILE_INTEGRITY_KEYPHRASE to GitHub Secrets for production security"
           fi
@@ -583,7 +583,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -610,7 +610,7 @@ jobs:
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠️  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
               echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
@@ -620,7 +620,7 @@ jobs:
           if [ -n "${{ secrets.SERVICE_API_KEY }}" ]; then
             echo "${{ secrets.SERVICE_API_KEY }}" | pnpm exec wrangler secret put SERVICE_API_KEY $ENV_FLAG || true
           fi
-          # ⚠️ DEPRECATED: SERVICE_ENCRYPTION_KEY removed - all encryption now uses JWT tokens
+          # ⚠ DEPRECATED: SERVICE_ENCRYPTION_KEY removed - all encryption now uses JWT tokens
           # Service key encryption has been completely removed from the codebase
           # This block can be removed in a future cleanup
           # if [ -n "${{ secrets.VITE_SERVICE_ENCRYPTION_KEY }}" ]; then
@@ -682,7 +682,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -703,7 +703,7 @@ jobs:
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠️  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
               echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
@@ -759,7 +759,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -828,7 +828,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "[ERROR] Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
       
@@ -849,7 +849,7 @@ jobs:
           if [ -n "${{ secrets.ALLOWED_ORIGINS }}" ]; then
             echo "${{ secrets.ALLOWED_ORIGINS }}" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
           else
-            echo "⚠️  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
+            echo "⚠  WARNING: ALLOWED_ORIGINS secret is not set! Using default production origins."
             if [ "${{ inputs.environment }}" == "development" ]; then
               echo "https://mods.idling.app,https://auth.idling.app,https://api.idling.app,https://customer.idling.app,https://game.idling.app,https://s.idling.app,https://chat.idling.app,https://idling.app,https://www.idling.app,http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:5174,http://127.0.0.1:5173,http://localhost:8080" | pnpm exec wrangler secret put ALLOWED_ORIGINS $ENV_FLAG || true
             else
@@ -892,7 +892,7 @@ jobs:
         run: |
           # Validate that MODS_ENCRYPTION_KEY is set (required for file encryption)
           if [ -z "$VITE_MODS_ENCRYPTION_KEY" ]; then
-            echo "❌ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
+            echo "✗ ERROR: MODS_ENCRYPTION_KEY secret is not set in GitHub Secrets!"
             echo "Please add MODS_ENCRYPTION_KEY to your GitHub repository secrets."
             echo "This key must match the MODS_ENCRYPTION_KEY in the mods-api worker."
             exit 1
@@ -900,7 +900,7 @@ jobs:
           
           # Verify key length (should be at least 32 characters)
           if [ ${#VITE_MODS_ENCRYPTION_KEY} -lt 32 ]; then
-            echo "❌ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
+            echo "✗ ERROR: MODS_ENCRYPTION_KEY is too short (must be at least 32 characters)"
             exit 1
           fi
           
@@ -913,7 +913,7 @@ jobs:
           if grep -r "VITE_MODS_ENCRYPTION_KEY" ../dist/mods-hub/assets/*.js 2>/dev/null | head -1 > /dev/null; then
             echo "✓ Encryption key reference found in build output"
           else
-            echo "⚠️  WARNING: Encryption key reference not found in build - key may not be embedded"
+            echo "⚠  WARNING: Encryption key reference not found in build - key may not be embedded"
             echo "This could indicate the build didn't include the environment variable"
           fi
       
@@ -932,7 +932,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
 
@@ -978,7 +978,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check Cloudflare dashboard and rollback if needed"
           exit 1
 
@@ -1019,12 +1019,12 @@ jobs:
           if [ -d "dist/stream-suite" ] && [ "$(ls -A dist/stream-suite 2>/dev/null)" ]; then
             echo "Copying files from dist/stream-suite/ to dist/..."
             cp -r dist/stream-suite/. dist/ || cp -r dist/stream-suite/* dist/
-            echo "✅ Files copied successfully"
+            echo "✓ Files copied successfully"
             # Remove the stream-suite subdirectory after copying
             rm -rf dist/stream-suite
-            echo "✅ Cleaned up dist/stream-suite/"
+            echo "✓ Cleaned up dist/stream-suite/"
           else
-            echo "⚠️ Warning: dist/stream-suite/ does not exist or is empty"
+            echo "⚠ Warning: dist/stream-suite/ does not exist or is empty"
             echo "Build may have failed or output directory changed"
           fi
       
@@ -1057,7 +1057,7 @@ jobs:
           
           # Validate WORKER_NAME - if empty or invalid, use fallback
           if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "" ]; then
-            echo "⚠️ Warning: Could not read worker name from wrangler.toml, using fallback"
+            echo "⚠ Warning: Could not read worker name from wrangler.toml, using fallback"
             WORKER_NAME="strixun-twitch-api"
           fi
           
@@ -1065,7 +1065,7 @@ jobs:
           
           # CRITICAL: Validate SUBDOMAIN to prevent malformed URLs
           if [ -z "$SUBDOMAIN" ] || [ "$SUBDOMAIN" = "" ]; then
-            echo "⚠️ Warning: CF_WORKERS_SUBDOMAIN is empty, using fallback"
+            echo "⚠ Warning: CF_WORKERS_SUBDOMAIN is empty, using fallback"
             SUBDOMAIN="strixuns-script-suite"
           fi
           
@@ -1074,12 +1074,12 @@ jobs:
           
           # CRITICAL: Validate final URL format before injection
           if [[ "$WORKER_URL" =~ ^https://\..*\.workers\.dev$ ]] || [[ "$WORKER_URL" =~ ^https://.*\.\..*\.workers\.dev$ ]]; then
-            echo "❌ ERROR: Malformed WORKER_URL detected: $WORKER_URL"
-            echo "❌ This would cause browser lockup. Aborting deployment."
+            echo "✗ ERROR: Malformed WORKER_URL detected: $WORKER_URL"
+            echo "✗ This would cause browser lockup. Aborting deployment."
             exit 1
           fi
           
-          echo "✅ Validated Worker URL: $WORKER_URL"
+          echo "✓ Validated Worker URL: $WORKER_URL"
           
           OTP_AUTH_URL="https://auth.idling.app"
           CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-streamkit.idling.app}"
@@ -1089,17 +1089,17 @@ jobs:
           
           # CRITICAL: Validate all URLs before injection to prevent malformed URLs
           if [[ "$WORKER_URL" =~ ^https?://\. ]] || [[ "$WORKER_URL" =~ \.\. ]] || [[ -z "$WORKER_URL" ]]; then
-            echo "❌ ERROR: Invalid WORKER_URL format: $WORKER_URL"
+            echo "✗ ERROR: Invalid WORKER_URL format: $WORKER_URL"
             exit 1
           fi
           
           if [[ "$OTP_AUTH_URL" =~ ^https?://\. ]] || [[ "$OTP_AUTH_URL" =~ \.\. ]] || [[ -z "$OTP_AUTH_URL" ]]; then
-            echo "❌ ERROR: Invalid OTP_AUTH_URL format: $OTP_AUTH_URL"
+            echo "✗ ERROR: Invalid OTP_AUTH_URL format: $OTP_AUTH_URL"
             exit 1
           fi
           
           if [[ "$PAGES_URL" =~ ^https?://\. ]] || [[ "$PAGES_URL" =~ \.\. ]] || [[ -z "$PAGES_URL" ]]; then
-            echo "❌ ERROR: Invalid PAGES_URL format: $PAGES_URL"
+            echo "✗ ERROR: Invalid PAGES_URL format: $PAGES_URL"
             exit 1
           fi
           
@@ -1114,11 +1114,11 @@ jobs:
           
           # Verify injection succeeded
           if grep -q "%%WORKER_API_URL%%" dist/config.js; then
-            echo "❌ ERROR: Failed to inject WORKER_API_URL - placeholder still present"
+            echo "✗ ERROR: Failed to inject WORKER_API_URL - placeholder still present"
             exit 1
           fi
           
-          echo "✅ Configuration validated and injected successfully"
+          echo "✓ Configuration validated and injected successfully"
       
       - name: Upload artifact
         id: upload
@@ -1129,7 +1129,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Build failed - deployment prevented"
+          echo "✗ Build failed - deployment prevented"
           exit 1
 
   # GitHub Pages Deployment - Deploy
@@ -1148,7 +1148,7 @@ jobs:
       - name: Rollback on Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed - manual rollback required"
+          echo "✗ Deployment failed - manual rollback required"
           echo "Please check GitHub Pages settings and rollback if needed"
           exit 1
 
@@ -1166,9 +1166,9 @@ jobs:
           
           if [ "${{ inputs.deploy_mods_hub }}" == "true" ] || [ "${{ inputs.deploy_storybook }}" == "true" ] || [ "${{ inputs.deploy_pages }}" == "true" ]; then
             if [ "${{ needs.test_root.result }}" == "success" ]; then
-              echo "✅ **Root/Client Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Root/Client Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_root.result }}" == "failure" ]; then
-              echo "❌ **Root/Client Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Root/Client Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             else
               echo "⏭️ **Root/Client Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
@@ -1176,9 +1176,9 @@ jobs:
           
           if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
             if [ "${{ needs.test_otp_auth.result }}" == "success" ]; then
-              echo "✅ **OTP Auth Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **OTP Auth Service Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_otp_auth.result }}" == "failure" ]; then
-              echo "❌ **OTP Auth Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **OTP Auth Service Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             else
               echo "⏭️ **OTP Auth Service Tests** - Skipped" >> $GITHUB_STEP_SUMMARY
             fi
@@ -1186,9 +1186,9 @@ jobs:
           
           if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
             if [ "${{ needs.test_twitch_api.result }}" == "success" ]; then
-              echo "✅ **Twitch API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Twitch API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_twitch_api.result }}" == "failure" ]; then
-              echo "❌ **Twitch API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Twitch API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_twitch_api.result }}" == "skipped" ]; then
               echo "⏭️ **Twitch API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
             else
@@ -1198,9 +1198,9 @@ jobs:
           
           if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
             if [ "${{ needs.test_mods_api.result }}" == "success" ]; then
-              echo "✅ **Mods API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Mods API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_mods_api.result }}" == "failure" ]; then
-              echo "❌ **Mods API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Mods API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_mods_api.result }}" == "skipped" ]; then
               echo "⏭️ **Mods API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
             else
@@ -1210,9 +1210,9 @@ jobs:
           
           if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
             if [ "${{ needs.test_customer_api.result }}" == "success" ]; then
-              echo "✅ **Customer API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Customer API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_customer_api.result }}" == "failure" ]; then
-              echo "❌ **Customer API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Customer API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_customer_api.result }}" == "skipped" ]; then
               echo "⏭️ **Customer API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
             else
@@ -1222,9 +1222,9 @@ jobs:
           
           if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
             if [ "${{ needs.test_game_api.result }}" == "success" ]; then
-              echo "✅ **Game API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Game API Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_game_api.result }}" == "failure" ]; then
-              echo "❌ **Game API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Game API Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_game_api.result }}" == "skipped" ]; then
               echo "⏭️ **Game API Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
             else
@@ -1234,9 +1234,9 @@ jobs:
           
           if [ "${{ inputs.deploy_url_shortener }}" == "true" ]; then
             if [ "${{ needs.test_url_shortener.result }}" == "success" ]; then
-              echo "✅ **URL Shortener Tests** - Passed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **URL Shortener Tests** - Passed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_url_shortener.result }}" == "failure" ]; then
-              echo "❌ **URL Shortener Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **URL Shortener Tests** - Failed (deployment blocked)" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.test_url_shortener.result }}" == "skipped" ]; then
               echo "⏭️ **URL Shortener Tests** - Skipped (no test script)" >> $GITHUB_STEP_SUMMARY
             else
@@ -1249,73 +1249,73 @@ jobs:
           
           if [ "${{ inputs.deploy_twitch_api }}" == "true" ]; then
             if [ "${{ needs.deploy_twitch_api.result }}" == "success" ]; then
-              echo "✅ **Twitch API** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Twitch API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **Twitch API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Twitch API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_mods_api }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_api.result }}" == "success" ]; then
-              echo "✅ **Mods API** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Mods API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **Mods API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Mods API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_otp_auth }}" == "true" ]; then
             if [ "${{ needs.deploy_otp_auth.result }}" == "success" ]; then
-              echo "✅ **OTP Auth Service** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **OTP Auth Service** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **OTP Auth Service** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **OTP Auth Service** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_customer_api }}" == "true" ]; then
             if [ "${{ needs.deploy_customer_api.result }}" == "success" ]; then
-              echo "✅ **Customer API** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Customer API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **Customer API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Customer API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_game_api }}" == "true" ]; then
             if [ "${{ needs.deploy_game_api.result }}" == "success" ]; then
-              echo "[SUCCESS] **Game API** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Game API** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[ERROR] **Game API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Game API** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_url_shortener }}" == "true" ]; then
             if [ "${{ needs.deploy_url_shortener.result }}" == "success" ]; then
-              echo "[SUCCESS] **URL Shortener** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **URL Shortener** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "[ERROR] **URL Shortener** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **URL Shortener** - Deployment Failed" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_mods_hub }}" == "true" ]; then
             if [ "${{ needs.deploy_mods_hub.result }}" == "success" ]; then
-              echo "✅ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Mods Hub** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **Mods Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Mods Hub** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_storybook }}" == "true" ]; then
             if [ "${{ needs.deploy_storybook.result }}" == "success" ]; then
-              echo "✅ **Storybook** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **Storybook** - Deployed to Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **Storybook** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **Storybook** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           
           if [ "${{ inputs.deploy_pages }}" == "true" ]; then
             if [ "${{ needs.deploy_pages.result }}" == "success" ]; then
-              echo "✅ **GitHub Pages** - Deployed" >> $GITHUB_STEP_SUMMARY
+              echo "✓ **GitHub Pages** - Deployed" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ **GitHub Pages** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
+              echo "✗ **GitHub Pages** - Deployment Failed or Blocked by Tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
           

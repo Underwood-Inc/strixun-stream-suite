@@ -33,7 +33,7 @@ interface Env {
 }
 
 /**
- * Send OTP email to user
+ * Send OTP email to customer
  * @param email - Recipient email address
  * @param otp - OTP code to send
  * @param customerId - Customer ID (optional, for multi-tenant)

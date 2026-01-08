@@ -6,7 +6,7 @@
 
 ---
 
-## ⚠️ CRITICAL SECURITY REQUIREMENT
+## ⚠ CRITICAL SECURITY REQUIREMENT
 
 **JWT ENCRYPTION/DECRYPTION IS NOW MANDATORY FOR ALL ENDPOINTS**
 
@@ -21,15 +21,15 @@ By default, the API framework **MUST** require JWT encryption/decryption as a ba
 │ Layer 4: Authorization (Author checks, Admin checks)    │
 │ Layer 3: Authentication (JWT verification)                │
 │ Layer 2: CORS (Origin restrictions)                     │
-│ Layer 1: JWT ENCRYPTION/DECRYPTION (MANDATORY BASE) ⚠️ │
+│ Layer 1: JWT ENCRYPTION/DECRYPTION (MANDATORY BASE) ⚠ │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key Principles:**
-1. ✅ **ALL endpoints require JWT for encryption/decryption** (even `/health`)
-2. ✅ **Binary files (images, downloads) must use JWT encryption/decryption**
-3. ✅ **No service key fallback** - JWT is mandatory
-4. ✅ **CORS and auth checks are layered on top** - they don't replace encryption
+1. ✓ **ALL endpoints require JWT for encryption/decryption** (even `/health`)
+2. ✓ **Binary files (images, downloads) must use JWT encryption/decryption**
+3. ✓ **No service key fallback** - JWT is mandatory
+4. ✓ **CORS and auth checks are layered on top** - they don't replace encryption
 
 ---
 
@@ -37,26 +37,26 @@ By default, the API framework **MUST** require JWT encryption/decryption as a ba
 
 | Endpoint | Current State | Required State | Status |
 |----------|--------------|----------------|--------|
-| `GET /health` | ❌ No JWT required | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods` | ⚠️ Optional JWT | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug` | ⚠️ Optional JWT | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug/thumbnail` | ⚠️ Service key fallback | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug/og-image` | ⚠️ Optional JWT | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug/ratings` | ⚠️ Optional JWT | ✅ JWT encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug/versions/:versionId/download` | ⚠️ Service key fallback | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug/variants/:variantId/download` | ⚠️ Service key fallback | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `GET /mods/:slug/versions/:versionId/badge` | ⚠️ Optional JWT | ✅ JWT binary encryption required | ⚠️ **NEEDS UPDATE** |
-| `POST /mods` | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
-| `PUT /mods/:slug` | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
-| `DELETE /mods/:slug` | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
-| `POST /mods/:slug/ratings` | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
-| `POST /mods/:slug/versions` | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
-| `GET /mods/:slug/versions/:versionId/verify` | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
-| All `/admin/*` routes | ✅ JWT required | ✅ JWT encryption required | ✅ **OK** |
+| `GET /health` | ✗ No JWT required | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods` | ⚠ Optional JWT | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug` | ⚠ Optional JWT | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug/thumbnail` | ⚠ Service key fallback | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug/og-image` | ⚠ Optional JWT | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug/ratings` | ⚠ Optional JWT | ✓ JWT encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug/versions/:versionId/download` | ⚠ Service key fallback | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug/variants/:variantId/download` | ⚠ Service key fallback | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `GET /mods/:slug/versions/:versionId/badge` | ⚠ Optional JWT | ✓ JWT binary encryption required | ⚠ **NEEDS UPDATE** |
+| `POST /mods` | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
+| `PUT /mods/:slug` | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
+| `DELETE /mods/:slug` | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
+| `POST /mods/:slug/ratings` | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
+| `POST /mods/:slug/versions` | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
+| `GET /mods/:slug/versions/:versionId/verify` | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
+| All `/admin/*` routes | ✓ JWT required | ✓ JWT encryption required | ✓ **OK** |
 
 **Legend:**
-- ✅ **OK** - Already requires JWT encryption
-- ⚠️ **NEEDS UPDATE** - Must be updated to require JWT encryption
+- ✓ **OK** - Already requires JWT encryption
+- ⚠ **NEEDS UPDATE** - Must be updated to require JWT encryption
 
 ---
 
@@ -108,8 +108,8 @@ These endpoints can be called from **anywhere** without authentication or CORS r
 
 #### `GET /health`
 - **Purpose**: Health check endpoint
-- **Auth Required**: ❌ No
-- **CORS**: ✅ Returns CORS headers but accepts requests from any origin
+- **Auth Required**: ✗ No
+- **CORS**: ✓ Returns CORS headers but accepts requests from any origin
 - **Access**: Truly public - can be called from anywhere
 - **Response**: JSON with service status, timestamp, environment
 - **Notes**: 
@@ -126,9 +126,9 @@ These endpoints are **public** (no authentication required for authorization) bu
 
 #### `GET /mods` or `GET /`
 - **Purpose**: List all public mods with filtering, pagination, and search
-- **JWT Encryption Required**: ✅ **YES** (MANDATORY)
-- **Auth Required**: ❌ No (for authorization - but JWT required for encryption)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **JWT Encryption Required**: ✓ **YES** (MANDATORY)
+- **Auth Required**: ✗ No (for authorization - but JWT required for encryption)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public browsing - shows only approved mods with `visibility='public'` and `status='approved'`
 - **Data Filtering**: 
   - Non-authenticated users: Only see public, approved mods
@@ -138,12 +138,12 @@ These endpoints are **public** (no authentication required for authorization) bu
   - **MUST encrypt response with JWT token from request**
   - **MUST return 401 if no JWT token provided**
   - Uses `wrapWithEncryption()` but currently only encrypts if JWT present
-  - **STATUS**: ⚠️ **NEEDS UPDATE** - Must enforce JWT encryption requirement
+  - **STATUS**: ⚠ **NEEDS UPDATE** - Must enforce JWT encryption requirement
 
 #### `GET /mods/:slug` or `GET /:slug`
 - **Purpose**: Get mod detail with versions
-- **Auth Required**: ❌ No (authentication is optional)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✗ No (authentication is optional)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public mods only - filters by visibility and status
 - **Data Filtering**:
   - Non-authenticated users: Only see public, published/approved mods
@@ -155,8 +155,8 @@ These endpoints are **public** (no authentication required for authorization) bu
 
 #### `GET /mods/:slug/thumbnail` or `GET /:slug/thumbnail`
 - **Purpose**: Get mod thumbnail image
-- **Auth Required**: ❌ No (authentication is optional)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✗ No (authentication is optional)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public mods only - filters by visibility and status
 - **Data Filtering**:
   - Non-authenticated users: Only see thumbnails for public, published/approved mods (or public pending mods)
@@ -169,8 +169,8 @@ These endpoints are **public** (no authentication required for authorization) bu
 
 #### `GET /mods/:slug/og-image` or `GET /:slug/og-image`
 - **Purpose**: Generate Open Graph preview image (SVG)
-- **Auth Required**: ❌ No (authentication is optional)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✗ No (authentication is optional)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public mods only - filters by visibility
 - **Data Filtering**:
   - Non-authenticated users: Only see OG images for public mods
@@ -182,8 +182,8 @@ These endpoints are **public** (no authentication required for authorization) bu
 
 #### `GET /mods/:slug/ratings` or `GET /:slug/ratings`
 - **Purpose**: Get ratings for a mod
-- **Auth Required**: ❌ No (authentication is optional)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✗ No (authentication is optional)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public, published/approved mods only
 - **Data Filtering**:
   - Non-authenticated users: Only see ratings for public, published/approved mods
@@ -194,9 +194,9 @@ These endpoints are **public** (no authentication required for authorization) bu
 
 #### `GET /mods/:slug/versions/:versionId/download` or `GET /:slug/versions/:versionId/download`
 - **Purpose**: Download mod version file
-- **JWT Encryption Required**: ✅ **YES** (MANDATORY for binary encryption)
-- **Auth Required**: ❌ No (for authorization - but JWT required for encryption)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **JWT Encryption Required**: ✓ **YES** (MANDATORY for binary encryption)
+- **Auth Required**: ✗ No (for authorization - but JWT required for encryption)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public mods only - filters by visibility and status
 - **Data Filtering**:
   - Non-authenticated users: Can download public, published/approved mods (with JWT encryption)
@@ -212,19 +212,19 @@ These endpoints are **public** (no authentication required for authorization) bu
   - File is decrypted on-the-fly using JWT
   - Increments download count
   - Returns integrity hash headers
-  - **STATUS**: ⚠️ **NEEDS UPDATE** - Currently has service key fallback - MUST REMOVE
+  - **STATUS**: ⚠ **NEEDS UPDATE** - Currently has service key fallback - MUST REMOVE
 
 #### `GET /mods/:slug/variants/:variantId/download` or `GET /:slug/variants/:variantId/download`
 - **Purpose**: Download mod variant file
-- **Auth Required**: ⚠️ Conditional (depends on encryption)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ⚠ Conditional (depends on encryption)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Same as version download
 - **Notes**: Similar to version download but for variants
 
 #### `GET /mods/:slug/versions/:versionId/badge` or `GET /:slug/versions/:versionId/badge`
 - **Purpose**: Get integrity verification badge (SVG)
-- **Auth Required**: ❌ No (authentication is optional)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✗ No (authentication is optional)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public mods only - filters by visibility and status
 - **Data Filtering**:
   - Non-authenticated users: Only see badges for public, published/approved mods (or public pending mods)
@@ -243,8 +243,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `POST /mods` or `POST /`
 - **Purpose**: Upload new mod
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Authenticated users only
 - **Notes**: 
   - Returns 401 if no auth
@@ -253,8 +253,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `PUT /mods/:slug` or `PATCH /mods/:slug` or `PUT /:slug` or `PATCH /:slug`
 - **Purpose**: Update mod metadata
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Author only (or super admin)
 - **Notes**: 
   - Returns 401 if no auth
@@ -263,8 +263,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `DELETE /mods/:slug` or `DELETE /:slug`
 - **Purpose**: Delete mod
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Author only (or super admin)
 - **Notes**: 
   - Returns 401 if no auth
@@ -273,8 +273,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `POST /mods/:slug/ratings` or `POST /:slug/ratings`
 - **Purpose**: Submit a rating for a mod
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Authenticated users only
 - **Notes**: 
   - Returns 401 if no auth
@@ -284,8 +284,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `POST /mods/:slug/versions` or `POST /:slug/versions`
 - **Purpose**: Upload new version
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Author only (or super admin)
 - **Notes**: 
   - Returns 401 if no auth
@@ -294,8 +294,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `GET /mods/permissions/me` or `GET /permissions/me`
 - **Purpose**: Get current user's upload permissions
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Authenticated users only
 - **Notes**: 
   - Returns 401 if no auth
@@ -303,8 +303,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `GET /mods/:slug/review` or `GET /:slug/review`
 - **Purpose**: Get mod review page (admin/uploader only)
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Author or super admin only
 - **Notes**: 
   - Returns 401 if no auth
@@ -312,8 +312,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `GET /mods/:slug/snapshots` or `GET /:slug/snapshots`
 - **Purpose**: List snapshots for a mod
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Authenticated users only
 - **Notes**: 
   - Returns 401 if no auth
@@ -321,8 +321,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `GET /mods/:slug/snapshots/:snapshotId` or `GET /:slug/snapshots/:snapshotId`
 - **Purpose**: Load a specific snapshot
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Authenticated users only
 - **Notes**: 
   - Returns 401 if no auth
@@ -330,8 +330,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `GET /mods/:slug/versions/:versionId/verify` or `GET /:slug/versions/:versionId/verify`
 - **Purpose**: Verify file integrity using SHA-256 hash
-- **Auth Required**: ✅ Yes (JWT token required for decryption)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required for decryption)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Public mods only, but requires JWT for decryption
 - **Notes**: 
   - Returns 401 if no auth (needs JWT to decrypt file)
@@ -340,8 +340,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 
 #### `POST /mods/:slug/versions/:versionId/validate` or `POST /:slug/versions/:versionId/validate`
 - **Purpose**: Validate file against uploaded version
-- **Auth Required**: ✅ Yes (JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Authenticated users only
 - **Notes**: 
   - Returns 401 if no auth
@@ -354,8 +354,8 @@ These endpoints **require authentication** (JWT token) and are **subject to CORS
 All admin endpoints require **super-admin authentication** and are **subject to CORS restrictions**.
 
 #### All `/admin/*` Routes
-- **Auth Required**: ✅ Yes (super-admin JWT token required)
-- **CORS**: ✅ Required (must be from allowed origin)
+- **Auth Required**: ✓ Yes (super-admin JWT token required)
+- **CORS**: ✓ Required (must be from allowed origin)
 - **Access**: Super admin only
 - **Protection**: Uses `protectAdminRoute()` from `@strixun/api-framework`
 - **Endpoints**:
@@ -387,37 +387,37 @@ All admin endpoints require **super-admin authentication** and are **subject to 
 
 | Endpoint | Method | CORS Required | Truly Public | Notes |
 |----------|--------|---------------|--------------|-------|
-| `/health` | GET | ❌ No | ✅ Yes | Health check - truly public |
-| `/mods` | GET | ✅ Yes | ❌ No | List mods - subject to CORS |
-| `/mods/:slug` | GET | ✅ Yes | ❌ No | Mod detail - subject to CORS |
-| `/mods/:slug/thumbnail` | GET | ✅ Yes | ❌ No | Thumbnail - subject to CORS |
-| `/mods/:slug/og-image` | GET | ✅ Yes | ❌ No | OG image - subject to CORS |
-| `/mods/:slug/ratings` | GET | ✅ Yes | ❌ No | Ratings - subject to CORS |
-| `/mods/:slug/versions/:versionId/download` | GET | ✅ Yes | ❌ No | Download - subject to CORS, may need JWT for decryption |
-| `/mods/:slug/variants/:variantId/download` | GET | ✅ Yes | ❌ No | Variant download - subject to CORS |
-| `/mods/:slug/versions/:versionId/badge` | GET | ✅ Yes | ❌ No | Badge - subject to CORS |
+| `/health` | GET | ✗ No | ✓ Yes | Health check - truly public |
+| `/mods` | GET | ✓ Yes | ✗ No | List mods - subject to CORS |
+| `/mods/:slug` | GET | ✓ Yes | ✗ No | Mod detail - subject to CORS |
+| `/mods/:slug/thumbnail` | GET | ✓ Yes | ✗ No | Thumbnail - subject to CORS |
+| `/mods/:slug/og-image` | GET | ✓ Yes | ✗ No | OG image - subject to CORS |
+| `/mods/:slug/ratings` | GET | ✓ Yes | ✗ No | Ratings - subject to CORS |
+| `/mods/:slug/versions/:versionId/download` | GET | ✓ Yes | ✗ No | Download - subject to CORS, may need JWT for decryption |
+| `/mods/:slug/variants/:variantId/download` | GET | ✓ Yes | ✗ No | Variant download - subject to CORS |
+| `/mods/:slug/versions/:versionId/badge` | GET | ✓ Yes | ✗ No | Badge - subject to CORS |
 
 ### Authenticated Endpoints (JWT Required)
 
 | Endpoint | Method | CORS Required | Access Level | Notes |
 |----------|--------|---------------|--------------|-------|
-| `/mods` | POST | ✅ Yes | Authenticated | Upload mod |
-| `/mods/:slug` | PUT/PATCH | ✅ Yes | Author only | Update mod |
-| `/mods/:slug` | DELETE | ✅ Yes | Author only | Delete mod |
-| `/mods/:slug/ratings` | POST | ✅ Yes | Authenticated | Submit rating |
-| `/mods/:slug/versions` | POST | ✅ Yes | Author only | Upload version |
-| `/mods/permissions/me` | GET | ✅ Yes | Authenticated | Get permissions |
-| `/mods/:slug/review` | GET | ✅ Yes | Author/Admin | Review page |
-| `/mods/:slug/snapshots` | GET | ✅ Yes | Authenticated | List snapshots |
-| `/mods/:slug/snapshots/:snapshotId` | GET | ✅ Yes | Authenticated | Load snapshot |
-| `/mods/:slug/versions/:versionId/verify` | GET | ✅ Yes | Authenticated | Verify file (needs JWT for decryption) |
-| `/mods/:slug/versions/:versionId/validate` | POST | ✅ Yes | Authenticated | Validate file |
+| `/mods` | POST | ✓ Yes | Authenticated | Upload mod |
+| `/mods/:slug` | PUT/PATCH | ✓ Yes | Author only | Update mod |
+| `/mods/:slug` | DELETE | ✓ Yes | Author only | Delete mod |
+| `/mods/:slug/ratings` | POST | ✓ Yes | Authenticated | Submit rating |
+| `/mods/:slug/versions` | POST | ✓ Yes | Author only | Upload version |
+| `/mods/permissions/me` | GET | ✓ Yes | Authenticated | Get permissions |
+| `/mods/:slug/review` | GET | ✓ Yes | Author/Admin | Review page |
+| `/mods/:slug/snapshots` | GET | ✓ Yes | Authenticated | List snapshots |
+| `/mods/:slug/snapshots/:snapshotId` | GET | ✓ Yes | Authenticated | Load snapshot |
+| `/mods/:slug/versions/:versionId/verify` | GET | ✓ Yes | Authenticated | Verify file (needs JWT for decryption) |
+| `/mods/:slug/versions/:versionId/validate` | POST | ✓ Yes | Authenticated | Validate file |
 
 ### Admin Endpoints (Super-Admin Required)
 
 | Endpoint | Method | CORS Required | Access Level | Notes |
 |----------|--------|---------------|--------------|-------|
-| `/admin/*` | Various | ✅ Yes | Super Admin | All admin routes |
+| `/admin/*` | Various | ✓ Yes | Super Admin | All admin routes |
 
 ---
 
@@ -457,26 +457,26 @@ All admin endpoints require **super-admin authentication** and are **subject to 
 
 ### For Truly Public Endpoints
 
-1. ✅ `/health` is correctly configured as truly public
-2. ⚠️ Consider if any other endpoints should be truly public (currently none)
+1. ✓ `/health` is correctly configured as truly public
+2. ⚠ Consider if any other endpoints should be truly public (currently none)
 
 ### For CORS-Protected Public Endpoints
 
-1. ✅ All public endpoints correctly require CORS
-2. ⚠️ Ensure `ALLOWED_ORIGINS` is configured in production
-3. ⚠️ Consider rate limiting for public endpoints
+1. ✓ All public endpoints correctly require CORS
+2. ⚠ Ensure `ALLOWED_ORIGINS` is configured in production
+3. ⚠ Consider rate limiting for public endpoints
 
 ### For Authenticated Endpoints
 
-1. ✅ All authenticated endpoints correctly require JWT
-2. ✅ Author checks are properly implemented
-3. ⚠️ Consider adding rate limiting per user
+1. ✓ All authenticated endpoints correctly require JWT
+2. ✓ Author checks are properly implemented
+3. ⚠ Consider adding rate limiting per user
 
 ### For Admin Endpoints
 
-1. ✅ All admin endpoints correctly require super-admin
-2. ✅ Route protection is implemented at API level
-3. ⚠️ Consider audit logging for admin actions
+1. ✓ All admin endpoints correctly require super-admin
+2. ✓ Route protection is implemented at API level
+3. ⚠ Consider audit logging for admin actions
 
 ---
 
@@ -489,7 +489,7 @@ All admin endpoints require **super-admin authentication** and are **subject to 
 
 ---
 
-## ⚠️ REQUIRED CHANGES FOR SECURITY HARDENING
+## ⚠ REQUIRED CHANGES FOR SECURITY HARDENING
 
 ### 1. Update `/health` Endpoint
 - **Current**: No JWT encryption required
@@ -552,9 +552,9 @@ All admin endpoints require **super-admin authentication** and are **subject to 
 
 The mods-api has a well-structured endpoint architecture, but **requires security hardening** to enforce JWT encryption/decryption as the mandatory base requirement:
 
-- ⚠️ **Current State**: JWT encryption is optional for public endpoints
-- ✅ **Required State**: JWT encryption is MANDATORY for ALL endpoints
-- ✅ **Architecture**: CORS and auth checks are properly layered
-- ⚠️ **Action Required**: Update all endpoints to enforce JWT encryption requirement
+- ⚠ **Current State**: JWT encryption is optional for public endpoints
+- ✓ **Required State**: JWT encryption is MANDATORY for ALL endpoints
+- ✓ **Architecture**: CORS and auth checks are properly layered
+- ⚠ **Action Required**: Update all endpoints to enforce JWT encryption requirement
 
 **Security Principle**: JWT encryption/decryption is the foundation. All other security layers (CORS, authentication, authorization) are built on top of this mandatory requirement.

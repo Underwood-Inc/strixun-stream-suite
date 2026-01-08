@@ -2,7 +2,7 @@
  * Integration Tests for Session by IP - MIGRATED TO MINIFLARE
  * Tests IP-based session lookup
  * 
- * ✅ MIGRATED: Now uses Miniflare instead of wrangler dev processes
+ * ✓ MIGRATED: Now uses Miniflare instead of wrangler dev processes
  * - No health checks needed (Miniflare is ready immediately)
  * - No process management
  * - Much faster startup (2-5 seconds vs 70-80 seconds)

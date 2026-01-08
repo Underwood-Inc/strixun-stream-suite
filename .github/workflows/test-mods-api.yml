@@ -82,7 +82,7 @@ jobs:
         run: |
           echo "## Mods API Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[SUCCESS] All tests completed (unit + integration)" >> $GITHUB_STEP_SUMMARY
+          echo "✓ All tests completed (unit + integration)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Integration Tests:**" >> $GITHUB_STEP_SUMMARY
           echo "- API Framework Integration Tests" >> $GITHUB_STEP_SUMMARY

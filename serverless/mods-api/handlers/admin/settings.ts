@@ -22,7 +22,7 @@ interface AdminSettings {
 export async function handleGetSettings(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
@@ -34,7 +34,7 @@ export async function handleGetSettings(
             allowedFileExtensions: DEFAULT_ALLOWED_EXTENSIONS,
             uploadsEnabled: true, // Default to enabled for backward compatibility
             updatedAt: new Date().toISOString(),
-            updatedBy: auth.userId,
+            updatedBy: auth.customerId,
         };
         
         // Ensure uploadsEnabled exists for legacy settings
@@ -75,7 +75,7 @@ export async function handleGetSettings(
 export async function handleUpdateSettings(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
@@ -124,14 +124,14 @@ export async function handleUpdateSettings(
             allowedFileExtensions: DEFAULT_ALLOWED_EXTENSIONS,
             uploadsEnabled: true,
             updatedAt: new Date().toISOString(),
-            updatedBy: auth.userId,
+            updatedBy: auth.customerId,
         };
         
         const updatedSettings: AdminSettings = {
             ...baseSettings,
             ...updateData,
             updatedAt: new Date().toISOString(),
-            updatedBy: auth.userId,
+            updatedBy: auth.customerId,
         };
         
         // Ensure uploadsEnabled is a boolean

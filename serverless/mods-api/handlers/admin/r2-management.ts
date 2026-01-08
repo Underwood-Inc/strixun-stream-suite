@@ -56,7 +56,7 @@ interface AssociatedVersionInfo {
  * Associated user information (human-readable)
  */
 interface AssociatedUserInfo {
-    userId: string;
+    customerId: string;
     displayName?: string | null;
 }
 
@@ -305,8 +305,7 @@ async function fetchAssociatedData(
         // For now, we'll leave this as null if customer lookup fails
         // In the future, R2 metadata should store customerId directly
         
-        associatedData.uploadedBy = {
-            userId: uploadedBy,
+        associatedData.uploadedBy = { customerId: uploadedBy,
             displayName: displayName || null,
         };
     }
@@ -415,8 +414,7 @@ async function fetchAssociatedDataBatch(
             const customerIdForLookup = fileModMap.get(file.key) || associatedData.mod?.customerId;
             const displayName = customerIdForLookup ? displayNames.get(customerIdForLookup) || null : null;
             
-            associatedData.uploadedBy = {
-                userId: uploadedBy,
+            associatedData.uploadedBy = { customerId: uploadedBy,
                 displayName: displayName || null,
             };
         }
@@ -445,7 +443,7 @@ async function fetchAssociatedDataBatch(
 export async function handleListR2Files(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
@@ -545,7 +543,7 @@ export async function handleListR2Files(
 export async function handleDetectDuplicates(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Route-level protection ensures user is super admin
@@ -895,7 +893,7 @@ async function isThumbnailProtected(
 export async function handleDeleteR2File(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null },
+    auth: { customerId: string; email?: string; customerId: string | null },
     key?: string
 ): Promise<Response> {
     try {
@@ -1103,7 +1101,7 @@ export async function handleDeleteR2File(
 export async function handleSetDeletionTimestamp(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null },
+    auth: { customerId: string; email?: string; customerId: string | null },
     key: string
 ): Promise<Response> {
     try {

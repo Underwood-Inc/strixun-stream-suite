@@ -78,7 +78,7 @@ export async function handleBadge(
     env: Env,
     modId: string,
     versionId: string,
-    auth: { userId: string; customerId: string | null; email?: string } | null
+    auth: { customerId: string; customerId: string | null; email?: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
@@ -145,7 +145,7 @@ export async function handleBadge(
 
         // CRITICAL: Enforce visibility and status filtering
         // Badges are often loaded as images without auth, so we need to be more permissive
-        const isAuthor = mod.authorId === auth?.userId;
+        const isAuthor = mod.authorId === auth?.customerId;
         const modVisibility = mod.visibility || 'public';
         const modStatus = mod.status || 'published';
         

@@ -8,7 +8,7 @@
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
 import { createError } from '../../utils/errors.js';
-import { getApprovedUploaders, getUserUploadPermissionInfo, isSuperAdminEmail } from '../../utils/admin.js';
+import { getApprovedUploaders, getCustomerUploadPermissionInfo, isSuperAdminEmail } from '../../utils/admin.js';
 import { getCustomerKey } from '../../utils/customer.js';
 import type { ModMetadata } from '../../types/mod.js';
 
@@ -67,7 +67,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
         const client = createServiceClient(authApiUrl, env);
         
         const response = await client.get<{ users: Array<{
-            userId: string;
+            customerId: string;
             displayName: string | null;
             customerId: string | null;
             createdAt: string | null;
@@ -78,7 +78,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
             // Convert to Customer format (map userId → customerId)
             if (response.data.users && Array.isArray(response.data.users)) {
                 customers.push(...response.data.users.map(u => ({
-                    customerId: u.customerId || u.userId, // PRIMARY: Use customerId, fallback to userId for legacy
+                    customerId: u.customerId || u.customerId, // PRIMARY: Use customerId, fallback to userId for legacy
                     email: '', // Not returned by admin endpoint for security
                     displayName: u.displayName,
                     createdAt: u.createdAt,
@@ -114,15 +114,15 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                     const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
                     
                     for (const key of listResult.keys) {
-                        // Look for legacy user keys: customer_{id}_user_{emailHash}
-                        if (key.name.includes('_user_')) {
+                        // Look for legacy keys: customer_{id}_user_{emailHash} or customer_{id}_customer_{emailHash}
+                        if (key.name.includes('_user_') || key.name.includes('_customer_')) {
                             try {
                                 const customerData = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as any;
                                 if (customerData) {
                                     // Extract customerId from key name (ALWAYS - this is the source of truth)
                                     const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
                                     const customer: Customer = {
-                                        customerId: match ? match[1] : (customerData.customerId || customerData.userId || ''),
+                                        customerId: match ? match[1] : (customerData.customerId || customerData.customerId || ''),
                                         email: customerData.email || '',
                                         displayName: customerData.displayName,
                                         createdAt: customerData.createdAt,
@@ -161,7 +161,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
                             if (customerData) {
                                 const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
                                 const customer: Customer = {
-                                    customerId: match ? match[1] : (customerData.customerId || customerData.userId || ''),
+                                    customerId: match ? match[1] : (customerData.customerId || customerData.customerId || ''),
                                     email: customerData.email || '',
                                     displayName: customerData.displayName,
                                     createdAt: customerData.createdAt,
@@ -192,7 +192,7 @@ async function listAllCustomers(env: Env): Promise<Customer[]> {
 async function getCustomerModCount(customerId: string, env: Env): Promise<number> {
     let count = 0;
     
-    // Search through all mod lists to find mods by this user
+    // Search through all mod lists to find mods by this customer
     const allModIds = new Set<string>();
     
     // Get global public list
@@ -221,7 +221,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
         cursor = listResult.listComplete ? undefined : listResult.cursor;
     } while (cursor);
     
-    // Count mods by this user
+    // Count mods by this customer
     for (const modId of allModIds) {
         // Try global scope first
         const globalModKey = `mod_${modId}`;
@@ -264,7 +264,7 @@ async function getCustomerModCount(customerId: string, env: Env): Promise<number
 export async function handleListUsers(
     request: Request,
     env: Env,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);
@@ -296,7 +296,7 @@ export async function handleListUsers(
             
             // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
             // Note: customer.email may be empty string from listAllCustomers (privacy), but we can get it from KV metadata
-            const permissionInfo = await getUserUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
+            const permissionInfo = await getCustomerUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
             
             customerItems.push({
                 customerId: customer.customerId,
@@ -370,7 +370,7 @@ export async function handleGetUserDetails(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         // Find customer
@@ -392,7 +392,7 @@ export async function handleGetUserDetails(
         }
         
         // Get comprehensive permission info (checks all three tiers: super admin, env var, KV)
-        const permissionInfo = await getUserUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
+        const permissionInfo = await getCustomerUploadPermissionInfo(customer.customerId, customer.email || undefined, env);
         const hasUploadPermission = permissionInfo.hasPermission;
         
         // Get approval metadata if approved via KV
@@ -479,7 +479,7 @@ export async function handleUpdateUser(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         const requestData = await request.json().catch(() => ({})) as {
@@ -489,12 +489,12 @@ export async function handleUpdateUser(
         
         // Update upload permission if provided
         if (typeof requestData.hasUploadPermission === 'boolean') {
-            const { approveUserUpload, revokeUserUpload, getUserUploadPermissionInfo } = await import('../../utils/admin.js');
+            const { approveCustomerUpload, revokeCustomerUpload, getCustomerUploadPermissionInfo } = await import('../../utils/admin.js');
             
             // Check current permission source
             const allCustomers = await listAllCustomers(env);
             const customer = allCustomers.find(c => c.customerId === customerId);
-            const currentPermissionInfo = await getUserUploadPermissionInfo(customerId, customer?.email || undefined, env);
+            const currentPermissionInfo = await getCustomerUploadPermissionInfo(customerId, customer?.email || undefined, env);
             
             // If customer has env-var or super-admin permission, warn that revoking KV won't remove their permission
             // (They'll still have permission from env var)
@@ -502,15 +502,15 @@ export async function handleUpdateUser(
                 (currentPermissionInfo.permissionSource === 'env-var' || currentPermissionInfo.permissionSource === 'super-admin')) {
                 // Customer has env-based permission - revoking KV won't actually remove their upload permission
                 // But we'll still remove the KV entry for consistency
-                await revokeUserUpload(customerId, env);
+                await revokeCustomerUpload(customerId, env);
                 // Note: Customer will still have permission from APPROVED_UPLOADER_EMAILS or SUPER_ADMIN_EMAILS
             } else if (requestData.hasUploadPermission) {
                 // Approve customer (adds to KV)
                 const email = customer?.email || '';
-                await approveUserUpload(customerId, email, env);
+                await approveCustomerUpload(customerId, email, env);
             } else {
                 // Revoke KV approval
-                await revokeUserUpload(customerId, env);
+                await revokeCustomerUpload(customerId, env);
             }
         }
         
@@ -554,7 +554,7 @@ export async function handleGetUserMods(
     request: Request,
     env: Env,
     customerId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string; customerId: string | null }
 ): Promise<Response> {
     try {
         const url = new URL(request.url);

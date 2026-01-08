@@ -21,7 +21,7 @@
     isHTTPS,
   } from '../../core/services/encryption';
   import { encryptedStorage, migrateToEncryption } from '../../core/services/encrypted-storage';
-import { token, user } from '../../stores/auth';
+import { token, customer } from '../../stores/auth';
 import { showToast } from '../../stores/toast-queue';
 
   let encryptionEnabled = false;
@@ -243,7 +243,7 @@ import { showToast } from '../../stores/toast-queue';
   {/if}
 
   <div class="encryption-settings__info">
-    <h4>ℹ️ About JWT Token-Based Encryption</h4>
+    <h4>ℹ About JWT Token-Based Encryption</h4>
     <ul>
       <li>
         <strong>JWT Token as Key:</strong> Your JWT token (obtained via email OTP) is used to derive the encryption key. 

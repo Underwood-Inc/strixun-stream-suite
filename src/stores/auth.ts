@@ -193,11 +193,10 @@ async function restoreSessionFromBackend(): Promise<boolean> {
       restored?: boolean;
       access_token?: string;
       token?: string;
-      userId?: string;
       sub?: string;
       email?: string;
       displayName?: string | null;
-      customerId?: string | null;
+      customerId: string;
       expiresAt?: string;
       isSuperAdmin?: boolean;
     };
@@ -205,7 +204,7 @@ async function restoreSessionFromBackend(): Promise<boolean> {
     if (data.restored && data.access_token) {
       // Session restored! Save the token
       const customerData: AuthenticatedCustomer = {
-        customerId: data.customerId || data.userId || data.sub || '',
+        customerId: data.customerId,
         email: data.email || '',
         displayName: data.displayName || undefined,
         token: data.access_token || data.token || '',

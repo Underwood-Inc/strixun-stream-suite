@@ -2,7 +2,7 @@
  * Core types for auth store
  * Framework-agnostic types that work across all implementations
  * 
- * CRITICAL: We ONLY have Customer entities - NO "User" entity exists
+ * CRITICAL: We ONLY have Customer entities - NO "customer" entity exists
  * The authenticated entity is a Customer with a customerId
  */
 

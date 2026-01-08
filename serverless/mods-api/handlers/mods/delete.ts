@@ -17,7 +17,7 @@ export async function handleDeleteMod(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string }
 ): Promise<Response> {
     try {
         // Check email whitelist
@@ -37,8 +37,7 @@ export async function handleDeleteMod(
 
         // CRITICAL: Validate customerId is present - required for data scoping
         if (!auth.customerId) {
-            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated user:', {
-                userId: auth.userId,
+            console.error('[DeleteMod] CRITICAL: customerId is null for authenticated user:', { customerId: auth.customerId,
                 email: auth.email,
                 note: 'Rejecting mod deletion - customerId is required for data scoping'
             });
@@ -117,7 +116,7 @@ export async function handleDeleteMod(
         }
 
         // Check authorization
-        if (mod.authorId !== auth.userId) {
+        if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to delete this mod');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],

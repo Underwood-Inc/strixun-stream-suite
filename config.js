@@ -308,7 +308,7 @@ window.getOtpAuthApiUrl = function() {
         cachedOtpAuthApiUrl = 'http://localhost:8787';
         if (!otpAuthApiUrlLogged) {
             console.log('[Config] 🔒 LOCALHOST DETECTED - Using local OTP Auth Worker: http://localhost:8787');
-            console.log('[Config] ⚠️  Cache cleared to prevent production URL usage');
+            console.log('[Config] ⚠  Cache cleared to prevent production URL usage');
             otpAuthApiUrlLogged = true;
         }
         return 'http://localhost:8787'; // Return directly, don't use cache

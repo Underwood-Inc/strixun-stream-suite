@@ -32,7 +32,7 @@ const mockMod: ModMetadata = {
 };
 
 describe('InteractiveThumbnail Integration (Mods Hub)', () => {
-  let user: ReturnType<typeof userEvent.setup>;
+  let customer: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
     user = userEvent.setup();

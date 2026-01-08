@@ -19,16 +19,16 @@ const BASE_PORT = parseInt(process.env.E2E_LOCAL_WORKER_PORT || '8787', 10);
 export { getInterceptedOTP, waitForInterceptedOTP } from './email-interception.js';
 
 /**
- * Test user credentials for E2E testing
+ * Test customer credentials for E2E testing
  * These should be test accounts that won't affect production data
  */
-export const TEST_USERS = {
+export const TEST_CUSTOMERS = {
   admin: {
     email: process.env.E2E_TEST_ADMIN_EMAIL || 'test-admin@example.com',
     // Note: OTP will be sent to this email during tests
   },
   regular: {
-    email: process.env.E2E_TEST_USER_EMAIL || 'test-user@example.com',
+    email: process.env.E2E_TEST_CUSTOMER_EMAIL || 'test-customer@example.com',
   },
 };
 
@@ -346,9 +346,9 @@ export async function extractOTPFromResponse(
 }
 
 /**
- * Authenticate a user via OTP flow
+ * Authenticate a customer via OTP flow
  */
-export async function authenticateUser(
+export async function authenticateCustomer(
   page: Page,
   email: string,
   otpCode?: string

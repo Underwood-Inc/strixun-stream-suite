@@ -123,7 +123,7 @@ declare namespace OtpLoginCoreLib {
    * Login Success Data
    */
   export interface LoginSuccessData {
-    userId?: string;
+    customerId: string;
     email: string;
     displayName?: string | null;
     token: string;

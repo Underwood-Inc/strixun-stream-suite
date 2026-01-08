@@ -406,25 +406,25 @@ export async function handleDashboardRoutes(request: Request, path: string, env:
         return handleSuperAdminRoute(adminHandlers.handleTestOTP, request, env, auth);
     }
     
-    // User Management endpoints
-    if (path === '/admin/users' && request.method === 'GET') {
+    // Customer Management endpoints
+    if (path === '/admin/customers' && request.method === 'GET') {
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute(adminHandlers.handleListUsers, request, env, auth);
+        return handleAdminRoute(adminHandlers.handleListCustomers, request, env, auth);
     }
     
     // GDPR endpoints
-    const exportUserMatch = path.match(/^\/admin\/users\/([^\/]+)\/export$/);
-    if (exportUserMatch && request.method === 'GET') {
-        const userId = exportUserMatch[1];
+    const exportCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)\/export$/);
+    if (exportCustomerMatch && request.method === 'GET') {
+        const customerId = exportCustomerMatch[1];
         const auth = await authenticateRequest(request, env);
-        return handleAdminRoute((req, e, cid) => adminHandlers.handleExportUserData(req, e, cid, userId), request, env, auth);
+        return handleAdminRoute((req, e, cid) => adminHandlers.handleExportCustomerData(req, e, cid, customerId), request, env, auth);
     }
     
-    const deleteUserMatch = path.match(/^\/admin\/users\/([^\/]+)$/);
-    if (deleteUserMatch && request.method === 'DELETE') {
-        const userId = deleteUserMatch[1];
+    const deleteCustomerMatch = path.match(/^\/admin\/customers\/([^\/]+)$/);
+    if (deleteCustomerMatch && request.method === 'DELETE') {
+        const customerId = deleteCustomerMatch[1];
         const auth = await authenticateRequest(request, env);
-        return handleSuperAdminRoute((req, e, cid) => adminHandlers.handleDeleteUserData(req, e, cid, userId), request, env, auth);
+        return handleSuperAdminRoute((req, e, cid) => adminHandlers.handleDeleteCustomerData(req, e, cid, customerId), request, env, auth);
     }
     
     // Audit logs endpoint - customer-scoped, regular auth required (not super-admin)

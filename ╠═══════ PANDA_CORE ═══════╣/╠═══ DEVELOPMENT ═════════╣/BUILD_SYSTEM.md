@@ -265,7 +265,7 @@ Turborepo automatically passes `VITE_*` prefixed environment variables to all bu
 
 ### Removed: VITE_SERVICE_ENCRYPTION_KEY
 
-**⚠️ IMPORTANT**: `VITE_SERVICE_ENCRYPTION_KEY` has been **completely removed** from the build system.
+**⚠ IMPORTANT**: `VITE_SERVICE_ENCRYPTION_KEY` has been **completely removed** from the build system.
 
 - **Service key encryption was removed**: The `encryptWithServiceKey()` function has been removed from `@strixun/api-framework`
 - **JWT encryption only**: All encryption now uses JWT tokens via the API framework

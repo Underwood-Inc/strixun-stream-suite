@@ -23,9 +23,8 @@ interface AuthResult {
   authenticated: boolean;
   status?: number;
   error?: string;
-  userId?: string;
+  customerId?: string;
   email?: string;
-  customerId?: string | null;
 }
 
 
@@ -52,9 +51,8 @@ async function authenticateRequest(
 
   return {
     authenticated: true,
-    userId: (payload as any).userId || (payload as any).sub,
+    customerId: (payload as any).customerId || (payload as any).sub,
     email: (payload as any).email,
-    customerId: (payload as any).customerId || null,
   };
 }
 

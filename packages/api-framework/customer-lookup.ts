@@ -2,8 +2,8 @@
  * Customer Lookup Utility
  * 
  * Consolidated customer API client using the API framework as source of truth
- * Supports both JWT authentication (for user requests) and service-client (for service-to-service)
- * Customer is the primary data source for all customizable user info
+ * Supports both JWT authentication (for customer requests) and service-client (for service-to-service)
+ * Customer is the primary data source for all customizable customer info
  * 
  * This module is part of api-framework to avoid dependency cycles.
  */
@@ -94,7 +94,7 @@ function createCustomerApiServiceClient(env: CustomerLookupEnv): ServiceClient {
 }
 
 /**
- * Create API client for customer API (JWT-authenticated user requests)
+ * Create API client for customer API (JWT-authenticated customer requests)
  * Uses the API framework's createAPIClient
  */
 function createCustomerApiJWTClient(jwtToken: string, env?: CustomerLookupEnv) {

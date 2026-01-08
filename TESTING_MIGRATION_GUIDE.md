@@ -2,27 +2,27 @@
 
 > **Complete guide to migrating from old approach to official @cloudflare/vitest-pool-workers**
 
-**Status:** ✅ Migration Infrastructure Complete - Ready for Test Migration
+**Status:** ✓ Migration Infrastructure Complete - Ready for Test Migration
 
 ---
 
 ## 🎯 What Changed
 
 ### Before (Old Approach)
-- ❌ 640+ lines of setup code
-- ❌ 70-80 second startup time
-- ❌ Complex process management
-- ❌ Health check polling (30 attempts)
-- ❌ Platform-specific code (Windows/Unix)
-- ❌ Flaky tests (startup timing issues)
+- ✗ 640+ lines of setup code
+- ✗ 70-80 second startup time
+- ✗ Complex process management
+- ✗ Health check polling (30 attempts)
+- ✗ Platform-specific code (Windows/Unix)
+- ✗ Flaky tests (startup timing issues)
 
 ### After (Official Solution)
-- ✅ ~20 lines of config
-- ✅ 2-5 second startup time
-- ✅ No process management
-- ✅ No health checks needed
-- ✅ Cross-platform
-- ✅ Reliable (runtime always ready)
+- ✓ ~20 lines of config
+- ✓ 2-5 second startup time
+- ✓ No process management
+- ✓ No health checks needed
+- ✓ Cross-platform
+- ✓ Reliable (runtime always ready)
 
 ---
 
@@ -191,7 +191,7 @@
 
 ---
 
-## ⚠️ Important Notes
+## ⚠ Important Notes
 
 ### Peer Dependency Warning
 You may see a warning about vitest version mismatch:

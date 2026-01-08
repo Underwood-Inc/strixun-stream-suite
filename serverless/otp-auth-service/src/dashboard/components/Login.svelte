@@ -37,8 +37,8 @@
         // Customer exists, proceed with login
         window.dispatchEvent(new CustomEvent('auth:login', {
           detail: { 
-            user: {
-              userId: data.userId,
+            customer: {
+              userId: data.customerId,
               email: data.email,
               token: data.token,
             }
@@ -80,7 +80,7 @@
     window.dispatchEvent(new CustomEvent('auth:login', {
       detail: { 
         user: {
-          userId: data.userId,
+          userId: data.customerId,
           email: data.email,
           token: data.token,
         }

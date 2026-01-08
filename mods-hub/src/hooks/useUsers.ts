@@ -1,75 +1,75 @@
 /**
- * TanStack Query hooks for user management (admin only)
+ * TanStack Query hooks for customer management (admin only)
  * Handles server state management
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../services/api';
 import { useUIStore } from '../stores/ui';
-import type { UpdateUserRequest } from '../types/user';
+import type { UpdateCustomerRequest } from '../types/user';
 
 /**
  * Query keys
  */
-export const userKeys = {
-    all: ['users'] as const,
-    lists: () => [...userKeys.all, 'list'] as const,
-    list: (filters: Record<string, any>) => [...userKeys.lists(), filters] as const,
-    details: () => [...userKeys.all, 'detail'] as const,
-    detail: (userId: string) => [...userKeys.details(), userId] as const,
-    mods: (userId: string) => [...userKeys.detail(userId), 'mods'] as const,
+export const customerKeys = {
+    all: ['customers'] as const,
+    lists: () => [...customerKeys.all, 'list'] as const,
+    list: (filters: Record<string, any>) => [...customerKeys.lists(), filters] as const,
+    details: () => [...customerKeys.all, 'detail'] as const,
+    detail: (customerId: string) => [...customerKeys.details(), customerId] as const,
+    mods: (customerId: string) => [...customerKeys.detail(customerId), 'mods'] as const,
 };
 
 /**
- * List users query (admin only)
+ * List customers query (admin only)
  */
-export function useUsersList(filters: {
+export function useCustomersList(filters: {
     page?: number;
     pageSize?: number;
     search?: string;
 }) {
     return useQuery({
-        queryKey: userKeys.list(filters),
-        queryFn: () => api.listUsers(filters),
+        queryKey: customerKeys.list(filters),
+        queryFn: () => api.listCustomers(filters),
         staleTime: 30000, // 30 seconds
         refetchOnMount: 'always',
     });
 }
 
 /**
- * Get user details query (admin only)
+ * Get customer details query (admin only)
  */
-export function useUserDetails(userId: string) {
+export function useCustomerDetails(customerId: string) {
     return useQuery({
-        queryKey: userKeys.detail(userId),
-        queryFn: () => api.getUserDetails(userId),
-        enabled: !!userId,
+        queryKey: customerKeys.detail(customerId),
+        queryFn: () => api.getCustomerDetails(customerId),
+        enabled: !!customerId,
     });
 }
 
 /**
- * Update user mutation (admin only)
+ * Update customer mutation (admin only)
  */
-export function useUpdateUser() {
+export function useUpdateCustomer() {
     const queryClient = useQueryClient();
     const addNotification = useUIStore((state) => state.addNotification);
     
     return useMutation({
-        mutationFn: ({ userId, updates }: {
-            userId: string;
-            updates: UpdateUserRequest;
-        }) => api.updateUser(userId, updates),
+        mutationFn: ({ customerId, updates }: {
+            customerId: string;
+            updates: UpdateCustomerRequest;
+        }) => api.updateCustomer(customerId, updates),
         onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.userId) });
-            queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: customerKeys.detail(variables.customerId) });
+            queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
             addNotification({
-                message: 'User updated successfully!',
+                message: 'Customer updated successfully!',
                 type: 'success',
             });
         },
         onError: (error: Error) => {
             addNotification({
-                message: error.message || 'Failed to update user',
+                message: error.message || 'Failed to update customer',
                 type: 'error',
             });
         },
@@ -77,16 +77,16 @@ export function useUpdateUser() {
 }
 
 /**
- * Get user's mods query (admin only)
+ * Get customer's mods query (admin only)
  */
-export function useUserMods(userId: string, params: {
+export function useCustomerMods(customerId: string, params: {
     page?: number;
     pageSize?: number;
 }) {
     return useQuery({
-        queryKey: [...userKeys.mods(userId), params],
-        queryFn: () => api.getUserMods(userId, params),
-        enabled: !!userId,
+        queryKey: [...customerKeys.mods(customerId), params],
+        queryFn: () => api.getCustomerMods(customerId, params),
+        enabled: !!customerId,
     });
 }
 

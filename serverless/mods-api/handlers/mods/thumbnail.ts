@@ -16,7 +16,7 @@ export async function handleThumbnail(
     request: Request,
     env: Env,
     modId: string,
-    auth: { userId: string; customerId: string | null } | null
+    auth: { customerId: string; customerId: string | null } | null
 ): Promise<Response> {
     // console.log('[Thumbnail] handleThumbnail called:', { modId, hasAuth: !!auth, customerId: auth?.customerId });
     try {
@@ -90,7 +90,7 @@ export async function handleThumbnail(
         // Thumbnails are often loaded as images without auth, so we need to be more permissive
         const { isSuperAdminEmail } = await import('../../utils/admin.js');
         const isAdmin = auth?.email ? await isSuperAdminEmail(auth.email, env) : false;
-        const isAuthor = mod.authorId === auth?.userId;
+        const isAuthor = mod.authorId === auth?.customerId;
         const modVisibility = mod.visibility || 'public';
         const modStatus = mod.status || 'published';
         

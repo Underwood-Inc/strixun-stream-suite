@@ -13,12 +13,12 @@ This document explains how mod files are encrypted when uploaded and decrypted w
 
 ### Key Points
 
-- ✅ **All mod files are encrypted** before being stored
-- ✅ **Any authenticated user** can download and decrypt mods
-- ✅ **Access control** is handled by mod visibility settings, not encryption
-- ✅ **Encryption happens on the client** (before upload)
-- ✅ **Decryption happens on the server** (during download)
-- ✅ **Files are stored encrypted** in cloud storage
+- ✓ **All mod files are encrypted** before being stored
+- ✓ **Any authenticated user** can download and decrypt mods
+- ✓ **Access control** is handled by mod visibility settings, not encryption
+- ✓ **Encryption happens on the client** (before upload)
+- ✓ **Decryption happens on the server** (during download)
+- ✓ **Files are stored encrypted** in cloud storage
 
 ---
 
@@ -118,10 +118,10 @@ sequenceDiagram
 
 The system uses a **single shared encryption key** for all mod files. This key is:
 
-- ✅ Stored as a **GitHub environment secret** (for production)
-- ✅ Stored in **local `.env` file** (for development)
-- ✅ **Never sent to the client** (only used server-side for decryption)
-- ✅ **Same key for all mods** (allows any authenticated user to decrypt)
+- ✓ Stored as a **GitHub environment secret** (for production)
+- ✓ Stored in **local `.env` file** (for development)
+- ✓ **Never sent to the client** (only used server-side for decryption)
+- ✓ **Same key for all mods** (allows any authenticated user to decrypt)
 
 ### Key Flow Diagram
 
@@ -388,15 +388,15 @@ The system automatically detects encryption format:
 
 ---
 
-## ✅ Summary
+## ✓ Summary
 
 This architecture provides:
 
-1. ✅ **Secure encryption** for all mod files
-2. ✅ **Shared key system** allowing any authenticated user to download
-3. ✅ **Visibility-based access control** (not encryption-based)
-4. ✅ **Compression** to reduce storage costs
-5. ✅ **Integrity verification** via SHA-256 hashes
-6. ✅ **Backward compatibility** with format detection
+1. ✓ **Secure encryption** for all mod files
+2. ✓ **Shared key system** allowing any authenticated user to download
+3. ✓ **Visibility-based access control** (not encryption-based)
+4. ✓ **Compression** to reduce storage costs
+5. ✓ **Integrity verification** via SHA-256 hashes
+6. ✓ **Backward compatibility** with format detection
 
 The system is designed to be secure, efficient, and user-friendly while maintaining proper access controls through visibility settings rather than encryption keys.

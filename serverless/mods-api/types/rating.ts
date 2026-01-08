@@ -5,7 +5,7 @@
 export interface ModRating {
     ratingId: string;
     modId: string;
-    userId: string; // DEPRECATED: Use customerId instead (kept for backward compatibility with existing data)
+    customerId: string; // DEPRECATED: Use customerId instead (kept for backward compatibility with existing data)
     customerId?: string; // Customer ID from OTP auth service (preferred)
     userDisplayName?: string | null; // Display name (never use email)
     rating: number; // 1-5

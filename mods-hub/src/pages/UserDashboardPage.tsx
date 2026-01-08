@@ -133,7 +133,7 @@ const VIEW_STORAGE_KEY = 'mods-dashboard-view';
 
 export function UserDashboardPage() {
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuthStore();
+    const { customer, isAuthenticated } = useAuthStore();
     const [modToDelete, setModToDelete] = useState<ModMetadata | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [listHeight, setListHeight] = useState(600);
@@ -154,7 +154,7 @@ export function UserDashboardPage() {
     const { data, isLoading, error } = useModsList({
         page: 1,
         pageSize: 100,
-        authorId: user?.userId,
+        authorId: customer?.customerId,
     });
 
     const deleteMod = useDeleteMod();
@@ -201,7 +201,7 @@ export function UserDashboardPage() {
         }
     };
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !customer) {
         return (
             <PageContainer>
                 <Error>Please log in to view your dashboard.</Error>

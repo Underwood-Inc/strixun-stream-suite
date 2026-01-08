@@ -1,42 +1,40 @@
 /**
- * Admin handler for listing all users
- * GET /admin/users
- * Returns all users across all customer scopes (admin only)
+ * Admin handler for listing all customers
+ * GET /admin/customers
+ * Returns all customers across all customer scopes (admin only)
  */
 
 import { getCorsHeaders } from '../../utils/cors.js';
 
-interface User {
-    userId: string;
+interface Customer {
+    customerId: string;
     email: string;
     displayName?: string | null;
-    customerId?: string | null;
     createdAt?: string;
     lastLogin?: string;
     [key: string]: any;
 }
 
-interface UserListItem {
-    userId: string;
+interface CustomerListItem {
+    customerId: string;
     displayName: string | null;
-    customerId: string | null;
     createdAt: string | null;
     lastLogin: string | null;
 }
 
-interface UserListResponse {
-    users: UserListItem[];
+interface CustomerListResponse {
+    customers: CustomerListItem[];
     total: number;
 }
 
 /**
- * List all users from OTP auth service
+ * List all customers from OTP auth service
  */
-export async function handleListUsers(request: Request, env: Env, customerId: string | null): Promise<Response> {
+export async function handleListCustomers(request: Request, env: Env, customerId: string | null): Promise<Response> {
     try {
-        const users: UserListItem[] = [];
+        const customers: CustomerListItem[] = [];
         
-        // List all users from all customer scopes
+        // List all customers from all customer scopes
         const customerPrefix = 'customer_';
         let cursor: string | undefined;
         
@@ -44,26 +42,25 @@ export async function handleListUsers(request: Request, env: Env, customerId: st
             const listResult = await env.OTP_AUTH_KV.list({ prefix: customerPrefix, cursor });
             
             for (const key of listResult.keys) {
-                // Look for user keys: customer_{id}_user_{emailHash}
-                if (key.name.includes('_user_')) {
+                // Look for customer keys: customer_{id}_customer_{emailHash}
+                if (key.name.includes('_customer_')) {
                     try {
-                        const user = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as User | null;
-                        if (user && user.userId) {
+                        const customer = await env.OTP_AUTH_KV.get(key.name, { type: 'json' }) as Customer | null;
+                        if (customer && customer.customerId) {
                             // Extract customerId from key name
-                            const match = key.name.match(/^customer_([^_/]+)[_/]user_/);
-                            const customerId = match ? match[1] : null;
+                            const match = key.name.match(/^customer_([^_/]+)[_/]customer_/);
+                            const scopeCustomerId = match ? match[1] : null;
                             
-                            users.push({
-                                userId: user.userId,
-                                displayName: user.displayName || null,
-                                customerId: customerId || user.customerId || null,
-                                createdAt: user.createdAt || null,
-                                lastLogin: user.lastLogin || null,
+                            customers.push({
+                                customerId: customer.customerId || scopeCustomerId,
+                                displayName: customer.displayName || null,
+                                createdAt: customer.createdAt || null,
+                                lastLogin: customer.lastLogin || null,
                             });
                         }
                     } catch (error) {
                         // Skip invalid entries
-                        console.warn('[ListUsers] Failed to parse user:', key.name, error);
+                        console.warn('[ListCustomers] Failed to parse customer:', key.name, error);
                         continue;
                     }
                 }
@@ -73,15 +70,15 @@ export async function handleListUsers(request: Request, env: Env, customerId: st
         } while (cursor);
         
         // Sort by createdAt (newest first)
-        users.sort((a, b) => {
+        customers.sort((a, b) => {
             const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return bTime - aTime;
         });
         
-        const response: UserListResponse = {
-            users,
-            total: users.length,
+        const response: CustomerListResponse = {
+            customers,
+            total: customers.length,
         };
         
         return new Response(JSON.stringify(response), {
@@ -89,7 +86,7 @@ export async function handleListUsers(request: Request, env: Env, customerId: st
             headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
     } catch (error: any) {
-        console.error('[ListUsers] Error:', error);
+        console.error('[ListCustomers] Error:', error);
         return new Response(JSON.stringify({
             error: 'Internal server error',
             message: env.ENVIRONMENT === 'development' ? error.message : undefined

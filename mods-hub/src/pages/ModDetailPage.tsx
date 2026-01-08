@@ -279,8 +279,8 @@ export function ModDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
     const { data, isLoading, error, refetch } = useModDetail(slug || '');
-    const { user, isAuthenticated } = useAuthStore();
-    const isUploader = user?.userId === data?.mod.authorId;
+    const { customer, isAuthenticated } = useAuthStore();
+    const isUploader = customer?.customerId === data?.mod.authorId;
     const [downloading, setDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [isZoomed, setIsZoomed] = useState(false);
