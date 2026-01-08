@@ -19,8 +19,7 @@ def request_otp(email: str):
         f'{OTP_BASE_URL}/auth/request-otp',
         headers={
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {OTP_API_KEY}',
-            'X-OTP-API-Key': OTP_API_KEY
+            'X-OTP-API-Key': OTP_API_KEY  # API keys go in X-OTP-API-Key header, NOT Authorization
         },
         json={'email': email}
     )
@@ -33,8 +32,7 @@ def verify_otp(email: str, otp: str):
         f'{OTP_BASE_URL}/auth/verify-otp',
         headers={
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {OTP_API_KEY}',
-            'X-OTP-API-Key': OTP_API_KEY
+            'X-OTP-API-Key': OTP_API_KEY  # API keys go in X-OTP-API-Key header, NOT Authorization
         },
         json={'email': email, 'otp': otp}
     )
@@ -42,10 +40,10 @@ def verify_otp(email: str, otp: str):
     return response.json()
 
 def get_user_info(token: str):
-    """Get user information"""
+    """Get user information - requires JWT token from verify_otp"""
     response = requests.get(
         f'{OTP_BASE_URL}/auth/me',
-        headers={'Authorization': f'Bearer {token}'}
+        headers={'Authorization': f'Bearer {token}'}  # JWT token goes in Authorization header
     )
     response.raise_for_status()
     return response.json()

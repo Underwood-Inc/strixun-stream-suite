@@ -1637,8 +1637,9 @@ graph TB
                     </ul>
 
                     <h4>API Key Authentication</h4>
-                    <p>Multi-tenant features require API key authentication:</p>
-                    <pre><code class="language-http">Authorization: Bearer otp_live_sk_...</code></pre>
+                    <p>Multi-tenant features require API key authentication. API keys are for tenant identification and configuration, NOT for user authorization (JWT handles that):</p>
+                    <pre><code class="language-http">X-OTP-API-Key: otp_live_sk_...</code></pre>
+                    <p><strong>IMPORTANT:</strong> API keys use the <code>X-OTP-API-Key</code> header. The <code>Authorization</code> header is reserved for JWT tokens only.</p>
 
                     <h4>Per-Customer Configuration</h4>
                     <ul>

@@ -405,8 +405,7 @@ export const vanillaJsApiKeyExample = `<!DOCTYPE html>
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': \`Bearer \${apiKey}\`,
-            // Alternative: 'X-OTP-API-Key': apiKey
+            'X-OTP-API-Key': apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
           },
           body: JSON.stringify({ email })
         });
@@ -445,7 +444,8 @@ export const vanillaJsApiKeyExample = `<!DOCTYPE html>
         const response = await fetch(\`\${API_URL}/auth/quota\`, {
           method: 'GET',
           headers: {
-            'Authorization': \`Bearer \${apiKey}\`
+            'Authorization': \`Bearer \${apiKey}\`  // NOTE: Quota endpoint requires JWT token, not API key!
+            // This example is simplified - in production, use JWT from verifyOTP
           }
         });
         
@@ -1052,8 +1052,7 @@ function ApiKeyExample() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \`Bearer \${apiKey}\`,
-          // Alternative: 'X-OTP-API-Key': apiKey
+          'X-OTP-API-Key': apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
         },
         body: JSON.stringify({ email: email.trim() })
       });
@@ -1089,7 +1088,8 @@ function ApiKeyExample() {
       const res = await fetch(\`\${API_URL}/auth/quota\`, {
         method: 'GET',
         headers: {
-          'Authorization': \`Bearer \${apiKey}\`
+          'Authorization': \`Bearer \${apiKey}\`  // NOTE: Quota endpoint requires JWT token, not API key!
+          // This example is simplified - in production, use JWT from verifyOTP
         }
       });
       
@@ -1320,8 +1320,7 @@ export const svelteApiKeyExample = `<!-- ApiKeyExample.svelte -->
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \`Bearer \${apiKey}\`,
-          // Alternative: 'X-OTP-API-Key': apiKey
+          'X-OTP-API-Key': apiKey  // API keys go in X-OTP-API-Key header, NOT Authorization
         },
         body: JSON.stringify({ email: email.trim() })
       });
@@ -1357,7 +1356,8 @@ export const svelteApiKeyExample = `<!-- ApiKeyExample.svelte -->
       const res = await fetch(\`\${API_URL}/auth/quota\`, {
         method: 'GET',
         headers: {
-          'Authorization': \`Bearer \${apiKey}\`
+          'Authorization': \`Bearer \${apiKey}\`  // NOTE: Quota endpoint requires JWT token, not API key!
+          // This example is simplified - in production, use JWT from verifyOTP
         }
       });
       

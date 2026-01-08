@@ -11,8 +11,9 @@
 </ul>
 
 <h4>API Key Authentication</h4>
-<p>Multi-tenant features require API key authentication:</p>
-<CodeBlock code='Authorization: Bearer otp_live_sk_...' language="http" />
+<p>Multi-tenant features require API key authentication. API keys are for tenant identification and configuration, NOT for user authorization (JWT handles that):</p>
+<CodeBlock code='X-OTP-API-Key: otp_live_sk_...' language="http" />
+<p><strong>IMPORTANT:</strong> API keys use the <code>X-OTP-API-Key</code> header. The <code>Authorization</code> header is reserved for JWT tokens only.</p>
 
 <h4>Per-Customer Configuration</h4>
 <ul>
