@@ -77,8 +77,8 @@ export async function handleGetCustomerDataRequests(request: Request, env: Env):
         const customerKey = getCustomerKey(auth.customerId, `customer_${emailHash}`);
         const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as Customer | null;
 
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), {
+        if (!customer) {
+            return new Response(JSON.stringify({ error: 'Customer not found' }), {
                 status: 404,
                 headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
             });

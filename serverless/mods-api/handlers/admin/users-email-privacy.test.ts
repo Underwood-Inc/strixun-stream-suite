@@ -1,16 +1,16 @@
 /**
- * Tests for admin user handlers - Email Privacy
+ * Tests for admin customer handlers - Email Privacy
  * CRITICAL: Ensures email is NEVER returned in API responses
  * Only displayName and emailHash (for admin reference) are returned
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { handleListUsers, handleGetUserDetails } from './users.js';
+import { handleListCustomers, handleGetCustomerDetails } from './customers.js';
 
 // Mock dependencies
 vi.mock('../../utils/admin.js', () => ({
     getApprovedUploaders: vi.fn(),
-    getUserUploadPermissionInfo: vi.fn(),
+    getCustomerUploadPermissionInfo: vi.fn(),
 }));
 
 vi.mock('../../utils/customer.js', () => ({
@@ -31,7 +31,7 @@ vi.mock('../../utils/errors.js', () => ({
     })),
 }));
 
-import { getApprovedUploaders, getUserUploadPermissionInfo } from '../../utils/admin.js';
+import { getApprovedUploaders, getCustomerUploadPermissionInfo } from '../../utils/admin.js';
 
 // Mock the service client to avoid actual network calls
 vi.mock('@strixun/service-client', () => ({
@@ -39,10 +39,10 @@ vi.mock('@strixun/service-client', () => ({
         get: vi.fn().mockResolvedValue({
             status: 200,
             data: {
-                users: [
-                    { customerId: 'user_123',
-                        displayName: 'CoolUser123',
+                customers: [
+                    {
                         customerId: 'cust_abc',
+                        displayName: 'CoolCustomer123',
                         createdAt: '2024-01-01T00:00:00Z',
                         lastLogin: '2024-01-02T00:00:00Z',
                     },
@@ -53,7 +53,7 @@ vi.mock('@strixun/service-client', () => ({
     })),
 }));
 
-describe('Email Privacy in Admin User Handlers', () => {
+describe('Email Privacy in Admin Customer Handlers', () => {
     const mockEnv = {
         ALLOWED_ORIGINS: '*',
         AUTH_API_URL: 'https://auth.idling.app',
@@ -78,10 +78,10 @@ describe('Email Privacy in Admin User Handlers', () => {
             get: vi.fn().mockResolvedValue({
                 status: 200,
                 data: {
-                    users: [
-                        { customerId: 'user_123',
-                            displayName: 'CoolUser123',
+                    customers: [
+                        {
                             customerId: 'cust_abc',
+                            displayName: 'CoolCustomer123',
                             createdAt: '2024-01-01T00:00:00Z',
                             lastLogin: '2024-01-02T00:00:00Z',
                         },
@@ -91,8 +91,8 @@ describe('Email Privacy in Admin User Handlers', () => {
             }),
         } as any);
         
-        // Mock getUserUploadPermissionInfo to return default permission info
-        vi.mocked(getUserUploadPermissionInfo).mockResolvedValue({
+        // Mock getCustomerUploadPermissionInfo to return default permission info
+        vi.mocked(getCustomerUploadPermissionInfo).mockResolvedValue({
             hasPermission: false,
             isSuperAdmin: false,
             isApprovedUploader: false,
@@ -113,52 +113,51 @@ describe('Email Privacy in Admin User Handlers', () => {
         } as any);
     });
 
-    describe('handleListUsers', () => {
-        it('should return user list without email field', async () => {
-            vi.mocked(getApprovedUploaders).mockResolvedValue(['user_123']);
+    describe('handleListCustomers', () => {
+        it('should return customer list without email field', async () => {
+            vi.mocked(getApprovedUploaders).mockResolvedValue(['cust_abc']);
 
-            const mockRequest = new Request('https://example.com/admin/users', {
+            const mockRequest = new Request('https://example.com/admin/customers', {
                 method: 'GET',
             });
 
-            const auth = { customerId: 'admin_123',
-                email: 'admin@example.com',
+            const auth = {
                 customerId: 'cust_admin',
+                email: 'admin@example.com',
             };
 
-            const response = await handleListUsers(mockRequest, mockEnv, auth);
+            const response = await handleListCustomers(mockRequest, mockEnv, auth);
             const data = await response.json();
 
             // CRITICAL: email must NOT be in response
-            expect(data.users).toBeDefined();
-            expect(data.users.length).toBeGreaterThan(0);
+            expect(data.customers).toBeDefined();
+            expect(data.customers.length).toBeGreaterThan(0);
             
-            data.users.forEach((customer: any) => {
-                expect(user).not.toHaveProperty('email');
-                expect(user).toHaveProperty('displayName');
-                expect(user).toHaveProperty('userId');
-                expect(user).toHaveProperty('customerId');
+            data.customers.forEach((customer: any) => {
+                expect(customer).not.toHaveProperty('email');
+                expect(customer).toHaveProperty('displayName');
+                expect(customer).toHaveProperty('customerId');
             });
         });
 
         it('should return displayName instead of email', async () => {
-            vi.mocked(getApprovedUploaders).mockResolvedValue(['user_123']);
+            vi.mocked(getApprovedUploaders).mockResolvedValue(['cust_abc']);
 
-            const mockRequest = new Request('https://example.com/admin/users', {
+            const mockRequest = new Request('https://example.com/admin/customers', {
                 method: 'GET',
             });
 
-            const auth = { customerId: 'admin_123',
-                email: 'admin@example.com',
+            const auth = {
                 customerId: 'cust_admin',
+                email: 'admin@example.com',
             };
 
-            const response = await handleListUsers(mockRequest, mockEnv, auth);
+            const response = await handleListCustomers(mockRequest, mockEnv, auth);
             const data = await response.json();
 
             // Verify displayName is present
-            expect(data.users[0]).toHaveProperty('displayName');
-            expect(data.users[0].displayName).toBe('CoolUser123');
+            expect(data.customers[0]).toHaveProperty('displayName');
+            expect(data.customers[0].displayName).toBe('CoolCustomer123');
         });
 
         it('should handle null displayName gracefully', async () => {
@@ -168,10 +167,10 @@ describe('Email Privacy in Admin User Handlers', () => {
                 get: vi.fn().mockResolvedValue({
                     status: 200,
                     data: {
-                        users: [
-                            { customerId: 'user_123',
-                                displayName: null,
+                        customers: [
+                            {
                                 customerId: 'cust_abc',
+                                displayName: null,
                             },
                         ],
                         total: 1,
@@ -181,27 +180,27 @@ describe('Email Privacy in Admin User Handlers', () => {
 
             vi.mocked(getApprovedUploaders).mockResolvedValue([]);
 
-            const mockRequest = new Request('https://example.com/admin/users', {
+            const mockRequest = new Request('https://example.com/admin/customers', {
                 method: 'GET',
             });
 
-            const auth = { customerId: 'admin_123',
-                email: 'admin@example.com',
+            const auth = {
                 customerId: 'cust_admin',
+                email: 'admin@example.com',
             };
 
-            const response = await handleListUsers(mockRequest, mockEnv, auth);
+            const response = await handleListCustomers(mockRequest, mockEnv, auth);
             const data = await response.json();
 
             // CRITICAL: email must NOT be in response even if displayName is null
-            expect(data.users[0]).not.toHaveProperty('email');
-            expect(data.users[0].displayName).toBeNull();
+            expect(data.customers[0]).not.toHaveProperty('email');
+            expect(data.customers[0].displayName).toBeNull();
         });
     });
 
-    describe('handleGetUserDetails', () => {
-        it('should return user details without email field', async () => {
-            vi.mocked(getApprovedUploaders).mockResolvedValue(['user_123']);
+    describe('handleGetCustomerDetails', () => {
+        it('should return customer details without email field', async () => {
+            vi.mocked(getApprovedUploaders).mockResolvedValue(['cust_abc']);
             vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(null);
             vi.mocked(mockEnv.OTP_AUTH_KV.list).mockResolvedValue({
                 keys: [],
@@ -214,10 +213,10 @@ describe('Email Privacy in Admin User Handlers', () => {
                 get: vi.fn().mockResolvedValue({
                     status: 200,
                     data: {
-                        users: [
-                            { customerId: 'user_123',
-                                displayName: 'CoolUser123',
+                        customers: [
+                            {
                                 customerId: 'cust_abc',
+                                displayName: 'CoolCustomer123',
                             },
                         ],
                         total: 1,
@@ -225,38 +224,37 @@ describe('Email Privacy in Admin User Handlers', () => {
                 }),
             } as any);
 
-            const mockRequest = new Request('https://example.com/admin/users/user_123', {
+            const mockRequest = new Request('https://example.com/admin/customers/cust_abc', {
                 method: 'GET',
             });
 
-            const auth = { customerId: 'admin_123',
-                email: 'admin@example.com',
+            const auth = {
                 customerId: 'cust_admin',
+                email: 'admin@example.com',
             };
 
-            const response = await handleGetUserDetails(mockRequest, mockEnv, 'user_123', auth);
+            const response = await handleGetCustomerDetails(mockRequest, mockEnv, 'cust_abc', auth);
             const data = await response.json();
 
             // CRITICAL: email must NOT be in response
             expect(data).not.toHaveProperty('email');
             expect(data).toHaveProperty('displayName');
-            expect(data).toHaveProperty('userId');
             expect(data).toHaveProperty('customerId');
             
             // emailHash is allowed (for admin reference only, not the actual email)
             if (data.emailHash) {
                 expect(typeof data.emailHash).toBe('string');
                 // emailHash should be a hash, not the actual email
-                expect(data.emailHash).not.toBe('user@example.com');
+                expect(data.emailHash).not.toBe('customer@example.com');
             }
         });
 
         it('should return emailHash for admin reference (not actual email)', async () => {
-            vi.mocked(getApprovedUploaders).mockResolvedValue(['user_123']);
+            vi.mocked(getApprovedUploaders).mockResolvedValue(['cust_abc']);
             vi.mocked(mockEnv.MODS_KV.get).mockResolvedValue(null);
             vi.mocked(mockEnv.OTP_AUTH_KV.list).mockResolvedValue({
                 keys: [
-                    { name: 'customer_cust_abc_user_abc123def456' },
+                    { name: 'customer_cust_abc_customer_abc123def456' },
                 ],
                 listComplete: true,
             });
@@ -267,10 +265,10 @@ describe('Email Privacy in Admin User Handlers', () => {
                 get: vi.fn().mockResolvedValue({
                     status: 200,
                     data: {
-                        users: [
-                            { customerId: 'user_123',
-                                displayName: 'CoolUser123',
+                        customers: [
+                            {
                                 customerId: 'cust_abc',
+                                displayName: 'CoolCustomer123',
                             },
                         ],
                         total: 1,
@@ -278,16 +276,16 @@ describe('Email Privacy in Admin User Handlers', () => {
                 }),
             } as any);
 
-            const mockRequest = new Request('https://example.com/admin/users/user_123', {
+            const mockRequest = new Request('https://example.com/admin/customers/cust_abc', {
                 method: 'GET',
             });
 
-            const auth = { customerId: 'admin_123',
-                email: 'admin@example.com',
+            const auth = {
                 customerId: 'cust_admin',
+                email: 'admin@example.com',
             };
 
-            const response = await handleGetUserDetails(mockRequest, mockEnv, 'user_123', auth);
+            const response = await handleGetCustomerDetails(mockRequest, mockEnv, 'cust_abc', auth);
             const data = await response.json();
 
             // emailHash is allowed (admin reference only)

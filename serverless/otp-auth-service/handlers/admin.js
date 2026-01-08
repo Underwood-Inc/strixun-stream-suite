@@ -32,11 +32,11 @@ export {
 
 // GDPR
 export {
-    handleDeleteUserData, handleExportUserData, handleGetAuditLogs
+    handleDeleteCustomerData, handleExportCustomerData, handleGetAuditLogs
 } from './admin/gdpr.js';
 
-// User Management
+// Customer Management (List)
 export {
-    handleListUsers
+    handleListCustomers
 } from './admin/list-users.js';
 

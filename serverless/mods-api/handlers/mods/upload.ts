@@ -510,31 +510,31 @@ export async function handleUploadMod(
         if (auth.customerId) {
             const { fetchDisplayNameByCustomerId } = await import('@strixun/api-framework');
             console.log('[Upload] Fetching authorDisplayName from customer data:', { 
-                customerId: auth.customerId, customerId: auth.customerId
+                customerId: auth.customerId
             });
             authorDisplayName = await fetchDisplayNameByCustomerId(auth.customerId, env);
             
             if (authorDisplayName) {
                 console.log('[Upload] Successfully fetched authorDisplayName from customer data:', { 
                     authorDisplayName, 
-                    customerId: auth.customerId, customerId: auth.customerId
+                    customerId: auth.customerId
                 });
             } else {
                 console.warn('[Upload] Could not fetch displayName from customer data:', {
-                    customerId: auth.customerId, customerId: auth.customerId
+                    customerId: auth.customerId
                 });
             }
         } else {
-            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', { customerId: auth.customerId,
+            console.error('[Upload] CRITICAL: Missing customerId, cannot fetch displayName from customer data:', {
                 customerId: auth.customerId,
-                note: 'UI will show "Unknown User" - customerId should be set during authentication'
+                note: 'UI will show "Unknown Customer" - customerId should be set during authentication'
             });
         }
         
         if (!authorDisplayName) {
-            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', { customerId: auth.customerId,
+            console.error('[Upload] CRITICAL: authorDisplayName is null after customer lookup:', {
                 customerId: auth.customerId,
-                note: 'UI will show "Unknown User" - detail handler will attempt to fetch again on next load'
+                note: 'UI will show "Unknown Customer" - detail handler will attempt to fetch again on next load'
             });
         }
         
