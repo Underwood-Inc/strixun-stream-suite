@@ -120,16 +120,16 @@ const Button = styled.button`
 `;
 
 export function UserProfilePage() {
-    const { user, isAuthenticated, isSuperAdmin } = useAuthStore();
+    const { customer, isAuthenticated, isSuperAdmin } = useAuthStore();
     const navigate = useNavigate();
     
     const { data: modsData, isLoading: modsLoading } = useModsList({
         page: 1,
         pageSize: 1000, // Get all mods for stats
-        authorId: user?.userId,
+        authorId: customer?.customerId,
     });
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !customer) {
         return (
             <PageContainer>
                 <Error>Please log in to view your profile.</Error>
@@ -157,25 +157,25 @@ export function UserProfilePage() {
                     <InfoItem style={{ gridColumn: '1 / -1' }}>
                         <InfoLabel>Display Name</InfoLabel>
                         <DisplayNameEditor
-                            currentDisplayName={user.displayName}
+                            currentDisplayName={customer.displayName}
                             onUpdate={async (newDisplayName) => {
-                                // Update the user in the auth store
-                                const { setUser } = useAuthStore.getState();
-                                setUser({
-                                    ...user,
+                                // Update the customer in the auth store
+                                const { setCustomer } = useAuthStore.getState();
+                                setCustomer({
+                                    ...customer,
                                     displayName: newDisplayName,
                                 });
-                                // Refresh user info to get latest from server
-                                await useAuthStore.getState().fetchUserInfo();
+                                // Refresh customer info to get latest from server
+                                await useAuthStore.getState().fetchCustomerInfo();
                             }}
                             apiEndpoint="/customer/display-name"
-                            authToken={user.token}
+                            authToken={customer.token}
                         />
                     </InfoItem>
                     <InfoItem>
-                        <InfoLabel>User ID</InfoLabel>
+                        <InfoLabel>Customer ID</InfoLabel>
                         <InfoValue style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                            {user.userId}
+                            {customer.customerId}
                         </InfoValue>
                     </InfoItem>
                     <InfoItem>

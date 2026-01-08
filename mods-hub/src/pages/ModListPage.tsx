@@ -297,16 +297,17 @@ export function ModListPage() {
                                 {({ index, style }) => {
                                     if (index === data.mods.length) {
                                         return (
-                                            <div style={{ ...style, paddingTop: spacing.xl, paddingBottom: spacing.xl }}>
+                                            <div key="end-of-list" style={{ ...style, paddingTop: spacing.xl, paddingBottom: spacing.xl }}>
                                                 <EndOfListIndicator>
                                                     End of mods list — no more mods to display
                                                 </EndOfListIndicator>
                                             </div>
                                         );
                                     }
+                                    const mod = data.mods[index];
                                     return (
-                                        <div style={style}>
-                                            <ModListItem mod={data.mods[index]} />
+                                        <div key={mod.id} style={style}>
+                                            <ModListItem mod={mod} />
                                         </div>
                                     );
                                 }}

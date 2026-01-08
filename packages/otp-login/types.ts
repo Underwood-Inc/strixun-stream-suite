@@ -35,9 +35,11 @@ export interface OtpLoginConfig {
 }
 
 export interface LoginSuccessData {
-  /** User ID (OIDC sub claim or userId) */
+  /** Customer ID (primary identifier) - OTP Auth Service uses customerId */
+  customerId?: string;
+  /** User ID (OIDC sub claim or userId) - Deprecated, use customerId */
   userId?: string;
-  /** User email */
+  /** Customer/User email */
   email: string;
   /** Display name (anonymized) */
   displayName?: string | null;

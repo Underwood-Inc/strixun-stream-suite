@@ -69,7 +69,8 @@ export async function verifyOtp(context: OtpVerifyContext): Promise<void> {
 
     // Success - call onSuccess callback
     const successData: LoginSuccessData = {
-      userId: data.userId || data.sub,
+      customerId: data.customerId || data.sub, // OTP Auth Service returns customerId
+      userId: data.userId || data.sub, // Backward compatibility
       email: data.email || state.email,
       displayName: data.displayName || null, // Include display name
       token: data.access_token || data.token,

@@ -23,11 +23,11 @@ const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { setUser, restoreSession } = useAuthStore();
+    const { setCustomer, restoreSession } = useAuthStore();
 
     // Restore session from backend on mount (same as main app)
     // This enables cross-application session sharing for the same device
-    // If user already has a session, they'll be redirected automatically
+    // If customer already has a session, they'll be redirected automatically
     useEffect(() => {
         // Always try to restore - it will check if restoration is needed
         restoreSession().catch(error => {
@@ -66,17 +66,18 @@ export function LoginPage() {
             expiresAt = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
         }
 
-        // Store user data - ensure all required fields are present (matching main app)
-        if (!data.userId || !data.email || !data.token) {
-            console.error('[Login] Missing required user data:', data);
+        // Store customer data - ensure all required fields are present (matching main app)
+        // CRITICAL: OTP Auth returns customerId, not userId
+        const customerId = data.customerId || data.userId; // Support both field names for backwards compatibility
+        if (!customerId || !data.email || !data.token) {
+            console.error('[Login] Missing required customer data:', data);
             handleLoginError('Invalid login response: missing required fields');
             return;
         }
 
-        // Set authentication - support both old format and OAuth 2.0 format (matching main app)
-        // CRITICAL: Trim token to ensure it matches the token used for encryption on backend
-        const userData = {
-            userId: data.userId || '',
+        // Set authentication - CRITICAL: Trim token to ensure it matches the token used for encryption on backend
+        const customerData = {
+            customerId: customerId,
             email: data.email,
             displayName: data.displayName || undefined,
             token: data.token.trim(), // Trim token to prevent hash mismatches
@@ -84,9 +85,9 @@ export function LoginPage() {
             isSuperAdmin: isSuperAdmin,
         };
 
-        setUser(userData);
+        setCustomer(customerData);
 
-        console.log('[Login] ✓ User authenticated:', userData.email, 'Token expires at:', expiresAt);
+        console.log('[Login] ✓ Customer authenticated:', customerData.email, 'Token expires at:', expiresAt);
 
         // Don't call fetchUserInfo immediately after login - let the Layout component handle it
         // This avoids token mismatch issues that can occur when calling it too quickly after login
