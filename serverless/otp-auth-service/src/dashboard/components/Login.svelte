@@ -79,8 +79,8 @@
     // Default: proceed with login even if customer lookup failed
     window.dispatchEvent(new CustomEvent('auth:login', {
       detail: { 
-        user: {
-          userId: data.customerId,
+        customer: {
+          customerId: data.customerId,
           email: data.email,
           token: data.token,
         }

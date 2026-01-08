@@ -7,8 +7,8 @@
 
   import { onMount, onDestroy } from 'svelte';
   import { RoomManager, type RoomManagerConfig } from '../../../services/chat/roomManager';
-  import { chatState, messages, connectionStatus, isConnected, getCurrentUserId, getCurrentUserName, resetChat } from '../../../stores/chat';
-  import { getAuthToken, user } from '../../../stores/auth';
+  import { chatState, messages, connectionStatus, isConnected, getCurrentCustomerId, getCurrentCustomerName, resetChat } from '../../../stores/chat';
+  import { getAuthToken, customer } from '../../../stores/auth';
   import ChatMessage from './ChatMessage.svelte';
   import ChatInput from './ChatInput.svelte';
   import RoomList from './RoomList.svelte';
@@ -31,8 +31,8 @@
   $: config = {
     signalingBaseUrl: signalingBaseUrl || (typeof window !== 'undefined' && (window as any).CHAT_SIGNALING_URL) || '',
     token: getAuthToken(),
-    userId: getCurrentUserId() || '',
-    userName: getCurrentUserName() || 'Anonymous',
+    userId: getCurrentCustomerId() || '',
+    userName: getCurrentCustomerName() || 'Anonymous',
   };
 
   onMount(async () => {

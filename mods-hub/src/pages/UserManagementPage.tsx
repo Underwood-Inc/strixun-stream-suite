@@ -25,10 +25,10 @@ import { AdvancedSearchInput } from '@strixun/search-query-parser/react';
 import { VirtualizedTable, type Column } from '@strixun/virtualized-table';
 import { AdminNavigation } from '../components/admin/AdminNavigation';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
-import { useUpdateCustomer, useCustomersList } from '../hooks/useUsers';
+import { useUpdateCustomer, useCustomersList } from '../hooks/useCustomers';
 import { colors, spacing } from '../theme/index';
-import type { CustomerListItem } from '../types/user';
-import { filterCustomersBySearchQuery } from '../utils/searchUsers';
+import type { CustomerListItem } from '../types/customer';
+import { filterCustomersBySearchQuery } from '../utils/searchCustomers';
 import { getButtonStyles } from '../utils/buttonStyles';
 import { getBadgeStyles } from '../utils/sharedStyles';
 

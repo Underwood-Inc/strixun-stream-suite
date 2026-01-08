@@ -72,7 +72,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         return false;
@@ -115,13 +115,13 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const customer = parsed?.user || parsed?.state?.user;
+          const customer = parsed?.customer || parsed?.state?.user;
           return {
-            hasUser: !!user,
-            hasToken: !!user?.token,
-            hasCustomerId: !!user?.customerId,
-            customerId: user?.customerId || null,
-            tokenLength: user?.token?.length || 0
+            hasUser: !!customer,
+            hasToken: !!customer?.token,
+            hasCustomerId: !!customer?.customerId,
+            customerId: customer?.customerId || null,
+            tokenLength: customer?.token?.length || 0
           };
         }
       } catch {
@@ -198,7 +198,7 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          return !!(parsed?.user?.token || parsed?.state?.user?.token);
+          return !!(parsed?.customer?.token || parsed?.state?.user?.token);
         }
       } catch {
         return false;
@@ -212,8 +212,8 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const customer = parsed?.user || parsed?.state?.user;
-          const token = user?.token;
+          const customer = parsed?.customer || parsed?.state?.user;
+          const token = customer?.token;
           
           if (token) {
             // Decode JWT payload
@@ -228,7 +228,7 @@ test.describe('Upload Access After Login', () => {
                 hasToken: true,
                 hasCustomerIdInJWT: !!payload?.customerId,
                 customerIdFromJWT: payload?.customerId || null,
-                customerIdFromUser: user?.customerId || null
+                customerIdFromUser: customer?.customerId || null
               };
             }
           }
@@ -253,10 +253,10 @@ test.describe('Upload Access After Login', () => {
         const authStorage = localStorage.getItem('auth-storage');
         if (authStorage) {
           const parsed = JSON.parse(authStorage);
-          const customer = parsed?.user || parsed?.state?.user;
+          const customer = parsed?.customer || parsed?.state?.user;
           return {
-            hasCustomerId: !!user?.customerId,
-            customerId: user?.customerId || null
+            hasCustomerId: !!customer?.customerId,
+            customerId: customer?.customerId || null
           };
         }
       } catch {

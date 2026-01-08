@@ -9,7 +9,7 @@
   import { onMount } from 'svelte';
   import { LoginModal, Tooltip } from '@components';
   import { stagger } from '../core/animations';
-  import { clearAuth, isAuthenticated, token, user } from '../stores/auth';
+  import { clearAuth, isAuthenticated, token, customer } from '../stores/auth';
   import { showToast } from '../stores/toast-queue';
 
   interface ShortUrl {
@@ -280,7 +280,7 @@
       <div class="header">
         <div>
           <h1> ★ URL Shortener</h1>
-          <p class="user-info">Signed in as {$user?.displayName || 'Customer'}</p>
+          <p class="user-info">Signed in as {$customer?.displayName || 'Customer'}</p>
         </div>
         <div class="header-actions">
           <button 

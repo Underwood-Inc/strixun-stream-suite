@@ -30,4 +30,3 @@ export interface UpdateCustomerRequest {
     hasUploadPermission?: boolean;
     [key: string]: any;
 }
-

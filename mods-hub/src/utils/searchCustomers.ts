@@ -3,7 +3,7 @@
  */
 
 import { matchesSearchQueryFields } from '@strixun/search-query-parser';
-import type { CustomerListItem } from '../types/user';
+import type { CustomerListItem } from '../types/customer';
 
 /**
  * Filter customers based on a search query
@@ -33,4 +33,3 @@ export function filterCustomersBySearchQuery(customers: CustomerListItem[], quer
     );
   });
 }
-

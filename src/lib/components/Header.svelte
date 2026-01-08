@@ -17,7 +17,7 @@
   import { navigateTo } from '../../stores/navigation';
   import { celebrateClick, celebrateConnection } from '../../utils/particles';
   import { showSuccess, showError, showWarning, showInfo } from '../../stores/toast-queue';
-  import { isAuthenticated, logout as logoutUser, user } from '../../stores/auth';
+  import { isAuthenticated, logout as logoutUser, customer } from '../../stores/auth';
   import { themeSettingsVisible } from '../../stores/theme-settings';
   import Tooltip from './Tooltip.svelte';
   import TruncatedText from './TruncatedText.svelte';
@@ -34,7 +34,7 @@
   }
   
   // Computed values for super admin check
-  $: isSuperAdmin = $user?.isSuperAdmin ?? false;
+  $: isSuperAdmin = $customer?.isSuperAdmin ?? false;
   $: testToastsTooltip = isSuperAdmin 
     ? "Test Toasts | This feature is currently in testing" 
     : "Test Toasts | Super admin only";

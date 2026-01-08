@@ -631,7 +631,7 @@
       </button>
     {:else}
       <p style="color:var(--muted);font-size:0.85em;margin-bottom:12px">
-        Signed in as <strong>{$user?.displayName || 'Customer'}</strong>
+        Signed in as <strong>{$customer?.displayName || 'Customer'}</strong>
       </p>
       
       <!-- Save to Cloud -->

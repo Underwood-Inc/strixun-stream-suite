@@ -12,7 +12,7 @@ import type {
     VariantVersion,
     VariantVersionUploadRequest
 } from '../types/mod';
-import type { UpdateCustomerRequest } from '../types/user';
+import type { UpdateCustomerRequest } from '../types/customer';
 import { encryptFileForUpload, downloadFileFromArrayBuffer } from '../utils/fileEncryption';
 
 /**

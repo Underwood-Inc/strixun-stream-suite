@@ -25,7 +25,7 @@ interface AuthResult {
 }
 
 interface TwitchTokenInfo {
-  twitchCustomerId: string;
+  twitchUserId: string;
   twitchUsername: string;
   displayName: string;
   email?: string;
@@ -34,7 +34,7 @@ interface TwitchTokenInfo {
 }
 
 interface TwitchAccount {
-  twitchCustomerId: string;
+  twitchUserId: string;
   twitchUsername: string;
   displayName: string;
   email?: string;

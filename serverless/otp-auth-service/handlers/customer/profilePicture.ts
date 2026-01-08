@@ -122,7 +122,7 @@ export async function handleUploadProfilePicture(
     }
 
     const fileExtension = imageFile.type === 'image/webp' ? 'webp' : 'jpg';
-    const filename = `profile_${auth.userId}_${Date.now()}.${fileExtension}`;
+    const filename = `profile_${auth.customerId}_${Date.now()}.${fileExtension}`;
     const r2Key = `profile-pictures/${auth.customerId || 'default'}/${filename}`;
 
     await env.PROFILE_PICTURES_R2.put(r2Key, imageFile.stream(), {
@@ -137,30 +137,26 @@ export async function handleUploadProfilePicture(
       : `https://pub-${(env.PROFILE_PICTURES_R2 as any).id}.r2.dev/${r2Key}`;
 
     const emailHash = await hashEmail(auth.email!);
-    const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
+    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as any | null;
 
-    if (user) {
-      if (user.profilePicture?.r2Key) {
+    if (customer) {
+      if (customer.profilePicture?.r2Key) {
         try {
-          await env.PROFILE_PICTURES_R2.delete(user.profilePicture.r2Key);
+          await env.PROFILE_PICTURES_R2.delete(customer.profilePicture.r2Key);
         } catch (error) {
           console.error('[ProfilePicture] Failed to delete old picture:', error);
         }
       }
 
-      user.profilePicture = {
+      customer.profilePicture = {
         url: publicUrl,
         r2Key,
         uploadedAt: new Date().toISOString(),
         fileSize: imageFile.size,
       };
 
-      await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
-      
-      // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
-      const { updateUserIndex } = await import('../../utils/user-index.js');
-      await updateUserIndex(user.userId, user.customerId || null, env);
+      await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
     }
 
     return new Response(JSON.stringify({
@@ -198,25 +194,25 @@ export async function handleGetProfilePicture(
 ): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const userId = url.pathname.split('/').pop();
+    const customerId = url.pathname.split('/').pop();
 
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'userId required' }), {
+    if (!customerId) {
+      return new Response(JSON.stringify({ error: 'customerId required' }), {
         status: 400,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
 
     const auth = await authenticateRequest(request, env);
-    if (auth.authenticated && auth.userId === userId) {
+    if (auth.authenticated && auth.customerId === customerId) {
       const emailHash = await hashEmail(auth.email!);
-      const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-      const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
+      const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+      const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as any | null;
 
-      if (user && user.profilePicture) {
+      if (customer && customer.profilePicture) {
         return new Response(JSON.stringify({
           success: true,
-          url: user.profilePicture.url,
+          url: customer.profilePicture.url,
         }), {
           headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
         });
@@ -256,30 +252,26 @@ export async function handleDeleteProfilePicture(
     }
 
     const emailHash = await hashEmail(auth.email!);
-    const userKey = getCustomerKey(auth.customerId || null, `user_${emailHash}`);
-    const user = await env.OTP_AUTH_KV.get(userKey, { type: 'json' }) as CustomerSession | null;
+    const customerKey = getCustomerKey(auth.customerId || null, `customer_${emailHash}`);
+    const customer = await env.OTP_AUTH_KV.get(customerKey, { type: 'json' }) as any | null;
 
-    if (!user || !user.profilePicture) {
+    if (!customer || !customer.profilePicture) {
       return new Response(JSON.stringify({ error: 'Profile picture not found' }), {
         status: 404,
         headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
       });
     }
 
-    if (user.profilePicture.r2Key && env.PROFILE_PICTURES_R2) {
+    if (customer.profilePicture.r2Key && env.PROFILE_PICTURES_R2) {
       try {
-        await env.PROFILE_PICTURES_R2.delete(user.profilePicture.r2Key);
+        await env.PROFILE_PICTURES_R2.delete(customer.profilePicture.r2Key);
       } catch (error) {
         console.error('[ProfilePicture] Failed to delete from R2:', error);
       }
     }
 
-    delete user.profilePicture;
-    await env.OTP_AUTH_KV.put(userKey, JSON.stringify(user), { expirationTtl: 31536000 });
-    
-    // Update userId -> customerId index (customerId shouldn't change, but ensure it's up to date)
-    const { updateUserIndex } = await import('../../utils/user-index.js');
-    await updateUserIndex(user.userId, user.customerId || null, env);
+    delete customer.profilePicture;
+    await env.OTP_AUTH_KV.put(customerKey, JSON.stringify(customer), { expirationTtl: 31536000 });
 
     return new Response(JSON.stringify({
       success: true,

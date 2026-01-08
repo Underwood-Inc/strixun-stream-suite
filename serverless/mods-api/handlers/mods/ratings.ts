@@ -24,7 +24,7 @@ export async function handleGetModRatings(
     request: Request,
     env: Env,
     modId: string,
-    auth: { customerId: string; customerId: string | null } | null
+    auth: { customerId: string; email?: string } | null
 ): Promise<Response> {
     try {
         // Get mod metadata by modId only (slug should be resolved to modId before calling this)
