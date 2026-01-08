@@ -125,8 +125,8 @@ export async function handleModRoutes(request: Request, path: string, env: Env):
             if (!auth) {
                 return await createErrorResponse(request, env, 401, 'Unauthorized', 'Authentication required', null);
             }
-            const { handleGetUserPermissions } = await import('../handlers/mods/permissions.js');
-            const response = await handleGetUserPermissions(request, env, auth);
+            const { handleGetCustomerPermissions } = await import('../handlers/mods/permissions.js');
+            const response = await handleGetCustomerPermissions(request, env, auth);
             const encryptedResult = await wrapWithEncryption(response, auth, request, env);
             // Ensure CORS headers are preserved after encryption
             const corsHeaders = createCORSHeadersWithLocalhost(request, env);
