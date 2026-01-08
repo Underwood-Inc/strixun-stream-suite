@@ -38,5 +38,5 @@ export {
 // Customer Management (List)
 export {
     handleListCustomers
-} from './admin/list-users.js';
+} from './admin/list-customers.js';
 

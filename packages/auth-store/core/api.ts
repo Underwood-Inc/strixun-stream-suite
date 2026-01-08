@@ -332,7 +332,7 @@ export async function fetchCustomerInfo(
             return {
                 isSuperAdmin: response.data.isSuperAdmin || false,
                 displayName: response.data.displayName || null,
-                customerId: response.data.customerId || null,
+                customerId: response.data.customerId || '',
             };
         }
         

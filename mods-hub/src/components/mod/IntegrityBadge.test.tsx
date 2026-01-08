@@ -7,17 +7,17 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { userEvent } from '@testing-library/user-event';
+import userEvent from '@testing-library/user-event';
 import { IntegrityBadge } from './IntegrityBadge';
 
 // Mock fetch for badge API calls
 global.fetch = vi.fn();
 
 describe('IntegrityBadge Integration', () => {
-  let customer: ReturnType<typeof userEvent.setup>;
+  let customerInteraction: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    user = userEvent.setup();
+    customerInteraction = userEvent.setup();
     vi.useFakeTimers();
     vi.clearAllMocks();
   });
@@ -51,7 +51,7 @@ describe('IntegrityBadge Integration', () => {
 
       // Hover over badge
       const badge = screen.getByAltText('Strixun Verified');
-      await user.hover(badge);
+      await customerInteraction.hover(badge);
       
       // Run all timers to process delay and animations
       await vi.runAllTimersAsync();
@@ -82,7 +82,7 @@ describe('IntegrityBadge Integration', () => {
       });
 
       const badge = screen.getByAltText('Strixun Verified');
-      await user.hover(badge);
+      await customerInteraction.hover(badge);
       vi.advanceTimersByTime(200);
 
       await waitFor(() => {
@@ -115,14 +115,14 @@ describe('IntegrityBadge Integration', () => {
       });
 
       const badge = screen.getByAltText('Strixun Verified');
-      await user.hover(badge);
+      await customerInteraction.hover(badge);
       vi.advanceTimersByTime(200);
 
       const tooltip = await screen.findByRole('tooltip');
       
       // Move mouse from badge to tooltip
-      await user.unhover(badge);
-      await user.hover(tooltip);
+      await customerInteraction.unhover(badge);
+      await customerInteraction.hover(tooltip);
       vi.runAllTimers();
 
       // Tooltip should still be visible
@@ -148,12 +148,12 @@ describe('IntegrityBadge Integration', () => {
       });
 
       const badge = screen.getByAltText('Strixun Verified');
-      await user.hover(badge);
+      await customerInteraction.hover(badge);
       vi.advanceTimersByTime(200);
 
       const tooltip = await screen.findByRole('tooltip');
-      await user.unhover(badge);
-      await user.unhover(tooltip);
+      await customerInteraction.unhover(badge);
+      await customerInteraction.unhover(tooltip);
       vi.runAllTimers();
 
       await waitFor(() => {
@@ -302,7 +302,7 @@ describe('IntegrityBadge Integration', () => {
       });
 
       const badge = screen.getByAltText('Strixun Verified');
-      await user.hover(badge);
+      await customerInteraction.hover(badge);
       vi.advanceTimersByTime(200);
 
       await waitFor(() => {

@@ -24,4 +24,4 @@ export const useAuthStore = createAuthStore({
 });
 
 // Re-export types for convenience
-export type { User, AuthState, AuthStore } from '@strixun/auth-store/core';
+export type { AuthenticatedCustomer, AuthState, AuthStore } from '@strixun/auth-store/core';

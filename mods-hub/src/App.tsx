@@ -7,7 +7,7 @@ import { ModManagePage } from './pages/ModManagePage';
 import { ModReviewPage } from './pages/ModReviewPage';
 import { AdminPanel } from './pages/AdminPanel';
 import { R2ManagementPage } from './pages/R2ManagementPage';
-import { CustomerManagementPage } from './pages/CustomerManagementPage';
+import { CustomerManagementPage } from './pages/UserManagementPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';

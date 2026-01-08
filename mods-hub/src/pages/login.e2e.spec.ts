@@ -272,7 +272,7 @@ test.describe('Mods Hub Login', () => {
     const userInfo = page.locator(
       '[data-testid="customer-email"], [data-testid="customer-name"], .customer-info, .auth-customer'
     );
-    const userInfoCount = await userInfo.count();
+    const customerInfoCount = await userInfo.count();
     
     // User info might not always be visible, but if it is, it should be present
     if (customerInfoCount > 0) {
@@ -812,20 +812,21 @@ test.describe('Mods Hub Login', () => {
     
     // Step 2: Manually expire the token in localStorage by setting expiresAt to past date
     await page.evaluate(() => {
-      try {
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const parsed = JSON.parse(authStorage);
-          // Set expiresAt to 1 hour ago to simulate expired token
-          const expiredDate = new Date(Date.now() - 3600000).toISOString();
-          if (parsed?.customer) {
-            parsed.customer.expiresAt = expiredDate;
-          localStorage.setItem('auth-storage', JSON.stringify(parsed));
+        try {
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            const parsed = JSON.parse(authStorage);
+            // Set expiresAt to 1 hour ago to simulate expired token
+            const expiredDate = new Date(Date.now() - 3600000).toISOString();
+            if (parsed?.customer) {
+              parsed.customer.expiresAt = expiredDate;
+              localStorage.setItem('auth-storage', JSON.stringify(parsed));
+            }
+          }
+        } catch {
+          // Ignore errors
         }
-      } catch {
-        // Ignore errors
-      }
-    });
+      });
     
     // Step 3: Reload page - should trigger session restore due to expired token
     // restoreSession is called in App.tsx on initialization and Layout on mount
@@ -860,7 +861,7 @@ test.describe('Mods Hub Login', () => {
             const customer = parsed?.customer;
             if (customer?.token) {
               // Check if expiresAt is in the future (token was refreshed)
-              const expiresAt = user.expiresAt;
+              const expiresAt = customer.expiresAt;
               if (expiresAt) {
                 return new Date(expiresAt) > new Date();
               }

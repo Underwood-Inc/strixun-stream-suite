@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { userEvent } from '@testing-library/user-event';
+import userEvent from '@testing-library/user-event';
 import { InteractiveThumbnail } from './InteractiveThumbnail';
 import type { ModMetadata } from '../../types/mod';
 
@@ -32,10 +32,10 @@ const mockMod: ModMetadata = {
 };
 
 describe('InteractiveThumbnail Integration (Mods Hub)', () => {
-  let customer: ReturnType<typeof userEvent.setup>;
+  let customerInteraction: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    user = userEvent.setup();
+    customerInteraction = userEvent.setup();
     vi.useFakeTimers();
   });
 
@@ -108,7 +108,7 @@ describe('InteractiveThumbnail Integration (Mods Hub)', () => {
       const card = screen.getByAltText('Test Mod').closest('div')?.parentElement?.parentElement;
       
       if (card) {
-        await user.click(card);
+        await customerInteraction.click(card);
         vi.runAllTimers();
 
         await waitFor(() => {
@@ -125,7 +125,7 @@ describe('InteractiveThumbnail Integration (Mods Hub)', () => {
       const card = screen.getByAltText('Test Mod').closest('div')?.parentElement?.parentElement;
       
       if (card) {
-        await user.click(card);
+        await customerInteraction.click(card);
         vi.runAllTimers();
 
         await waitFor(() => {
@@ -265,7 +265,7 @@ describe('InteractiveThumbnail Integration (Mods Hub)', () => {
       render(<InteractiveThumbnail mod={mockMod} />);
 
       const description = screen.getByText('This is a test mod description');
-      expect(description).toHaveStyle({ userSelect: 'text' });
+      expect(description).toHaveStyle({ customerInteractionSelect: 'text' });
     });
 
     it('should have proper cursor styles', () => {
@@ -308,7 +308,7 @@ describe('InteractiveThumbnail Integration (Mods Hub)', () => {
       const card = screen.getByAltText('Test Mod').closest('div')?.parentElement?.parentElement;
       
       if (card) {
-        await user.click(card);
+        await customerInteraction.click(card);
         vi.runAllTimers();
 
         await waitFor(() => {

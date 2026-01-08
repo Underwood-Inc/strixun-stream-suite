@@ -183,14 +183,14 @@ export async function handleCustomerRoutes(
     
     // Data request endpoints (customer can view/approve/reject requests for their data)
     if (path === '/customer/data-requests' && request.method === 'GET') {
-        return await handleCustomerRoute(dataRequestHandlers.handleGetUserDataRequests, request, env, auth);
+        return await handleCustomerRoute(dataRequestHandlers.handleGetCustomerDataRequests, request, env, auth);
     }
     
     const customerDataRequestMatch = path.match(/^\/customer\/data-requests\/([^\/]+)$/);
     if (customerDataRequestMatch && request.method === 'GET') {
         const requestId = customerDataRequestMatch[1];
         return await handleCustomerRoute(
-            (req, e) => dataRequestHandlers.handleGetUserDataRequest(req, e, requestId),
+            (req, e) => dataRequestHandlers.handleGetCustomerDataRequest(req, e, requestId),
             request,
             env,
             auth

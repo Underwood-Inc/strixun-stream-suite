@@ -122,13 +122,13 @@ export async function handleGetCustomerDataRequests(request: Request, env: Env):
  * Get specific data request
  * GET /customer/data-requests/:id
  */
-export async function handleGetUserDataRequest(
+export async function handleGetCustomerDataRequest(
     request: Request,
     env: Env,
     requestId: string
 ): Promise<Response> {
     try {
-        const auth = await authenticateUser(request, env);
+        const auth = await authenticateCustomer(request, env);
         if (!auth.authenticated) {
             return new Response(JSON.stringify({ error: auth.error }), {
                 status: auth.status || 401,
@@ -209,7 +209,7 @@ export async function handleApproveDataRequest(
     requestId: string
 ): Promise<Response> {
     try {
-        const auth = await authenticateUser(request, env);
+        const auth = await authenticateCustomer(request, env);
         if (!auth.authenticated || !auth.token) {
             return new Response(JSON.stringify({ error: auth.error }), {
                 status: auth.status || 401,
@@ -292,7 +292,7 @@ export async function handleRejectDataRequest(
     requestId: string
 ): Promise<Response> {
     try {
-        const auth = await authenticateUser(request, env);
+        const auth = await authenticateCustomer(request, env);
         if (!auth.authenticated) {
             return new Response(JSON.stringify({ error: auth.error }), {
                 status: auth.status || 401,
@@ -374,7 +374,7 @@ export async function handleDecryptData(
     requestId: string
 ): Promise<Response> {
     try {
-        const auth = await authenticateUser(request, env);
+        const auth = await authenticateCustomer(request, env);
         if (!auth.authenticated || !auth.token) {
             return new Response(JSON.stringify({ error: auth.error }), {
                 status: auth.status || 401,
