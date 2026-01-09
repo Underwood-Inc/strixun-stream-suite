@@ -230,8 +230,53 @@ export async function handleCustomerRoutes(
         );
     }
     
-    // PROXY: Forward any unhandled /customer/* routes to customer-api service
-    // This allows dashboard to call customer-api endpoints (like /customer/me) through the auth service
+    // Handle /customer/me - use standard fetchCustomerByCustomerId utility like everywhere else
+    if (path === '/customer/me' && request.method === 'GET') {
+        if (!auth?.customerId) {
+            return {
+                response: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                    status: 401,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: null,
+            };
+        }
+
+        try {
+            const { fetchCustomerByCustomerId } = await import('@strixun/api-framework');
+            const customer = await fetchCustomerByCustomerId(auth.customerId, env);
+
+            if (!customer) {
+                return {
+                    response: new Response(JSON.stringify({ error: 'Customer not found' }), {
+                        status: 404,
+                        headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                    }),
+                    customerId: auth.customerId,
+                };
+            }
+
+            // Return customer data with displayName (email already stripped by customer-api)
+            return {
+                response: new Response(JSON.stringify(customer), {
+                    status: 200,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        } catch (error) {
+            console.error('[CustomerRoutes] Failed to fetch customer data:', error);
+            return {
+                response: new Response(JSON.stringify({ error: 'Failed to fetch customer data' }), {
+                    status: 500,
+                    headers: { ...getCorsHeaders(env, request), 'Content-Type': 'application/json' },
+                }),
+                customerId: auth.customerId,
+            };
+        }
+    }
+    
+    // PROXY: Forward any other unhandled /customer/* routes to customer-api service
     if (path.startsWith('/customer')) {
         try {
             const customerApiUrl = env.CUSTOMER_API_URL || 'https://customer-api.idling.app';
