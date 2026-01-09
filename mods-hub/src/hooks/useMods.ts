@@ -571,6 +571,34 @@ export function useDeleteVariantVersion() {
 }
 
 /**
+ * Delete entire variant mutation
+ */
+export function useDeleteVariant() {
+    const queryClient = useQueryClient();
+    const addNotification = useUIStore((state) => state.addNotification);
+    
+    return useMutation({
+        mutationFn: ({ modId, variantId }: { 
+            modId: string; 
+            variantId: string;
+        }) => api.deleteVariant(modId, variantId),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: modKeys.detail(variables.modId) });
+            addNotification({
+                message: 'Variant deleted successfully!',
+                type: 'success',
+            });
+        },
+        onError: (error: Error) => {
+            addNotification({
+                message: error.message || 'Failed to delete variant',
+                type: 'error',
+            });
+        },
+    });
+}
+
+/**
  * Update mod version metadata mutation
  */
 export function useUpdateModVersion() {

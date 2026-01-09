@@ -689,6 +689,16 @@ export async function deleteVariantVersion(
 }
 
 /**
+ * Delete entire variant and all its versions
+ */
+export async function deleteVariant(
+    modId: string,
+    variantId: string
+): Promise<void> {
+    await api.delete(`/mods/${modId}/variants/${variantId}`);
+}
+
+/**
  * Update mod version metadata (requires authentication and ownership/admin)
  */
 export async function updateModVersion(

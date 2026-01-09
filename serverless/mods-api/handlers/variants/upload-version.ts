@@ -2,7 +2,6 @@
  * Upload variant version handler
  * POST /mods/:modId/variants/:variantId/versions
  * Adds a new version to an existing variant
- * ARCHITECTURAL IMPROVEMENT: Full version control for variants
  */
 
 import { createCORSHeaders } from '@strixun/api-framework/enhanced';
@@ -23,18 +22,14 @@ import {
 } from '../../utils/variant-versions.js';
 import type { ModMetadata, VariantVersion, VariantVersionUploadRequest } from '../../types/mod.js';
 
-/**
- * Handle upload variant version request
- */
 export async function handleUploadVariantVersion(
     request: Request,
     env: Env,
     modId: string,
     variantId: string,
-    auth: { customerId: string; email?: string; customerId: string | null }
+    auth: { customerId: string; email?: string }
 ): Promise<Response> {
     try {
-        // Check if uploads are globally enabled
         const { areUploadsEnabled } = await import('../admin/settings.js');
         const uploadsEnabled = await areUploadsEnabled(env);
         if (!uploadsEnabled) {
@@ -51,7 +46,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Check email whitelist
         if (!isEmailAllowed(auth.email, env)) {
             const rfcError = createError(request, 403, 'Forbidden', 'Your email address is not authorized to upload variant versions');
             const corsHeaders = createCORSHeaders(request, {
@@ -66,13 +60,8 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // CRITICAL: Validate customerId is present
         if (!auth.customerId) {
-            console.error('[UploadVariantVersion] CRITICAL: customerId is null for authenticated customer:', { customerId: auth.customerId,
-                email: auth.email,
-                note: 'Rejecting variant version upload - customerId is required'
-            });
-            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required for variant version uploads. Please ensure your account has a valid customer association.');
+            const rfcError = createError(request, 400, 'Missing Customer ID', 'Customer ID is required');
             const corsHeaders = createCORSHeaders(request, {
                 allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
             });
@@ -85,7 +74,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Get mod metadata
         const normalizedModId = normalizeModId(modId);
         const modKey = getCustomerKey(auth.customerId, `mod_${normalizedModId}`);
         const mod = await env.MODS_KV.get(modKey, { type: 'json' }) as ModMetadata | null;
@@ -104,7 +92,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Check authorization (must be mod author)
         if (mod.authorId !== auth.customerId) {
             const rfcError = createError(request, 403, 'Forbidden', 'You do not have permission to upload versions for this variant');
             const corsHeaders = createCORSHeaders(request, {
@@ -119,7 +106,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Get variant metadata
         const variant = await getVariant(variantId, auth.customerId, env);
         if (!variant) {
             const rfcError = createError(request, 404, 'Variant Not Found', 'The requested variant was not found');
@@ -135,7 +121,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Verify variant belongs to this mod
         if (variant.modId !== modId && variant.modId !== `mod_${normalizedModId}`) {
             const rfcError = createError(request, 400, 'Invalid Variant', 'Variant does not belong to this mod');
             const corsHeaders = createCORSHeaders(request, {
@@ -150,7 +135,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Parse multipart form data
         const formData = await request.formData();
         let file = formData.get('file') as File | null;
         
@@ -168,7 +152,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Validate file size
         const sizeValidation = validateFileSize(file.size, MAX_VERSION_FILE_SIZE);
         if (!sizeValidation.valid) {
             const rfcError = createError(
@@ -189,23 +172,19 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Validate file extension
         const { getAllowedFileExtensions } = await import('../admin/settings.js');
         const allowedExtensions = await getAllowedFileExtensions(env);
         
         let originalFileName = file.name;
         
-        // Remove .encrypted suffix if present
         if (originalFileName.endsWith('.encrypted')) {
             originalFileName = originalFileName.slice(0, -10);
         }
         
-        // Get file extension
         const fileExtension = originalFileName.includes('.') 
             ? originalFileName.substring(originalFileName.lastIndexOf('.'))
             : '';
         
-        // Validate extension
         if (!fileExtension || !allowedExtensions.includes(fileExtension.toLowerCase())) {
             const rfcError = createError(
                 request, 
@@ -225,71 +204,6 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Get shared encryption key
-        const sharedKey = env.MODS_ENCRYPTION_KEY;
-        
-        if (!sharedKey || sharedKey.length < 32) {
-            const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        // Check file format: binary encrypted (v4/v5)
-        const fileBuffer = await file.arrayBuffer();
-        const fileBytes = new Uint8Array(fileBuffer);
-        
-        const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
-        
-        if (!isBinaryEncrypted) {
-            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted with shared key (binary format v4/v5) before upload.');
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-        
-        // Decrypt to calculate hash and size
-        let fileHash: string;
-        let fileSize: number;
-        let encryptionFormat: string;
-        
-        try {
-            const decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
-            fileSize = decryptedBytes.length;
-            fileHash = await calculateStrixunHash(decryptedBytes, env);
-            encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
-            console.log('[UploadVariantVersion] Binary decryption successful');
-        } catch (error) {
-            console.error('File decryption error:', error);
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt file: ${errorMsg}`);
-            const corsHeaders = createCORSHeaders(request, {
-                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
-            });
-            return new Response(JSON.stringify(rfcError), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/problem+json',
-                    ...Object.fromEntries(corsHeaders.entries()),
-                },
-            });
-        }
-
-        // Parse metadata
         const metadataJson = formData.get('metadata') as string | null;
         if (!metadataJson) {
             const rfcError = createError(request, 400, 'Metadata Required', 'Metadata is required for variant version upload');
@@ -306,8 +220,7 @@ export async function handleUploadVariantVersion(
         }
 
         const metadata = JSON.parse(metadataJson) as VariantVersionUploadRequest;
-
-        // Validate required fields
+        
         if (!metadata.version) {
             const rfcError = createError(request, 400, 'Validation Error', 'Version is required');
             const corsHeaders = createCORSHeaders(request, {
@@ -322,20 +235,104 @@ export async function handleUploadVariantVersion(
             });
         }
 
-        // Generate version ID
+        const sharedKey = env.MODS_ENCRYPTION_KEY;
+        
+        if (!sharedKey || sharedKey.length < 32) {
+            const rfcError = createError(request, 500, 'Server Configuration Error', 'MODS_ENCRYPTION_KEY is not configured. Please ensure the encryption key is set in the environment.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        const fileBuffer = await file.arrayBuffer();
+        const fileBytes = new Uint8Array(fileBuffer);
+        
+        const isBinaryEncrypted = fileBytes.length >= 4 && (fileBytes[0] === 4 || fileBytes[0] === 5);
+        const isLegacyEncrypted = file.type === 'application/json' || 
+                                  (fileBytes.length > 0 && fileBytes[0] === 0x7B);
+        
+        if (!isBinaryEncrypted && !isLegacyEncrypted) {
+            const rfcError = createError(request, 400, 'File Must Be Encrypted', 'Files must be encrypted before upload for security. Please ensure the file is encrypted.');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+        
+        let fileHash: string;
+        let fileSize: number;
+        let encryptionFormat: string;
+        
+        try {
+            if (isBinaryEncrypted) {
+                let decryptedBytes: Uint8Array;
+                try {
+                    decryptedBytes = await decryptBinaryWithSharedKey(fileBytes, sharedKey);
+                    console.log('[Upload] Binary decryption successful with shared key');
+                } catch (decryptError) {
+                    const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
+                    throw new Error(`Failed to decrypt file with shared key. All files must be encrypted with the shared encryption key. Error: ${errorMsg}`);
+                }
+                
+                fileSize = decryptedBytes.length;
+                fileHash = await calculateStrixunHash(decryptedBytes, env);
+                encryptionFormat = fileBytes[0] === 5 ? 'binary-v5' : 'binary-v4';
+            } else {
+                throw new Error('Legacy JSON encryption format is not supported. Please re-upload the file using the latest client version.');
+            }
+        } catch (error) {
+            console.error('File decryption error during upload:', error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const rfcError = createError(request, 400, 'Decryption Failed', `Failed to decrypt uploaded file. All files must be encrypted with the shared encryption key. ${errorMsg}`);
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
+
         const variantVersionId = generateVariantVersionId();
         const now = new Date().toISOString();
 
-        // Store encrypted file in R2 (new hierarchical structure)
-        const extensionForR2 = fileExtension.startsWith('.') ? fileExtension.substring(1) : fileExtension || 'zip';
+        const extensionForR2 = fileExtension ? fileExtension.substring(1) : 'zip';
         const r2Key = getVariantVersionR2Key(normalizedModId, variantId, variantVersionId, extensionForR2, auth.customerId);
         
-        const r2SourceInfo = getR2SourceInfo(env, request);
-        console.log('[UploadVariantVersion] R2 storage source:', r2SourceInfo);
+        let encryptedFileBytes: Uint8Array;
+        let contentType: string;
         
-        await env.MODS_R2.put(r2Key, fileBytes, {
+        if (isBinaryEncrypted) {
+            encryptedFileBytes = fileBytes;
+            contentType = 'application/octet-stream';
+        } else {
+            const encryptedData = await file.text();
+            encryptedFileBytes = new TextEncoder().encode(encryptedData);
+            contentType = 'application/json';
+        }
+        
+        const r2SourceInfo = getR2SourceInfo(env, request);
+        console.log('[Upload] R2 storage source:', r2SourceInfo);
+        
+        await env.MODS_R2.put(r2Key, encryptedFileBytes, {
             httpMetadata: {
-                contentType: 'application/octet-stream',
+                contentType: contentType,
                 cacheControl: 'private, no-cache',
             },
             customMetadata: addR2SourceMetadata({
@@ -347,17 +344,15 @@ export async function handleUploadVariantVersion(
                 encrypted: 'true',
                 encryptionFormat: encryptionFormat,
                 originalFileName,
-                originalContentType: 'application/zip',
+                originalContentType: 'application/zip', // Original file type
                 sha256: fileHash,
             }, env, request),
         });
 
-        // Generate download URL
         const downloadUrl = env.MODS_PUBLIC_URL 
             ? `${env.MODS_PUBLIC_URL}/${r2Key}`
             : `https://pub-${(env.MODS_R2 as any).id}.r2.dev/${r2Key}`;
 
-        // Create variant version metadata
         const variantVersion: VariantVersion = {
             variantVersionId,
             variantId,
@@ -375,13 +370,8 @@ export async function handleUploadVariantVersion(
             dependencies: metadata.dependencies || [],
         };
 
-        // Store variant version in KV
         await saveVariantVersion(variantVersion, auth.customerId, env);
-
-        // Add version to variant's version list
         await addVariantVersionToList(variantId, variantVersionId, auth.customerId, env);
-
-        // Update variant metadata (currentVersionId, versionCount, updatedAt)
         await updateVariantAfterVersionUpload(variantId, variantVersionId, auth.customerId, env);
 
         const corsHeaders = createCORSHeaders(request, {
@@ -423,5 +413,6 @@ interface Env {
     ALLOWED_EMAILS?: string;
     ALLOWED_ORIGINS?: string;
     ENVIRONMENT?: string;
+    FILE_INTEGRITY_KEYPHRASE?: string;
     [key: string]: any;
 }

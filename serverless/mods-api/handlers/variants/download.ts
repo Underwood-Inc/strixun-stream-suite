@@ -250,9 +250,23 @@ export async function handleDownloadVariant(
             console.log('[VariantDownload] File is not encrypted, returning as-is');
         }
 
-        // Determine content type and filename
-        const originalContentType = customMetadata.originalContentType || 'application/zip';
-        const originalFileName = customMetadata.originalFileName || variant.fileName || `variant-${variantId}.zip`;
+        // Determine content type and filename - NO FALLBACKS
+        const originalContentType = customMetadata.originalContentType;
+        const originalFileName = customMetadata.originalFileName || variant.fileName;
+        
+        if (!originalFileName || !originalContentType) {
+            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
 
         // Increment download count for mod
         mod.downloadCount = (mod.downloadCount || 0) + 1;

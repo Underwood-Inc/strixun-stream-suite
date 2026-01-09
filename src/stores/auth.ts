@@ -65,6 +65,9 @@ export const authRequired: Readable<boolean> = derived(
 /**
  * Save authentication state to storage
  * Stores everything in regular storage for persistence across reloads
+ * 
+ * CRITICAL: Uses queueMicrotask to ensure store updates trigger reactive components
+ * This fixes reactivity issues where components don't update until a manual re-render
  */
 function saveAuthState(customerData: AuthenticatedCustomer | null): void {
   if (customerData) {
@@ -82,18 +85,39 @@ function saveAuthState(customerData: AuthenticatedCustomer | null): void {
     // Update customerData with isSuperAdmin from JWT if not already set
     const updatedCustomerData = { ...customerData, isSuperAdmin: isSuperAdmin || customerData.isSuperAdmin };
     
+    // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(true);
     customer.set(updatedCustomerData);
     token.set(customerData.token);
     csrfToken.set(csrf || null);
+    
+    // CRITICAL: Then use queueMicrotask to trigger another update cycle
+    // This ensures Svelte components that mounted during initialization get the updates
+    // Without this, components may not re-render until something else triggers it
+    queueMicrotask(() => {
+      isAuthenticated.set(true);
+      customer.set(updatedCustomerData);
+      token.set(customerData.token);
+      csrfToken.set(csrf || null);
+    });
   } else {
     storage.remove('auth_customer');
     storage.remove('auth_user'); // Clean up any old storage key (legacy)
     storage.remove('auth_token'); // Clean up any old token storage
+    
+    // CRITICAL: Update stores immediately first (for synchronous reads)
     isAuthenticated.set(false);
     customer.set(null);
     token.set(null);
     csrfToken.set(null);
+    
+    // CRITICAL: Then use queueMicrotask to trigger another update cycle
+    queueMicrotask(() => {
+      isAuthenticated.set(false);
+      customer.set(null);
+      token.set(null);
+      csrfToken.set(null);
+    });
   }
 }
 

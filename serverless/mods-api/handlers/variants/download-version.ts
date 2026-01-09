@@ -190,9 +190,23 @@ export async function handleDownloadVariantVersion(
             });
         }
 
-        // Get original filename and content type from metadata
+        // Get original filename and content type from metadata - NO FALLBACKS
         const originalFileName = file.customMetadata?.originalFileName || variantVersion.fileName;
-        const originalContentType = file.customMetadata?.originalContentType || 'application/zip';
+        const originalContentType = file.customMetadata?.originalContentType;
+        
+        if (!originalFileName || !originalContentType) {
+            const rfcError = createError(request, 500, 'Internal Server Error', 'File metadata not found');
+            const corsHeaders = createCORSHeaders(request, {
+                allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'],
+            });
+            return new Response(JSON.stringify(rfcError), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/problem+json',
+                    ...Object.fromEntries(corsHeaders.entries()),
+                },
+            });
+        }
 
         // Increment download counters (async, don't wait)
         Promise.all([

@@ -150,11 +150,14 @@ export function VariantVersionList({
         setDownloadError(null);
         
         try {
+            if (!version.fileName) {
+                throw new Error('Variant version file name not found');
+            }
             await downloadVariantVersion(
                 modSlug, 
                 variantId, 
                 version.variantVersionId, 
-                version.fileName || `${variantName}-v${version.version}.zip`
+                version.fileName
             );
             
             // Refetch to update download counts

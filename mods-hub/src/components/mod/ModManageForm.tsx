@@ -3,7 +3,7 @@
  * Allows updating mod metadata and deleting mods
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { colors, spacing } from '../../theme';
 import type { ModMetadata, ModUpdateRequest, ModCategory, ModVisibility, ModStatus, ModVariant } from '../../types/mod';
@@ -50,6 +50,19 @@ const Form = styled.form`
     background: linear-gradient(90deg, ${colors.accent}, ${colors.accentHover || colors.accent});
     opacity: 0.8;
   }
+`;
+
+const ErrorText = styled.div`
+  color: ${colors.danger};
+  font-size: 0.9375rem;
+  padding: ${spacing.md};
+  background: ${colors.danger}15;
+  border: 1px solid ${colors.danger}40;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: ${spacing.sm};
+  font-weight: 500;
 `;
 
 const Header = styled.div`
@@ -213,7 +226,7 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary'; di
 
 interface ModManageFormProps {
     mod: ModMetadata;
-    onUpdate: (updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>) => void;
+    onUpdate: (updates: ModUpdateRequest, thumbnail?: File, variantFiles?: Record<string, File>, deletedVariantIds?: string[]) => void;
     onDelete: () => void;
     onStatusChange?: (status: ModStatus) => void;
     isLoading: boolean;
@@ -325,6 +338,12 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     const [thumbnailError, setThumbnailError] = useState<string | null>(null);
     const [variantReplaceModal, setVariantReplaceModal] = useState<{ variantId: string; variantName: string; file: File } | null>(null);
     const [pendingVariantFiles, setPendingVariantFiles] = useState<Record<string, File>>({});
+    
+    // Track original variant IDs to detect deletions
+    const originalVariantIds = useMemo(() => new Set((mod.variants || []).map(v => v.variantId)), [mod.variants]);
+    
+    // Track which variants have been deleted
+    const [deletedVariantIds, setDeletedVariantIds] = useState<Set<string>>(new Set());
 
     const handleThumbnailFileChange = (file: File | null) => {
         if (file) {
@@ -380,6 +399,89 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
         );
     };
 
+    // Check if any NEW variant is incomplete (partially filled but missing required data)
+    const hasIncompleteVariant = (): boolean => {
+        return variants.some(variant => {
+            // Only check new variants (not pre-existing ones)
+            if (isPreExistingVariant(variant)) {
+                return false;
+            }
+            
+            // Check what data the variant has
+            const hasName = variant.name && variant.name.trim().length > 0;
+            const hasFile = !!variant.file || !!pendingVariantFiles[variant.variantId];
+            const hasExistingFile = !!variant.fileUrl || (variant.fileName && variant.fileSize !== undefined);
+            
+            // If completely empty, it's fine (will be filtered out on save)
+            if (!hasName && !hasFile && !hasExistingFile) {
+                return false;
+            }
+            
+            // If partially filled (has one but not the other), it's incomplete
+            if (hasName && !hasFile && !hasExistingFile) {
+                return true; // Has name but no file
+            }
+            if ((hasFile || hasExistingFile) && !hasName) {
+                return true; // Has file but no name
+            }
+            
+            return false;
+        });
+    };
+
+    // Check if there are any changes to the mod
+    const hasChanges = (): boolean => {
+        // Check basic fields
+        if (title !== mod.title) return true;
+        if (description !== mod.description) return true;
+        if (category !== mod.category) return true;
+        if (visibility !== mod.visibility) return true;
+        if (gameId !== mod.gameId) return true;
+        
+        // Check tags (compare as arrays)
+        const currentTags = tags.split(',').map(t => t.trim()).filter(Boolean).sort();
+        const originalTags = [...mod.tags].sort();
+        if (currentTags.length !== originalTags.length || 
+            currentTags.some((tag, i) => tag !== originalTags[i])) {
+            return true;
+        }
+        
+        // Check if thumbnail changed
+        if (thumbnailFile) return true;
+        
+        // Check if variants changed
+        const originalVariantIds = (mod.variants || []).map(v => v.variantId).sort();
+        const currentVariantIds = variants
+            .filter(v => {
+                // Filter out empty new variants
+                if (!isPreExistingVariant(v)) {
+                    const hasName = v.name && v.name.trim().length > 0;
+                    const hasFile = !!v.file || !!pendingVariantFiles[v.variantId];
+                    const hasExistingFile = !!v.fileUrl || (v.fileName && v.fileSize !== undefined);
+                    return hasName || hasFile || hasExistingFile;
+                }
+                return true;
+            })
+            .map(v => v.variantId)
+            .sort();
+        
+        // Check if variant count changed
+        if (currentVariantIds.length !== originalVariantIds.length) return true;
+        if (currentVariantIds.some((id, i) => id !== originalVariantIds[i])) return true;
+        
+        // Check if any existing variant was modified
+        for (const variant of variants) {
+            const original = mod.variants?.find(v => v.variantId === variant.variantId);
+            if (!original) continue; // New variant, already counted
+            
+            if (variant.name !== original.name) return true;
+            if (variant.description !== original.description) return true;
+            if (variant.file || pendingVariantFiles[variant.variantId]) return true; // File changed
+        }
+        
+        return false;
+    };
+
     const handleAddVariant = () => {
         const newVariant: ModVariantWithFile = {
             variantId: `variant-${Date.now()}`,
@@ -396,7 +498,13 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
     };
 
     const handleRemoveVariant = (variantId: string) => {
+        // Remove from variants list
         setVariants(variants.filter(v => v.variantId !== variantId));
+        
+        // If this was an original variant (existed before), mark it for deletion
+        if (originalVariantIds.has(variantId)) {
+            setDeletedVariantIds(prev => new Set([...prev, variantId]));
+        }
     };
 
     const handleVariantChange = (variantId: string, field: keyof ModVariantWithFile, value: string | File | null) => {
@@ -471,10 +579,25 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Filter out completely empty variants (not pre-existing, no name, no file)
+        const validVariants = variants.filter(variant => {
+            if (isPreExistingVariant(variant)) {
+                return true; // Keep all pre-existing variants
+            }
+            
+            const hasName = variant.name && variant.name.trim().length > 0;
+            const hasFile = !!variant.file || !!pendingVariantFiles[variant.variantId];
+            const hasExistingFile = !!variant.fileUrl || (variant.fileName && variant.fileSize !== undefined);
+            
+            // Keep only if it has at least a name or a file
+            return hasName || hasFile || hasExistingFile;
+        });
+        
         // Extract variant files before serializing variants
         // Include both files from variant.file and pendingVariantFiles
         const variantFiles: Record<string, File> = {};
-        const variantsWithoutFiles = variants.map(variant => {
+        const variantsWithoutFiles = validVariants.map(variant => {
             // Check pending files first (confirmed replacements), then regular file selection
             const file = pendingVariantFiles[variant.variantId] || variant.file;
             if (file) {
@@ -495,7 +618,10 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
             gameId: gameId || undefined,
             variants: variantsWithoutFiles.length > 0 ? variantsWithoutFiles : undefined,
         };
-        onUpdate(updates, thumbnailFile || undefined, Object.keys(variantFiles).length > 0 ? variantFiles : undefined);
+        
+        // Pass deleted variant IDs to parent for backend deletion
+        const deletedIds = deletedVariantIds.size > 0 ? Array.from(deletedVariantIds) : undefined;
+        onUpdate(updates, thumbnailFile || undefined, Object.keys(variantFiles).length > 0 ? variantFiles : undefined, deletedIds);
     };
 
     return (
@@ -659,8 +785,14 @@ export function ModManageForm({ mod, onUpdate, onDelete, onStatusChange, isLoadi
                 )}
             </FormGroup>
 
+            {hasIncompleteVariant() && (
+                <ErrorText style={{ marginBottom: spacing.md }}>
+                    ⚠ Each variant must have both a name AND a file. Please complete all variant forms or remove them using the "Remove" button.
+                </ErrorText>
+            )}
+
             <ButtonGroup>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading || hasIncompleteVariant() || !hasChanges()}>
                     {isLoading ? 'Saving...' : 'Save Changes'}
                 </Button>
                 {mod.status === 'draft' && onStatusChange && (

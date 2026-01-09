@@ -4,7 +4,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus } from '../hooks/useMods';
+import { useModDetail, useUpdateMod, useDeleteMod, useUploadVersion, useUpdateModStatus, useDeleteVariant } from '../hooks/useMods';
 import { useUploadPermission } from '../hooks/useUploadPermission';
 import { ModManageForm } from '../components/mod/ModManageForm';
 import { VersionUploadForm } from '../components/mod/VersionUploadForm';
@@ -63,6 +63,7 @@ export function ModManagePage() {
     const { data, isLoading } = useModDetail(slug || '');
     const updateMod = useUpdateMod();
     const deleteMod = useDeleteMod();
+    const deleteVariant = useDeleteVariant();
     const uploadVersion = useUploadVersion();
     const updateStatus = useUpdateModStatus();
 
@@ -120,8 +121,23 @@ export function ModManagePage() {
         );
     }
 
-    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>) => {
+    const handleUpdate = async (updates: any, thumbnail?: File, variantFiles?: Record<string, File>, deletedVariantIds?: string[]) => {
         try {
+            // First, delete any removed variants
+            if (deletedVariantIds && deletedVariantIds.length > 0 && data) {
+                console.log('[ModManagePage] Deleting variants:', deletedVariantIds);
+                for (const variantId of deletedVariantIds) {
+                    try {
+                        await deleteVariant.mutateAsync({ modId: data.mod.modId, variantId });
+                        console.log('[ModManagePage] Deleted variant:', variantId);
+                    } catch (error) {
+                        console.error('[ModManagePage] Failed to delete variant:', variantId, error);
+                        // Continue with other deletions even if one fails
+                    }
+                }
+            }
+            
+            // Then update the mod
             const result = await updateMod.mutateAsync({ slug: slug!, updates, thumbnail, variantFiles });
             
             // Check if slug changed in the update
